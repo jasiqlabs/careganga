@@ -1,14 +1,13 @@
 # CareGanga Foundation — Admin Panel Screenshot & UI/UX Reference Audit
 
 **Reference ID:** CG-REF-ADMIN-001  
-**Version:** 1.0 — initial complete visual inventory  
 **Date:** 14 November 2026  
-**Status:** **Reference analysis only — BR incorporation not yet performed**  
+**Status:** Reviewed source evidence; required business details reconciled into the current BR  
 **Source:** user-supplied \`careganga_features_screenshot.zip\`  
 **Audience:** Product owner, business analyst, UX designer, PRD author, QA reviewer  
 **Related BR:** \`docs/business-requirements/00-MASTER-BUSINESS-REQUIREMENTS.md\` and CG-01–CG-21
 
-> **Source discipline.** The screenshots show an existing **Foundation Admin Panel interface**, not evidence that all buttons, forms, calculations, approvals or integrations function correctly. This document distinguishes **observed controls** from **potential BR additions**, **UX suggestions**, and **unverified states**. No existing BR is altered in this review. The current CareGanga scope is the Foundation **with Integrated Healthcare Assistance**; superseded legacy screens in this archive are retained only as archival evidence and are not carried into the module specification.
+> **Source discipline.** The screenshots show an existing **Foundation Admin Panel interface**, not evidence that all buttons, forms, calculations, approvals or integrations function correctly. This document distinguishes **observed controls** from **potential BR additions**, **UX suggestions**, and **unverified states**. The source audit is kept separate from the authoritative BR; business requirements are recorded in their owning CG module. The current scope is **one CareGanga Foundation platform with Integrated Healthcare Assistance**. Any screenshot that does not establish a current approved business capability is indexed as archival evidence only, not used to create a module.
 
 ## 1. Archive inspection and evidence conventions
 
@@ -30,7 +29,6 @@ Also present: **8 JPG contact sheets** (composites, not additional independent U
 - **INFERRED:** likely behaviour suggested by a control, **not** confirmed by static evidence.
 - **VERIFY:** PRD or live functional test must establish the actual rule, backend effect or result.
 - **SCOPE:** relevant module ownership and whether the action belongs in the final CareGanga platform.
-- **LEGACY:** older archived page not to be promoted into the current project.
 
 **Filename convention:** For indexed screenshots, \`A01\` corresponds to \`CareGanga_Admin_Page_Screenshots/01_Projects_Overview.png\`; \`B01\` and \`C01\` follow the Part2/Part3 folders and filename lists exactly. Every row below includes the unique screenshot stem. For the 42 root captures, the filename is the archive's timestamp, prefixed \`Screenshot 2026-11-09\`. These IDs are analysis references, **not application route IDs**. Original screenshot images are kept in the uploaded ZIP and are **not committed as binary assets** to GitHub.
 
@@ -38,7 +36,7 @@ Also present: **8 JPG contact sheets** (composites, not additional independent U
 
 ### 2.1 Global navigation observed
 
-- **Left sidebar:** CareGanga Foundation logo/brand, searchable navigation field, categorized hierarchical menus, nested/expandable groups, selected-menu styling, a bottom-left **Super Admin** identity/status area. The active item is blue in the legacy screenshot style. Sidebar can be considerably longer than the browser height and scrolls.
+- **Left sidebar:** CareGanga Foundation logo/brand, searchable navigation field, categorized hierarchical menus, nested/expandable groups, selected-menu styling, a bottom-left **Super Admin** identity/status area. The active item is blue in the captured interface. Sidebar can be considerably longer than the browser height and scrolls.
 - **Top shell:** current module title and control-panel subtitle, global search for *name / ID / mobile / email* with a Ctrl+K hint, notification bell, inbox/message badge, **View Site** link, help icon, user avatar, **Super Admin** name/online indicator and account dropdown.
 - **Main workspace:** KPI cards across the top; filter/search panels; tabbed lists; action toolbars; data tables; detail/right-hand information cards; quick actions; charts and recent activity panels.
 - **Form patterns:** right-side drawers (staff, role, reward, CMS record, payment and allowance), centered modal dialogs (volunteers, notification, media/gallery, payroll components), larger wizard pages (branch, employee, campaign, voucher, budget, fund, invoice), and inline preview panels (letters, IDs, CMS banners).
@@ -97,8 +95,8 @@ Each row describes **visible layout, options, actions, and interaction context**
 | **B14** \`14_Rewards_Store_Overview.png\` | **Rewards Store:** top banner “Redeem Items & Rewards Store”, total active products, points redeemed, pending/unfulfilled, catalog vs volunteer/member redemptions tabs; categories (apparel/accessories/digital/stationery/special/health/electronics), product cards with cost in points, stock/status, search, refresh, **Add New Product**. | CG-13/12. Catalog and redemption pipeline consume one stock owner. |
 | **B15** \`15_Rewards_Store_Product_Catalogue.png\` | Product grid additional rows, categories, images, point-cost badges, availability/stock and action icons; approved/draft labels. | CG-13. List and card behaviours should be consistent on desktop/mobile. |
 | **B16** \`16_Rewards_Store_Add_Product.png\` | **Add Reward Product** drawer: product title, redemption points, stock units, category, highlight badge/popularity, product image URL, description, available in volunteer marketplace toggle, Cancel/Create. | CG-13/12. Do not assume physical shipping workflow beyond fulfillment evidence. |
-| **B17** archived capture **17** | Older placeholder-only screen. | **LEGACY / superseded. Exclude from the current CareGanga requirements and new sidebar.** Not a current module or PRD. |
-| **B18** archived capture **18** | Older placeholder-only screen. | **LEGACY / superseded. Exclude from the current CareGanga requirements and new sidebar.** Not a current module or PRD. |
+| **B17** archived capture **17** | Non-current placeholder with no applicable approved business workflow. | Indexed for completeness; not a business requirement, Admin option or PRD. |
+| **B18** archived capture **18** | Non-current placeholder with no applicable approved business workflow. | Indexed for completeness; not a business requirement, Admin option or PRD. |
 | **B19** \`19_Requests_and_Inventory.png\` | **Requests & Inventory:** total/pending/approved/rejected requests, stock metrics; tabs **Requests Management, Inventory Management, Stock Transactions, Distribution Log, Vendors & Suppliers, Settings**; status/type/priority/date/search and **Filter/Export**, quick actions for new request/item/stock adjustment/request approvals, category and alert panels. | CG-12/03. This is one inventory capability with multiple operational views. |
 | **B20** \`20_HR_Dashboard.png\` | **HR Dashboard:** employees by department/status, trend graphs, attendance, leave, new joiners, recent leave requests; quick links Add Employee, Apply Leave, Attendance Sheet, Leave Requests, Payroll Process, HR Reports, Document Mgmt. | CG-10/11/20. Reuse HR dashboard from authoritative employee/payroll data. |
 | **B21** \`21_Leave_Management_Overview.png\` | **Leave Management:** total/approved/pending/rejected/on leave metrics, search employee/leave type/status/dates, tabbed leave table with applicant, reason, type, range/days/status and action icons; leave balance/leave type policy, quick **Apply Leave**. | CG-10/03; balance computation, leave policy and approvals need consistent status rules. |
@@ -291,50 +289,52 @@ This section translates the screen inventory into **control families**, not a ne
 - **Misleading visual state:** Several screenshots show loading placeholders or demo-like empty cards. An empty record set, a loading state, a permission denial, unavailable backend and failed save must be visually distinguishable.
 - **Inconsistent entity duplication risk:** Roles/employee registration/payroll setup, project/program/CMS teaser, donation/payment receipt, fund/budget/ledger are displayed in different sections; unify source entities and link rather than copy.
 - **Unclear "approval" vocabulary:** Approving an application, verifying a document, approving salary, issuing a letter and publishing a page are different business transitions. Use exact action verbs and status badges.
-- **Legacy text/content is not product data:** Dates, numeric KPI counts, names, sample providers, generated transaction strings, legal/certificate IDs, and publication copy visible in the screenshots are not design defaults.
+- **Screenshot sample content is not product data:** Dates, numeric KPI counts, names, sample providers, generated transaction strings, legal/certificate IDs, and publication copy visible in the screenshots are not design defaults.
 - **Color and visual polish:** Blue sidebar, white cards, colorful status chips, purple/blue actions, colored graphs, compact type are reference aesthetics only. Modernize color contrast, spacing, keyboard navigation and focus, preserving clarity and CareGanga branding.
 - **Responsive design:** Drawer/wizard summaries must become an accessible collapsible summary on mobile; high-density tables need alternative responsive row/detail layouts, not tiny horizontal shrink-to-fit spreadsheets.
 - **Financial and patient privacy:** Personal contact, Aadhaar/PAN, bank, salary, clinical and support records must not be exposed in screenshots, public previews, external shares or unrestricted exports.
 - **Stateful drafts and confirmation:** Submission of review, deletion, rejected record, role revocation, payroll release, refund and publication changes must have appropriate confirmation/error/undo or safe corrective operation; screenshot button does not prove it.
 
-## 9. Source-to-BR gap *candidates* — to review later, not incorporated yet
+## 9. Completed screenshot-to-BR reconciliation (26 candidate controls)
 
-The master BR is intentionally not modified in this task. The following are **candidate follow-ups**, to be evaluated against the existing BR wording and latest PDF before any change.
+Every UI-G item has been evaluated against the written client source and the **current** owning BR. **BR aligned** indicates specific missing business detail incorporated; **Already covered** indicates no second copy was needed; **PRD/QA evidence** indicates visible UI alone cannot prove business operation and therefore does not create a new independent feature.
 
-| Ref | Screenshot-backed detail worth checking for precise BR/PRD coverage | Source refs | Likely owner | Priority |
+| ID | Screenshot refs | Disposition | Authoritative BR reference | Resolution |
 | --- | --- | --- | --- | --- |
-| **UI-G01** | Global header/shell, menu search, role-sensitive quick actions and unified search | U01–02, all | CG-01/20/300 | Medium |
-| **UI-G02** | Explicit action matrix columns and module-group expand/collapse, custom role copy and geography | U05–10 | CG-01 | High |
-| **UI-G03** | Per-document Verify/Reject, applicant notes, payment blocks, QR, detailed timeline | U11–13 | CG-03/19 | High |
-| **UI-G04** | Volunteer profile completeness, identity files, availability selector and login-status control | U14–17 | CG-04/01 | Medium |
-| **UI-G05** | Exact seven-stage branch form, GPS/location/photo, required docs and post-approval code | U18–20 | CG-02/03 | High |
-| **UI-G06** | Departments vs committees, parent/manager/branch association and type selector | U21–22 | CG-02 | Medium |
-| **UI-G07** | Our Impact editor's ten sections, explicit field repeater controls, map/graph level labels | U23–29 | CG-18/20 | High |
-| **UI-G08** | 80G editor includes enable/order/live preview/legal documents/section and CTA | U30 | CG-18 | High |
-| **UI-G09** | Field-visit detail sub-tabs for route/media/report/team/beneficiary/approval/comments | A02–06 | CG-05/03/19 | Medium |
-| **UI-G10** | Six-step campaign, budget/beneficiary/team and publication lifecycle | A12–15 | CG-07/03/18 | Medium |
-| **UI-G11** | Donation payment link vs actual paid receipt and manual payment methods | A16–18 | CG-07/09 | High |
-| **UI-G12** | Budget/fund source/category allocations, committed/utilized/available, approval | B01–08 | CG-08/09 | High |
-| **UI-G13** | Referral rank dashboard, detailed point conversions, reward stock/catalog and redemption status | B09–16 | CG-13/12 | Medium |
-| **UI-G14** | Employee stage-specific verification, upload and bank data, linked login/ID issuance | B27–34 | CG-10/01/03 | High |
-| **UI-G15** | Letter/memo workflow: compose→preview→approve→dispatch→received copy; member/staff/volunteer ID-template reusability | B35–42 | CG-10/19 | Medium |
-| **UI-G16** | Transfer/promotion salary effective dates, exit clearance and settlement state separation | B44–48 | CG-10/11/09 | High |
-| **UI-G17** | Payroll structure, run, calculation, review, payment, reissue/download and audit; exact setting tabs | C01–14 | CG-11/09/21 | High |
-| **UI-G18** | CMS Hero Banner typography + two CTAs + mobile image + order + gradient/opacity + live preview | C22–24 | CG-18 | High |
-| **UI-G19** | Team member publish selection; upcoming project cards are **editorial views of project master** | C25–30 | CG-18/05 | High |
-| **UI-G20** | Media/gallery/blog/contact/support route and status ownership | C31–43 | CG-18/19 | Medium |
-| **UI-G21** | Financial report package types, MIS reports, custom filters and schedule, source-scoped exports | C44–49 | CG-20/21 | Medium |
-| **UI-G22** | Website header Login/Member/Volunteer toggles and published visibility across channels | C20, C50–51, U01 | CG-18/21 | High |
-| **UI-G23** | Screens currently show **disabled placeholders** for email/SMS, data export, integrations and recovery; functional delivery must not be inferred from screenshot presence | C19, C48, C54–55 | CG-19/20/21 | High |
-| **UI-G24** | Exact "Add Ledger Entry" debit/credit wizard vs balanced posting and one accounting source | U37–38 | CG-09 | High |
-| **UI-G25** | Invoice, voucher and allowance requests share approval/payment records rather than double counting | U33–42, B49–51 | CG-09/03 | High |
-| **UI-G26** | Employee attendance shift/grace/policy and correction requests need coherent authority | B21–25 | CG-10 | Medium |
+| **UI-G01** | U01–02, all | BR aligned | CG-300-BR21 | Role-scoped global/menu search; shortcut placement remains UI detail |
+| **UI-G02** | U05–10 | Already covered | CG-01-BR02/03/04/05 | Role copy, grouped permissions, geographic scope; exact widget layout is UX |
+| **UI-G03** | U11–13 | Already covered | CG-03-BR03/04/07 | Document-wise review and approval evidence |
+| **UI-G04** | U14–17 | Already covered | CG-04-BR07–10; CG-01 | Volunteer form, status and appropriate login |
+| **UI-G05** | U18–20 | Already covered | CG-02-BR03/04/05 | Seven-step branch application and conditional branch code |
+| **UI-G06** | U21–22 | BR aligned | CG-02-BR10 | Parent, head, type and location of department/committee |
+| **UI-G07** | U23–29 | Already covered | CG-18-BR15/16 | Ten Impact groups and controlled data source |
+| **UI-G08** | U30 | Already covered | CG-18-BR12/13 | Tax/public disclosure CMS, legal fields and preview |
+| **UI-G09** | A02–06 | BR aligned | CG-05-BR11 | Visit details, media, GPS, team and review subviews |
+| **UI-G10** | A12–15 | BR aligned | CG-07-BR08 | Six-stage campaign form, draft and approval |
+| **UI-G11** | A16–18 | BR aligned | CG-07-BR09; CG-09 | Link requested and verified donor payment before receipt |
+| **UI-G12** | B01–08 | BR aligned | CG-08-BR07; CG-09-BR16 | Funding commitments and allocation versus utilization |
+| **UI-G13** | B09–16 | Already covered | CG-13-BR03/04/05 | Points, ranks and reward stock; detailed UI in PRD |
+| **UI-G14** | B27–34 | BR aligned | CG-10-BR12 | Employee stage-wise verification and protected bank/doc fields |
+| **UI-G15** | B35–42 | BR aligned | CG-10-BR13/15; CG-19-BR08 | Letters, dispatch, received copies and shared ID templates |
+| **UI-G16** | B44–48 | BR aligned | CG-10-BR14 | Transfer/exit effective date, clearances and settlement |
+| **UI-G17** | C01–14 | BR aligned | CG-11-BR09/10/11 | Configurable payroll rules, run stages and change approval |
+| **UI-G18** | C22–24 | BR aligned | CG-18-BR25 | Hero images, type/color/CTA/order and preview |
+| **UI-G19** | C25–30 | BR aligned | CG-18-BR26 | Public team and project editorial presentation |
+| **UI-G20** | C31–43 | BR aligned | CG-18-BR27; CG-19-BR07 | Gallery, articles, media and support ownership |
+| **UI-G21** | C44–49 | BR aligned | CG-20-BR07 | Standard financial, HR, CSR and project report packets |
+| **UI-G22** | C20, C50–51, U01 | Already covered | CG-18-BR09; CG-300-BR13 | Admin-controlled login/member/volunteer public entry |
+| **UI-G23** | C19, C48, C54–55 | PRD/QA evidence | CG-19/20/21; CG-NFR-600 | Disabled pages do not evidence working integration, export or recovery; functions remain source-backed |
+| **UI-G24** | U37–38 | BR aligned | CG-09-BR17 | Manual journal/ledger UI requires balanced posting |
+| **UI-G25** | U33–42, B49–51 | Already covered | CG-09-BR07/08/11; CG-03 | Voucher, invoice, expense/allowance same finance source |
+| **UI-G26** | B21–25 | Already covered | CG-10-BR04/05 | Attendance correction and policies; screen details in HR PRD |
 
-**No automatic BR edits:** In the next deliberate reconciliation step, each candidate must be labelled **Already covered / Add detail / Needs decision / Duplicate / Out of scope**, with the exact CG-BR ID, source screenshot and client PDF section, **before** changing the BR. Broad UI polish recommendations should go to UX/PRD, not inflate the core contractual BR.
+**Summary:** 15 clarified in owner BR; 10 already covered; 1 remains a functional QA evidence item. **No extra business module is introduced.**
+
+Detailed dialog placements, screen ordering, icon/color treatment and responsive layout remain **UI/UX reference details for PRDs**, not separate contractual data engines. Client-policy questions are in the single [decision register](../business-requirements/04-TRACEABILITY-DECISIONS.md).
 
 ## 10. Screens requiring particular caution
 
-- **Archived/superseded placeholders B17–18:** not part of the current product specification; do not reopen the old module by carrying sidebar entries into the new design.
+- **Non-current placeholders B17–18:** indexed for completeness only. They do not create any current navigation item, product module or implementation task.
 - **C19, C48, C54, C55:** on-screen "module disabled" placeholders. They show planned navigation and descriptions only; **no functional implementation is demonstrated**.
 - **A02, B19, B29, B46, C15, C42 and similar:** some tables show spinner, no data or no selected row. Do not claim that a submit, approval, payment, filter, notification or data fetch succeeded based on those frames.
 - **B49:** filename indicates “My Leave” but the visible page is **My Allowance Requests**. Evidence is attributed to the visible screen.
@@ -343,33 +343,21 @@ The master BR is intentionally not modified in this task. The following are **ca
 - **Root screenshots:** browser toolbars, notifications from desktop applications and other open tabs are incidental capture artifacts, **not CareGanga features**.
 - **No center-side screenshots:** Healthcare Center Portal, public healthcare scheduling, diagnostics and patient-service UI must continue to be derived from the **latest healthcare reference screens and the written client requirements**, not generalized from Foundation HR/admin mockups.
 
-## 11. Recommended next incorporation workflow (not executed)
+## 11. Screenshot audit status
 
-1. **Preserve this reference audit unchanged** as evidence of the submitted ZIP.
-2. For each **UI-G** candidate, look up matching requirements in the 61-page PDF and current BR; mark **Already Covered**, **Needs BR amendment**, **PRD/UI-only**, **Decision**, or **Not Current Scope**.
-3. Update the single owner BR, avoiding extra duplicate modules or duplicated approval/finance/CMS engines.
-4. Maintain a before/after trace row: screenshot ID + source section + old BR ID + proposed text + decision + affected channels + mandatory NFRs.
-5. Review the amended BR as product owner/architect for completeness, complexity, security, concurrency, financial correctness and accessibility.
-6. Only after approval, prepare modular PRDs and a task-by-task manual QA matrix tracing UI→backend→authorization→state→ledger/document→public/mobile outcome.
+- [x] ZIP opened and checked against index files; **167/167 individual images represented**.
+- [x] Major Admin navigation, panels, forms, controls, publication and status concepts recorded as screen evidence.
+- [x] All **26 UI-G** candidates reconciled to the existing business owners.
+- [x] Current Foundation and integrated healthcare scope clearly separated from any non-current archived screen material.
+- [x] UI-only observations retained for UX/PRD design without creating duplicate BR capabilities.
+- [ ] Working UI/API/payment/security behaviour — **not established by static images** and must be verified during implementation/QA.
+- [ ] Client policy decisions on unresolved matters — recorded in CG-BR-900.
 
-## 12. Review completion status
-
-- [x] ZIP successfully opened and contents counted (**167 PNG screenshots**, 8 composite JPG contact sheets, 3 indexes).
-- [x] Original screenshot subsets A (19), B (51), C (55) and root U (42) visually inspected.
-- [x] **All 167 PNG screenshots have an individual audit row** above.
-- [x] Common admin UI shell, navigation, dialogs, drawers, grids, KPIs, status tabs, publish controls and relevant workflows documented.
-- [x] Current-module mapping and concrete BR candidate delta register included.
-- [x] Superseded legacy screens not carried into current scope.
-- [x] Screens with placeholders, loading state, mismatched filename and unverified functionality explicitly flagged.
-- [ ] Live interaction/access/API/financial QA — **not possible from static screenshots and not claimed**.
-- [ ] New BR modifications — **intentionally deferred by user**.
-
-
-## 13. Second-pass ZIP completeness and navigation-only option verification
+## 12. ZIP integrity and navigation-only evidence
 
 **Reverification date:** 14 November 2026. This is a **source-file inventory and visual spot-check**, not a claim that application functions were clicked or executed.
 
-### 13.1 Exact archive integrity
+### 12.1 Exact archive integrity
 
 - Archive file: \`careganga_features_screenshot.zip\`.
 - ZIP SHA-256 fingerprint: \`8d077f8e1101ef7de73f65965730eb9058bed1b188cf075cd6968289202925fe\`.
@@ -383,7 +371,7 @@ The master BR is intentionally not modified in this task. The following are **ca
 
 **Limits:** This integrity check establishes that every source image has a traceable row, **not that every tiny pixel, dropdown choice, permission dependency, hidden tab or backend outcome can be established from static captures**. Higher-level BR reconciliation must still follow the written requirements and client approval.
 
-### 13.2 Important sidebar-only options — visible, but not demonstrated end to end
+### 12.2 Important sidebar-only options — visible, but not demonstrated end to end
 
 Several navigation labels are visible while the corresponding page is not opened in this ZIP. These are recorded here to avoid overlooking them **and to avoid treating a sidebar item as proof of implemented behaviour**.
 
@@ -396,7 +384,7 @@ Several navigation labels are visible while the corresponding page is not opened
 | **Reports and System** | **MIS Reports, Analytics & Charts, Data Export, Custom Reports, General Settings, Audit Logs, API & Integrations, Backup & Restore** | Part C provides views, but Data Export, API & Integrations and Backup & Restore have **placeholder/disabled screens**; screenshots cannot establish execution. |
 | **ID / Letters** | **Offer, Joining, Experience, Other and specific Appointment/Relieving letter links**, alongside the ID Card Generator | Visible around B35–B42. Model as templates and issuance statuses in CG-19, not individual document engines. Unopened templates need PRD detail confirmation. |
 
-### 13.3 Cross-cutting visual details that should not be lost when moving to PRDs
+### 12.3 Cross-cutting visual details that should not be lost when moving to PRDs
 
 1. **Global search scope and shortcuts:** header search shows a keyboard shortcut hint, and sidebar has its own menu search. Specify whether global search returns persons/IDs/transactions across permitted modules, or only navigation, before implementing. Both search surfaces must respect CG-01 permissions.
 2. **Disabled vs hidden vs inaccessible controls:** several pages or options are shown as disabled, placeholders or available only to Super Admin; a disabled menu is different from a missing feature and from a working feature. The PRD must define UI state and backend response.
@@ -406,10 +394,10 @@ Several navigation labels are visible while the corresponding page is not opened
 6. **Finance reconciliation:** a ledger-entry drawer that offers debit/credit selection is only a **UI affordance**; the balance/posting invariant must be established in CG-09 and its NFR acceptance tests.
 7. **No evidence of Android experience here:** these are desktop Admin captures. Web/mobile interaction parity, accessibility, backend isolation, medical privacy, performance and concurrency should be specified from BR/NFR and validated in later PRDs/QA.
 
-### 13.4 Second-pass disposition and recommended planning order
+### 12.4 Evidence and planning disposition
 
 **Evidence completeness:** **Pass**, all 167 screenshots accounted for in this audit.  
 **Screen-to-function accuracy:** **Reference-level only**; a static screenshot never validates a save, ledger posting, gateway transaction, permission enforcement or live public publishing.  
 **Uncaptured depth:** Hidden dropdown options and unvisited submenu screens cannot be guaranteed by the ZIP; preserve this as an explicit PRD verification boundary.
 
-**Next action:** **Align BR before producing dependent PRDs.** Review the 26 UI-G candidates against exact BR IDs and current source PDF, classify **Covered / BR amendment / PRD-UX only / Client decision / Excluded**, then make **one coordinated BR delta commit** to the appropriate owning modules. Only afterward generate modular PRDs in dependency order, referring to this screenshot audit and CG-BR-600 shared NFRs. Do not turn sidebar items into independent modules or create competing “final BR” versions.
+**Next action:** Use the aligned BR and this evidence to generate modular PRDs in dependency order. Resolve client-policy decisions that block specific workflows; do not create modules from sidebar entries or substitute static imagery for live QA.
