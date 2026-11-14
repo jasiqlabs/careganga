@@ -4,6 +4,8 @@
 **Status:** Internal consolidated BR · 14 November 2026  
 **Purpose:** Preserve complete client requirements while avoiding accidental scope expansion, duplicated implementation and unsupported screen-level assumptions.
 
+**Reviewed coverage:** [CG-BR-500](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) documents the independent PDF/screenshot/transcript audit, including corrections incorporated in owner BR files. [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) defines shared P0 non-functional gates and proposed P1 service targets. The NFR sizing decisions **NDEC-01–08** are separate from the functional **D-01–25** decisions below.
+
 ## 1. Source and precedence register
 
 | Source ID | Material inspected | Coverage and limitations |
@@ -166,9 +168,9 @@ For every proposed PRD, perform:
 
 ## 7. Suggested handoff statuses
 
-- **Master BR:** Draft complete; comprehensive *document-based* business coverage.
+- **Master BR:** Internal draft reviewed against all 61 source PDF pages, accessible 13 unique healthcare JPG references and meeting transcript; corrections committed.
 - **Original video screenshot replay:** Not done because source files were unavailable.
-- **Cross-screenshot scope conflicts:** Recorded, pending designated client decisions.
+- **Cross-screenshot scope conflicts:** Recorded, pending designated client decisions. NFR numerical targets require sizing/SLA agreement; security/data integrity P0 gates remain mandatory.
 - **PRD preparation:** Can proceed in dependency order for confirmed capabilities, with marked decisions for affected workflows.
 - **HLD/DLD and implementation:** Not authorized by BR alone; follow approved JASIQ Harness workflow and source-backed PRDs.
 
