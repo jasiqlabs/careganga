@@ -1,7 +1,7 @@
 # CG-BR-200 — Integrated Healthcare Assistance
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Consolidated business requirements · Client decisions identified separately  
+**Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
 **Business domains:** CG-14 Healthcare Network, CG-15 Patients and Appointments, CG-16 Diagnostics and Center Services, CG-17 Assistance/Billing/Settlement  
 **Audience:** Foundation leadership, healthcare network administrators, partner center operators, doctors/authorized staff, patients and public website/app users.
 
@@ -11,7 +11,7 @@ CareGanga operates a centrally supervised network of clinics, doctors, hospitals
 
 Healthcare is **an original, first-class domain inside the CareGanga Foundation platform**, sharing identity, authorization, payment/accounting, media/documents, notifications, approval workflow, CMS and reports. A healthcare center has isolated operational scope within the common backend. This is **not** an independent product data silo.
 
-**Documented public transaction boundary:** The written requirements explicitly provide public **doctor consultation appointments** initially. Lab tests, checkups, camps and other services have publicly displayed information and appropriate **center-side administrative operations**. Newer UI references show buttons for lab test booking, medicine ordering and nursing/OT booking: those are captured as **open functional scope decisions**, not silently presumed live public transactions. See [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
+**Documented public transaction boundary:** The written requirements explicitly provide public **doctor consultation appointments** initially. Lab tests, checkups, camps and other services have publicly displayed information and appropriate **center-side administrative operations**. Newer UI references show additional booking buttons. Under the adopted launch policy, these are approved service information/enquiry, not public medicine, lab or nursing/OT checkout. Internal center-side lab ordering and reports remain required; see [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
 
 ## 2. Domain model and responsibility boundaries
 
@@ -119,7 +119,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 - **CG-16-BR05:** Track lab workflow: order → sample collection/processing → result/report upload → authorized release/completion with relevant times/status history.
 - **CG-16-BR06:** Make reports available to appropriate patient and clinical users with permission; do not publish diagnostic reports through the public center directory.
 - **CG-16-BR07:** Center portal and Foundation Admin can inspect internal lab orders, processing, utilization, test collection and authorized reports by scoped location and date.
-- **CG-16-BR08:** Public center profiles can show published test/service menus, pricing and approved Foundation discounts; public checkout of labs, medication, nursing and other services requires explicit scope decision.
+- **CG-16-BR08:** Public center profiles may display verified test/service menus, genuine prices and configured benefits. Public medicine, nursing/OT and lab checkout are not enabled in the initial release; internal center-managed lab orders remain supported.
 - **CG-16-BR09:** Service catalogs may cover categories illustrated by the mockups: polyclinic, diagnostic center, dental clinic, medical laboratory, hospital/nursing home, pharmacy, orthopedic, homeopathy and Ayurvedic centers. Listing a category does not automatically imply a dedicated pharmacy stock/sales or hospital-OT operating system.
 - **CG-16-BR10:** Non-bookable health camps/checkups and other applicable support offerings may be displayed as information with clear contact/enquiry actions as approved.
 
@@ -156,7 +156,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 - **CG-17-BR17:** Foundation Admin has network-wide settlement oversight; Center Portal has restricted own-center collection, assistance, outstanding and reconciliation views.
 - **CG-17-BR18:** Post final money/accounting events to CG-09 exactly once using linked source transactions; no duplicate per-center general ledger.
 - **CG-17-BR19:** Generate center/doctor/period/service reports on gross charges, patient collections, Foundation support, unresolved dues and settlement outcomes.
-- **CG-17-BR20:** Financial ownership and payment routing (Foundation gateway vs center merchant account; who receives or disburses each amount) is a **client decision requiring a definitive approved settlement flow** before PRD lock.
+- **CG-17-BR20:** The authorized initial money flow is center collection of patient payable (verified own merchant channel, or pay at center), plus a separate Foundation contribution payable to the center after completed/eligible services, reconciled monthly. No real online payment until the responsible center's merchant credentials are verified.
 
 ### 6.4 Payment/business examples
 
@@ -220,6 +220,6 @@ The PRDs must define manual QA scenarios with backend-data tracing and public/si
 - Public website and public Android consume same live authorized center, doctor and booking data.
 - A general public user cannot access provider bank details, patient medical records, internal verification files or other center's operational data.
 
-## 11. Healthcare decisions before PRD approval
+## 11. Adopted initial healthcare operating model
 
-These are centralized in [CG-BR-900](04-TRACEABILITY-DECISIONS.md), especially **D-01–D-09**. No PRD should silently implement unsupported public lab checkout, e-pharmacy fulfillment, nursing/OT booking, prescription generation, dependent/family authorization or automated medical services merely because a prototype shows a button or navigation item.
+Apply the policies in [CG-BR-900](04-TRACEABILITY-DECISIONS.md): public doctor consultation booking; one center-specific slot inventory for manual and time-first booking; disclose center before confirmation; Foundation-reviewed eligibility with 50% usual consultation contribution and exceptional full support only when specifically authorized; center-controlled patient collections; monthly reconciled Foundation support payments; secured report access and truthful paid/due receipts. Do not activate mockup-only public service checkouts, family-profile booking, prescription authoring, fabricated provider ratings or unverified promotional discounts. All center-side diagnostic and provider operations in this BR remain in scope.
