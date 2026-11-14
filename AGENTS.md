@@ -47,7 +47,7 @@
 
 - Work on an approved **feature branch** from the current agreed base (currently `main`); protect `main` until explicit user-authorized merge.
 - **No CI pipelines. No GitHub Actions. Do not add `.github/workflows/`, workflow YAML, CI badges or automated PR gates; do not trigger or rely on CI/GH Actions for verification.**
-- Review code/document diff manually, use suitable local builds/tests and device/browser/API/DB QA. Never claim completion of a test not executed.
+- During Development, manually review source, changed contracts and every approved QA case; **do not** run builds, application/API/DB/provider tests, emulators, browser previews or screenshots. Such executed evidence belongs only to separately authorized independent QA/Release. Never claim a test was run when it was not.
 - No live payment, real patient data mutation, production migration, deployment, destructive database action, secret exposure or merge without explicit owner authorization and applicable release safeguards.
 - Report scope, branch, paths, review findings, corrections, evidence and unresolved decisions concisely. A document-only configuration setup must not claim that a mobile app, healthcare flow or deployed system works.
 
