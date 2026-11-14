@@ -27,8 +27,8 @@ The CMS can set visibility, narrative and display order for an **approved busine
 - **CG-18-BR04:** Publish selected upcoming/current projects with media and descriptions derived from CG-05; a website teaser is not a second project master.
 - **CG-18-BR05:** Maintain reusable website gallery and media library, including uploaded image/document metadata and permissions.
 - **CG-18-BR06:** Create/manage blogs, articles, public news and updates with editorial publication controls.
-- **CG-18-BR07:** Maintain website contact-message submissions, public enquiries and support record handling, with assigned responders/status and restricted personal details.
-- **CG-18-BR08:** Enable authorized publishing/unpublishing and optionally review of supported content. The source includes preview/review/publish; detailed reviewer/publisher rights derive from CG-01/03.
+- **CG-18-BR07:** Maintain website contact-message submissions and public enquiries, with assigned responders/status and restricted personal details; related support tickets, service requests and FAQs use the shared support workflow in CG-19 rather than an independent CMS ticket database.
+- **CG-18-BR08:** Enable content preview, submit-for-review, approve/reject, authorized publishing/unpublishing and **scheduled publication** where supported, with author/reviewer/publisher rights from CG-01/03, public visibility/status and an audit trail.
 - **CG-18-BR09:** Manage enabled public navigation and supported page availability. The source explicitly includes toggles for **Login**, **Membership registration/join**, and **Volunteer registration/join**.
 - **CG-18-BR10:** Maintain editable public menu, heading, CTA, images, SEO metadata and page publication where supported; public channels reflect saved state, not UI hardcodes.
 
@@ -132,7 +132,7 @@ Administrators should not see numerous duplicated settings for one business resu
 | **Healthcare Operations** | CG-15/16 | Slots, appointments, patients, queues, internal lab orders/reports |
 | **Healthcare Financial Assistance** | CG-17 | Benefit eligibility/policy, funded amounts, billing, dues and settlement |
 | **Website & Content** | CG-18 | Banners, pages, Impact, published projects, team, NGO information, provider publicity, SEO |
-| **Communications & Reports** | CG-19/20 | Notifications, notices, templates, MIS, export/schedules |
+| **Communications & Reports** | CG-19/20 | Notifications, notices, templates, support tickets/FAQs, MIS, export/schedules |
 | **System & Security** | CG-01/21 | Access, audit, integrators, backups and general configuration |
 
 This is a **logical navigation proposal**, not a demand to create a different application for each group. Keep the final experience premium, clear, responsive and role-sensitive.
@@ -159,7 +159,7 @@ This is a **logical navigation proposal**, not a demand to create a different ap
 - **CG-300-BR01:** Public application reproduces applicable public information and key member/volunteer/donation/healthcare self-service of the responsive site using same current source data.
 - **CG-300-BR02:** Support public homepage, Foundation content, published programs/campaigns, impact, news and announcements.
 - **CG-300-BR03:** Support member/volunteer registration, verified login, status, approved identity documents, payment/receipt and referral/reward data for eligible users.
-- **CG-300-BR04:** Support healthcare doctor/center discovery, verified patient registration, eligible booking, payment state, booking receipt/QR and appointment history to extent agreed in mobile PRD.
+- **CG-300-BR04:** Support healthcare doctor/center discovery, verified patient registration, eligible doctor booking, payment state, booking receipt/QR, calendar export and appointment history to extent agreed in mobile PRD. Public browsing of additional services and their transactional buttons must follow the approved CG-16 scope; do not infer delivery/order checkout from a mockup CTA.
 - **CG-300-BR05:** Support user notifications, applicable payment confirmations and contact/support actions.
 - **CG-300-BR06:** Public application must not render internal admin functions merely because the same backend provides them.
 
@@ -168,7 +168,7 @@ This is a **logical navigation proposal**, not a demand to create a different ap
 - **CG-300-BR07:** Internal application uses separate secure authorized login and a dashboard with assigned role, pending work, relevant alerts and permitted modules.
 - **CG-300-BR08:** Authorized employees/volunteers/coordinators can manage assigned records and workflow decisions within their permitted scope: registrations, verification/approvals, projects, field visits with GPS/photo, beneficiary aid, tasks, attendance, leave, expenses/allowances, stock requests and applicable finance/healthcare coordination.
 - **CG-300-BR09:** Apply the same backend authorization and business statuses as Foundation Web Admin; navigation hides inaccessible features but hiding alone is never enforcement.
-- **CG-300-BR10:** Allow secure file capture/upload, field evidence and action feedback; preserve correct draft/submission state on interruption.
+- **CG-300-BR10:** Allow secure file capture/upload, field evidence and action feedback; preserve correct draft/submission state on interruption. This is safe interruption/retry handling; a full offline synchronization capability must not be presumed without an approved business requirement.
 - **CG-300-BR11:** Heavy back-office settings such as full ledger management, custom report builder, payroll policy and complex role matrix require a **role-by-feature mobile screen mapping** in PRD. Do not silently assume full web UI duplication, and do not omit capabilities explicitly assigned to internal mobile in the written scope.
 
 ## 9. Foundation Web Admin and responsive public web
@@ -211,5 +211,7 @@ For published business records, two independent gates normally apply:
 8. Public Android and website show the same approved project/campaign/healthcare records; internal Android handles only assigned operational duties.
 9. CMS previews, publication status and visibility toggles obey permissions and never leak draft content.
 10. Impact charts and statistics have an explicit authoritative data source or documented editorial data owner.
+
+**Shared quality baseline:** All published, mobile and center workflows must satisfy [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md), especially backend access scoping, safe drafts, truthful payment/booking states, responsive UX, media security, WCAG-oriented accessibility, cache invalidation and permitted public indexing.
 
 **PRD instruction:** Split public UI screens by **user journey**, not by static mockup number. Each website/Android/Center Portal PRD should reference the relevant owner-module CG-BRs and define screen-level validation, navigation, failure states, permissions, accessibility and live QA steps.
