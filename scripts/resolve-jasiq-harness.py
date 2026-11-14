@@ -23,6 +23,13 @@ REQUIRED = (
     "jasiq-asdlc/tools/install_agent_skills.py",
     "docs/V2_GUIDE.md",
     "standards/ENGINEERING_STANDARD.md",
+    "standards/DATABASE_STANDARD.md",
+    "standards/BACKGROUND_WORK_STANDARD.md",
+    "standards/MOBILE_STORE_STANDARD.md",
+    ".agents/skills/jasiq-hld/SKILL.md",
+    ".agents/skills/jasiq-database/SKILL.md",
+    "jasiq-asdlc/tools/db_guard.py",
+    "jasiq-asdlc/tools/mobile_store_guard.py",
     ".agents/skills/jasiq-dev/SKILL.md",
 )
 
