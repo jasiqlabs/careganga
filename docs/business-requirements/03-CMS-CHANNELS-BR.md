@@ -1,7 +1,7 @@
 # CG-BR-300 — CMS, Public Website and Application Channels
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Internal consolidated BR · 14 November 2026  
+**Status:** Consolidated business requirements · Client decisions identified separately  
 **Coverage:** CG-18 CMS/publication; presentation and permissions of CG-01–21 across all intended interfaces.
 
 ## 1. Core operating principle
@@ -69,6 +69,10 @@ The source explicitly enumerates **ten** editable content groups:
 - **CG-18-BR22:** Public booking CTA availability is controlled by **actual service transaction scope**, provider eligibility and booking configuration, not merely by appearance of a prototype button.
 - **CG-18-BR23:** Public health content cannot expose patient files, clinical consultations or detailed doctor/center internal financial information.
 - **CG-18-BR24:** Support authorized publication of Foundation events and event updates from CG-05; the public site and public app can display approved upcoming events without duplicating event records or implying paid/event-seat booking.
+- **CG-18-BR25:** Homepage hero/banner administration includes draft/active/publication state, order, desktop and optional mobile images, heading/tagline/description, accessible typography/visual treatment, optional overlay, primary/secondary CTA labels and targets, and a realistic desktop/mobile preview. These are editorial presentation controls; configuration is stored once and reflected in applicable public channels.
+- **CG-18-BR26:** Public team cards and upcoming-project teasers can be configured by authorized editors with display order, image, title/role/category/location/summary, published status and approved additional public biography/recognition fields. Where linked to a member, employee or project, the owning module remains authoritative.
+- **CG-18-BR27:** Gallery, reusable media, videos, publications/reports, articles and notices support categorization, metadata, publication status and authorized upload/preview/ordering. Public contact messages and support requests retain sender privacy and action history.
+- **CG-18-BR28:** Central Foundation CMS controls publication of approved healthcare services, centers, doctors and healthcare benefit messaging through existing public content tools, while verification, pricing, availability and contribution rules remain owned by CG-14–17.
 
 ## 3. Public website navigation and page ownership
 
@@ -198,6 +202,9 @@ For published business records, two independent gates normally apply:
 - **CG-300-BR18:** Private transaction notices (membership approval, appointment confirmation, expense decision, payroll notification) use event-appropriate recipient and template through CG-19.
 - **CG-300-BR19:** Public donation/campaign progress, impact cards and healthcare availability use the authorized business source; dashboards and external exports use CG-20 filters.
 - **CG-300-BR20:** Admin must know what is publicly visible: preview the public view of a section/provider/plan/campaign before publishing and see its current publication status.
+- **CG-300-BR21:** Foundation Admin provides navigable, role-sensitive sidebar/menu groups and both a module-navigation search and an authorized cross-record search by appropriate name/reference/contact. Search results, linked selection lists and quick actions are constrained to permitted record scopes.
+- **CG-300-BR22:** List/detail/work-queue patterns support meaningful empty/loading/error/permission-denied states, configurable filters, pagination and contextual approvals. For mobile widths, dense tables and multi-step forms adapt to readable card/detail or step views rather than shrinking full desktop grids.
+- **CG-300-BR23:** A person with a permitted workflow must be able to select necessary related records (for example assigned staff, branch, authorized payment account, doctor or center) without being granted unrelated management rights; backend authorization still validates the action.
 
 ## 12. CMS and channel acceptance checks for future manual QA
 
