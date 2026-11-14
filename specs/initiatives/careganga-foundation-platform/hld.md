@@ -342,6 +342,32 @@ PostgreSQL is the **transactional source of truth**. Use clearly module-owned re
 
 Module boundaries should be enforceable in code review and explicit data access interfaces. Database physical schemas can remain simple; DLD decides table grouping and exact constraints. It must preserve explicit **Foundation branch vs provider center** isolation and doctor-wide plus center-wise scheduling constraints.
 
+
+### 8.1A Database architecture and risk checkpoint (latest Harness)
+
+This is a **GREENFIELD conceptual decision**, not an assertion that a schema, ORM, migration or database provider has been implemented. Follow `standards/DATABASE_STANDARD.md`; actual engine/version/ORM/provider, transactions, connection mode and sample volumes remain UNVERIFIED until selected and tested.
+
+**Boundary choice:** One PostgreSQL database with domain-owned, normalized records and server-proven **action + organization/geography/branch/center + permitted care-purpose** filtering. Relational constraints protect ownership and references in addition to application authorization; a center ID supplied by the client is only a selector, never a permission grant. Use scope-aware access services for *all* reads/writes, joins, foreign selectors, search, aggregate, export, documents, jobs and cache keys. **RLS is not automatically selected**: evaluate it in CG-01/14/15/16 REQUIRED DLD against real pool roles, scoped joins and operations; if selected, verify non-BYPASSRLS session context and pooled connection reset. A plain scoped column is **not** sufficient proof of isolation.
+
+| Data relationship / owner | Conceptual relationship and invariant | Risk and DLD ownership |
+| --- | --- | --- |
+| Account → member/volunteer/employee/patient/professional — CG-01/04/10/15/14 | One verified account may link multiple protected relationships; patient and doctor are separate domain entities, linking is verified/consented; login never implies clinical read right | **CRITICAL** privacy/identity scoping; required DLD for permissions and patient data |
+| Foundation branch → geography/department/people/project — CG-02/05/10 | Each business record has an authorized organizational scope; branch is **not** a provider location; cross-branch references require actual approved relationship | **SCHEMA/CRITICAL** depending on isolation risk; scoped FK/cardinality and negative tests in DLD |
+| Provider → multiple locations; doctor ↔ approved center associations — CG-14 | One doctor professional identity may work at many centers; each association carries validity, fees/services, schedule eligibility and published state | **CRITICAL** center/professional isolation; cardinality/ownership constraints in CG-14 DLD |
+| Patient → visits/appointments/clinical records — CG-15/16 | One patient can have many bookings and restricted encounters; center A access to an appointment does **not** grant center A unrestricted global clinical history | **CRITICAL** clinical disclosure; care-relationship and report-access DLD |
+| Doctor availability/occupancy ↔ center capacity ↔ one booking — CG-15 | A doctor's in-person time cannot overlap across centers; neither center may exceed its own capacity; expired holds and late payments reconcile safely | **CRITICAL** uniqueness/interval/capacity transaction/lock strategy in CG-15 DLD |
+| Source donation/member/expense/payroll/assistance ↔ Foundation ledger — CG-07/04/09/11/17 | Money stored with exact precision and one authoritative posting/refund/reversal per source; provider-collected patient payments are **not Foundation bank receipts** | **CRITICAL** financial schema, amount rounding, idempotency/reversal and reconciliation in CG-09/17 DLD |
+| Stock/aid/reward ↔ distribution/fulfillment — CG-12/06/13 | One stock quantity authority, no double fulfillment/deduction or silent negative stock | **CRITICAL** concurrent issuance and points/stock compensation DLD |
+| CMS published safe projection ↔ owner records — CG-18 | Public visibility references approved source data without duplicating medical/fee/project masters; unpublished data must not leak in search or cache | **SCHEMA/CRITICAL** if public/private scope change; projection and cache tests in CG-18 DLD |
+
+**Data correctness approach:** Use relational PK/FK/UNIQUE/CHECK/NOT NULL where required, domain-specific transaction ownership, precise money types and approved rounding, guarded transitions/idempotency keys, audited reversals and bounded concurrency; actual columns/indexes/isolation/lock order are **DLD** work. Require deterministic conflict/timeout handling and verify **response-lost-after-commit**, webhook replay, cross-center access, backdated changes, and old Android client retries. Database specialists must be consulted for consequential new boundaries; **independent qualified database review** is required for CRITICAL changes during applicable stage.
+
+**Access patterns (not index designs):** High-volume patient/doctor/center listings and available slots, finance transaction filtering and reports, employee/branch scope searches, appointment reminders and due settlement lookups must be scoped, paginated and bounded; use representative data/EXPLAIN during DLD/development and justify indexes against measured workload, not one index per field. Record expected record counts and peaks in module Planning rather than inventing them.
+
+**Migration/recovery:** Greenfield still needs ordered versioned migrations, non-destructive expand/contract when older Android builds coexist, safe preflight/backfill/rollback, contract compatibility and restore tests. Postgres connection mode (pooled app versus migration connections), storage/egress charges and available PITR/RPO/RTO are provider-specific **UNVERIFIED**, not assumed by choosing a managed DB. No destructive changes or production restoration without separate real owner authorization.
+
+**Planning gate:** Each module records `database_impact: NONE|QUERY|SCHEMA|CRITICAL` and source-based reason. Material schema or critical invariants require `dld_decision: REQUIRED` (or genuinely verified EXISTING approved design); cannot be bypassed with NOT_REQUIRED. Run the Harness `db_guard.py` on actual final implementation diffs, with qualified independent review for CRITICAL risk. **No standalone DB stage or document**.
+
 ### 8.2 Transactions and idempotency
 
 - Use short relational transactions around one authoritative state change plus required local audit/outbox/financial effects where feasible.
