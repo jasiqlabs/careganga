@@ -4,7 +4,7 @@
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
 **Harness:** JASIQ Harness v2, pinned commit 0308fbd9e332c51955c7d0da7a8023f87cbf1fe5  
-**Document status:** IN_REVIEW / BLOCKED_DECISION for affected policies; not approved for HLD  
+**Document status:** REVIEWED — business defaults adopted; formal Harness human-approval evidence pending  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
 **Prepared for review:** 14 November 2026  
@@ -21,12 +21,12 @@ This PRD expresses **what the whole CareGanga Foundation product must do**, base
 - docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md — CG-14 through CG-17.
 - docs/business-requirements/03-CMS-CHANNELS-BR.md — CG-18, CG-300 and each user-facing channel.
 - docs/business-requirements/06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md — CG-BR-600, cross-platform quality requirements.
-- docs/business-requirements/04-TRACEABILITY-DECISIONS.md — CG-BR-900, unresolved client decisions (D-01–D-23 and D-25).
+- docs/business-requirements/04-TRACEABILITY-DECISIONS.md — CG-BR-900, all 24 delegated business-policy defaults and release prerequisites.
 - docs/business-requirements/05-SOURCE-TO-BR-COVERAGE-AUDIT.md — mapping of the 61-page client PDF, the 75 healthcare requirements and the October client transcript.
 - docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md — A01–A19, B01–B51, C01–C55 and U01–U42: all 167 supplied Admin Panel screenshots, including 26 reconciled UI observations.
 - Original client evidence referenced by those indexes: SAM-CAREGANGA-121126-113332.pdf (61 pages), 19 October CareGanga meeting, healthcare UI mockups, and the uploaded Admin Panel ZIP.
 
-**Source interpretation:** The PDF gives required operational behaviour; the current healthcare images show additional user journeys and layout intent; Admin screenshots establish visible controls, not functioning endpoints or a final technical implementation. Where the evidence conflicts, the decision stays OPEN. Screenshot sample doctors, amounts, ratings, payment IDs, certificate numbers and images must not become production defaults.
+**Source interpretation:** The PDF gives required operational behaviour; the current healthcare images show additional user journeys and layout intent; Admin screenshots establish visible controls, not functioning endpoints or a final technical implementation. Where references differ, the adopted delegated decision policy in CG-BR-900 resolves the initial release behaviour. Screenshot sample doctors, amounts, ratings, payment IDs, certificate numbers and images must not become production defaults.
 
 **Current state:** The repository contains business documentation and an agent setup. It is **not a brownfield software implementation**. No product screens, databases, live flows, integrations, deployed apps, runtime performance or compliance certification have been verified.
 
@@ -149,7 +149,7 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 | FR-045 | CG-14 | Patient searches healthcare | Search/filter/sort doctor or center by location, specialty, facilities, availability and approved verified/partner status; view published price, map/directions, contact and real supported benefits | A-14 | CG-14-BR14–18,20 |
 | FR-046 | CG-14 | Center maintains permitted presentation | Submit provider photos, services, published information/FAQs and own-center profile updates for Foundation-controlled review and publication | A-14 | CG-14-BR19 |
 | FR-047 | CG-15 | Doctor/center schedules availability | Configure doctor-center working days, time windows, capacity, consultation type, holidays, blocks and approved leave while preserving already confirmed bookings | A-15 | CG-15-BR01–02 |
-| FR-048 | CG-15 | Patient chooses doctor/visit | Support center-first or doctor/date/slot-first journey using same center-specific capacity; show selected/assigned center, location, fee/benefit and actual available slot before payment | A-15 | CG-15-BR03–08; D-02 |
+| FR-048 | CG-15 | Patient chooses doctor/visit | Support center-first or doctor/date/slot-first journey using the same center-specific capacity; show the requested center and available slot before payment; when multiple centers match the same time, present an explicit center choice rather than silently selecting one | A-15 | CG-15-BR03–08; D-02 |
 | FR-049 | CG-15 | New/existing patient identifies self | Register or securely locate patient with verified mobile, appropriate profile and consent, optional uploaded reports/identity; assign a unique patient ID without duplicates or unverified cross-linking | A-15 | CG-15-BR09–16 |
 | FR-050 | CG-15 | Patient/staff confirms appointment | Capture patient, doctor, center, slot, consultation type and reason; show editable summary, payment choice and current booking status without overbooking | A-15 | CG-15-BR17–18; CG-15-BR06 |
 | FR-051 | CG-15 | Booking is validly confirmed | Issue authentic reference/Booking ID, download/print/share and guarded QR/barcode verification and calendar export; protect identifiers and symptoms | A-15 | CG-15-BR19–21,24; D-07 |
@@ -162,11 +162,11 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 | FR-058 | CG-16 | Additional service CTA appears publicly | Show enquiry/information or actual transaction only when that particular service workflow is approved and available; no unconfirmed medicine/OT checkout | A-16 | CG-16-BR08–10; D-01,23 |
 | FR-059 | CG-17 | Foundation configures benefit | Configure eligible provider/doctor/service, fixed/percentage contribution, caps, expiry, optional approval and patient eligibility with historical policy | A-17 | CG-17-BR01–04 |
 | FR-060 | CG-17 | Patient sees appointment price | Display gross fee, actually approved/eligible Foundation support and patient payable separately; eligible consultation benchmark is documented **50%/50%**, not unconditional or automatically 100% | A-17 | CG-17-BR02,05–07 |
-| FR-061 | CG-17 | Patient selects online or center payment | Provide verified Razorpay online-method flow and eligible pay-at-center choice; show initiated/pending/failed/confirmed/due state truthfully | A-17 | CG-17-BR08–10 |
+| FR-061 | CG-17 | Patient selects online or center payment | Provide online payment only through the verified healthcare center's own enabled merchant method, or pay-at-center when approved; show initiated/pending/failed/confirmed/due truthfully and never use an unverified Foundation gateway for center collections | A-17 | CG-17-BR08–10 |
 | FR-062 | CG-17 | Center receives payment or encounters due | Record authorized on-site payment, part-pay, overdue follow-up, receipts, correction and refund without equating booking confirmation to settlement | A-17 | CG-17-BR11–14 |
-| FR-063 | CG-17 | Foundation owes provider | Keep patient money, approved Foundation liability, provider due and settled amount distinct; support network/center scoped settlement and adjustments | A-17 | CG-17-BR15–19 |
-| FR-064 | CG-17 | Money has to be accounted for | Reconcile verified payment, refund and assistance source exactly once into CG-09, using client-approved collector/merchant/settlement ownership; unresolved D-04 blocks financial contract lock | A-17 | CG-17-BR18–20 |
-| FR-065 | CG-17 | CMS presents discount claim | Publish only actual supported and configured rates; lab/medicine/nursing example percentages and full coverage are not contractual entitlement without D-03 confirmation | A-17 | CG-17-BR06–07; D-03 |
+| FR-063 | CG-17 | Foundation owes provider | Keep the center's patient collections, the Foundation's approved liability, monthly provider dues and settled amounts distinct; support scoped reconciliation, settlement and adjustments | A-17 | CG-17-BR15–19 |
+| FR-064 | CG-17 | Money has to be accounted for | Reconcile verified patient receipts (center-owned), refunds and monthly Foundation assistance/settlement exactly once into CG-09 with a distinct owner and payment reference; unverified merchant accounts block live online collection, not design completion | A-17 | CG-17-BR18–20 |
+| FR-065 | CG-17 | CMS presents discount claim | Publish only approved current rates; mockup lab/medicine/nursing percentages never become entitlements. Standard eligible consultation is 50% Foundation support, while exceptionally approved full support is permitted with recorded amount/cap | A-17 | CG-17-BR06–07; D-03 |
 
 ### 5E. Content, documents, reporting, operations and public channels
 
@@ -274,7 +274,7 @@ State labels may be simplified for end users; PRD acceptance requires their **bu
 | Healthcare assistance, payments, settlement | Policy and network oversight | Accurate gross/contribution/due and payment | Own collections/dues/settlement view | Accurate booked/paid/due receipts | Only assigned processing | One payment/support/ledger trail |
 | CMS, communications and reporting | Editorial Admin, audits, reports | Published content, permitted support | Scoped content submission and help | Published updates/notifications | Assigned notifications/reporting | One publication and messaging history |
 
-**Open mobile decision D-17:** Exact heavy-back-office Android parity is not invented from the web Admin screenshots. Source-required on-the-move work and public self-service are mandatory; per-role matrix must be approved before final screen-level Planning.
+**Adopted mobile policy D-17:** Foundation Web Admin owns complex settings/CMS/payroll/finance; responsive Center Portal handles center operations; Public Android mirrors approved public service/self-service journeys; Internal Android supports permissioned field/leave/attendance/claims/stock/approval work. Do not replicate the entire Admin suite on mobile.
 
 ## 10. Product-level non-functional acceptance
 
@@ -297,26 +297,27 @@ State labels may be simplified for end users; PRD acceptance requires their **bu
 
 Performance/availability/load targets and policy-dependent languages, consent/retention, provider agreements, merchant ownership and exact offline scope require the specific NDEC-01–08 decisions in CG-BR-600 before contractual acceptance.
 
-## 11. Dependencies and unresolved decisions
+## 11. Dependencies, adopted policies and operational gates
 
-**Cross-domain dependencies (business, not implementation tasks):** CG-01/02 determine identity and scope; CG-03 governs approvals; CG-09 owns money; CG-19 owns shared documents and messages; CG-21 owns audit/configuration. Member/HR/project/inventory/provider masters depend on these, and donation/CSR/payroll/booking/diagnostics/healthcare support reuse those masters. CMS publishes approved data through CG-18. CG-20 reports from domain owners. Web and Android journeys are designed and accepted with their corresponding domains rather than being deferred as separate unrelated products.
+**Dependencies:** CG-01/02 identify actors and scope; CG-03 controls approvals; CG-09 owns accounting; CG-19 owns documents/notifications; CG-21 owns audit/configuration. CG-04/05/10/12/14 hold business masters. CG-06/07/08/11/13/15/16/17 reuse those services. CG-18 publishes owner-approved content; CG-20 reports real owner records. Channel experiences should be designed alongside their business domain rather than invented independently.
 
-**Blocking decisions before approval of the affected PRD or HLD contracts:**
+**All 24 D-decisions have delegated default answers.** The authoritative compact register is [CG-BR-900](../../../docs/business-requirements/04-TRACEABILITY-DECISIONS.md). The following initial-launch rules affect the product most:
 
-| Decision | Business question still requiring client answer | Blocks |
-| --- | --- | --- |
-| D-01, D-23 | Public lab booking, medicine ordering/delivery, nursing/OT and pharmacy transaction extent versus informational/enquiry directory | Non-consultation public transaction journeys |
-| D-02 | Both booking entry paths, auto-center preference/tie-break and patient consent to location | Exact center-selection and schedule acceptance |
-| D-03 | Eligibility, 50% base versus 100%, diagnostic/medicine/nursing discount versus actual Foundation funding and caps | Healthcare assistance rate and publicity |
-| D-04 | Razorpay merchant, pay-at-center collector, who holds funds, who settles providers | Healthcare financial posting, settlement and refunds |
-| D-05, D-06, D-12 | Final Super Admin approvals versus delegation; center staff authorization and geography/role defaults | Final approval/role policy |
-| D-07, D-08 | Patient/Booking ID/QR receipt exact form, dependent/family and prescription authority | Final patient documents and family/clinical journeys |
-| D-10, D-17 | Which Foundation locations are publishable; exact role/channel matrix for center/internal/public Android | Publication and channel detailed approval |
-| D-11, D-13, D-19 | Membership renewals/refunds, accounting/fund definitions, statutory tax/report sign-off | Related financial policies and final reporting |
+| Policy area | Adopted business behaviour |
+| --- | --- |
+| Public healthcare | Doctor consultation booking online; additional center/lab/pharmacy/nursing/OT directory information and enquiry; center staff can record internal test orders and reports |
+| Doctor scheduling | Both center-first and date/time-first paths use one center-specific capacity. When multiple centers fit, present a choice and require the patient to see the center before confirmation |
+| Consultation support | Foundation verifies eligibility; standard eligible case is 50% support/50% patient; exceptional full support requires protected explicit approval. Mockup percentages are not active offers |
+| Patient collection | Healthcare center collects the patient payable directly via verified own online merchant or at the center. If no verified online account exists, only pay-at-center may be offered where available |
+| Foundation settlement | Approved contribution is a separate Foundation obligation; reconcile against eligible completed service and settle approved provider dues monthly, with audit and authorizations |
+| Approvals and access | Routine work to authorized managers; protected branch/provider/doctor, policy, payroll-payment and privileged role decisions to Super Admin; patient and center medical access are restricted |
+| Self-service scope | Public patient ID, own booking/receipts and authorized reports included; no unapproved family-booking or electronic prescription workflow, fake rating count or unrelated health-record access |
+| Foundation, Android and CMS | Public web/app show approved Foundation content and doctor booking; Internal Android handles assigned work; complex settings in Foundation Admin; centers operate from own responsive Portal |
+| Membership and finance | Rejected paid membership application receives an authorized full joining-fee refund; all other received money, commitments, expenses, contributions and payments remain separately classified and reconciled |
 
-**Other recorded decisions:** D-09 ratings/favorites; D-14 field offline/GPS; D-15 points/redemption; D-16 editorial statistics; D-18 messaging providers; D-20 patient/member relationship; D-21 committee/performance detail; D-22 lab sign-off; D-25 center recovery rights. These remain explicit in the existing decision register and should be resolved before their dependent feature is approved.
+**Other adopted defaults:** verified-only review badges, Foundation branches private by default, role/area default-deny, INR and April–March accounting period, online-first field work, auditable referral points/fulfilment, source-backed Impact statistics, configured/consented messaging, restricted cross-person health linking, lightweight committee/performance management, authorized lab-report release, and Foundation-only backup/restore.
 
-**Risk control:** The PRD documents the feature and its boundary even when a detailed policy is open. It must **not** authorize the development team to choose merchant ownership, clinical consent, payment/refund obligations, unsupported mobile scope or an unapproved rate.
+**Prerequisites before enabling real operations:** verify actual center/merchant/bank account details, authorized provider/doctor credentials, clinical consent and professional sign-off, statutory/tax/80G data, chosen payment/messaging vendors and hosting/resilience feasibility. This is a launch checklist, **not** a new open product questionnaire. P0 privacy, finance correctness, concurrency and security remain unconditional.
 
 ## 12. Acceptance, quality review and sign-off state
 
@@ -329,8 +330,8 @@ Performance/availability/load targets and policy-dependent languages, consent/re
 5. Critical open business decisions stay identified and block only their dependent policy/PRD approval, not the entire requirement drafting effort.
 6. No architecture, API/schema, component/wireframe, epic/story/task or implementation claim has been inserted into this product PRD.
 
-**Authoring review:** Product-owner/BA self-review only; external independent review has **not** been performed. This draft is ready for client discussion, but unresolved high/critical policy questions mean **IN_REVIEW / BLOCKED_DECISION**. Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
+**Authoring review:** Product-owner/BA self-review only; external independent review has **not** been performed. The default business policies have been adopted under the owner's delegated instruction and reviewed for source alignment. **Formal Harness APPROVED remains unrecorded until independently verifiable human approval of the exact final artifact SHA-256 is provided.** Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
 
-**Next Harness stage (not authorized by this draft alone):** After required client decisions, final review and human approval, run the pinned Harness HLD stage for this same initiative. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
+**Next Harness stage:** Run the pinned HLD resolver for this same initiative **only after** authentic external human approval evidence for the exact PRD hash has been recorded and validated. The delegated product-owner decision review is not a substitute for this stage gate. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
 
 **Repository delivery guardrails:** Work remains on the PRD feature branch pending separate merge authorization. **No CI, GitHub Actions, .github/workflows, application code, deployment, real payments or production data mutation.**
