@@ -363,3 +363,53 @@ The master BR is intentionally not modified in this task. The following are **ca
 - [x] Screens with placeholders, loading state, mismatched filename and unverified functionality explicitly flagged.
 - [ ] Live interaction/access/API/financial QA — **not possible from static screenshots and not claimed**.
 - [ ] New BR modifications — **intentionally deferred by user**.
+
+
+## 13. Second-pass ZIP completeness and navigation-only option verification
+
+**Reverification date:** 14 November 2026. This is a **source-file inventory and visual spot-check**, not a claim that application functions were clicked or executed.
+
+### 13.1 Exact archive integrity
+
+- Archive file: \`careganga_features_screenshot.zip\`.
+- ZIP SHA-256 fingerprint: \`8d077f8e1101ef7de73f65965730eb9058bed1b188cf075cd6968289202925fe\`.
+- **178 regular files:** 167 PNG screenshots + 8 JPG contact sheets + 3 CSV indexes. Directory entries do not count as files.
+- **167 distinct PNG file contents by SHA-256**; none of the 167 are byte-for-byte duplicates. Different screenshots can nonetheless display the same or near-identical application screen/state.
+- **Indexed Part A:** 19 PNG files and 19 CSV rows; **zero missing or unmatched filenames**.
+- **Indexed Part B:** 51 PNG files and 51 CSV rows; **zero missing or unmatched filenames**.
+- **Indexed Part C:** 55 PNG files and 55 CSV rows; **zero missing or unmatched filenames**.
+- **Unsorted/root captures:** 42 timestamped PNGs mapped one-for-one to U01–U42; each exact filename may be reconstructed as \`Screenshot 2026-11-09 HHMMSS.png\` using the timestamp on its row.
+- **Audit-row accounting:** A01–A19 (19) + B01–B51 (51) + C01–C55 (55) + U01–U42 (42) = **167 of 167 screenshots**. No new source screenshot or substantive module has been discovered since the first audit.
+
+**Limits:** This integrity check establishes that every source image has a traceable row, **not that every tiny pixel, dropdown choice, permission dependency, hidden tab or backend outcome can be established from static captures**. Higher-level BR reconciliation must still follow the written requirements and client approval.
+
+### 13.2 Important sidebar-only options — visible, but not demonstrated end to end
+
+Several navigation labels are visible while the corresponding page is not opened in this ZIP. These are recorded here to avoid overlooking them **and to avoid treating a sidebar item as proof of implemented behaviour**.
+
+| Navigation family | Visible menu-only or partially shown options | Evidence / treatment |
+| --- | --- | --- |
+| **Payroll** | **Salary Reserve, Payroll Verification, Payment Batches, Pending Approvals, Salary Payments, Salary Slips, Deductions, Payroll Reports** | Visible in Part C sidebar (C01–C14); payroll dashboard/employee list/generate/history/settings are actually opened. The unopened items remain **navigation-level evidence only**. Treat as sub-processes of **CG-11**, coordinated with CG-09/03/19, not eight separate modules. Exact screens/actions **VERIFY** against written requirements/PRDs. |
+| **HR / Employee** | **Employee Verification, Employee Documents**, some letter-template links and menu-level **My Leave** | Visible in Part B sidebar (B27–B51). Verification, employee records, document issuance and leave are source-backed; not all specific sidebar pages were opened. Do not infer complete employee document storage from the link alone. |
+| **Finance** | **Voucher Entry & Approval**, payment/expense views, finance/dashboard/accounting child menus and **Add Donation & Payment Link** | Visible across A19/U33–U42 and Part B. Some pages/wizards opened; not all transaction actions executed. Treat source accounting as CG-09 and payment state as separately verifiable. |
+| **Website CMS** | **Hero Banners, Team Members, Upcoming Projects, Website Gallery, Media Library, Blog Management, Contact Messages, Help & Support** | Part C includes opened pages for these. The UI also has preview, editing, publishing and status affordances, but actual public sync remains **VERIFY**. |
+| **Reports and System** | **MIS Reports, Analytics & Charts, Data Export, Custom Reports, General Settings, Audit Logs, API & Integrations, Backup & Restore** | Part C provides views, but Data Export, API & Integrations and Backup & Restore have **placeholder/disabled screens**; screenshots cannot establish execution. |
+| **ID / Letters** | **Offer, Joining, Experience, Other and specific Appointment/Relieving letter links**, alongside the ID Card Generator | Visible around B35–B42. Model as templates and issuance statuses in CG-19, not individual document engines. Unopened templates need PRD detail confirmation. |
+
+### 13.3 Cross-cutting visual details that should not be lost when moving to PRDs
+
+1. **Global search scope and shortcuts:** header search shows a keyboard shortcut hint, and sidebar has its own menu search. Specify whether global search returns persons/IDs/transactions across permitted modules, or only navigation, before implementing. Both search surfaces must respect CG-01 permissions.
+2. **Disabled vs hidden vs inaccessible controls:** several pages or options are shown as disabled, placeholders or available only to Super Admin; a disabled menu is different from a missing feature and from a working feature. The PRD must define UI state and backend response.
+3. **Payroll menu depth:** salary reserve, verification, batches, approvals, payments, slips and deductions are **workflow stages and accounting states**, not additional sources of salary truth.
+4. **Employee documents:** identity, salary/bank proof, qualification/experience, resignation clearance, issued letters, ID-card QR and signed copies require subject association and purpose-specific access; don't combine them into an unrestricted file folder.
+5. **CMS content editor:** rich typography, link targets, CTA placement, desktop/mobile images, ordering, color/overlay, preview and publication are significant configuration controls even though a new premium UI may group them differently.
+6. **Finance reconciliation:** a ledger-entry drawer that offers debit/credit selection is only a **UI affordance**; the balance/posting invariant must be established in CG-09 and its NFR acceptance tests.
+7. **No evidence of Android experience here:** these are desktop Admin captures. Web/mobile interaction parity, accessibility, backend isolation, medical privacy, performance and concurrency should be specified from BR/NFR and validated in later PRDs/QA.
+
+### 13.4 Second-pass disposition and recommended planning order
+
+**Evidence completeness:** **Pass**, all 167 screenshots accounted for in this audit.  
+**Screen-to-function accuracy:** **Reference-level only**; a static screenshot never validates a save, ledger posting, gateway transaction, permission enforcement or live public publishing.  
+**Uncaptured depth:** Hidden dropdown options and unvisited submenu screens cannot be guaranteed by the ZIP; preserve this as an explicit PRD verification boundary.
+
+**Next action:** **Align BR before producing dependent PRDs.** Review the 26 UI-G candidates against exact BR IDs and current source PDF, classify **Covered / BR amendment / PRD-UX only / Client decision / Excluded**, then make **one coordinated BR delta commit** to the appropriate owning modules. Only afterward generate modular PRDs in dependency order, referring to this screenshot audit and CG-BR-600 shared NFRs. Do not turn sidebar items into independent modules or create competing “final BR” versions.
