@@ -68,6 +68,7 @@ The source explicitly enumerates **ten** editable content groups:
 - **CG-18-BR21:** Center staff may submit center-specific descriptive web content/photos through Center Portal where supported; publication remains subject to Foundation publishing authorization.
 - **CG-18-BR22:** Public booking CTA availability is controlled by **actual service transaction scope**, provider eligibility and booking configuration, not merely by appearance of a prototype button.
 - **CG-18-BR23:** Public health content cannot expose patient files, clinical consultations or detailed doctor/center internal financial information.
+- **CG-18-BR24:** Support authorized publication of Foundation events and event updates from CG-05; the public site and public app can display approved upcoming events without duplicating event records or implying paid/event-seat booking.
 
 ## 3. Public website navigation and page ownership
 
