@@ -19,6 +19,8 @@ The following are companion parts of this *one BR package*:
 | [CG-BR-100 — Foundation and Operations](01-FOUNDATION-OPERATIONS-BR.md) | Organization, people, membership, projects, CSR, finance, HR/payroll, inventory, rewards, governance |
 | [CG-BR-200 — Integrated Healthcare](02-INTEGRATED-HEALTHCARE-BR.md) | Provider network, doctor/center model, patient, booking, diagnostics, contributions, payments, center operations |
 | [CG-BR-300 — Experience, CMS and Channels](03-CMS-CHANNELS-BR.md) | Public website, CMS, Foundation Admin, center portal, Android apps, publication ownership and reusable user journeys |
+| [CG-BR-500 — Source-to-BR Coverage Audit](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) | Page/section/feature mapping, screenshot and transcript findings, corrected omissions and audit status |
+| [CG-BR-600 — Non-Functional Business Requirements](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) | One reusable cross-platform P0 quality baseline, measurable proposed P1 targets and manual QA gates |
 | [CG-BR-900 — Traceability and Decisions](04-TRACEABILITY-DECISIONS.md) | Source-to-module mapping, ambiguities, open decisions, PRD handoff and scope guardrails |
 
 **Authoritative client scope:** \`SAM-CAREGANGA-121126-113332.pdf\` (61 pages, section numbers as supplied), the healthcare screens supplied in November 2026, and the CareGanga client meeting of 19 October 2026 (transcript: \`Project discussion with CareGanga foundation (1).docx\`). The meeting helps interpret workflows; the consolidated written requirements and the latest UI references govern current scope. Original earlier admin-screen recordings are not presently accessible for a new screen-level inspection; do **not** mark their detailed coverage as verified.
@@ -179,7 +181,7 @@ See CG-BR-200 for all requirements and CG-BR-900 for decisions.
 
 ## 10. Non-functional business expectations
 
-These are business-level qualities; implementation specifics and numerical acceptance targets belong in HLD/DLD/NFR planning.
+**Mandatory cross-platform requirement:** All module PRDs shall reference the applicable IDs in [CG-BR-600 — Non-Functional Business Requirements](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md). **P0 security, data correctness, privacy, authorization and recovery gates cannot be deferred merely because a feature appears to work on screen.** Numeric performance/availability/recovery values in CG-BR-600 are explicitly *professional proposals pending workload, budget and SLA agreement*, not figures claimed from the client PDF. Technical mechanisms and load-test fixtures belong in HLD/DLD.
 
 - **Security/privacy:** Authentication, permission and record-scope enforcement for every protected action; tightly restricted medical and payroll data, safe document access, safe verification response from QR codes.
 - **Reliability:** No duplicate booking for the same available slot, no duplicate gateway credit or accounting posting, no lost approved state on retry, accurate outstanding balances.
@@ -215,10 +217,10 @@ This BR package is ready for client review when:
 2. Foundation Admin can configure all relevant business policies and public controls described in the source; no CMS or portal maintains shadow master data.
 3. The Foundation, healthcare center, public site and two Android audiences have explicit responsibilities and data visibility.
 4. Membership, volunteer, branch, donation, CSR, project, expense, voucher, payroll, referral/rewards and healthcare workflows can be traced end to end in PRDs.
-5. Medical/private information, finance posting, verification and approval access remain correctly restricted.
+5. Medical/private information, finance posting, verification and approval access remain correctly restricted, with documented acceptance checks for simultaneous bookings, payment retries, refunds, payroll/stock posting, logs and recovery.
 6. Unresolved screenshot-versus-written-scope differences are recorded as explicit client decisions, not silently assumed.
-7. The BR remains business-focused; technical design, implementation tasks and exact screen acceptance criteria are deferred to subsequent approved PRDs/HLD/DLD.
-8. No source file, reference recording or screen is claimed as freshly verified unless it was actually accessible.
+7. The BR remains business-focused; technical design, implementation tasks and exact screen acceptance criteria are deferred to subsequent approved PRDs/HLD/DLD. Shared P0 NFR criteria are mapped by ID without copying the entire specification into every PRD.
+8. No source file, reference recording or screen is claimed as freshly verified unless it was actually accessible. [CG-BR-500](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) records the full source-review method, corrections and remaining verification limitations.
 
 ## 13. Client decisions required before locking PRDs
 
