@@ -4,7 +4,7 @@
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
 **Harness:** JASIQ Harness v2, originally reviewed at `27ceb481aff168915d3c0ba776cf7aa08e71eb23`; CareGanga bootstrap now pins latest reviewed main `72c532fb65aab82cc6b99457001505b16c5f37fe` (freshness must be rechecked at every stage)  
-**Document status:** REVIEWED — business defaults adopted; owner-delegated PRD/HLD design-review policy recorded, artifact-hash approval/resolver validation still pending  
+**Document status:** REVIEWED — owner-delegated design authorization recorded. Current hash-bound decision, if recorded, is in initiative-local `approvals.json`; actual resolver verification is a separate NOT_RUN gate.  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
 **Prepared for review:** 14 November 2026  
@@ -367,4 +367,4 @@ The product PRD groups detailed business clauses into observable journeys. **Eve
 
 **Quality crosswalk:** CG-NFR-600 supplies 69 shared non-functional IDs, with applicability and P0/P1 distinctions specified in §10 of this PRD. Every later module contract must select only the relevant NFR IDs and give evidence, including negative authorization, idempotency, concurrency, mobile/web/backend consistency and safe recovery. The crosswalk is a **coverage control**, not a substitute for the owner BR or a separate set of requirements.
 
-**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. The PRD is eligible for hash-bound human or honestly attributed owner-delegated **design-stage** approval under `initiative.json`, provided its latest artifact review is complete and the pinned Harness resolver accepts the record. Until validated, its status remains **REVIEWED / APPROVAL_PENDING**, not APPROVED.
+**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. `initiative.json` records the permitted owner delegation; `approvals.json` is the only machine-readable source of a current design decision. This document by itself does **not** assert Harness resolver PASS, human/client sign-off or production authorization.
