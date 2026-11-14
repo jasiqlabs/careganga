@@ -1,71 +1,79 @@
-# CG-01 — Identity, Accounts, Roles and Permissions
-**Initiative:** careganga-foundation-platform · **Mode:** GREENFIELD · **Planning state:** DRAFT / SOURCE_REVIEWED; local Harness resolver NOT_RUN
-**Business owner:** CG-01 · **Authoritative requirements:** PRD FR-001–003, FR-080; BR-001, BR-002, BR-004, BR-017; Foundation CG-01-BR01–10; shared CG-NFR-600
-**Architecture:** ../../hld.md §3, §4.1–4.3, §5.1–5.4, §7–9; published Harness `3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd`
+# CG-01 — Identity, Accounts, Roles & Permissions
+
+**Initiative:** careganga-foundation-platform  
+**Planning scope:** CG-01 only · GREENFIELD · 14 November 2026  
+**Source of truth:** [PRD](../../prd.md) FR-001–003, FR-080; BR-001/002/017 · [HLD](../../hld.md) §§4–5, 7–9 · [Foundation BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-01-BR01–10  
+**Stage state:** REBUILT_FOR_REVIEW. No application source exists. Harness local preflight, final hash-bound approval, runtime/visual QA: NOT_RUN.
 
 uiux_decision: REQUIRED
-uiux_reason: Greenfield role management and identity journeys span Foundation Admin, center portal and two native Android apps; premium responsive navigation, permission editor, role/assignment selection and accessible safe error states require deliberate user-facing design.
+uiux_reason: New cross-channel account, custom-role, permission-matrix and staff assignment journeys need purpose-built responsive Web and native Android UX.
 dld_decision: REQUIRED
-dld_reason: New account/session/roles/grants schema and data-scope authorization are CRITICAL, crossing five channels, financial and clinical privacy boundaries and invalidation/revocation guarantees.
+dld_reason: New security-critical account/session, effective grant, audit and relational schema; privacy, revocation and concurrency invariants.
 database_impact: CRITICAL
-database_reason: New authoritative identity, session, role and action/scope grant records control cross-branch and cross-center access to sensitive finance, staff and healthcare data; a mistaken scope join can disclose protected records.
-
+database_reason: Account, role and grant records govern all later protected records and must prevent escalation and unscoped access.
 mobile_store_impact: ANDROID
-mobile_store_reason: Both approved Android distributions need secure authentication, role-aware navigation, session expiration and restricted user-friendly API behavior; no iOS product is in approved scope.
+mobile_store_reason: Public and Internal Android authentication, with native Internal Android role and account-access management.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
-mobile_platform_baseline: Greenfield proposed Expo SDK 58 stable + React Native 0.88 + React 19.3.0 + Node 22.13.x+ (supported LTS line) + Android compile SDK 37/target SDK 36; use official Expo-compatible Gradle/AGP/Kotlin/NDK native versions as a pinned tested pair at implementation, 64-bit and 16 KB-compatible native libraries. Android 7+ baseline subject to product security/device support decision. Use Expo Router compatible with SDK 58 and maintained stable dependencies; two Android app identities with shared domain-neutral client contract, not one app with privileged switches. iOS not contracted.
+mobile_platform_baseline: Expo SDK 58 stable; React Native 0.88; React 19.3.0; Node.js >=22.13; Android compile SDK 37, target SDK 36, Android 7+ minimum. Expo-recommended compatible native toolchain/Expo Router dependency versions must be pinned during bootstrap, not guessed.
 mobile_policy_checked_on: 2026-11-14
-mobile_policy_sources: https://support.google.com/googleplay/android-developer/answer/11926878 ; https://developer.android.com/guide/practices/page-sizes ; https://docs.expo.dev/versions/v58.0.0/
-mobile_dependency_audit: SOURCE_BASELINE_ONLY; no package manifest or lockfile exists yet, no binary check or execution performed.
+mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://developer.android.com/google/play/requirements/target-sdk
+mobile_dependency_audit: SOURCE_BASELINE_ONLY; no package manifest, AAB or device proof yet.
 mobile_store_status: PLANNING_PROPOSED_NOT_BUILT
 
-## Scope and source of truth
-**Owns:** authenticated account and contact verification references, credentials/session lifecycle, role definitions, protected built-in duties, action grants, account-role assignments, per-actor scope grants, effective-access decisions and role-change audit references. **Does not own:** employee/volunteer/member/patient/doctor profiles, Foundation geography/branches, healthcare provider locations, approvals, CMS or financial/clinical records. A single verified account can link to multiple permitted business relationships, but no cross-domain relationship is inferred from a shared phone number.
+## 1. Deliverable outcome
 
-**Actors:** Super Admin (protected bootstrap/root administration), delegated Foundation role manager, staff/volunteer, center authorized administrator/operator, public verified applicant/member/donor/patient, anonymous visitor, internal system/job identities. A public profile is not automatically a staff/center account.
+After the **one-time technical bootstrap**, CG-01 is independently useful, with **no dependency on unbuilt CG-02/03/10/14**. An authorized Foundation administrator can:
+1. Securely manage real login accounts, invitations, sessions, recovery and suspension.
+2. Create, edit, copy and retire permitted roles; choose grouped action permissions in Web and authorized Internal Android.
+3. Assign/revoke roles to **CG-01 accounts** in the real Foundation-root context, review access history, and safely search/select accounts and roles.
+4. Enforce all active grants on the backend and show only permitted UI actions. Changing access immediately invalidates old effective permissions.
 
-**Included workflows:** secure creation/invitation/activation/suspension/recovery; **UI-driven role creation, permission editing, role copying, staff role assignment and scope assignment on responsive Foundation Admin Web and authorized Internal Android**; protected roles, assignment/history and user-friendly permission matrix; server-authorized org/region/branch/center action and record scope; authorized user directory/search/filter; narrowly delegated center personnel actions only; public sign-in/self-service for approved journeys; permission-aware state in five channels; login/session revocation and audit.
+Foundation-root is a real single-Foundation administrative context, **not** a fabricated branch or unrestricted grant over future branch, center, finance or patient records. Future resources start **default-denied** until real authorized scope is assigned.
 
-**Excluded:** separate identity provider microservice, custom rule scripting, unlimited dynamic permission expressions, copied customer/patient data, arbitrary clinical access inferred from a role, role system per module, public exposure of technical IDs or permission keys, unauthorised iOS client.
+## 2. Data owner and boundaries
 
-## Interfaces, dependencies and ownership
-| Consuming surface/domain | CG-01 contract / integration rule |
+**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit.
+
+**CG-01 does not own:** HR employee profile/status (CG-10), geography/branch/department (CG-02), approval cases (CG-03), provider/center and doctor (CG-14), member/volunteer (CG-04), patient (CG-15), finance, files or communication delivery. The same verified login may link to future relationships only through the relevant owner, never by matching phone alone. Do not create fake master rows or a universal cross-module dropdown.
+
+**First delivery prerequisites:** only the technical bootstrap (one backend, PostgreSQL migrations, Web shells, two Android app shells, secure configuration). No separate identity microservice, runtime rule-language engine, duplicated platform permission database or artificial module framework.
+
+## 3. Channels and complete current journeys
+
+| Channel | CG-01 capability |
 | --- | --- |
-| Foundation Admin web | Full authorized role creator/editor/copier, grouped permission controls, staff role and Foundation-geography/branch assignment, directory/audit on desktop, tablet and phone browsers; not new HR master |
-| Healthcare Center Portal | Center-granted session and selected authorized operating location; only explicitly delegated center-staff assignments and narrowly bounded permissions, with no Foundation-wide or patient-clinical privilege administration by inference |
-| Public website and Public Android | Verified public session only where service requires; no internal role menu or clinical disclosure |
-| Internal Android | **Authorized role creation/editing/copy, grouped permission editor, staff role assignment and permitted location assignment through task-focused mobile screens** using the same backend; no desktop-style giant grid. Unavailable actions fail server-side even when stale client caches them |
-| All backend modules | Shared principal, action+resource+scope policy evaluation, scoped query constraints, denial and audit; linked dropdowns must include required permitted reference options without exposing foreign scope |
-| CG-02 Foundation Structure | Owns geography, branches, department/committee; CG-01 references approved scope targets, does not create their data |
-| CG-14 Healthcare Network | Owns center/location/professional records; CG-01 governs staff grants, not clinical relationship |
-| CG-03 Approval | Owns approval decisions for protected assignments where policy requires; pending route cannot grant effective access |
-| CG-10 HR / CG-04 / CG-15 | Owns employee/member/patient relationship truth and employment/status; CG-01 links verified relationships through approved owner interface |
+| Foundation Admin Web (responsive) | Login/recovery; accounts directory; invite/suspend; create/copy/edit/retire roles; grouped permission editor; assign/revoke role; audit; Foundation-root context |
+| Internal Android | Login/recovery; task-first native role creator/editor/copier; account lookup, invitation and role assignment/revocation; same backend rules |
+| Public Website + Public Android | Public browsing without staff privileges; verified account authentication/self-service building blocks only where a real owning business flow needs them |
+| Healthcare Center Portal | Secure sign-in and explicit default-deny guards; **no active center affiliation or center administration until CG-14 real records exist** |
+| Backend/DB | Authoritative auth, scoped action checks, safe options, versioning, revocation, audit, sanitized errors |
 
-**Dependency order:** establish CG-01 account/authenticated principal and safe response contract first; use a minimal controlled Foundation bootstrap (without fictional geography). CG-02 foundation structure and CG-14 center directory must exist before claiming complete live scoped grants for those entities; CG-03 approval can be integrated when its owner is ready. Cross-module source integration is *not* considered complete if only fixture IDs or UI visibility exist.
+The permission catalog uses clear business labels in clients and stable internal keys in the API. Grant creation never silently gives a role newly introduced future capabilities.
 
-## Verified BrickOps master reference — patterns only, not copied business rules
-Reviewed `jasiqlabs/brick-ops@master`: `frontend/src/app/dashboard/staff/roles/page.tsx` (Web role creator/editor/copy and grouped checkboxes), `frontend/src/app/dashboard/staff/page.tsx` (role and assigned-plant selectors), `mobile/src/modules/staff/StaffRolesScreen.tsx` (native role editor), `mobile/src/modules/staff/StaffFormScreen.tsx` (native role + location assignment), `backend/src/modules/rbac/middleware/permission-catalog.ts`, `backend/src/shared/security/plant-scope.ts`, and `frontend/src/modules/permissions/useEffectivePermissions.ts` / `mobile/src/core/auth/useEffectivePermissions.ts`.
+## 4. Real integration ownership — not CG-01 blockers
 
-**Reuse as CareGanga design ideas:** centrally owned stable business capabilities with human-readable labels; protected built-in roles; customizable grant selection; role cloning copies permissions only; role and **authorized scope** combine at backend; revocation invalidates effective access; Web and Android use backend-derived access hints; `selection/options` access is narrower than financial/clinical `view` rights; frontend caches fail closed across role/context changes.
+| Later owner | What it introduces and must verify |
+| --- | --- |
+| CG-02 Foundation Structure | Real state/district/subdivision/block/branch and department records; scoped assignment selectors/authorization and negative cross-branch tests through CG-01 access |
+| CG-03 Approvals | Required protected-role/access approval routes; grant becomes effective only after real final authorized decision |
+| CG-10 HR | Verified employee-account association; employee type, designation, joining date, employment/status filters in the CG-01 people directory |
+| CG-14 Healthcare Network | Real center/location/staff affiliations and safe selector; center-specific role binding, revocation, and prevention of Foundation/medical privilege inheritance |
+| Every later owner | Register only its approved action keys; expose its own minimum-field \`options\` endpoint for required selectors, with distinct permission from confidential detail/list/export |
 
-**Avoid copying BrickOps weaknesses:** production/plant/cashier role keys and business assumptions; automatic selection of a broad first role; generic role-name-only authorization; raw `Error.message` display (notably in some Android catch handlers); a private list endpoint used to populate a safe picker; duplicated permission tables in Web and mobile; and previously reported PASS as evidence of current CareGanga verification. CG-01 must instead rely on the CareGanga permission catalog, scoped queries and safe message contract. For a permitted workflow, every required safe selector (e.g. staff, doctor, center, branch, cashier/account where applicable) must have **minimum necessary read-only options** without conferring confidential ledger, salary, patient record or unrestricted admin access. Every such supporting-options dependency must have its own QA scenario when consumed.
+**Rule:** Design a small typed extension point in CG-01; never insert placeholder geography, employee, center, doctor or approval data. The real integration and end-to-end QA are acceptance of the later module that makes those owner records available. The full PRD/BR scope remains intact.
 
-## Unbreakable policies / NFRs
-- **Default deny:** a permitted action AND valid authorized resource/geography/branch/center assignment are both required, including list, search, child dropdown, related record, export, signed-file access, jobs, reports, webhook and audit access.
-- Protected built-in Super Admin account/role cannot be deleted or silently altered; no permanent shared admin password. Invitations expire; remove/revoke active sessions on suspension or access changes. Effective access must be derived from currently verified assignments, not stale UI/JWT claims.
-- Role cloning copies **grants only**, never assigned people. Role mutations are audited with actor, scope, old/new grants and date/time; no escalation to own authority or copying protected grants without authorization.
-- Allow person to be public applicant, staff, member, donor or patient only through verified business-owner relationships; same contact alone is not proof of linkage/consent.
-- Never show raw UUID, `role_key`, permission names, SQL errors, raw exception, paths/HTTP codes to an end user. Use staff names, roles, branch/center names and legitimate generated business reference numbers; safe verified defaults. Backend maintains opaque IDs and technical redacted logs with request/support correlation.
-- Correct distinguish loading, empty directory, expired login, insufficient permission, duplicate contact/invitation, pending approval, revoked access and transient failure. No fake success, no protected account enumeration.
-- Protect OTP/password/session/refresh tokens, rate limits and recovery lifecycle; do not put tokens/medical/payroll data in logs. Audit privileged role/access changes and unusual denied access without unbounded per-tenant polling.
-- Use normalized indexed relational constraints scoped by owning business data; no per-module identity master, no id-based privilege grants, no generic dynamic SQL policy engine, no unnecessary message broker. DLD owns exact authorization patterns/migrations.
-- **User experience:** compact responsive Foundation role matrix; visible permitted actions; accessible keyboard/screen reader, touch targets, long labels, smaller Android phone/tablet; web/mobile feedback human-readable and accurate.
-- **Source-only Development:** implement, expert review by backend/security/DB + responsive Web/UX + Android and source-trace all each-story QA cases; runtime tests, screenshots and build results remain NOT_RUN, visual appearance VISUAL_NOT_RUN, performance NOT_MEASURED. Independent QA later is separate.
+## 5. Non-negotiable acceptance
 
-## Planning acceptance and downstream decisions
-- FR-001–003 and relevant FR-080 user-facing outcomes can be traced through owned account/role/scope source contracts and all affected clients without duplicate ownership.
-- Role matrix and staff assignment cannot omit required linked selectors; both hard direct API access and unauthorized UI paths are blocked.
-- Audit and safe error handling describe exact allowed transitions and rollback in the module DLD.
-- **External decisions for deployment/UAT (do not invent):** official Foundation bootstrap administrator and recovery process, OTP/email/SMS provider credentials, account identifier policy (email/phone verification), retention and support operator access, initial branch/center assignments, production store identities and device policy. These do not authorize public data leakage or relax P0 rules.
-- **Planning stage boundary:** this module deliberately does not define all CG-02/CG-03/CG-14/CG-10 implementation; source stories depending on their real records remain integration-dependent. No live environment, OAuth/provider credentials, runtime test or visual preview exists.
+- Every protected action requires **current authenticated account + permitted action + valid actual resource scope**. Unknown scopes, revoked access and guessed IDs fail closed, including search, selector, export, files and direct API calls.
+- Protect the initial Super Admin/root authority (including recovery and last-root safeguards); no ordinary role edit, role copy or assignment may elevate to root. Audited role/grant/assignment mutations are atomic and concurrency-safe.
+- A workflow's required safe selector can return authorized **minimum** names/context without opening confidential records; no private list endpoint merely to populate a dropdown.
+- Web/Internal Android use the **same** business grants, names, validation and outcomes. Show meaningful account/role names, never UUIDs, raw permission codes, SQL or exception messages; include loading/empty/pending/denied/conflict/retry states.
+- Credential protection, rate-limited recovery, session invalidation, privacy-safe logs, bounded directory pagination, database constraints/indexes, accessible responsive/native UX and no unbounded polling are mandatory.
+- Manual source QA per approved story covers backend, database, responsive Web and Android. **No CI/GitHub Actions.** Runtime, visual appearance, Play Store binary and performance remain NOT_RUN/NOT_MEASURED until independently authorized QA.
+
+## 6. Planning outputs and gate
+
+Only these four files constitute CG-01 Planning: \`module.md\`, \`uiux.md\`, \`dld.md\`, \`tasks.md\`. Tasks are cross-stack business outcomes, not backend/Web/mobile phases. No stories.md, duplicate tracker, future-owner task masquerading as CG-01 completion, or extra design stage.
+
+The approved product PRD/HLD stay authoritative. The source-checked Harness main is \`3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd\`. This rewritten pack must undergo the pinned local Harness **prepare/finalize resolver**, latest complete-artifact review and SHA-bound \`DELEGATED_APPROVED\` record before Development; do not claim those checks were executed in this connector-only session.
