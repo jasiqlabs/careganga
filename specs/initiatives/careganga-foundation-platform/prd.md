@@ -3,7 +3,7 @@
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
-**Harness:** JASIQ Harness v2, reviewed/pinned commit 27ceb481aff168915d3c0ba776cf7aa08e71eb23  
+**Harness:** JASIQ Harness v2, originally reviewed at `27ceb481aff168915d3c0ba776cf7aa08e71eb23`; CareGanga bootstrap now pins latest reviewed main `72c532fb65aab82cc6b99457001505b16c5f37fe` (freshness must be rechecked at every stage)  
 **Document status:** REVIEWED — business defaults adopted; owner-delegated PRD/HLD design-review policy recorded, artifact-hash approval/resolver validation still pending  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
