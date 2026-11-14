@@ -125,6 +125,7 @@ Status of all below: **Decision required**. Do not silently implement either sid
 | **D-22** | Medium | Center-side laboratory management includes orders/reports, but scope of actual diagnostic data capture is not described | Confirm report-upload-only vs structured test results, professional sign-off and release controls; CG-16 |
 | **D-23** | Medium | Public health provider types include pharmacy and alternative medicine in screenshots | Confirm whether provider directory only or pharmacy stock/order/fulfillment and non-doctor appointment models; CG-14/16/300 |
 | **D-24** | Medium | Original admin panel recordings exist from earlier project discussions but cannot currently be reopened | Reattach videos or screenshot archives for exact screen/field/action cross-check; no invented conclusions; all affected PRDs |
+| **D-25** | Medium | Center Portal requirements reference authorized backup/restore operations alongside central backup/restore | Confirm center access to scoped export/recovery requests versus Foundation-only system restoration; CG-21/14 |
 
 **Decision policy:** An open decision is not permission to exclude a committed written requirement; nor to invent workflows beyond it. Document client outcome, affected BR ID, reason, date and downstream PRDs when resolved. Core BR authoring may continue while individual PRD locking waits for decisions that materially affect its workflow.
 
