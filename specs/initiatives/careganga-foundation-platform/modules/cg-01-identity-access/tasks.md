@@ -6,7 +6,9 @@
 
 **Execution mode from latest JASIQ Harness:** One approved story at a time. Implement all applicable backend/DB, responsive Web, Android and shared contracts → manual expert review (backend/security/data, responsive Web/premium UX, native Android) → fix/re-review → trace **each case below** end-to-end through source → fix/retrace and update same tracker. **No live tests, application builds, browser/emulator/screenshots or images, CI/GitHub Actions.** `SOURCE_VERIFIED` is not an executed PASS; visual `VISUAL_NOT_RUN`, runtime `NOT_RUN`, metrics `NOT_MEASURED`. Design additions or scope changes return to Planning, not ad hoc developer guesses.
 
-## Immutable approved task definitions — pending final Planning approval
+## Approved task definitions
+
+**Approval status:** Design draft; owner-delegated Planning signoff and exact SHA-bound registry require the latest Harness preflight. Until then, these definitions are proposed and not an authorized Development start.
 
 ### US-001 — Secure account, verified sign-in, session and recovery foundation
 Outcome: A legitimate Foundation/center/public user can establish, manage and end a secure authenticated session only for an authorized approved account relationship.
