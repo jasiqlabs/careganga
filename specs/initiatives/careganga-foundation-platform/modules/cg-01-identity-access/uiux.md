@@ -1,7 +1,7 @@
 # CG-01 — UI/UX: Existing CareGanga Theme, Accounts & Permissions
 
 **Visual baseline:** [167-screenshot Admin Panel audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md), particularly **U02–U10**, **B34**, and the global shell at §2.1. Source archive: `careganga_features_screenshot.zip`.  
-**Requirements:** [PRD](../../prd.md) FR-001–003/080 · [HLD](../../hld.md) · [module.md](module.md) · [dld.md](dld.md).  
+**Requirements:** [PRD](../../prd.md) FR-001–003/080 and mandatory **N-13** · [HLD](../../hld.md) mandatory **H-12** · [module.md](module.md) · [dld.md](dld.md).  
 **State:** Reference-based source design; original PNG ZIP is **not committed** to this repository. Exact sampled colors, font metrics and rendered pixel-match are **NOT_VERIFIED** in this session.
 
 ## 1. Mandatory visual fidelity — no redesign
