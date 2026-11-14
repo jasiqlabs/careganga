@@ -1,15 +1,13 @@
 # CareGanga Foundation — Master Business Requirements (BR)
 
 **Document ID:** CG-BR-000  
-**Version:** 1.0 (consolidated baseline for PRD elaboration)  
-**Date:** 14 November 2026  
-**Status:** Internal business-analysis draft — not yet client-signed  
-**Prepared by:** JASIQ Labs  
-**Repository/branch:** \`jasiqlabs/careganga\` · \`feature/careganga-master-business-requirements-20261114\`
+**Baseline:** Single consolidated BR for modular PRDs  
+**Status:** Internally reviewed; client decisions and sign-off remain outstanding  
+**Prepared by:** JASIQ Labs
 
 ## 1. Purpose and document hierarchy
 
-This is the **single master business-requirements baseline** for the integrated CareGanga Foundation platform. It consolidates the client's final functional-requirements document, the prior Foundation workflow walkthrough, and the additional healthcare UI references. It is organized by **business capability and ownership**, not by existing sidebar, screenshot, or proposed screen count. Modules and requirement IDs are intended to become independently reviewable PRDs under the JASIQ Harness planning workflow.
+This is the **single master business-requirements baseline** for the integrated CareGanga Foundation platform. It consolidates the client's final functional-requirements document, the October Foundation client discussion, 167 Admin Panel screenshot captures and the healthcare UI reference screens. It is organized by **business capability and ownership**, not by existing sidebar, screenshot, or proposed screen count. Modules and requirement IDs are intended to become independently reviewable PRDs under the JASIQ Harness planning workflow.
 
 The following are companion parts of this *one BR package*:
 
@@ -19,13 +17,13 @@ The following are companion parts of this *one BR package*:
 | [CG-BR-100 — Foundation and Operations](01-FOUNDATION-OPERATIONS-BR.md) | Organization, people, membership, projects, CSR, finance, HR/payroll, inventory, rewards, governance |
 | [CG-BR-200 — Integrated Healthcare](02-INTEGRATED-HEALTHCARE-BR.md) | Provider network, doctor/center model, patient, booking, diagnostics, contributions, payments, center operations |
 | [CG-BR-300 — Experience, CMS and Channels](03-CMS-CHANNELS-BR.md) | Public website, CMS, Foundation Admin, center portal, Android apps, publication ownership and reusable user journeys |
-| [CG-BR-500 — Source-to-BR Coverage Audit](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) | Page/section/feature mapping, screenshot and transcript findings, corrected omissions and audit status |
+| [Source Coverage Appendix](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) | Evidence mapping of all PDF requirement sections and 75 healthcare feature IDs; not an alternative BR |
 | [CG-BR-600 — Non-Functional Business Requirements](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) | One reusable cross-platform P0 quality baseline, measurable proposed P1 targets and manual QA gates |
-| [CG-BR-900 — Traceability and Decisions](04-TRACEABILITY-DECISIONS.md) | Source-to-module mapping, ambiguities, open decisions, PRD handoff and scope guardrails |
+| [CG-BR-900 — Business Decisions](04-TRACEABILITY-DECISIONS.md) | Single register of unresolved client business-policy and scope decisions |
 
-**Authoritative client scope:** \`SAM-CAREGANGA-121126-113332.pdf\` (61 pages, section numbers as supplied), the healthcare screens supplied in November 2026, and the CareGanga client meeting of 19 October 2026 (transcript: \`Project discussion with CareGanga foundation (1).docx\`). The meeting helps interpret workflows; the consolidated written requirements and the latest UI references govern current scope. Original earlier admin-screen recordings are not presently accessible for a new screen-level inspection; do **not** mark their detailed coverage as verified.
+**Authoritative client scope:** \`SAM-CAREGANGA-121126-113332.pdf\` (61 pages, section numbers as supplied), the healthcare screens supplied in November 2026, and the CareGanga client meeting of 19 October 2026 (transcript: \`Project discussion with CareGanga foundation (1).docx\`). The meeting helps interpret workflows; the consolidated written requirements and the latest UI references govern current scope. The supplied Admin ZIP has been reviewed and all **167 screenshots** are individually indexed in [the Admin UI reference audit](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md). Static captures establish visible controls, not whether they work in production.
 
-**Scope principle:** Healthcare Assistance is an **intrinsic business domain of the whole CareGanga platform**. It uses the same Foundation-wide configuration, access controls, payment/accounting, communication, document and reporting capabilities, with appropriate restrictions for clinical information. Do not model it as an externally bolted-on system.
+**Scope principle:** Healthcare Assistance is an **original, intrinsic business domain of the whole CareGanga platform**, not a separate product or a secondary scope item. It uses the same Foundation-wide configuration, access controls, payment/accounting, communication, document and reporting capabilities, with appropriate restrictions for clinical information. Do not model it as an externally bolted-on system.
 
 ## 2. Business vision and goals
 
@@ -220,7 +218,7 @@ This BR package is ready for client review when:
 5. Medical/private information, finance posting, verification and approval access remain correctly restricted, with documented acceptance checks for simultaneous bookings, payment retries, refunds, payroll/stock posting, logs and recovery.
 6. Unresolved screenshot-versus-written-scope differences are recorded as explicit client decisions, not silently assumed.
 7. The BR remains business-focused; technical design, implementation tasks and exact screen acceptance criteria are deferred to subsequent approved PRDs/HLD/DLD. Shared P0 NFR criteria are mapped by ID without copying the entire specification into every PRD.
-8. No source file, reference recording or screen is claimed as freshly verified unless it was actually accessible. [CG-BR-500](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) records the full source-review method, corrections and remaining verification limitations.
+8. The client PDF, current healthcare reference images and all 167 Admin screenshots are traceable to an owning module or a documented policy question. The [source coverage appendix](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) and [UI reference audit](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) retain evidence without creating competing BR versions.
 
 ## 13. Client decisions required before locking PRDs
 
@@ -236,4 +234,4 @@ See [CG-BR-900](04-TRACEABILITY-DECISIONS.md). The priority decisions are:
 - Public availability and governance of reviews/ratings, prescriptions, family profiles, QR verification, and non-doctor service buttons.
 - Publication behaviour for internal Foundation branches vs publicly listed provider centers.
 
-**Document status:** Consolidated internal BR. Do not interpret unresolved items as automatically approved features, omissions or launch-phase changes.
+**BR scope:** A single integrated Foundation and Healthcare Assistance baseline. Its owner-module requirements and P0 quality gates are ready for PRD decomposition; specific client-policy questions remain in the decision register and are not silently assumed.
