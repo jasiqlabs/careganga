@@ -428,6 +428,24 @@ All numbers below are **PRD-proposed P1 starting targets**, not measurements or 
 - Add CDN for **approved public media** and public page caching where it improves measured load; do **not** cache individualized private medical/finance responses in a shared public cache.
 - Monitor database egress/bandwidth, network traffic and worker frequencies, not just CPU. Introduce separate read replicas/search infrastructure only if profiling justifies expense and operational effort.
 
+
+### 9.3A Background-work, polling and bandwidth safety checkpoint
+
+Apply latest `standards/BACKGROUND_WORK_STANDARD.md` **only** to actually authorized work: appointment reminders, confirmed-event messages/PDFs, scheduled MIS, payment/settlement reconciliation and retries. No global tenant import worker, general feed crawler or per-center poller is inferred from the PRD.
+
+| Work source | Durable owner / trigger | Zero-job, recovery and resource decision |
+| --- | --- | --- |
+| Booking/payment/approval notices and PDFs | CG-19 outbox item committed with owner business event; post-commit worker wake-up | **Zero pending work** causes no per-center scans or repeated provider calls. Rare bounded global recovery checks cover missed wake-ups/restarts |
+| Appointment reminders | CG-15 booking's actual future reminder eligibility, CG-19 delivery state | Query only **due** authorized reminders, not every patient/center; deduplicate per appointment + reminder type, finite retries |
+| Reconciliation of uncertain provider payments / Foundation support | CG-17 verified pending/due reconciliation record; Finance CG-09 owns its posting | Run only unresolved/due transactions with bounded batch and provider cost/timeout; no infinite per-center background checks |
+| Scheduled MIS/exports | CG-20 explicitly enabled report schedule and authorized recipients | Work only when schedules are due, reauthorize recipients, bound page/row loads and avoid blocking interactive search/booking |
+
+**Idle is a first-class workload:** Compare `worker instances × centers/organizations iterated × queries per iteration × iterations per hour` plus HTTP response bytes and external provider requests. With **zero eligible jobs across multiple idle centers**, the selected design should not do high-frequency center-wide database enumeration. Measure queue depth, worker wakeups, idle queries, DB rows scanned, request/payload bytes, retry count, provider egress and billed service traffic separately; absence of measurements is `NOT_MEASURED`, never an invented performance PASS.
+
+A durable job record is the truth; a local signal / notification after commit is only a wake-up hint. Use short claims/leases, bounded batches, idempotency, deterministic concurrency, finite backoff, deadline-aware retries and recovery after process restart. Do not hold database locks during network provider calls. Start with **the same codebase and a tiny PostgreSQL-backed worker**, not Redis/Kafka/microservices. A new queue, extra polling instance or external service requires volume or safety evidence in its module DLD. **Exception:** essential finance reconciliations may execute bounded due-record work even with no import or notification jobs; do not disable them under a generic idle-feature flag.
+
+**Planning/DLD acceptance:** Any newly designed worker or polling route should cover (a) no work across many centers and more than one instance, (b) one valid due job, (c) duplicate workers, (d) provider timeout/late success, (e) crash/restart, and (f) known DB/provider-byte budget. No extra document or stage.
+
 ### 9.4 Observability, backup and recovery
 
 Structured request/activity IDs connect UI errors to backend, domain action, provider callback and background job without leaking PII. Monitor API p50/p95/p99, errors, booking conflicts, pending payment reconciliation, outbox depth/retries, DB pool/slow queries and egress, failed report generation, storage failures and backup results. Provide operator-visible alerts and a concise runbook for payment mismatch, patient booking dispute, delayed messages, provider suspension and recovery.
