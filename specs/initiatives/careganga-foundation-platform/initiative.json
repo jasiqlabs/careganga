@@ -8,11 +8,14 @@
     "owner": "CareGanga project owner (ChatGPT conversation)",
     "delegate": "ChatGPT GPT-6 (delegated design reviewer)",
     "source": "DIRECT_OWNER_CONVERSATION",
-    "owner_statement": "14 November 2026, owner message in this CareGanga chat: \"Approv as delegate and continue with HLD\"; subsequently: \"Continue as per yoit suggestion but why latest Habeness was not followwd and why these were missed.\"",
+    "owner_statement": "14 November 2026, owner message in this CareGanga chat: \"Approv as delegate and continue with HLD\"; subsequently: \"Continue as per yoit suggestion but why latest Habeness was not followwd and why these were missed.\"; 14 November 2026, subsequent owner instruction: \"If hld is then let's start next step as pee haneenss. Approve as delegate and continue next workflow\" authorizes Planning and its conditional design-stage approvals.",
     "scope": [
       "prd",
-      "hld"
+      "hld",
+      "planning",
+      "uiux",
+      "dld"
     ],
-    "note": "Delegation is for design-stage review decisions only, not a human signature, client sign-off, QA/UAT, release, deployment or main merge. The chat statement is owner-provided provenance, not independently verifiable proof. A hash-bound truthful review and resolver preflight remain mandatory."
+    "note": "Design-only owner delegation covers the PRD, HLD, module Planning and necessary UIUX/DLD; it is never human/client sign-off, implementation QA/UAT, release, deployment or main merge. Chat evidence identifies the owner instruction; exact final artifact hash, truthful review and resolver preflight remain required. Local authenticated Harness stage resolver is NOT_RUN in the connector-only environment and must not be claimed PASS."
   }
 }
