@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 ORIGIN = "https://github.com/jasiqlabs/jasiq-harness.git"
-PINNED_MAIN_SHA = "27ceb481aff168915d3c0ba776cf7aa08e71eb23"
+PINNED_MAIN_SHA = "72c532fb65aab82cc6b99457001505b16c5f37fe"
 REQUIRED = (
     "AGENTS.md",
     "jasiq-asdlc/VERSION",
