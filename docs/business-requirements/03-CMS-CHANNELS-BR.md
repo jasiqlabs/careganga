@@ -1,7 +1,7 @@
 # CG-BR-300 — CMS, Public Website and Application Channels
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Consolidated business requirements · Client decisions identified separately  
+**Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
 **Coverage:** CG-18 CMS/publication; presentation and permissions of CG-01–21 across all intended interfaces.
 
 ## 1. Core operating principle
@@ -118,7 +118,7 @@ The screenshots supplied in November 2026 illustrate these design reference scre
 | Booking confirmation and PDF slip | CG-15 booking/QR and patient/doctor/center; CG-17 payment and contribution; CG-19 template/generation |
 | My Appointments and verification | CG-15 authenticated history, QR/ID lookup with access control; CG-16/17 permitted reports/receipts |
 
-**Visual elements requiring explicit scope decision:** Public **Book Lab Test**, **Order Medicine**, **Book Nursing/OT** actions; example benefit percentages; family-member workflows; prescriptions tab; review/rating creation; printed 100%-subsidized examples. They must be logged in CG-BR-900 before transactional PRDs are authorized.
+**Initial publication policy:** Extra public lab/medicine/nursing/OT buttons are informational/enquiry-only, not active checkout. Do not publish sample support percentages or review counts as facts, and do not show unavailable family/prescription functionality as enabled. Current provider and appointment data come from their authoritative modules; see [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
 
 ## 5. Admin Panel operating model: one control point per capability
 
