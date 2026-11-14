@@ -5,7 +5,7 @@
 **Mode:** GREENFIELD — no running product, deployed infrastructure, selected runtime stack or existing implementation assumed  
 **Authoritative location:** `specs/initiatives/careganga-foundation-platform/hld.md`  
 **Working branch:** `feature/careganga-greenfield-prd-20261114`  
-**Architecture baseline:** Product PRD `prd.md`, Git blob `b4f667db52bc0d64afeaf482c9b6e3e5fc376a0c` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
+**Architecture baseline:** Product PRD `prd.md`, Git blob `2b922a0e62dfa10baaae6628542066de023eef27` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
 **Shared methodology:** JASIQ Harness v2 reviewed/pinned `27ceb481aff168915d3c0ba776cf7aa08e71eb23` (14 November 2026)  
 **Prepared:** 14 November 2026  
 **Status:** **IN_REVIEW — updating for newest Harness database/pattern/background/mobile standards. Owner-delegated PRD/HLD authority is recorded in initiative.json, but resolver preflight and artifact-hash approval evidence remain NOT_RUN/PENDING; no Harness APPROVED claim.**  
