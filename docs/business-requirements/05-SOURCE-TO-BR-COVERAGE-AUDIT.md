@@ -208,6 +208,6 @@ The transcription is partly noisy, so treat it as **corroborating context**, not
 
 **Evidence boundary:** Screenshots establish visible content and interaction affordances, but not successful API behaviour, persistence, accounting accuracy, permission enforcement, publication, deployment, payment delivery or clinical correctness. Test those during PRD/manual QA. The original moving videos do not need to be replayed to establish that all **167 submitted screenshot files were inventoried**, but unrecorded video interactions cannot be verified.
 
-**Client decisions:** Reconcile the genuinely unresolved scope and policy questions in the [single decision register](04-TRACEABILITY-DECISIONS.md). Do not silently add checkout/delivery/services or obscure confirmed requirements because the visual UI differs from prose.
+**Adopted client-scope defaults:** The previously open business-policy questions have delegated safe initial-release answers in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). This appendix remains historical source evidence; it is not a second active decision register. Do not silently add unsupported checkout/delivery services or obscure confirmed written requirements.
 
 **Business-module boundary:** Every source-backed function belongs to an existing CG module. UI pages, payroll links, receipt templates, dashboards, content tabs, report packs and approval queues are **presentations and workflows** of those modules—not permission to create competing data stores or independent engines.
