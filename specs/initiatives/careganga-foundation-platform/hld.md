@@ -6,10 +6,10 @@
 **Authoritative location:** `specs/initiatives/careganga-foundation-platform/hld.md`  
 **Working branch:** `feature/careganga-greenfield-prd-20261114`  
 **Architecture baseline:** Product PRD `prd.md`, Git blob `b4f667db52bc0d64afeaf482c9b6e3e5fc376a0c` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
-**Shared methodology:** JASIQ Harness v2 pinned `0308fbd9e332c51955c7d0da7a8023f87cbf1fe5`  
+**Shared methodology:** JASIQ Harness v2 reviewed/pinned `27ceb481aff168915d3c0ba776cf7aa08e71eb23` (14 November 2026)  
 **Prepared:** 14 November 2026  
-**Status:** **IN_REVIEW — architecture draft prepared under the user's explicit delegated direction; formal PRD artifact approval evidence and executable HLD resolver preflight remain pending. This is NOT a Harness APPROVED artifact.**  
-**Approval integrity:** The user authorized proceeding as delegate in the current conversation. This authorizes preparation and review, **not fabrication** of an externally verifiable human approval, the exact PRD SHA-256, an independent review, or client sign-off. No `approvals.json` has been fabricated. The pinned Harness stage gate must be resolved before formal approval/planning/development.
+**Status:** **IN_REVIEW — updating for newest Harness database/pattern/background/mobile standards. Owner-delegated PRD/HLD authority is recorded in initiative.json, but resolver preflight and artifact-hash approval evidence remain NOT_RUN/PENDING; no Harness APPROVED claim.**  
+**Approval integrity:** The owner explicitly authorized agent delegation for design review in this conversation. The current `initiative.json` opts in to narrowly scoped `OWNER_DELEGATED_DESIGN` for PRD/HLD. An approval must be truthfully attributed to the actual delegate as `DELEGATED_APPROVED` with the current file SHA-256, review evidence and validated resolver gate, never falsely as human/client sign-off. No resolver PASS or approval record is claimed yet; QA/UAT/release/merges require independent owner authorization.
 
 ## 1. Executive architecture decision
 
