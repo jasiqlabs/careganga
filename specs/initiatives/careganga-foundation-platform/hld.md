@@ -5,11 +5,11 @@
 **Mode:** GREENFIELD — no running product, deployed infrastructure, selected runtime stack or existing implementation assumed  
 **Authoritative location:** `specs/initiatives/careganga-foundation-platform/hld.md`  
 **Working branch:** `feature/careganga-greenfield-prd-20261114`  
-**Architecture baseline:** Product PRD `prd.md`, Git blob `54a175c89db230ff88d04a7bb1cedf03d12dba4b` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
+**Architecture baseline:** Product PRD `prd.md`, Git blob `4c9e53847d8628e25ffde0cfb5e7ce6a85da572d` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
 **Harness stage policy:** Original design review used Harness `27ceb481aff168915d3c0ba776cf7aa08e71eb23`; current product bootstrap pins latest reviewed `main` **`72c532fb65aab82cc6b99457001505b16c5f37fe`**. Final HLD review and resolver verification against the current pin are **still required**, not implied by this metadata.  
 **Prepared:** 14 November 2026  
-**Status:** **IN_REVIEW — updating for newest Harness database/pattern/background/mobile standards. Owner-delegated PRD/HLD authority is recorded in initiative.json, but resolver preflight and artifact-hash approval evidence remain NOT_RUN/PENDING; no Harness APPROVED claim.**  
-**Approval integrity:** The owner explicitly authorized agent delegation for design review in this conversation. The current `initiative.json` opts in to narrowly scoped `OWNER_DELEGATED_DESIGN` for PRD/HLD. An approval must be truthfully attributed to the actual delegate as `DELEGATED_APPROVED` with the current file SHA-256, review evidence and validated resolver gate, never falsely as human/client sign-off. No resolver PASS or approval record is claimed yet; QA/UAT/release/merges require independent owner authorization.
+**Status:** **REVIEWED (source-based, self-review disclosed) — architecture corrected for current Harness database/pattern/background/mobile standards. Owner delegation is recorded; only `approvals.json` determines a hash-bound design decision. The actual local Harness resolver/checkout verification remains NOT_RUN, not PASS.**  
+**Approval integrity:** The owner explicitly authorized agent delegation for design review in this conversation. The current `initiative.json` opts in to narrowly scoped `OWNER_DELEGATED_DESIGN` for PRD/HLD. An approval must be truthfully attributed to the actual delegate as `DELEGATED_APPROVED` with the current file SHA-256, review evidence and validated resolver gate, never falsely as human/client sign-off. No resolver PASS or human/client approval is claimed by this document; any delegated design decision must be separately recorded and hash-checked in initiative-local `approvals.json`. QA/UAT/release/merges require independent owner authorization.
 
 ## 1. Executive architecture decision
 
@@ -533,6 +533,6 @@ Verify a real backup restore in an isolated non-production environment before pr
 | Detailed APIs/DB schema/UI/task leakage | Intentionally excluded | Correctly left to Planning/UIUX/DLD |
 | **Independent specialist review** | **NOT_RUN** | No independent HLD reviewer invoked; self-review only |
 | **Pinned resolver + authenticated local clean Git check** | **NOT_RUN** | GitHub connector accessed source, but a pinned sibling Harness/product filesystem checkout is unavailable |
-| **Formal PRD/HLD human approval** | **PENDING** | No externally verified artifact-SHA-256 approval record; user delegation recorded only as drafting authorization |
+| **Formal client/human sign-off** | **PENDING** | Owner-delegated design policy has been recorded; the actual source-bound decision must be checked in `approvals.json` on the current artifact; no human sign-off is claimed |
 
 **Result:** **HLD draft source-complete for internal review, but not yet Harness-approved**. Never mark this file or its downstream Planning tasks as APPROVED/READY solely on the basis of this design or delegated-chat instruction.
