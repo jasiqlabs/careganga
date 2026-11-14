@@ -59,7 +59,7 @@ The permission catalog uses clear business labels in clients and stable internal
 | CG-03 Approvals | Required protected-role/access approval routes; grant becomes effective only after real final authorized decision |
 | CG-10 HR | Verified employee-account association; employee type, designation, joining date, employment/status filters in the CG-01 people directory |
 | CG-14 Healthcare Network | Real center/location/staff affiliations and safe selector; center-specific role binding, revocation, and prevention of Foundation/medical privilege inheritance |
-| Every later owner | Register only its approved action keys; expose its own minimum-field \`options\` endpoint for required selectors, with distinct permission from confidential detail/list/export |
+| Every later owner | Register only its approved action keys; expose its own minimum-field `options` endpoint for required selectors, with distinct permission from confidential detail/list/export |
 
 **Rule:** Design a small typed extension point in CG-01; never insert placeholder geography, employee, center, doctor or approval data. The real integration and end-to-end QA are acceptance of the later module that makes those owner records available. The full PRD/BR scope remains intact.
 
@@ -74,6 +74,6 @@ The permission catalog uses clear business labels in clients and stable internal
 
 ## 6. Planning outputs and gate
 
-Only these four files constitute CG-01 Planning: \`module.md\`, \`uiux.md\`, \`dld.md\`, \`tasks.md\`. Tasks are cross-stack business outcomes, not backend/Web/mobile phases. No stories.md, duplicate tracker, future-owner task masquerading as CG-01 completion, or extra design stage.
+Only these four files constitute CG-01 Planning: `module.md`, `uiux.md`, `dld.md`, `tasks.md`. Tasks are cross-stack business outcomes, not backend/Web/mobile phases. No stories.md, duplicate tracker, future-owner task masquerading as CG-01 completion, or extra design stage.
 
-The approved product PRD/HLD stay authoritative. The source-checked Harness main is \`3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd\`. This rewritten pack must undergo the pinned local Harness **prepare/finalize resolver**, latest complete-artifact review and SHA-bound \`DELEGATED_APPROVED\` record before Development; do not claim those checks were executed in this connector-only session.
+The approved product PRD/HLD stay authoritative. The source-checked Harness main is `3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd`. This rewritten pack must undergo the pinned local Harness **prepare/finalize resolver**, latest complete-artifact review and SHA-bound `DELEGATED_APPROVED` record before Development; do not claim those checks were executed in this connector-only session.
