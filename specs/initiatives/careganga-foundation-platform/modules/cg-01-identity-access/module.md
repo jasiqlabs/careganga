@@ -63,6 +63,12 @@ The permission catalog uses clear business labels in clients and stable internal
 
 **Rule:** Design a small typed extension point in CG-01; never insert placeholder geography, employee, center, doctor or approval data. The real integration and end-to-end QA are acceptance of the later module that makes those owner records available. The full PRD/BR scope remains intact.
 
+## 5. Mandatory source-matched UI/UX and motion
+
+**PRD N-13 / HLD H-12 applies without exception** to all CG-01 user-visible surfaces. The existing [CareGanga Admin Panel audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) (§2.1, **U02–U10, B34**) and original screenshot/video ZIP supply the existing **color/theme/look/feel, layout and interaction** authority. Reuse one project-wide source-extracted theme/component/motion implementation, never a new palette or invented UI animation. Required [CG-01 UI/UX](uiux.md) records screen-by-screen references; the role and account stories in [tasks.md](tasks.md) explicitly validate existing sidebar/header, cards, tables, right-side drawers, permission matrix, status treatment, native look, loading/pending feedback, and verified transition behavior. Static screenshots do not prove precise animation timing: actual source/video is required for final visual parity; respect reduced-motion/accessibility.
+
+**Pass condition:** Manual source inspection checks theme tokens, source-matched component usage and native/responsive behaviors; independently authorized live visual QA compares the result against original reference images/videos before declaring an exact-color/animation PASS. Until original assets and rendered screens are inspected, keep `VISUAL_NOT_RUN` and `REFERENCE_ASSETS_NOT_VERIFIED`. Preserve UI identity across future CG modules; do not duplicate the token catalog in every module.
+
 ## 5. Non-negotiable acceptance
 
 - Every protected action requires **current authenticated account + permitted action + valid actual resource scope**. Unknown scopes, revoked access and guessed IDs fail closed, including search, selector, export, files and direct API calls.
