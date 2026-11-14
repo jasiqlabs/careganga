@@ -1,4 +1,4 @@
-# CG-BR-500 — Independent Source-to-BR Coverage Audit
+# CareGanga — Source Coverage & Traceability Appendix
 
 **Source baseline:** CareGanga Foundation final requirements and provided reference material  
 **Review scope:** 61-page client requirements PDF, October Foundation meeting transcript, healthcare UI references, and the supplied 167-image Foundation Admin ZIP.  
