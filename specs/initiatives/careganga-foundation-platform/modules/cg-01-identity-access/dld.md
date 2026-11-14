@@ -18,7 +18,7 @@ The first technical bootstrap creates a protected Foundation-root administrative
 | Session | hashed opaque session/refresh reference, account FK, expiry, revocation, device metadata, access version; bounded index on active sessions |
 | Role | id, Foundation-root realm, unique normalized name, description, optional UI color, protected/built-in flag, active/retired status, revision |
 | Role grant | unique role FK + supported action key; allow-listed catalog only; sensitive/root grants not custom-copyable |
-| Account-role assignment | account FK, role FK, explicit current Foundation-root context, effective/revoked times, assigned by, revision; unique active assignment per allowed context policy |
+| Account-role assignment | account FK, role FK, explicit current Foundation-root context, effective/revoked times, assigned by, revision; at most one active primary role assignment per account per Foundation-root context (future center contexts require separate validated assignments) |
 | Access audit | actor/target, action, safe before/after grant summary, timestamp, correlation reference, decision; append-only and privacy-redacted |
 
 CG-01 also owns **logical future scope grant interfaces**, not premature foreign-key tables to unavailable geography or center entities. When CG-02/CG-14 ship, their approved schema/relations and integration migrations introduce validated real scope links; the CG-01 API guard must verify those owner relationships through typed contracts before any non-root scope can become active. CG-10 employee data and CG-03 approval state remain owner records.
@@ -56,7 +56,7 @@ Define typed commands/queries and stable safe **outcome categories** (`SUCCESS`,
 
 ## 5. State, transaction and recovery rules
 
-- **Account:** invited → verified/active → suspended/reactivated or deactivated. Recovery challenge one-time/expiring; invitation re-send/retry cannot double-create account. No session for unverified/suspended account.
+- **Account:** invited → verified/active → suspended/reactivated or deactivated. Recovery challenge one-time/expiring; invitation re-send/retry cannot double-create account. No session for unverified/suspended account. **Privileged Foundation Admin authentication requires MFA; provider failure never bypasses its challenge.**
 - **Role:** built-in protected (ordinary edits forbidden) or active custom → revised → retired (only with safe assignment transition). Copy copies only allowed grant choices, not assigned users, protected root authority or scope.
 - **Assignment:** active only after direct permitted action; revoke/change increments effective-access revision and invalidates impacted sessions/cache. Where a future CG-03 approval is mandatory, the pending change grants **nothing** until actual approved finalization.
 - **Concurrent edits:** normalized name uniqueness and revision guard prevent duplicate/lost write; assignment/grant update, audit and session-version change commit coherently. Last protected administrator cannot be removed, including racing requests.
