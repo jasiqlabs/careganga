@@ -1,7 +1,7 @@
 # CG-BR-100 — Foundation Administration, Programs and Operations
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Internal consolidated BR · 14 November 2026  
+**Status:** Consolidated business requirements · Client decisions identified separately  
 **Scope:** CG-01 through CG-13, CG-19 through CG-21. Healthcare-specific requirements remain in [CG-BR-200](02-INTEGRATED-HEALTHCARE-BR.md). Public content controls are in [CG-BR-300](03-CMS-CHANNELS-BR.md).
 
 ## Reading convention
@@ -43,6 +43,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-02-BR07:** Maintain departments and their functions, branch associations and member assignments; maintain committees and committee/personnel associations.
 - **CG-02-BR08:** Provide branch directory, search/filter, authorized status changes and exports.
 - **CG-02-BR09:** Internal Foundation branches must **not be automatically published**; only expressly approved organization information appears publicly.
+- **CG-02-BR10:** Department and committee setup supports name, type, parent department where applicable, branch/location, assigned head/manager, opening date, description and active status. Reporting and staff assignment reuse the same department/committee record.
 
 **Admin controls:** Branch wizard/approval, geography masters as agreed, department/committee setup, staff links, status and document verification.  
 **Public:** Only published organizational content, not the internal branch master.  
@@ -103,6 +104,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-05-BR08:** Provide project performance summaries and operational reporting without manually recreating public project pages.
 - **CG-05-BR09:** Make only expressly published projects, achievements and stories visible publicly via CG-18.
 - **CG-05-BR10:** Allow authorized creation and management of Foundation events linked to programs/projects or campaigns where relevant, including event information and public publication through CG-18. The exact event registration/ticketing workflow, if any, requires a separate supported client requirement and must not be assumed from a menu label.
+- **CG-05-BR11:** A field visit has one detailed record with contextual views for visit report, check-in/check-out, location/route/GPS, photographs/videos, documents, assigned team, beneficiary assistance, approval records, comments and activity history. These views reference their owning records; they are not independent visit modules.
 
 **Admin controls:** Project masters, team assignment, status, budgets link, review, publish eligibility and activity oversight.  
 **Internal mobile:** Task lists, visit capture/GPS/photos, status, applicable review.  
@@ -129,6 +131,8 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-07-BR05:** Link successful payments to financial accounting records exactly once, with refund/correction linkage; do not equate a pending gateway request to received funds.
 - **CG-07-BR06:** Show approved public campaign details, goals/progress and donation CTAs; keep private donor/payment data restricted.
 - **CG-07-BR07:** Provide donation lists, filters, dashboards, campaign progress, summaries and exports.
+- **CG-07-BR08:** Campaign setup supports an editable draft and review flow across basic information, project/category and geography, team/assignment, budget/targets, documents/media and final review. Campaign launch/publication is separately authorized and may not be inferred from saving a draft.
+- **CG-07-BR09:** A manual donation record, generated online payment link, payment request, verified payment, authorized receipt and any subsequent correction/refund have distinct statuses linked to the same donor/campaign transaction.
 
 **Admin controls:** Campaign status/publishing, donor entries, payment references, provider-integrated corrections, donor communications.  
 **Public:** Donate, payment state, receipt, campaigns, applicable donation history.
@@ -141,6 +145,8 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-08-BR04:** Support shared funding showing CSR partner contribution, Foundation contribution and percentage allocations, with agreements and budget categories.
 - **CG-08-BR05:** Route funding approvals and preserve approved/rejected/pending statuses and reviewer history.
 - **CG-08-BR06:** Link approved funds to project allocations, utilization and reporting through CG-09; public partner publication is independent of partner verification.
+- **CG-08-BR07:** Funding work distinguishes proposed/requested funding, documented commitments, received funds, approved allocations to projects/categories and actual utilization or release. Funder agreements and source references remain attached; no individual project or CSR screen creates a competing fund balance.
+- **CG-08-BR08:** CSR partner reviews can result in approval, rejection or request for correction with reviewer remarks, partner-contact details and linked proposal/contribution history.
 
 **Admin controls:** Partner records, agreements, proposals, shared funding arrangements, approvals and reporting.  
 **Public:** CSR registration/approved content only where enabled.
@@ -172,6 +178,8 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-09-BR13:** Create and approve project/branch/category budgets by period, with authorized allocation, utilized and remaining amounts.
 - **CG-09-BR14:** Track vendor/payee information and outstanding/bank reconciliation consistently where financial transactions require it.
 - **CG-09-BR15:** Provide finance search/filter/report/exports by branch, project, period, account, payment method, creator, approver, status and amount.
+- **CG-09-BR16:** Budgets and fund summaries expose **approved, committed, allocated, utilized, released, remaining and over-budget** amounts as distinct concepts with authorized definitions and linked accounting sources; show supporting period, branch/project, funder and category drill-down rather than reconciling manually duplicated dashboard totals.
+- **CG-09-BR17:** Guided manual ledger-entry screens may let an operator select debit or credit and account, but the accepted accounting transaction must be complete, balanced, approved where required, attributable to its source and traceable through general ledger, cash book, bank book, day book, project/CSR ledger and trial balance.
 
 **Admin controls:** COA, fiscal periods, approved bank/cash accounts, budgets, voucher/accounting permissions, finance approval, provider configuration, exports and audit.  
 **Internal mobile:** Claims, selected vouchers, approvals and permitted finance status/reporting.  
@@ -191,6 +199,10 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-10-BR09:** Generate employee appointment/relieving and other permitted letters, memos and ID cards via shared document templates.
 - **CG-10-BR10:** Track employee/volunteer allowance requests but hand approved financial liability and payment to CG-09.
 - **CG-10-BR11:** Make role-scoped attendance, leave, tasks and employee self-service accessible from Internal Android.
+- **CG-10-BR12:** Employee registration/activation supports stage-appropriate application and document reviews, for example initial submission, state verification, zonal review, HR verification and final authorized approval. Registration stores personal, employment/branch, reporting manager, secure identity/bank, compensation proposal and documents as separately permissioned information; employee ID and user access arise only from the applicable approved lifecycle.
+- **CG-10-BR13:** Employee letter/memo records support draft, edit, preview, authorized approval, issuance/dispatch, acknowledgment or received-copy upload where applicable, reissue/history and PDF/print. Supported templates include appointment, offer, joining, experience, relieving and other approved official letters; the generator is shared under CG-19.
+- **CG-10-BR14:** Transfer, promotion and exit workflows preserve current/proposed role, branch, reporting manager, salary and effective dates. Exit review can track handover, HR/finance/assets clearance and final dues/settlement without silently marking salary or reimbursements as paid.
+- **CG-10-BR15:** Employee ID-card issuance, reissue, deactivation, print/download and authorized QR verification use shared document templates; authorized display fields and history derive from approved person/employment data, not a separate manual identity store.
 
 **Admin controls:** Employee verification, department/posting, shift/attendance policy, leave decision, document templates, lifecycle actions.  
 **Public:** No unrestricted HR directory or personal payroll content.
@@ -205,6 +217,9 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-11-BR06:** Generate payslips and authorized notifications; employee access must be private.
 - **CG-11-BR07:** Reconcile approved salary payment with CG-09 finance posting and bank/cash settlement without duplicate expenses.
 - **CG-11-BR08:** Maintain payroll audit trail and permitted payroll summaries/reports.
+- **CG-11-BR09:** One controlled payroll configuration covers frequency/period, salary components, allowances, deductions, taxes and statutory settings where applicable, bank/payment instructions, overtime, late/leave adjustment, arrears, revisions, bonuses/holds, payslip templates and notifications; every configured rule must have defined eligibility/effective-date and effect on actual calculations.
+- **CG-11-BR10:** Payroll processing explicitly separates salary structure, draft run/attendance fetch, calculation and validation, review/adjustment, verification/approval, reserve/payment batch, released salary, payslip issue and history. A dashboard link or a re-generated payslip does not create a second salary obligation.
+- **CG-11-BR11:** Employee bank, compensation and salary adjustment requests are recorded as controlled changes to the existing employee/payroll relationship, with authorization and effective date. Sensitive bank and salary details remain restricted.
 
 **Admin controls:** Payroll settings, compensation approval, run/lock/review, payment batch and document templates.  
 **Internal mobile:** Own pay information and approvals where approved role/feature mapping permits.
@@ -246,6 +261,8 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-19-BR05:** Expose appropriate records to correct audience (donor receipt to donor, appointment slip to patient/center, salary slip to employee).
 - **CG-19-BR06:** Offer communication logs and template controls without adding independent message histories to every module.
 - **CG-19-BR07:** Maintain one scoped service-request/helpdesk capability for Foundation public contact requests and healthcare-center support tickets, service requests and FAQs where required. Center operators see only their authorized cases; ownership, status, responses and permissions are shared, not duplicated per portal.
+- **CG-19-BR08:** Shared document templates support front/back ID cards for authorized members, volunteers and employees, optional visible fields, issue/expiry, preview, barcode/QR verification, print/PDF/reissue history, and official letters/memos with signature/seal and received-copy tracking where applicable. Document generation must reference approved source records.
+- **CG-19-BR09:** Notifications distinguish direct transaction events, role/group broadcasts, individual messages and public notices. Authorized senders can configure recipient audience, category, priority, title, message, optional link, schedule/expiry and delivery status, without revealing contacts outside their permission scope.
 
 ## CG-20 — Dashboards, MIS, Reporting and Exports
 
@@ -255,6 +272,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-20-BR04:** Provide authorized custom report building (choose data source/module, filter, group, sort, tabular/chart/summary/pivot where supported).
 - **CG-20-BR05:** Save filters/reports, schedule reports with frequency/time, export PDF/Excel or applicable supported formats and share via authorized channels.
 - **CG-20-BR06:** Honor data-scope restrictions and sensitive-information masking consistently in dashboard, export and scheduled delivery.
+- **CG-20-BR07:** Standard report packages include donor and tax-receipt ledgers, finance/audit statements, volunteer roster/activity, beneficiary demographic/assistance reports, CSR contribution, project budget/utilization, healthcare center/doctor/appointment and employee/payroll reports. These are authorized views of module-owned records rather than separately maintained statements.
 
 ## CG-21 — Settings, Audit, Integrations and Recovery
 
