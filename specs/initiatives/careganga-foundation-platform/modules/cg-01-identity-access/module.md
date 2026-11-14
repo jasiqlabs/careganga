@@ -25,17 +25,17 @@ mobile_store_status: PLANNING_PROPOSED_NOT_BUILT
 
 **Actors:** Super Admin (protected bootstrap/root administration), delegated Foundation role manager, staff/volunteer, center authorized administrator/operator, public verified applicant/member/donor/patient, anonymous visitor, internal system/job identities. A public profile is not automatically a staff/center account.
 
-**Included workflows:** secure creation/invitation/activation/suspension/recovery; protected role creation, permission matrix, copy grants without copying assignees, assignments and visible history; server-authorized org/region/branch/center action and record scope; authorized user directory/search/filter; public sign-in/self-service for actually approved journeys; permission-aware state in five channels; login/session revocation and audit.
+**Included workflows:** secure creation/invitation/activation/suspension/recovery; **UI-driven role creation, permission editing, role copying, staff role assignment and scope assignment on responsive Foundation Admin Web and authorized Internal Android**; protected roles, assignment/history and user-friendly permission matrix; server-authorized org/region/branch/center action and record scope; authorized user directory/search/filter; narrowly delegated center personnel actions only; public sign-in/self-service for approved journeys; permission-aware state in five channels; login/session revocation and audit.
 
 **Excluded:** separate identity provider microservice, custom rule scripting, unlimited dynamic permission expressions, copied customer/patient data, arbitrary clinical access inferred from a role, role system per module, public exposure of technical IDs or permission keys, unauthorised iOS client.
 
 ## Interfaces, dependencies and ownership
 | Consuming surface/domain | CG-01 contract / integration rule |
 | --- | --- |
-| Foundation Admin web | Authorized staff directory, role/access matrix, assignment and scoped context; not new HR master |
-| Healthcare Center Portal | Center-granted session and selected authorized operating location; never Foundation-wide access by inference |
+| Foundation Admin web | Full authorized role creator/editor/copier, grouped permission controls, staff role and Foundation-geography/branch assignment, directory/audit on desktop, tablet and phone browsers; not new HR master |
+| Healthcare Center Portal | Center-granted session and selected authorized operating location; only explicitly delegated center-staff assignments and narrowly bounded permissions, with no Foundation-wide or patient-clinical privilege administration by inference |
 | Public website and Public Android | Verified public session only where service requires; no internal role menu or clinical disclosure |
-| Internal Android | Actual assigned role + location/branch action permissions; unavailable actions fail server-side even when stale client caches them |
+| Internal Android | **Authorized role creation/editing/copy, grouped permission editor, staff role assignment and permitted location assignment through task-focused mobile screens** using the same backend; no desktop-style giant grid. Unavailable actions fail server-side even when stale client caches them |
 | All backend modules | Shared principal, action+resource+scope policy evaluation, scoped query constraints, denial and audit; linked dropdowns must include required permitted reference options without exposing foreign scope |
 | CG-02 Foundation Structure | Owns geography, branches, department/committee; CG-01 references approved scope targets, does not create their data |
 | CG-14 Healthcare Network | Owns center/location/professional records; CG-01 governs staff grants, not clinical relationship |
@@ -43,6 +43,13 @@ mobile_store_status: PLANNING_PROPOSED_NOT_BUILT
 | CG-10 HR / CG-04 / CG-15 | Owns employee/member/patient relationship truth and employment/status; CG-01 links verified relationships through approved owner interface |
 
 **Dependency order:** establish CG-01 account/authenticated principal and safe response contract first; use a minimal controlled Foundation bootstrap (without fictional geography). CG-02 foundation structure and CG-14 center directory must exist before claiming complete live scoped grants for those entities; CG-03 approval can be integrated when its owner is ready. Cross-module source integration is *not* considered complete if only fixture IDs or UI visibility exist.
+
+## Verified BrickOps master reference — patterns only, not copied business rules
+Reviewed `jasiqlabs/brick-ops@master`: `frontend/src/app/dashboard/staff/roles/page.tsx` (Web role creator/editor/copy and grouped checkboxes), `frontend/src/app/dashboard/staff/page.tsx` (role and assigned-plant selectors), `mobile/src/modules/staff/StaffRolesScreen.tsx` (native role editor), `mobile/src/modules/staff/StaffFormScreen.tsx` (native role + location assignment), `backend/src/modules/rbac/middleware/permission-catalog.ts`, `backend/src/shared/security/plant-scope.ts`, and `frontend/src/modules/permissions/useEffectivePermissions.ts` / `mobile/src/core/auth/useEffectivePermissions.ts`.
+
+**Reuse as CareGanga design ideas:** centrally owned stable business capabilities with human-readable labels; protected built-in roles; customizable grant selection; role cloning copies permissions only; role and **authorized scope** combine at backend; revocation invalidates effective access; Web and Android use backend-derived access hints; `selection/options` access is narrower than financial/clinical `view` rights; frontend caches fail closed across role/context changes.
+
+**Avoid copying BrickOps weaknesses:** production/plant/cashier role keys and business assumptions; automatic selection of a broad first role; generic role-name-only authorization; raw `Error.message` display (notably in some Android catch handlers); a private list endpoint used to populate a safe picker; duplicated permission tables in Web and mobile; and previously reported PASS as evidence of current CareGanga verification. CG-01 must instead rely on the CareGanga permission catalog, scoped queries and safe message contract. For a permitted workflow, every required safe selector (e.g. staff, doctor, center, branch, cashier/account where applicable) must have **minimum necessary read-only options** without conferring confidential ledger, salary, patient record or unrestricted admin access. Every such supporting-options dependency must have its own QA scenario when consumed.
 
 ## Unbreakable policies / NFRs
 - **Default deny:** a permitted action AND valid authorized resource/geography/branch/center assignment are both required, including list, search, child dropdown, related record, export, signed-file access, jobs, reports, webhook and audit access.
