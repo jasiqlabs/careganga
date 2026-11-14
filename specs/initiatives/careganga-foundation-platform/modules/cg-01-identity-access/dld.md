@@ -27,7 +27,7 @@ CG-01 also owns **logical future scope grant interfaces**, not premature foreign
 
 ## 3. Capability and authorization contract
 
-A maintained allow-listed capability registry returns \`key, businessLabel, group, assignable, sensitive\` for **implemented/approved** actions. Initial CG-01 actions cover account viewing/managing, roles/view/manage/assign and audit access. New owner modules register their real actions **only when introduced**; existing custom roles acquire no automatic new grants.
+A maintained allow-listed capability registry returns `key, businessLabel, group, assignable, sensitive` for **implemented/approved** actions. Initial CG-01 actions cover account viewing/managing, roles/view/manage/assign and audit access. New owner modules register their real actions **only when introduced**; existing custom roles acquire no automatic new grants.
 
 Authorization order:
 1. Authenticate active account and live unrevoked session.
@@ -38,21 +38,21 @@ Authorization order:
 
 **Foundation-root** grants only CG-01/root operations currently defined. Never interpret root as wildcard to future Foundation branches, provider centers or patient records. A linked public/member/employee/patient identity never inherits another relationship's rights. Future clinical read additionally requires genuine CG-15/16 treatment/purpose authorization.
 
-**Safe selectors:** CG-01 may return minimal eligible account/role \`{value, label, context}\` projections (opaque IDs transmitted, names displayed) with paging/search and an explicit limited selection capability. A feature requiring finance accounts, employees, branches, providers or doctors consumes that **later owner's** authorized options projection; selection does not imply confidential detail/ledger visibility.
+**Safe selectors:** CG-01 may return minimal eligible account/role `{value, label, context}` projections (opaque IDs transmitted, names displayed) with paging/search and an explicit limited selection capability. A feature requiring finance accounts, employees, branches, providers or doctors consumes that **later owner's** authorized options projection; selection does not imply confidential detail/ledger visibility.
 
 ## 4. Typed application and HTTP contracts
 
 | API family (illustrative paths) | Authorization and result |
 | --- | --- |
-| \`/auth/sign-in, sign-out, recover, verify\` | Secure credential/challenge, throttling, expiry, neutral non-enumerating failure; public account access only where an owner has enabled a real self-service flow |
-| \`/me, /access/effective\` | Current identity, verified context, capabilities, revision, allowed CG-01 scope; no frontend-issued privilege accepted |
-| \`/access/roles, /access/roles/:id\` | Authorized role listing + create/edit/copy/retire; server validates every grant, protected privilege, version and audit |
-| \`/access/accounts, /access/invitations\` | Scoped account directory, invite/suspend/reactivate; no CG-10 employee master or center staff record creation |
-| \`/access/assignments\` | Assign/change/revoke permitted non-protected role to real CG-01 account at Foundation-root; reject forged, retired, elevated or outside-context requests |
-| \`/access/accounts/options, /access/roles/options\` | Only permitted, limited label/context selection; separate from unrestricted directory/export privilege |
-| \`/access/audit\` | Scoped privileged history; safe fields only |
+| `/auth/sign-in, sign-out, recover, verify` | Secure credential/challenge, throttling, expiry, neutral non-enumerating failure; public account access only where an owner has enabled a real self-service flow |
+| `/me, /access/effective` | Current identity, verified context, capabilities, revision, allowed CG-01 scope; no frontend-issued privilege accepted |
+| `/access/roles, /access/roles/:id` | Authorized role listing + create/edit/copy/retire; server validates every grant, protected privilege, version and audit |
+| `/access/accounts, /access/invitations` | Scoped account directory, invite/suspend/reactivate; no CG-10 employee master or center staff record creation |
+| `/access/assignments` | Assign/change/revoke permitted non-protected role to real CG-01 account at Foundation-root; reject forged, retired, elevated or outside-context requests |
+| `/access/accounts/options, /access/roles/options` | Only permitted, limited label/context selection; separate from unrestricted directory/export privilege |
+| `/access/audit` | Scoped privileged history; safe fields only |
 
-Define typed commands/queries and stable safe **outcome categories** (\`SUCCESS\`, \`PENDING\`, \`VALIDATION\`, \`DUPLICATE\`, \`FORBIDDEN\`, \`CONFLICT\`, \`UNAVAILABLE\`, \`UNKNOWN\`) shared by Web/Android. Client copy uses user language, never raw exception/provider/SQL/HTTP text or permission/UUID key. Correlated technical cause is available only in redacted operator logs. An unsuccessful API response must never be shown as success.
+Define typed commands/queries and stable safe **outcome categories** (`SUCCESS`, `PENDING`, `VALIDATION`, `DUPLICATE`, `FORBIDDEN`, `CONFLICT`, `UNAVAILABLE`, `UNKNOWN`) shared by Web/Android. Client copy uses user language, never raw exception/provider/SQL/HTTP text or permission/UUID key. Correlated technical cause is available only in redacted operator logs. An unsuccessful API response must never be shown as success.
 
 ## 5. State, transaction and recovery rules
 
@@ -71,7 +71,7 @@ Define typed commands/queries and stable safe **outcome categories** (\`SUCCESS\
 | CG-03 | Protected assignment request, reviewer routing, final authorization callback/reference and idempotent activation | CG-03 Planning/QA |
 | CG-10 | Verified employee-to-account link, employment/status/designation/joining-date query and safe staff selector | CG-10 Planning/QA |
 | CG-14 | Valid active center/location/staff affiliation, center realm grants and negative clinical/cross-center checks | CG-14 Planning/QA |
-| Other owners | Domain capability registry declaration, own scoped resource lookup and \`options\` read model | Introducing module Planning/QA |
+| Other owners | Domain capability registry declaration, own scoped resource lookup and `options` read model | Introducing module Planning/QA |
 
 Each future module consumes **CG-01's completed identity policy contract**, rather than requiring CG-01's original feature to remain blocked. Do not add fake owner rows or mark feature integration verified from type declarations alone.
 
