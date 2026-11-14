@@ -1,7 +1,7 @@
 # CG-BR-200 — Integrated Healthcare Assistance
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Internal consolidated BR · 14 November 2026  
+**Status:** Consolidated business requirements · Client decisions identified separately  
 **Business domains:** CG-14 Healthcare Network, CG-15 Patients and Appointments, CG-16 Diagnostics and Center Services, CG-17 Assistance/Billing/Settlement  
 **Audience:** Foundation leadership, healthcare network administrators, partner center operators, doctors/authorized staff, patients and public website/app users.
 
@@ -9,7 +9,7 @@
 
 CareGanga operates a centrally supervised network of clinics, doctors, hospitals, nursing homes, diagnostic laboratories and other approved healthcare provider categories. The public can discover approved services and centers; eligible patients can book doctors at center-specific slots with disclosed CareGanga financial assistance. Healthcare centers carry out authorized patient and diagnostic operations and record collections; the Foundation controls provider verification, benefit policy, governance, network-wide reporting and settlement.
 
-Healthcare is **one first-class domain inside the CareGanga Foundation platform**, sharing identity, authorization, payment/accounting, media/documents, notifications, approval workflow, CMS and reports. A healthcare center has isolated operational scope within the common backend. This is **not** an independent product data silo.
+Healthcare is **an original, first-class domain inside the CareGanga Foundation platform**, sharing identity, authorization, payment/accounting, media/documents, notifications, approval workflow, CMS and reports. A healthcare center has isolated operational scope within the common backend. This is **not** an independent product data silo.
 
 **Documented public transaction boundary:** The written requirements explicitly provide public **doctor consultation appointments** initially. Lab tests, checkups, camps and other services have publicly displayed information and appropriate **center-side administrative operations**. Newer UI references show buttons for lab test booking, medicine ordering and nursing/OT booking: those are captured as **open functional scope decisions**, not silently presumed live public transactions. See [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
 
@@ -61,6 +61,7 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 - **CG-14-BR17:** Display approved verification/partner status, applicable CareGanga support eligibility and reviews/ratings **only where grounded in a permitted, validated source**. Mockup review counts and badges are examples, not production facts.
 - **CG-14-BR18:** Only approved/published center and doctor records are searchable by the public; internal account status and public listing status remain controlled independently.
 - **CG-14-BR19:** Center staff can submit permitted center website content, service descriptions, images, FAQs, support requests and operating preferences, subject to Foundation review/publication and shared CG-18/19 ownership. The Center Portal cannot publish unverified clinical credentials or independently change Foundation assistance.
+- **CG-14-BR20:** Publish an understandable healthcare service directory covering the nine illustrated provider categories, while separately identifying each center's actual bookable consultation services, diagnostic/lab offerings and published enquiry-only services. Approved center profiles include service/facility tags, contact/map location, professionals, current price and applicable benefits where configured.
 
 **Admin controls:** Provider/branch types, verified status, professional documents, affiliations, service catalogs, center/doctor publication, staff access, fees, benefit-rule association, visibility.  
 **Foundation Admin:** Network-wide controls and comparisons. **Center Portal:** Own-center registration, doctors/services, operational updates and documents. **Public:** Search, filters, maps, profiles and published services.
@@ -109,7 +110,7 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 
 ## 5. CG-16 — Diagnostics, Lab and Other Healthcare Services
 
-**Scope distinction:** This domain has definite **center-side** business functionality, even while public direct booking for services other than doctor appointments is unresolved.
+**Scope distinction:** This domain includes definite **center-side** business functionality. The public UI reference also depicts direct service actions beyond doctor booking; the extent of transactional service checkout remains an explicit decision, not an omitted feature.
 
 - **CG-16-BR01:** Define a diagnostic test master with unique code, name, category, sample type, investigation details/parameters, description and active status.
 - **CG-16-BR02:** Permit authorized center-specific test prices and relevant support/discount policy references, including validity/history.
