@@ -53,6 +53,12 @@ These are **reference IDs from the existing uploaded ZIP audit**, not new screen
 
 **Public Web/Android and Center Portal:** The established CareGanga brand theme stays consistent, but their content/navigation and confidentiality differ by audience. A center selector does not appear until CG-14 provides **real approved center data**; public visitors never receive internal roles.
 
+### Motion, microinteractions and state styling (mandatory)
+
+Keep the **existing CareGanga** interaction language, not merely its colors. Reuse the single verified motion/interaction token set from project bootstrap for: sidebar submenu expand/collapse and active selection, table search/filter/tab changes, role permission group expansion and checkbox/toggle feedback, Add Staff/Create Role right-drawer entrance/exit/overlay, modal or confirmation display, loading indicators, disabled/pending saves, success/error toasts and focus feedback. Apply consistent animations and disabled/loading behavior across Web and the corresponding native Android flows.
+
+**Evidence boundary:** The audit's U02–U10/B34 still images establish the screens/components and visible states, but **not** transition duration/easing, spring, overshoot or sequencing. An exact motion claim requires matching the original recorded walkthrough/video or otherwise authenticated original motion design, and comparison with a rendered flow. Before that: preserve the appearance and functional transitions, use restrained accessible native behavior where needed, mark timing `MOTION_REFERENCE_UNVERIFIED`, and **never invent a new brand animation**. Respect reduced-motion settings and performance (no animation-induced delayed/false action state).
+
 ## 5. Source QA and fidelity acceptance
 
 - Compare every CG-01 Web screen to **U02–U10/B34** and the Admin global shell: existing colors, typography hierarchy, spacing, card/table/badge treatment, right drawer, filters, action placement and navigation.
