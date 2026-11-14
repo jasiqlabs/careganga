@@ -351,7 +351,7 @@ Detailed dialog placements, screen ordering, icon/color treatment and responsive
 - [x] Current Foundation and integrated healthcare scope clearly separated from any non-current archived screen material.
 - [x] UI-only observations retained for UX/PRD design without creating duplicate BR capabilities.
 - [ ] Working UI/API/payment/security behaviour — **not established by static images** and must be verified during implementation/QA.
-- [ ] Client policy decisions on unresolved matters — recorded in CG-BR-900.
+- [x] Earlier policy questions now have delegated initial-launch defaults in CG-BR-900; real merchant credentials and clinical/legal verification remain release readiness checks.
 
 ## 12. ZIP integrity and navigation-only evidence
 
