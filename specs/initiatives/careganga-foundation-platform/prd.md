@@ -3,8 +3,8 @@
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
-**Harness:** JASIQ Harness v2, originally reviewed at `27ceb481aff168915d3c0ba776cf7aa08e71eb23`; CareGanga bootstrap now pins latest reviewed main `72c532fb65aab82cc6b99457001505b16c5f37fe` (freshness must be rechecked at every stage)  
-**Document status:** REVIEWED — owner-delegated design authorization recorded. Current hash-bound decision, if recorded, is in initiative-local `approvals.json`; actual resolver verification is a separate NOT_RUN gate.  
+**Harness:** JASIQ Harness v2, product-reviewed/pinned `jasiq-harness/main` commit `3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd`; recheck latest remote commit and local resolver before each stage.  
+**Document status:** VISUAL-FIDELITY REQUIREMENT ADDED / RE-REVIEW REQUIRED. Previous delegated approval applies only to its prior file SHA; this revised PRD requires renewed artifact-hash-bound owner-delegated design approval after local Harness preflight. Resolver, runtime and rendered visual comparison: NOT_RUN.  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
 **Prepared for review:** 14 November 2026  
