@@ -163,19 +163,19 @@ A workflow cannot be called production-ready if **one of the relevant P0 gates f
 9. **Failure and restore:** Payment provider offline, email send fails, interrupted file/GPS request, backup restore drill: truthful recoverable states and no silent data loss.
 10. **Device/UX:** Public mobile, internal Android and responsive web complete a representative core task with proper validation, readable paid/due documents and no confusing duplicate navigation.
 
-## 14. Formal acceptance and sizing decisions
+## 14. Adopted operational defaults and evidence required for go-live
 
-These questions **must be completed before final numerical SLA approval** but do not hold up documenting P0 integrity/security requirements:
+These are **not additional client questions or new modules**. Security, medical-data privacy, financial correctness, concurrency and real recovery tests remain P0 even before numerical SLAs are agreed.
 
-| ID | Required input | Why it matters |
+| Ref | Planning default | What must be verified before measuring/releasing |
 | --- | --- | --- |
-| **NDEC-01** | Expected registered users, peak concurrent active sessions, number of centers/doctors, slots/day, documents and annual growth | Final load/performance data sizes |
-| **NDEC-02** | Hosting provider, budget, support hours and maintenance window | Availability, RPO/RTO feasibility |
-| **NDEC-03** | Required languages, accessibility target and baseline device/network profile | Web/Android test acceptance |
-| **NDEC-04** | Client-approved retention/consent, clinical record access, publication of beneficiary stories, legal and regulatory advice | Privacy/governance acceptance |
-| **NDEC-05** | Merchant ownership, bank accounts, payment settlement schedule and PSP credentials | Financial integrity and failure response |
-| **NDEC-06** | Which admins are required to use 2FA and admin password/session rules | Authentication policy |
-| **NDEC-07** | Messaging/push/WhatsApp providers, sender registration and delivery expectations | Notification acceptance |
-| **NDEC-08** | Whether there is an explicit offline field-work requirement | Avoid inventing a costly offline sync engine |
+| NDEC-01 | Use the documented representative 100-concurrent-user performance scenario as an initial design/test fixture, not a forecast | Actual center/users/appointments/data growth before final load/SLA |
+| NDEC-02 | Keep architecture economical and recovery-capable, with proposed 99.9% uptime, RPO 1 hour, RTO 4 hours only as targets | Hosting plan, budget, backup infrastructure, responsible operator and successful restore drill |
+| NDEC-03 | **English only at launch**, India-friendly INR/phone/date/address; accessible responsive web and Android; do not introduce extra languages | Representative baseline devices/networks and accessibility checks during QA |
+| NDEC-04 | Purpose-limited patient/beneficiary data access and explicit consent; store only necessary clinical documents; no automatic public disclosure | Actual legal/medical consent text, client-approved retention and professional privacy/legal review |
+| NDEC-05 | Healthcare centers collect patient money directly through verified own merchant or at center, Foundation settles approved contributions monthly | Legitimate bank/merchant setup and reconciled settlement records, before real online processing |
+| NDEC-06 | Require MFA for Super Admin, finance and healthcare privileged accounts; secure session revocation/password-reset | Configured identity/MFA provider, access-negative and revocation tests |
+| NDEC-07 | Email/SMS and supported push for configured workflows; WhatsApp only with approved provider and consent | Real sender onboarding/credentials, opt-in and delivery/failure testing |
+| NDEC-08 | Online-first field work, safe draft and retry; **no general offline synchronization engine** | Network interruption, GPS-denied and duplicate-retry scenarios tested |
 
-**Scope discipline:** These are quality requirements and risk-control checks, **not** new product modules, independently chargeable features, or an instruction to introduce a complex distributed architecture. PRDs should link the relevant IDs and HLD/DLD should determine economical implementation details.
+**No fake readiness:** Unverified numeric results, credentials, legal validity or delivery performance are recorded as NOT_MEASURED/NOT_RUN, not declared achieved. Architecture and Planning use these defaults without adding unrelated configuration screens.
