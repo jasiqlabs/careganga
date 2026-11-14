@@ -1,15 +1,15 @@
 # CareGanga Foundation — Integrated Platform High-Level Design (HLD)
 
-**Initiative:** \`careganga-foundation-platform\`  
-**Product / repository:** CareGanga Foundation · \`jasiqlabs/careganga\`  
+**Initiative:** `careganga-foundation-platform`  
+**Product / repository:** CareGanga Foundation · `jasiqlabs/careganga`  
 **Mode:** GREENFIELD — no running product, deployed infrastructure, selected runtime stack or existing implementation assumed  
-**Authoritative location:** \`specs/initiatives/careganga-foundation-platform/hld.md\`  
-**Working branch:** \`feature/careganga-greenfield-prd-20261114\`  
-**Architecture baseline:** Product PRD \`prd.md\`, Git blob \`b4f667db52bc0d64afeaf482c9b6e3e5fc376a0c\` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in \`docs/business-requirements/\`  
-**Shared methodology:** JASIQ Harness v2 pinned \`0308fbd9e332c51955c7d0da7a8023f87cbf1fe5\`  
+**Authoritative location:** `specs/initiatives/careganga-foundation-platform/hld.md`  
+**Working branch:** `feature/careganga-greenfield-prd-20261114`  
+**Architecture baseline:** Product PRD `prd.md`, Git blob `b4f667db52bc0d64afeaf482c9b6e3e5fc376a0c` (Git blob identifier, **not** the Harness SHA-256 approval digest); BR/NFR documents in `docs/business-requirements/`  
+**Shared methodology:** JASIQ Harness v2 pinned `0308fbd9e332c51955c7d0da7a8023f87cbf1fe5`  
 **Prepared:** 14 November 2026  
 **Status:** **IN_REVIEW — architecture draft prepared under the user's explicit delegated direction; formal PRD artifact approval evidence and executable HLD resolver preflight remain pending. This is NOT a Harness APPROVED artifact.**  
-**Approval integrity:** The user authorized proceeding as delegate in the current conversation. This authorizes preparation and review, **not fabrication** of an externally verifiable human approval, the exact PRD SHA-256, an independent review, or client sign-off. No \`approvals.json\` has been fabricated. The pinned Harness stage gate must be resolved before formal approval/planning/development.
+**Approval integrity:** The user authorized proceeding as delegate in the current conversation. This authorizes preparation and review, **not fabrication** of an externally verifiable human approval, the exact PRD SHA-256, an independent review, or client sign-off. No `approvals.json` has been fabricated. The pinned Harness stage gate must be resolved before formal approval/planning/development.
 
 ## 1. Executive architecture decision
 
@@ -64,7 +64,7 @@ The PRD's delegated business defaults govern the **provisional architecture scop
 
 ### 3.1 High-level system context
 
-\`\`\`mermaid
+```mermaid
 flowchart LR
   Public["Public visitors, donors, members, volunteers, patients"]
   Staff["Foundation leadership, HR/finance, field staff"]
@@ -93,7 +93,7 @@ flowchart LR
   API --> Pay
   API --> Msg
   API --> Map
-\`\`\`
+```
 
 **Trust boundary 1 — Internet/public:** Published marketing, service search, application and payment initiation can be available without staff authorization, with explicit response allowlists, user identity verification where appropriate, throttling and no private record enumeration.
 
@@ -107,7 +107,7 @@ flowchart LR
 
 ## 4. Proposed runtime/container view
 
-\`\`\`mermaid
+```mermaid
 flowchart TB
   subgraph Clients["Presentation/channel boundary"]
     Web["Next.js public + Foundation Admin + Center Portal"]
@@ -135,7 +135,7 @@ flowchart TB
   Integration --> Storage
   Integration --> Ext
   Jobs --> Integration
-\`\`\`
+```
 
 **Logical channels vs deployables:** The three web experiences can share one frontend project while using independently protected routes/layouts. Two Android **app packages** remain independently releasable. Backend module boundaries are **internal**, not microservice deployments. Private medical and employment documents do not become public CDN assets merely because they are in the same object storage account.
 
@@ -231,7 +231,7 @@ Foundation organization geography and internal branch hierarchies come from CG-0
 
 **Authoritative inventory:** CG-15 owns capacity and reservations. CG-14 owns doctor, affiliated centers and valid fee associations. Center-first and slot-first search are **two projections of the same actual schedule**, not two booking services.
 
-\`\`\`mermaid
+```mermaid
 sequenceDiagram
   participant Patient as Public web/Android
   participant API as Authorized backend
@@ -254,7 +254,7 @@ sequenceDiagram
     API->>Booking: Confirm only valid held reservation
     API-->>Patient: Confirmed/paid or honest pending/failed state
   end
-\`\`\`
+```
 
 **Key invariants:**
 
@@ -288,7 +288,7 @@ sequenceDiagram
 
 ### 6.6 Failures/unknown-success and side-effect isolation
 
-Classify responses consistently: loading, confirmed empty, validation error, unauthorized, forbidden, conflict, expired, offline, dependency unavailable, **pending verification/unknown completion**, final success, and partial external delivery. UI must display the actual backend outcome. Do not return \`200\` or an empty success payload when the database write, notification dispatch, payment, approval or provider call has failed.
+Classify responses consistently: loading, confirmed empty, validation error, unauthorized, forbidden, conflict, expired, offline, dependency unavailable, **pending verification/unknown completion**, final success, and partial external delivery. UI must display the actual backend outcome. Do not return `200` or an empty success payload when the database write, notification dispatch, payment, approval or provider call has failed.
 
 - Business transactions succeed or fail within a controlled DB boundary. External messages/receipt generation are **durably retried** and may be marked queued/failed without rollback of already accepted core business state.
 - Payment and settlement state remains pending if provider response cannot be confirmed; reconcile using authenticated provider status and idempotent events.
@@ -440,7 +440,7 @@ Verify a real backup restore in an isolated non-production environment before pr
 | **R-10 High-risk coupled module boundaries** | Broken ledger/cross-channel features or unreadable monolith | Module-level contracts, DLD only for risky boundaries, local/manual code review + independent QA |
 | **R-11 Local execution and independent review availability** | Stage gate not validated, no independent assurance | This HLD is a draft; GitHub-connected file review ≠ local resolver or independent architect/QA validation |
 
-**Stage handoff rule:** Before Planning, complete authentic PRD + HLD approval evidence, validate the current pinned Harness resolver and review the *final* HLD revision. The next module Planning workflow determines whether UIUX/DLD are \`REQUIRED\`, \`EXISTING\` or \`NOT_REQUIRED\` per business module; high-risk scheduling, finance, healthcare identity and permission boundaries generally warrant DLD. No user stories/tasks are created by this HLD.
+**Stage handoff rule:** Before Planning, complete authentic PRD + HLD approval evidence, validate the current pinned Harness resolver and review the *final* HLD revision. The next module Planning workflow determines whether UIUX/DLD are `REQUIRED`, `EXISTING` or `NOT_REQUIRED` per business module; high-risk scheduling, finance, healthcare identity and permission boundaries generally warrant DLD. No user stories/tasks are created by this HLD.
 
 ## 13. Review checklist and current evidence
 
