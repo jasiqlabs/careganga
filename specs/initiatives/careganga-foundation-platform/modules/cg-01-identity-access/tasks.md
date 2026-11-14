@@ -12,7 +12,7 @@ The heading above identifies the **intended immutable definitions**; they are **
 
 Outcome: An authorized Foundation administrator can securely bootstrap the first protected account, sign in/out through Web and Internal Android, recover access, and see only the correct authenticated navigation. Approved public identity entry points do not accidentally acquire staff access.
 
-Requirements: FR-001, FR-003, FR-080; CG-01-BR01, BR08–09; BR-001/002/017; N-01/N-05/N-09.
+Requirements: FR-001, FR-003, FR-080; CG-01-BR01, BR08–09; BR-001/002/017; N-01/N-05/N-09/N-13.
 
 Scope: The **one-time technical bootstrap** (single backend/PostgreSQL migrations, responsive Web/Public/Center shells and distinct Public/Internal Android shells) plus real CG-01 account, credential/challenge, verified contact, session state and access-version storage; secure initial Super Admin provisioning/recovery with protected last-root logic; authenticated backend guard; bounded login/recovery provider adapter with genuine pending/failure handling. Public browsing stays public. No branch/employee/provider master, fake OTP or duplicate general messaging ledger.
 
@@ -28,8 +28,9 @@ Acceptance:
   - **US-001-QA05:** Invite/recovery provider unavailable, challenge expired or confirmation response lost → UI says pending/unavailable (not success); backend challenge is expiring, one-use and retry/idempotent; no duplicate account/credential.
   - **US-001-QA06:** Anonymous visitor opens Public Web/Public Android and tries an Internal/Center deep link → genuine public content works, protected actions denied server-side; no fabricated center affiliation or public-to-staff permission.
   - **US-001-QA07:** Privileged admin signs in with missing/invalid/expired MFA challenge or provider interruption → access remains denied/pending, no privileged session or bypass, safe retry/error in Web/Internal Android and protected challenge records.
+  - **US-001-QA08:** Authorized Foundation operator signs in on Web/Internal Android → inspect same shared CareGanga brand palette, type, header/sidebar/native styling and verified loading/sign-in/error transition tokens as original audit shell (U01–U03); backend auth result is unchanged. Source QA checks reused tokens/motion components; independently authorized visual QA must compare original PNG/video and real rendered flows before exact-style/motion PASS.
 
-Verification: Manually inspect each US-001-QA01–07 from exact UI event/request → typed auth route → session and rate-limit validation → transaction/index/secret protection → safe response → both client states. Record source file:function references per case after implementation. Review Android manifests/lockfile against maintained Expo SDK 58/target API 36 baseline and note device/AAB evidence NOT_RUN.
+Verification: Manually inspect each US-001-QA01–08 from exact UI event/request → typed auth route → session and rate-limit validation → transaction/index/secret protection → safe response → both client states. Record source file:function references per case after implementation. Review Android manifests/lockfile against maintained Expo SDK 58/target API 36 baseline and note device/AAB evidence NOT_RUN.
 
 Dependencies: None
 
@@ -37,7 +38,7 @@ Dependencies: None
 
 Outcome: An authorized Foundation administrator can create, edit, copy, view and safely retire custom roles and their **actual implemented** permissions through responsive Web and native Internal Android; server-side authorization and audit reflect the result immediately.
 
-Requirements: FR-002–003, FR-080; CG-01-BR02–04, BR07–08; BR-002/017; N-01/N-05/N-09.
+Requirements: FR-002–003, FR-080; CG-01-BR02–04, BR07–08; BR-002/017; N-01/N-05/N-09/N-13.
 
 Scope: Roles, grant catalog, role versions, access audit and effective action-grant policy; backend role CRUD/copy/protection, atomic mutation and session-grant revision; grouped human-language Web role editor and native Android role flows. Built-in protected roles and safe permitted grant copying. Future domains declare capabilities later, default-denied; **do not depend on CG-02/03/10/14** or grant access to their absent records.
 
@@ -53,8 +54,9 @@ Acceptance:
   - **US-002-QA05:** Two administrators edit same role revision concurrently → backend accepts one revision, reports actionable conflict for stale one, retains correct grants/audit and no partial overwrite.
   - **US-002-QA06:** Previously assigned account loses an action; its cached Web/Android menu/direct API call is stale → authoritative backend denies immediately, old confidential content clears and role history shows change.
   - **US-002-QA07:** Newly introduced future module capability is absent from current catalog, or later added → existing role receives no silent automatic grant; UI groups only real allowed actions, backend denies unknown/not-granted capability.
+  - **US-002-QA08:** Authorized role manager opens the real Web Roles & Permissions matrix and Create/Copy Role drawer (U05–U09) plus native Android equivalent → preserve original CareGanga colors, form/drawer, tables, status/checkbox and navigation visual language and source-supported drawer/tab/expand/save feedback; backend role mutations remain correct. Compare shared tokens and supported motion in source; original PNG/video and rendered visual proof remain separately required.
 
-Verification: Source-trace every US-002-QA01–07 through Web/native form and permission matrix → role API, guards and validated catalog → atomic grant/version/audit mutation → effective server authorization and both clients. Inspect optimistic conflicts, protected root, role-copy and deny queries; document source evidence per case. Visual/devices/runtime NOT_RUN.
+Verification: Source-trace every US-002-QA01–08 through Web/native form and permission matrix → role API, guards and validated catalog → atomic grant/version/audit mutation → effective server authorization and both clients. Inspect optimistic conflicts, protected root, role-copy and deny queries; document source evidence per case. Visual/devices/runtime NOT_RUN.
 
 Dependencies: US-001
 
@@ -62,7 +64,7 @@ Dependencies: US-001
 
 Outcome: An authorized Foundation staff-access manager can invite a real CG-01 account, search permitted accounts/roles, assign/change/revoke non-protected roles at **Foundation-root**, and review history on Web and Internal Android—without waiting for geography, HR or healthcare modules.
 
-Requirements: FR-001–003, FR-080; CG-01-BR01–02, BR05–08, BR10 (account/role/status fields currently owned by CG-01); BR-001/002/017; N-01/N-05/N-09.
+Requirements: FR-001–003, FR-080; CG-01-BR01–02, BR05–08, BR10 (account/role/status fields currently owned by CG-01); BR-001/002/017; N-01/N-05/N-09/N-13.
 
 Scope: Account directory with actual name/contact/account-status/role filters and paginated counts; secure invitation lifecycle and suspend/reactivate; Foundation-root assignment to a real account; restricted audit; **CG-01-owned** account and role minimum-field options for authorized workflows. Responsive Web + native Android account/assignment screens, safe stale-context invalidation. Employee/department/branch/center/clinical filters and selections belong to future owner integrations, **not this story**.
 
@@ -79,8 +81,9 @@ Acceptance:
   - **US-003-QA06:** Previously signed-in staff is suspended or loses role while Web/Android have cached search/navigation → subsequent API denied, client clears role options and sensitive data, other account's data never appears.
   - **US-003-QA07:** Empty role/account query, filtered no-result, provider failure, long names or API timeout → distinct accessible empty/loading/failed/pending UI; no raw error; bounded paginated DB query, no background polling loop.
   - **US-003-QA08:** User searches employment type, joining date, geography or center before those owners exist → CG-01 UI does **not** invent unusable filters/options; later CG-02/10/14 owners must add and source-verify the real integration with safe default-deny.
+  - **US-003-QA09:** Authorized manager uses Users Management/Add Staff/Role Assignment (U02–U04, B34) on desktop, responsive Web and native Android → same screenshot-derived theme, table/KPI/search/drawer/action styling, safe name-based options and verified open/close/loading/confirmation motion; no future-module dummy filters. Source QA traces shared tokens and real account/role API, with visual comparison to original images/videos deferred to independent authorized QA.
 
-Verification: Trace all US-003-QA01–08 through each applicable Web/Android action → identity/assignment/options API → backend scope/capability guard → unique/index/transaction/audit/revocation/provider path → filtered human-readable client result. Verify ordinary account search cannot disclose HR, finance or medical data. Record exact source references and unresolved gaps individually.
+Verification: Trace all US-003-QA01–09 through each applicable Web/Android action → identity/assignment/options API → backend scope/capability guard → unique/index/transaction/audit/revocation/provider path → filtered human-readable client result. Verify ordinary account search cannot disclose HR, finance or medical data. Record exact source references and unresolved gaps individually.
 
 Dependencies: US-001, US-002
 
