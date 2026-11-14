@@ -1,8 +1,7 @@
 # CG-BR-600 — Cross-Platform Non-Functional Business Requirements (NFR)
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Version:** 1.0 · **Date:** 14 November 2026  
-**Status:** Product-owner/architect-proposed measurable baseline, pending client sizing and service-level approval  
+**Status:** Shared quality baseline; P0 integrity/security mandatory, numerical service targets proposed pending sizing and client approval  
 **Applies to:** Public Website, Foundation Web Admin, Healthcare Center Portal, Public Android, Internal Android, centralized backend, database, documents and third-party integrations.
 
 ## 1. How to read this without overengineering
