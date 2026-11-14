@@ -1,16 +1,16 @@
 # CG-BR-500 — Independent Source-to-BR Coverage Audit
 
-**Review date:** 14 November 2026  
-**Review scope:** [61-page client PDF](04-TRACEABILITY-DECISIONS.md), 19 October CareGanga meeting transcript, healthcare UI references actually attached in this conversation, and committed CG-BR-000/100/200/300.  
-**Review method:** Page-by-page written source inspection; section/feature-to-owning-BR comparison; visual review of the supplied healthcare screenshots; transcript cross-check for governance, visibility, approvals and app audiences; NFR risk analysis.  
-**Outcome:** **Major business domains retained. Source-level omissions and ambiguities identified; targeted additions committed to the appropriate BR, plus [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md).** Exact original legacy admin-video frame validation is **not possible** because those prior archives are unavailable in this session.
+**Source baseline:** CareGanga Foundation final requirements and provided reference material  
+**Review scope:** 61-page client requirements PDF, October Foundation meeting transcript, healthcare UI references, and the supplied 167-image Foundation Admin ZIP.  
+**Review method:** Map each client PDF section and healthcare feature to owning CG module; reconcile meeting and screenshot context; link detailed Admin-screen evidence in the separate UI/UX audit.  
+**Outcome:** All 75 healthcare feature IDs and the available numbered Foundation requirement sections are mapped; Admin screenshot-specific controls are covered in the current owner BR or flagged for PRD-level implementation detail. This is evidence and traceability, not a separate BR revision.
 
 ## 1. Audit status conventions
 
 - **Covered (C):** Explicit in previously created BR.
 - **Refined (R):** Originally high level, partially missing or underspecified; a targeted correction is now included in the indicated BR.
 - **Decision (D):** Actual scope or business rule cannot be determined from current sources; recorded in [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
-- **External validation (V):** Original prior videos/images are not currently inspectable, and exact parity remains unverified.
+- **Visual evidence (V):** The supplied screenshots are inspectable and mapped; actual click-through/API behaviour is unverified.
 - **Recommended NFR (N):** Industry-quality proposal, not stated as client requirement; tagged accordingly in CG-BR-600.
 
 **A row marked C/R means coverage as a business requirement, not that code has been implemented or tested.** The source PDF's 49 numbered sections and healthcare features 1–75 are checked below. Section numbers §30–31 do not exist in the supplied numbered list; no additional modules have been invented to fill the gap.
@@ -67,7 +67,7 @@
 | §48 / pp43–44 | Required end-to-end registration, finance, payroll, CMS and report journeys | CG-BR-000 §7 | **C**, protected cross-channel source-tracing **NFR P0** |
 | §49 / p59 | Full source functionality, configurable admin, linked finance, backend authorization | All | **C** with **V** for previous raw screenshot recordings; exact field/case mapping occurs in PRDs |
 
-**Public event coverage:** Source Quick Actions and Public Android include events (pp2/41), but no detailed independent event-registration workflow. **R**: CG-05 manages authorized event records and CG-18 publishes them. No ticketing/calendar engine is inferred.
+**Public event coverage:** Source Quick Actions and Public Android include events (pp2/41). CG-05 owns event records and CG-18 owns authorized public display; an additional event-ticketing engine is not inferred.
 
 ## 3. Healthcare — public site features 1–21
 
@@ -198,53 +198,16 @@ The transcription is partly noisy, so treat it as **corroborating context**, not
 
 **Do not use the noisy transcript to authorize a new feature that is absent from the current integrated Foundation/Healthcare requirements.**
 
-## 8. Audit gap disposition — what actually changed
+## 8. Final source coverage and interpretation
 
-### Closed in this feature branch (source-level corrections)
+**Inputs directly available for verification:** the 61-page final requirements PDF; the CareGanga Foundation meeting transcript dated 19 October 2026; the current healthcare UI images; and the Admin Panel screenshot ZIP with **167 distinct PNG screenshots** (A01–A19, B01–B51, C01–C55, U01–U42). The complete screenshot-by-screenshot inventory and exact observed menu/form/action details are in [Admin Panel UI/UX Reference Audit](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md).
 
-1. **Role editor:** role color, expandable permission matrix, permission count, expanded internal user search and staff first-login.
-2. **Registration queue:** document-by-document review remains; average turnaround and filter classes now explicit.
-3. **Branch registration:** actual seven stages and source fields mapped, keeping branch code dependent on approval.
-4. **Volunteer onboarding:** original availability choices and category names explicit.
-5. **Vouchers and invoices:** amount-in-words, GST/project/ITPA and proper draft→items→documents→approver workflow.
-6. **Referral benefit types:** badges/certificates/digital benefits specified without duplicating reward inventory.
-7. **Foundation events:** limited actual event management/publication covered without inventing event ticketing.
-8. **Center directory:** search filters, verified state, list/grid sorting, capability flags and map.
-9. **Doctor leave:** approval/rejection route and schedule consequences explicit.
-10. **Appointments:** Add-to-Calendar and one center-wise inventory; secure booking retrieval.
-11. **Center collections:** overdue aging/follow-up included.
-12. **Center support:** support tickets, service requests, FAQs and proposed center content use shared owner modules.
-13. **Doctor performance:** consultations, served patients, fee/revenue, Foundation support.
-14. **CMS:** preview, reviewer decision and scheduled publication explicitly supported.
-15. **Security:** two-factor support, authorization, clinical privacy, backup control.
-16. **NFR:** full P0 business integrity/security gates with proposed measurable P1 targets, application evidence and module mapping.
+**Coverage position:** all numbered Foundation sections present in the supplied PDF and **all 75 healthcare features** are mapped above. All 167 Admin PNGs are individually indexed in the reference audit. The 26 screenshot-to-BR candidates have been reconciled to an owning business requirement or intentionally kept as PRD/UI detail (see screenshot audit). The operating platform includes public website, Foundation Admin, center portal, both Android applications and shared backend.
 
-### Open business decisions (cannot be guessed)
+**Current BR baseline:** The normative business scope lives in the [Master BR](00-MASTER-BUSINESS-REQUIREMENTS.md), [Foundation BR](01-FOUNDATION-OPERATIONS-BR.md), [Healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md), [CMS and channels BR](03-CMS-CHANNELS-BR.md) and [shared NFR baseline](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md). This file is **traceability evidence**, not an alternative BR version or new feature list.
 
-The [D-01–D-25 register](04-TRACEABILITY-DECISIONS.md) includes **lab/medicine/nursing public transaction scope; manual versus automatic center assignment; benefit eligibility/full coverage; payment-merchant flow; approval hierarchy; family/prescription access; rating sources; precise PDF/QR identifiers; mobile workflow scope; report sign-off; center backup rights; and original recording reinspection**. These are not automatically approved or rejected because a screenshot contains a button.
+**Evidence boundary:** Screenshots establish visible content and interaction affordances, but not successful API behaviour, persistence, accounting accuracy, permission enforcement, publication, deployment, payment delivery or clinical correctness. Test those during PRD/manual QA. The original moving videos do not need to be replayed to establish that all **167 submitted screenshot files were inventoried**, but unrecorded video interactions cannot be verified.
 
-### Important interpretation guardrails
+**Client decisions:** Reconcile the genuinely unresolved scope and policy questions in the [single decision register](04-TRACEABILITY-DECISIONS.md). Do not silently add checkout/delivery/services or obscure confirmed requirements because the visual UI differs from prose.
 
-- Source material calls for a complete integrated **Foundation + Healthcare** platform. No separate duplicated application/database should be developed for healthcare.
-- Public doctor booking is specified by written functional scope; marketing cards for other services are **not** an implicit obligation to implement delivery, prescription checkout, surgery scheduling or insurance adjudication.
-- Public showing a doctor/center/project is not equivalent to allowing CMS to approve its professional or finance state.
-- No unsupported claims that previous raw admin recordings have been re-reviewed.
-- Numeric NFRs are professional proposals, not client-originated figures; approve sizing and hosting before contract-level commitment.
-
-## 9. Minimal quality gates for each PRD without documentation clutter
-
-Use one **BR-to-PRD row per scenario**, with references rather than copying whole NFR sections:
-
-\`Source page/UI → CG-BR ID → module owner → actor/scope → configuration → action/status → backend business outcome → financial/document/public effect → NFR IDs → manual QA scenario → client decision (if any)\`.
-
-Mandatory scenario types: **happy, validation/rejection, unauthorized access, stale/duplicate/retry, concurrency (booking/financial/stock), interrupted network/provider failure, cross-channel consistency, and report/export/privacy** when applicable.
-
-Each module PRD should link [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) by NFR IDs, then HLD/DLD define its test approach. A single cross-cutting NFR checklist is better than 21 nearly identical copies.
-
-## 10. Audit sign-off position
-
-- **Document coverage:** Complete pass across all 61 PDF pages, main sections and healthcare features 1–75, the available healthcare screenshots, and the recovered meeting transcript.
-- **Corrections:** Incorporated into owner BR and shared NFR baseline.
-- **Original raw admin-video replay:** Still unavailable; do not state completed.
-- **Client approval:** Not supplied; this remains an internally reviewed BR requiring client decisions/sign-off.
-- **Production implementation / test execution:** Not attempted by this document review.
+**Business-module boundary:** Every source-backed function belongs to an existing CG module. UI pages, payroll links, receipt templates, dashboards, content tabs, report packs and approval queues are **presentations and workflows** of those modules—not permission to create competing data stores or independent engines.
