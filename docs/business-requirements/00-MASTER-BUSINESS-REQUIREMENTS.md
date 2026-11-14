@@ -65,7 +65,7 @@ The module register is the proposed **PRD boundary**. A dashboard, configuration
 | **CG-02** | Foundation Structure & Governance | Foundation profile, branch hierarchy, departments, committees, governance masters | HR, projects, reports, CMS |
 | **CG-03** | Registration, Verification & Approvals | Reusable applications, document checks, approval routing, status and decisions | Member, volunteer, branch, CSR, providers, expenses, payroll |
 | **CG-04** | Members, Membership & Volunteers | Member and volunteer records, tiers, fees, ID/certificates, assignments | Public joins, referrals, projects |
-| **CG-05** | Projects, Tasks & Field Operations | Projects, tasks, activities, geotagged field visits, operational progress | Beneficiaries, budgets, impact |
+| **CG-05** | Projects, Tasks & Field Operations | Projects, tasks, activities/events, geotagged field visits, operational progress | Beneficiaries, budgets, impact |
 | **CG-06** | Beneficiaries & Assistance Distribution | Beneficiary records, aid issued, quantities, values and support history | Projects, inventory, impact |
 | **CG-07** | Campaigns, Donations & Fundraising | Campaigns, donor transactions, donation receipts, public fundraising | Finance, CMS |
 | **CG-08** | CSR Partners, Funding & Fund Allocation | CSR registration, proposals, contributions, shared funding, agreements | Project budgets, finance |
