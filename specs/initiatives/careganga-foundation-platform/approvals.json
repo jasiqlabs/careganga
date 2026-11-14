@@ -6,20 +6,20 @@
       "approval_mode": "OWNER_DELEGATED",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "prd.md",
-      "sha256": "205f8d45d8e18cddcbe5a8947b673c1f8daa3e5d458033b6efeb307918d1956c",
+      "sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
       "approved_by": "ChatGPT GPT-6 (delegated design reviewer)",
-      "evidence": "https://github.com/jasiqlabs/careganga/blob/645ba1359e8aa3bea117d9791d16f02f1f0e96a7/specs/initiatives/careganga-foundation-platform/prd.md",
-      "approved_at": "2026-11-14T16:14:44.657Z",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/00882a3b18242d0b60dcb1456b36cd1ff9b1f4d9/specs/initiatives/careganga-foundation-platform/prd.md",
+      "approved_at": "2026-11-14T16:30:27.755Z",
       "quality_review": {
         "status": "COMPLETE",
-        "artifact_sha256": "205f8d45d8e18cddcbe5a8947b673c1f8daa3e5d458033b6efeb307918d1956c",
-        "rounds": 2,
+        "artifact_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
+        "rounds": 3,
         "open_critical": 0,
         "open_major": 0,
         "open_actionable": 0,
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
-        "evidence": "https://github.com/jasiqlabs/careganga/blob/645ba1359e8aa3bea117d9791d16f02f1f0e96a7/specs/initiatives/careganga-foundation-platform/prd.md#12-acceptance-quality-review-and-sign-off-state"
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/00882a3b18242d0b60dcb1456b36cd1ff9b1f4d9/specs/initiatives/careganga-foundation-platform/prd.md#12-acceptance-quality-review-and-sign-off-state"
       }
     },
     "hld": {
@@ -27,20 +27,20 @@
       "approval_mode": "OWNER_DELEGATED",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "hld.md",
-      "sha256": "cc849a73c715d8e2c8dfbf8ba81ee19da1096e404e96dea35335bff0b9e742a7",
+      "sha256": "0343a377ebe8bdb49b797701d1c7397be899fc79de7ba88544313e7674b3f8f6",
       "approved_by": "ChatGPT GPT-6 (delegated design reviewer)",
-      "evidence": "https://github.com/jasiqlabs/careganga/blob/f87d8cec64e795602e02ac21679bc4d9c33e810c/specs/initiatives/careganga-foundation-platform/hld.md",
-      "approved_at": "2026-11-14T16:16:42.360Z",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/2053cc9b8f5712d741cc233912321fa3115f2b43/specs/initiatives/careganga-foundation-platform/hld.md",
+      "approved_at": "2026-11-14T16:30:27.755Z",
       "quality_review": {
         "status": "COMPLETE",
-        "artifact_sha256": "cc849a73c715d8e2c8dfbf8ba81ee19da1096e404e96dea35335bff0b9e742a7",
-        "rounds": 3,
+        "artifact_sha256": "0343a377ebe8bdb49b797701d1c7397be899fc79de7ba88544313e7674b3f8f6",
+        "rounds": 5,
         "open_critical": 0,
         "open_major": 0,
         "open_actionable": 0,
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
-        "evidence": "https://github.com/jasiqlabs/careganga/blob/f87d8cec64e795602e02ac21679bc4d9c33e810c/specs/initiatives/careganga-foundation-platform/hld.md#13-review-checklist-and-current-evidence"
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/2053cc9b8f5712d741cc233912321fa3115f2b43/specs/initiatives/careganga-foundation-platform/hld.md#13-review-checklist-and-current-evidence"
       }
     }
   }
