@@ -3,8 +3,8 @@
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
-**Harness:** JASIQ Harness v2, pinned commit 0308fbd9e332c51955c7d0da7a8023f87cbf1fe5  
-**Document status:** REVIEWED — business defaults adopted; formal Harness human-approval evidence pending  
+**Harness:** JASIQ Harness v2, reviewed/pinned commit 27ceb481aff168915d3c0ba776cf7aa08e71eb23  
+**Document status:** REVIEWED — business defaults adopted; owner-delegated PRD/HLD design-review policy recorded, artifact-hash approval/resolver validation still pending  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
 **Prepared for review:** 14 November 2026  
@@ -330,9 +330,9 @@ English is the initial product language. Performance/availability/load figures a
 5. All 24 prior business-policy questions are answered in the delegated CG-BR-900 baseline; operational go-live prerequisites are separate from product-scope decisions.
 6. No architecture, API/schema, component/wireframe, epic/story/task or implementation claim has been inserted into this product PRD.
 
-**Authoring review:** Product-owner/BA self-review against all CG module owners, 278 source BR clauses, 75 healthcare feature IDs, the 167-image Admin index, key cross-module journeys and CG-BR-600 NFR outcomes; independent specialist review has **not** been performed. The default business policies have been adopted under the owner's delegated instruction and reviewed for source alignment. **Formal Harness APPROVED remains unrecorded until independently verifiable human approval of the exact final artifact SHA-256 is provided.** Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
+**Authoring review:** Product-owner/BA self-review against all CG module owners, 278 source BR clauses, 75 healthcare feature IDs, the 167-image Admin index, key cross-module journeys and CG-BR-600 NFR outcomes; independent specialist review has **not** been performed. The default business policies have been adopted under the owner's delegated instruction and reviewed for source alignment. **Formal Harness approval remains unrecorded pending valid artifact SHA-256 review and resolver preflight.** The currently pinned Harness permits the owner's expressly opted-in, accurately attributed **DELEGATED_APPROVED** design decision (as configured in `initiative.json`) or genuinely verified human approval. Neither is client business sign-off or authorization for production release/merge. Corrective edits invalidate stale review evidence; never label the AI delegate as a human approver.
 
-**Next Harness stage:** Run the pinned HLD resolver for this same initiative **only after** authentic external human approval evidence for the exact PRD hash has been recorded and validated. The delegated product-owner decision review is not a substitute for this stage gate. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
+**Next Harness stage:** Run the pinned HLD resolver for this same initiative only after a truthful SHA-256-bound PRD **human or owner-delegated design approval** and final review record is present and validated. A chat instruction alone is not a resolver PASS. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
 
 **Repository delivery guardrails:** Work remains on the PRD feature branch pending separate merge authorization. **No CI, GitHub Actions, .github/workflows, application code, deployment, real payments or production data mutation.**
 
@@ -367,4 +367,4 @@ The product PRD groups detailed business clauses into observable journeys. **Eve
 
 **Quality crosswalk:** CG-NFR-600 supplies 69 shared non-functional IDs, with applicability and P0/P1 distinctions specified in §10 of this PRD. Every later module contract must select only the relevant NFR IDs and give evidence, including negative authorization, idempotency, concurrency, mobile/web/backend consistency and safe recovery. The crosswalk is a **coverage control**, not a substitute for the owner BR or a separate set of requirements.
 
-**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. The PRD can be presented for hash-bound human approval. Until that independently verifiable approval event exists, Harness status stays **REVIEWED / FORMAL_APPROVAL_PENDING**, regardless of business-owner delegation in the conversation.
+**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. The PRD is eligible for hash-bound human or honestly attributed owner-delegated **design-stage** approval under `initiative.json`, provided its latest artifact review is complete and the pinned Harness resolver accepts the record. Until validated, its status remains **REVIEWED / APPROVAL_PENDING**, not APPROVED.
