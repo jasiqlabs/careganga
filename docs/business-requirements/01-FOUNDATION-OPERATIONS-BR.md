@@ -15,12 +15,13 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 **Business requirements**
 
 - **CG-01-BR01:** Allow authorized creation, activation, suspension and deactivation of internal accounts; manage permitted profile/contact details and secure credential recovery.
-- **CG-01-BR02:** Permit configurable roles with names/descriptions, protected built-in roles, custom roles, assignment to users, active status and role-assignment history.
-- **CG-01-BR03:** Provide action-level permissions (view, create, edit, delete where applicable, approve, export, publish, sensitive administration) by module and applicable sub-function.
+- **CG-01-BR02:** Permit configurable roles with names/descriptions, optional role colours/visual identifiers, protected built-in roles, custom roles, assignment to users, active status, role-assignment history and a view of assigned users.
+- **CG-01-BR03:** Provide action-level permissions (view, create, edit, delete where applicable, approve, export, publish, sensitive administration) by module and applicable sub-function, with an expandable/collapsible permission matrix, on/off controls and visible permission totals.
 - **CG-01-BR04:** Support starting a role with no permissions or copying permissions from an existing role, then editing the copy.
 - **CG-01-BR05:** Enforce geographic authorization for organization-wide, state, district, sub-division and block scopes and relevant branch assignments.
 - **CG-01-BR06:** Enforce center/center-branch-specific scope for healthcare portal personnel, independently of Foundation geography.
 - **CG-01-BR07:** Ensure every list, search, record, report, export, linked-dropdown option and mutation respects the actor's access. Required supporting information must remain selectable for a permitted workflow without exposing unauthorized records.
+- **CG-01-BR10:** Internal user directory supports role, department, designation, employee/employment type, state/district/branch, joining-date and account-status filters and counts of active, probationary, on-hold, resigned/inactive and newly registered people. Staff account creation supports full name, role, work email, phone and secure first-credential setup, linked to CG-10 employee records.
 - **CG-01-BR08:** Preserve protected Super Admin authority and audit changes to roles, permissions and assignments.
 - **CG-01-BR09:** Provide public login/registration or verified account self-service wherever a particular public business workflow calls for it; not every public visitor must have an internal role.
 
@@ -35,7 +36,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 - **CG-02-BR01:** Maintain Foundation identity, official contact/address, registrations and appropriately authorized organization settings.
 - **CG-02-BR02:** Maintain Foundation branch names/types/codes, status (active/inactive/closed), geographic location, contact, photos, opening date, registration and agreements.
-- **CG-02-BR03:** Support the specified seven-stage branch registration: basic information; location/contact; official photo/registration; agreement/documents; manager appointment; staff/volunteers/projects; review/submit.
+- **CG-02-BR03:** Support the specified seven-stage branch registration: (1) basic information with name/type/opening date/geography/address/PIN/GPS/photo; (2) additional location and contact; (3) official photo and registration records; (4) agreement and supporting documents; (5) manager/in-charge appointment; (6) link staff, volunteers, departments and projects; (7) review/submit with required-document validation.
 - **CG-02-BR04:** Save incomplete branch drafts; show setup completeness, missing documents, verification and approval status.
 - **CG-02-BR05:** Generate branch code after applicable final approval; preserve change history.
 - **CG-02-BR06:** Associate branches with employees, coordinators, volunteers, departments, members, projects and budget allocations without duplicating their owner profiles.
@@ -53,7 +54,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 - **CG-03-BR01:** Support application intake for members, volunteers, CSR partners, Foundation branches, employees and healthcare providers/doctors where approval is required.
 - **CG-03-BR02:** Assign an application/reference number at submission and expose permitted status tracking.
-- **CG-03-BR03:** Provide filtered approval queues, applicant detail, submission source, uploaded documents, payment references, notes, communications and decision history.
+- **CG-03-BR03:** Provide filtered approval queues (applicant/contact, registration type, membership plan, payment/status/date), applicant detail, submission source, uploaded documents, payment references, notes, communications and decision history; registration dashboard includes pending/approved/rejected counts, type breakdown, recent submissions and average approval time.
 - **CG-03-BR04:** Permit document preview and authorized download, verify/reject-by-document status and documented remarks.
 - **CG-03-BR05:** Permit approve, reject, return for correction and appropriate forwarding/intermediate decisions. Bulk actions must only cover records for which the actor is authorized and where the business status permits.
 - **CG-03-BR06:** Configure process-specific approval steps, reviewer roles and organization/area scopes. Illustrative membership chain: submission → district → state → HR/membership → Super Admin → finalization; the actual chain is a client-approved configuration.
@@ -81,7 +82,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 ### Volunteers
 
 - **CG-04-BR07:** Public volunteer application captures personal/contact/geography, date of birth, gender, optional blood-group data as a profile field where requested, skills, experience, availability, preferred department, referral and identity-document details.
-- **CG-04-BR08:** Volunteer departments and availability choices are configurable by authorized administrators; default illustrative departments include health, education, child welfare, disaster relief, environment, women empowerment, community development and general support.
+- **CG-04-BR08:** Volunteer departments and availability choices are configurable by authorized administrators; illustrative departments include healthcare, education, child welfare/nutrition, disaster relief, environment/plantation, women empowerment, community development and general support. Available schedule choices from the written source: full-time, part-time, weekends-only and flexible/on-call.
 - **CG-04-BR09:** Verify/approve volunteer applications, maintain volunteer roster/status/assignments and link actual work to CG-05.
 - **CG-04-BR10:** Enable permitted volunteer access according to CG-01 roles; not all volunteers automatically become internal operational staff.
 - **CG-04-BR11:** Provide authorized search, status filtering, activity summaries, exports and communication.
@@ -159,14 +160,14 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 ### Voucher and expense processes
 
 - **CG-09-BR06:** Support payment, expense, journal and contra vouchers with unique number, date, employee/department, project, payee/vendor, GST when applicable, payment mode/bank, invoice/ref, category and remarks.
-- **CG-09-BR07:** Support multi-item vouchers with quantity, unit, price/rate, tax, additional charges, calculated total and attachment references.
+- **CG-09-BR07:** Support multi-item vouchers with description, quantity, unit, rate, subtotal, applicable tax, other charges, calculated total, amount in words, remarks and attachment references. Display source-specific project/ITPA code, project/campaign, available budget, GST, bank, invoice reference/date, creator/department and category fields where applicable.
 - **CG-09-BR08:** Submit vouchers for verification and multi-level approvals, with approved, rejected, pending and payment-released states.
 - **CG-09-BR09:** Employees or eligible volunteers can claim expenses/allowances using purpose, date, category, project, amount, preferred payment method and bill/proof; track approval, payable and payment.
 - **CG-09-BR10:** Keep original expense claim, approved voucher, payment and ledger posting linked. A reimbursement request does not create multiple separate expenses merely because it moves through screens.
 
 ### Invoices, receipts and budgets
 
-- **CG-09-BR11:** Maintain internal invoices and receipts, with person/organization/vendor references, items, prices, discounts/taxes where applicable, due/payment terms, linked campaign/project, documents, approval and PDFs.
+- **CG-09-BR11:** Maintain internal invoices and receipts with a draftable, multi-stage entry flow: (1) person/organization/member/vendor, invoice type, linked campaign/project/program, date/due/currency/purpose; (2) item descriptions/categories/units/quantities/prices/discounts/totals; (3) invoice/proof attachments, number or manual reference, fiscal year, branch/department, template, payment method/terms, notes/tags; (4) responsible verifier/approver, submit/review and resulting ledger link. Generate authorized PDFs and communication records without shadow invoice masters.
 - **CG-09-BR12:** Send/download/print invoices/receipts; email/WhatsApp sharing only through configured channels and permitted templates.
 - **CG-09-BR13:** Create and approve project/branch/category budgets by period, with authorized allocation, utilized and remaining amounts.
 - **CG-09-BR14:** Track vendor/payee information and outstanding/bank reconciliation consistently where financial transactions require it.
@@ -225,7 +226,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-13-BR01:** Generate/referral-code and shareable-link association for eligible member and volunteer accounts.
 - **CG-13-BR02:** Count an eligible referral only after the defined registration and qualification events; preserve source/qualification history.
 - **CG-13-BR03:** Configure qualification, earned points, conversion/redemption rules and points transaction balances; display balances to eligible users.
-- **CG-13-BR04:** Configure rank names, point/referral thresholds, benefits and progression history. Illustrative ranks: Bronze, Silver, Gold, Platinum, Diamond, Royal, Legend.
+- **CG-13-BR04:** Configure rank names, point/referral thresholds, benefits and progression history. Illustrative ranks: Bronze, Silver, Gold, Platinum, Diamond, Royal, Legend. Eligible configurable benefits can include recognition badges, certificates, digital gifts, reward points and rank-specific privileges.
 - **CG-13-BR05:** Maintain reward product catalog (physical/digital), image, category, quantity/stock where applicable, points cost and availability.
 - **CG-13-BR06:** Let eligible users submit point-redemption requests, view status/history and have fulfillment processed by authorized staff.
 - **CG-13-BR07:** Points deducted and rewards issued must match completed qualifying/redemption transactions; fulfillment and stock movement must be traceable, including reversal/correction under defined rules.
@@ -244,6 +245,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-19-BR04:** Admin notices/bulletins with content/publication status and authorized notification sending.
 - **CG-19-BR05:** Expose appropriate records to correct audience (donor receipt to donor, appointment slip to patient/center, salary slip to employee).
 - **CG-19-BR06:** Offer communication logs and template controls without adding independent message histories to every module.
+- **CG-19-BR07:** Maintain one scoped service-request/helpdesk capability for Foundation public contact requests and healthcare-center support tickets, service requests and FAQs where required. Center operators see only their authorized cases; ownership, status, responses and permissions are shared, not duplicated per portal.
 
 ## CG-20 — Dashboards, MIS, Reporting and Exports
 
@@ -261,6 +263,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-21-BR03:** Provide authorized configuration/monitoring for payments, email/SMS/WhatsApp, push, GPS/maps and related external providers where required.
 - **CG-21-BR04:** Provide controlled backup/restore access and a recovery operation model; restoration must not be available to routine staff.
 - **CG-21-BR05:** Provide human-readable errors, status and operational controls that avoid silently swallowing backend failures.
+- **CG-21-BR06:** Support password/session security configuration and two-factor authentication for privileged accounts, with policy and enforcement documented in CG-BR-600, and restrict restore operations to correctly authorized operators.
 
 ## Cross-domain dependency guardrails
 
