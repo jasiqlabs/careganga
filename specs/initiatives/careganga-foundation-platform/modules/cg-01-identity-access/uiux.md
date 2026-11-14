@@ -1,64 +1,64 @@
-# CG-01 — UI/UX: Accounts, Roles & Access
+# CG-01 — UI/UX: Existing CareGanga Theme, Accounts & Permissions
 
-**Applies to:** Foundation Admin Web, authorized Internal Android, authentication for Public Web/Android and Center Portal.  
-**Source:** [module.md](module.md) · [PRD](../../prd.md) FR-001–003/080 · [HLD](../../hld.md) · [CG-01 DLD](dld.md)  
-**Design state:** Rebuilt for source review; rendered Web/native QA NOT_RUN.
+**Visual baseline:** [167-screenshot Admin Panel audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md), particularly **U02–U10**, **B34**, and the global shell at §2.1. Source archive: `careganga_features_screenshot.zip`.  
+**Requirements:** [PRD](../../prd.md) FR-001–003/080 · [HLD](../../hld.md) · [module.md](module.md) · [dld.md](dld.md).  
+**State:** Reference-based source design; original PNG ZIP is **not committed** to this repository. Exact sampled colors, font metrics and rendered pixel-match are **NOT_VERIFIED** in this session.
 
-## 1. Experience principles
+## 1. Mandatory visual fidelity — no redesign
 
-Clean, modern and task-first. An authorized administrator understands **who has access, what they can do, and where the access applies** without knowing database IDs or technical permission codes. Avoid a crowded all-in-one settings page.
+**Preserve the existing CareGanga Admin Panel visual identity.** Treat the supplied screenshots as the **design baseline** for color theme, typography hierarchy, spacing/density, component shape, icon style, status treatments, layout hierarchy and interaction patterns. No alternative brand colors, new dashboard theme, arbitrary gradients, glassmorphism, new card aesthetic or independent Android palette.
 
-- Foundation Admin navigation: **People & Access → Accounts** and **People & Access → Roles & Permissions**; **Access History** is a restricted supporting view.
-- Show Foundation-root as the only current verified operating context. **Do not show disabled/fake branches, employee categories, centers, or doctor pickers** until their real owning modules deliver records and scoped option APIs.
-- Permissions always come from the backend; hiding navigation is helpful UX, never the security boundary.
-- One shared language catalog and API outcomes for Web and Android; desktop's grid becomes grouped task screens on Android. Include readable focus, accessibility labels, touch targets and adaptive layouts.
+Existing observed design cues:
+- **Sidebar:** CareGanga branding; searchable, categorized expandable navigation; **blue selected-item highlight**; account/status section near bottom. Maintain the established background, icons, hover/active colors and scroll behavior.
+- **Header:** Current module title/subtitle, global search, notification/message controls, View Site/help, avatar/account menu. Preserve the existing header geometry and hierarchy.
+- **Workspace:** Existing KPI tile row, search/filter panel, tabbed table/list, compact action toolbar, relevant right-side detail/summary panels and status badges. Preserve the **relative density, border/radius/shadow, type weights and spacing** instead of inventing replacements.
+- **Forms:** Use the existing **right-side drawer** style for Add Staff, Create/Edit/Copy Role, and other compact editing tasks; keep established labels, footer actions, field grouping, dropdown and checkbox/toggle style. Modal/wizard styles remain reserved for journeys that already warrant them.
+- **Color and typography tokens:** **Extract from the actual original PNGs or approved current design assets during UI implementation**, record the matching reusable UI tokens once, and reuse them in Admin, Center Portal and Android where appropriate. The audit proves the active sidebar color is blue, **not the exact HEX/RGB, font family or radius**. Do **not guess exact values or claim pixel-fidelity from text alone**.
+- **Same theme across platforms:** Native Android uses the same approved CareGanga colors, type hierarchy, icon language, surface/border semantics and clear status meanings, adapted to native accessibility, touch and navigation rather than copying a desktop grid pixel-for-pixel.
 
-## 2. Screen contract
+**Permitted improvements:** simplify overloaded filter grouping, correct insufficient contrast/touch targets, responsive overflow, loading/empty/forbidden/error messages, unsafe default selections and inaccessible controls. **Retain the recognizable existing layout and visual styling.** Any visual change beyond these corrections needs explicit product-design review.
 
-| Screen | Main content and actions | Empty/denied/changed state |
+## 2. Exact audit screen-to-design mapping
+
+| Reference | Existing screenshot behavior to preserve | Functional corrections |
 | --- | --- | --- |
-| Sign in & recover | Contact/identity, secure credential, sign in, recover, verify; contextual help | Neutral invalid-account/error wording, no enumeration, session expiry clears protected screen |
-| Accounts | Name/contact, account status, assigned roles, filter by **real** CG-01 status/role, search, invite, suspend/reactivate, open details | No results vs unavailable; no user found never reveals protected accounts |
-| Account detail / access | Display name, verified contact, account state, role(s), Foundation-root context, effective permissions summary and change history; assign/change/revoke allowed roles | Revoked state updates promptly; role cannot be chosen automatically |
-| Roles & Permissions | Role name/description/optional color; active/protected status; assigned account count; create/edit/copy/retire | Protected role actions hidden or disabled with explanation; empty permitted grant set is valid |
-| Role editor | Grouped **View / Create / Edit / Delete (where permitted) / Approve / Export / Publish / Sensitive** controls for currently available business actions; count enabled grants and review changes before saving | Clear errors for duplicate name, removed capability, stale revision; no confusing raw codes |
-| Access History | Actor, affected account/role, changed permissions/access, timestamp and searchable relevant context | Only authorized history; no secret, opaque ID or raw system exception shown |
+| **U02 — Users Management** | Header, counters, search/filter toolbar, staff table, action buttons, existing card/table theme | Initially show only real CG-01 account/role/status filters; CG-10/02 adds real employee/area filters later |
+| **U03–U04 — Add New Staff Account** | Existing right drawer, name/email/phone, role dropdown, Cancel/Create footer | Secure invitation/recovery (never expose/store temporary plaintext password); only assign eligible roles |
+| **U05–U07 — Roles & Permissions** | KPIs, role list, filters/tabs, grouped **View/Add/Edit/Delete/Approve** checkbox matrix, counts, protected-role badges, details/activity | Only real implemented capabilities; backend enforcement; extend other action types when their modules arrive |
+| **U08–U09 — Create/Copy Role** | Existing role drawer with name, description, color choice, **Copy Permissions From** or start empty, Cancel/Create | Copy allowed grants only; no people/root/scope copying; clear duplicate/forbidden/revision errors |
+| **U10 — Area Level** | Existing area-level selector's look and spacing | Show only real Foundation-root initially; CG-02 later supplies actual permitted state/district/sub-division/block choices |
+| **B34 — Role Assignment** | Existing role-assignment summary, staff/role filters, assignment list and action affordances | First release uses CG-01 accounts; CG-10 later adds employee status/linkage; never invent HR records |
 
-**Role copy:** opens a fresh editable role with copied **assignable** permissions only; does not copy people, scope, or protected Super Admin privileges. Saving requires a new unique name. Grant changes/revocation affect the shared backend immediately and old clients must refresh/exit restricted content.
+These are **reference IDs from the existing uploaded ZIP audit**, not new screen routes or new requirements. Preserve the visible design while meeting approved PRD/HLD behavior.
 
-**Account invite:** authorized administrator enters real full name, contact and permitted role, verifies intended Foundation-root scope, and confirms invitation. Pending provider delivery is labelled **Pending**, never “Invitation sent” unless confirmed.
+## 3. Core CG-01 screens
 
-## 3. Layout by channel
-
-**Foundation Web (desktop/tablet/phone):** compact list with search/filter above it; mobile widths use stacked account cards or horizontally controlled lists, never clipped role controls. Role editor uses accordion groups and a sticky/save action only if it does not hide content; show permission count and change confirmation. Support keyboard navigation and readable zoom.
-
-**Internal Android:** secure native login plus **Accounts → Search → Account → Assign role** and **Roles → Create/Edit/Copy → Permission groups → Review/Save**. No WebView substitute. Searchable single-select roles with context labels; permission groups use generous touch controls and progress/save feedback. Android Back warns about unsaved changes; keyboard/insets/large text and rotation preserve valid draft values without leaking cached previous-account data.
-
-**Public Web/Android:** visitors can browse genuinely public information without staff login; show only verified self-service auth where a real domain journey is present. No role editor or private account directory.
-
-**Healthcare Center Portal:** secure sign-in but no functional center switch/center staff directory before CG-14 exposes real authorized centers. Never silently choose an arbitrary first center.
-
-## 4. Exact feedback expectations
-
-| Situation | User-visible example | Actual action |
+| Screen | Current business action | Required states |
 | --- | --- | --- |
-| New role saved | “Role created.” | Wait for confirmed backend commit and refresh catalog |
-| Duplicate role | “That role name is already in use.” | Retain safe draft, focus role name |
-| Permission revoked | “Your access has changed. Sign in again to continue.” | Clear restricted caches/session and re-evaluate permissions |
-| Missing authorization | “You don't have permission to do this.” | Never call forbidden background list/selector or expose data |
-| Invitation awaiting provider | “Account created. Invitation delivery is pending.” | Record actual account state and safe retry, no fake sent state |
-| Network/unknown write result | “We couldn't confirm that change. Check its current status before trying again.” | Refresh authoritative record before another mutation |
-| Empty account list | “No accounts match these filters.” | Only after successful filtered response; not on HTTP/API failure |
-| Failed server call | “Something went wrong. Try again or contact support.” | Show safe support reference if available, restrict details to operator logs |
+| Sign in & recover | Verified credentials, privileged MFA, secure recovery, sign out | Verification/pending, invalid attempt, expired/revoked, provider unavailable |
+| Users Management | Search real accounts by name/contact/role/account status, invite, suspend/reactivate, view assigned role | Loading, confirmed empty, forbidden, unavailable, successful |
+| Add Staff Account drawer | Real name/contact, eligible role, Foundation-root context, explicit invite | Required field, duplicate, pending delivery, rollback/unknown outcome |
+| Roles & Permissions | Search/filter actual roles, counts, protected status, open matrix, create/edit/copy/retire | No assigned role, protected restrictions, conflict, revoked session |
+| Create/Edit/Copy Role drawer | Existing organized fields, role color, copy/start-empty, grouped permissions, review/save | Unsaved draft, duplicate name, unsupported grant, permission denied |
+| Role Assignment | Find authorized real account/role by name, assign/change/revoke at Foundation-root | Empty options, no first-role auto-selection, stale grant, concurrency conflict |
+| Access History | Authorized list of actor, action, role/account, time and change summary | Restricted, paginated, private fields redacted |
 
-Never display a UUID, SQL/HTTP error, permission key, internal stack, raw error.message, fake employee/branch/center, or financial/clinical data solely for a picker. Show valid business references only where required.
+**Shared behavior:** Backend capabilities govern what users can see and do; clients do not issue forbidden background requests. Use the screenshot's existing interface wording and action positions when compatible with the PRD. For every API result show a truthful human-language success/pending/denied/duplicate/conflict/unavailable state—never raw UUID, permission code, SQL or exception.
 
-## 5. Accessibility, privacy and interaction checklist
+## 4. Responsive and native adaptation without theme drift
 
-- Label every field, search, group and toggle; accessible error summaries, semantic status announcement and stable focus; readable contrast and 360px Web adaptation.
-- Display only current actor's permitted actions. A stale screen or deep link must receive a secure denial and remove cached sensitive content.
-- Root Super Admin cannot accidentally be cloned, retired or reassigned from ordinary controls. Require explicit confirmation for access removal and irreversible actions.
-- Safe name/context dropdowns are searchable and show empty/disabled/loading states distinctly; never default to the first privileged role.
-- Missing employee, geography or center integrations do **not** appear as broken CG-01 screens; their actual UI experiences belong to CG-10, CG-02 or CG-14 design and QA when introduced.
+**Admin Web:** Keep the desktop screenshot's navigation, header, KPI/list/filter/table/drawer hierarchy at desktop widths. On tablet, use the same components/tokens with controlled density and collapsing secondary panels. On narrow phones, preserve theme/icons/labels but collapse the sidebar into accessible navigation, convert overflowing tables into usable row details, and make drawers full-width when needed. Forms must remain usable at 360px and zoom/large type. **Do not replace the whole screen with unrelated decorative cards.**
 
-**Review gate:** Review intended flows against each case in [tasks.md](tasks.md), then the latest revision. Web/browser/device rendering remains VISUAL_NOT_RUN; implementation source and live QA remain NOT_RUN.
+**Internal Android:** Use the same approved color/typography/icon/status system; implement native flows **Users → Search → Account → Assign role** and **Roles → List → Drawer-equivalent native form → Permission groups → Review/Save**. Respect Android Back, safe-area/keyboard insets, large text, touch targets and focus; clear restricted caches on context/session change. Do not use a WebView or recreate dense desktop checkboxes at unreadable size.
+
+**Public Web/Android and Center Portal:** The established CareGanga brand theme stays consistent, but their content/navigation and confidentiality differ by audience. A center selector does not appear until CG-14 provides **real approved center data**; public visitors never receive internal roles.
+
+## 5. Source QA and fidelity acceptance
+
+- Compare every CG-01 Web screen to **U02–U10/B34** and the Admin global shell: existing colors, typography hierarchy, spacing, card/table/badge treatment, right drawer, filters, action placement and navigation.
+- Compare selected real screens to the original ZIP at representative desktop and phone sizes. Record **visual differences and fix unintended theme drift**; accessibility/responsive adaptations are allowed only with documented reasons.
+- Check all UI states and permissions against **US-001/002/003 QA cases** in [tasks.md](tasks.md). Test no broken/fake future selectors, silent privileged defaults or raw technical errors.
+- During Development: review actual theme token/component source and responsive/native branches manually; **VISUAL_NOT_RUN** until separate authorized browser/device QA. An audit description alone cannot establish precise screenshot color values.
+- Before claiming a **VISUAL PASS**, access the actual original PNGs and visually compare representative screen renders. If the ZIP is unavailable, report **REFERENCE_IMAGES_UNAVAILABLE** for exact-color/pixel verification instead of inventing token values.
+
+**No second visual specification or independent theme tracker.** This file is the single CG-01 design reference; the project-wide screenshot audit is the visual source for later module UI/UX files too.
