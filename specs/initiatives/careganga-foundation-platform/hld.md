@@ -403,6 +403,17 @@ Use provider-managed encrypted storage/backup where available, retention/snapsho
 
 **Web SEO:** Public published pages may be indexed by default; all admin, patient, member-private, receipt, private file and draft URLs must be non-indexable, even if their route exists. CSR/healthcare public pages show only accurate approved publication fields.
 
+
+### 9.1A Android platform and store-compatibility architecture gate
+
+**Contracted mobile outputs:** Two independently signed/distributed **Android** apps, Public Android and Internal Android; iOS is *not* a current product requirement. Share versioned API contracts and safe design primitives, but keep distinct package identities, session roles, permissions, consent and protected local caches. One untrusted/older Android client must never bypass server-side booking/payment/clinical controls.
+
+Apply `standards/MOBILE_STORE_STANDARD.md` in **HLD, Planning, conditional DLD, Development and real QA/Release**. The reviewed 14-November-2026 Harness baseline records Google Play's general Android application submission **target API 36+**, compatible native **16 KB memory pages**, required **64-bit ABIs**, Google Play SDK Index/transitive SDK restrictions, policy/permissions/privacy declarations and approved signing. Treat these as *dated minimum checks*, **not** immutable promises: recheck official Google Play requirements at module Planning and again before each release. Relevant sources: [Play target API policy](https://support.google.com/googleplay/android-developer/answer/11926878), [16 KB guidance](https://developer.android.com/guide/practices/page-sizes), [SDK Index](https://developer.android.com/distribute/sdk-index).
+
+**Technology selection:** React Native/Expo is a **provisional architecture choice**, not permission to initialize from an old template or mix incompatible versions. At Planning, select one actually maintained stable compatible **Expo SDK ↔ React Native ↔ Android Gradle Plugin/Gradle ↔ Kotlin/Java ↔ NDK ↔ native SDK** baseline using official compatibility documentation, pin dependency lockfiles, inventory **transitive** native libraries and define supported Android OS/device range. Any native build/SDK/toolchain contract is an important REQUIRED DLD; define exact version matrix, release bundle validation, rollback and old-client compatibility there. If versions or policy evidence cannot be verified, declare the affected mobile work BLOCKED rather than guessing a package or claiming Play acceptance.
+
+**Acceptance at release:** Inspect real built/signed AAB and resolved target, ELF/zip 16 KB alignment, supported ABI, SDK Index warnings, dependency list, permissions/data-safety disclosures, actual device install/start/navigation, and current Play upload/pre-launch evidence when available. A successful JS compile or source-only guard is **not** store approval. Use the Harness `mobile_store_guard.py` as a structural check during the appropriate stage, never as a substitute for the actual binary/device review. No CI or GitHub Actions are needed for this design gate.
+
 ### 9.2 Availability, speed and capacity planning
 
 All numbers below are **PRD-proposed P1 starting targets**, not measurements or contractual client commitments:
