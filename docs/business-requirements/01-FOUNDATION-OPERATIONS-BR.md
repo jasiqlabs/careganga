@@ -101,6 +101,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-05-BR07:** Authorized coordinators review and monitor field visits, activity and task completion within scope; evidence stays attached to source records.
 - **CG-05-BR08:** Provide project performance summaries and operational reporting without manually recreating public project pages.
 - **CG-05-BR09:** Make only expressly published projects, achievements and stories visible publicly via CG-18.
+- **CG-05-BR10:** Allow authorized creation and management of Foundation events linked to programs/projects or campaigns where relevant, including event information and public publication through CG-18. The exact event registration/ticketing workflow, if any, requires a separate supported client requirement and must not be assumed from a menu label.
 
 **Admin controls:** Project masters, team assignment, status, budgets link, review, publish eligibility and activity oversight.  
 **Internal mobile:** Task lists, visit capture/GPS/photos, status, applicable review.  
