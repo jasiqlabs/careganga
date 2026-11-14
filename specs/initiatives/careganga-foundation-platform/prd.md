@@ -155,11 +155,11 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 | FR-051 | CG-15 | Booking is validly confirmed | Issue authentic reference/Booking ID, download/print/share and guarded QR/barcode verification and calendar export; protect identifiers and symptoms | A-15 | CG-15-BR19–21,24; D-07 |
 | FR-052 | CG-15 | Center serves patient | Manage reception check-in, queue/token, waiting/consultation/completed/canceled/no-show state with authorized updates and patient/center appointment history | A-15 | CG-15-BR22,25 |
 | FR-053 | CG-15 | Patient or authorized center changes booking | Reschedule/cancel when permitted; restore appropriate capacity, preserve history, update true due/refund and notify relevant parties | A-15 | CG-15-BR23–24; CG-17-BR09–13 |
-| FR-054 | CG-15 | Patient opens account | See authorized own appointments, receipts, patient ID and permitted reports; dependent/family and prescription authoring remain gated by explicit D-08 decisions | A-15 | CG-15-BR14–16,20 |
+| FR-054 | CG-15 | Patient opens account | See authorized own appointments, receipts, patient ID and permitted reports; patient and professionally uploaded report access are included; general dependent/family booking and electronic prescription authoring are not active initial-launch functions | A-15 | CG-15-BR14–16,20 |
 | FR-055 | CG-16 | Center/central Admin configures lab | Manage diagnostic test master, codes/category/sample type, center-specific price/discount, active status, test package components, periods and history | A-16 | CG-16-BR01–03 |
 | FR-056 | CG-16 | Center books lab service internally | Create authorized patient test/package order and track collection, processing, report upload and controlled release; link payment/assistance state | A-16 | CG-16-BR04–07 |
 | FR-057 | CG-16 | Patient/provider views service | View published lab/service menus, real price and discounts where authorized; private report only to permitted patient/clinician | A-16 | CG-16-BR06–10 |
-| FR-058 | CG-16 | Additional service CTA appears publicly | Show enquiry/information or actual transaction only when that particular service workflow is approved and available; no unconfirmed medicine/OT checkout | A-16 | CG-16-BR08–10; D-01,23 |
+| FR-058 | CG-16 | Additional service CTA appears publicly | Show approved center/service information with enquiry/contact actions; no public lab, medicine, nursing/OT or pharmacy checkout is included in the initial launch | A-16 | CG-16-BR08–10; D-01,23 |
 | FR-059 | CG-17 | Foundation configures benefit | Configure eligible provider/doctor/service, fixed/percentage contribution, caps, expiry, optional approval and patient eligibility with historical policy | A-17 | CG-17-BR01–04 |
 | FR-060 | CG-17 | Patient sees appointment price | Display gross fee, actually approved/eligible Foundation support and patient payable separately; eligible consultation benchmark is documented **50%/50%**, not unconditional or automatically 100% | A-17 | CG-17-BR02,05–07 |
 | FR-061 | CG-17 | Patient selects online or center payment | Provide online payment only through the verified healthcare center's own enabled merchant method, or pay-at-center when approved; show initiated/pending/failed/confirmed/due truthfully and never use an unverified Foundation gateway for center collections | A-17 | CG-17-BR08–10 |
@@ -295,7 +295,7 @@ State labels may be simplified for end users; PRD acceptance requires their **bu
 | N-11 Audit, support and maintenance | Trace actor/time/scope/records without secrets; monitoring/alerts, configurable support, safe migrations, real error paths, compatible updates | CG-NFR-OPS01–06, MNT01–06 |
 | N-12 Manual QA acceptance | For each owner PRD scenario, validate permitted UI → backend decision → authoritative persistence/money → other channel/report, plus negative/retry/concurrency; record honest PASS/FAIL/BLOCKED/NOT_RUN | CG-NFR-600 §13 |
 
-Performance/availability/load targets and policy-dependent languages, consent/retention, provider agreements, merchant ownership and exact offline scope require the specific NDEC-01–08 decisions in CG-BR-600 before contractual acceptance.
+English is the initial product language. Performance/availability/load figures are proposed until measured against realistic hosting and workload. Consent, provider credentials, genuine merchant ownership and statutory evidence must be verified before live operation, without adding an unrelated questionnaire or offline-sync engine.
 
 ## 11. Dependencies, adopted policies and operational gates
 
@@ -327,11 +327,44 @@ Performance/availability/load targets and policy-dependent languages, consent/re
 2. Every original client Foundation requirement section and all 75 healthcare feature IDs remain traceable through the authoritative CG-BR package; Admin UI reference includes 167 captured images.
 3. Public/center/Admin/Android flows have coherent actor and source-data ownership, including negative authorization and monetary/clinical privacy cases.
 4. No proposed numerical NFR is falsely represented as an approved SLA; no screenshot is presented as evidence of implemented functionality.
-5. Critical open business decisions stay identified and block only their dependent policy/PRD approval, not the entire requirement drafting effort.
+5. All 24 prior business-policy questions are answered in the delegated CG-BR-900 baseline; operational go-live prerequisites are separate from product-scope decisions.
 6. No architecture, API/schema, component/wireframe, epic/story/task or implementation claim has been inserted into this product PRD.
 
-**Authoring review:** Product-owner/BA self-review only; external independent review has **not** been performed. The default business policies have been adopted under the owner's delegated instruction and reviewed for source alignment. **Formal Harness APPROVED remains unrecorded until independently verifiable human approval of the exact final artifact SHA-256 is provided.** Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
+**Authoring review:** Product-owner/BA self-review against all CG module owners, 278 source BR clauses, 75 healthcare feature IDs, the 167-image Admin index, key cross-module journeys and CG-BR-600 NFR outcomes; independent specialist review has **not** been performed. The default business policies have been adopted under the owner's delegated instruction and reviewed for source alignment. **Formal Harness APPROVED remains unrecorded until independently verifiable human approval of the exact final artifact SHA-256 is provided.** Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
 
 **Next Harness stage:** Run the pinned HLD resolver for this same initiative **only after** authentic external human approval evidence for the exact PRD hash has been recorded and validated. The delegated product-owner decision review is not a substitute for this stage gate. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
 
 **Repository delivery guardrails:** Work remains on the PRD feature branch pending separate merge authorization. **No CI, GitHub Actions, .github/workflows, application code, deployment, real payments or production data mutation.**
+
+## 13. Complete BR-to-PRD ownership crosswalk
+
+The product PRD groups detailed business clauses into observable journeys. **Every clause in each range below remains normative**, even when its per-field detail is not repeated in this PRD. The owner BR and screenshot/source evidence supply those details to later module Planning and QA. Counts from the consolidated BR: **278 individually identified CG-BR clauses**, mapped through 80 FR requirements, 21 owner domains plus CG-300 channel rules, and 21 acceptance families.
+
+| Existing business owner | Source BR clauses retained | Product FRs | Acceptance |
+| --- | --- | --- | --- |
+| CG-01 Identity & RBAC | CG-01-BR01–10 | FR-001–003 | A-01 |
+| CG-02 Foundation structure | CG-02-BR01–10 | FR-004–005 | A-02 |
+| CG-03 Applications & approvals | CG-03-BR01–09 | FR-006–008 | A-03 |
+| CG-04 Member & volunteer | CG-04-BR01–11 | FR-009–011 | A-04 |
+| CG-05 Projects, visits, events | CG-05-BR01–11 | FR-012–014 | A-05 |
+| CG-06 Beneficiary services | CG-06-BR01–05 | FR-015–016 | A-06 |
+| CG-07 Campaigns & donations | CG-07-BR01–09 | FR-017–019 | A-07 |
+| CG-08 CSR & fund commitments | CG-08-BR01–08 | FR-020–022 | A-08 |
+| CG-09 Accounting & budget | CG-09-BR01–17 | FR-023–028 | A-09 |
+| CG-10 Employee, attendance & lifecycle | CG-10-BR01–15 | FR-029–033 | A-10 |
+| CG-11 Payroll | CG-11-BR01–11 | FR-034–036 | A-11 |
+| CG-12 Stock & material requests | CG-12-BR01–06 | FR-037–038 | A-12 |
+| CG-13 Referral points & rewards | CG-13-BR01–08 | FR-039–041 | A-13 |
+| CG-14 Provider & professional network | CG-14-BR01–20 | FR-042–046 | A-14 |
+| CG-15 Patient, appointments & queue | CG-15-BR01–25 | FR-047–054 | A-15 |
+| CG-16 Diagnostics/test operations | CG-16-BR01–10 | FR-055–058 | A-16 |
+| CG-17 Assistance, billing & settlement | CG-17-BR01–20 | FR-059–065 | A-17 |
+| CG-18 CMS and publication | CG-18-BR01–28 | FR-066–069 | A-18 |
+| CG-19 Communication and documents | CG-19-BR01–09 | FR-070–072 | A-19 |
+| CG-20 Reports, MIS and dashboards | CG-20-BR01–07 | FR-073–074 | A-20 |
+| CG-21 Platform operations & audit | CG-21-BR01–06 | FR-075–076 | A-21 |
+| CG-300 Cross-channel/web/Android | CG-300-BR01–23 | FR-077–080 and associated owner FRs | A-01–A-21 |
+
+**Quality crosswalk:** CG-NFR-600 supplies 69 shared non-functional IDs, with applicability and P0/P1 distinctions specified in §10 of this PRD. Every later module contract must select only the relevant NFR IDs and give evidence, including negative authorization, idempotency, concurrency, mobile/web/backend consistency and safe recovery. The crosswalk is a **coverage control**, not a substitute for the owner BR or a separate set of requirements.
+
+**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. The PRD can be presented for hash-bound human approval. Until that independently verifiable approval event exists, Harness status stays **REVIEWED / FORMAL_APPROVAL_PENDING**, regardless of business-owner delegation in the conversation.
