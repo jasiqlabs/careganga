@@ -1,0 +1,328 @@
+# CareGanga Foundation — Integrated Platform Product Requirements Document
+
+**Initiative:** careganga-foundation-platform  
+**Project:** CareGanga Foundation  
+**Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
+**Harness:** JASIQ Harness v2, pinned commit 0308fbd9e332c51955c7d0da7a8023f87cbf1fe5  
+**Document status:** IN_REVIEW / BLOCKED_DECISION for affected policies; not approved for HLD  
+**Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
+**Product owner:** CareGanga Foundation (client business sign-off required)  
+**Prepared for review:** 14 November 2026  
+**Document authority:** This is the single product-wide PRD under the Harness initiative. It does not replace the approved-source BR or create 21 competing product PRDs.
+
+## 1. Decision, evidence and scope integrity
+
+This PRD expresses **what the whole CareGanga Foundation product must do**, based on the consolidated client requirements. Healthcare Assistance is an **original, integral Foundation capability**: it shares identity, approvals, configuration, money handling, documents, communications, analytics and governance, while retaining stricter patient/center access controls.
+
+**Authoritative business sources (CareGanga repository, main):**
+
+- docs/business-requirements/00-MASTER-BUSINESS-REQUIREMENTS.md — CG-BR-000, all 21 module owners, connected journeys and priorities.
+- docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md — CG-01 through CG-13 and CG-19 through CG-21.
+- docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md — CG-14 through CG-17.
+- docs/business-requirements/03-CMS-CHANNELS-BR.md — CG-18, CG-300 and each user-facing channel.
+- docs/business-requirements/06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md — CG-BR-600, cross-platform quality requirements.
+- docs/business-requirements/04-TRACEABILITY-DECISIONS.md — CG-BR-900, unresolved client decisions (D-01–D-23 and D-25).
+- docs/business-requirements/05-SOURCE-TO-BR-COVERAGE-AUDIT.md — mapping of the 61-page client PDF, the 75 healthcare requirements and the October client transcript.
+- docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md — A01–A19, B01–B51, C01–C55 and U01–U42: all 167 supplied Admin Panel screenshots, including 26 reconciled UI observations.
+- Original client evidence referenced by those indexes: SAM-CAREGANGA-121126-113332.pdf (61 pages), 19 October CareGanga meeting, healthcare UI mockups, and the uploaded Admin Panel ZIP.
+
+**Source interpretation:** The PDF gives required operational behaviour; the current healthcare images show additional user journeys and layout intent; Admin screenshots establish visible controls, not functioning endpoints or a final technical implementation. Where the evidence conflicts, the decision stays OPEN. Screenshot sample doctors, amounts, ratings, payment IDs, certificate numbers and images must not become production defaults.
+
+**Current state:** The repository contains business documentation and an agent setup. It is **not a brownfield software implementation**. No product screens, databases, live flows, integrations, deployed apps, runtime performance or compliance certification have been verified.
+
+## 2. Business problem and desired outcomes
+
+CareGanga needs one accountable system for Foundation administration, distributed field and branch operations, fundraising/CSR, finance, HR/payroll, inventories and integrated healthcare assistance. Without a common source of truth, staff may repeat registration, approvals, financial entries and medical/provider updates across channels, and leadership cannot confidently explain who approved, paid, received, attended, published or delivered each action.
+
+**Outcomes and product measures:**
+
+| Outcome | Measurable product result | Measurement / acceptance |
+| --- | --- | --- |
+| O-01 Foundation governance | Each restricted action is authorized and attributable | Permission and scope-negative acceptance for each applicable workflow; zero cross-scope disclosures |
+| O-02 Registration and approvals | Every application can be submitted, reviewed, returned/rejected, finalized and tracked | Completed/returned decision path leaves one authoritative status, reviewer history and final ID/outcome only when eligible |
+| O-03 Accurate finance | Income, spending, budgets, payroll, donor money and healthcare liabilities reconcile | One accepted posting per source event; balanced financial transactions; no double-counting or invented paid status |
+| O-04 Field/service delivery | Staff can record projects, visits, beneficiary support and stock with evidence | Each outcome connects to relevant project, actor, document and authoritative inventory/finance effects |
+| O-05 Healthcare access | Eligible users can locate verified providers and book available doctor consultations | Real doctor-center schedule, explicit center/fee/benefit, no slot over-capacity and correctly protected patient data |
+| O-06 Content and transparency | Admin can control published public information without duplicating operational records | Draft/review/publish/unpublish reflected in web/app; private records never public |
+| O-07 Cross-channel usability | Public, Admin, center and both Android audiences see consistent business state | Acceptance journeys work through their applicable channels with truthful failure/permission states |
+| O-08 Sustainable operation | Critical business failures can be identified, recovered and audited | Applicable P0 CG-NFR gates passed; P1 targets agreed/verified against actual sizing |
+
+Baseline volumes, expected adoption/conversion and operational targets beyond stated quality gates require client sizing; **no usage or revenue forecast is assumed**.
+
+## 3. Audiences, roles and channel responsibilities
+
+| Actor | Main jobs | Authorized interface(s) | Access boundary |
+| --- | --- | --- | --- |
+| Public visitor/donor/applicant | Discover Foundation and healthcare, register, give, enquire | Public website; Public Android | Published information plus only their own verified transactions |
+| Member/volunteer | Apply, see status, approved documents, events/rewards/assigned work | Public website/app; Internal Android if specifically authorized | Relationship-specific access, no implicit staff privileges |
+| Foundation Super Admin | Configure authorized settings, govern approvals, finance, CMS and reports | Foundation Web Admin; specifically permitted Internal Android functions | Protected central role, sensitive actions audited |
+| Delegated state/district/block/branch officer | Process records, coordinate staff, projects, field work, approvals | Foundation Web Admin; Internal Android | Action permission **and** actual geography/branch/resource scope |
+| HR/finance/payroll administrator | Employees, compensation, journals, vouchers, budgets, settlement | Foundation Web Admin; approved Internal Android tasks | Need-to-know protected salary, bank, ID and financial fields |
+| Project/field staff | Tasks, visits, beneficiary assistance, requests, evidence | Foundation Web Admin; Internal Android | Assigned work and geographically authorized records |
+| CSR representative | Apply/propose/communicate as approved | Applicable public/authorized self-service | Never automatically receives internal finance/Admin access |
+| Healthcare network administrator | Onboard/verify providers and doctors, monitor quality, schedules, healthcare assistance | Foundation Web Admin | Authorized network and protected record scopes |
+| Center administrator/receptionist | Own-center doctor links, slots, bookings, queue, diagnostics, collections, support | Healthcare Center Portal; any explicitly assigned internal flow | Center/location-specific; cannot access unrelated center or unrestricted medical files |
+| Doctor/diagnostic professional | Permitted schedule, patient visit, ordered tests, reporting | Center Portal/role-approved interface | Care relationship and professional assignment restrict access |
+| Patient | Search, register, book, pay or retain due status, retrieve authorized receipts/reports | Public website; Public Android | Verified own patient/booking identity; dependent/family access needs D-08 decision |
+
+**All channels use one authoritative backend business state and permissions.** UI layouts may differ. No assumption that desktop-only complex settings must be duplicated into both Android apps; any explicit source-required mobile action must be supported, while detailed feature mapping is resolved by D-17.
+
+## 4. Product scope and prioritization
+
+**MUST / contractual baseline:** All source-backed CG-01–CG-21 business capabilities, applicable Foundation Web Admin, public website, Center Portal, Public Android, Internal Android and common backend behaviour shown in the module requirements below. The dependency sequence is **not** a unilateral reduction of scope or a promise to ship only the first module wave.
+
+**MUST / platform-wide:** Backend-enforced authorization, center/branch isolation, documented status transitions and audit, single accounting source, safe repeated submissions, true appointment availability, clinical privacy, controlled content publication and applicable P0 NFRs.
+
+**SHOULD / experience refinements:** A simple, role-based navigation model; progressive disclosure of advanced options; readable mobile detail views; contextual summaries; professional, accessible forms and helpful guidance, insofar as they preserve documented business capabilities. These are design expectations rather than extra business modules.
+
+**LATER / not authorized as separate implementation:** Any new e-pharmacy checkout, medicine home-delivery engine, hospital/OT theatre management, insurance claims adjudication, general EMR, extra financial engines, a speculative fully offline sync system or event ticketing service **unless a recorded client decision expressly requires it**. Their visible search badges/cards remain valid directory or informational requirements. Existing written **internal lab order and report** functionality is not deferred by this clarification.
+
+**Explicit out of scope for this initiative:** Recreating an unrelated historical application or legacy module; copying mockup people/percentages as fixed policy; fabricating legal validity, clinical accreditation or performance results; duplicate CRM, payment, CMS, approval, patient or ledger databases.
+
+## 5. Functional product requirements
+
+The tables use stable **FR** IDs, priority MUST unless otherwise stated, client business-owner references, an acceptance-family reference (A-01–A-21), and user-visible or observable outcomes. They group closely connected actions rather than producing one requirement for each screenshot button. The cited CG-BR IDs remain the definitive detailed field and rule references.
+
+### 5A. Shared Foundation controls and organization
+
+| ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
+| --- | --- | --- | --- | --- | --- |
+| FR-001 | CG-01 | Authorized administrator manages staff access | Create, invite or activate accounts; recover credentials; suspend/revoke access; link roles and appropriate member/employee/center relationship without duplicate identity | A-01 | CG-01-BR01,08–10 |
+| FR-002 | CG-01 | Super Admin configures duties | Define protected and custom roles, edit grouped action permissions, copy a role's grants without copying its assigned people; see assignment/audit history | A-01 | CG-01-BR02–04,08 |
+| FR-003 | CG-01 | Scoped user accesses a feature | Apply permitted action and organization/state/district/sub-division/block/branch/center record scope to menus, linked selectors, search, exports and every protected operation; deny unauthorized access | A-01 | CG-01-BR05–07 |
+| FR-004 | CG-02 | Admin configures Foundation | Maintain organization details, geography, branches, departments/committees, managers and linked staff/projects/budgets with distinct approved publication | A-02 | CG-02-BR01–02,06–10 |
+| FR-005 | CG-02 | Branch manager starts branch setup | Complete seven-stage draft/review/submit registration with contacts, location, documents, manager and linked resources; after required approval issue unique branch code | A-02 | CG-02-BR03–05 |
+| FR-006 | CG-03 | Member/volunteer/employee/CSR/branch/provider submits | Give application number and tracking; support application-specific documents, verifications, notes, evidence and configurable stepwise routing | A-03 | CG-03-BR01–04,06 |
+| FR-007 | CG-03 | Authorized reviewer decides | Approve, reject, return for correction or forward; show pending and prior steps, reviewer, remarks and time; prevent action by unrelated or revoked reviewer | A-03 | CG-03-BR05–08 |
+| FR-008 | CG-03 | Final authorized approval occurs | Produce exactly one owner-domain effect (member/employee/provider/branch activation, entitlement or authorized financial outcome), never from a pending stage | A-03 | CG-03-BR09 |
+
+### 5B. People, community delivery and fundraising
+
+| ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
+| --- | --- | --- | --- | --- | --- |
+| FR-009 | CG-04 | Person applies as member | Select configured public membership tier, provide contact/address/referral/documents, pay applicable fee, track review, and receive member ID/certificate/card **only after required conditions** | A-04 | CG-04-BR01–05 |
+| FR-010 | CG-04 | Admin manages membership | Configure tier price, validity, benefits/appearance and publication; maintain member roster, expiry, renewal history, status and protected information changes | A-04 | CG-04-BR02,04,06 |
+| FR-011 | CG-04 | Person volunteers | Apply with personal/geographic profile, skills, experience, preferred department, schedule, referral and identity evidence; receive verified status and authorized assignments | A-04 | CG-04-BR07–11 |
+| FR-012 | CG-05 | Project owner sets up work | Create/maintain projects, responsible staff, locations, dates, budgets, funding links, status and work progress; expose scoped project dashboards | A-05 | CG-05-BR01–03,08 |
+| FR-013 | CG-05 | Coordinator assigns work | Create, assign and monitor tasks, events and activities with owners, priorities, deadlines, progress, evidence and only approved public display | A-05 | CG-05-BR04–05,09–10 |
+| FR-014 | CG-05 | Field worker visits project | Record geotag/GPS/location, check-in/out, photos/video, notes, documents, team and beneficiary references; supervisor sees review/history and linked expense requests | A-05 | CG-05-BR06–07,11 |
+| FR-015 | CG-06 | Staff registers beneficiary | Maintain restricted beneficiary profile/geography and project associations, including verification/status and useful filtered history | A-06 | CG-06-BR01,03,05 |
+| FR-016 | CG-06 | Approved aid is delivered | Record aid category, money/item, quantity/value, date and responsible person; link stock issue or finance posting, preserving assistance and public-impact privacy | A-06 | CG-06-BR02–05 |
+| FR-017 | CG-07 | Campaign owner proposes fundraiser | Create six-step editable campaign with project/cause, team, target, dates and media; submit for review and separately authorize public publication | A-07 | CG-07-BR01,06–08 |
+| FR-018 | CG-07 | Donor makes contribution | Support applicable general/campaign-linked gateway, authorized cash/bank/manual and payment-link paths, with separate pending/verified/failed/refunded states | A-07 | CG-07-BR02–03,09 |
+| FR-019 | CG-07 | Donation completes/reverses | Issue correct authorized receipt, donation history and donor self-service; post/reverse money through shared finance once and report actual campaign progress | A-07 | CG-07-BR04–07 |
+| FR-020 | CG-08 | CSR partner submits application | Capture organization, contact, proposed support, proof/agreement; review/approve/reject/return via the common approval process | A-08 | CG-08-BR01–03,05,08 |
+| FR-021 | CG-08 | Foundation funds a project | Record funding proposals, documented CSR/Foundation commitments, received funds, permitted split allocations and supporting agreements, linked to budget and finance | A-08 | CG-08-BR03–04,06–07 |
+| FR-022 | CG-08 | Finance or partner manager examines funding | Report approved, pending, committed, received and utilized contributions without confusing pledge with cash or public partner marketing with financial approval | A-08 | CG-08-BR05–07 |
+
+### 5C. Money, employees, payroll, stock and rewards
+
+| ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
+| --- | --- | --- | --- | --- | --- |
+| FR-023 | CG-09 | Finance Admin opens accounts | Configure chart of accounts/groups, financial year, branch/project allocation, cash/bank accounts, opening balances and controlled statuses | A-09 | CG-09-BR01–03 |
+| FR-024 | CG-09 | Finance user posts a transaction | Enter authorized balanced journal, payment/expense/contra voucher with item/rate/tax/charges, payee, source, attachments and applicable approval/paid state | A-09 | CG-09-BR02,04,06–08,17 |
+| FR-025 | CG-09 | Employee/volunteer requests reimbursement | Submit claim with purpose/amount/date/project and bill; route approval then single linked payable, voucher, payment and posting, not multiple expenses | A-09 | CG-09-BR09–10 |
+| FR-026 | CG-09 | Authorized user invoices or receipts | Use staged invoice/receipt preparation, items, dates/amounts, attachments, verifier and payment terms; save, approve, print/share securely and link actual money states | A-09 | CG-09-BR11–12 |
+| FR-027 | CG-09 | Finance allocates budget | Create/approve budgets and reveal committed, allocated, utilized, released, available/over-budget amounts with funding/project/branch drill-down | A-09 | CG-09-BR13–16 |
+| FR-028 | CG-09 | Reviewer checks statements | See scoped general ledger, cash/bank/day books, trial balance, vendor/CSR/project views, payables, corrections and reconciled reports with audit | A-09 | CG-09-BR03,05,14–17 |
+| FR-029 | CG-10 | HR enrolls employee | Capture employment, branch/department, reporting line, needed personal/identity/bank/qualification documents; follow configured verification until approved ID/access | A-10 | CG-10-BR01–03,12 |
+| FR-030 | CG-10 | Employee reports work | Capture attendance/shift/grace/weekly-off/late/leave, corrections and leave applications with authorized approvals and protected history | A-10 | CG-10-BR04–06,11 |
+| FR-031 | CG-10 | HR manages employment | Record performance assessments, assignments, transfer/promotion, effective-dated role/salary/branch, resignation, clearances, final dues and approved exit | A-10 | CG-10-BR07–08,14 |
+| FR-032 | CG-10 | HR issues official record | Prepare, review, sign/issue, dispatch, receive/reissue employee letters/memos and ID cards, using source-linked shared document templates | A-10 | CG-10-BR09,13,15 |
+| FR-033 | CG-10 | Employee requests allowance | Submit and track allowance/claim from applicable Internal Android or Admin workflow; only CG-09 records actual liability/payment | A-10 | CG-10-BR10–11 |
+| FR-034 | CG-11 | Payroll Admin configures compensation | Set approved salary components, allowances/deductions, periods, attendance rules, tax/statutory settings, bank instructions, arrears, holds and effective dates | A-11 | CG-11-BR01–02,09,11 |
+| FR-035 | CG-11 | Payroll officer runs period | Produce draft payroll from approved eligible employee/attendance data; calculate, validate, adjust, review and obtain required approvals | A-11 | CG-11-BR03–04,10 |
+| FR-036 | CG-11 | Authorized payroll payment occurs | Track reserves/batches/payment outcomes, generate private payslips, record history/audit and reconcile exactly one expense/payment outcome in CG-09 | A-11 | CG-11-BR05–08,10 |
+| FR-037 | CG-12 | Inventory officer manages stock | Maintain item/supplier master, receipts, issuance, authorized adjustment, availability, low-stock alerts and transaction history | A-12 | CG-12-BR01–03,05 |
+| FR-038 | CG-12 | Staff requests material | Submit and track request through approval/rejection and fulfilled quantity, with project, beneficiary and reward consumption linked to one stock inventory | A-12 | CG-12-BR04,06 |
+| FR-039 | CG-13 | Eligible member/volunteer refers new applicant | Record attributed referral, qualify only after defined approved event, maintain points transaction/reversal history and current rank | A-13 | CG-13-BR01–04 |
+| FR-040 | CG-13 | Admin configures loyalty program | Manage rank thresholds and benefits, point conversion/redemption rules, reward item catalog with availability and stock linkage | A-13 | CG-13-BR03–05 |
+| FR-041 | CG-13 | Member/volunteer redeems | Confirm eligibility/points, register one redemption, manage approval/fulfillment/reversal and report results without double deduction or stock issue | A-13 | CG-13-BR06–08 |
+
+### 5D. Integrated healthcare network, patient services and assistance
+
+| ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
+| --- | --- | --- | --- | --- | --- |
+| FR-042 | CG-14 | Foundation or center submits provider | Register center organization and own operating locations with type/code, contacts, location/map, service/facility listing, hours, documents and restricted settlement details | A-14 | CG-14-BR01–03,06–08 |
+| FR-043 | CG-14 | Foundation verifies provider | Review center identity/documents/facilities, approve/reject/return and activate/suspend/deactivate both account and applicable public eligibility with history | A-14 | CG-14-BR04–05,18 |
+| FR-044 | CG-14 | Foundation or center registers doctor | Maintain verified professional identity, licenses/qualifications, specialties, biography, approved center associations and center-specific consultation/follow-up fees | A-14 | CG-14-BR09–13 |
+| FR-045 | CG-14 | Patient searches healthcare | Search/filter/sort doctor or center by location, specialty, facilities, availability and approved verified/partner status; view published price, map/directions, contact and real supported benefits | A-14 | CG-14-BR14–18,20 |
+| FR-046 | CG-14 | Center maintains permitted presentation | Submit provider photos, services, published information/FAQs and own-center profile updates for Foundation-controlled review and publication | A-14 | CG-14-BR19 |
+| FR-047 | CG-15 | Doctor/center schedules availability | Configure doctor-center working days, time windows, capacity, consultation type, holidays, blocks and approved leave while preserving already confirmed bookings | A-15 | CG-15-BR01–02 |
+| FR-048 | CG-15 | Patient chooses doctor/visit | Support center-first or doctor/date/slot-first journey using same center-specific capacity; show selected/assigned center, location, fee/benefit and actual available slot before payment | A-15 | CG-15-BR03–08; D-02 |
+| FR-049 | CG-15 | New/existing patient identifies self | Register or securely locate patient with verified mobile, appropriate profile and consent, optional uploaded reports/identity; assign a unique patient ID without duplicates or unverified cross-linking | A-15 | CG-15-BR09–16 |
+| FR-050 | CG-15 | Patient/staff confirms appointment | Capture patient, doctor, center, slot, consultation type and reason; show editable summary, payment choice and current booking status without overbooking | A-15 | CG-15-BR17–18; CG-15-BR06 |
+| FR-051 | CG-15 | Booking is validly confirmed | Issue authentic reference/Booking ID, download/print/share and guarded QR/barcode verification and calendar export; protect identifiers and symptoms | A-15 | CG-15-BR19–21,24; D-07 |
+| FR-052 | CG-15 | Center serves patient | Manage reception check-in, queue/token, waiting/consultation/completed/canceled/no-show state with authorized updates and patient/center appointment history | A-15 | CG-15-BR22,25 |
+| FR-053 | CG-15 | Patient or authorized center changes booking | Reschedule/cancel when permitted; restore appropriate capacity, preserve history, update true due/refund and notify relevant parties | A-15 | CG-15-BR23–24; CG-17-BR09–13 |
+| FR-054 | CG-15 | Patient opens account | See authorized own appointments, receipts, patient ID and permitted reports; dependent/family and prescription authoring remain gated by explicit D-08 decisions | A-15 | CG-15-BR14–16,20 |
+| FR-055 | CG-16 | Center/central Admin configures lab | Manage diagnostic test master, codes/category/sample type, center-specific price/discount, active status, test package components, periods and history | A-16 | CG-16-BR01–03 |
+| FR-056 | CG-16 | Center books lab service internally | Create authorized patient test/package order and track collection, processing, report upload and controlled release; link payment/assistance state | A-16 | CG-16-BR04–07 |
+| FR-057 | CG-16 | Patient/provider views service | View published lab/service menus, real price and discounts where authorized; private report only to permitted patient/clinician | A-16 | CG-16-BR06–10 |
+| FR-058 | CG-16 | Additional service CTA appears publicly | Show enquiry/information or actual transaction only when that particular service workflow is approved and available; no unconfirmed medicine/OT checkout | A-16 | CG-16-BR08–10; D-01,23 |
+| FR-059 | CG-17 | Foundation configures benefit | Configure eligible provider/doctor/service, fixed/percentage contribution, caps, expiry, optional approval and patient eligibility with historical policy | A-17 | CG-17-BR01–04 |
+| FR-060 | CG-17 | Patient sees appointment price | Display gross fee, actually approved/eligible Foundation support and patient payable separately; eligible consultation benchmark is documented **50%/50%**, not unconditional or automatically 100% | A-17 | CG-17-BR02,05–07 |
+| FR-061 | CG-17 | Patient selects online or center payment | Provide verified Razorpay online-method flow and eligible pay-at-center choice; show initiated/pending/failed/confirmed/due state truthfully | A-17 | CG-17-BR08–10 |
+| FR-062 | CG-17 | Center receives payment or encounters due | Record authorized on-site payment, part-pay, overdue follow-up, receipts, correction and refund without equating booking confirmation to settlement | A-17 | CG-17-BR11–14 |
+| FR-063 | CG-17 | Foundation owes provider | Keep patient money, approved Foundation liability, provider due and settled amount distinct; support network/center scoped settlement and adjustments | A-17 | CG-17-BR15–19 |
+| FR-064 | CG-17 | Money has to be accounted for | Reconcile verified payment, refund and assistance source exactly once into CG-09, using client-approved collector/merchant/settlement ownership; unresolved D-04 blocks financial contract lock | A-17 | CG-17-BR18–20 |
+| FR-065 | CG-17 | CMS presents discount claim | Publish only actual supported and configured rates; lab/medicine/nursing example percentages and full coverage are not contractual entitlement without D-03 confirmation | A-17 | CG-17-BR06–07; D-03 |
+
+### 5E. Content, documents, reporting, operations and public channels
+
+| ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
+| --- | --- | --- | --- | --- | --- |
+| FR-066 | CG-18 | Admin edits Foundation site | Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs, website navigation and public Login/Join visibility with authorized preview/publish controls | A-18 | CG-18-BR01–04,08–11,25–26 |
+| FR-067 | CG-18 | Admin edits NGO impact/transparency | Publish editable Impact groups, geography/charts/stories with appropriate provenance; maintain 80G/PAN/registration, annual and financial disclosure pages/documents | A-18 | CG-18-BR12–17 |
+| FR-068 | CG-18 | Admin publishes reusable content | Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status | A-18 | CG-18-BR05–08,24,27 |
+| FR-069 | CG-18 | Healthcare content is published | Show approved directory/category cards, provider profiles, doctors, current price/facility/benefit messaging; don't allow CMS to overwrite provider verification, scheduling or contribution ownership | A-18 | CG-18-BR18–23,28 |
+| FR-070 | CG-19 | Business completes authorized document action | Generate versioned, permissioned membership/employee IDs, letters, donation/financial receipts, appointment slips and PDFs with source-linked status, print/share and safe QR verification | A-19 | CG-19-BR01–02,05,08 |
+| FR-071 | CG-19 | Business event requires communication | Provide configured email/SMS/WhatsApp/push, broadcast notice, audience/priority/expiry/template control and observable delivery/failure history without duplicating module records | A-19 | CG-19-BR03–04,06,09 |
+| FR-072 | CG-19 | Visitor or center requests assistance | Track public contact/helpdesk and center support tickets/FAQs, owner, replies/status and restricted identity; share support workflow across channels | A-19 | CG-19-BR07 |
+| FR-073 | CG-20 | Manager examines business | Show scope-filtered dashboards and quick actions for Foundation, modules, centers, finance and operations from verified owner records | A-20 | CG-20-BR01–03 |
+| FR-074 | CG-20 | Authorized user produces reports | Use standard and custom/saved/grouped reports, filters, supported export formats and schedules; mask/restrict sensitive records by recipient and scope | A-20 | CG-20-BR03–07 |
+| FR-075 | CG-21 | Super Admin manages platform | Configure Foundation/system settings, approved payment/messaging/map integrations and public visibility through the owning modules; sensitive credentials restricted | A-21 | CG-21-BR01,03,05 |
+| FR-076 | CG-21 | Administrator audits or recovers | Show protected logs for login, approvals, money, provider verification, sensitive accesses and publishing; restrict backup/restore to approved operations and support privileged MFA/session controls | A-21 | CG-21-BR02,04,06 |
+| FR-077 | CG-300 | Public website/app user navigates | Experience coherent public Foundation pages, memberships, volunteering, donations, rewards and eligible doctor booking/receipts on responsive web and Public Android with identical current business outcomes | A-18, A-15 | CG-300-BR01–06,14–20 |
+| FR-078 | CG-300 | Employee/volunteer uses Internal Android | Sign in to role-appropriate task list and complete applicable registrations, approvals, visits/photo/GPS, attendance, leave, claims, inventory and permitted coordination with current backend state | A-01, A-05, A-10 | CG-300-BR07–11 |
+| FR-079 | CG-300 | Center worker uses Portal | Operate authorized own-center profile, doctors, schedules, patient registration, reception, labs, receipts, dues and reports without seeing unrelated center/private records | A-14–A-17 | CG-300-BR14–15; CG-14–17 |
+| FR-080 | CG-300 | User encounters search/form failure | Provide discoverable role-sensitive navigation, real linked options, clear loading/empty/forbidden/pending/error messages and mobile-adapted tables/forms; never fake success | A-01, A-21 | CG-300-BR12–13,15,21–23 |
+
+## 6. Cross-cutting business rules
+
+| Rule | Required business invariant | Owner source |
+| --- | --- | --- |
+| BR-001 | An authenticated person may have multiple member, volunteer, staff or patient relationships; each relationship remains protected and explicit | BR-X01, CG-01/04/10/15 |
+| BR-002 | Roles require an action **and** permitted entity/area/center scope; hiding a button alone never grants or denies backend access | BR-X01, CG-01 |
+| BR-003 | Each registered application has one authoritative approval timeline; final outcome occurs only at valid final review | BR-X02–04, CG-03 |
+| BR-004 | Member ID, employee ID, provider code, patient virtual ID, Booking ID and financial receipt references are distinct identifiers with proper authorization | CG-02/04/09/10/14/15 |
+| BR-005 | Draft, verified, approved, active and published are separate statuses; a private operational record does not become a public listing automatically | BR-X06, CG-18 |
+| BR-006 | Finance recognizes verified money events, not merely a donation link, gateway initiated state, promise, queued salary or uncollected healthcare due | BR-X04–05, CG-07/08/09/11/17 |
+| BR-007 | Every approved payment, refund, voucher, payroll, stock issue, point redemption or appointment confirmation has one consequential effect across retries | CG-09/11/12/13/15/17; CG-NFR-DAT02–05 |
+| BR-008 | Foundation contribution and patient paid amount are **separate monetary concepts**; changing a policy must not rewrite a previously accepted receipt or booking price | BR-X05, CG-15/17 |
+| BR-009 | One verified professional can practice at multiple verified centers, but booked slot, consultation fee and location are specific to that doctor-center offering | CG-14/15 |
+| BR-010 | Center-first and time-first appointment paths use **one schedule/capacity**; any automatic center assignment is shown and accepted before payment | CG-15, D-02 |
+| BR-011 | Patient reports, diagnoses, uploaded identity and confidential employment/finance data are not exposed by public search, QR lookup, CMS or unrelated staff roles | BR-X07–08, CG-14–19 |
+| BR-012 | Reports and public Impact cards derive from owners or explicitly approved editorial sources; neither is a shadow transaction ledger | BR-X10, CG-18/20 |
+| BR-013 | Provider suspension prevents ineligible new bookings; existing booking handling follows an approved visible correction and communication policy | CG-14/15 |
+| BR-014 | A failed message, map or external payment/provider service cannot silently change a successful core business decision or claim success for an unconfirmed one | CG-19/21; CG-NFR-REL01–07 |
+| BR-015 | A permissioned workflow must expose necessary **authorized** linked-selector options even if the user lacks separate management rights over that linked module | CG-01-BR07; CG-300-BR23 |
+| BR-016 | Correction, cancellation, return, rejection, refund and reversal preserve source and reviewer/actor history rather than silently deleting finalized evidence | BR-X12; CG-03/09/15/17 |
+
+## 7. End-to-end acceptance families
+
+Each family defines a product acceptance *outcome* with representative normal and negative/alternative conditions. Planning and QA will later derive detailed manual scenarios; these are **not** developer tasks.
+
+| Acceptance ref | Representative user journey and observable positive result | Required negative/exception evidence |
+| --- | --- | --- |
+| A-01 Identity & access | Create/assign role → authorized staff logs in → sees/uses correct branch/center and selectors | Other branch/center, unauthorized action/export, role revocation, expired session, hidden-selector dependency denied appropriately |
+| A-02 Organization | Seven-step branch draft → submit → document review → approval → branch code and usable assignments | Incomplete docs, returned application, rejected status, not automatically published |
+| A-03 Shared approvals | Application/reference → reviewer checks individual files → forwards/returns/approves → valid final owner outcome | Stale/revoked reviewer, duplicate decision, rejected docs, scope mismatch, intermediate approval cannot activate |
+| A-04 Membership & volunteers | Public application → valid tier/fees or volunteer preferences → approval → roster/ID/doc and assignment | Unpaid/pending, failed/duplicate payment, rejected/expired app, unauthorized document exposure |
+| A-05 Projects & visits | Create project/task → authorized staff submits visit GPS/photo evidence → review → status and project report | Wrong geography, missing evidence, duplicate visit/expense, interrupted mobile upload |
+| A-06 Beneficiary aid | Register beneficiary → project aid approved → stock/finance effect and private assistance history | Repeated issue, insufficient stock, duplicate recipient history confusion, unauthorized public identity |
+| A-07 Donations & campaigns | Draft campaign → approval/publication → donor payment verified → receipt and financial/project reporting | Gateway pending/failure/replay, refund, manual payment link not mistaken for paid |
+| A-08 CSR funding | Partner verifies → agreement/proposal → approved share/received funds → allocation and budget reporting | Unapproved pledge, returned agreement, overlapping allocations, financial mismatch |
+| A-09 Accounting | Approved claim/voucher/invoice/budget → authorized posting and balanced ledger/trial balance → report/export | Duplicate/replayed action, wrong branch/payee, forbidden export, invalid financial entry, reversed payment |
+| A-10 HR | Employee staged approval → ID/access → attendance/leave/transfer/exit and approved document records | Unapproved bank/salary change, privacy breach, stale permission, lost clearance |
+| A-11 Payroll | Setup → run attendance calculation → verify/approve → payment/ledger/payslip → audit/history | Repeated run/payment, invalid allowance, blocked employee, unauthorized payslip |
+| A-12 Inventory | Request → approve → issue/receive → current stock/distribution history | Concurrent last-stock issue, unapproved adjustment, double fulfillment |
+| A-13 Referrals/rewards | Valid approved referral → points/rank → redemption/fulfillment → stock/history | Referral not yet qualified, double points, duplicate redemption, invalid reversal |
+| A-14 Healthcare network | Register center/doctor with proof → approve → link center-specific offerings → publish verified searchable profile | Suspended/unverified center, unauthorized center edits, sample ratings shown as facts |
+| A-15 Appointments | Search → center/time choose → verified patient → book → authentic slip/QR → scoped reception/queue | Last-slot race, conflicting two booking paths, double patient, public ID guessing, cancellation/refund |
+| A-16 Diagnostics | Center prices/packages → internal patient order → sample/processing/report → authorized patient access | Other patient's test/report, unapproved report release, unsupported public checkout CTA |
+| A-17 Assistance & settlement | Confirm applicable policy → gross/contribution/patient due → online or pay-at-center → correct settlement/source-ledger state | Gateway callback repeat, pending payment misreported, 100% unauthorized coverage, cross-center settlement exposure |
+| A-18 CMS & public | Draft approved page/banner/project/center info → preview → publish → public web/app reflect it | Private/draft content leak, stale public provider/benefit data, unauthorized publishing |
+| A-19 Documents & communication | Valid business event → right document/notification recipient and status history; support case tracked | Wrong patient/member, guessed link, failed provider, duplicate notice/secret exposure |
+| A-20 Analytics | Scope-filtered project/funding/HR/healthcare reports → valid export/schedule | Confidential export to other scope, mismatched finance totals, hidden source |
+| A-21 Platform operation | Admin changes permitted policy → scoped audit record → controlled recovery/diagnostic status | Unauthorized restore, credentials exposed, stale sessions, backend error masked as a success |
+
+**Additional representative user journeys (see CG-BR-000 J-01–J-12):** member join; volunteer join; branch opening; publication and fundraising; beneficiary assistance; visit/expense; CSR; payroll; referral/reward; healthcare provider verification; center-first/slot-first doctor booking; internal diagnostics and Foundation contribution/settlement. These remain **connected use cases**, not separate duplicate systems.
+
+## 8. Business states and lifecycle constraints
+
+- **Applications:** Draft → Submitted → Document Verification / Review → Returned / Rejected / Forwarded → Final Approved → Owner Record Activated or Issued. Exact step chains vary by approved process; decisions recorded.
+- **Projects and campaigns:** Draft/Planned → Submitted where applicable → Approved → Active/Published as separate axes → On-hold/Completed/Cancelled/Unpublished. Public visibility never makes finance approved.
+- **Donations and payments:** Initiated/Link Created → Awaiting Provider Verification → Confirmed Received / Failed / Expired → Refund or Adjustment where authorized. A receipt states the verified collected amount.
+- **Fund and budget:** Proposal / Commitment → Authorized Approval → Received → Allocated → Utilized / Released, each distinct from available remaining budget.
+- **Payroll:** Configured → Draft Run → Calculated → Reviewed → Approved → Payment Pending/Released/Failed → Payslip Issued; the payslip is not the payment record.
+- **Healthcare provider:** Submitted → Verification → Approved and Active/Published (independent flags) → Suspended/Deactivated with protected history.
+- **Doctor slot:** Published Availability → Temporarily Held where applicable → Confirmed or Released/Blocked. Held/confirmed semantics and cancellation fairness belong in design after business policy approval; must not overbook.
+- **Appointment:** Draft Selection → Patient Verified → Booking Confirmed or Failed/Expired → Checked In/Consulting/Completed or Rescheduled/Cancelled/No-show. Booking state and payment state are independent.
+- **Healthcare assistance and settlement:** Eligibility Requested/Assessed → Authorized Support → Patient Due/Collected → Provider Due/Settlement Pending → Settled/Adjusted/Refunded; source monetary history preserved.
+- **CMS:** Draft → Submitted for Review when required → Approved → Scheduled/Published → Unpublished/Archived; an unpublished page is not discoverable through a different public URL.
+
+State labels may be simplified for end users; PRD acceptance requires their **business meaning**. HLD/DLD will formalize exact transitions without inventing additional approvals.
+
+## 9. Cross-channel business coverage
+
+| Business capability | Foundation Admin Web | Public Website | Center Portal | Public Android | Internal Android | Shared backend outcome |
+| --- | --- | --- | --- | --- | --- | --- |
+| Governance/accounts/approvals | Configure/manage | Own login/application/status | Own authorized staff/settings | Own verified access | Permitted review/assignment | One authorization and approval state |
+| Foundation membership, volunteering, campaigns | Configure/review/report | Join, volunteer, donate, self-service | Not applicable unless authorized | Public journeys, receipts, rewards | Assigned field/approval actions | One member/volunteer/donor/master |
+| Project/beneficiary/field work | Manage/approve/report | Approved content/impact | Only linked approved collaboration | Published information | Task/GPS/photo/aid/expense | One project/visit/aid/source |
+| Finance/CSR/payroll/inventory | Full authorized operations | Own donation/fee receipts only | Restricted own collections/dues | Only personal eligible payment/receipts | Role-approved claims/stock/selected approvals | One finance, inventory and payroll owner |
+| Provider/doctor/diagnostics | Network setup/approval/report | Verified listing/booking | Own providers, scheduling, internal lab/report | Discovery, patient booking and results as authorized | Only explicitly approved coordination | One professional, slot, patient, order |
+| Healthcare assistance, payments, settlement | Policy and network oversight | Accurate gross/contribution/due and payment | Own collections/dues/settlement view | Accurate booked/paid/due receipts | Only assigned processing | One payment/support/ledger trail |
+| CMS, communications and reporting | Editorial Admin, audits, reports | Published content, permitted support | Scoped content submission and help | Published updates/notifications | Assigned notifications/reporting | One publication and messaging history |
+
+**Open mobile decision D-17:** Exact heavy-back-office Android parity is not invented from the web Admin screenshots. Source-required on-the-move work and public self-service are mandatory; per-role matrix must be approved before final screen-level Planning.
+
+## 10. Product-level non-functional acceptance
+
+**All applicable P0 CG-BR-600 controls are mandatory**; HLD and DLD allocate the actual methods. Numeric values below are **proposed service targets**, not client-confirmed contracts. Do not substitute a benchmark on empty data or a mock endpoint for realistic evidence.
+
+| Quality gate | Minimum product outcome and evidence | Source |
+| --- | --- | --- |
+| N-01 Authorization / clinical privacy | No unrelated geography/branch/center/patient/employee/finance read, write, linked-selector or export access; independent negative tests on all relevant interfaces | CG-NFR-SEC01–04,09–12 |
+| N-02 Payment and financial integrity | One verified business money effect, correct gross/support/patient split, balanced accounting and accurate pending/failed/refund state after replay/timeout | CG-NFR-DAT01–03,06–10 |
+| N-03 Booking integrity | Capacity never exceeded by simultaneous website/Android/reception requests; no double allocation or stale center/fee | CG-NFR-DAT04–05 |
+| N-04 Reliable state and recovery | Network/provider interruption creates an honest pending/unknown/failure state; no lost approved action; protected backup restore tested before go-live | CG-NFR-REL01–02,04–08 |
+| N-05 Security and confidential records | Secure sessions, privileged MFA support, restricted medical/identity/bank uploads, minimal public verification, abuse throttling and secure integration credentials | CG-NFR-SEC04–11, INT01–03 |
+| N-06 Performance/scale (proposed P1) | Common API p95 ≤1s, scoped search p95 ≤1.5s, initial 100-user representative scenario; agree actual load before target is binding | CG-NFR-PER01–02,05–07 |
+| N-07 Public web performance (proposed P1) | Field web vitals LCP ≤2.5s, INP ≤200ms, CLS ≤0.1 at defined representative percentile/conditions | CG-NFR-PER03 |
+| N-08 Availability/recovery (proposed P1) | Monthly 99.9% availability; critical data recovery RPO ≤1 hour/RTO ≤4 hours only if confirmed feasible in hosting/SLA | CG-NFR-REL03–05 |
+| N-09 Accessibility and mobile usability | Clear task-first UI, usable small-screen forms/tables, status/validation, readable PDFs, appropriate Indian localization; aim WCAG 2.2 AA for web | CG-NFR-UX01–08, MOB01–04 |
+| N-10 Public publishing and SEO | Approved public pages indexable/discoverable; private patient/account/admin/receipt URLs not publicly indexed; no fake stats, prices or ratings | CG-NFR-WEB01–05 |
+| N-11 Audit, support and maintenance | Trace actor/time/scope/records without secrets; monitoring/alerts, configurable support, safe migrations, real error paths, compatible updates | CG-NFR-OPS01–06, MNT01–06 |
+| N-12 Manual QA acceptance | For each owner PRD scenario, validate permitted UI → backend decision → authoritative persistence/money → other channel/report, plus negative/retry/concurrency; record honest PASS/FAIL/BLOCKED/NOT_RUN | CG-NFR-600 §13 |
+
+Performance/availability/load targets and policy-dependent languages, consent/retention, provider agreements, merchant ownership and exact offline scope require the specific NDEC-01–08 decisions in CG-BR-600 before contractual acceptance.
+
+## 11. Dependencies and unresolved decisions
+
+**Cross-domain dependencies (business, not implementation tasks):** CG-01/02 determine identity and scope; CG-03 governs approvals; CG-09 owns money; CG-19 owns shared documents and messages; CG-21 owns audit/configuration. Member/HR/project/inventory/provider masters depend on these, and donation/CSR/payroll/booking/diagnostics/healthcare support reuse those masters. CMS publishes approved data through CG-18. CG-20 reports from domain owners. Web and Android journeys are designed and accepted with their corresponding domains rather than being deferred as separate unrelated products.
+
+**Blocking decisions before approval of the affected PRD or HLD contracts:**
+
+| Decision | Business question still requiring client answer | Blocks |
+| --- | --- | --- |
+| D-01, D-23 | Public lab booking, medicine ordering/delivery, nursing/OT and pharmacy transaction extent versus informational/enquiry directory | Non-consultation public transaction journeys |
+| D-02 | Both booking entry paths, auto-center preference/tie-break and patient consent to location | Exact center-selection and schedule acceptance |
+| D-03 | Eligibility, 50% base versus 100%, diagnostic/medicine/nursing discount versus actual Foundation funding and caps | Healthcare assistance rate and publicity |
+| D-04 | Razorpay merchant, pay-at-center collector, who holds funds, who settles providers | Healthcare financial posting, settlement and refunds |
+| D-05, D-06, D-12 | Final Super Admin approvals versus delegation; center staff authorization and geography/role defaults | Final approval/role policy |
+| D-07, D-08 | Patient/Booking ID/QR receipt exact form, dependent/family and prescription authority | Final patient documents and family/clinical journeys |
+| D-10, D-17 | Which Foundation locations are publishable; exact role/channel matrix for center/internal/public Android | Publication and channel detailed approval |
+| D-11, D-13, D-19 | Membership renewals/refunds, accounting/fund definitions, statutory tax/report sign-off | Related financial policies and final reporting |
+
+**Other recorded decisions:** D-09 ratings/favorites; D-14 field offline/GPS; D-15 points/redemption; D-16 editorial statistics; D-18 messaging providers; D-20 patient/member relationship; D-21 committee/performance detail; D-22 lab sign-off; D-25 center recovery rights. These remain explicit in the existing decision register and should be resolved before their dependent feature is approved.
+
+**Risk control:** The PRD documents the feature and its boundary even when a detailed policy is open. It must **not** authorize the development team to choose merchant ownership, clinical consent, payment/refund obligations, unsupported mobile scope or an unapproved rate.
+
+## 12. Acceptance, quality review and sign-off state
+
+**Product-level completeness criteria:**
+
+1. All 21 owner modules in CG-BR-000 map to stable FR rows, at least one acceptance family and applicable quality gates; no independent copy of source records is authorized.
+2. Every original client Foundation requirement section and all 75 healthcare feature IDs remain traceable through the authoritative CG-BR package; Admin UI reference includes 167 captured images.
+3. Public/center/Admin/Android flows have coherent actor and source-data ownership, including negative authorization and monetary/clinical privacy cases.
+4. No proposed numerical NFR is falsely represented as an approved SLA; no screenshot is presented as evidence of implemented functionality.
+5. Critical open business decisions stay identified and block only their dependent policy/PRD approval, not the entire requirement drafting effort.
+6. No architecture, API/schema, component/wireframe, epic/story/task or implementation claim has been inserted into this product PRD.
+
+**Authoring review:** Product-owner/BA self-review only; external independent review has **not** been performed. This draft is ready for client discussion, but unresolved high/critical policy questions mean **IN_REVIEW / BLOCKED_DECISION**. Corrective edits require review of the latest artifact. The approval registry must not claim APPROVED without an externally verifiable authorized human decision bound to this exact PRD SHA-256 and a corresponding final quality review, per pinned JASIQ Harness v2.
+
+**Next Harness stage (not authorized by this draft alone):** After required client decisions, final review and human approval, run the pinned Harness HLD stage for this same initiative. Module-level UIUX/DLD decisions, dependency-ready user stories/tasks and independent QA belong to Planning/Development/QA, not to a second product PRD.
+
+**Repository delivery guardrails:** Work remains on the PRD feature branch pending separate merge authorization. **No CI, GitHub Actions, .github/workflows, application code, deployment, real payments or production data mutation.**
