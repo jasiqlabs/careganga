@@ -10,7 +10,9 @@
 2. **[01 — Foundation and Operations BR](01-FOUNDATION-OPERATIONS-BR.md)**: organization, roles, approvals, members/volunteers, projects/events/field activities, beneficiaries, donation/CSR, finance, HR/payroll, inventory, referrals/rewards, communications, reporting and governance.
 3. **[02 — Integrated Healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md)**: healthcare network, multi-center doctors, provider verification, scheduling, patient, doctor booking, lab operations, Foundation financial assistance, payments, collections and settlements.
 4. **[03 — CMS, Admin and Channels BR](03-CMS-CHANNELS-BR.md)**: how Foundation Admin controls every business domain and publication; public pages, impact/NGO information, center portal, public website, public Android and internal Android.
-5. **[04 — Source Traceability and Decisions](04-TRACEABILITY-DECISIONS.md)**: 61-page source-section mapping, new UI references, identified conflicts, documented gaps, decision register and PRD acceptance/handoff checklist.
+5. **[04 — Source Traceability and Decisions](04-TRACEABILITY-DECISIONS.md)**: source-to-module links, identified conflicts, documented gaps, decisions and PRD handoff checklist.
+6. **[05 — Source-to-BR Coverage Audit](05-SOURCE-TO-BR-COVERAGE-AUDIT.md)**: explicit reconciliation of all PDF sections, healthcare features 1–75, 13 unique supplied healthcare JPGs and transcript with corrections.
+7. **[06 — Shared NFR Baseline](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md)**: P0 security, clinical privacy, financial/booking correctness, concurrency, recovery, usability and monitoring, plus proposed numerical service targets.
 
 ## Source and scope principles
 
@@ -34,6 +36,8 @@ Each owning module (\`CG-01\`–\`CG-21\`) is a potential parent PRD, with small
 - [x] Detailed healthcare requirements and center/public workflows
 - [x] CMS/publication/admin/channel mapping
 - [x] Source-to-module mapping and unresolved business decisions
+- [x] Page/feature-level source-vs-BR gap audit with detailed corrections
+- [x] Shared cross-platform NFR and manual QA quality gates
 - [x] No hidden independent duplicate payment, approvals or operational directories
 - [ ] Original prior admin video/screenshot archive reinspection
 - [ ] Client confirmation of the documented decision register
