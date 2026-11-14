@@ -56,10 +56,11 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 ### 3.3 Provider discovery and public profile
 
 - **CG-14-BR14:** Public website/app offers published healthcare center categories, doctor search, center search and geographic filters including state/district/block/PIN where available.
-- **CG-14-BR15:** Search doctors by name, specialty, qualification, experience, consultation fee and availability; display published professional profile, associated centers and relevant prices/benefits.
-- **CG-14-BR16:** Search/list centers by type, services, facility and location; support list/grid and map/directions views, published contact, working hours, galleries, doctors and facilities.
+- **CG-14-BR15:** Search doctors by name, specialty, qualification, experience, consultation fee and availability; support apply/reset filters, list/grid results, sorting and pagination, and display published professional profile, verified state where valid, associated centers and relevant prices/benefits.
+- **CG-14-BR16:** Search/list centers by name, state/district/block/PIN, category/type, services, facility and supported benefit; support list/grid and map/directions views, published contact, working/OPD hours, galleries, doctors and facilities. Mockups illustrate filterable *published capability flags* including online booking, home sample collection, medicine delivery, 24×7 service and cashless/insurance; displaying a flag does not authorize an end-to-end delivery or insurance-claims workflow.
 - **CG-14-BR17:** Display approved verification/partner status, applicable CareGanga support eligibility and reviews/ratings **only where grounded in a permitted, validated source**. Mockup review counts and badges are examples, not production facts.
 - **CG-14-BR18:** Only approved/published center and doctor records are searchable by the public; internal account status and public listing status remain controlled independently.
+- **CG-14-BR19:** Center staff can submit permitted center website content, service descriptions, images, FAQs, support requests and operating preferences, subject to Foundation review/publication and shared CG-18/19 ownership. The Center Portal cannot publish unverified clinical credentials or independently change Foundation assistance.
 
 **Admin controls:** Provider/branch types, verified status, professional documents, affiliations, service catalogs, center/doctor publication, staff access, fees, benefit-rule association, visibility.  
 **Foundation Admin:** Network-wide controls and comparisons. **Center Portal:** Own-center registration, doctors/services, operational updates and documents. **Public:** Search, filters, maps, profiles and published services.
@@ -69,7 +70,7 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 ### 4.1 Scheduling and center selection
 
 - **CG-15-BR01:** For each doctor-center association, authorized users configure consultation days, times, slot duration, applicable consultation mode and schedule exceptions.
-- **CG-15-BR02:** Doctor leave, center holidays, manually blocked slots and capacity changes affect actual booking availability; center operators and authorized Foundation administrators can inspect booked/available/blocked dates and slots.
+- **CG-15-BR02:** Doctor leave applications, authorized approval/rejection, center holidays, manually blocked slots and capacity changes affect actual booking availability; center operators and authorized Foundation administrators can inspect leave history and booked/available/blocked dates/slots. A pending leave request does not silently cancel confirmed bookings.
 - **CG-15-BR03:** Public patients can use **center-first booking**: choose doctor → select associated center → choose available date and slot.
 - **CG-15-BR04:** Public patients can use **slot-first booking**: choose doctor → date and available time → assigned center based on the underlying doctor's published center schedule. The selected center must be visible **before final confirmation/payment**.
 - **CG-15-BR05:** Both journeys consume the **same center-specific slot inventory**, fee and policy. Never show a free slot on one path when it is booked or blocked on another.
@@ -97,12 +98,12 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 - **CG-15-BR21:** Generate QR/barcode verification on the appointment slip; scanning checks authentic appointment state and exposes only the minimum permitted verification details.
 - **CG-15-BR22:** Center can check in patients, generate/manage queue tokens, move patients through waiting/scheduled/in-consultation/completed and record canceled/no-show states as approved.
 - **CG-15-BR23:** Permit authorized cancellation/rescheduling/status adjustment consistent with center capacity and financial/refund policy, with reasons/history.
-- **CG-15-BR24:** Issue appointment confirmations/reminders and send/share permitted records via configured email/SMS/WhatsApp/push.
+- **CG-15-BR24:** Issue appointment confirmations/reminders and send/share permitted records via configured email/SMS/WhatsApp/push. Include **Add to Calendar** from confirmed appointment details with actual doctor/center/date/time; exported calendar details must follow patient visibility rules.
 - **CG-15-BR25:** Provide center-wise and Foundation-wide scoped booking lists, appointment summaries, patient history and reporting.
 
 **Document reference notes:** UI designs show (a) center-first and (b) automatically selected center; (c) patient and center copies on one A4 portrait page for online-paid cases and a single patient copy for pay-at-center; (d) printed QR/barcode. Preserve as design references for the document PRD, subject to final approved layout and privacy controls.
 
-**Center Portal:** Staff book walk-in/offline appointments, manage arrivals, appointments and patient records within scope.  
+**Center Portal:** Staff book walk-in/offline appointments, manage arrivals, appointments and patient records within scope. Provide scoped service tickets, FAQs and assistance requests via shared CG-19 support capability (rather than a separate center-specific ticket platform).  
 **Public site/app:** Verified registration, doctor search, booking, payment, history, slip, status.  
 **Foundation Admin:** Network-wide oversight, authorized corrections and policy.
 
@@ -143,7 +144,7 @@ Healthcare is **one first-class domain inside the CareGanga Foundation platform*
 - **CG-17-BR09:** Track payment initiated/pending/succeeded/failed/refunded/partially paid or due states relevant to the actual service, with verified transaction references and reconciliation evidence.
 - **CG-17-BR10:** Booking confirmation must correctly distinguish **booking state** from **payment state**; for pay-at-center, an appointment may be confirmed but the patient amount remains due.
 - **CG-17-BR11:** Center staff can record in-person collections by cash/UPI/card/bank/configured payment methods, issue receipts and update outstanding status under controlled permissions.
-- **CG-17-BR12:** Support payable/part-paid/due, overdue follow-up, permitted corrections and refunds/adjustments with audit and approval where required.
+- **CG-17-BR12:** Support payable/part-paid/due, overdue aging and payment follow-up records, permitted corrections and refunds/adjustments with audit and approval where required.
 - **CG-17-BR13:** Produce patient payment receipts and booking documents from the same authoritative booking + collected/assistance amount, never from independently edited totals.
 - **CG-17-BR14:** Maintain appropriate provider/center invoice/receipt and financial history, referring to shared CG-09 financial records.
 
@@ -186,7 +187,9 @@ The above examples are **business demonstrations**, not defaults for all doctor/
 - Doctor/professional (if granted): assigned schedule, appointments, relevant visits and service/consultation statistics.
 - Patient: upcoming/completed appointments, payment status, downloadable booking slips, receipts, permitted test reports and patient virtual ID.
 
-All figures must derive from booking, diagnostic and financial owners using actor-appropriate scopes. Center dashboards do not establish separate accounting sources.
+All figures must derive from booking, diagnostic and financial owners using actor-appropriate scopes. Center dashboards do not establish separate accounting sources. Doctor activity/performance reports cover consultations, patients served, gross fee/revenue and Foundation contribution utilized, with access appropriately scoped.
+
+**Cross-cutting quality gates:** Apply [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) for patient/center data isolation, secure identity and documents, schedule concurrency, gateway idempotency, settlement consistency, API/search performance, monitoring and recovery. Relevant P0 requirements are not optional in healthcare PRDs.
 
 ## 9. Required cross-domain integration
 
