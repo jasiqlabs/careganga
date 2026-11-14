@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "records": {
+    "prd": {
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED",
+      "delegation_source": "initiative.json:approval_policy",
+      "artifact": "prd.md",
+      "sha256": "205f8d45d8e18cddcbe5a8947b673c1f8daa3e5d458033b6efeb307918d1956c",
+      "approved_by": "ChatGPT GPT-6 (delegated design reviewer)",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/645ba1359e8aa3bea117d9791d16f02f1f0e96a7/specs/initiatives/careganga-foundation-platform/prd.md",
+      "approved_at": "2026-11-14T16:14:44.657Z",
+      "quality_review": {
+        "status": "COMPLETE",
+        "artifact_sha256": "205f8d45d8e18cddcbe5a8947b673c1f8daa3e5d458033b6efeb307918d1956c",
+        "rounds": 2,
+        "open_critical": 0,
+        "open_major": 0,
+        "open_actionable": 0,
+        "method": "SELF_REVIEW_DISCLOSED",
+        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/645ba1359e8aa3bea117d9791d16f02f1f0e96a7/specs/initiatives/careganga-foundation-platform/prd.md#12-acceptance-quality-review-and-sign-off-state"
+      }
+    },
+    "hld": {
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED",
+      "delegation_source": "initiative.json:approval_policy",
+      "artifact": "hld.md",
+      "sha256": "b711c76bd4ec86474a5645b495b867755f6138a3e76da77d6fc891886d30e778",
+      "approved_by": "ChatGPT GPT-6 (delegated design reviewer)",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/5715138f797100f543080b14468482c2dd83ed1b/specs/initiatives/careganga-foundation-platform/hld.md",
+      "approved_at": "2026-11-14T16:14:44.657Z",
+      "quality_review": {
+        "status": "COMPLETE",
+        "artifact_sha256": "b711c76bd4ec86474a5645b495b867755f6138a3e76da77d6fc891886d30e778",
+        "rounds": 2,
+        "open_critical": 0,
+        "open_major": 0,
+        "open_actionable": 0,
+        "method": "SELF_REVIEW_DISCLOSED",
+        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/5715138f797100f543080b14468482c2dd83ed1b/specs/initiatives/careganga-foundation-platform/hld.md#13-review-checklist-and-current-evidence"
+      }
+    }
+  }
+}
