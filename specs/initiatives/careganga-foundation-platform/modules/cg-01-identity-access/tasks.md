@@ -87,5 +87,5 @@ Dependencies: US-001, US-002, US-003, US-004
 - US-001: READY | Planning draft; source implementation NOT_STARTED, executable QA NOT_RUN, visual QA VISUAL_NOT_RUN
 - US-002: READY | Planning draft; source implementation NOT_STARTED, executable QA NOT_RUN, visual QA VISUAL_NOT_RUN
 - US-003: READY | Planning draft; Web/Internal Android role UI required, source implementation NOT_STARTED
-- US-004: READY | Planning draft; CG-02/CG-10/CG-14 owner integrations are external dependencies and cannot be called SOURCE_COMPLETE until real
-- US-005: READY | Planning draft; cross-owner selector integrations must be verified by actual owner modules
+- US-004: BLOCKED | Await actual CG-02 geography/branches, CG-10 employee relationship and CG-14 center owner contracts; no placeholder scope data or false source completion
+- US-005: BLOCKED | Depends on US-004 and actual scoped owner selector APIs; its CG-01 source work cannot be called complete while linked owner contracts are absent
