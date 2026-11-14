@@ -18,7 +18,7 @@ Scope: The **one-time technical bootstrap** (single backend/PostgreSQL migration
 
 Acceptance:
 - A protected root account exists through a controlled first-setup path, not a hardcoded universal password. A real active account can sign in/out and recover securely with permitted channel behavior.
-- Session expiration/suspension/revocation always blocks backend access; no stale protected information is trusted in Web/Android.
+- Session expiration/suspension/revocation always blocks backend access; privileged admin sessions require verified MFA per HLD; no stale protected information is trusted in Web/Android.
 - Invalid/duplicate/replayed credentials, unknown users, provider timeout and retry use safe, truthful outcomes without exposing the account directory or internal exception text.
 - **Per-story source QA:**
   - **US-001-QA01:** Fresh controlled first-setup, authorized Foundation operator → provision root + sign in via responsive Web; backend creates one protected root/account/session with unique constraints, auditable setup and permitted context; UI never prints credential/DB ID.
@@ -27,8 +27,9 @@ Acceptance:
   - **US-001-QA04:** Expired session, suspended user or copied revoked token requests protected account details → both clients clear protected state, backend denies, no DB changes or unauthorized data response.
   - **US-001-QA05:** Invite/recovery provider unavailable, challenge expired or confirmation response lost → UI says pending/unavailable (not success); backend challenge is expiring, one-use and retry/idempotent; no duplicate account/credential.
   - **US-001-QA06:** Anonymous visitor opens Public Web/Public Android and tries an Internal/Center deep link → genuine public content works, protected actions denied server-side; no fabricated center affiliation or public-to-staff permission.
+  - **US-001-QA07:** Privileged admin signs in with missing/invalid/expired MFA challenge or provider interruption → access remains denied/pending, no privileged session or bypass, safe retry/error in Web/Internal Android and protected challenge records.
 
-Verification: Manually inspect each US-001-QA01–06 from exact UI event/request → typed auth route → session and rate-limit validation → transaction/index/secret protection → safe response → both client states. Record source file:function references per case after implementation. Review Android manifests/lockfile against maintained Expo SDK 58/target API 36 baseline and note device/AAB evidence NOT_RUN.
+Verification: Manually inspect each US-001-QA01–07 from exact UI event/request → typed auth route → session and rate-limit validation → transaction/index/secret protection → safe response → both client states. Record source file:function references per case after implementation. Review Android manifests/lockfile against maintained Expo SDK 58/target API 36 baseline and note device/AAB evidence NOT_RUN.
 
 Dependencies: None
 
