@@ -75,7 +75,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 - **CG-15-BR03:** Public patients can use **center-first booking**: choose doctor → select associated center → choose available date and slot.
 - **CG-15-BR04:** Public patients can use **slot-first booking**: choose doctor → date and available time → assigned center based on the underlying doctor's published center schedule. The selected center must be visible **before final confirmation/payment**.
 - **CG-15-BR05:** Both journeys consume the **same center-specific slot inventory**, fee and policy. Never show a free slot on one path when it is booked or blocked on another.
-- **CG-15-BR06:** Prevent simultaneous/duplicate confirmed reservations for a constrained doctor-center-slot/capacity, including website, public app and center front desk bookings.
+- **CG-15-BR06:** Prevent simultaneous/duplicate confirmed reservations for constrained doctor-center slots/capacity across website, public app and center front desk, **and prevent overlapping in-person appointments for the same doctor across different centers** unless an explicitly approved remote/parallel-capacity mode permits them.
 - **CG-15-BR07:** Disclose center location, price, Foundation benefit, payable amount, available time and patient-facing rules clearly before booking finalization.
 - **CG-15-BR08:** Changes to schedule or fees do not silently rewrite already confirmed historic booking fee/assistance; the booking retains the relevant accepted price/policy snapshot.
 
@@ -156,7 +156,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 - **CG-17-BR17:** Foundation Admin has network-wide settlement oversight; Center Portal has restricted own-center collection, assistance, outstanding and reconciliation views.
 - **CG-17-BR18:** Post final money/accounting events to CG-09 exactly once using linked source transactions; no duplicate per-center general ledger.
 - **CG-17-BR19:** Generate center/doctor/period/service reports on gross charges, patient collections, Foundation support, unresolved dues and settlement outcomes.
-- **CG-17-BR20:** The authorized initial money flow is center collection of patient payable (verified own merchant channel, or pay at center), plus a separate Foundation contribution payable to the center after completed/eligible services, reconciled monthly. No real online payment until the responsible center's merchant credentials are verified.
+- **CG-17-BR20:** The authorized initial money flow is center collection of patient payable (verified own merchant channel, or pay at center), plus a separate Foundation contribution payable to the center after completed/eligible services, reconciled monthly. Center-collected patient money is tracked operationally, **not counted as Foundation cash/bank income**. Only the Foundation's own approved contribution liability and actual settlement affect its financial books. No real online payment until the responsible center's merchant credentials are verified.
 
 ### 6.4 Payment/business examples
 
