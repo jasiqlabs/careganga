@@ -2,7 +2,7 @@
   "schema_version": 2,
   "records": {
     "prd": {
-      "status": "DELEGATED_APPROVED",
+      "status": "REVIEW_REQUIRED",
       "approval_mode": "OWNER_DELEGATED",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "prd.md",
@@ -11,7 +11,7 @@
       "evidence": "https://github.com/jasiqlabs/careganga/blob/00882a3b18242d0b60dcb1456b36cd1ff9b1f4d9/specs/initiatives/careganga-foundation-platform/prd.md",
       "approved_at": "2026-11-14T16:30:27.755Z",
       "quality_review": {
-        "status": "COMPLETE",
+        "status": "SUPERSEDED_BY_CURRENT_ARTIFACT",
         "artifact_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
         "rounds": 3,
         "open_critical": 0,
@@ -19,11 +19,15 @@
         "open_actionable": 0,
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
-        "evidence": "https://github.com/jasiqlabs/careganga/blob/00882a3b18242d0b60dcb1456b36cd1ff9b1f4d9/specs/initiatives/careganga-foundation-platform/prd.md#12-acceptance-quality-review-and-sign-off-state"
-      }
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/00882a3b18242d0b60dcb1456b36cd1ff9b1f4d9/specs/initiatives/careganga-foundation-platform/prd.md#12-acceptance-quality-review-and-sign-off-state",
+        "current_artifact_review": "PENDING",
+        "local_stage_resolver": "NOT_RUN"
+      },
+      "previous_approved_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
+      "reapproval_reason": "Product-wide original CareGanga screenshot/theme/component/motion fidelity added on 2026-11-14; earlier delegated approval only binds previous artifact SHA. Updated PRD/HLD and dependent planning require fresh quality review and authenticated Harness resolver before new design approval."
     },
     "hld": {
-      "status": "DELEGATED_APPROVED",
+      "status": "REVIEW_REQUIRED",
       "approval_mode": "OWNER_DELEGATED",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "hld.md",
@@ -32,7 +36,7 @@
       "evidence": "https://github.com/jasiqlabs/careganga/blob/61ad94800ab770dacd3964f40c3a4cce07e0c263/specs/initiatives/careganga-foundation-platform/hld.md",
       "approved_at": "2026-11-14T17:17:05.899Z",
       "quality_review": {
-        "status": "COMPLETE",
+        "status": "SUPERSEDED_BY_CURRENT_ARTIFACT",
         "artifact_sha256": "5f149d9c4eea4da788c4660d8fbe37a60acf7741bf72b15ac62ce758e6517154",
         "rounds": 6,
         "open_critical": 0,
@@ -43,8 +47,11 @@
         "evidence": "https://github.com/jasiqlabs/careganga/blob/61ad94800ab770dacd3964f40c3a4cce07e0c263/specs/initiatives/careganga-foundation-platform/hld.md#13-review-checklist-and-current-evidence",
         "local_stage_resolver": "NOT_RUN",
         "independent_review": "NOT_RUN",
-        "runtime_testing": "NOT_RUN"
-      }
+        "runtime_testing": "NOT_RUN",
+        "current_artifact_review": "PENDING"
+      },
+      "previous_approved_sha256": "5f149d9c4eea4da788c4660d8fbe37a60acf7741bf72b15ac62ce758e6517154",
+      "reapproval_reason": "Product-wide original CareGanga screenshot/theme/component/motion fidelity added on 2026-11-14; earlier delegated approval only binds previous artifact SHA. Updated PRD/HLD and dependent planning require fresh quality review and authenticated Harness resolver before new design approval."
     }
   }
 }
