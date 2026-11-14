@@ -278,4 +278,4 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 For each CG-01–13, 19–21 PRD, explicitly define: actor and authority, owned record fields, dynamic configuration, lifecycle/status transitions, approval route, backend business rules, admin view, relevant public/mobile self-service, imports/exports if specified, exceptions, reporting, NFR/security and manual QA scenarios. UI screenshots are references; each shown visual element is not an authorization for a new independent subsystem.
 
-**Open issues** are centralized in [CG-BR-900](04-TRACEABILITY-DECISIONS.md); do not resolve them by adding assumptions to individual PRDs.
+**Open issues** are centralized in [CG-BR-900](04-TRACEABILITY-DECISIONS.md); do not resolve them by adding assumptions to individual PRDs. Apply the cross-platform P0 security, concurrency, financial correctness, privacy, availability/recovery and audit gates in [CG-BR-600](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) to every relevant functional PRD, without copying all shared NFR text into each module.
