@@ -199,13 +199,12 @@ The BR preserves whole-project scope. The sequence below is **development depend
 
 | Wave | PRD set | Why first |
 | --- | --- | --- |
-| **A. Shared foundations** | CG-01 identity/access; CG-02 structure; CG-03 approvals; CG-19 files/comms primitives; CG-21 audit/config | Common permission, entity and workflow foundations |
-| **B. NGO core** | CG-04 people/membership; CG-05 projects/field work; CG-06 beneficiaries; CG-07 campaigns/donations; CG-08 CSR | Operational source records before derived public views |
-| **C. Accounting/HR and rewards** | CG-09 finance and budgets; CG-10 HR; CG-11 payroll; CG-12 inventory; CG-13 referrals/rewards | Financial and personnel transactions sharing common controls |
-| **D. Integrated healthcare** | CG-14 centers/doctors; CG-15 patients/booking; CG-16 diagnostics; CG-17 assistance/settlements | Provider and pricing masters before reservations and settlement |
-| **E. Public experience** | CG-18 CMS; CG-300 website/Android/center portal journeys; CG-20 MIS and analytics | Publish operational records and aggregate reporting once owners exist |
+| **A. Shared foundations** | CG-01 identity/access; CG-02 organization/geography; CG-03 shared approvals; **CG-09 finance/accounting core contracts**; CG-19 documents/notifications; CG-21 audit/configuration | Define single ownership, monetary posting, access and workflow conventions before dependent transactions |
+| **B. Operational masters** | CG-04 members/volunteers; CG-05 projects/field work; CG-10 employee records; CG-12 inventory; CG-14 centers/doctors; **CG-18 core CMS/publication controls** | Establish approved source records and publication mechanisms before dependent lists, transactions and public pages |
+| **C. Linked operations** | CG-06 beneficiary assistance; CG-07 donations/campaigns; CG-08 CSR funding; CG-11 payroll; CG-13 rewards; CG-15 patients/appointments; CG-16 diagnostics; CG-17 healthcare assistance and settlement | Build on the already-owned masters, shared approval, finance, document and publication rules |
+| **D. Channel journeys and reporting** | CG-300 website, Foundation Admin, Center Portal and both Android journeys; CG-20 MIS, exports and dashboards, progressively with owner data | Implement corresponding channel experiences alongside their owner modules; finalize aggregate reports once source records exist |
 
-Cross-wave implementation can occur where dependencies are already available. Each PRD must include **actors; use cases; module-owned rules; statuses; required configuration; role/scope; web/public/Android applicability; API/backend consequences; cross-module references; errors and manual QA scenarios**.
+This is a **PRD dependency sequence**, not a requirement to postpone website or Android UX until the end. Channel pages should be designed and validated with their respective owner-domain PRDs as soon as their business contracts are defined. Cross-wave work can occur where dependencies are available. Each PRD must include **actors; use cases; module-owned rules; statuses; required configuration; role/scope; web/public/Android applicability; API/backend consequences; cross-module references; errors and manual QA scenarios**.
 
 ## 12. Business acceptance definition
 
