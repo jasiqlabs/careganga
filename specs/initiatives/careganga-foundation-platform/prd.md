@@ -188,6 +188,14 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 | FR-079 | CG-300 | Center worker uses Portal | Operate authorized own-center profile, doctors, schedules, patient registration, reception, labs, receipts, dues and reports without seeing unrelated center/private records | A-14–A-17 | CG-300-BR14–15; CG-14–17 |
 | FR-080 | CG-300 | User encounters search/form failure | Provide discoverable role-sensitive navigation, real linked options, clear loading/empty/forbidden/pending/error messages and mobile-adapted tables/forms; never fake success | A-01, A-21 | CG-300-BR12–13,15,21–23 |
 
+### Source-enumerated content and provider categories
+
+These **named categories are part of the current approved-source requirements**. They are not a request for a separate module or automatic transactional checkout.
+
+- **Healthcare directory (nine provider categories):** polyclinic, diagnostic center, dental clinic, medical laboratory, hospital/nursing home, retail pharmacy, orthopedic center, homeopathy center and Ayurvedic center. Each category is discoverable; bookability, current services and benefit eligibility are specific to the verified provider and approved service policy (CG-14-BR20; CG-16-BR08–10).
+- **Our Impact (ten CMS groups):** Header, Foundation Pillars, Impact Statistics, Impact Growth Chart, Geographic Reach, Impact by Category, Key Impact Areas, Success Stories, Latest Updates and Call to Action (IMP-01–IMP-10 in CG-BR-300). Each is editable and previewable by authorized CMS staff, with safe publication and evidence/consent controls (CG-18-BR15–17).
+- **Admin features are workflow views, not new business owners:** payroll reserve/batches/slips, employee letter templates, geotagged visit detail tabs, CMS hero presentation controls and accounting/report packs all remain within their recorded CG module and share its authoritative data (Admin screenshot references A/B/C/U).
+
 ## 6. Cross-cutting business rules
 
 | Rule | Required business invariant | Owner source |
