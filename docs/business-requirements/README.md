@@ -1,6 +1,6 @@
 # CareGanga Foundation — Business Requirements
 
-**Status:** Single consolidated BR baseline · Internally reviewed · Client decisions and sign-off pending  
+**Status:** Single consolidated BR baseline · Internally reviewed · Delegated business defaults adopted; formal sign-off tracked separately  
 **Product:** One Foundation operations and Integrated Healthcare Assistance platform  
 **Branch:** `feature/careganga-master-business-requirements-20261114`
 
@@ -13,7 +13,7 @@
 | **[02 — Integrated Healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md)** | Provider centers, professionals, patients, center-specific availability, appointments, diagnostics, Foundation assistance, payments and settlements | **Business requirement** |
 | **[03 — CMS & Application Channels BR](03-CMS-CHANNELS-BR.md)** | Foundation Admin controls, public CMS, healthcare-center portal, public website, Public Android and Internal Android | **Business requirement** |
 | **[06 — Shared NFR Baseline](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md)** | Security, privacy, financial/booking integrity, concurrency, scalability, usability, accessibility, resilience, audit and operational acceptance | **Business requirement** |
-| **[04 — Open Business Decisions](04-TRACEABILITY-DECISIONS.md)** | Only unresolved client policy/transaction-scope questions that could materially change PRDs | **Decision register** |
+| **[04 — Delegated Business Decisions](04-TRACEABILITY-DECISIONS.md)** | 24 adopted business defaults and operational readiness gates | **Decision register** |
 
 ## Supporting evidence (not additional BR versions)
 
@@ -37,4 +37,4 @@ Create PRDs for CG-01–CG-21 in the dependency order identified in the Master B
 
 Keep module PRDs clean: **refer to the single source BR and shared NFR baseline** rather than copying the whole specification into every PRD. Do not add a new business module for each Admin menu item or static mockup.
 
-**Business decisions requiring confirmation:** See [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Requirements that are already confirmed may proceed to PRD drafting; uncertain transaction/eligibility/settlement policies must be resolved before approving the affected PRD.
+**Business decisions:** All 24 earlier questions have safe delegated defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Verified merchant accounts, clinical consent and statutory evidence remain go-live prerequisites, not unanswered product questions; formal Harness stage approval remains separate.
