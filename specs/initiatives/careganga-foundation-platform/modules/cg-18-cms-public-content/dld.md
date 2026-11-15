@@ -15,6 +15,16 @@ Own a cohesive typed domain/application module for **Hero/content, public pages,
 
 State/invariant: **Editorial draft/reviewed/published/hidden/scheduled; CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete CMS, publication and public projection
+
+`cms_page(id,route,type,status,revision,owner)`, `content_section(id,page_ref,kind,structured_fields,sort_order)`, `hero_banner(id,media_ref,text,cta,order,mobile_media_ref)` and `publication_revision(source_ref,approved_by,effective_at,status)` separate editable draft from approved published snapshot. Support allowed CMS navigation toggles and scheduled publication without treating menu visibility as backend permission.
+
+The source requires **all ten Our Impact content groups** (hero, pillars, statistics, growth, geography, category breakdown, focus areas, stories, updates and CTA) with content/source provenance. 80G/PAN/registration/compliance pages store actual client-approved document/validity metadata but do not prove legal certification; never publish private scanned ID or fabricated impact stat.
+
+A public-safe **allowlist projection** reads real approved CG-05 projects, CG-14 provider/doctor, CG-07 campaign, CG-17 benefit and CG-20 aggregates from owner facades. CMS can edit captions/order/placement and gate visibility, but cannot edit fees, slot availability, professional verification, member activation, patient records or ledger source.
+
+**QA:** draft invisible to anonymous, scheduled/expired page, unauthorized publish, changed source after preview, missing consent for beneficiary story, 80G expiry disclaimer, XSS in rich text, malicious CTA URL and Web/Public Android same published revision.
+
 ## Typed API and coordination
 
 An authenticated `/api/cms-public-content` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
