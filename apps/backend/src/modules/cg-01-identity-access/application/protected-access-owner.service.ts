@@ -118,7 +118,7 @@ export class ProtectedAccessOwnerService{
    * signed-looking approval flag or an HTTP callback.
    */
   async applyApprovedAccessChange(effectKey:string,claimToken:string):Promise<
-    {state:"CONFIRMED"|"SOURCE_CHANGED";accountRef?:string;revision?:number}
+    {state:"CONFIRMED"|"SOURCE_CHANGED"|"UNVERIFIED";accountRef?:string;revision?:number}
   >{
     if(!UUID.test(effectKey)||!UUID.test(claimToken))
       throw new BadRequestException("Invalid protected source outcome");
@@ -181,8 +181,10 @@ export class ProtectedAccessOwnerService{
       `,[effectKey,claimToken]);
       const p=proof.rows[0];
       if(!p){
+        // A claim may have expired or another coordinator may be reconciling.
+        // Missing live proof is uncertainty, not evidence of source drift.
         await client.query("ROLLBACK");tx=false;
-        return {state:"SOURCE_CHANGED"};
+        return {state:"UNVERIFIED"};
       }
       const digest=createHash("sha256").update(JSON.stringify([
         p.realm_id,p.target_account_id,p.target_role_id,p.proposal_revision,
