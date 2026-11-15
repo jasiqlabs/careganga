@@ -173,19 +173,21 @@ export class ApprovalDecisionService{
     if(typeof caseInput!=="string"||!UUID.test(caseInput)||
        typeof keyInput!=="string"||!UUID.test(keyInput))
       throw new BadRequestException("Invalid previous decision");
-    const rows=await this.db.query<{accepted_case_revision:number;action:string}>(`
-      SELECT d.accepted_case_revision,d.action
+    const rows=await this.db.query<{
+      accepted_case_revision:number;action:string;
+      capability_key:"roles.assign"|"approvals.review"
+    }>(`
+      SELECT d.accepted_case_revision,d.action,step.capability_key
       FROM cg03_case_decision d
       JOIN cg03_case c ON c.id=d.case_id AND c.realm_id=d.realm_id
+      JOIN cg03_process_step step ON step.process_id=c.process_id
+        AND step.ordinal=d.step_ordinal
       WHERE c.realm_id=$1 AND c.id=$2 AND d.actor_id=$3 AND d.request_key=$4
     `,[actor.realmId,caseInput,actor.accountId,keyInput]);
     if(!rows.rowCount)return {status:"NOT_FOUND",revision:null};
-    // Only the current, active reviewer can confirm their own protected action.
-    try{await this.sessions.requireAction(bearer,"approvals.view");}
-    catch(error){
-      if(!(error instanceof ForbiddenException))throw error;
-      await this.sessions.requireAction(bearer,"roles.assign");
-    }
+    // Match the exact original reviewer step; generic read rights are not
+    // sufficient once the previous decision authority is revoked.
+    await this.sessions.requireAction(bearer,rows.rows[0].capability_key);
     return {status:"CONFIRMED",revision:rows.rows[0].accepted_case_revision,
       action:rows.rows[0].action};
   }
