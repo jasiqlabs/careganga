@@ -15,10 +15,16 @@ type Editing={mode:"create"|"edit"|"copy";source?:Role};
 type Audit=CG01AuditEvent;
 const base="/api/access/";
 async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
-  const result=await identityRequest(base+path,{
-    method,headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
-    ...(body?{body:JSON.stringify(body)}:{})
-  });
+  let result:Response;
+  try {
+    result=await identityRequest(base+path,{
+      method,headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
+      ...(body?{body:JSON.stringify(body)}:{})
+    });
+  } catch {
+    // Lost response after a mutation may conceal a successful commit.
+    throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");
+  }
   if(result.status===401)throw new Error("SESSION_EXPIRED");
   if(result.status===403)throw new Error("PERMISSION_DENIED");
   if(result.status===409){
@@ -69,7 +75,9 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       setRoles(a.roles);setGroups(c.groups);setAllowed(eff.actions.map(x=>x.key));
       setOffset(skip);setTotal(a.total);
     }catch(e){
-      setRoles([]);
+      // Data cached on screen is not a source of current permission truth.
+      setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setHistoryCursor(null);
+      setEditor(null);
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError(e instanceof Error&&e.message==="PERMISSION_DENIED"?
         "You don't have access to Foundation roles.":"Roles cannot be verified right now.");
@@ -109,6 +117,9 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       setEditor(null);await load(search,offset);setSuccess("Role change saved.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
+        setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setEditor(null);
+      }
       if(e instanceof Error&&e.message==="UNKNOWN"){
         setUncertain(true);
         setError("The result could not be confirmed. Return to the role list before trying again.");
