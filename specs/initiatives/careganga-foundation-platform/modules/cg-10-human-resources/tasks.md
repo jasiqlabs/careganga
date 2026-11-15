@@ -61,6 +61,7 @@ QA cases:
 - **US-003-QA07 — owner regression:** Pending transfer never implies access to target branch. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-003-QA08 — Source-specific workflow:** Transfer a supervisor between branches while promotion and resignation requests are pending; retain effective dates/old reporting history, revoke prior branch access and ensure salary changes are not applied without proper approval.
 Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA09 — transferred branch owner QA:** Transfer one CG-10 employee between genuine authorized CG-02 branches/departments with effective-dated history. Old branch scope is revoked and new branch access appears only through CG-01's authorized integration; stale/concurrent transfer and closed destination denied; no silent CG-09 finance or CG-11 payroll mutation.
 Dependencies: US-001
 
 ### US-004 — Prepare, review, sign/issue, dispatch, receive/reissue employee letters/memos…
