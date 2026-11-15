@@ -43,7 +43,8 @@ export default async function ProtectedPlatformPage(){
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings={keys.includes("platform.settings.view")}
         canViewAudit={keys.includes("platform.audit.view")}
-        canViewRecovery={keys.includes("platform.recovery.view")}/>
+        canViewRecovery={keys.includes("platform.recovery.view")}
+        canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}/>
       <main className="workspace"><PlatformAuditPanel/></main>
     </div>;
   }catch(error){
