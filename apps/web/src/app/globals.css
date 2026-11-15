@@ -211,3 +211,12 @@ button:disabled { cursor:wait; opacity:.65; }
 
 .mfa-secret{display:block;padding:.85rem;border:1px dashed var(--cg-border);background:#F7F9FC;
  border-radius:.4rem;overflow-wrap:anywhere;user-select:all;word-break:break-word;font-family:ui-monospace,monospace}
+
+/* CG-01 Security Policy: original Admin card/drawer system, no new palette. */
+.policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:1rem}
+.policy-grid .kpi{min-height:9rem}
+.policy-grid .kpi strong{font-size:clamp(1.2rem,2vw,1.5rem);overflow-wrap:anywhere}
+.policy-grid .kpi span{color:var(--cg-muted);font-size:.875rem}
+.role-drawer .form .field small{color:var(--cg-muted)}
+@media(max-width:48rem){.policy-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:27rem){.policy-grid{grid-template-columns:1fr}}
