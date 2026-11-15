@@ -22,6 +22,13 @@ Bound report queries by dates, row/page limit and estimated cost; long exports r
 
 **QA:** mixed Foundation/center scope filter, denied salary/clinical column, recipient revoked after saving, large report timeout, duplicate scheduled delivery after restart, malicious filter, empty vs API failure and finance report total vs authoritative ledger.
 
+## Specific reporting contracts and source-QA
+
+- **Data:** `report_definition(id,source_module,approved_columns,filter_schema,visibility)`, `saved_report(id,owner_ref,filters,revision)`, `report_run(id,actor_ref,recipient_scope,source_watermark,status,export_file_ref)` and `report_schedule(id,recipient_ref,next_due_at,cadence,enabled)`. Reports do not independently own copies of patient, salary, financial or provider business records.
+- **Owner reads and permission:** CG-20 calls typed permission-filtered projections of **already implemented** modules only. A scheduled report or asynchronous export rechecks current recipient and source record scope at run time *and* download time, not just when saving the filter. Custom reporting accepts approved data sources, column/group/filter allowlists, not arbitrary SQL or private cross-domain joins. Future module metrics appear as unavailable/omitted, not false zeros.
+- **Performance and background:** bound page size, date window, download bytes and export job timeout; due-job query indexes on enabled+next_due_at and skips idle tenants. Cancel/retry is idempotent and does not send a report after permission revocation.
+- **QA:** revoked recipient with queued report, unrelated center report export, invalid saved filter after source schema change, high-volume query budget, no scheduled work idle, report counts reconcile with CG-09/15/17 and safely redacted diagnostics.
+
 ## Typed API and coordination
 
 An authenticated `/api/mis-reporting` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
