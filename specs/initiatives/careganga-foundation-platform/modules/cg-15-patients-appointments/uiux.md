@@ -24,6 +24,11 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-15 booking CTA introduced into real published provider pages
+
+US-002 presents original CareGanga-branded public Web/Public Android Book Appointment action only for genuine current CG-14 center/doctor and CG-15 available route/slot. CG-18 starts with nonbookable informational healthcare copy, not a fake appointment CTA. Navigating from a source-backed real directory or CMS-approved category must preserve selected center, doctor and intended consultation type; stale/suspended doctor or unavailable slot displays explicit no booking available, not a pending paid claim. US-004 checks live actual capacity/fee and shows legitimate DUE when CG-17 payment module is absent. UI, loading, denied, full-slot, deep-link and revoked-provider states require source trace; pixel/native/device QA NOT_RUN.
+
+
 ## Original-theme and task-specific interaction blueprint
 
 Keep healthcare booking references as the workflow authority while reusing CareGanga color/type/badges/forms, not the Foundation Admin sidebar on public booking. Both center-first and slot-first searches show actual center, doctor, specialty, address, available time, accepted fee and true payment state before final confirmation. Patient verifies contact/consent; availability conflict returns to slot selection without losing safe form data. Reception has actionable check-in/queue, patient own history and protected report/slip view.

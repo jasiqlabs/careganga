@@ -40,7 +40,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07 — business regression:** Overlapping doctor slots across centers and two last-capacity clients cannot both confirm. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-002-QA08 — Healthcare source-specific boundary:** Two patients select the same doctor's 10:00 in-person slot at different centers via center-first and time-first flows; only one doctor-wide reservation may commit, and any multiple-center choice must be explicit before fee acceptance.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — CG-18 booking CTA transferred to CG-15 real appointment owner:** With a delivered real CG-14 approved provider and CG-15 valid available slot, enable genuine public Web/Public Android booking CTA using CG-15-owned target eligibility. CG-18 independently published generic healthcare landing remains nonbookable until valid route. Suspended provider, zero capacity, wrong center, stale slot or forged deep link must not lead to phantom booking; the same selected source doctor/center is carried to the actual review. No CG-18 booking table, fake button or CG-17 payment prerequisite.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Register or securely locate patient with verified mobile, appropriate profile…
@@ -76,7 +77,8 @@ QA cases:
 - **US-004-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07 — business regression:** Expired hold and late callback cannot overbook or claim paid without CG-17. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-004-QA08 — Healthcare source-specific boundary:** Patient changes doctor/center/consultation mode at review screen while last slot is held; price/support snapshot must be recalculated for the chosen real center and booking confirmation cannot exceed capacity.
-Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-004-QA09 — public CTA survives actual booking races:** From a genuine CG-15-published current booking route invoked via CG-14/CG-18, two public clients compete for last slot while a doctor is suspended or availability changes; the verified CG-15 doctor-wide lock/center choice accepts at most one booking. Public Web/Android show current no-slot/stale decision, no fake CG-18 slot and no PAID status while CG-17 support is absent.
+Verification: On actual implementation source-trace US-004-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002, US-003
 
 ### US-005 — Issue authentic reference/Booking ID, download/print/share and guarded…

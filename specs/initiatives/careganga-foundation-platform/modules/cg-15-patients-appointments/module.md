@@ -64,6 +64,11 @@ Detailed authoritative clauses:
 - **CG-15-BR24:** Issue appointment confirmations/reminders and send/share permitted records via configured email/SMS/WhatsApp/push. Include **Add to Calendar** from confirmed appointment details with actual doctor/center/date/time; exported calendar details must follow patient visibility rules.
 - **CG-15-BR25:** Provide center-wise and Foundation-wide scoped booking lists, appointment summaries, patient history and reporting.
 
+## CG-15 actual booking CTA integration (transferred CG-18 BR22)
+
+After a **real CG-14 verified/published center+doctor/fee** and a genuinely configured CG-15 appointment/slot flow exist, CG-15 US-002 introduces the valid current authorized Book Appointment CTA/route into CG-14 public provider detail and existing CG-18 healthcare content placement. CG-18's independent generic healthcare editorial page publishes without CG-15 and must not show a fake appointment button. CG-15 owns the signed eligible booking target, actual center/doctor/slot capacity and current registration/consent guards; CG-18 only owns CTA editorial framing/placement and no appointment/slot record. CG-15 US-004 checks the actual selected doctor, center, current fee and live slot before confirming, denies a suspended provider, stale source revision or double hold. Public Web/Public Android use the real source API; losing availability removes the actionable CTA rather than showing fictitious booking. CG-17 later owns financial support/payment, not CG-15's first actual fee-due booking. This owner-specific integration must be QA traced in CG-15, not counted complete in earlier CG-18. These limited receiving-owner changes do not approve the full CG-15 plan.
+
+
 ## Independently deliverable vertical flow
 
 **Concrete acceptance:** Create/verify a real patient, display same available doctor slots in center-first/date-first journeys, reserve one cross-center last slot atomically and show genuine confirmation/queue; do not double-book or expose another patient's records. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.

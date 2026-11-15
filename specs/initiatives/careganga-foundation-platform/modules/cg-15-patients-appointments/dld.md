@@ -19,6 +19,11 @@ CG-15 owns only verified patient and consent, doctor-center schedules, authorita
 
 **Source QA:** simultaneous Web/Android/reception last-slot and same doctor cross-center booking; block/leave after booking; expired hold + late payment; stale fee; forged patient/QR lookup; missed payment/notification and cancellation. Exact locking and exclusion constraint must be DB-reviewed before approval.
 
+## CG-15 actual booking CTA integration (transferred CG-18 BR22)
+
+After a **real CG-14 verified/published center+doctor/fee** and a genuinely configured CG-15 appointment/slot flow exist, CG-15 US-002 introduces the valid current authorized Book Appointment CTA/route into CG-14 public provider detail and existing CG-18 healthcare content placement. CG-18's independent generic healthcare editorial page publishes without CG-15 and must not show a fake appointment button. CG-15 owns the signed eligible booking target, actual center/doctor/slot capacity and current registration/consent guards; CG-18 only owns CTA editorial framing/placement and no appointment/slot record. CG-15 US-004 checks the actual selected doctor, center, current fee and live slot before confirming, denies a suspended provider, stale source revision or double hold. Public Web/Public Android use the real source API; losing availability removes the actionable CTA rather than showing fictitious booking. CG-17 later owns financial support/payment, not CG-15's first actual fee-due booking. This owner-specific integration must be QA traced in CG-15, not counted complete in earlier CG-18. These limited receiving-owner changes do not approve the full CG-15 plan.
+
+
 ## Capacity, clinical-privacy and forward-integration acceptance
 
 **Canonical reservations:** The doctor_reservations time-range exclusion (or equivalent proven doctor-row transactional lock) is scoped to the actual doctor and time interval across *all* associated centers. The exclusion key must not include center_id in a way that permits overlapping in-person appointments; doctor timezone, DST, valid duration, cancellations and hold expiry are defined and tested. Center capacity and doctor occupancy are checked and committed together. An unlocked SELECT-then-INSERT check is not acceptable. Preserve pending payment state independently of booking.
