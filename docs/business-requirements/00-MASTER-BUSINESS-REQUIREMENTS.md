@@ -2,7 +2,7 @@
 
 **Document ID:** CG-BR-000  
 **Baseline:** Single consolidated BR for modular PRDs  
-**Status:** Internally reviewed; delegated business defaults adopted; formal human approval separately required  
+**Status:** Consolidated source-reviewed BR baseline; SHA-bound internal owner-delegated business-design approval is recorded in `specs/initiatives/careganga-foundation-platform/approvals.json`. **Independent client/business sign-off remains required** before treating unverified commercial, medical, legal or numerical targets as contractual/operational approval  
 **Prepared by:** JASIQ Labs
 
 ## 1. Purpose and document hierarchy
