@@ -14,6 +14,18 @@ Own a cohesive typed domain/application module for **Account chart, balanced jou
 
 State/invariant: **Draft/review/approved/posted/paid/reversed; Balanced journal, one source posting, correct funds vs commitment, no fake payment**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete finance contracts (mandatory DLD refinement)
+
+**Schema:** `accounts(id,code,group,normal_balance,active,scope)` (unique normalized code); `journals(id,source_owner,source_ref,posting_kind,financial_year,status,posted_at,revision)` unique `(source_owner,source_ref,posting_kind,revision)`; `journal_lines(journal_id,account_id,debit,credit,branch_or_project_scope)`. Both debit and credit are nonnegative; each line has exactly one nonzero side. **Before POSTED, the same transaction must verify sum(debits)=sum(credits)** and all accounts active/in scope. Rejected/unbalanced journal has no posting and no misleading success.
+
+**Voucher/claim/invoice:** versioned `voucher` + `voucher_lines` with quantity, rate, unit, charges/tax and calculated subtotal/total; `expense_claim` links its single authorized payable/voucher/journal/payment; `invoice` retains approval and issued/paid states separately. A claim cannot create a fresh expense on every workflow stage. A posted journal/receipt is immutable; reverse with a linked correction journal.
+
+**Budget:** `budget` plus allocation/release/utilization events, with separate proposed, committed, approved, allocated, utilized, released and remaining/over-budget projections. Source cash/bank balance is never inferred from pledges. Safe `accounts/options` returns authorized labels for payment-entry pickers without granting full account ledger view (BrickOps selector lesson).
+
+**Transactions/review:** narrow row locks on source-idempotency and account/period where needed, append-only audit, source callback dedupe, branch/project scope in all queries, and approved financial-year controls. QA source trace includes simultaneous source replay, unbalanced debit/credit, approved-but-unpaid voucher, refund/reversal, duplicate payroll/donation posting, protected ledger export, broken selector and reporting reconciliation.
+
+**Pattern decision:** one double-entry posting service + typed owner posting facade + guarded status transitions. Reject per-module mini-ledgers, universal accounting-rule DSL, silently editable posted rows and independent mobile calculation.
+
 ## Typed API and coordination
 
 An authenticated `/api/finance-accounting` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
