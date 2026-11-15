@@ -13,6 +13,16 @@ Own a cohesive typed domain/application module for **Foundation profile, region 
 
 State/invariant: **Draft/submitted/returned/rejected/approved/active/closed; Only finally approved branches activate or receive code; geography never invented**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete geography, branch and governance design
+
+`foundation_profile` holds verified Foundation identity only. `geography_unit(id,level,parent_id,name,code,status)` validates level order (state→district→subdivision→block), noncyclic parent, actual authorized owner and uniqueness within parent; no fabricated region defaults.
+
+`branch(id,area_id,legal_name,contacts,opening_date,status,approval_case_id,branch_code,version)` keeps branch code NULL until verified final CG-03 approval; unique non-null generated code and approved activation. `branch_draft(branch_id,step,version,payload,document_refs)` persists seven registration steps and completeness safely; pending/returned/rejected draft cannot silently become an active branch or appear publicly.
+
+`department(id,branch_id,parent_department_id,type,name,head_employee_ref,status)` supports department/committee hierarchy and prevents self-parent/cycle. Employee, project, membership and budget references are verified through CG-10/05/04/09 owners only when they exist, not copied as local master rows.
+
+**CG-01 integration:** When real branch activation exists, CG-02 exposes scope-limited branch/area `options` with names/context and validates actual ownership for role-assignment integration. Role grants do not infer global branch permission. **QA:** seven-step resume/invalid upload; two admin code races; forged region path; pending branch activation attempt; department parent loop; inactive branch revocation; unpublished branch public search.
+
 ## Typed API and coordination
 
 An authenticated `/api/foundation-structure` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
