@@ -3,13 +3,13 @@
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02.  
-**Stage:** Harness Planning / GREENFIELD · **State:** DRAFT_NOT_APPROVED; revised PRD/HLD approval & authenticated Harness resolver NOT_RUN.
+**Stage:** Harness Planning / GREENFIELD · **State:** DESIGN_SOURCE_REVIEWED / delegated design content subject to current SHA-256 record in `../../approvals.json`; actual Harness resolver, independent CRITICAL DB/financial specialist, source code, SQL, Web, device and visual QA NOT_RUN; formal implementation remains BLOCKED.
 
 uiux_decision: REQUIRED
 uiux_reason: New cross-channel business UI must follow original CareGanga theme, motion and role-sensitive workflows.
 dld_decision: REQUIRED
 dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
-database_impact: SCHEMA
+database_impact: CRITICAL
 database_reason: New source-owned CSR partners, funding proposals/agreements, commitments and allocations state requires reliable relational constraints, concurrency and migration.
 mobile_store_impact: NONE
 mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
