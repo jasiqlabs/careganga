@@ -21,6 +21,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-14 center-context helpdesk integration
+
+CG-14 US-005 may show an **own-center Support** entry in the legitimate Center Portal (responsive Web, eligible native center app only when real platform route exists) once current CG-14 center identity/CG-01 permission is verified. The ticket/reply/status is rendered from **CG-19's** existing protected source, not a center-specific standalone message store or unapproved mock chat. Center staff sees only its actual Center A support cases; no Center B search/guessed ticket/export. Wrong/closed center, revoked account, unavailable CG-19 support API and stale reply have honest error/empty states. Follow CareGanga original center/Admin token system, touch/focus, mobile/back and privacy; device/pixel QA NOT_RUN.
+
 ## Original-theme and task-specific interaction blueprint
 
 Use the original CareGanga header, color, card/table, filters and approval-drawer style for healthcare network Admin and center portal. Provider onboarding groups credentials, service categories, evidence, location, admin decisions and publish state; doctor form shows one professional profile with independently approved center fees/affiliations. Public provider directory shows only approved/published contact/fee details, no raw license or bank files.
