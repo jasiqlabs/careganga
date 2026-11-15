@@ -23,13 +23,14 @@ export function RecoveryForm() {
         method:"POST",credentials:"same-origin",
         headers:{"Content-Type":"application/json"},body:JSON.stringify(body)
       });
-      const data=await response.json() as {message?:string};
+      const data=await response.json() as {message?:string;supportReference?:string};
       if(!response.ok){
         setMessage(response.status===429?"Too many attempts. Try again later.":
           data.message??"Recovery cannot be confirmed.");
         if(step==="confirm"&&response.status>=500)setUncertain(true);
       }else{
-        setMessage(data.message??"Recovery request processed.");
+        setMessage((data.message??"Recovery request processed.")+
+          (step==="request"&&data.supportReference?" Support reference: "+data.supportReference:""));
         if(step==="request")setStep("confirm");
         else {setDone(true);setPassword("");setToken("");setTotp("");}
       }
