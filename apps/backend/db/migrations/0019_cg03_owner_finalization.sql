@@ -21,7 +21,7 @@ CREATE TABLE cg03_finalization (
   UNIQUE(case_id), UNIQUE(final_decision_id), UNIQUE(effect_key),
   UNIQUE(id,realm_id),
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
-  FOREIGN KEY(final_decision_id,realm_id) REFERENCES cg03_case_decision(id,realm_id)
+  FOREIGN KEY(final_decision_id,case_id,realm_id) REFERENCES cg03_case_decision(id,case_id,realm_id)
     ON DELETE RESTRICT,
   CHECK((claim_token IS NULL AND claimed_until IS NULL) OR
         (claim_token IS NOT NULL AND claimed_until IS NOT NULL))
