@@ -1,7 +1,7 @@
 import {
   BadRequestException,ConflictException,ForbiddenException,Inject,Injectable
 } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { createHash,randomUUID } from "node:crypto";
 import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "../../cg-01-identity-access/application/session.service";
@@ -286,6 +286,16 @@ export class PlatformSettingsService {
         AND scope_kind='FOUNDATION' AND provider=$2 AND purpose=$3
     `,[actor.realmId,provider,purpose]);
     if(!saved.rowCount)return {status:"NOT_CONFIGURED",provider,purpose,verified:false};
+    // Record the *requested* attempt and honest unavailable outcome, not a
+    // fabricated external provider check. No secret pointer is in this audit.
+    await this.db.query(`
+      INSERT INTO platform_operation_audit(foundation_realm_id,actor_account_id,
+        action_key,resource_ref,outcome,safe_context,correlation_ref)
+      VALUES($1,$2,'platform.integration.check',$3,'UNAVAILABLE',$4::jsonb,$5)
+    `,[actor.realmId,actor.accountId,saved.rows[0].id,
+      JSON.stringify({provider,purpose,reason:"ADAPTER_NOT_CONFIGURED"}),
+      // Genuine server-side correlation for an explicit user-triggered request only.
+      randomUUID()]);
     // No approved provider adapter exists in CG-21 US-001. Never fabricate
     // provider acceptance, mutate the verified flag or call a phantom service.
     return {status:"UNAVAILABLE",provider,purpose,verified:false,
