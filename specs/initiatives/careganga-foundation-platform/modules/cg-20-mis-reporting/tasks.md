@@ -101,7 +101,73 @@ Verification: On implementation trace each exact QA ID from Web/native UI → ty
 
 Dependencies: US-002 registered source and actual bounded query; CG-01 real actor; no US-004 export or US-005 schedule required.
 
+### US-004 — Generate, export and safely download genuine reports
+
+Outcome: A permitted operator can request a bounded original-source report run and obtain a real protected PDF, XLSX or allowed CSV, with source/current-permission checks at generation and again before retrieval.
+
+Requirements: FR-074, CG-20-BR03–06; CG-NFR-SEC01/02, DB, REL06, OPS, N-13.
+
+Scope: Original CG-20 report_run/idempotency, bounded streaming and status; CG-20 US-004 introduces typed later-source adapter INSIDE original CG-19 protected file/document authority. Foundation Web U01/C44/C48/C49 and equivalent native Internal Android export and secure-share; own Center Portal where source permits; Public Website/Public Android no private report route.
+
+Acceptance: Generate one true run from valid registered original owner source, return READY with tested original CG-19 protected artifact only when really stored; current user and original owner field/row scope checked at request, generation, CG-19 file access and download. No guessed file, public URL, unrestricted Excel/CSV or shadow storage.
+
+**Per-story source QA (planned, NOT executed):**
+- **US-004-QA01 —** With true delivered CG-09 POSTED voucher report and current finance actor, click Export PDF from C44; output shows real permitted totals/source as-of and exactly one original CG-19 scanned/validated private artifact, not a client-side fake document.
+- **US-004-QA02 —** From standard CG-05 scoped project data export XLSX and source-safe CSV → same accepted period/branch/row-count/headers/numeric totals; currently hidden private GPS/photo/contact/beneficiary fields absent from both.
+- **US-004-QA03 —** PDF export, supported XLSX and CSV use actual format/MIME/content/extension/checksum and safe generated filename, no raw database ID in UI and no mock 'Exported' toast before original file status VALIDATED.
+- **US-004-QA04 —** C48 source image displays disabled Data Export placeholder → implementing FR-074 uses real authorized report/run flow, does not copy fake disabled panel or claim original screenshot proves a live download, and does not add JSON export without approved need.
+- **US-004-QA05 —** Report row contains crafted cells beginning =,+,-,@,TAB,CR and formula-like URL → CSV/XLSX neutralizes spreadsheet execution and PDF safely escapes markup; original text remains human-readable without CSV/HTML injection.
+- **US-004-QA06 —** Generate from previously saved C49 report whose creator has lost salary or beneficiary field permission → server rejects/masks at report execution, no stale saved definition restores the original grant.
+- **US-004-QA07 —** Source returned 0 true permitted rows → run EMPTY with appropriately safe empty-document behavior, not missing-source ERROR or false chart totals; current source missing or owner timeout produces NOT_AVAILABLE/FAILED/PARTIAL rather than READY.
+- **US-004-QA08 —** Authenticated user has report.run but lacks report.export/download or correct source field grant → Admin Web/Internal Android hide Export, direct run/export/file API denies; no private blob or URL disclosed.
+- **US-004-QA09 —** Two legitimate actors have Branch A vs Branch B → generate report A, pass artifact ref/short-lived link to B or change own branch → CG-19 CURRENT download grant independently denies, no source rows leaked from old file bytes.
+- **US-004-QA10 —** Generate at T0, then revoke report creator's role, patient consent or source eligibility before actual download T1 → re-authorize source and recipient at T1, mark artifact inaccessible/REVOKED or require safely regenerated restricted version; historical run metadata does not confer permanent read.
+- **US-004-QA11 —** Report query produces too many rows/bytes or times out → cap cursor/time/concurrency/CPU and return actionable queued/limit/fail status, no OOM, unbounded source scan, partially public file or booking/API starvation; real load NOT_MEASURED.
+- **US-004-QA12 —** Network cuts after CG-20 run committed but before client received ID or CG-19 file confirmed → same idempotency key and result lookup returns one original run/artifact or honest UNKNOWN_WRITE_STATUS, no duplicate on retry.
+- **US-004-QA13 —** Simultaneous identical run commands with same key and changed filter digest → one valid accepted run, changed payload CONFLICT; short Postgres transaction and original append-only audit, no duplicate protected documents.
+- **US-004-QA14 —** CG-19 object storage/virus scanner or PDF/XLSX generator unavailable after accepted run → run pending/failure and redacted support ID, never READY or sent without verified file; original CG-19 source adapters for CG-01/03 remain intact.
+- **US-004-QA15 —** Native Internal Android current authorized employee runs report, sees progress/READY/EMPTY and secure native file open/share with session-bound temporary cleanup, Back/keyboard and correct role; no WebView or uncontrolled cache persistence.
+- **US-004-QA16 —** Own Center Portal actor can export only currently permitted Center A booking/report source, not Foundation bank or Center B data; Public Website/Public Android/anonymous guessed download URI denied without revealing existence.
+- **US-004-QA17 —** Real CG-20 report_run indexes/unique source+run key, artifact FK ref, expiry/durable status and byte/egress diagnostics are inspected with disposable migration/restore and representative EXPLAIN as separate independent QA; actual SQL/runtime proof NOT_RUN.
+
+Verification: On implementation trace each exact QA ID from Web/native UI → typed API → current actor+original source scope → actual owner query and CG-20 mutation where relevant → original CG-19 object/outbox effect and client state. Record file:function source evidence or gap, do not claim an unrun SQL/device/load test PASS.
+
+Dependencies: US-002 genuine standard report run for basic export (US-003 custom saved definition optional), real CG-19 protected-file owner and actual corresponding owner-read permission.
+
+### US-005 — Schedule bounded reports and deliver only to currently authorized recipients
+
+Outcome: An entitled operator can schedule a real saved report, view/pause/resume history, and safely deliver via original CG-19 channel or in-app protected link only while the selected recipient still has current source permissions.
+
+Requirements: FR-074, CG-20-BR05–07; CG-NFR-SEC01–03, REL06, BACKGROUND-WORK, OPS/DB, N-13.
+
+Scope: CG-20 report_schedule, due-only report_run, report_delivery_attempt and current recipient validation; real source event adapter introduced INSIDE CG-19 original notifications/outbox, not duplicate email platform. Foundation Admin C46/C49 and native Internal Android schedule form, own-center only where true rights; no private public-site/Android schedule or automatic ERP jobs.
+
+Acceptance: Schedule genuine permitted report with current eligible recipient and supported frequency/timezone, generate at most one due run and one delivery per recipient/channel, recheck current report and original owner grant at generation/send/download, show actual queued/pending/sent/confirmed/suppressed/failure. Missing provider remains pending/unavailable, never falsely sent.
+
+**Per-story source QA (planned, NOT executed):**
+- **US-005-QA01 —** Foundation Admin with schedule permission selects a real saved CG-09/05 report in C49, daily/weekly/monthly/annual supported recurrence, eligible CG-01 named recipient and explicit local time; one ACTIVE schedule stored, no default 'all staff' audience.
+- **US-005-QA02 —** Invalid time/date/unknown IANA timezone, unsupported cadence, report retired, missing eligible actual recipient or source-grant mismatch → reject before scheduling with readable validation; do not create fake delivery job.
+- **US-005-QA03 —** Verify Foundation-local wall-clock schedule, explicit timezone and correct next_due_utc after editing/pausing/restarting, no duplicate occurrence from ambiguous same-time schedule attempt; date window for report uses correct source-effective range.
+- **US-005-QA04 —** Run once at legitimate due time using bounded claim over only ACTIVE due-index rows → create one original report_run with exact saved definition revision and current permitted owner source; mark PENDING if source unavailable rather than empty/ready.
+- **US-005-QA05 —** Two worker instances claim one due report concurrently, one crashes and retries → unique root/schedule/due/revision key yields one report run and one per-recipient channel attempt; leases/idempotency prevent duplicate artifact or notification.
+- **US-005-QA06 —** During 0 pending schedules across many branches/centers and multiple app instances → no tenant-wide enumeration, per-user scans, per-client polling or provider sends; bounded infrequent recovery only, measure DB/HTTP/provider egress later (NOT_MEASURED).
+- **US-005-QA07 —** Schedule owner loses role/branch/source grant after creation before execution → suppress generation/read with accurate REVOKED/SUPPRESSED, no file created for old scope or unauthorized subsequent retry.
+- **US-005-QA08 —** Recipient had Center A access at schedule creation then transferred to Center B before due time → current CG-01/14 and source-owner scope rechecked, no Center A rows or artifact, branch-visibility inheritance cannot widen access.
+- **US-005-QA09 —** Recipient eligible when report generated but permission/patient consent revoked before CG-19 external send → notification suppressed, no raw PDF attachment or reusable URL; audit records blocked delivery without exposing clinical or salary source data.
+- **US-005-QA10 —** Recipient permission revoked after a confirmed notification but before opening original CG-19 artifact → server checks current field/patient/center scope again, expired/share link denies and does not return old confidential rows.
+- **US-005-QA11 —** No external email/SMS/WhatsApp provider configured or provider times out → in-app protected report readiness remains truthful, external state UNAVAILABLE/SENT_PENDING/FAILED, never SENT/DELIVERED merely because job was accepted.
+- **US-005-QA12 —** CG-19 provider delivers one confirmation then retries same event/ref or loses acknowledgement → one recipient+channel source event/outbox effect and original CG-19 verified delivery status, no duplicate message from CG-20 scheduler.
+- **US-005-QA13 —** Two actors edit schedule recipient, cadence or pause simultaneously → expected-revision CAS lets one win and loser see CONFLICT/refresh, old schedule cannot regenerate unauthorized report at stale due time.
+- **US-005-QA14 —** Change/retire saved report while schedule pending → frozen run revision, current owner policy and report validity re-evaluated; policy dictates pause/review rather than silently swapping sensitive fields or using stale definition.
+- **US-005-QA15 —** C46 Recent MIS/Download Summary and C49 scheduled-report panel reflect genuine run/attempt state (QUEUED, RUNNING, READY, SENT_PENDING, SUPPRESSED, FAILED), no screenshot sample counts, accessible retry/pause/resume and source-as-of.
+- **US-005-QA16 —** Internal Android privileged staff can view/edit/pause/resume own permitted schedule and current run/delivery history, native Back/keyboard/recipient picker and readable statuses matching Web; unauthorized Android/public deep links fail backend.
+- **US-005-QA17 —** Disposable DB restore/run replay/partial send/retry, batch-query EXPLAIN, role/center negative tests, privacy-safe correlated diagnostics, bounded storage retention and original CG-19 CG-01/03 notification/file regression recorded in independent QA; runtime/source/device evidence NOT_RUN.
+
+Verification: On implementation trace each exact QA ID from Web/native UI → typed API → current actor+original source scope → actual owner query and CG-20 mutation where relevant → original CG-19 object/outbox effect and client state. Record file:function source evidence or gap, do not claim an unrun SQL/device/load test PASS.
+
+Dependencies: US-003 saved report revision, US-004 protected run/artifact and actual original CG-19 notification owner; at least one real owner read source. No future partner ERP, public CMS or standalone worker infrastructure.
+
 ## Execution progress
 
-- US-001–005: DESIGN_REVIEWED / IMPLEMENTATION_NOT_STARTED on planning branch. Active real code progress must be verified separately; do not inherit older stale task status.
+- US-001–005: DESIGN_REVIEWED / IMPLEMENTATION_NOT_STARTED on planning branch. **5 source-owned stories / 81 distinct manual QA scenarios** with real cross-stack tasks and permission-negative cases. Active real code progress must be verified separately; do not inherit older stale task status.
 - LOCAL_HARNESS_RESOLVER: NOT_RUN; independent CRITICAL DB/privacy review, migrations/restore, source code QA, Web/native runtime/pixel/motion, NFR load/egress: NOT_RUN/NOT_MEASURED.
