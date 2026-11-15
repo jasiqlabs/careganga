@@ -107,6 +107,18 @@ export class RecoveryService {
           THEN now() ELSE auth_login_attempt.window_started_at END
       RETURNING attempt_count`,[key]);
     if(attempts.rows[0].attempt_count>10) throw new HttpException("Retry limited",HttpStatus.TOO_MANY_REQUESTS);
+    // The challenge digest is 256-bit random. Check eligibility *before* expensive
+    // scrypt work so fabricated tokens cannot monopolize CPU or DB connections.
+    // Recheck every condition under the row locks below: this lookup never
+    // authorizes a reset and does not weaken one-use/concurrent redemption.
+    const preflight=await this.db.query<{id:string}>(`
+      SELECT c.id FROM auth_challenge c
+      JOIN account a ON a.id=c.account_id
+      WHERE c.digest=$1 AND c.kind='RECOVERY' AND a.normalized_email=$2
+        AND a.status='ACTIVE' AND c.consumed_at IS NULL
+        AND c.expires_at>now() AND c.attempts<5 LIMIT 1`,
+      [tokenDigest,email]);
+    if(!preflight.rowCount)throw new BadRequestException("Recovery cannot be confirmed");
     const newHash=await hashPassword(body.password);
     const client=await this.db.connect();
     let outcome:"SUCCESS"|"DENIED"="DENIED";
