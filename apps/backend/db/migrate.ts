@@ -18,6 +18,14 @@ async function migrate(): Promise<void> {
       )`);
       const directory = join(process.cwd(), "db", "migrations");
       const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x)).sort();
+      // Never accept a checkout that silently omits an already applied migration.
+      // A hash match alone only detects edited files, not deleted historical files.
+      const applied = await client.query<{ filename:string }>(
+        "SELECT filename FROM schema_migration"
+      );
+      const present = new Set(files);
+      if (applied.rows.some(row => !present.has(row.filename)))
+        throw new Error("An applied migration file is missing from this checkout");
       for (const name of files) {
         const sql = await readFile(join(directory, name), "utf8");
         const digest = createHash("sha256").update(sql).digest("hex");
