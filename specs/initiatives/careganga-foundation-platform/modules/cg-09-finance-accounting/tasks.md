@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Source-specific workflow:** Admin defines a new financial year and bank/cash account with controlled opening balance; duplicate account code and unauthorized branch scope are rejected without changing chart or trial balance.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Enter authorized balanced journal, payment/expense/contra voucher with…
@@ -37,7 +38,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
 - **US-002-QA08 — Critical integrated scenario:** Operator submits a voucher/journal with unequal debits and credits or a replay of a previously posted source event. Expected: backend rejects imbalance before posting, creates neither orphan line nor phantom bank balance; duplicate source returns original accepted posting and finance reports reconcile.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — Source-specific workflow:** Post a multi-item voucher with tax/charges and account picker; select a cashier account using a permitted minimum-label selector without broad ledger permission, reject a missing balancing debit/credit side and do not mark the voucher paid.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Submit claim with purpose/amount/date/project and bill
@@ -54,7 +56,8 @@ QA cases:
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA08 — Source-specific workflow:** Submit employee reimbursement with proof, route final CG-03 decision, create one payable/voucher, and reconcile bank payment once; a pending claim must not inflate expense totals twice.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ### US-004 — Use staged invoice/receipt preparation, items, dates/amounts, attachments…
@@ -71,7 +74,8 @@ QA cases:
 - **US-004-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-004-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-004-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-004-QA08 — Source-specific workflow:** Create an invoice in stages, save draft with items then approve, issue PDF through CG-19 and record partial payment; receipt/print must show the approved snapshot, not a later edited total.
+Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-003
 
 ### US-005 — Create/approve budgets and reveal committed, allocated, utilized, released…
@@ -88,7 +92,8 @@ QA cases:
 - **US-005-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-005-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-005-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA08 — Source-specific workflow:** Allocate a budget with committed funding and utilized/released amounts; over-budget and available figures must remain distinct under two concurrent allocation requests.
+Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-004
 
 ### US-006 — See scoped general ledger, cash/bank/day books, trial balance…
@@ -105,7 +110,8 @@ QA cases:
 - **US-006-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-006-QA06:** Original CareGanga screenshot refs A17, A18, A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-006-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-006-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-006-QA08 — Source-specific workflow:** Run general ledger/trial balance/cash-book/vendor and project scoped exports after reversal; reconciled total debit=credit, private branch data hidden and original/reversal journals both traceable.
+Verification: On actual implementation source-trace US-006-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-005
 
 ## Execution progress

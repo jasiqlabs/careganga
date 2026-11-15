@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs B02, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Pledge not money; funding allocation not utilization; no shadow ledger, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Source-specific workflow:** CSR company supplies organizational proof and agreement but is returned for missing documentation; only the reviewer can finalize verified partner, and public partner listing remains unpublished.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Record funding proposals, documented CSR/Foundation commitments, received…
@@ -37,7 +38,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs B02, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Pledge not money; funding allocation not utilization; no shadow ledger, with one accepted source transaction and correct downstream totals.
 - **US-002-QA08 — Critical integrated scenario:** An approved CSR partner commits funding but bank receipt is not verified, while manager attempts to allocate it as received cash. Expected: proposal and commitment can be shown, Finance cash remains unchanged, allocations cannot exceed actually available approved funding and labels distinguish pledged/received/utilized.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — Source-specific workflow:** Foundation and CSR each commit a split amount, but only CSR money is bank-received; allocation choices cannot treat unreceived Foundation pledge as spendable bank funds.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Report approved, pending, committed, received and utilized contributions…
@@ -54,7 +56,8 @@ QA cases:
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs B02, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Pledge not money; funding allocation not utilization; no shadow ledger, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA08 — Source-specific workflow:** Export a proposal report with pledged, committed, received, approved and utilized columns; compare to actual CG-09 journal/project budget and deny an unrelated branch or partner access to private company documents.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ## Execution progress

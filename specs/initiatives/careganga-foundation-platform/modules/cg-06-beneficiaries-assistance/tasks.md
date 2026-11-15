@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs A07, A08, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Material and cash aid require genuine owner movement, no duplicate stock/expense, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Source-specific workflow:** Register a beneficiary with two real approved CG-05 projects in different areas; an authorized scope sees only permitted relationship/history, and an unrelated staff search/export hides personal details.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Record aid category, money/item, quantity/value, date and responsible person
@@ -37,7 +38,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs A07, A08, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Material and cash aid require genuine owner movement, no duplicate stock/expense, with one accepted source transaction and correct downstream totals.
 - **US-002-QA08 — Module-critical regression:** Two staff try to issue the last stock units to the same approved beneficiary/project while a financial-aid request is merely pending. Expected: material delivery completes only against one permitted CG-12 movement, pending money is not counted as paid CG-09 assistance, both outcomes remain audit-linked and correctly reported.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — Source-specific workflow:** Try issuing the same requested food/material assistance twice while CG-12 holds only one available item; exactly one verified stock issue and one corresponding CG-06 distribution event may complete, the other remains denied/pending without false quantity.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress
