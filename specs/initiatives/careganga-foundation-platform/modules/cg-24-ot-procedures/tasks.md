@@ -101,7 +101,72 @@
 
 **Acceptance trace requirement:** Trace each QA ID from current channel action/rejection → CG-01/14/15 current owner/clinical purpose → typed API + scoped Postgres constraint/mutation → original CG-03/19 owner adapter only where actually introduced → permitted other Web/native state. Record source files/functions, fix/re-review. Actual independent SQL/race/regulatory/device/motion verification remains NOT_RUN.
 
+### US-004 — Guard actual pre-op, in-progress, post-op and protected clinical evidence
+
+**Outcome/acceptance:** Actual assigned qualified clinical team records verified phases, source-correct protected notes and signed corrections, and owns real room/team/asset occupancy until clinical release.
+
+**Requirements:** CG-24-BR03–04; PRD FR-086 / conditional FR-087; H14; current CG-01/14/15/17/19 boundaries.
+
+**True predecessors:** Actual US-003 confirmed case with complete reservation, current CG-15 procedure consent and qualified CG-14 team, original CG-19 clinical evidence adapter introduced here. No CG-17 benefit required.
+
+**Cross-stack implementation:** Original ot_case_status_event, ot_case_note_revision and ot_resource_live_occupancy, Center Portal H14 clinical tabs, protected CG-19 document authority, Foundation Admin/Internal Android only appropriately assigned clinical/exception roles; public clinical detail denied.
+
+**Original manual QA (PLANNED / NOT EXECUTED):**
+- **US-004-QA01 —** Actual assigned qualified clinical user with current Center A OT_ERP and patient consent can open one correct case and clinical phase, unrelated Foundation finance role cannot.
+- **US-004-QA02 —** Real pre-op readiness review needs current verified room, professional, consent and protected evidence, not a draft or screenshot badge.
+- **US-004-QA03 —** Direct transition SCHEDULED→COMPLETED, CANCELLED→IN_PROGRESS or out-of-order POST_OP is denied by source state machine.
+- **US-004-QA04 —** Actual START atomically claims every ROOM/PERSON/EQUIPMENT live occupancy after rechecking original resource and patient permissions, no partial claim.
+- **US-004-QA05 —** Procedure running beyond planned end retains live occupancy; later case cannot start on occupied room even when original slot expired.
+- **US-004-QA06 —** Two competing START actions from different Center A/B cases sharing global surgeon/asset permit only one live occupancy.
+- **US-004-QA07 —** Upcoming confirmed booking with older surgery overrun enters REVIEW_NEEDED and cannot silently start or auto-cancel due to expired planned end.
+- **US-004-QA08 —** Actual professionally verified performed and POST_OP progression allows signed COMPLETED and one release of all occupied resources with real end evidence.
+- **US-004-QA09 —** Expired professional, unassigned actor or generic cashier cannot mark surgery clinically completed or release resource from elapsed clock alone.
+- **US-004-QA10 —** Actual care notes store qualified author, protected signed revision and source, with concurrent stale editors rejected rather than overwrite.
+- **US-004-QA11 —** Exact duplicate event/key+digest or unknown callback returns one original clinical transition, new digest with reused key conflicts.
+- **US-004-QA12 —** Authorized correction/retraction produces a separately linked immutable event and does not delete old operative evidence or auto-adjust CG-09.
+- **US-004-QA13 —** CG-19 current protected clinical evidence adapter validates scan, MIME, ownership, purpose and per-file grant; unverified upload is PENDING.
+- **US-004-QA14 —** Cross-root/Center B/other patient or revoked role trying guessed file/case URL cannot read clinical text, document, notes or write status.
+- **US-004-QA15 —** Patient consent revoked while case tab open denies new file/notes and clears sensitive Web/native cache; lawful CG-15/19 original release remains separate.
+- **US-004-QA16 —** H14 original Procedure Details, OT Team, OT Resources, Pre-op & Post-op, Documents are real source-backed responsive Center Portal tabs; H14 pixel/motion QA NOT_RUN.
+- **US-004-QA17 —** Internal Android only identical qualified Foundation-authorized clinical/exception action is supported with native Back/secure cache; Public Android/Public Web never private OT case editor.
+- **US-004-QA18 —** Independent actual Postgres clinical event/occupancy race, role/consent negative and restore QA plus Harness §4A safe errors/trace are required, NOT_RUN.
+
+**Acceptance trace requirement:** Verify source actor/real clinical purpose, Postgres transaction and original CG-19/CG-17 effect plus every applicable Web/native result by file:function; never call independent clinical/DB/pixel/Play QA PASS without execution.
+
+### US-005 — Report real OT utilisation and optionally signal completed services to CG-17
+
+**Outcome/acceptance:** Real scoped OT resource/case metrics and bounded due reminders work from actual events; only qualified completed cases with approved CG-17 policy may signal original financial effects once.
+
+**Requirements:** CG-24-BR03–04; PRD FR-086 / conditional FR-087; H14; current CG-01/14/15/17/19 boundaries.
+
+**True predecessors:** US-002 room source sufficient for readiness report; US-003 booking for occupancy; US-004 genuine completed case for completion and optional CG-17 adapter; CG-17 policy only when optional finance enabled. No CG-20 dependency.
+
+**Cross-stack implementation:** Original scoped room/resource/case source projections, optional immutable ot_case_financial_signal/CG-17 typed adapter, actual due-only CG-19 notification event, Foundation Admin/Center Portal/Internal Android current approved summary; public private MIS denied.
+
+**Original manual QA (PLANNED / NOT EXECUTED):**
+- **US-005-QA01 —** US-002 source rooms alone create real readiness/empty report, no fake booking or H14 sample counts.
+- **US-005-QA02 —** US-003 bookings without US-004 completion yield scheduled/reserved state only, not clinically completed or Foundation paid.
+- **US-005-QA03 —** Actual US-004 start/post-op/completed events separate planned window, true live occupancy and performed duration in source KPI.
+- **US-005-QA04 —** Current Center A filtering by room/procedure/date/status and source cutoff returns only authorized rows; other center/root cannot list or aggregate private cases.
+- **US-005-QA05 —** Foundation general manager and corresponding Internal Android see safe permissioned aggregates, not clinical notes or tiny identifying groups.
+- **US-005-QA06 —** CG-20 unavailable and CG-17 disabled does not block actual CG-24 own room/case source report.
+- **US-005-QA07 —** True clinically completed case without approved effective CG-17 OT assistance policy shows no Foundation support configured, no CG-09 journal.
+- **US-005-QA08 —** Original CG-17 approved policy, valid accepted CG-14 fee, real patient/center and qualified US-004 completion create one narrow source event that CG-17 independently validates.
+- **US-005-QA09 —** Client-supplied 30% benefit, `paid=true`, fake center commission or H14 gross cannot authorize subsidy, patient cash or Foundation accounting.
+- **US-005-QA10 —** CG-17 returned patient DUE/collected vs Foundation approved DUE/settled displayed separately; patient money never added to CG-09 Foundation cash.
+- **US-005-QA11 —** Duplicate completed event/restart/lost CG-17 acknowledgement gives one original source key and Pending reconciliation, not duplicate liability/payout.
+- **US-005-QA12 —** Real signed correction/cancellation after prior eligible completion produces unique compensating linked CG-17 event, preserves original journal/audit.
+- **US-005-QA13 —** Actual due OT reminder to current consented recipient uses original CG-19 source notification once; queue acceptance isn't proof of SENT.
+- **US-005-QA14 —** Missing provider, revoked consent, canceled procedure or invalid recipient suppresses/marks notice unavailable and never pushes private procedure details.
+- **US-005-QA15 —** Backend OT OFF, revoked grant or zero due jobs prevents CG-24 reports/workers/private export and provider/tenant scans, leaves CG-14 published enquiry.
+- **US-005-QA16 —** Foundation Admin/Internal Android same role get equivalent permitted H14 KPI and exception status, Center Portal own-center, Public Web/Android no private OT MIS.
+- **US-005-QA17 —** Source SQL indexes, accurate occupancy sums, restore, CG-17 source idempotency/reversal and CG-09 journal parity plus egress metrics require independent execution, NOT_RUN.
+- **US-005-QA18 —** Harness §4A human-readable role-safe charts/exports/notifications/errors, no UUID/clinical detail/SQL logs, responsive and native accessibility reviewed in source and later runtime.
+
+**Acceptance trace requirement:** Verify source actor/real clinical purpose, Postgres transaction and original CG-19/CG-17 effect plus every applicable Web/native result by file:function; never call independent clinical/DB/pixel/Play QA PASS without execution.
+
 ## Execution progress
 
-- US-001–005: DESIGN_REVIEW_IN_PROGRESS on planning branch; no code implementation or runtime evidence claimed. Actual active development branch must be checked separately.
-- Harness resolver, independent CRITICAL DB/clinical/security, migrations/concurrency/restore, source-code review, Web/native/Play/device/pixel/motion and NFR latency/egress: NOT_RUN/NOT_MEASURED.
+- **US-001–005: OWNER_DELEGATED_SOURCE_DESIGN_APPROVED only at current verified initiative approval SHA-256**, five independently scoped OT stories / 90 distinct planned QA (18 per story). Source implementation on planning branch NOT_STARTED; code/clinical/release certification NOT claimed.
+- **Formal and independent gates NOT_RUN:** authenticated local Harness resolver; qualified CRITICAL clinical/privacy/PostgreSQL reviewer; real migration/backup/restore/GiST and 20-way room/person/asset conflict/overrun race; backend/Web/Center Portal/Public and Internal Android runtime; original H14 image pixel/motion; Play/AAB/16KB; real latency/idle worker/HTTP egress measurements.
+- **Development:** follow actual DELIVERY_ORDER prerequisites, implement/review/fix/re-review each dependency-ready story and exact QA ID using real source file:function evidence. Keep default OT ERP OFF until independent acceptance; CG-14 procedure catalogue/enquiry remains live. No CI/GH Actions.
