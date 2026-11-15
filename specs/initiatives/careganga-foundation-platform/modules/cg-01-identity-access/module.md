@@ -5,7 +5,7 @@
 **Initiative:** careganga-foundation-platform  
 **Planning scope:** CG-01 only · GREENFIELD · 14 November 2026  
 **Source of truth:** [PRD](../../prd.md) FR-001–003, FR-080; BR-001/002/017 · [HLD](../../hld.md) §§4–5, 7–9 · [Foundation BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-01-BR01–10  
-**Stage state (15 Nov 2026):** SOURCE_REVIEWED — prior CG-01 detailed source review/enhancements completed; current canonical PRD/HLD v1.1 inherited. **JASIQ AI Design Review Agent** is the owner-authorized delegate, but current-hash formal Planning/UIUX/DLD approval is NOT_RECORDED because the authenticated pinned Harness stage resolver is NOT_RUN. Independent CRITICAL database review, development, live/visual QA are NOT_RUN; all stories remain BLOCKED until genuine stage gates pass.
+**Stage state (15 Nov 2026):** OWNER_REQUIREMENT_TRANSFER_APPLIED / SOURCE_REVIEW_REQUIRED. CG-01 now explicitly owns former CG-21 password/session/MFA security-policy configuration and enforcement (new CG-01-BR11, FR-001, US-004). Existing bootstrap/role/account scope and QA IDs retained. Latest PRD/HLD edits require fresh current-hash review and delegated approval; authenticated pinned Harness resolver, qualified CRITICAL DB review and runtime/device/visual QA NOT_RUN. Stories remain BLOCKED.
 
 uiux_decision: REQUIRED
 uiux_reason: New cross-channel account, custom-role, permission-matrix and staff assignment journeys need purpose-built responsive Web and native Android UX.
@@ -30,6 +30,7 @@ After the **one-time technical bootstrap**, CG-01 is independently useful, with 
 2. Create, edit, copy and retire permitted roles; choose grouped action permissions in Web and authorized Internal Android.
 3. Assign/revoke roles to **CG-01 accounts** in the real Foundation-root context, review access history, and safely search/select accounts and roles.
 4. Enforce all active grants on the backend and show only permitted UI actions. Changing access immediately invalidates old effective permissions.
+5. Configure, audit and enforce **its own** safe Foundation-root password/session/MFA security policy through permitted Admin Web/Internal Android controls—never through CG-21 or a future module. Privileged MFA cannot be disabled.
 
 Foundation-root is a real single-Foundation administrative context, **not** a fabricated branch or unrestricted grant over future branch, center, finance or patient records. Future resources start **default-denied** until real authorized scope is assigned.
 
@@ -39,7 +40,7 @@ The module starts only after the technical bootstrap described in **HLD §4.0 / 
 
 ## 2. Data owner and boundaries
 
-**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit. Approval-dependent protected access changes are introduced **by CG-03 after CG-01 works**; the first module creates no pending-only approval feature or CG-03 case.
+**CG-01 owns:** account/credential/session, **versioned Foundation-root password/session/privileged MFA security policy and enforcement**, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access/security-policy change audit. Approval-dependent protected access changes are introduced **by CG-03 after CG-01 works**; the first module creates no pending-only approval feature or CG-03 case.
 
 **CG-01 does not own:** HR employee profile/status (CG-10), geography/branch/department (CG-02), approval cases (CG-03), provider/center and doctor (CG-14), member/volunteer (CG-04), patient (CG-15), finance, files or communication delivery. The same verified login may link to future relationships only through the relevant owner, never by matching phone alone. Do not create fake master rows or a universal cross-module dropdown.
 
@@ -49,13 +50,19 @@ The module starts only after the technical bootstrap described in **HLD §4.0 / 
 
 | Channel | CG-01 capability |
 | --- | --- |
-| Foundation Admin Web (responsive) | Login/recovery; accounts directory; invite/suspend; create/copy/edit/retire roles; grouped permission editor; assign/revoke role; audit; Foundation-root context |
-| Internal Android | Login/recovery; task-first native role creator/editor/copier; account lookup, invitation and role assignment/revocation; same backend rules |
+| Foundation Admin Web (responsive) | Login/recovery; accounts directory; invite/suspend; create/copy/edit/retire roles; grouped permission editor; assign/revoke role; **protected Security Policy editor** (allowed session lifetime, idle timeout, lockout and immutable root MFA floor); access/security-policy audit; Foundation-root context |
+| Internal Android | Login/recovery; task-first native role editor and account assignment; **privileged security-policy read/edit** for eligible root operators with fresh MFA, native accessible confirmation and same server policy; no Admin WebView |
 | Public Website + Public Android | Public browsing without staff privileges; verified account authentication/self-service building blocks only where a real owning business flow needs them |
 | Healthcare Center Portal | Secure sign-in and explicit default-deny guards; **no active center affiliation or center administration until CG-14 real records exist** |
 | Backend/DB | Authoritative auth, scoped action checks, safe options, versioning, revocation, audit, sanitized errors |
 
 The permission catalog uses clear business labels in clients and stable internal keys in the API. Grant creation never silently gives a role newly introduced future capabilities.
+
+## CG-01-owned security-policy requirement transferred from CG-21
+
+**Authoritative source:** CG-01-BR11 / FR-001, not CG-21-BR06 / FR-076. Add **CG-01 US-004** after ordinary real account/role operations; its independently testable owner is CG-01. A genuinely active Foundation-root Super Admin with fresh MFA may view/change a **minimal allow-listed and safe-defaulted** security policy: maximum session age, idle session expiration, rate-limit/failed-attempt protections and non-disableable privileged MFA. Unsupported controls are not rendered as editable. Use one versioned policy source bound to the true CG-01 Foundation-root realm and redacted access audit, with current revision CAS, one active effective policy, safe retry and immediate backend enforcement for new sessions and required invalidation of affected existing sessions. Web/Internal Android both consume the same protected policy API and show exact current effective state, warnings and errors; Public Android/browser sessions must honor the enforced expiration but have **no administrative policy editor**.
+
+**Independent security acceptance:** A current root can save a valid permitted policy change without CG-21, CG-02, CG-03, CG-18, messaging/backup providers or fabricated business records. A lower privileged/revoked/stale-MFA actor cannot change it; two conflicting writes produce one version and audited effect; root MFA cannot be turned off or weakened below the documented security floor. Session expiry/revocation and brute-force protections remain correct on Web and both real Android packages. There is **no new general system-settings table** here: CG-01 owns only security-specific policy and uses its original access-audit authority. CG-21 later may **read** genuine CG-01 policy state as a link, never duplicate or gate this feature.
 
 ## 4. Real integration ownership — not CG-01 blockers
 
