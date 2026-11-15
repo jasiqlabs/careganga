@@ -20,6 +20,14 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** No newly owned Android page (NOT_APPLICABLE).  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-18-owned public navigation controls (C50 evidence transferred from CG-21)
+
+The original **C50 General Settings** captures the visual treatment of three separate toggle controls: Frontend Login/Profile, Membership Join/Apply, and Volunteer Join/Apply. **The functioning controls belong under CG-18 CMS content/publication**, not CG-21 platform operational settings. Reuse original CareGanga blue active navigation, typography, semantic switches, form density, save/preview/publish feedback and mobile-appropriate accessible variants; do not claim the screenshot proves a backend action.
+
+Authorized Admin Web publisher views each desired flag with its current **Draft / Awaiting approval / Published / Hidden / Target not available** state, can stage and preview a revision, and uses genuine CG-03 publication review when configured. The published revision controls the real public Web **and Public Android** navigation through one CG-18 public-safe projection; switching a control off removes it on both after truthful cache invalidation. A displayed toggle is not a security bypass: actual CG-01 account/login still enforces authorization, and joining CTAs never link to nonexisting CG-04 membership/volunteer routes. Until CG-04 provides those actual routes, show **Target not available** in Admin and **no actionable CTA** publicly, without inventing a join form.
+
+This module owns **responsive Admin CMS editor + public Web + public Android navigation consumer**. No new CG-18 native Admin editor; Internal Android is not a CMS publication editor. Cover loading, saved draft, stale edit CONFLICT, denied publisher, pending review, link unavailable, publish confirmed, cache stale/unknown and reduced-motion semantics. Pixel/device/motion QA remains NOT_RUN.
+
 ## Task-first source screenshot and UX acceptance
 
 Follow original public CMS screens for page/hero/menu/media editing, right-drawer forms, tabbed draft/scheduled/published states, preview and public View Site action. Keep edit vs publish distinct; when source-backed campaign/doctor/impact is unavailable, hide the corresponding source selector rather than inventing a linked card. Render actual responsive site with the same CareGanga palette/type/icon language and purposeful transition treatment.
