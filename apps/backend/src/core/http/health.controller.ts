@@ -29,7 +29,8 @@ export class HealthController {
         "0010_cg01_auth_security_policy.sql",
         "0011_cg01_immutable_access_audit.sql",
         "0012_cg01_auth_throttle_retention.sql",
-        "0013_cg21_platform_configuration.sql"
+        "0013_cg21_platform_configuration.sql",
+        "0014_cg21_audit_recovery.sql"
       ] as const;
       const migrations = await this.db.query<{ filename: string }>(
         "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])", [required]
