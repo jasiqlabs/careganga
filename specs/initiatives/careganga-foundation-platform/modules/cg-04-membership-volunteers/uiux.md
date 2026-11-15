@@ -19,6 +19,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-04 original ownership of member/volunteer branch affiliation — channel interaction
+
+CG-04 membership/volunteer Web and applicable Android screens offer minimum-field CG-02-approved branch/department options only where the current CG-04 workflow permits them. Validate disabled/closed/foreign branch and revoked operator in the actual CG-04 form, show existing member or volunteer's current affiliation/history and safe correction. Do not place a membership/volunteer editor in CG-02 or imply assignment grants staff account privileges. No fabricated future owner data or new CareGanga theme.
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Tier setup follows the original membership table/form density with plan name, amount, validity, benefit and publication state. Public join shows clear tier comparison, one coherent application path, verification, actual payment pending/verified and application tracking; volunteer form shows skill/geography and actual review result, never staff payroll fields.
