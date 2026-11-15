@@ -1,21 +1,13 @@
 import { useEffect, useState } from "react";
+import { RecoveryScreen } from "./recovery-screen";
+import { identityRequest } from "./http-client";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
 
 const STORE_KEY="cg_internal_root_session";
-const apiBase=process.env.EXPO_PUBLIC_API_URL;
-
-async function apiRequest(path:string, options:RequestInit):Promise<Response>{
-  if(!apiBase || !/^https?:\/\//.test(apiBase) || (process.env.NODE_ENV==="production"&&!apiBase.startsWith("https://")))
-    throw new Error("The sign-in service is not configured securely.");
-  const abort=new AbortController();
-  const timeout=setTimeout(()=>abort.abort(),10000);
-  try {return await fetch(new URL(path,apiBase).toString(),{...options,signal:abort.signal});}
-  finally {clearTimeout(timeout);}
-}
 async function sessionView(token:string):Promise<CG01SessionView|null>{
-  const response=await apiRequest("/api/identity/me",{headers:{Authorization:"Bearer "+token}});
+  const response=await identityRequest("/api/identity/me",{headers:{Authorization:"Bearer "+token}});
   if(response.status===401)return null;
   if(!response.ok)throw new Error("The session cannot be verified right now.");
   const data:unknown=await response.json();
@@ -33,6 +25,7 @@ export function StaffAuthenticationScreen(){
   const [actor,setActor]=useState<CG01SessionView|null>(null);
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
   const [message,setMessage]=useState("");
+  const [recover,setRecover]=useState(false);
   useEffect(()=>{
     let active=true;
     void (async()=>{
@@ -54,7 +47,7 @@ export function StaffAuthenticationScreen(){
     setState("busy");setMessage("");
     const request:CG01SignInRequest={email,password,totp,deviceLabel:"Internal Android"};
     try{
-      const response=await apiRequest("/api/identity/login",{
+      const response=await identityRequest("/api/identity/login",{
         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
       });
       if(!response.ok){
@@ -74,7 +67,7 @@ export function StaffAuthenticationScreen(){
     if(state==="busy"||!token)return;
     setState("busy");setMessage("");
     try{
-      const response=await apiRequest("/api/identity/logout",{
+      const response=await identityRequest("/api/identity/logout",{
         method:"POST",headers:{Authorization:"Bearer "+token}
       });
       if(!response.ok)throw new Error("Server revocation not confirmed");
@@ -83,6 +76,7 @@ export function StaffAuthenticationScreen(){
     }catch{setMessage("Sign-out could not be confirmed. Please retry.");}
     finally{setState("idle");}
   }
+  if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -108,7 +102,9 @@ export function StaffAuthenticationScreen(){
             <Pressable accessibilityRole="button" disabled={state==="busy"||!email||!password||totp.length!==6} onPress={()=>void signIn()} style={styles.button}>
               <Text>{state==="busy"?"Verifying…":"Sign in"}</Text>
             </Pressable>
-            <Text>Account recovery requires Foundation support until a verified delivery channel is configured.</Text>
+            <Pressable accessibilityRole="button" onPress={()=>setRecover(true)} style={styles.button}>
+              <Text>Recover account</Text>
+            </Pressable>
           </View>}
         {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
       </ScrollView>
