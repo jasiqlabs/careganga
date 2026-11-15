@@ -31,13 +31,16 @@ export default async function FoundationAccounts(){
       !Array.isArray(effective.actions))throw new Error("ACCESS_UNAVAILABLE");
     const keys=(effective.actions as unknown[]).filter((x):x is {key:string}=>
       Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
-    if(!keys.includes("accounts.view"))return <main className="page main">
+    const canViewAccounts=keys.includes("accounts.view");
+    const canInviteOnly=!canViewAccounts&&keys.includes("accounts.invite")&&keys.includes("roles.assign");
+    if(!canViewAccounts&&!canInviteOnly)return <main className="page main">
       <h1>Access denied</h1><p>You cannot view staff accounts.</p>
       <Link href="/admin">Return to my account</Link></main>;
     return <div className="shell">
       <FoundationAdminNav active="accounts" displayName={actor.displayName}
-        roleName={actor.roleName} canViewRoles={keys.includes("roles.view")} canViewAccounts/>
-      <main className="workspace"><AccountsPanel/></main>
+        roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
+        canViewAccounts={canViewAccounts||canInviteOnly}/>
+      <main className="workspace"><AccountsPanel inviteOnly={canInviteOnly}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
