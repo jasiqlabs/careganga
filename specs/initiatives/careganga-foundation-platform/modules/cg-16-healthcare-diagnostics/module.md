@@ -20,6 +20,12 @@ mobile_policy_checked_on: 2026-11-14
 mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
 mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
+## Confirmed partner catalog versus globally OFF Lab ERP (FR-081/082, H08–H10)
+
+**Lab ERP is included in the build but disabled on every new deployment by default** (`CAREGANGA_ERP_LAB_ENABLED=false`). CG-16 US-001 actual verified lab test/pricing master, US-003 public approved menu/pricing and US-004 public partner enquiry run independently with ERP OFF. **US-003 depends on US-001 only**, not on operational lab US-002. CG-16 US-002 lab order, sample custody/processing, expert review/release and supplementary US-005 equipment and quality/compliance operations are gated by global ON, actual fully integrated/migrated code and QA, current approved CG-14 LAB_ERP center grant and CG-01 exact center/actor and patient consent where necessary. No public lab checkout/clinical inference, no new lab revenue ledger. Existing release path and CG-14 verified lab directory unaffected.
+
+**US-005 equipment and quality:** Actual approved center may log applicable lab equipment/maintenance readiness and controlled quality/compliance evidence without creating CG-12 Foundation inventory, CG-19 file bytes or regulated clinical diagnostic analyzer integration. This is separately developable with CG-14+CG-19 and real current policies, without patient/order/reports or future CG-20. H08/H09/H10 provide original UX hierarchy. With ERP OFF, technical/private equipment and sample menus/API/exports/workers are unavailable while approved catalog, center and price enquiry remain; historical patient reports remain available only via original lawful purpose-bound access. All 5 stories have explicit QA with total **60** planned (12/story).
+
 ## Business owner and isolation
 
 **Owns:** Test/package catalog, center prices, internal order, sample and released report. **Delivery-critical, already-delivered owners:** CG-14 genuine center/test provider, CG-15 verified patient/visit and CG-19 private released report. **Later integration owners, not blockers for the first self-contained feature:** CG-17 may later attach actual supported price/settlement; no future lab booking or pharmacy commerce is assumed. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.

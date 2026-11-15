@@ -2,16 +2,16 @@
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
 **Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
-**Business domains:** CG-14 Healthcare Network, CG-15 Patients and Appointments, CG-16 Diagnostics and Center Services, CG-17 Assistance/Billing/Settlement  
+**Business domains:** CG-14 Healthcare Network, CG-15 Patients and Appointments, CG-16 Diagnostics and Center Services, CG-17 Assistance/Billing/Settlement, CG-22 Partner Pharmacy, CG-23 Nursing, CG-24 OT & Procedures (optional ERP)  
 **Audience:** Foundation leadership, healthcare network administrators, partner center operators, doctors/authorized staff, patients and public website/app users.
 
 ## 1. Business scope and operating model
 
-CareGanga operates a centrally supervised network of clinics, doctors, hospitals, nursing homes, diagnostic laboratories and other approved healthcare provider categories. The public can discover approved services and centers; eligible patients can book doctors at center-specific slots with disclosed CareGanga financial assistance. Healthcare centers carry out authorized patient and diagnostic operations and record collections; the Foundation controls provider verification, benefit policy, governance, network-wide reporting and settlement.
+CareGanga operates a centrally supervised network of clinics, doctors, hospitals, nursing homes, diagnostic laboratories and other approved healthcare provider categories. The public can discover approved services and centers; eligible patients can book doctors at center-specific slots with disclosed CareGanga financial assistance. The Foundation centrally verifies partner centers and professionals, controls approved services/benefits/bookings and reconciles real partner outcomes. Optional center-operated lab, pharmacy, nursing and OT ERP workflows are included for product development but globally disabled at deployment by default; the core partner model does not depend on them.
 
 Healthcare is **an original, first-class domain inside the CareGanga Foundation platform**, sharing identity, authorization, payment/accounting, media/documents, notifications, approval workflow, CMS and reports. A healthcare center has isolated operational scope within the common backend. This is **not** an independent product data silo.
 
-**Documented public transaction boundary:** The written requirements explicitly provide public **doctor consultation appointments** initially. Lab tests, checkups, camps and other services have publicly displayed information and appropriate **center-side administrative operations**. Newer UI references show additional booking buttons. Under the adopted launch policy, these are approved service information/enquiry, not public medicine, lab or nursing/OT checkout. Internal center-side lab ordering and reports remain required; see [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
+**Documented public transaction boundary:** The written requirements explicitly provide public **doctor consultation appointments** initially. Lab tests, checkups, camps and other services have publicly displayed information and appropriate **center-side administrative operations**. Newer UI references show additional booking buttons. Under the adopted launch policy, these are approved service information/enquiry, not public medicine, lab or nursing/OT checkout. Internal lab ordering/sample/report operations remain planned as an optional built but globally disabled ERP capability, alongside default-enabled lab partner listing and catalog; see [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
 
 ## 2. Domain model and responsibility boundaries
 
@@ -222,4 +222,46 @@ The PRDs must define manual QA scenarios with backend-data tracing and public/si
 
 ## 11. Adopted initial healthcare operating model
 
-Apply the policies in [CG-BR-900](04-TRACEABILITY-DECISIONS.md): public doctor consultation booking; one center-specific slot inventory for manual and time-first booking; disclose center before confirmation; Foundation-reviewed eligibility with 50% usual consultation contribution and exceptional full support only when specifically authorized; center-controlled patient collections; monthly reconciled Foundation support payments; secured report access and truthful paid/due receipts. Do not activate mockup-only public service checkouts, family-profile booking, prescription authoring, fabricated provider ratings or unverified promotional discounts. All center-side diagnostic and provider operations in this BR remain in scope.
+Apply the policies in [CG-BR-900](04-TRACEABILITY-DECISIONS.md): public doctor consultation booking; one center-specific slot inventory for manual and time-first booking; disclose center before confirmation; Foundation-reviewed eligibility with 50% usual consultation contribution and exceptional full support only when specifically authorized; center-controlled patient collections; monthly reconciled Foundation support payments; secured report access and truthful paid/due receipts. Do not activate mockup-only public service checkouts, family-profile booking, prescription authoring, fabricated provider ratings or unverified promotional discounts. All center-side diagnostic and provider operations remain in the planned build scope, but the advanced ERP capabilities are OFF at deployment by default, subject to real center and staff activation.
+
+## 12. Configurable healthcare operating depth — partner network plus optional ERP
+
+**Product-owner decision, 15 November 2026:** Build the four optional partner operational feature families shown in the user-supplied healthcare Admin references, but deploy them globally OFF by default. These are optional capabilities of the single modular-monolith CareGanga platform, not independent products, databases or Foundation HR/inventory ledgers. Provider and doctor verification, genuine partner service information, consultation booking and original finance/settlement remain available with all ERP flags OFF. The client-call audio could not be reliably transcribed in this session; screen visuals do not establish completed payment/clinical behavior or signed commercial terms.
+
+| Capability | Deployment default | Available without ERP | Additional behavior when global flag, approved center, current role and readiness are all true | Owner |
+| --- | --- | --- | --- | --- |
+| Lab ERP | CAREGANGA_ERP_LAB_ENABLED=false | Verified labs, approved test/package information, prices/enquiry | Internal lab booking/order, custody, processing, authorized report release, equipment/quality evidence | CG-16 |
+| Pharmacy ERP | CAREGANGA_ERP_PHARMACY_ENABLED=false | Verified pharmacy, approved medicine/discount catalog and enquiry, no live stock claim | Stock/batches, purchase/GRN, pharmacy suppliers, controlled transfers/adjustments, expiry/recall | CG-22 |
+| Nursing ERP | CAREGANGA_ERP_NURSING_ENABLED=false | Verified nursing services, published price and enquiry | Nurse verification/association, service booking, schedule, assigned visits/care plans and completion | CG-23 |
+| OT ERP | CAREGANGA_ERP_OT_ENABLED=false | Verified procedures, center availability and enquiry | OT room/team/resource schedule, protected patient booking, pre-/post-op status/evidence | CG-24 |
+
+**Effective gate:** Global backend deployment flag ON AND module code/migrations/QA actually delivered AND real approved CG-14 center/service capability AND current exact CG-01 action/center/role AND genuine provider/professional/clinical/financial prerequisites. CG-14 owns one center-capability grant source; CG-21 may display redacted readiness but does not duplicate it. Flag missing/invalid is OFF. Disabled means no optional navigation, command/API/export, new booking, public CTA or tenant-wide worker; preserve private history, lawful retrieval and financial reconciliation. Do not activate simply because data or sidebar exists.
+
+### CG-16 supplementary optional lab source requirements
+- **CG-16-BR11:** Only enabled approved lab may create patient-linked internal order and real sample lifecycle; core test catalog and prices operate with ERP OFF.
+- **CG-16-BR12:** Sample custody, sample/result timestamps, released report version, approved professional reviewer, purpose-bound patient access; no LIS/analyzer interface or automated interpretation assumed.
+- **CG-16-BR13:** Bounded lab equipment/maintenance and quality/compliance evidence for enabled center, without second Foundation inventory master.
+- **CG-16-BR14:** Turning OFF blocks new lab operations/worker activity but retains secure historical released reports and authorized correction/retention under clinical policy.
+
+### CG-22 — Pharmacy partner catalog and optional operational ERP
+- **CG-22-BR01:** Publish verified medicine master (generic/brand/strength/pack), partner-specific effective price/MRP/discount, review/version and catalog enquiry while inventory ERP remains OFF. Catalog is not an online prescription/drug sale or live stock promise.
+- **CG-22-BR02:** When ON, scoped pharmacy batch stock with expiry/lot/available/reserved amount, immutable movement, nonnegative inventory, approved adjustments and controlled history.
+- **CG-22-BR03:** When ON, partner-specific supplier, purchase/GRN, receipt and quantity/valuation; never copy CG-12 Foundation supplier/stock or automatically book partner purchases as Foundation expenses.
+- **CG-22-BR04:** When ON, authorized same-partner-location transfer, expiry/near-expiry alerts, quarantine/recall with complete source chain and bounded due-row jobs.
+- **CG-22-BR05:** OFF denies stock mutations/search/leakage/workers, preserves history and independently offers real approved price-only catalogue.
+
+### CG-23 — Optional partner nursing operations
+- **CG-23-BR01:** Approved nursing-capable center registers verifiable nurse identity, credentials, approved affiliations/availability; not a CG-10 employee or CG-04 volunteer master.
+- **CG-23-BR02:** With ON, authorized consented CG-15 patient nursing request/booking, service/price, center/home location, visit frequency/duration and assignment/ongoing/completed/cancelled state.
+- **CG-23-BR03:** Prevent nurse/visit overlaps; guard care-plan notes, progress/visit logs and CG-19 file evidence to actual patient/care team and center.
+- **CG-23-BR04:** Real completed service can become a CG-17 assistance/settlement source when specifically authorized, never direct CG-09 posting or unconditional discounted public checkout. OFF preserves history and blocks commands.
+
+### CG-24 — Optional partner OT and procedures
+- **CG-24-BR01:** Maintain approved partner procedure information/price and resource/room readiness; public core remains enquiry rather than claiming a confirmed theatre slot.
+- **CG-24-BR02:** With ON, consented real CG-15 patient and verified center/professional, authorize procedure and reserve room, surgeon/team/equipment with nonoverlap and approvable changes.
+- **CG-24-BR03:** Guard scheduled/pre-op/in-progress/post-op/completed/cancelled states, assigned clinical notes and private CG-19 documents; no comprehensive hospital EMR or automatic clinical claim.
+- **CG-24-BR04:** Only genuine separately approved CG-17 policies and original provider transactions create liability/settlement; OFF revokes future commands/workers without deleting protected history.
+
+**Commercial reconciliation unresolved from screenshots:** They show service value, Foundation contribution and partner payable, but do not establish which party collects patient money or a correct settlement formula. Preserve business decision D-04: partner center owns patient collections, Foundation posts only its own approved liability/payment until client-proven commercial terms change. No fabricated commission or transfer, no duplicate CG-09 ledger.
+
+**Acceptance and UX:** Full delivered backend/DB/NestJS/Next.js Center Portal/Admin Web and applicable public Web/native flows; original supplied healthcare screenshots as design references; explicit disabled & activation QA, current center/role scope, provider readiness, clinical privacy, concurrency/last-slot/stock, replay/reversal, safe rollout/rollback, idle worker safety, migration/restore, and source-only vs runtime NOT_RUN separation. New PRD/HLD/DLD/story QA follow the existing JASIQ Harness. No new public pharmacy/nursing/OT or diagnostic checkout is authorized by ERP being ON.

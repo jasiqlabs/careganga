@@ -78,12 +78,17 @@ The module register is the proposed **PRD boundary**. A dashboard, configuration
 | **CG-15** | Healthcare Schedules, Patients & Appointments | Center-wise doctor availability, patient identity, bookings, queue, patient documents | Website/app, center portal |
 | **CG-16** | Healthcare Diagnostics & Center Services | Test master, pricing, packages, lab orders, samples, reports; non-consultation service operations | Center portal, patient history, finance |
 | **CG-17** | Healthcare Assistance, Billing & Settlements | Eligibility, contribution rules, patient/provider amounts, dues, settlement/reconciliation | Booking, lab, finance, providers |
+| **CG-22** | Pharmacy Catalog & Optional ERP | Verified medicine-price/discount catalog and opt-in partner stock, batches, GRN, suppliers, transfers and expiry | CG-14 center, CG-17 support |
+| **CG-23** | Nursing Optional ERP | Approved nursing service enquiry plus opt-in nurse/visit/care-plan/assignment management | CG-14, CG-15, CG-19 |
+| **CG-24** | OT & Procedure Optional ERP | Approved procedure information plus opt-in room/team/resource/clinical status workflow | CG-14, CG-15, CG-19 |
 | **CG-18** | CMS, Publication & Public Content | Editorial pages, banners, media, stories, impact, compliance, notices; publication controls | Website and public app |
 | **CG-19** | Communications, Documents & Notifications | Templates, files, receipts/ID/letters as shared generation services, messages, delivery history | All applicable modules |
 | **CG-20** | MIS, Analytics & Reporting | Reports, exports, dashboards, saved/custom/scheduled reporting over owner data | Leadership and authorized users |
 | **CG-21** | Platform Configuration, Audit & Integrations | General controls, integration settings, audit logs, backup/restore administration | All modules |
 
 **Ownership rule:** Each module owns its business state and validation; shared infrastructure serves it without inventing a competing record. A doctor profile may appear on the public site, a center page and a booking receipt, but it is maintained in **CG-14**, not copied into three CMS databases. An approved voucher creates linked accounting entries in **CG-09**; individual source modules do not maintain private general ledgers.
+
+**Healthcare scope decision (15 November 2026):** Product owner authorizes building partner Lab (CG-16), Pharmacy (CG-22), Nursing (CG-23) and OT (CG-24) ERP operations as optional capabilities **disabled by default at deployment**. Core partner/provider network, verified public directory, consultation booking, original contribution rules and partner settlement work independently. See integrated [healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md) §12 and [decision register](04-TRACEABILITY-DECISIONS.md) D-22/23/26–28. No patient-money-as-Foundation-income, full hospital EMR, public medicine commerce or unverified clinical automation. Screenshots are source UI references; spoken client call remains untranscribed in this session.
 
 ## 5. Cross-module records: define one source of truth
 

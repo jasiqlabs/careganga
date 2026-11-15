@@ -1,7 +1,7 @@
 # CG-09 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
-**State:** REQUIRED · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for current CareGanga CG-09 owner UI/UX (15 Nov 2026), original A19/B01/B02/U33–U42 with each story owning only its real screen/interaction, branded responsive Web/native Android and real CG-03/CG-19/CG-09 states. U42 volunteer applicant form belongs to later CG-04 original eligibility presentation into CG-09 claim; no future-only controls. PRD/HLD REVIEW_REQUIRED, actual original rendered screenshot/video pixel/motion, device/runtime QA NOT_RUN; approval is design only.
+**State:** REQUIRED · **DELEGATED_APPROVED — design only** by JASIQ AI Design Review Agent for current CareGanga CG-09 owner UI/UX (15 Nov 2026), including optional CG-12 supplier/receipt and CG-05 permitted project selectors inside original Finance invoice/budget/report only, original A19/B01/B02/U33–U42 with each story owning only its real screen/interaction, branded responsive Web/native Android and real CG-03/CG-19/CG-09 states. U42 volunteer applicant form belongs to later CG-04 original eligibility presentation into CG-09 claim; no future-only controls. PRD/HLD REVIEW_REQUIRED, actual original rendered screenshot/video pixel/motion, device/runtime QA NOT_RUN; approval is design only.
 
 ## Exact existing design and animation contract
 
@@ -27,6 +27,18 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 ## CG-09 owner — genuine CG-02 branch budget selection
 
 Budget screens use **real CG-02 ACTIVE branch** minimum-field selectors and source-backed CG-09 allocation/utilization history. A real branch-only budget succeeds with zero CG-05 projects; project linkage is offered only after a genuine CG-05 project owner delivers it. Wrong/closed branch denies on client and backend, without CG-02 budget editor or invented finance data. Maintain original CareGanga finance form/table patterns.
+
+## Receiving CG-12 supplier UI only within existing CG-09 finance screens
+
+**US-004 U39/U40 original invoice wizard:** When real CG-12 supplier exists, authorized operator may select genuine supplier via safe minimal search to populate a **transaction-specific** counterparty snapshot and verified original CG-12 receipt source evidence, while still entering CG-09 amount/tax/due and waiting for its real approval/payment. Original non-supplier Foundation invoice form remains fully functional. Do not paste CG-12 B19 stock dashboard or supplier edit screen into CG-09 finance. The vendor does not become PAID from a receipt; no supplier bank contact exposed from a dropdown.
+
+**US-006 finance reports:** Actual CG-09 vendor/payables/payment/ledger search may filter current authorized supplier/source receipt with genuine original financial status/amount, no shadow inventory quantity, zero/failure state truthful. Responsive original CareGanga invoice/report UI and privileged Internal Android read use same source, no public vendor ledger; original PNG/video/device/p95 NOT_RUN.
+
+
+## Real CG-05 project budget and voucher source in original CG-09 UI
+
+**US-002** A19/U33–U34 original voucher editor and authorized Internal Android finance view: optionally select actual current permitted CG-05 project (when delivered), verify branch/date/finance approval, show posted/payable/PAID only from CG-09. **US-005** B01/B02 budget scope lets finance select real project within existing CG-09 financial-year/branch and category allocation while Foundation/branch-only remains valid. Distinguish Project Planned Estimate (CG-05, non-ledger), CG-09 Approved/Allocated/Committed/Utilized/Released/Available and no-data. **US-006** original GL/Project Ledger shows CG-09 posted original financial lines grouped by authorized real CG-05 project, without CG-05 manually updated donut/ledger. Wrong-branch source, closed project, stale project transfer and private export denied. Do not duplicate U31 Create Project editor in finance. Pixel/native/video QA NOT_RUN.
+
 
 ## Six story-specific original Web/native screen contracts
 

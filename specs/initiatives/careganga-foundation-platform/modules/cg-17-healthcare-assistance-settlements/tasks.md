@@ -76,7 +76,7 @@ QA cases:
 - **US-004-QA07 — owner-specific regression:** Unverified cash/UPI assertion does not become settled provider payment. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-004-QA08 — Healthcare source-specific boundary:** Center cashier records ₹300 of ₹500 payable in-person and later collects ₹200; partial/due/paid, receipt and overdue aging reconcile, and a duplicate cash-submit cannot collect twice.
 Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-002 verified gross/due/policy + actual original CG-14 center cashier; **US-003 online center gateway is OPTIONAL, not required for independent authorized pay-at-center**.
 
 ### US-005 — Keep the center's patient collections, the Foundation's approved liability…
 
@@ -93,7 +93,9 @@ QA cases:
 - **US-005-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07 — owner-specific regression:** A patient receipt never automatically credits Foundation cash or settles its payable. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-005-QA08 — Healthcare source-specific boundary:** Monthly provider settlement combines approved Foundation obligations across several real appointments; one partial bank payment does not mark entire month settled, and returned/canceled services adjust dues auditably.
-Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA09 — All ERP OFF still settles genuine consultations:** No Lab/Pharmacy/Nursing/OT module installed or enabled; CG-15 consultation with genuine approved CG-17 policy creates true Foundation liability while center-collected patient cash never enters CG-09 Foundation income.
+- **US-005-QA10 — Optional completed service proof not price promise:** With actually enabled CG-23 nursing or CG-24 OT and current patient consent, a source completion alone does not create payout until an independent existing CG-17 active policy and exact original amount/currency are verified. CG-22 stock movement cannot create CG-17 patient collection/settlement.
+Verification: On actual implementation source-trace US-005-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-004
 
 ### US-006 — Reconcile verified patient receipts (center-owned), refunds and monthly…
@@ -111,7 +113,9 @@ QA cases:
 - **US-006-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-006-QA07 — owner-specific regression:** Concurrent reconciliation/repeated webhook cannot double-settle or overpay center. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-006-QA08 — Healthcare source-specific boundary:** Verify Center A patient ₹500 payment and separate Foundation ₹500 obligation: the center receipt does not debit or credit Foundation cash; only authorized Foundation disbursement posts exactly once into CG-09 with linked source.
-Verification: On actual implementation source-trace US-006-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-006-QA09 — Screenshot H17 figures are not finance law:** For center gross, patient collected, approved Foundation contribution, pending provider payable and actual settled amount, verify each distinct real original source/policy and CG-09 journal; no guessed commission percentage or Foundation revenue from partner patient collections.
+- **US-006-QA10 — Replay, disable and refunds:** Race two completed nursing/OT source effects and disable global ERP while CG-17 owes legitimate settlement. One source key and one verified payout/reversal, correct past liability retained and no new optional service effect/tenant-wide poll. Unauthorized Center B cannot adjust Center A settlement.
+Verification: On actual implementation source-trace US-006-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-005
 
 ### US-007 — Publish only approved current rates
@@ -129,7 +133,9 @@ QA cases:
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-007-QA07 — Healthcare source-specific boundary:** CMS tries to publish a mockup 40% lab or 20% medicine support badge without CG-17 approved policy; prohibit unsupported percentage, while standard eligible consultation benefit and approved exceptional full aid use actual policy source.
 - **US-007-QA08 — transferred public CG-18 benefit banner owner QA:** After a true active CG-17 support policy with current real CG-14 approved center/doctor/service and CG-15 fee, introduce source-backed effective percentage/cap/eligibility text into CG-18's CMS-approved healthcare placement and real provider/booking screens. CG-18 original neutral page works with zero CG-17 policies; deny a mockup unsupported lab/medicine percentage, expired/superseded support policy, wrong center, client-edited up-to text, stale cached public Android copy and private patient eligibility leakage. CG-17 alone owns rule/amount, CG-18 only page publication.
-Verification: On actual implementation source-trace US-007-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-007-QA09 — Public pricing with ERP disabled:** H16/H17 approved consultation policy is truthful in public Web/native even if Lab/Pharmacy/Nursing/OT ERP flags all OFF. Display service-provider price but no clinically unsupported 50% rule for lab, pharmacy medicine, OT or nurse without own approved effective policy.
+- **US-007-QA10 — Approval and historical revision:** Expired or withdrawn center discount, source-driven nursing/OT policy revocation and stale CMS cache cannot advertise guaranteed Foundation assistance; original historical booked benefit records are still traceable with current source/version and patient authorization.
+Verification: On actual implementation source-trace US-007-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress
