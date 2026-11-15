@@ -10,8 +10,9 @@ export class PlatformAuditController{
     return this.audit.list(bearer,{cursor,limit,source,from,to});
   }
   @Get("export")
-  export(@Headers("authorization") bearer:string){
-    return this.audit.export(bearer);
+  export(@Headers("authorization") bearer:string,@Query("source") source?:string,
+    @Query("from") from?:string,@Query("to") to?:string){
+    return this.audit.export(bearer,{source,from,to});
   }
   @Get("detail/:eventRef")
   detail(@Headers("authorization") bearer:string,@Param("eventRef") eventRef:string){
