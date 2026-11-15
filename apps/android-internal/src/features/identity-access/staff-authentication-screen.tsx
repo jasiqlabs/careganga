@@ -1,5 +1,6 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { RolesScreen } from "./roles-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -18,6 +19,18 @@ async function sessionView(token:string):Promise<CG01SessionView|null>{
     throw new Error("Session details could not be verified.");
   return data as CG01SessionView;
 }
+async function currentRoleActions(token:string):Promise<string[]>{
+  const response=await identityRequest("/api/access/effective",{
+    headers:{Authorization:"Bearer "+token}
+  });
+  if(response.status===401)throw new Error("SESSION_EXPIRED");
+  if(!response.ok)return [];
+  const data:unknown=await response.json();
+  if(!data||typeof data!=="object"||!("actions" in data)||
+     !Array.isArray(data.actions))return [];
+  return data.actions.filter((a:unknown):a is {key:string}=>Boolean(a)&&typeof a==="object"
+    &&"key" in a&&typeof a.key==="string").map((a:{key:string})=>a.key);
+}
 export function StaffAuthenticationScreen(){
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
@@ -27,6 +40,13 @@ export function StaffAuthenticationScreen(){
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
   const [message,setMessage]=useState("");
   const [recover,setRecover]=useState(false);
+  const [rolesOpen,setRolesOpen]=useState(false);
+  const [roleActions,setRoleActions]=useState<string[]>([]);
+  const closeRoles=useCallback(()=>setRolesOpen(false),[]);
+  const expireSession=useCallback(()=>{
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);
+    void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
+  },[]);
   useEffect(()=>{
     let active=true;
     void (async()=>{
@@ -36,7 +56,10 @@ export function StaffAuthenticationScreen(){
         const verified=await sessionView(stored);
         if(!active)return;
         if(!verified){await SecureStore.deleteItemAsync(STORE_KEY);setActor(null);setToken(null);}
-        else {setToken(stored);setActor(verified);}
+        else {
+          const actions=await currentRoleActions(stored);
+          if(active){setRoleActions(actions);setToken(stored);setActor(verified);}
+        }
       } catch {
         if(active)setMessage("Access cannot be verified right now. Protected information remains hidden.");
       }finally{if(active)setState("idle");}
@@ -50,20 +73,20 @@ export function StaffAuthenticationScreen(){
     let active=true;
     const subscription=AppState.addEventListener("change",state=>{
       if(state!=="active")return;
-      setActor(null);
+      setActor(null);setRoleActions([]);
       void (async()=>{
         try{
           const fresh=await sessionView(token);
           if(!active)return;
-          if(!fresh){await SecureStore.deleteItemAsync(STORE_KEY);setToken(null);setActor(null);}
-          else setActor(fresh);
+          if(!fresh){expireSession();}
+          else {const actions=await currentRoleActions(token);if(active){setRoleActions(actions);setActor(fresh);}}
         }catch{
           if(active){setActor(null);setMessage("Access cannot be verified. Protected information remains hidden.");}
         }
       })();
     });
     return()=>{active=false;subscription.remove();};
-  },[token]);
+  },[token,expireSession]);
   async function signIn(){
     if(state==="busy")return;
     setState("busy");setMessage("");
@@ -81,7 +104,8 @@ export function StaffAuthenticationScreen(){
       const verified=await sessionView(data.sessionToken);
       if(!verified)throw new Error("The new session could not be confirmed.");
       await SecureStore.setItemAsync(STORE_KEY,data.sessionToken);
-      setToken(data.sessionToken);setActor(verified);setPassword("");setTotp("");
+      const actions=await currentRoleActions(data.sessionToken);
+      setRoleActions(actions);setToken(data.sessionToken);setActor(verified);setPassword("");setTotp("");
     }catch{setMessage("Could not confirm sign-in. Check your connection and try again.");}
     finally{setState("idle");}
   }
@@ -94,11 +118,12 @@ export function StaffAuthenticationScreen(){
       });
       if(!response.ok)throw new Error("Server revocation not confirmed");
       await SecureStore.deleteItemAsync(STORE_KEY);
-      setActor(null);setToken(null);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);
     }catch{setMessage("Sign-out could not be confirmed. Please retry.");}
     finally{setState("idle");}
   }
   if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
+  if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -109,6 +134,8 @@ export function StaffAuthenticationScreen(){
             <Text accessibilityRole="header">Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
+            {roleActions.includes("roles.view")&&<Pressable accessibilityRole="button"
+              style={styles.button} onPress={()=>setRolesOpen(true)}><Text>Roles & permissions</Text></Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text>Sign out</Text>
             </Pressable>
