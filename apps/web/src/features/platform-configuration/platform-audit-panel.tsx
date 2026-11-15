@@ -125,7 +125,11 @@ export function PlatformAuditPanel(){
     if(exporting||loading)return;
     setExporting(true);setNotice(null);
     try{
-      const data=await get<CG21AuditCsv>("audit/export");
+      const params=new URLSearchParams({source:applied.source});
+      const a=dateRange(applied.from,false),z=dateRange(applied.to,true);
+      if(a)params.set("from",a);
+      if(z)params.set("to",z);
+      const data=await get<CG21AuditCsv>("audit/export?"+params);
       if(data.coverage!=="COMPLETE"||typeof data.csv!=="string"||
         data.csv.length>130000||!Number.isInteger(data.rows)||data.rows>100)
         throw Error("UNAVAILABLE");
