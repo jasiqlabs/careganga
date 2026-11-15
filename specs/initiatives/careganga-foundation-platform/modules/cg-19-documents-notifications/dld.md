@@ -21,6 +21,12 @@ State/invariant: **File pending/validated; message queued/delivered/failed; case
 
 `support_case(source_channel,requester,assigned_center_or_foundation,status)` is shared by public contact and center support; private contact fields and attachments remain scoped. **QA:** signed-file expiry, wrong-patient report, duplicate PDF/link, repeated send, provider timeout-after-success, dormant worker/idle egress, service restart and cross-center helpdesk visibility.
 
+## Specific owner contracts and verification
+
+- **Private source-linked files:** `stored_file(owner_type,owner_ref,acl_class,checksum,mime,size,scan_state,object_key)`; short-lived signed download rechecks real owner/actor/clinical purpose. `document_template(type,version,allowed_fields)` and `generated_document(source_owner,source_ref,template_version,checksum,status)` hold immutable issued versions, not independently edited receipts/IDs. Support source-backed front/back cards, QR safe lookup and letter/memo reissue.
+- **Notifications & support:** `notification(source_event,recipient,channel,status)`, `delivery_attempt(provider,event_ref,attempt,next_retry_at,status)` unique per recipient/source/channel, and one scoped `support_case` for public and center requests. Provider failure is pending/failed rather than fake delivered; finite retries and bounded due-job queries avoid idle tenant-wide polling/bandwidth drain.
+- **QA:** forged private signed report, duplicate message on retry, recipient loses role, job restart/idle traffic, wrong-center support, current PDF versus previous version, no public medical/salary documents.
+
 ## Typed API and coordination
 
 An authenticated `/api/documents-notifications` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

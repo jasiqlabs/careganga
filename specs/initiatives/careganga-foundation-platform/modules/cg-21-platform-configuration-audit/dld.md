@@ -24,6 +24,12 @@ State/invariant: **Settings draft/active; integration disabled/verified; recover
 
 **QA:** unauthorized restore, two concurrent setting writes, secret appearing in API/log, false integration-ready state, foreign-scope audit export, failed backup/restore, dormant worker bandwidth and still-pending verification behavior.
 
+## Specific owner contracts and verification
+
+- **Configuration & secrets:** `platform_setting(key,scope,value_class,version,changed_by)`, `integration_connection(provider,purpose,encrypted_secret_reference,status,last_verified_at)`. Never store/display raw credentials; configured is not verified-ready. Public CMS visibility is CG-18's source, not duplicated here.
+- **Audit & recovery:** append-only `audit_event(actor,resource,action,outcome,correlation,safe_diff,at)` redacts patient, money, credential and identity payload; owner events join through typed append interface. `recovery_operation(kind,backup_ref,requester,approval,state,evidence)` requires privileged MFA and additional authorization where configured. Actual restore proof is independent operations QA, not an enabled toggle.
+- **QA:** wrong-role restore, failed setting transaction, leaked secret in audit/export, provider unreachable despite configured status, bounded provider health job, backup evidence missing, last-root recovery.
+
 ## Typed API and coordination
 
 An authenticated `/api/platform-configuration-audit` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

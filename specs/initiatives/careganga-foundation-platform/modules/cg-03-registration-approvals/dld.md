@@ -24,6 +24,12 @@ Authoritative states: DRAFT→SUBMITTED→IN_REVIEW→FORWARDED/RETURNED/REJECTE
 
 A **real owner module** applies its final business outcome after CG-03 final approval with a unique finalization key. No CG-03 direct writes to member/branch/doctor/accounting tables; unavailable future finalizer remains clearly pending. Callback retry/reconciliation must not activate twice. **QA:** parallel reviewers, stale step, process version changed midcase, document unauthorized, repeat final callback, returned/resubmitted correction, batch action scope and owner outage.
 
+## Specific owner contracts and verification
+
+- **Workflow ownership:** `approval_process(id,type,version,enabled)` and immutable `approval_step(process_id,ordinal,required_role,scope_policy)` freeze the configuration in force on submission. `application_case(id,owner_type,owner_ref,application_ref,process_version,status,revision)` has unique owner source+submission key. `decision(case_id,step_id,reviewer,action,remarks,idempotency_key)` is append-only and unique per accepted step/action; document checks reference CG-19 actual protected file.
+- **Real initial use:** a protected CG-01 access/role assignment requiring approval can supply the first real case; future CG-02/04/10/14 owners add their own intake and idempotent finalizer. Current reviewer must have both action and actual step scope. Approval record != source-business activation, which happens once through true owner callback.
+- **QA:** two competing reviewers, returned case resubmit, stale configuration version, forged stage/reviewer, foreign document preview, duplicate approval and owner temporarily unavailable without fake success.
+
 ## Typed API and coordination
 
 An authenticated `/api/registration-approvals` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

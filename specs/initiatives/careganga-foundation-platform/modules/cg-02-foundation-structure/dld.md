@@ -23,6 +23,12 @@ State/invariant: **Draft/submitted/returned/rejected/approved/active/closed; Onl
 
 **CG-01 integration:** When real branch activation exists, CG-02 exposes scope-limited branch/area `options` with names/context and validates actual ownership for role-assignment integration. Role grants do not infer global branch permission. **QA:** seven-step resume/invalid upload; two admin code races; forged region path; pending branch activation attempt; department parent loop; inactive branch revocation; unpublished branch public search.
 
+## Specific owner contracts and verification
+
+- **Geography & branches:** `geography_area(id,level,parent_id,code,name,status)` rejects orphan/cyclic hierarchy and duplicate normalized names within parent. `branch_registration(id,foundation_id,current_step,draft_version,status,approval_case_id)` preserves seven-stage draft with CG-19 file refs, missing-document completion and verification status. `branch(id,approved_registration_id,area_id,branch_code,operational_status)` receives a unique non-null branch code only on real CG-03 final approval.
+- **Departments and scope:** `department(id,branch_id,parent_id,type,head_employee_ref,status)` rejects parent cycles; real CG-10 head/manager links are added when that module exists, not invented now. A new branch is private and CG-01 scoped access only binds to actual active branch.
+- **QA:** resume any draft step, invalid geography parent, simultaneous branch code generation, pending branch without code, unauthorized branch export and approval finalization retries.
+
 ## Typed API and coordination
 
 An authenticated `/api/foundation-structure` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
