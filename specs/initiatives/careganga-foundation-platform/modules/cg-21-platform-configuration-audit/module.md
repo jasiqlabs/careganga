@@ -3,22 +3,17 @@
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-21-BR01–CG-21-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C09, C10, C50, C51, C52, C53, C54, C55.  
-**Stage:** Harness Planning / GREENFIELD · **CG-01 benchmark re-review (15 Nov 2026):** IN_REVIEW → findings fixed and source re-review recorded for CG-21 against PRD/HLD v1.1 and currently reviewed Harness main `ec7c0b81`; 16 existing QA cases retained. **JASIQ AI Design Review Agent** is authorized for design approval; CG-21 itself is NOT yet owner-confirmed or delegated-approved. PRD/HLD v1.1 status REVIEW_REQUIRED, authenticated local Harness resolver and independent CRITICAL DB/runtime/visual QA NOT_RUN; stories remain BLOCKED. No next module review until the owner's confirmation.
+**Stage:** Harness Planning / GREENFIELD · **CG-01-benchmark review status (15 Nov 2026):** SOURCE_REVIEWED_FIXED, awaiting the owner's module-by-module confirmation for CG-21. All four existing CG-21 artifacts have undergone source review/fix/re-review against current PRD/HLD v1.1, Harness ec7c0b81, actual C09/C10/C50–C55 evidence, minimal design patterns and CRITICAL DB rules; 2 stories and 16 original QA IDs preserved. JASIQ AI Design Review Agent has **NOT** yet recorded CG-21 delegated design approval. Real CG-01 prerequisite NOT_DELIVERED, PRD/HLD v1.1 REVIEW_REQUIRED, authenticated local Harness resolver, independent CRITICAL database review, runtime/visual QA NOT_RUN; stories remain BLOCKED.
 
 uiux_decision: REQUIRED
 uiux_reason: Privileged Foundation Admin Web settings, provider-readiness, central audit and backup/recovery views must preserve the CareGanga C09/C10/C50–C55 theme, motion, density, statuses and accessible responsive patterns. No separately owned Android screen.
 dld_decision: REQUIRED
-dld_reason: Versioned platform settings, provider secret-reference/readiness, read-only cross-owner audit, MFA-protected recovery and concurrency demand precise DB/typed API/security design; do not create duplicate CG-01 audit or CG-03 approval authority.
+dld_reason: CRITICAL versioned setting+immutable history, root-scope credential reference and verification revisions, read-only owner-audit cursor, CG-01 MFA-backed recovery/idempotent external proof, index/migration/recovery obligations and scenario-based minimal pattern decisions require specific DLD; no duplicate identity, CG-01 audit or CG-03 approval authority.
 database_impact: CRITICAL
 database_reason: CRITICAL Foundation-root configuration and protected provider secret references require real uniqueness, immutable version history and account-scope guards; recovery requests can lead to irreversible destructive restore, so explicit authorization/verified external proof, concurrency-safe migration and independently reviewed recovery design are mandatory. CG-01 retains original access audit; CG-21 owns only its settings/recovery audit and permissioned source-federated presentation.
 mobile_store_impact: NONE
 mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
-mobile_android_app_category: GENERAL
-mobile_android_policy_api: 36
-mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
-mobile_policy_checked_on: 2026-11-14
-mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
-mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
+mobile_dependency_audit: NOT_APPLICABLE; CG-21 does not change native app SDKs, plugins or store configuration. Existing Public/Internal Android only consume unchanged verified CG-01 protected identity/session contracts. A future mobile change must separately meet latest official store and dependency gates.
 
 ## Business owner and isolation
 
@@ -38,6 +33,8 @@ Detailed authoritative clauses:
 - **CG-21-BR04:** Provide controlled backup/restore access and a recovery operation model; restoration must not be available to routine staff.
 - **CG-21-BR05:** Provide human-readable errors, status and operational controls that avoid silently swallowing backend failures.
 - **CG-21-BR06:** Support password/session security configuration and two-factor authentication for privileged accounts, with policy and enforcement documented in CG-BR-600, and restrict restore operations to correctly authorized operators.
+
+**Implementation/story dependency:** CG-21 US-001 owns the first real settings, credential-reference and source operation-audit persistence; CG-21 US-002 depends on US-001 for the CG-21 audit projection and recovery records. Both require delivered CG-01 root identity/MFA/CG-01 original access-audit facade, **not** later CG-03/02/CMS/center. No business-module parallel development is authorized before actual F0–F5 foundation delivery gates.
 
 ## First usable vertical contract and regression
 
