@@ -1,0 +1,23 @@
+{
+  "name": "careganga",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w apps/backend",
+    "dev:web": "npm run dev -w apps/web",
+    "start:android-public": "npm run start -w apps/android-public",
+    "start:android-internal": "npm run start -w apps/android-internal",
+    "db:migrate": "npm run db:migrate -w apps/backend"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "@types/node": "22.15.30"
+  }
+}
