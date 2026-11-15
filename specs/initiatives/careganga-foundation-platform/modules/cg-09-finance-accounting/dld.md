@@ -27,6 +27,10 @@ Draft journal revision may change during correction, but posting identity is the
 
 **Integrations:** Use verified CG-01/CG-02/CG-03 roles, scopes and decisions. Provide safe authorized account/options separately from general-ledger viewing; consumers may integrate only with real journal/posting facade.
 
+## CG-09 original ownership of branch budget allocations — source data and authorization
+
+CG-09 owns every branch budget and its posted allocation/effect history, with a real CG-02 branch ref scoped by genuine CG-01 finance capabilities. Unique budget identity per real business rule and short transaction guard prevent double allocation/overdraw; record original ledger effects and distinction between approved, allocated, released, committed and utilized. Test branch-only budget without CG-05 project, denial for foreign/inactive branch, idempotent approval, scoped export and correct balances. When real CG-05 project arrives **that later owner** introduces and QA-traces project-specific budget association/projections; never import a future project table into CG-09's original migrations.
+
 ## Typed API and coordination
 
 An authenticated `/api/finance-accounting` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
