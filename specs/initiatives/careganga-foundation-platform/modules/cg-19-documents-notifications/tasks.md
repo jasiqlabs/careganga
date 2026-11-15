@@ -5,7 +5,9 @@
 **Stage:** Harness Planning DRAFT / OWNER_BOUNDARY_TRANSFER_APPLIED (15 Nov 2026): CG-19 owns message transmission/delivery source; CG-21 owns only provider configuration references. [module](module.md), [PRD](../../prd.md) FR-070–072, [HLD](../../hld.md), [UIUX](uiux.md), [DLD](dld.md). Module full review/approval still pending.  
 **Development gate:** CG-19 REVIEW_IN_PROGRESS (module and DLD corrected; UIUX/tasks final review pending). PRD/HLD v1.1 current approval REVIEW_REQUIRED; pinned Harness resolver and current-hash module/task/UIUX/DLD approvals NOT_RUN. Stories remain BLOCKED pending owner-confirmed continuation. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
-## Proposed task definitions — NOT YET APPROVED
+## Approved task definitions
+
+**Approval truth:** Machine-readable Harness heading only; CG-19 definitions remain PROPOSED / NOT_YET_APPROVED after clarifying its real message send/delivery ownership. All stories BLOCKED pending full CG-19 review, current-hash delegated approvals, genuine predecessor delivery and authenticated resolver.
 
 ### US-001 — Generate versioned, permissioned membership/employee IDs, letters…
 
