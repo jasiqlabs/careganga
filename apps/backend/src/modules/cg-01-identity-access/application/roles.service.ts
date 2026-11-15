@@ -63,11 +63,11 @@ export class RolesService {
       group,actions:capabilitiesInUse().filter(c=>c.group===group)
     }))};
   }
-  async list(bearer:string,query:{search?:string;offset?:number;limit?:number}={}){
+  async list(bearer:string,query:{search?:string;offset?:number;limit?:number;status?:"all"|"active"|"retired"}={}){
     const actor=await this.sessions.requireAction(bearer,"roles.view");
     const search=(query.search??"").trim();
-    const offset=query.offset??0,limit=query.limit??20;
-    if(search.length>80||!Number.isInteger(offset)||offset<0||offset>10000||
+    const offset=query.offset??0,limit=query.limit??20,status=query.status??"all";
+    if(search.length>80||!["all","active","retired"].includes(status)||!Number.isInteger(offset)||offset<0||offset>10000||
        !Number.isInteger(limit)||limit<1||limit>50)throw new BadRequestException();
     const result=await this.db.query<ListRow>(`
       SELECT r.*,coalesce(count(DISTINCT ar.id),0)::text AS assigned_count,
@@ -77,13 +77,15 @@ export class RolesService {
       LEFT JOIN account_role ar ON ar.role_id=r.id AND ar.revoked_at IS NULL
       LEFT JOIN role_grant rg ON rg.role_id=r.id
       WHERE r.realm_id=$1 AND ($2='' OR r.normalized_name LIKE $2)
+        AND ($5='all' OR r.active=($5='active'))
       GROUP BY r.id
       ORDER BY r.normalized_name,r.id
-      LIMIT $3 OFFSET $4`,[actor.realmId,search?("%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):"",limit,offset]);
+      LIMIT $3 OFFSET $4`,[actor.realmId,search?("%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):"",limit,offset,status]);
     const total=await this.db.query<{n:string}>(`
       SELECT count(*)::text AS n FROM role WHERE realm_id=$1
-      AND ($2='' OR normalized_name LIKE $2)`,
-      [actor.realmId,search?("%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):""]);
+      AND ($2='' OR normalized_name LIKE $2)
+      AND ($3='all' OR active=($3='active'))`,
+      [actor.realmId,search?("%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):"",status]);
     return {roles:result.rows.map(toView),total:Number(total.rows[0].n),offset,limit};
   }
   async options(bearer:string,search=""){
