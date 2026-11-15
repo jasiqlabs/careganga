@@ -47,6 +47,16 @@ async function proxy(request:NextRequest,parts:string[],method:string){
       body,cache:"no-store",signal:AbortSignal.timeout(12000)
     });
     if(!response.ok){
+      let errorCode:string|undefined;
+      if(response.status===409){
+        try{
+          const payload:unknown=await response.json();
+          if(payload&&typeof payload==="object"&&"code" in payload&&
+            typeof payload.code==="string"&&
+            ["DUPLICATE_ROLE","STALE_ROLE","ROLE_RETIRED","ROLE_ASSIGNED","REPLAY_CONFLICT"].includes(payload.code))
+            errorCode=payload.code;
+        }catch{ /* no unreviewed server content in the browser */ }
+      }
       const status=[400,401,403,404,409,429].includes(response.status)?response.status:503;
       const message=status===401?"Your session has expired. Sign in again."
         :status===403?"You don't have permission for this action."
@@ -55,7 +65,8 @@ async function proxy(request:NextRequest,parts:string[],method:string){
         :status===404?"That role is no longer available."
         :status===400?"Check the entered information and try again."
         :"We could not confirm the result. Check before retrying.";
-      return NextResponse.json({message},{status,headers:{"Cache-Control":"no-store"}});
+      return NextResponse.json({message,...(errorCode?{code:errorCode}:{})},
+        {status,headers:{"Cache-Control":"no-store"}});
     }
     const data:unknown=await response.json();
     return NextResponse.json(data,{status:response.status,headers:{"Cache-Control":"no-store"}});
