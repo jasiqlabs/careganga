@@ -59,6 +59,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
   const deny=useCallback((kind:string)=>{
     ++listGeneration.current;++optionsGeneration.current;++historyGeneration.current;
     setList(null);setActions([]);setRoles([]);setSelected(null);setPending(null);
+    setBusy(false);setHistory(null);setRoleRef("");
     setScreen("list");setMessage("Your account access cannot be verified. Restricted information was cleared.");
     if(kind==="SESSION_EXPIRED")onExpired();
   },[onExpired]);
