@@ -2,8 +2,8 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning DRAFT aligned with current corrected PRD/HLD v1.1 and CG-03 module/UIUX/DLD; [module](module.md), [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
-**Development gate:** CG-03 owner/DLD/UIUX/story further source review/fixes IN_PROGRESS (15 Nov 2026); current PRD/HLD REVIEW_REQUIRED, authenticated Harness resolver, current-hash CG-03 delegated approval and independent CRITICAL database review NOT_RUN. Stories remain BLOCKED. Single vertical story → manual expert review/fix/re-review → all QA traces; no CI/GH Actions, code/runtime/visual PASS claimed.
+**Stage:** Harness Planning draft / SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION (15 Nov 2026), against latest [PRD](../../prd.md) FR-006–008, [HLD](../../hld.md), [module](module.md), [UIUX](uiux.md) and [DLD](dld.md); **3 stories/31 unique, source-designed inline QA cases**. No code trace/runtime/visual QA has run.  
+**Development gate:** CG-03 design source review/fix/re-review COMPLETE for the **owner's next module-by-module decision**; current-hash CG-03 design approval NOT_RECORDED, latest PRD/HLD REVIEW_REQUIRED, authenticated pinned Harness resolver, independent CRITICAL DB/migration and runtime/device/visual QA NOT_RUN. All three stories remain BLOCKED; developer sequence is vertical code → manual source expert review/fix/re-review → every QA trace, no CI/GH Actions or invented PASS.
 
 ## Approved task definitions
 
