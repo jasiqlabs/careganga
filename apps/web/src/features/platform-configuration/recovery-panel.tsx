@@ -47,6 +47,10 @@ export function RecoveryPanel(){
   const [backupReference,setBackupReference]=useState("");
   const [totp,setTotp]=useState("");
   const [review,setReview]=useState(false);
+  const [authorization,setAuthorization]=useState<CG21RecoveryOperation|null>(null);
+  const [authorizationTotp,setAuthorizationTotp]=useState("");
+  const [authorizationReview,setAuthorizationReview]=useState(false);
+  const pendingKind=useRef<"REQUEST"|"AUTHORIZE">("REQUEST");
   const requestKey=useRef("");
   const generation=useRef(0);
   const read=useCallback(async()=>{
@@ -78,6 +82,7 @@ export function RecoveryPanel(){
     }
     if(!review){setReview(true);return;}
     if(!requestKey.current)requestKey.current=crypto.randomUUID();
+    pendingKind.current="REQUEST";
     setSaving(true);setNotice(null);
     try{
       const outcome=await call<CG21RecoveryOutcome>("recovery/request","POST",{
@@ -102,18 +107,57 @@ export function RecoveryPanel(){
     if(!unknown||!requestKey.current||saving)return;
     setSaving(true);
     try{
+      const endpoint=pendingKind.current==="AUTHORIZE"?
+        "recovery/authorization/changes/":"recovery/changes/";
       const result=await call<{status:string;operationStatus?:string}>(
-        "recovery/changes/"+encodeURIComponent(requestKey.current));
+        endpoint+encodeURIComponent(requestKey.current));
       if(result.status==="CONFIRMED"){
         setUnknown(false);requestKey.current="";setReview(false);
-        setBackupReference("");setTotp("");
+        setBackupReference("");setTotp("");setAuthorization(null);
+        setAuthorizationTotp("");setAuthorizationReview(false);
         setNotice({kind:"success",message:
-          "The original recovery request is confirmed. This does not mean restoration occurred."});
+          pendingKind.current==="AUTHORIZE"?
+            "Authorization was recorded. No restoration was executed.":
+            "The original recovery request is confirmed. This does not mean restoration occurred."});
         await read();
       }else setNotice({kind:"info",message:
         "No committed request is visible. Contact Foundation operations before any retry."});
     }catch(e){setNotice({kind:"error",message:describe(e)});}
     finally{setSaving(false);}
+  }
+  function startAuthorization(row:CG21RecoveryOperation){
+    if(saving||unknown||availability?.status!=="AVAILABLE"||row.status!=="REQUESTED")return;
+    pendingKind.current="AUTHORIZE";requestKey.current=crypto.randomUUID();
+    setAuthorization(row);setAuthorizationTotp("");setAuthorizationReview(false);setNotice(null);
+  }
+  async function saveAuthorization(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(!authorization||saving||unknown||availability?.status!=="AVAILABLE")return;
+    if(!/^[0-9]{6}$/.test(authorizationTotp)){
+      setNotice({kind:"error",message:"Enter a fresh six-digit authenticator code."});return;
+    }
+    if(!authorizationReview){setAuthorizationReview(true);return;}
+    setSaving(true);setNotice(null);
+    try{
+      const result=await call<{status:string;version?:number}>(
+        "recovery/operations/"+encodeURIComponent(authorization.operationRef)+"/authorize",
+        "POST",{expectedVersion:authorization.version,requestKey:requestKey.current,
+          totp:authorizationTotp});
+      if(result.status==="NOT_AVAILABLE"){
+        setNotice({kind:"info",message:"Backup readiness was not verified. No authorization was recorded."});
+        return;
+      }
+      if(result.status!=="PRIVILEGED_AUTHORIZED"&&result.status!=="REPLAY_CONFIRMED")
+        throw Error("UNKNOWN");
+      requestKey.current="";setAuthorization(null);setAuthorizationTotp("");
+      setAuthorizationReview(false);
+      setNotice({kind:"success",message:
+        "Authorization recorded under current root access. Restoration has not started."});
+      await read();
+    }catch(error){
+      if(error instanceof Error&&error.message==="UNKNOWN")setUnknown(true);
+      setNotice({kind:"error",message:describe(error)});
+    }finally{setSaving(false);}
   }
   return <section className="role-workspace">
     <header className="topbar">
