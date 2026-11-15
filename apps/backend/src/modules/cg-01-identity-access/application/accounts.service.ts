@@ -52,10 +52,10 @@ export class AccountsService {
     const params=[actor.realmId,term,status,roleRef];
     const records=await this.db.query<{
       id:string;display_name:string;normalized_email:string;status:string;revision:number;
-      role_id:string|null;role_name:string|null;assigned_at:Date|null;delivery_status:string|null;
+      role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;delivery_status:string|null;
     }>(String.raw`
       SELECT a.id,a.display_name,a.normalized_email,a.status,a.revision,
-        ar.role_id,r.name AS role_name,ar.assigned_at,
+        ar.role_id,r.name AS role_name,r.is_protected,ar.assigned_at,
         (SELECT c.delivery_status FROM auth_challenge c
           WHERE c.account_id=a.id AND c.kind='INVITATION'
           ORDER BY c.created_at DESC,c.id DESC LIMIT 1) AS delivery_status
@@ -69,22 +69,23 @@ export class AccountsService {
       ORDER BY a.display_name,a.id LIMIT $5 OFFSET $6`,[...params,limit,offset]);
     const count=await this.db.query<{n:string}>(String.raw`
       SELECT count(*)::text AS n FROM account a WHERE ${conditions} `,params);
-    const summary=await this.db.query<{total:string;active:string;invited:string;suspended:string;deactivated:string}>(String.raw`
+    const summary=await this.db.query<{total:string;active:string;invited:string;suspended:string;deactivated:string;assigned:string}>(String.raw`
       SELECT count(*)::text total,
        count(*) FILTER(WHERE status='ACTIVE')::text active,
        count(*) FILTER(WHERE status='INVITED')::text invited,
        count(*) FILTER(WHERE status='SUSPENDED')::text suspended,
-       count(*) FILTER(WHERE status='DEACTIVATED')::text deactivated
+       count(*) FILTER(WHERE status='DEACTIVATED')::text deactivated,
+       (SELECT count(*)::text FROM account_role ar WHERE ar.realm_id=$1 AND ar.revoked_at IS NULL) assigned
       FROM account WHERE realm_id=$1`,[actor.realmId]);
     const m=summary.rows[0];
     return {accounts:records.rows.map(r=>({
       accountRef:r.id,displayName:r.display_name,email:r.normalized_email,
       status:r.status,revision:Number(r.revision),
-      roleRef:r.role_id,roleName:r.role_name,assignedAt:r.assigned_at?.toISOString()??null,
+      roleRef:r.role_id,roleName:r.role_name,roleProtected:Boolean(r.is_protected),assignedAt:r.assigned_at?.toISOString()??null,
       deliveryStatus:r.delivery_status
     })),total:Number(count.rows[0].n),offset,limit,summary:{
       total:Number(m.total),active:Number(m.active),invited:Number(m.invited),
-      suspended:Number(m.suspended),deactivated:Number(m.deactivated)
+      suspended:Number(m.suspended),deactivated:Number(m.deactivated),assigned:Number(m.assigned)
     }};
   }
   async options(bearer:string,search=""){
