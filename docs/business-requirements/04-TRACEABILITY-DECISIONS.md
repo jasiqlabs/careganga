@@ -1,7 +1,7 @@
 # CareGanga — Delegated Business Policy Baseline
 
 **Document:** CG-BR-900  
-**Status:** All 24 recorded business-scope decisions resolved for PRD/HLD planning using the owner's explicit delegated-default instruction in this conversation  
+**Status:** All 27 numbered business-scope decisions recorded (D-01–D-23, D-25–D-28; D-24 not issued) and resolved for PRD/HLD planning using the owner's explicit delegated-default instruction in this conversation  
 **Authority:** Product-owner delegation for planning decisions; not a claim of independent client sign-off, verified banking credentials or legally completed provider arrangements  
 **Applies to:** CareGanga Foundation and original Integrated Healthcare Assistance scope  
 **Decision date:** 14 November 2026
