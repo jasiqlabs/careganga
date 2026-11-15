@@ -58,6 +58,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [pending,setPending]=useState<Pending|null>(null);
   const [fullName,setFullName]=useState("");
   const [email,setEmail]=useState("");
+  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [searchRole,setSearchRole]=useState("");
@@ -130,7 +131,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   }
   function openInvite(){
     ++roleRead.current;++historyRead.current;
-    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setRoleRef("");
+    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
@@ -169,7 +170,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     setBusy(true);setNotice(null);
     try{
       await change("invitations","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase(),
-        roleRef,requestKey:requestKey.current});
+        phone:phone.trim()||undefined,roleRef,requestKey:requestKey.current});
       setEditor(null);setNotice({kind:"success",text:
         "Invitation saved. Email delivery is not guaranteed; check the account's delivery status."});
       requestKey.current="";await load(applied,0,filter);
@@ -289,6 +290,11 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
           <label className="field">Work email<input required type="email" maxLength={254}
             value={email} onChange={event=>setEmail(event.target.value)}/></label>
+          <label className="field">Phone (optional, unverified)<input type="tel" inputMode="tel"
+            maxLength={16} pattern="[+][1-9][0-9]{7,14}"
+            title="Use international format, for example +919876543210"
+            placeholder="+919876543210" value={phone}
+            onChange={event=>setPhone(event.target.value)}/></label>
           <p>Applies to: <strong>Entire foundation</strong></p>
           <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
             onChange={event=>setSearchRole(event.target.value)}/></label>
