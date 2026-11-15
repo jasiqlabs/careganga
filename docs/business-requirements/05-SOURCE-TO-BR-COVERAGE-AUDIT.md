@@ -60,7 +60,7 @@
 | §41 / pp36–37 | Notices, communications, SMS/email and message history | CG-19/18 | **C** |
 | §42 / pp37–38 | CMS dashboards, banners, team, projects, gallery, blog, contact/support | CG-18/19 | **R**: shared ticket/FAQ owner and controlled publication clarified |
 | §43 / pp38–40 | MIS, charts, custom/grouped/pivot reports, export and schedule | CG-20 | **C**, restricted exports/scheduling **NFR P0** |
-| §44 / pp40–41 | Settings, audit, integrations, backups and restore | CG-21 | **R**: explicit password/session, 2FA and protected restore controls |
+| §44 / pp40–41 | Settings, audit, integrations, backups and restore | **CG-21** operational settings/audit/recovery; **CG-01-BR11** password/session/MFA security-policy owner; **CG-18-BR09** public navigation | **R**: moved security policy and UI into CG-01; public Login/Member Join/Volunteer Join switches into CG-18; CG-21 holds only provider references, central audit read and protected recovery |
 | §45 / p41 | Public Android app audience and services | CG-BR-300 §7 | **C** current integrated public/member/volunteer/healthcare scope |
 | §46 / pp41–42 | Internal Android app permission-based operational modules | CG-BR-300 §8 | **C**; exact role-screen matrix **D-17** |
 | §47 / pp42–43 | Central backend, docs, gateway, SMS/push/maps, logging, recovery | CG-BR-000, CG-19/21/600 | **R**: explicit measurable NFR and evidence requirements added |
@@ -123,7 +123,7 @@
 | 43 / 52 | Center support paid/pending and provider settlement | CG-17/09 | **C**, merchant/fund flow **D-04** |
 | 44 / 52 | Center reports/export | CG-20 | **C** |
 | 45 / 52 | Center staff roles, website content, support tickets, FAQs and settings | CG-01/14/18/19/21 | **R** shared tickets/service requests/FAQ and content submission clarified |
-| 46 / 52 | Center access logs, password/session rules, restricted recovery | CG-01/21/600 | **R** two-factor/security baseline added; restore authority **D-25** |
+| 46 / 52 | Center access logs, password/session rules, restricted recovery | **CG-01-BR11** password/session/MFA config/enforcement; **CG-21-BR04/06** protected recovery; CG-BR-600 | **R**: CG-01 independently implements/QA-tests root security policy and session/MFA controls; CG-21 only checks CG-01 privilege/MFA for real recovery, no duplicate policy or log ledger; restore authority D-25 |
 
 ## 5. Healthcare — central Foundation administration features 47–75
 
