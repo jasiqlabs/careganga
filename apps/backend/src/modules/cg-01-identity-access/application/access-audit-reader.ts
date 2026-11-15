@@ -118,7 +118,7 @@ export class AccessAuditReader {
    * ownerEventId stays server-side for encrypted composite cursors/detail refs.
    */
   async listPlatformProjection(bearer:string,range:{
-    from:Date;to:Date;after?:{at:Date;id:string}|null;limit:number
+    from:Date;to:Date;after?:{at:string;id:string}|null;limit:number
   }){
     const actor=await this.sessions.requireAction(bearer,"platform.audit.view");
     if(!Number.isInteger(range.limit)||range.limit<1||range.limit>101||
@@ -127,10 +127,13 @@ export class AccessAuditReader {
       range.to<range.from||range.to.getTime()-range.from.getTime()>90*86400000)
       throw new BadRequestException("Invalid audit range");
     const after=range.after??null;
-    if(after&&(!Number.isFinite(after.at.getTime())||
+    if(after&&(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(after.at)||
+      !Number.isFinite(Date.parse(after.at))||
       !/^[a-f0-9-]{36}$/i.test(after.id)))throw new BadRequestException("Invalid audit page");
-    const rows=await this.db.query<AuditRow>(`
+    const rows=await this.db.query<AuditRow & {exact_at:string}>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        to_char(au.occurred_at AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS exact_at,
         actor.display_name AS actor_display,target.display_name AS target_display
       FROM access_audit au
       LEFT JOIN account actor ON actor.id=au.actor_account_id AND actor.realm_id=au.realm_id
@@ -142,7 +145,7 @@ export class AccessAuditReader {
     `,[actor.realmId,range.from,range.to,after?.at??null,after?.id??null,range.limit]);
     return rows.rows.map(row=>({
       ownerEventId:row.id,source:"CG-01" as const,
-      occurredAt:row.occurred_at.toISOString(),
+      occurredAt:row.exact_at,
       actionLabel:labels[row.action_key]??"Account security event",
       actorDisplay:row.actor_display??"System",
       targetDisplay:displayTarget(row.safe_context,row.target_display),
@@ -152,8 +155,10 @@ export class AccessAuditReader {
   async readPlatformProjectionEvent(bearer:string,ownerEventId:string){
     const actor=await this.sessions.requireAction(bearer,"platform.audit.view");
     if(!/^[a-f0-9-]{36}$/i.test(ownerEventId))throw new BadRequestException("Invalid audit event");
-    const rows=await this.db.query<AuditRow>(`
+    const rows=await this.db.query<AuditRow & {exact_at:string}>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        to_char(au.occurred_at AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS exact_at,
         actor.display_name AS actor_display,target.display_name AS target_display
       FROM access_audit au
       LEFT JOIN account actor ON actor.id=au.actor_account_id AND actor.realm_id=au.realm_id
@@ -162,7 +167,7 @@ export class AccessAuditReader {
     `,[actor.realmId,ownerEventId]);
     const row=rows.rows[0];
     if(!row)return null;
-    return {source:"CG-01" as const,occurredAt:row.occurred_at.toISOString(),
+    return {source:"CG-01" as const,occurredAt:row.exact_at,
       actionLabel:labels[row.action_key]??"Account security event",
       actorDisplay:row.actor_display??"System",
       targetDisplay:displayTarget(row.safe_context,row.target_display),
