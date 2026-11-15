@@ -58,7 +58,14 @@ export class InvitationEnrollmentService {
         FROM auth_challenge c JOIN account a ON a.id=c.account_id
         WHERE c.digest=$1 AND c.kind='INVITATION' AND a.normalized_email=$2
           AND c.consumed_at IS NULL AND c.expires_at>now() AND c.attempts<5
-          AND a.status='INVITED' FOR UPDATE OF c,a`,[parsed.digest,parsed.email]);
+          AND a.status='INVITED'
+          AND EXISTS(
+            SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+            WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+              AND r.active=true AND r.is_protected=false
+              AND NOT EXISTS(SELECT 1 FROM role_grant rg WHERE rg.role_id=r.id
+                AND rg.capability_key IN ('roles.manage','identity.security-policy.manage'))
+          ) FOR UPDATE OF c,a`,[parsed.digest,parsed.email]);
       if(!matched.rowCount)throw new BadRequestException("Invitation could not be confirmed");
       const row=matched.rows[0];
       let secret:Buffer;
@@ -94,7 +101,14 @@ export class InvitationEnrollmentService {
       SELECT 1 FROM auth_challenge c JOIN account a ON a.id=c.account_id
       WHERE c.digest=$1 AND c.kind='INVITATION' AND a.normalized_email=$2 AND a.status='INVITED'
         AND c.consumed_at IS NULL AND c.expires_at>now() AND c.attempts<5
-        AND c.enroll_secret_ciphertext IS NOT NULL LIMIT 1`,[parsed.digest,parsed.email]);
+        AND c.enroll_secret_ciphertext IS NOT NULL
+        AND EXISTS(
+          SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+          WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+            AND r.active AND NOT r.is_protected
+            AND NOT EXISTS(SELECT 1 FROM role_grant rg WHERE rg.role_id=r.id
+              AND rg.capability_key IN ('roles.manage','identity.security-policy.manage'))
+        ) LIMIT 1`,[parsed.digest,parsed.email]);
     if(!pre.rowCount)throw new BadRequestException("Invitation could not be confirmed");
     const passwordHash=await hashPassword(body.password);
     const client=await this.db.connect();
@@ -107,7 +121,14 @@ export class InvitationEnrollmentService {
         FROM auth_challenge c JOIN account a ON a.id=c.account_id
         WHERE c.digest=$1 AND c.kind='INVITATION' AND a.normalized_email=$2
           AND c.consumed_at IS NULL AND c.expires_at>now() AND c.attempts<5
-          AND a.status='INVITED' FOR UPDATE OF c,a`,[parsed.digest,parsed.email]);
+          AND a.status='INVITED'
+          AND EXISTS(
+            SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+            WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+              AND r.active=true AND r.is_protected=false
+              AND NOT EXISTS(SELECT 1 FROM role_grant rg WHERE rg.role_id=r.id
+                AND rg.capability_key IN ('roles.manage','identity.security-policy.manage'))
+          ) FOR UPDATE OF c,a`,[parsed.digest,parsed.email]);
       if(!matched.rowCount)throw new BadRequestException("Invitation could not be confirmed");
       const row=matched.rows[0];
       if(!row.enroll_secret_ciphertext||!row.enroll_secret_nonce||!row.enroll_secret_tag)
