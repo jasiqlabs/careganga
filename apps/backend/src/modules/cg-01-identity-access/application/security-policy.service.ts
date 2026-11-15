@@ -54,12 +54,15 @@ export class SecurityPolicyService {
     const proof=await this.db.query(`
       SELECT 1 FROM auth_session s JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
       JOIN access_realm realm ON realm.id=a.realm_id AND realm.realm_key='FOUNDATION_ROOT'
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
       WHERE s.id=$1 AND s.account_id=$2 AND a.realm_id=$3
         AND s.revoked_at IS NULL AND s.account_access_version=a.access_version
         AND s.mfa_verified_at IS NOT NULL AND s.expires_at>now()
-        AND s.last_seen_at>now()-interval '30 minutes' LIMIT 1`,
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
+      LIMIT 1`,
       [actor.activeSessionId,actor.accountId,actor.realmId]);
     if(!proof.rowCount)throw new ForbiddenException();
     return actor;
