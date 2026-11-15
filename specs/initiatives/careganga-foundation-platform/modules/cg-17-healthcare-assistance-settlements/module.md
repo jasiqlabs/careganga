@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Versioned subsidy policy, eligibility, center collection, Foundation liability, provider settlement. **Real prerequisite owners:** CG-14 price, CG-15 service, CG-09 finance and CG-19 docs. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Versioned subsidy policy, eligibility, center collection, Foundation liability, provider settlement. **Delivery-critical, already-delivered owners:** CG-14 actual center fees, CG-15 real appointment/service, CG-09 authoritative Foundation journal and CG-19 approved receipts/documents. **Later integration owners, not blockers for the first self-contained feature:** CG-18 CMS/CG-20 reports consume only real approved support statistics; no later module needed to invent collection capability. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Support requested/approved; patient due/paid/refunded; Foundation due/settled. Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -55,6 +55,10 @@ Detailed authoritative clauses:
 - **CG-17-BR18:** Post final money/accounting events to CG-09 exactly once using linked source transactions; no duplicate per-center general ledger.
 - **CG-17-BR19:** Generate center/doctor/period/service reports on gross charges, patient collections, Foundation support, unresolved dues and settlement outcomes.
 - **CG-17-BR20:** The authorized initial money flow is center collection of patient payable (verified own merchant channel, or pay at center), plus a separate Foundation contribution payable to the center after completed/eligible services, reconciled monthly. Center-collected patient money is tracked operationally, **not counted as Foundation cash/bank income**. Only the Foundation's own approved contribution liability and actual settlement affect its financial books. No real online payment until the responsible center's merchant credentials are verified.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Calculate effective-dated Foundation share and patient payable against an accepted service fee, verify center collection separately, recognize one true Foundation liability, reconcile settlement/refund without duplicate posting. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 

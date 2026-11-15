@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Source-linked files/templates/PDF/QR, notices/messaging and support tickets. **Real prerequisite owners:** CG-01 and actual owner source/approved providers. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Source-linked files/templates/PDF/QR, notices/messaging and support tickets. **Delivery-critical, already-delivered owners:** CG-01 authenticated source records and CG-03 real approval cases for initial issued proofs; configured real object storage/provider is verified before delivery. **Later integration owners, not blockers for the first self-contained feature:** CG-04/09/10/14/15/16 add actual IDs, receipts, letters, appointments and reports later, and must QA their end-to-end integrated artifacts. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** File pending/validated; message queued/delivered/failed; case open/closed. No sensitive public document, fake delivery, duplicate receipt source or idle tenant worker. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -40,6 +40,10 @@ Detailed authoritative clauses:
 - **CG-19-BR07:** Maintain one scoped service-request/helpdesk capability for Foundation public contact requests and healthcare-center support tickets, service requests and FAQs where required. Center operators see only their authorized cases; ownership, status, responses and permissions are shared, not duplicated per portal.
 - **CG-19-BR08:** Shared document templates support front/back ID cards for authorized members, volunteers and employees, optional visible fields, issue/expiry, preview, barcode/QR verification, print/PDF/reissue history, and official letters/memos with signature/seal and received-copy tracking where applicable. Document generation must reference approved source records.
 - **CG-19-BR09:** Notifications distinguish direct transaction events, role/group broadcasts, individual messages and public notices. Authorized senders can configure recipient audience, category, priority, title, message, optional link, schedule/expiry and delivery status, without revealing contacts outside their permission scope.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Upload authorized real case evidence, issue source-linked document, generate valid short-lived protected download, enqueue one actual notification and recover bounded retry; no idle tenant fan-out or fake delivered state. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 

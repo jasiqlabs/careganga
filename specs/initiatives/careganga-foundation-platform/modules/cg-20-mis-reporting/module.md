@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Dashboards, standard/custom/saved reports, scheduled exports. **Real prerequisite owners:** CG-01 and implemented scoped owner projections. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Dashboards, standard/custom/saved reports, scheduled exports. **Delivery-critical, already-delivered owners:** CG-01 scoped query permissions and at least one existing real owner read projection (CG-02/09/05 or healthcare). **Later integration owners, not blockers for the first self-contained feature:** Each new source module contributes only filtered read projections and its own integration QA; absent sources remain honestly unavailable/empty and never become mock dashboard totals. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Report draft/running/completed/failed; schedule active/disabled. No cross-scope report, shadow accounting or unbounded scheduled polling. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -37,6 +37,10 @@ Detailed authoritative clauses:
 - **CG-20-BR05:** Save filters/reports, schedule reports with frequency/time, export PDF/Excel or applicable supported formats and share via authorized channels.
 - **CG-20-BR06:** Honor data-scope restrictions and sensitive-information masking consistently in dashboard, export and scheduled delivery.
 - **CG-20-BR07:** Standard report packages include donor and tax-receipt ledgers, finance/audit statements, volunteer roster/activity, beneficiary demographic/assistance reports, CSR contribution, project budget/utilization, healthcare center/doctor/appointment and employee/payroll reports. These are authorized views of module-owned records rather than separately maintained statements.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Compute an actual permission-scoped financial/operations dashboard from implemented records, revoke access to report and scheduled recipient, and ensure no cross-branch exports, idle jobs or fabricated data. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 

@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Platform/integration settings, security audit, privileged backup/restore. **Real prerequisite owners:** CG-01 protected root. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Platform/integration settings, security audit, privileged backup/restore. **Delivery-critical, already-delivered owners:** CG-01 verified Super Admin sessions, MFA, root audit and safe restricted diagnostic context. **Later integration owners, not blockers for the first self-contained feature:** CG-03/09/14/15/17 append domain audit after delivery; CG-18 owns public publication switches, not copied generic settings rows. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Settings draft/active; integration disabled/verified; recovery requested/approved. No secrets in UI/log, ordinary staff restore or simulated provider success. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -36,6 +36,10 @@ Detailed authoritative clauses:
 - **CG-21-BR04:** Provide controlled backup/restore access and a recovery operation model; restoration must not be available to routine staff.
 - **CG-21-BR05:** Provide human-readable errors, status and operational controls that avoid silently swallowing backend failures.
 - **CG-21-BR06:** Support password/session security configuration and two-factor authentication for privileged accounts, with policy and enforcement documented in CG-BR-600, and restrict restore operations to correctly authorized operators.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Change and audit one real versioned setting, reject a competing stale change, verify actual integration readiness and require privileged approval for recovery; don't claim an untested restore completed. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 

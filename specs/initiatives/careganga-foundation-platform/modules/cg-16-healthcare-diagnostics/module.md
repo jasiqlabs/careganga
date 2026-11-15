@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Test/package catalog, center prices, internal order, sample and released report. **Real prerequisite owners:** CG-14 centers, CG-15 patients, CG-19 private reports. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Test/package catalog, center prices, internal order, sample and released report. **Delivery-critical, already-delivered owners:** CG-14 genuine center/test provider, CG-15 verified patient/visit and CG-19 private released report. **Later integration owners, not blockers for the first self-contained feature:** CG-17 may later attach actual supported price/settlement; no future lab booking or pharmacy commerce is assumed. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Order created/collected/processing/report ready/released. No public lab checkout or release of private patient report to strangers. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -42,6 +42,10 @@ Detailed authoritative clauses:
 - **CG-16-BR08:** Public center profiles may display verified test/service menus, genuine prices and configured benefits. Public medicine, nursing/OT and lab checkout are not enabled in the initial release; internal center-managed lab orders remain supported.
 - **CG-16-BR09:** Service catalogs may cover categories illustrated by the mockups: polyclinic, diagnostic center, dental clinic, medical laboratory, hospital/nursing home, pharmacy, orthopedic, homeopathy and Ayurvedic centers. Listing a category does not automatically imply a dedicated pharmacy stock/sales or hospital-OT operating system.
 - **CG-16-BR10:** Non-bookable health camps/checkups and other applicable support offerings may be displayed as information with clear contact/enquiry actions as approved.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Register a real internal test order, receive labeled sample and approved result, release one versioned private report; drafts and unrelated center patients remain inaccessible and corrections retain audit. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 

@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Hero/content, public pages, impact, 80G, navigation, safe publication. **Real prerequisite owners:** CG-01, CG-19 media, CG-03 content review, real source projections. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Hero/content, public pages, impact, 80G, navigation, safe publication. **Delivery-critical, already-delivered owners:** CG-01 editor roles, CG-03 configured review, CG-19 genuine media asset. **Later integration owners, not blockers for the first self-contained feature:** CG-05 projects, CG-07 campaigns, CG-14 doctors/centers and CG-17 support feed approved public projections only when those real records exist. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Editorial draft/reviewed/published/hidden/scheduled. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -60,6 +60,10 @@ Detailed authoritative clauses:
 - **CG-18-BR26:** Public team cards and upcoming-project teasers can be configured by authorized editors with display order, image, title/role/category/location/summary, published status and approved additional public biography/recognition fields. Where linked to a member, employee or project, the owning module remains authoritative.
 - **CG-18-BR27:** Gallery, reusable media, videos, publications/reports, articles and notices support categorization, metadata, publication status and authorized upload/preview/ordering. Public contact messages and support requests retain sender privacy and action history.
 - **CG-18-BR28:** Central Foundation CMS controls publication of approved healthcare services, centers, doctors and healthcare benefit messaging through existing public content tools, while verification, pricing, availability and contribution rules remain owned by CG-14–17.
+
+## First usable vertical contract and regression
+
+**Concrete acceptance:** Draft/preview/approve/publish a real editorial page and remove public exposure on unpublish; safe content works before any future healthcare or campaign owner exists. A module with absent future-owner data can still complete and source-verify its own real owner operation; later provider integration must preserve existing permissions, prices, reports and recorded states.
 
 ## UI/UX, NFR and Planning acceptance
 
