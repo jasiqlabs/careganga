@@ -28,7 +28,7 @@ function requestedErpCapability(key: ErpCapabilityName): boolean {
   try{
     process.stderr.write(JSON.stringify({
       event:"erp_deployment_capability_invalid",variable:envName,decision:"OFF"
-    })+"\\n");
+    })+"\n");
   }catch{ /* Diagnostic sinks must not change a safe default. */ }
   return false;
 }
@@ -47,7 +47,7 @@ export function readErpDeploymentCapabilities(): ErpDeploymentCapabilities {
       try{
         process.stderr.write(JSON.stringify({
           event:"erp_module_not_installed",variable:ERP_ENV_NAMES[key],decision:"NOT_AVAILABLE"
-        })+"\\n");
+        })+"\n");
       }catch{ /* No secrets or runtime disruption from diagnostics. */ }
     }
     return result;
