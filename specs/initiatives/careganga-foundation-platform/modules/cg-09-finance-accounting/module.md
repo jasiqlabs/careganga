@@ -26,6 +26,10 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **State and invariant:** Draft/review/approved/posted/paid/reversed. Balanced journal, one source posting, correct funds vs commitment, no fake payment. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
+## CG-09 original ownership of branch budget allocations — transferred CG-02-BR06 scope
+
+CG-02-BR06 **branch budget allocations belong to CG-09 US-005**, not CG-02. Start with real CG-02 ACTIVE branch and account/category/period to approve and track allocated, released, committed, utilized and available money in CG-09's ledger/budget source. A project budget link is enabled only once real CG-05 project sources are integrated; CG-09 must be independently usable for Foundation/branch budgets before CG-05 exists. No CG-02 budget master or fictitious project ledger.
+
 ## Complete PRD and BR mapping
 
 - **FR-023/A-09:** Finance Admin opens accounts — Configure chart of accounts/groups, financial year, branch/project allocation, cash/bank accounts, opening balances and controlled statuses
