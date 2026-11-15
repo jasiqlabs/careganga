@@ -191,7 +191,9 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       const reason=e instanceof Error?e.message:"UNAVAILABLE";
       if(reason==="SESSION_EXPIRED"||reason==="PERMISSION_DENIED")deny(reason);
       else if(reason==="UNKNOWN"){
-        setUnknown(true);setMessage("The result could not be confirmed. Refresh before retrying.");
+        setUnknown(true);setMessage(inviteOnly&&wasInvite?
+          "The invitation result is uncertain. Contact Foundation support to verify it before another attempt.":
+          "The result could not be confirmed. Refresh the account status before retrying.");
       }else if(reason==="CONFLICT")setMessage("The account changed elsewhere. Refresh before saving.");
       else if(reason==="SELECT_ROLE")setMessage("Choose an eligible role.");
       else setMessage("The requested account change could not be confirmed.");
