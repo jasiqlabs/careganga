@@ -1,7 +1,7 @@
 # CG-09 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
-**State:** REQUIRED / CURRENT_SOURCE_REVIEW_REQUIRED after further first-source, real owner, finance-integrity and database critical corrections. Independent qualified DB review, Harness resolver, real SQL/migration/restore/source-code/Web/Android/visual QA NOT_RUN. No implementation or design approval is claimed for revised SHA.
+**State:** REQUIRED · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for exact CG-09 DLD source (15 Nov 2026), after review/fix/re-review of single Foundation accounting owner, root-isolated accounts and years, US-001 first reusable balanced opening posting, immutable journal/claim/invoice/budget/reconciliation integrity, idempotent verified money effects and CG-09-introduced finance owner extensions in CG-03/CG-19. `database_impact: CRITICAL`; independent qualified database review, real SQL/migration/restore, authenticated Harness resolver and source-code/Web/Android/pixel/motion QA NOT_RUN. PRD/HLD latest hashes REVIEW_REQUIRED; development not cleared.
 
 ## Source-complete first finance owner and genuine introducing integrations
 
