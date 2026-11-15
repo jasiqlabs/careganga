@@ -27,7 +27,8 @@ export class RecoveryService {
   }
   private async throttle(email:string,remoteAddress:string,maxAttempts=5):Promise<void>{
     // The shared cleanup is strictly on demand for bounded network-level requests.
-    if(email.startsWith("network-recovery-"))await maybePruneAuthThrottle(this.db);
+    if(email==="network-recovery-request"||email==="network-recovery-confirm")
+      await maybePruneAuthThrottle(this.db);
     // Recovering a specific address cannot bypass login rate limits.
     const key=this.idempotency(email,"throttle:"+remoteAddress);
     const result=await this.db.query<{attempt_count:number}>(`
