@@ -40,7 +40,8 @@ export default async function AdminRoles(){
     const canViewAccounts=effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="accounts.view");
     return <div className="shell">
       <FoundationAdminNav active="roles" displayName={actor.displayName}
-        roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}/>
+        roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}
+        canManageSecurityPolicy={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="identity.security-policy.manage")}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){

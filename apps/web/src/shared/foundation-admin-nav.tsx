@@ -3,19 +3,21 @@ import Link from "next/link";
 import {useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts";
+  active:"account"|"roles"|"accounts"|"policy";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
   canViewAccounts:boolean;
+  canManageSecurityPolicy?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
-export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts}:FoundationAdminNavProps){
+export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const links=[
     {key:"account" as const,label:"My account",href:"/admin"},
     ...(canViewAccounts?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
-    ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[])
+    ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
+    ...(canManageSecurityPolicy?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
   return <nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
