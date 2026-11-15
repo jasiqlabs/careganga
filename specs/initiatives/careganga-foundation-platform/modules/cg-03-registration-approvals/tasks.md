@@ -13,7 +13,7 @@
 
 Outcome: Create an actual CG-03 case for a verified existing CG-01 account/role protected change, freeze owner revision/payload digest and review route, and show a scoped readable application reference/status without requiring CG-19 or future owner records.
 Requirements: FR-006, CG-03-BR01, CG-03-BR02, CG-03-BR03, CG-03-BR04, CG-03-BR06; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-03 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: Real CG-01 source-owned initial protected-access case, CG-03 NestJS/API/DB/owner transaction, responsive Foundation Admin Web and appropriately permissioned **Internal Android** reviewer/status routes, all using the original CareGanga design tokens. Public Android has no Admin approval route; CG-19 files and future owner records remain non-prerequisites.
 Acceptance: Real authorized proposer submits one immutable CG-01 account/role change with verified eligible reviewer steps, process version and source revision/digest. Concurrent retry with same key returns same accepted case; mismatched digest/foreign target or missing real root account denies. In initial flow no CG-19 file, branch, member, provider, payroll or center record is required. Admin Web and permitted Internal Android show the actual scoped case/state in CareGanga U11–U13/B29 styling.
 QA cases:
 - **US-001-QA01:** Submit an actual protected grant-change for one existing CG-01 account/role; verify a frozen proposed change, immutable source revision/digest, configured review-route version and one visible permitted case reference. No dummy membership/branch/documents or public Android admin route.
@@ -31,7 +31,7 @@ Dependencies: None
 
 Outcome: Permitted CG-01 reviewer decides a genuine version-pinned CG-03 case through approve/return/reject/forward with immutable timeline and business-language outcome; changed or revoked reviewer grants, self-approval and stale concurrent decisions are denied.
 Requirements: FR-007, CG-03-BR05, CG-03-BR06, CG-03-BR07, CG-03-BR08; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-03 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: Real CG-01 source-owned initial protected-access case, CG-03 NestJS/API/DB/owner transaction, responsive Foundation Admin Web and appropriately permissioned **Internal Android** reviewer/status routes, all using the original CareGanga design tokens. Public Android has no Admin approval route; CG-19 files and future owner records remain non-prerequisites.
 Acceptance: Assigned, currently authorized reviewer can take only allowed step decisions on the pinned source/process revision; commit one decision, actor/time/remarks and state atomically. Return requires new submitted owner revision to proceed; rejected case cannot finalize. Same-step concurrent reviewers yield one accepted decision, one CONFLICT. CG-19 files are optional for the initial case; only later genuinely required file checks block later owner submissions. Web/Internal Android show U11–U13/B29 original CareGanga states.
 QA cases:
 - **US-002-QA01:** Assigned authorized reviewer opens real CG-01 access-change case and submits Approve, Return, Reject or Forward as applicable; verify persisted step, remarks, actor/time and immutable prior history on both authorized Admin Web/Internal Android.
@@ -49,7 +49,7 @@ Dependencies: US-001
 
 Outcome: A final CG-03 decision for the frozen initial CG-01 protected-change case triggers one guarded idempotent CG-01 grant application, with source-effect pending/confirmed/failed distinction; future owners implement their own source finalizers when delivered.
 Requirements: FR-008, CG-03-BR09; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-03 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: Real CG-01 source-owned initial protected-access case, CG-03 NestJS/API/DB/owner transaction, responsive Foundation Admin Web and appropriately permissioned **Internal Android** reviewer/status routes, all using the original CareGanga design tokens. Public Android has no Admin approval route; CG-19 files and future owner records remain non-prerequisites.
 Acceptance: On verified final authorized decision matching the frozen source revision, CG-03 records one unique owner-effect claim and calls the protected CG-01 finalizer with stable key. CG-01 revalidates current account/role security and last-root rule and commits at most one change/audit. If CG-01 is unavailable/unknown after commit CG-03 remains PENDING_OWNER until actual confirmed effect, no fake active state or duplicated grant; no branch/member/provider/payment outcome is required.
 QA cases:
 - **US-003-QA01:** Approve real CG-01 protected access-change case with matching revision; verify one authorized CG-01 grant and access-audit record, CG-03 final decision and actual OWNER_COMPLETED status on permitted Web/Internal Android. No branch/member/provider master is created.
