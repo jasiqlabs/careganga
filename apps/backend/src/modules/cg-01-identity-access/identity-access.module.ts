@@ -4,10 +4,11 @@ import { SessionController } from "./http/session.controller";
 import { RecoveryController } from "./http/recovery.controller";
 import { RecoveryService } from "./application/recovery.service";
 import { RecoveryDelivery } from "./infrastructure/recovery-delivery";
+import { SessionGuard } from "./http/session.guard";
 
 @Module({
   controllers:[SessionController,RecoveryController],
-  providers:[SessionService,RecoveryService,RecoveryDelivery],
+  providers:[SessionService,SessionGuard,RecoveryService,RecoveryDelivery],
   exports:[SessionService]
 })
 export class IdentityAccessModule {}

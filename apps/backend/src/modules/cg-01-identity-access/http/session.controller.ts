@@ -1,6 +1,7 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { SessionService } from "../application/session.service";
+import { SessionGuard, type AuthenticatedRequest } from "./session.guard";
 
 type SignInBody = { email?: unknown; password?: unknown; totp?: unknown; deviceLabel?: unknown };
 
@@ -24,8 +25,9 @@ export class SessionController {
   }
 
   @Get("me")
-  async me(@Headers("authorization") bearer: string) {
-    const actor = await this.service.verifySession(bearer);
+  @UseGuards(SessionGuard)
+  async me(@Req() req: AuthenticatedRequest) {
+    const actor = req.cgActor!;
     return { displayName:actor.displayName,roleName:actor.roleName,scope:"Foundation" };
   }
 
