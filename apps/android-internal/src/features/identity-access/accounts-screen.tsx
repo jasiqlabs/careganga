@@ -76,16 +76,18 @@ export function AccountsScreen({token,onExit,onExpired}:{
         !Array.isArray(listData.accounts)||!("summary" in listData))throw new Error("UNAVAILABLE");
       if(!access||typeof access!=="object"||!("actions" in access)||!Array.isArray(access.actions))
         throw new Error("UNAVAILABLE");
-      if(generation!==listGeneration.current)return;
+      if(generation!==listGeneration.current)return false;
       setList(listData as CG01AccountList);
       setActions(access.actions.map((a:{key:string})=>a.key));
       setOffset(skip);setFilter(status);
       setSelected(prev=>(listData as CG01AccountList).accounts.find(x=>x.accountRef===prev?.accountRef)??null);
+      return true;
     }catch(e){
-      if(generation!==listGeneration.current)return;
+      if(generation!==listGeneration.current)return false;
       if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))
         deny(e.message);
       else deny("UNAVAILABLE");
+      return false;
     }finally{if(generation===listGeneration.current)setBusy(false);}
   },[token,deny]);
   useEffect(()=>{void load();},[load]);
@@ -125,6 +127,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
   }
   async function commit(){
     if(busy||unknown)return;
+    const wasInvite=screen==="invite";
     setBusy(true);setMessage("");
     try{
       if(screen==="invite"){
@@ -149,8 +152,10 @@ export function AccountsScreen({token,onExit,onExpired}:{
         setMessage("Account change confirmed.");
       }
       setPending(null);setScreen("list");setRequestKey("");
-      await load(search,0,filter);
-      setMessage("Change saved. The latest account state is shown above.");
+      const verified=await load(search,0,filter);
+      if(verified)setMessage(wasInvite?
+        "Invitation saved. Email delivery is not guaranteed; check account status.":
+        "Change saved. The latest account state is shown above.");
     }catch(e){
       const reason=e instanceof Error?e.message:"UNAVAILABLE";
       if(reason==="SESSION_EXPIRED"||reason==="PERMISSION_DENIED")deny(reason);
