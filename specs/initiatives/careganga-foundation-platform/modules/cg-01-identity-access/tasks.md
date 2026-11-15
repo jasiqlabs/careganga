@@ -1,5 +1,7 @@
 # CG-01 — Developer-Ready Stories & Source QA
 
+**Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
+
 **Module:** [CG-01](module.md) · **PRD:** [FR-001–003, FR-080](../../prd.md) · **HLD:** [Architecture](../../hld.md) · **Required designs:** [UI/UX](uiux.md), [DLD](dld.md).  
 **Delivery:** After one-time technical bootstrap, build one **real Foundation-root capability** at a time. No dependency on future CG-02/03/10/14. Business owner data, the same backend, Web and applicable native Android are included in each story; no layer-specific phase/backlog.  
 **Planning status:** REBUILT / SOURCE_REVIEW_PENDING. Hash-bound owner-delegated Planning approvals and authenticated local Harness resolver NOT_RUN; **do not begin Development until the gate is actually satisfied**.

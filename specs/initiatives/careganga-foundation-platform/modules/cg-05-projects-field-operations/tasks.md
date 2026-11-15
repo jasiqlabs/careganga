@@ -1,5 +1,7 @@
 # CG-05 — User Stories & Manual QA
 
+**Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
+
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-012, FR-013, FR-014, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
 **Development gate:** PRD/HLD current approval REVIEW_REQUIRED, authenticated local resolver and hash-bound module/task/design approvals NOT_RUN. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
