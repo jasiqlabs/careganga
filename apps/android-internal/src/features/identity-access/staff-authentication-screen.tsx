@@ -6,6 +6,7 @@ import { SecurityPolicyScreen } from "./security-policy-screen";
 import { AccountsScreen } from "./accounts-screen";
 import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
+import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -50,12 +51,13 @@ export function StaffAuthenticationScreen(){
   const [accountsOpen,setAccountsOpen]=useState(false);
   const [rolesOpen,setRolesOpen]=useState(false);
   const [policyOpen,setPolicyOpen]=useState(false);
+  const [approvalsOpen,setApprovalsOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -148,7 +150,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -162,6 +164,9 @@ export function StaffAuthenticationScreen(){
   if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
     inviteOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
+  if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
+    return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
+      onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
@@ -184,6 +189,11 @@ export function StaffAuthenticationScreen(){
               style={styles.button} onPress={()=>setPolicyOpen(true)}>
               <Text style={styles.buttonText}>Security Policy</Text>
             </Pressable>}
+            {(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose"))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setApprovalsOpen(true)}>
+                <Text style={styles.buttonText}>Registration & Approval</Text>
+              </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
             </Pressable>
