@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "./session.service";
 
-export type AuditQuery={limit?:number;cursor?:string;action?:string;from?:string;to?:string};
+export type AuditQuery={limit?:number;cursor?:string;action?:string;from?:string;to?:string;targetRef?:string};
 type AuditRow={id:string;occurred_at:Date;actor_display:string|null;target_display:string|null;
   action_key:string;outcome:string;safe_context:unknown};
 const labels:Readonly<Record<string,string>>={
@@ -75,6 +75,9 @@ export class AccessAuditReader {
     const actor=await this.sessions.requireAction(bearer,"access.audit.view");
     const limit=query.limit??20;
     if(!Number.isInteger(limit)||limit<1||limit>50)throw new BadRequestException();
+    if(query.targetRef!==undefined&&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.targetRef))
+      throw new BadRequestException("Invalid account reference");
     if(query.action!==undefined&&!Object.hasOwn(labels,query.action))
       throw new BadRequestException("Invalid history filter");
     const {start,end}=parseRange(query.from,query.to);
@@ -88,8 +91,9 @@ export class AccessAuditReader {
       WHERE au.realm_id=$1 AND au.occurred_at >=$2 AND au.occurred_at <=$3
         AND ($4::text IS NULL OR au.action_key=$4)
         AND ($5::timestamptz IS NULL OR (au.occurred_at,au.id)<($5::timestamptz,$6::uuid))
+        AND ($8::uuid IS NULL OR au.target_account_id=$8::uuid)
       ORDER BY au.occurred_at DESC,au.id DESC LIMIT $7`,
-      [actor.realmId,start,end,query.action??null,before?.at??null,before?.id??null,limit+1]);
+      [actor.realmId,start,end,query.action??null,before?.at??null,before?.id??null,limit+1,query.targetRef??null]);
     const page=result.rows.slice(0,limit);
     return {
       events:page.map(r=>({
