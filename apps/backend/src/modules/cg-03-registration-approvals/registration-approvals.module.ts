@@ -2,10 +2,12 @@ import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {ApprovalProposalService} from "./application/proposal.service";
 import {ApprovalProposalController} from "./http/proposal.controller";
+import {ApprovalDecisionController} from "./http/decision.controller";
+import {ApprovalDecisionService} from "./application/decision.service";
 @Module({
   imports:[IdentityAccessModule],
-  providers:[ApprovalProposalService],
-  controllers:[ApprovalProposalController],
+  providers:[ApprovalProposalService,ApprovalDecisionService],
+  controllers:[ApprovalProposalController,ApprovalDecisionController],
   exports:[ApprovalProposalService]
 })
 export class RegistrationApprovalsModule {}
