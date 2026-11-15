@@ -46,7 +46,8 @@ export default async function FoundationSettings(){
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
-        canViewSettings/>
+        canViewSettings canViewAudit={keys.includes("platform.audit.view")}
+        canViewRecovery={keys.includes("platform.recovery.view")}/>
       <main className="workspace"><PlatformSettingsPanel/></main>
     </div>;
   }catch(error){
