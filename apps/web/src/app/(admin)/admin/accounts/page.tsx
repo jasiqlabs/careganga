@@ -41,7 +41,9 @@ export default async function FoundationAccounts(){
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={canViewAccounts||canInviteOnly}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
-        canViewSettings={keys.includes("platform.settings.view")}/>
+        canViewSettings={keys.includes("platform.settings.view")}
+        canViewAudit={keys.includes("platform.audit.view")}
+        canViewRecovery={keys.includes("platform.recovery.view")}/>
       <main className="workspace"><AccountsPanel inviteOnly={canInviteOnly}/></main>
     </div>;
   }catch(error){
