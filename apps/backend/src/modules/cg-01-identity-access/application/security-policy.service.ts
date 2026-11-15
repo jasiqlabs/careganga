@@ -1,4 +1,4 @@
-import { BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,UnauthorizedException } from "@nestjs/common";
+import { BadRequestException,ConflictException,ForbiddenException,HttpException,HttpStatus,Inject,Injectable,UnauthorizedException } from "@nestjs/common";
 import { createHmac,randomUUID } from "node:crypto";
 import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
@@ -95,6 +95,30 @@ export class SecurityPolicyService {
     if(!result.rowCount)throw new ForbiddenException("Root access could not be confirmed");
     return result.rows[0];
   }
+  private async rateLimitMfa(actor:VerifiedFoundationActor):Promise<void>{
+    // Bound online proof guesses before checking an authenticator; no raw session identifiers in this table.
+    const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
+    if(key.length!==32)throw new Error("Identity key unavailable");
+    const hash=createHmac("sha256",key).update("policy-proof:"+actor.accountId).digest("hex");
+    const policy=await this.db.query<{window_seconds:number;max_attempts:number}>(`
+      SELECT COALESCE(p.failed_attempt_window_seconds,900)::integer AS window_seconds,
+        COALESCE(p.max_failed_attempts,6)::integer AS max_attempts
+      FROM access_realm r LEFT JOIN auth_security_policy p ON p.access_realm_id=r.id
+      WHERE r.id=$1 AND r.realm_key='FOUNDATION_ROOT'`,[actor.realmId]);
+    if(!policy.rowCount)throw new ForbiddenException();
+    const settings=policy.rows[0];
+    const row=await this.db.query<{attempt_count:number}>(`
+      INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
+      VALUES($1,now(),1)
+      ON CONFLICT(key_digest) DO UPDATE SET
+        attempt_count=CASE WHEN auth_login_attempt.window_started_at <
+          now()-make_interval(secs=>$2) THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
+        window_started_at=CASE WHEN auth_login_attempt.window_started_at <
+          now()-make_interval(secs=>$2) THEN now() ELSE auth_login_attempt.window_started_at END
+      RETURNING attempt_count`,[hash,settings.window_seconds]);
+    if(row.rows[0].attempt_count>settings.max_attempts)
+      throw new HttpException("Retry limit reached",HttpStatus.TOO_MANY_REQUESTS);
+  }
   async update(bearer:string,body:unknown,correlationRef:string):
       Promise<{status:"SAVED"|"REPLAY_CONFIRMED";revision:number}> {
     const actor=await this.root(bearer);
@@ -120,6 +144,7 @@ export class SecurityPolicyService {
       });
     }catch{throw new BadRequestException("The security policy is outside permitted limits");}
     const expectedRevision=Number(input.expectedRevision);
+    await this.rateLimitMfa(actor);
     const requestDigest=digest(values,expectedRevision);
     const client=await this.db.connect();
     let transactionOpen=false;
@@ -194,6 +219,11 @@ export class SecurityPolicyService {
       await client.query(`
         UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1`,
         [actor.accountId,counter]);
+      // Clear this actor's proof-attempt bucket only after the policy+audit are durable.
+      const proofKey=createHmac("sha256",
+        Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64"))
+        .update("policy-proof:"+actor.accountId).digest("hex");
+      await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[proofKey]);
       await client.query(`
         UPDATE auth_session SET mfa_verified_at=now()
         WHERE id=$1 AND account_id=$2 AND revoked_at IS NULL`,
