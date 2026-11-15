@@ -1,7 +1,7 @@
 # CG-08 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
+**State:** REQUIRED · DESIGN_SOURCE_REVIEWED for 3 CSR stories / 60 manual QA. Actual physical schema/SQL, qualified independent CRITICAL DB/security/finance review, authenticated resolver, local code and provider/runtime QA NOT_RUN; approval hash in `../../approvals.json`.
 
 ## CRITICAL CSR/PostgreSQL owner model and typed owner integrations
 
