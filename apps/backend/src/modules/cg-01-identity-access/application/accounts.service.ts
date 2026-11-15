@@ -155,41 +155,52 @@ export class AccountsService {
     const actor=await this.actor(bearer,permission);
     const client=await this.db.connect();
     let delivery: {token:string;contact:string;id:string}|null=null;
+    let committed:CommandResult|null=null;
+    let transactionOpen=false;
     try{
-      await client.query("BEGIN");
+      await client.query("BEGIN");transactionOpen=true;
       await this.authorize(client,actor,permission);
       const command=await this.command(client,actor,action,requestKey,payload);
-      if(command.replay){await client.query("COMMIT");return command.replay;}
+      if(command.replay){await client.query("COMMIT");transactionOpen=false;committed=command.replay;}
+      else {
       const result=await work(client,actor);
       await this.audit(client,actor,result.accountRef,"identity.account."+action.toLowerCase(),
         result.displayName,correlationRef);
       await client.query(String.raw`
         UPDATE account_command SET target_account_id=$2,result_revision=$3,result_status=$4 WHERE id=$1`,
         [command.id,result.accountRef,result.revision,result.status]);
-      await client.query("COMMIT");
+      await client.query("COMMIT");transactionOpen=false;
+      committed={accountRef:result.accountRef,revision:result.revision,status:result.status,
+        message:"Account change confirmed."};
       if(result.inviteToken&&result.contact) delivery={
         token:result.inviteToken,contact:result.contact,id:result.accountRef
       };
-      // Persisted outcome is authoritative. Provider failure never reverses the invite.
-      if(delivery){
-        try{
-          const sent=await this.delivery.submitInvitation(delivery.contact,delivery.token);
-          await this.db.query(String.raw`
-            UPDATE auth_challenge SET delivery_status=$2,delivery_attempts=1,
-            provider_accepted_at=CASE WHEN $2='PROVIDER_ACCEPTED' THEN now() ELSE NULL END
-            WHERE account_id=$1 AND kind='INVITATION' AND consumed_at IS NULL
-              AND delivery_status='PENDING'`,[delivery.id,sent]);
-        }catch{ /* Delivery outcome may be unknown; stored invite remains pending. */ }
       }
-      return {accountRef:result.accountRef,revision:result.revision,status:result.status,
-        message:delivery?"Invitation saved. Email provider delivery is unconfirmed.":
-          "Account change confirmed."};
     }catch(e){
-      try{await client.query("ROLLBACK");}catch{/* outcome may be committed; never hide prior error */}
+      if(transactionOpen){try{await client.query("ROLLBACK");}catch{}}
       if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
         throw conflict("DUPLICATE_ACCOUNT_OR_ASSIGNMENT");
       throw e;
     }finally{client.release();}
+    // Provider/network activity occurs AFTER commit and AFTER returning the PG client.
+    if(delivery){
+      try{
+        const claimed=await this.db.query(String.raw`
+          UPDATE auth_challenge SET delivery_status='CLAIMED',delivery_attempts=1
+          WHERE account_id=$1 AND kind='INVITATION' AND consumed_at IS NULL
+            AND delivery_status='PENDING' AND delivery_attempts=0 RETURNING id`,[delivery.id]);
+        if(claimed.rowCount){
+          const outcome=await this.delivery.submitInvitation(delivery.contact,delivery.token);
+          await this.db.query(String.raw`
+            UPDATE auth_challenge SET delivery_status=$2,
+              provider_accepted_at=CASE WHEN $2='PROVIDER_ACCEPTED' THEN now() ELSE NULL END
+            WHERE id=$1 AND delivery_status='CLAIMED'`,[claimed.rows[0].id,outcome]);
+        }
+      }catch{/* Persistent CLAIMED expresses ambiguous provider outcome. No re-send here. */}
+    }
+    if(!committed)throw new Error("Account operation outcome missing");
+    return {...committed,message:delivery?
+      "Invitation saved. Email provider delivery is unconfirmed.":"Account change confirmed."};
   }
 
   private async eligibleRole(client:PoolClient,roleRef:string,realmId:string){
