@@ -92,7 +92,18 @@ export function RolesPanel(){
     });
     if(!result.ok){
       if(result.status===503)throw new Error("UNCERTAIN");
-      if(result.status===409)throw new Error("This role was changed elsewhere or the name is already in use. Refresh and try again.");
+      if(result.status===409){
+        const data=await result.json() as {code?:string};
+        const message:Record<string,string>={
+          DUPLICATE_ROLE:"A role with this name already exists. Choose another name.",
+          STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
+          ROLE_RETIRED:"This role was already retired.",
+          ROLE_ASSIGNED:"Reassign assigned accounts before retiring this role.",
+          REPLAY_CONFLICT:"This request reference was already used. Refresh before retrying."
+        };
+        throw new Error(data.code&&message[data.code]?message[data.code]:
+          "This role changed elsewhere. Refresh before retrying.");
+      }
       if(result.status===403)throw new Error("You don't have permission for this action.");
       if(result.status===401)throw new Error("Your session expired. Sign in again.");
       throw new Error("Check your changes and try again.");
