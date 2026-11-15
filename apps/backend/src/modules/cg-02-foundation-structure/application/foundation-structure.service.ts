@@ -433,7 +433,7 @@ export class FoundationStructureService {
   }
 
   async history(bearer:string,entityKind:string,entityRef:string){
-    id(entityRef);
+    if(!(entityKind==="PROFILE"&&entityRef==="self"))id(entityRef);
     const grant:Record<string,string>={
       PROFILE:"foundation.profile.view",AREA:"foundation.geography.view",
       DEPARTMENT:"foundation.departments.view",PARTICIPANT:"foundation.departments.view"
@@ -441,10 +441,13 @@ export class FoundationStructureService {
     const permission=grant[entityKind];
     if(!permission)throw new BadRequestException("Unsupported Foundation history");
     const actor=await this.actor(bearer,permission);
+    if(entityKind==="PROFILE"&&entityRef!=="self")
+      throw new BadRequestException("Choose a Foundation history item");
+    const effectiveRef=entityKind==="PROFILE"?actor.realmId:entityRef;
     const records=await this.db.query<{action:string;version:number;at:Date}>(`
       SELECT action,version,at FROM foundation_event WHERE root_realm_id=$1
         AND entity_kind=$2 AND entity_ref=$3
-      ORDER BY at DESC,id DESC LIMIT 60`,[actor.realmId,entityKind,entityRef]);
+      ORDER BY at DESC,id DESC LIMIT 60`,[actor.realmId,entityKind,effectiveRef]);
     return {events:records.rows.map(x=>({action:x.action,version:x.version,recordedAt:x.at.toISOString()})),limit:60};
   }
   async exportPage(bearer:string,kind:string,offset=0){
