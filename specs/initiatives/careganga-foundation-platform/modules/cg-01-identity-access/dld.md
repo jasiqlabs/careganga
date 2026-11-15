@@ -9,6 +9,64 @@ A cohesive NestJS CG-01 application/domain/persistence module supplies login, ac
 
 The first technical bootstrap creates a protected Foundation-root administrative context and an explicitly controlled initial Super Admin account/recovery process. This is **not** CG-02 geography: future branches and CG-14 centers remain unknown and default-denied. No preliminary fake HR, center, approval or branch row is permitted.
 
+## 1A. First bootstrap directory contract (CG-01 US-001)
+
+**Not yet implemented:** The following exact layout is the approved Development target and is checked at the first source QA, not an assertion about files currently present.
+
+```text
+careganga/
+├── package.json                 # npm workspaces/scripts/compatible engines
+├── package-lock.json            # one committed lockfile for reproducible resolution
+├── tsconfig.base.json
+├── .env.example                 # required/optional variable NAMES, no credentials
+├── apps/
+│   ├── backend/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── main.ts          # one NestJS startup/shutdown entry
+│   │   │   ├── app.module.ts    # composition root: currently CG-01 only
+│   │   │   ├── core/
+│   │   │   │   ├── config/      # validated runtime environment
+│   │   │   │   ├── http/        # health/readiness, safe exception boundary
+│   │   │   │   └── observability/ # bounded, redacted correlated diagnostics
+│   │   │   └── modules/
+│   │   │       └── cg-01-identity-access/
+│   │   │           ├── identity-access.module.ts
+│   │   │           ├── public-api.ts   # allowed owner facade, not ORM exports
+│   │   │           ├── domain/
+│   │   │           ├── application/
+│   │   │           ├── infrastructure/
+│   │   │           └── http/
+│   │   └── db/migrations/       # one ordered history; CG-01 schema only initially
+│   ├── web/
+│   │   ├── package.json
+│   │   └── src/
+│   │       ├── app/            # public, (admin), (center) Next.js route groups
+│   │       ├── features/identity-access/
+│   │       └── shared/         # responsive primitives and safe messages
+│   ├── android-public/
+│   │   ├── package.json
+│   │   └── app/                # Expo public routes, no internal staff bundle
+│   └── android-internal/
+│       ├── package.json
+│       ├── app/
+│       └── src/features/identity-access/
+├── packages/
+│   ├── api-contracts/src/      # versioned transport DTO/outcome schemas
+│   └── design-tokens/src/      # source image/video approved brand semantics
+├── docs/  # existing BR
+├── specs/ # existing planning
+└── scripts/ # existing resolver
+```
+
+**One root workspace:** Pin mutually compatible Node/npm, NestJS, Next.js, Expo/RN and native toolchain versions in the manifest/lockfile after official-source verification; no invented native version numbers. Required root/npm workspace commands to provide: `npm ci`; `npm run dev -w apps/backend`; `npm run dev -w apps/web`; `npm run start -w apps/android-public`; `npm run start -w apps/android-internal`; and `npm run db:migrate -w apps/backend`. Each must actually exist in its package scripts. Independent QA later executes commands and documents results; Planning and Development source review do **not** claim execution.
+
+**Backend owner boundaries:** `app.module.ts` may import only implemented modules. CG-01 exports an authorization facade (e.g. verifySession/requireAction/allowedAccountOptions) with current real scope; no CG-02/03/10/14 imports or migrations. Technical `core` owns generic error/config/trace plumbing, **not** CG-01 role/permission truth. New owners add `src/modules/cg-02-foundation-structure/` etc. only when delivered, with small `domain/application/infrastructure/http` folders as actually needed. Modules import only prior owner `public-api` and shared DTOs, not foreign repositories, entities, internal services, or the composition root; no circular Nest `forwardRef()`. TypeScript/lint import-boundary checks or a small simple local check enforce this during manual review. No 21 empty folders, extra authentication service, broker, cache, import worker or redundant database.
+
+**Runtime independence:** Verified DB connection/migration state and required signing/MFA provider config must be checked; missing **essential** config gives an explicit unavailable/failed-closed state, never fake success or known default secret. Absence of optional *future* services must not block backend startup or CG-01 roles/login. CG-01 invitation/MFA uses on-demand bounded provider adapter and truthful pending/unavailable states; zero scheduled tenant scans at idle. Each Android package uses separate identity/session storage and guarded navigation, never an Admin WebView with mixed auth. Seed no sample clinic, branch, employee or fake user.
+
+**Later module gate:** Add a business-owner backend folder and migration inside the same DB history, expose only authorized typed facade, create only applicable Web/native routes, register module and its real capabilities, preserve CG-01 and old-client behavior, and trace auth, error copy, logging, concurrency, privacy, DB query/cost and idle-worker tests. Future module integration belongs to the introducing owner and is not an incomplete CG-01 prerequisite. Do not change the canonical top-level workspaces without a reviewed HLD/DLD change.
+ 
 ## 2. Canonical data model and database architecture
 
 **Risk:** CRITICAL, because identity/role mutations control future confidential resources. One protected `access_realm` singleton defines the initial Foundation-root authorization context. It is **not** a CG-02 geography/branch/business-Foundation record. No future department/branch/center/employee/protected-approval case is seeded or required. This does **not** introduce a multi-tenant business module.

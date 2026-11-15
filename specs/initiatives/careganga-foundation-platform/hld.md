@@ -120,10 +120,10 @@ flowchart TB
     Policy["Policy checks: role, action, geography, center, care purpose"]
     Modules["Business-modular domain/application services CG-01–CG-21"]
     Integration["Payment, storage, messaging, maps adapters"]
-    Jobs["Durable outbox/job processor"]
+    Jobs["Optional later due-work processor; absent from CG-01"]
     Edge --> Policy --> Modules
     Modules --> Integration
-    Modules --> Jobs
+    Modules -. only if needed .-> Jobs
   end
   PG[("PostgreSQL: one authoritative database")]
   Storage[("Private / published object storage")]
@@ -139,6 +139,29 @@ flowchart TB
 ```
 
 **Logical channels vs deployables:** The three web experiences can share one frontend project while using independently protected routes/layouts. Two Android **app packages** remain independently releasable. Backend module boundaries are **internal**, not microservice deployments. Private medical and employment documents do not become public CDN assets merely because they are in the same object storage account.
+
+### 4.0 Canonical repo/workspace layout and bootstrapping boundary
+
+**Single repository and modular monolith:** Bootstrap once inside CG-01/US-001, then add delivered business modules within the *same* backend application. The fixed top-level shape is:
+
+```text
+careganga/
+  apps/
+    backend/          # single NestJS backend; business-owned CG modules
+    web/              # one Next.js web app: public / admin / center route areas
+    android-public/   # separate Expo Android package and secure session boundary
+    android-internal/ # separate Expo Android package and secure session boundary
+  packages/
+    api-contracts/    # minimal safe transport DTO schemas, no domain truth
+    design-tokens/    # single approved CareGanga visual and motion source
+  docs/               # existing business requests / screenshot audit
+  specs/              # existing PRD/HLD/module plans/approvals
+  scripts/            # existing Harness resolver and small utilities
+```
+
+**Module extension principle:** The single backend composition root registers **only implemented** CG business modules. Every future owner adds a sibling backend module, its own persistence/migrations in the same PostgreSQL history, and applicable UI features inside the existing apps. Modules communicate through stable, typed, access-checked owner facades, **not by importing one another's tables/repositories**, circular dependencies or another server. Reuse existing auth, sanctioned errors, observability and UI tokens; do not duplicate a framework for each module. CG-01 has **no required CG-02–CG-21 imports, database references, provider configuration, workers or dummy records**.
+
+**Minimal first runnable baseline:** US-001 owns the one-off workspace/package/lockfile, backend entry + validated configuration, DB migration runner, health/readiness and sanitized error/logging, initial CG-01 authentication/session, one shared web shell with distinct protected areas, two independent native app identities, shared safe API contracts and reference-derived visual tokens. Nothing else is generated until its real owner module is implemented. Startup must not require optional future financial/healthcare providers; absent required auth/MFA configuration fails closed without hardcoded codes. Conditional workers appear only with real approved due work, never at idle. Pin and verify compatible native dependencies before mobile implementation. Exact folder/file/command blueprint and QA gate live in CG-01 DLD §1A and US-001; this HLD describes the **architecture boundary**, not a per-file implementation spec.
 
 ### 4.1 Interface responsibilities
 
