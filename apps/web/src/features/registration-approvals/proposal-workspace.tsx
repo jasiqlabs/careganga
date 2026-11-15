@@ -1,7 +1,7 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useRef,useState} from "react";
 import type {
-  CG03CaseView,CG03CaseDetail,CG03CaseOutcome,CG03Lookup,
+  CG03CaseView,CG03CaseDetail,CG03CaseOutcome,CG03Lookup,CG03OwnerOutcome,
   CG03Option,CG03ProcessView
 } from "@careganga/api-contracts";
 
@@ -56,7 +56,7 @@ function validCase(x:unknown):x is CG03CaseView{
     typeof v.accountName==="string"&&typeof v.roleName==="string"&&
     typeof v.status==="string"&&Number.isInteger(v.revision);
 }
-export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolean;mayPropose:boolean}){
+export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfigure:boolean;mayPropose:boolean;mayReview:boolean}){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [process,setProcess]=useState<CG03ProcessView|null>(null);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -72,6 +72,8 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
   const [previousCase,setPreviousCase]=useState<string|null>(null);
   const [detail,setDetail]=useState<CG03CaseDetail|null>(null);
   const [detailBusy,setDetailBusy]=useState(false);
+  const [ownerOutcome,setOwnerOutcome]=useState<CG03OwnerOutcome|null>(null);
+  const [ownerBusy,setOwnerBusy]=useState(false);
   const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
   const [decisionRemarks,setDecisionRemarks]=useState("");
   const [decisionTotp,setDecisionTotp]=useState("");
@@ -171,15 +173,28 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
   }
   async function viewCase(entry:CG03CaseView){
     const seq=++detailSeq.current;setDetailBusy(true);setDetail(null);
+    setOwnerOutcome(null);
     setDecisionAction(null);setDecisionRemarks("");setDecisionTotp("");
     setDecisionReview(false);
     try{
       const data=await api<CG03CaseDetail>(
         "cases/"+encodeURIComponent(entry.caseRef));
-      if(seq===detailSeq.current&&validCase(data)&&Array.isArray(data.history)&&
-        Array.isArray(data.allowedDecisions))
-        setDetail(data);
-      else if(seq===detailSeq.current)throw Error("UNAVAILABLE");
+      if(seq!==detailSeq.current)return;
+      if(!validCase(data)||!Array.isArray(data.history)||
+        !Array.isArray(data.allowedDecisions))throw Error("UNAVAILABLE");
+      setDetail(data);
+      if(["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(data.status)){
+        try{
+          const status=await api<CG03OwnerOutcome>("cases/"+
+            encodeURIComponent(data.caseRef)+"/owner-status");
+          if(seq===detailSeq.current&&
+            ["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(status.status))
+            setOwnerOutcome(status);
+        }catch{
+          if(seq===detailSeq.current)setMessage({kind:"info",message:
+            "The actual access effect could not be verified. No grant is claimed."});
+        }
+      }
     }catch(e){
       if(seq===detailSeq.current)setMessage({kind:"error",message:explanation(e)});
     }finally{if(seq===detailSeq.current)setDetailBusy(false);}
@@ -233,6 +248,23 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
         "No decision is confirmed. Contact Foundation support before retrying."});
     }catch(error){setMessage({kind:"error",message:explanation(error)});}
     finally{setBusy(false);}
+  }
+  async function retryOwner(){
+    if(!detail||!mayReview||!ownerOutcome?.canRetry||ownerBusy)return;
+    setOwnerBusy(true);
+    try{
+      const result=await api<{status:string}>("cases/"+
+        encodeURIComponent(detail.caseRef)+"/retry-owner","POST");
+      const original=detail;
+      setMessage({kind:result.status==="OWNER_COMPLETED"?"success":"info",
+        message:result.status==="OWNER_COMPLETED"?
+          "The original CG-01 role assignment is confirmed.":
+          result.status==="OWNER_BLOCKED"?
+          "Source revisions changed. A new proposal and review are required.":
+          "The original access effect is still unconfirmed. No second grant was attempted."});
+      await refresh();await viewCase(original);
+    }catch(e){setMessage({kind:"error",message:explanation(e)});}
+    finally{setOwnerBusy(false);}
   }
   async function saveProcess(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(busy||unknown)return;
@@ -402,6 +434,19 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
             </li>)}</ol>}
           <p>Approval is not an access grant. The account source applies changes only
             after a verified final decision.</p>
+          {["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(detail.status)&&
+            <section className="permission-group" aria-label="Verified account effect">
+              <strong>CG-01 access effect</strong>
+              <p>{ownerOutcome?.status==="OWNER_COMPLETED"?
+                "One approved role assignment was confirmed in the original account ledger.":
+                ownerOutcome?.status==="OWNER_BLOCKED"?
+                "The account or role changed; this approval cannot grant access.":
+                "The account change is pending verification. Approval alone does not grant access."}</p>
+              {mayReview&&ownerOutcome?.canRetry&&
+                <button type="button" disabled={ownerBusy||busy}
+                  onClick={()=>void retryOwner()}>
+                  {ownerBusy?"Checking…":"Recheck original owner effect"}</button>}
+            </section>}
           {decisionUnknown&&<div className="permission-group" role="alert">
             <strong>Review outcome needs verification</strong>
             <p>Do not send another approval or rejection until the original result is known.</p>
