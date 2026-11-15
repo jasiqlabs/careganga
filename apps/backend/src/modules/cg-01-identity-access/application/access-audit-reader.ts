@@ -83,6 +83,7 @@ export class AccessAuditReader {
     const page=result.rows.slice(0,limit);
     return {
       events:page.map(r=>({
+        eventRef:createHmac("sha256",cursorKey()).update("event:"+r.id).digest("base64url").slice(0,24),
         occurredAt:r.occurred_at.toISOString(),
         actorDisplay:r.actor_display??"System",
         actionLabel:labels[r.action_key]??"Account security event",
