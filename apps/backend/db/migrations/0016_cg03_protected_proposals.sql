@@ -70,7 +70,7 @@ CREATE TABLE cg03_case (
   FOREIGN KEY(process_id,realm_id) REFERENCES cg03_process(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(proposer_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(target_account_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
-  FOREIGN KEY(target_role_id) REFERENCES role(id) ON DELETE RESTRICT,
+  FOREIGN KEY(target_role_id,realm_id) REFERENCES role(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(previous_case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   CHECK(proposer_id<>target_account_id)
 );
