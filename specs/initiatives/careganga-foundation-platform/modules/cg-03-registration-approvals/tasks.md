@@ -7,7 +7,7 @@
 
 ## Approved task definitions
 
-**Approval truth:** Machine-required task heading is not a design approval. Current CG-03 story/QA content is DRAFT_SOURCE_REVIEW / NOT_YET_DELEGATED_APPROVED. Actual initial case uses only delivered CG-01 owner accounts/roles/security; CG-02/19 or other future owner records are never required. Formal Harness resolver, approved current PRD/HLD and qualified CRITICAL DB review remain blocking.
+**Approval truth:** Owner-delegated design content approval is recorded against the exact current CG-03 artifacts by JASIQ AI Design Review Agent; 3 stories/31 QA cases are approved as DESIGN, not implemented/QA-passed. Only CG-01 is a true source prerequisite; CG-02/19 and other future owners remain excluded. Formal Harness, PRD/HLD, CRITICAL DB and runtime gates remain blocking.
 
 ### US-001 — Create real version-pinned CG-01 access-change cases
 
