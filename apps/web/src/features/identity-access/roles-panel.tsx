@@ -48,6 +48,8 @@ export function RolesPanel(){
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
   const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
+  const copyRead=useRef(0);
+  const auditRead=useRef(0);
   const lastResumeCheck=useRef(0);
   const dialogRef=useRef<HTMLElement|null>(null);
   const savingRef=useRef(false);
@@ -56,7 +58,7 @@ export function RolesPanel(){
 
   const purgeProtected=useCallback((message:string)=>{
     // A denial from any restricted endpoint invalidates all protected view state.
-    ++latestRead.current;
+    ++latestRead.current;++copyRead.current;++auditRead.current;
     setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);
     setHistory(null);setHistoryCursor(null);setEditor(null);setPendingRetire(null);setDetails(null);
     setLoading(false);setCopyLoading(false);
@@ -136,17 +138,20 @@ export function RolesPanel(){
     return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
   },[editorOpen,retireOpen,detailsOpen]);
   async function findCopySources(searchText:string) {
+    const identityGeneration=latestRead.current,request=++copyRead.current;
     setCopyLoading(true);setCopyError("");
     try {
       // Search only on explicit user action. Never poll or load a whole account directory.
       const params=new URLSearchParams({search:searchText,status:"active",limit:"50",offset:"0"});
       const response=await read<RoleList>("roles?"+params.toString());
+      if(identityGeneration!==latestRead.current||request!==copyRead.current)return;
       setCopyCandidates(response.roles.filter(r=>r.active&&!r.protected));
     } catch(error) {
+      if(identityGeneration!==latestRead.current||request!==copyRead.current)return;
       if(error instanceof Error&&/session expired|permission/i.test(error.message))
         purgeProtected(error.message);
       else {setCopyCandidates([]);setCopyError("Eligible roles could not be loaded. Try searching again.");}
-    } finally {setCopyLoading(false);}
+    } finally {if(request===copyRead.current)setCopyLoading(false);}
   }
   function selectCopySource(roleRef:string){
     if(!editor||saving)return;
@@ -249,11 +254,14 @@ export function RolesPanel(){
     }finally{setSaving(false);}
   }
   async function audit(){
+    const identityGeneration=latestRead.current,request=++auditRead.current;
     setHistory(null);setNotice(null);
     try{
       const result=await read<{events:AuditEvent[];nextCursor:string|null}>("audit?limit=30");
+      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
       setHistory(result.events);setHistoryCursor(result.nextCursor);
     }catch(error){
+      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
       if(error instanceof Error&&/session expired|permission/i.test(error.message))
         purgeProtected(error.message);
       else setNotice({kind:"error",text:error instanceof Error?error.message:"History unavailable."});
@@ -262,12 +270,15 @@ export function RolesPanel(){
 
   async function moreHistory(){
     if(!historyCursor)return;
+    const identityGeneration=latestRead.current,request=++auditRead.current;
     try{
       const result=await read<{events:AuditEvent[];nextCursor:string|null}>(
         "audit?limit=30&cursor="+encodeURIComponent(historyCursor));
+      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
       setHistory(old=>[...(old??[]),...result.events]);
       setHistoryCursor(result.nextCursor);
     }catch(error){
+      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
       if(error instanceof Error&&/session expired|permission/i.test(error.message))
         purgeProtected(error.message);
       else setNotice({kind:"error",text:"More security history could not be confirmed."});
