@@ -9,6 +9,11 @@ function allowed(parts:string[],method:string){
     if(parts[0]==="profile")return method==="GET"||method==="PATCH";
     if(parts[0]==="geography"||parts[0]==="departments")return method==="GET"||method==="POST";
   }
+  if(parts.length===2&&parts[0]==="export")return false;
+  if(parts.length===1&&parts[0]==="export")return method==="GET";
+  if(parts.length===3&&parts[0]==="history"&&
+    ["PROFILE","AREA","DEPARTMENT","PARTICIPANT"].includes(parts[1])&&UUID.test(parts[2]))
+    return method==="GET";
   if(parts.length===2){
     if(parts[0]==="officeholders"&&parts[1]==="options")return method==="GET";
     if(parts[0]==="geography"&&UUID.test(parts[1]))return method==="PATCH";
