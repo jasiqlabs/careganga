@@ -5,9 +5,9 @@ type Profile={legalName:string;officialContact:string;postalAddress:string;regis
   registrationAuthority:string|null;registrationDate:string|null;version:number;updatedAt:string};
 type Area={areaRef:string;level:string;name:string;parentRef:string|null;code:string|null;status:string;version:number};
 type Dept={departmentRef:string;name:string;kind:string;description:string;active:boolean;version:number;
-  scope:string;openingDate:string|null;parentRef:string|null;geographyRef:string|null;headAccountRef:string|null};
+  scope:string;openingDate:string|null;parentRef:string|null;geographyRef:string|null;headAccountRef:string|null;headDisplayName:string|null};
 type Officeholder={value:string;label:string};
-type Participant={participationRef:string;accountRef:string;officeRole:string;activeUntil:string|null};
+type Participant={participationRef:string;accountRef:string;displayName:string|null;officeRole:string;activeUntil:string|null};
 type Pending={method:"PATCH"|"POST";url:string;action:string;body:Record<string,unknown>;requestKey:string};
 type Tab="profile"|"geography"|"departments";
 const endpoint="/api/foundation";
@@ -318,7 +318,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name"/></label></div>
       <table className="role-table"><thead><tr><th>Name</th><th>Type</th><th>Head</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{visibleDepartments.map(x=><tr key={x.departmentRef}>
-        <td>{x.name}</td><td>{x.kind.toLowerCase()}</td><td>{label(x.headAccountRef)}</td>
+        <td>{x.name}</td><td>{x.kind.toLowerCase()}</td><td>{x.headDisplayName??(x.headAccountRef?"Previously assigned account":"Unassigned")}</td>
         <td>{x.active?"Active":"Inactive"}</td><td>
           <button type="button" onClick={()=>setFocusedDept(x.departmentRef)}>Officeholders</button>{" "}
           {can("foundation.departments.manage")&&<button type="button" onClick={()=>editDepartment(x)}>Edit</button>}
@@ -367,7 +367,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       </form>}
       {focusedDept&&selectedDept&&<section className="role-pane" style={{padding:"1rem"}}>
         <h2>Officeholders — {selectedDept.name}</h2>
-        <ul>{participants.map(p=><li key={p.participationRef}>{label(p.accountRef)} — {p.officeRole}
+        <ul>{participants.map(p=><li key={p.participationRef}>{p.displayName??"Previously assigned account"} — {p.officeRole}
           {p.activeUntil?" (former)":" (active)"}
           {!p.activeUntil&&can("foundation.departments.assign")&&
             <button type="button" disabled={busy||Boolean(pending)} onClick={()=>save(
