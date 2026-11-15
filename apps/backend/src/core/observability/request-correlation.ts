@@ -11,11 +11,11 @@ export function correlateRequest(req:CareGangaRequest,res:Response,next:NextFunc
   res.on("finish",()=>{
     const elapsedMs=Number(process.hrtime.bigint()-started)/1e6;
     // Restricted structured diagnostics: no URL/query, raw account, contact, auth, body or token.
-    process.stdout.write(JSON.stringify({
+    try { process.stdout.write(JSON.stringify({
       at:new Date().toISOString(),module:"http",event:"request",
       requestId:req.cgRequestId,method:req.method,status:res.statusCode,
       durationMs:Math.round(elapsedMs)
-    })+"\n");
+    })+"\n"); } catch { /* never let a diagnostic sink affect a committed operation */ }
   });
   next();
 }
