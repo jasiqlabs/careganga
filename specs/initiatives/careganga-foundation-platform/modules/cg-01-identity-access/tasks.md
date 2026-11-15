@@ -4,13 +4,13 @@
 
 **Module:** [CG-01](module.md) · **PRD:** [FR-001–003, FR-080](../../prd.md) · **HLD:** [Architecture](../../hld.md) · **Required designs:** [UI/UX](uiux.md), [DLD](dld.md).  
 **Delivery:** After one-time technical bootstrap, build one **real Foundation-root capability** at a time. No dependency on future CG-02/03/10/14. Business owner data, the same backend, Web and applicable native Android are included in each story; no layer-specific phase/backlog.  
-**Planning review status:** CG-01 OWNER_TRANSFER_UPDATED / SOURCE_REVIEW_REQUIRED (15 Nov 2026): explicit CG-01-BR11/FR-001 password/session/MFA security policy is added as original CG-01 US-004, not CG-21. Current-hash review/delegated approval still unrecorded; authenticated pinned Harness resolver, independent CRITICAL database review, runtime/visual QA NOT_RUN. **All stories remain BLOCKED pending genuine design and prerequisite gates.**
+**Planning review status:** CG-01 CURRENT_SHA_BOUND OWNER_DELEGATED_DESIGN_APPROVED (15 Nov 2026) for US-001–004, including original CG-01-BR11 security policy and 47 distinct source QA cases. These are reviewed, implementation-ready **design definitions**, not proof of source implementation or independent QA. Authenticated pinned Harness resolver, independent CRITICAL database/security review, actual DB/build/device/pixel/motion QA NOT_RUN. Track implementation on `feature/careganga-cg01-foundation-dev-20261115`; no development or runtime PASS is inferred from planning branch.
 
 ## Approved task definitions
 
-**Approval truth:** The Harness parser requires this heading; these are **CURRENT_DRAFT / NOT_YET_DELEGATED_APPROVED** definitions, not approved execution. The CG-01-BR11 security-policy ownership transfer adds US-004 with eight explicit QA scenarios. Preserve the existing US-001/002/003 definitions/QA. Current PRD/HLD review is pending, local authenticated resolver NOT_RUN, and all stories stay BLOCKED.
+**Approval truth:** The Harness parser requires this heading. All four current SOURCE DESIGN definitions are owner-delegated approved and SHA-256-bound in the initiative ledger; this does not replace the required authenticated Harness stage resolver, actual independent source-code review or runtime/device QA. CG-01-BR11 security policy belongs to original US-004; US-001/002/003 retain their exact business outcomes. Development branch progress must be verified at its own current commit.
 
-The heading above identifies the **intended immutable definitions**; they are **not yet formally approved**. After final review + resolver, record the module SHA and definition-prefix SHA-256 in initiative approvals.json as a truthful `DELEGATED_APPROVED` (never fake human approval). No extra stories file or QA tracker.
+The heading above identifies the **current owner-delegated source-design definitions**, with full artifact and definition-prefix SHA-256 recorded as `DELEGATED_APPROVED` in initiative `approvals.json` (never a false human/clinical/runtime approval). Formal Harness resolver remains NOT_RUN. No extra stories file or QA tracker.
 
 ### US-001 — Sign in, protect sessions and recover identity
 
@@ -136,7 +136,6 @@ Dependencies: US-001, US-002, US-003. No future business module or CG-21.
 
 ## Execution progress
 
-- US-001: BLOCKED | Planning definitions rebuilt; **Development unauthorized** until final design/Harness approval. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
-- US-002: BLOCKED | Depends on US-001; no future-module blockers. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
-- US-003: BLOCKED | Depends on US-001/002; Foundation-root only. Future CG-02/03/10/14 integrations assigned to those owners. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
-- US-004: BLOCKED | CG-01 security-policy owner transfer; depends on real CG-01 US-001/002/003. PRD/HLD current-hash and delegated design approval NOT_RECORDED; resolver/runtime/visual QA NOT_RUN. Source code NOT_STARTED.
+- **Planning approvals for US-001–004:** CURRENT_SHA_BOUND DELEGATED_DESIGN_APPROVED. These are **design-only** gates, not development/running software certification.
+- **Development tracking:** Implementation lives on `feature/careganga-cg01-foundation-dev-20261115`; inspect its latest actual `tasks.md` and source. The planning branch does not certify US-001/002/003 source status or builds. That branch previously reported 14/14 US-003 source QA traced, with independent review and runtime/database/Android QA remaining unrun; check current SHA before using that claim.
+- **US-004:** Design approved, implementation not evidenced here; depends on real CG-01 US-001/002/003. Authenticated Harness stage resolver, independent CRITICAL review, Postgres migrations/restores, device and visual QA remain NOT_RUN.
