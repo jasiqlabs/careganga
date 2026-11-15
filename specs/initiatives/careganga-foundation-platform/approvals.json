@@ -24,25 +24,29 @@
         "local_stage_resolver": "NOT_RUN"
       },
       "previous_approved_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
-      "reapproval_reason": "15 November 2026: canonical v1.1 corrections were applied and source self-review/re-review completed against the live pinned Harness. Historical delegated approval is only for previous_approved_sha256. Current-hash delegated approval remains unrecorded because authenticated local Harness bootstrap/stage resolver is NOT_RUN; do not promote this status to APPROVED before the genuine gate.",
-      "current_artifact_sha256": "f593f2c9cd30da7fcb0fd9648e7b2cd93e68cae5fe74566b7e63f9fb9351ba36",
+      "reapproval_reason": "15 November 2026: revised original BR/PRD/HLD to move ownership from CG-21 to real CG-01/CG-18/CG-19 owners. Current exact SHA256 is recorded but **not approved**; earlier v1.0 approval and v1.1 source self-review are historical. The current design needs a fresh review and authenticated Harness resolver before delegated reapproval. No historical approval should be reused.",
+      "current_artifact_sha256": "3f811886b0182ca43169c4f8c3903d2a7e5660556082a671c08f7fd8cb02bc2a",
       "current_source_review": {
-        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
-        "artifact_sha256": "f593f2c9cd30da7fcb0fd9648e7b2cd93e68cae5fe74566b7e63f9fb9351ba36",
-        "document_version": "1.1",
-        "method": "SELF_REVIEW_DISCLOSED",
-        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
-        "review_rounds": 2,
-        "open_critical_design_findings": 0,
-        "open_major_design_findings": 0,
-        "open_actionable_design_findings": 0,
-        "scope": "BR/FR source and policy consistency, 21 owner boundaries, branch approval revision, channel roles and version integrity",
-        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/prd.md",
+        "status": "REVIEW_REQUIRED_AFTER_OWNER_SCOPE_TRANSFER",
+        "artifact_sha256": "3f811886b0182ca43169c4f8c3903d2a7e5660556082a671c08f7fd8cb02bc2a",
+        "method": "SOURCE_EDITS_NOT_YET_REAPPROVED",
+        "reviewer": "JASIQ AI Design Review Agent",
+        "review_rounds": 0,
+        "open_critical_design_findings": "NOT_ASSESSED",
+        "open_major_design_findings": "NOT_ASSESSED",
+        "open_actionable_design_findings": "NOT_ASSESSED",
+        "scope": "Transferred CG-01-BR11 security policy from CG-21, clarified CG-18 public navigation, CG-19 delivery and CG-21-only operational settings/audit/recovery; current latest source awaiting re-review and formal delegated approvals",
         "local_harness_bootstrap": "NOT_RUN",
         "local_stage_resolver": "NOT_RUN",
         "independent_review": "NOT_RUN",
         "runtime_qa": "NOT_RUN",
-        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED"
+        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED_AND_CURRENT_DESIGN_REVIEW_REQUIRED"
+      },
+      "prior_source_review": {
+        "artifact_sha256": "f593f2c9cd30da7fcb0fd9648e7b2cd93e68cae5fe74566b7e63f9fb9351ba36",
+        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
+        "review_rounds": 2,
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/prd.md"
       }
     },
     "hld": {
@@ -70,25 +74,29 @@
         "current_artifact_review": "PENDING"
       },
       "previous_approved_sha256": "5f149d9c4eea4da788c4660d8fbe37a60acf7741bf72b15ac62ce758e6517154",
-      "reapproval_reason": "15 November 2026: canonical v1.1 corrections were applied and source self-review/re-review completed against the live pinned Harness. Historical delegated approval is only for previous_approved_sha256. Current-hash delegated approval remains unrecorded because authenticated local Harness bootstrap/stage resolver is NOT_RUN; do not promote this status to APPROVED before the genuine gate.",
-      "current_artifact_sha256": "cb10ceba64680f819d293ea4c395423022b1d49e9e1899337fc925c402ab3429",
+      "reapproval_reason": "15 November 2026: revised original BR/PRD/HLD to move ownership from CG-21 to real CG-01/CG-18/CG-19 owners. Current exact SHA256 is recorded but **not approved**; earlier v1.0 approval and v1.1 source self-review are historical. The current design needs a fresh review and authenticated Harness resolver before delegated reapproval. No historical approval should be reused.",
+      "current_artifact_sha256": "134999f2b4c6b74dc5583e7e7503228eb86de23e2eebdbdefb7eba5c69e836be",
       "current_source_review": {
-        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
-        "artifact_sha256": "cb10ceba64680f819d293ea4c395423022b1d49e9e1899337fc925c402ab3429",
-        "document_version": "1.1",
-        "method": "SELF_REVIEW_DISCLOSED",
-        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
-        "review_rounds": 2,
-        "open_critical_design_findings": 0,
-        "open_major_design_findings": 0,
-        "open_actionable_design_findings": 0,
-        "scope": "Current PRD architecture allocation, foundation order, revision-bound case/owner finalization, authentic CG-02 departments, DB and audit boundaries",
-        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/hld.md",
+        "status": "REVIEW_REQUIRED_AFTER_OWNER_SCOPE_TRANSFER",
+        "artifact_sha256": "134999f2b4c6b74dc5583e7e7503228eb86de23e2eebdbdefb7eba5c69e836be",
+        "method": "SOURCE_EDITS_NOT_YET_REAPPROVED",
+        "reviewer": "JASIQ AI Design Review Agent",
+        "review_rounds": 0,
+        "open_critical_design_findings": "NOT_ASSESSED",
+        "open_major_design_findings": "NOT_ASSESSED",
+        "open_actionable_design_findings": "NOT_ASSESSED",
+        "scope": "Transferred CG-01-BR11 security policy from CG-21, clarified CG-18 public navigation, CG-19 delivery and CG-21-only operational settings/audit/recovery; current latest source awaiting re-review and formal delegated approvals",
         "local_harness_bootstrap": "NOT_RUN",
         "local_stage_resolver": "NOT_RUN",
         "independent_review": "NOT_RUN",
         "runtime_qa": "NOT_RUN",
-        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED"
+        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED_AND_CURRENT_DESIGN_REVIEW_REQUIRED"
+      },
+      "prior_source_review": {
+        "artifact_sha256": "cb10ceba64680f819d293ea4c395423022b1d49e9e1899337fc925c402ab3429",
+        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
+        "review_rounds": 2,
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/hld.md"
       }
     },
     "uiux/cg-02-foundation-structure": {
