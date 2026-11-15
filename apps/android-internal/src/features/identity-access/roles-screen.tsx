@@ -35,7 +35,12 @@ async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",b
       .includes(code)?code:"CONFLICT");
   }
   if(!result.ok)throw new Error(result.status>=500?"UNKNOWN":"INVALID");
-  return result.json() as Promise<unknown>;
+  try {
+    return await result.json() as unknown;
+  } catch {
+    // A successful HTTP response with a truncated body is not confirmation of the write.
+    throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");
+  }
 }
 export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>void;onExpired:()=>void}){
   const [roles,setRoles]=useState<Role[]>([]);
