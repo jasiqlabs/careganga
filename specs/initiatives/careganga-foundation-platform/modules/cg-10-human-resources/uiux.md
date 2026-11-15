@@ -9,7 +9,7 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
-**Screen ownership:** B49–B51 show allowance/reimbursement despite the B49 filename suggesting leave. CG-10 owns employee request context; CG-09 owns approval-linked expense/liability/payment and the correct finance outcomes.
+**Screen ownership:** B49–B51 show allowance/reimbursement despite B49's filename suggesting leave. CG-10 owns employee eligibility, branch context, accessible Admin Web/Internal Android request/track screen **into CG-09's original `expense_claim`**, not a second HR claim. CG-09 exclusively owns finance case-linked payable/payment/journal and source-confirmed PAID_VERIFIED; failed/unknown network resubmits the same immutable key, never duplicate claim or fake PAID.
 
 ## Screen/flow map
 

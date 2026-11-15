@@ -84,7 +84,7 @@ Dependencies: US-001
 
 ### US-005 — Submit and track allowance/claim from applicable Internal Android or Admin…
 
-Outcome: Submit and track allowance/claim from applicable Internal Android or Admin workflow; only CG-09 records actual liability/payment.
+Outcome: With a genuinely active CG-10 employee, current CG-01 account and authorized CG-02 branch, submit/track an employee allowance via the **one already delivered CG-09-owned expense_claim facade** from the CG-10 Web/Internal Android employee form. CG-10 owns no claim/payment master; real CG-09 review, payable, posted journal and verified payout are authoritative.
 Requirements: FR-033, CG-10-BR10, CG-10-BR11; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-10 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Employee submits scoped allowance/claim in Internal Android and sees real approval/payment state. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
@@ -97,8 +97,9 @@ QA cases:
 - **US-005-QA06:** Original CareGanga screenshot refs B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B30, B31, B32, B33, B34, B35, B36, B37, B38, B39, B40, B41, B42, B43, B44, B45, B46, B47, B48, B49, B50, B51, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07 — owner regression:** Unverified CG-09 payment cannot show PAID or duplicate expense. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-005-QA08 — Source-specific workflow:** Internal Android employee requests travel allowance with evidence; pending approval does not produce money, CG-09 creates at most one payable after actual authorization and the employee sees correct status.
-Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+- **US-005-QA09 — employee-to-original-CG-09-claim introducing integration:** Using one real eligible CG-10 employee/current CG-01 account and delivered CG-09 claim, submit once from Internal Android and Web using the same immutable key and genuine CG-19 evidence. Verify exactly one CG-09 claim/approval-linked payable/verified payout and zero CG-10 claim/payment table. Deny stale/revoked/resigned/foreign-branch employee, replay, mismatched digest and unknown network result without false PAID. Original CG-09 Foundation finance claim remains independently usable after this integration.
+Verification: On actual implementation source-trace US-005-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+Dependencies: US-001 and genuinely delivered CG-09 original finance expense_claim facade for this US-005 **only**; CG-10 US-001/002/003/004 do not depend on a future finance feature.
 
 ## Execution progress
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
