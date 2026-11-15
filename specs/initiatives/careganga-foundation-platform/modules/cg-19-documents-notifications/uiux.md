@@ -1,7 +1,7 @@
 # CG-19 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, CG-01-level owner/source review/fix in progress (15 Nov 2026): initial real CG-01/03 files/documents, independent durable notifications, CG-19-owned Foundation public contact/support, and CG-14/18 future links separated. Original B38/B41/B42/C15–C18/C35–C43 and shared CareGanga tokens are mandatory; source screenshots are visual reference only, exact pixel/video motion and real Web/Android QA remain VISUAL_NOT_RUN. Formal delegated CG-19 approval and authenticated Harness resolver NOT_RECORDED/NOT_RUN.
+**State:** REQUIRED / owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026), **JASIQ AI Design Review Agent**, after source owner/UIUX review/fix/re-review using original B38/B41/B42/C15–C18/C35–C43, CG-01 brand tokens and real Web/native scoped states. Original screenshot pixels/video motion and rendered Web/Android device parity remain VISUAL_NOT_RUN/MOTION_REFERENCE_UNVERIFIED. PRD/HLD current formal approvals and authenticated Harness resolver remain pending.
 
 ## Exact existing design and animation contract
 
