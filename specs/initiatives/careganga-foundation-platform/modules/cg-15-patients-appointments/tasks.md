@@ -78,7 +78,9 @@ QA cases:
 - **US-004-QA07 — business regression:** Expired hold and late callback cannot overbook or claim paid without CG-17. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-004-QA08 — Healthcare source-specific boundary:** Patient changes doctor/center/consultation mode at review screen while last slot is held; price/support snapshot must be recalculated for the chosen real center and booking confirmation cannot exceed capacity.
 - **US-004-QA09 — public CTA survives actual booking races:** From a genuine CG-15-published current booking route invoked via CG-14/CG-18, two public clients compete for last slot while a doctor is suspended or availability changes; the verified CG-15 doctor-wide lock/center choice accepts at most one booking. Public Web/Android show current no-slot/stale decision, no fake CG-18 slot and no PAID status while CG-17 support is absent.
-Verification: On actual implementation source-trace US-004-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-004-QA10 — ERP OFF consultation independence:** With all four CAREGANGA_ERP_* flags OFF/unset and no lab/pharmacy/nursing/OT source installed, real CG-14 doctor, consented CG-15 patient and doctor-wide slot can book/check in a legitimate consultation in public Next.js/native Android, with one source booking and no fake Foundation subsidy.
+- **US-004-QA11 — Wrong module booking route refused:** Attempt nursing/OT/lab/pharmacy service using generic CG-15 appointment command and disabled flags; backend rejects unsupported service owner, no slot/nursing/OT stock side effect; real doctor booking unaffected in both Centers A/B.
+Verification: On actual implementation source-trace US-004-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002, US-003
 
 ### US-005 — Issue authentic reference/Booking ID, download/print/share and guarded…
@@ -148,7 +150,9 @@ QA cases:
 - **US-008-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-008-QA07 — business regression:** Family/dependent or e-prescription placeholder cannot grant unauthorized record access. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-008-QA08 — Healthcare source-specific boundary:** Authenticated patient opens own appointments, documents and reports from Web/Android; another patient's identifier or unverified family-member claim must not grant access to prescriptions or clinical reports.
-Verification: On actual implementation source-trace US-008-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-008-QA09 — Unified history only from delivered owners:** CG-15 patient-own history shows real consultation and legitimate CG-19 documents; when optional CG-16/23/24 is OFF or not installed, no phantom sample/visit/OT booking entry or CTA appears; independent Core patient ID and privacy persist.
+- **US-008-QA10 — Existing advanced history after disable:** Actual previously issued lawful CG-16 lab report or completed CG-23/24 service may be retrieved only through original disabled-owner historic authorization and CG-19 evidence; expired consent/foreign center/patient denied; OFF blocks creating a second advanced booking through CG-15.
+Verification: On actual implementation source-trace US-008-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-003, US-005
 
 ## Execution progress
