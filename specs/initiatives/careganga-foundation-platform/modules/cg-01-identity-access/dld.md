@@ -67,6 +67,9 @@ careganga/
 
 **Later module gate:** Add a business-owner backend folder and migration inside the same DB history, expose only authorized typed facade, create only applicable Web/native routes, register module and its real capabilities, preserve CG-01 and old-client behavior, and trace auth, error copy, logging, concurrency, privacy, DB query/cost and idle-worker tests. Future module integration belongs to the introducing owner and is not an incomplete CG-01 prerequisite. Do not change the canonical top-level workspaces without a reviewed HLD/DLD change.
  
+
+**CG-01 UI implementation map:** The canonical repo introduced at bootstrap implements `packages/design-tokens/src` once (reference-grounded semantic tokens, not unsupported HEX/animation constants); `apps/web/src/shared` provides accessible CareGanga shell, table, KPI, form drawer, status badge, permission matrix and human outcome notices; `apps/web/src/features/identity-access` is the only Web CG-01 business UI. `apps/android-internal/src/features/identity-access` implements equivalent *native* staff role/account journeys, with no Admin WebView or independent theme. `apps/android-public` only uses a safe common public sign-in/brand where actually in scope. Screens U02–U10/B34 map to these real features; don't copy screenshot demo data or create unbuilt future links. Compare [CG-01 UIUX](uiux.md) §2.1 before source handoff and record screenshot IDs and evidence, with visual/device checks NOT_RUN until independent QA.
+
 ## 2. Canonical data model and database architecture
 
 **Risk:** CRITICAL, because identity/role mutations control future confidential resources. One protected `access_realm` singleton defines the initial Foundation-root authorization context. It is **not** a CG-02 geography/branch/business-Foundation record. No future department/branch/center/employee/protected-approval case is seeded or required. This does **not** introduce a multi-tenant business module.

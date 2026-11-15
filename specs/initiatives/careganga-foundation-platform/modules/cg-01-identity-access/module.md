@@ -69,6 +69,10 @@ The permission catalog uses clear business labels in clients and stable internal
 
 ## 5. Mandatory source-matched UI/UX and motion
 
+**Cross-channel reference gate:** HLD §4.1A and [UIUX §2.1](uiux.md) map Admin screenshot shell §2.1, U02–U10 and B34 into real Foundation Admin Web and a native Internal Android interpretation; **the audit has no native Android screenshots**, so do not claim exact mobile pixel parity. The first bootstrap owns the shared source-derived tokens/components, the current role/account flows and real safe statuses; later business owners add their approved screens without changing this visual identity. Record unverified image/motion and rendered QA truthfully.
+
+
+
 **PRD N-13 / HLD H-12 applies without exception** to all CG-01 user-visible surfaces. The existing [CareGanga Admin Panel audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) (§2.1, **U02–U10, B34**) and original screenshot/video ZIP supply the existing **color/theme/look/feel, layout and interaction** authority. Reuse one project-wide source-extracted theme/component/motion implementation, never a new palette or invented UI animation. Required [CG-01 UI/UX](uiux.md) records screen-by-screen references; the role and account stories in [tasks.md](tasks.md) explicitly validate existing sidebar/header, cards, tables, right-side drawers, permission matrix, status treatment, native look, loading/pending feedback, and verified transition behavior. Static screenshots do not prove precise animation timing: actual source/video is required for final visual parity; respect reduced-motion/accessibility.
 
 **Pass condition:** Manual source inspection checks theme tokens, source-matched component usage and native/responsive behaviors; independently authorized live visual QA compares the result against original reference images/videos before declaring an exact-color/animation PASS. Until original assets and rendered screens are inspected, keep `VISUAL_NOT_RUN` and `REFERENCE_ASSETS_NOT_VERIFIED`. Preserve UI identity across future CG modules; do not duplicate the token catalog in every module.
