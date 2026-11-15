@@ -31,8 +31,13 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
         return;
       }
       if(step==="request"){
+        const result:unknown=await response.json();
+        const ref=result&&typeof result==="object"&&"supportReference" in result
+          &&typeof result.supportReference==="string"&&/^CG-[A-Z0-9-]{8,25}$/.test(result.supportReference)
+          ? result.supportReference : undefined;
         setStep("confirm");
-        setMessage("If eligible, your recovery request is being processed. Delivery cannot be confirmed here.");
+        setMessage("If eligible, your recovery request is being processed. Delivery cannot be confirmed here."+
+          (ref?" Support reference: "+ref:""));
       }else{
         setComplete(true);setPassword("");setCode("");setTotp("");
         setMessage("Password updated. Return to sign in.");
