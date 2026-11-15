@@ -392,7 +392,14 @@ The product PRD groups detailed business clauses into observable journeys. **Eve
 | CG-20 Reports, MIS and dashboards | CG-20-BR01–07 | FR-073–074 | A-20 |
 | CG-21 Platform operations & audit | CG-21-BR01–06 | FR-075–076 | A-21 |
 | CG-300 Cross-channel/web/Android | CG-300-BR01–23 | FR-077–080 and associated owner FRs | A-01–A-21 |
+| CG-14 center capability with CG-01 typed deploy config | D-26/27; CG-14-BR07/18; CG-01 bootstrap | FR-081 | H01/H02/H05/H23 |
+| CG-16 optional Lab ERP extension | CG-16-BR11–14 | FR-082 and original FR-055–058 | H08–H10 |
+| CG-22 partner pharmacy catalog and optional ERP | CG-22-BR01–05 | FR-083–084 | H11/H12 |
+| CG-23 optional partner nursing operations | CG-23-BR01–04 | FR-085 | H13 |
+| CG-24 optional partner OT & procedures | CG-24-BR01–04 | FR-086 | H14 |
+| CG-17 original finance / CG-09 authorized ledger source extension | D-04/28 and CG-17-BR15–20 | FR-087 and original FR-059–065 | H16/H17 |
+
 
 **Quality crosswalk:** CG-NFR-600 supplies 85 shared non-functional IDs (including 16 user-language, error-boundary and diagnostic safeguards), with applicability and P0/P1 distinctions specified in §10 of this PRD. Every later module contract must select only the relevant NFR IDs and give evidence, including negative authorization, idempotency, concurrency, mobile/web/backend consistency and safe recovery. The crosswalk is a **coverage control**, not a substitute for the owner BR or a separate set of requirements.
 
-**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated, no unapproved separate service scope or new module introduced. `initiative.json` records the permitted owner delegation; `approvals.json` is the only machine-readable source of a current design decision. This document by itself does **not** assert Harness resolver PASS, human/client sign-off or production authorization.
+**Review result:** Source-to-owner and cross-module coherence reviewed, business defaults incorporated; the product owner's 15 Nov 2026 amendment explicitly includes three additional optional business owners CG-22/23/24 plus gated CG-16 Lab ERP, while preserving a single Foundation platform, partner-network core and default-disabled optional operations. `initiative.json` records the permitted owner delegation; `approvals.json` is the only machine-readable source of a current design decision. This document by itself does **not** assert Harness resolver PASS, human/client sign-off or production authorization.
