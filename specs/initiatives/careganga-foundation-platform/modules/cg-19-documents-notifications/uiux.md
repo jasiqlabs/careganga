@@ -19,6 +19,12 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-19-owned communication and delivery status (FR-071)
+
+CG-19 alone renders the **message authoring, permitted recipient/audience selector, send confirmation, outbox, retry/error and delivery-history** controls. The existing CareGanga communication/notice screenshots (C15–C18, C35–C43 and source-verified applicable references) are visual authority, not proof any provider works. CG-21 provides only credential configuration and last-tested provider readiness; its screen never sends to users or edits CG-19 message history.
+
+A permitted sender chooses an actual CG-01/03 recipient/source event and supported channel, sees required template/priority/expiry and exact permissioned counts, confirms **Queue/Send**, then views honest QUEUED, PROVIDER_UNAVAILABLE, SENT_TO_PROVIDER, DELIVERED_IF_CONFIRMED, FAILED or EXPIRED status. Missing optional provider configuration must not falsely show delivered or remove queued evidence. Show bounded retry and recipient revocation outcomes without private contacts, provider keys, fabricated audience counts or raw IDs. Apply the existing CareGanga tokens, responsive Admin Web and eligible native permitted notification readers; source/rendered visual QA remains NOT_RUN.
+
 ## Task-first source screenshot and UX acceptance
 
 Use original Admin document/media right-drawer/modal, upload progress, preview, version/status and real Download/Share states. Recipient and privacy visibility are part of the form, not hidden in technical IDs. A notice queue must show queued, sent, failed and retry-exhausted separately; support ticket uses actual requester and protected attachment with human-readable status and next action.
