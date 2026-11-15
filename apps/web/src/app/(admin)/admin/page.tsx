@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -35,9 +36,7 @@ export default async function AdminHome() {
   if (invalidSession) redirect("/admin/login");
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
-    <nav className="sidebar" aria-label="Foundation navigation"><strong>CareGanga Foundation</strong><p>Foundation administration</p><div className="selected" aria-current="page">My account</div>
-      {canViewRoles&&<p><Link href="/admin/roles">Roles &amp; permissions</Link></p>}
-    </nav>
+    <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
     </main>
