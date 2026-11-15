@@ -236,9 +236,9 @@ export class PlatformAuditService{
       targetDisplay:displayResource(row.safe_context),
       outcome:row.outcome==="SUCCESS"?"Confirmed":row.outcome==="UNAVAILABLE"?"Unavailable":"Pending"};
   }
-  async export(bearer:string){
+  async export(bearer:string,filters:{source?:unknown;from?:unknown;to?:unknown}={}){
     await this.authorize(bearer,"platform.audit.export");
-    const page=await this.list(bearer,{limit:"100"});
+    const page=await this.list(bearer,{...filters,limit:"100"});
     if(page.coverage!=="COMPLETE")throw new ServiceUnavailableException(
       "Audit export cannot be verified while a source is unavailable");
     const columns=["Date (UTC)","Source","Action","Actor","Target","Outcome"];
