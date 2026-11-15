@@ -18,6 +18,7 @@ const labels:Readonly<Record<string,string>>={
   "identity.account.invite":"Staff invited",
   "identity.account.resend":"Invitation renewed",
   "identity.account.assign":"Staff role assigned",
+  "identity.account.assign_approved":"Protected staff role approved and assigned",
   "identity.account.revoke":"Staff role revoked",
   "identity.account.status":"Account status changed",
   "identity.invitation.accept":"Invitation activated",
