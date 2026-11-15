@@ -15,7 +15,7 @@ const deliveryLabel=(status:string|null):string=>status===null?"Not applicable":
   UNAVAILABLE:"Email service unavailable"
 } as Record<string,string>)[status]??"Delivery status unavailable";
 const auditOutcomeLabel=(outcome:string):string=>({
-  SUCCESS:"Completed",DENIED:"Not permitted",PENDING:"Awaiting confirmation"
+  Confirmed:"Completed",Denied:"Not permitted",Pending:"Awaiting confirmation"
 } as Record<string,string>)[outcome]??"Outcome unavailable";
 
 async function read<T>(path:string):Promise<T>{
