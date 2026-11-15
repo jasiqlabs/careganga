@@ -24,6 +24,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-09 owner — genuine CG-02 branch budget selection
+
+Budget screens use **real CG-02 ACTIVE branch** minimum-field selectors and source-backed CG-09 allocation/utilization history. A real branch-only budget succeeds with zero CG-05 projects; project linkage is offered only after a genuine CG-05 project owner delivers it. Wrong/closed branch denies on client and backend, without CG-02 budget editor or invented finance data. Maintain original CareGanga finance form/table patterns.
+
 ## Original-theme and task-specific interaction blueprint
 
 Keep the original finance view (reference A19/B01-B02/U33-U42) with proper voucher/claim/invoice wizard, account/business-name selectors, dated debit/credit lines, explicit subtotal/tax/charges/total, review status and separate PAID versus APPROVED. Cash/Bank/Day/Trial Balance views remain source-ledger backed. On narrow screens preserve column meaning through stacked line items and sticky totals; never expose UUID or raw SQL error.
