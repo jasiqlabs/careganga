@@ -52,6 +52,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [searchRole,setSearchRole]=useState("");
   const requestKey=useRef("");
   const generation=useRef(0);
+  const inviteEntryOpened=useRef(false);
   const roleRead=useRef(0);
   const historyRead=useRef(0);
 
@@ -123,12 +124,11 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     void roleSearch("");
   }
   useEffect(()=>{
-    if(inviteOnly&&canInvite&&editor===null&&!uncertain){
-      // Do not reopen after a successful invite; the user can choose Add staff again.
-      // Initial entry is explicit and never loads account records.
-      if(!requestKey.current)openInvite();
+    if(inviteOnly&&canInvite&&!inviteEntryOpened.current){
+      inviteEntryOpened.current=true;
+      openInvite();
     }
-  },[inviteOnly,canInvite,editor,uncertain]);
+  },[inviteOnly,canInvite]);
   function openAccount(row:CG01AccountView){
     ++roleRead.current;++historyRead.current;
     setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
@@ -209,6 +209,12 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       <div className="toolbar">{canInvite&&<button type="button" className="primary"
         onClick={openInvite}>Add staff</button>}</div>
     </header>
+    {inviteOnly&&<p>Invite an eligible Foundation staff member without access to the private staff directory.</p>}
+    {inviteOnly&&notice&&<p role={notice.kind==="success"?"status":"alert"}
+      className={"notice "+notice.kind}>{notice.text}</p>}
+    {inviteOnly&&uncertain&&<button type="button" onClick={()=>{
+      setUncertain(false);setPending(null);setEditor(null);void load("",0,"all");
+    }}>Check invitation outcome with Foundation support before retrying</button>}
     {!inviteOnly&&<>
     <form className="search-row" onSubmit={event=>{
       event.preventDefault();void load(query.trim(),0,filter);
