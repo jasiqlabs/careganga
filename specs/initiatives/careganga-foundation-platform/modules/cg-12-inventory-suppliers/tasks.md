@@ -12,7 +12,7 @@ Requirements: FR-037, CG-12-BR01, CG-12-BR02, CG-12-BR03, CG-12-BR05; PRD N-01/N
 Scope: CG-12 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Create item/supplier, issue real receipt and stock movement with unit, quantity and branch scope. Actual authorization, concurrency/replay, Web/native and original CareGanga UI states are verified against authoritative source; no technical IDs or fake downstream records.
 QA cases:
-- **US-001-QA01:** Given correctly scoped actor and genuine delivered owner records, Create item/supplier, issue real receipt and stock movement with unit, quantity and branch scope. Expected: true Web/Android state (where applicable), one guarded DB commit or explicit pending result, secure audit and no fabricated integration.
+- **US-001-QA01:** Given correctly scoped actor and genuine delivered owner records, create item/supplier, issue real receipt and stock movement with unit, quantity and branch scope. Expected: true Web/Android state (where applicable), one guarded DB commit or explicit pending result, secure audit and no fabricated integration.
 - **US-001-QA02:** Unrelated, unauthorized or revoked actor tries Web/native deep link, guessed resource ID, selector or export → protected API denies without any data leak or mutation.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable real owner/provider or uncertain response → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -30,7 +30,7 @@ Requirements: FR-038, CG-12-BR04, CG-12-BR06; PRD N-01/N-04/N-05/N-09/N-11/N-12/
 Scope: CG-12 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Submit stock requisition, preserve actual review and reserve/fulfill only permitted available quantity. Actual authorization, concurrency/replay, Web/native and original CareGanga UI states are verified against authoritative source; no technical IDs or fake downstream records.
 QA cases:
-- **US-002-QA01:** Given correctly scoped actor and genuine delivered owner records, Submit stock requisition, preserve actual review and reserve/fulfill only permitted available quantity. Expected: true Web/Android state (where applicable), one guarded DB commit or explicit pending result, secure audit and no fabricated integration.
+- **US-002-QA01:** Given correctly scoped actor and genuine delivered owner records, submit stock requisition, preserve actual review and reserve/fulfill only permitted available quantity. Expected: true Web/Android state (where applicable), one guarded DB commit or explicit pending result, secure audit and no fabricated integration.
 - **US-002-QA02:** Unrelated, unauthorized or revoked actor tries Web/native deep link, guessed resource ID, selector or export → protected API denies without any data leak or mutation.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable real owner/provider or uncertain response → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.

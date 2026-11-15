@@ -12,7 +12,7 @@ Requirements: FR-073, CG-20-BR01, CG-20-BR02, CG-20-BR03; PRD N-01/N-04/N-05/N-0
 Scope: CG-20 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Read accurate real owner KPI/project/finance/healthcare records under one current actor scope, with correct drilldown. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-001-QA01:** Starting from actual authorized actor and implemented owner record: Read accurate real owner KPI/project/finance/healthcare records under one current actor scope, with correct drilldown. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
+- **US-001-QA01:** Starting from actual authorized actor and implemented owner record: read accurate real owner KPI/project/finance/healthcare records under one current actor scope, with correct drilldown. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-001-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -30,7 +30,7 @@ Requirements: FR-074, CG-20-BR03, CG-20-BR04, CG-20-BR05, CG-20-BR06, CG-20-BR07
 Scope: CG-20 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Save scoped report filters/export schedule with real recipient permission rechecked at delivery. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-002-QA01:** Starting from actual authorized actor and implemented owner record: Save scoped report filters/export schedule with real recipient permission rechecked at delivery. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
+- **US-002-QA01:** Starting from actual authorized actor and implemented owner record: save scoped report filters/export schedule with real recipient permission rechecked at delivery. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-002-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
