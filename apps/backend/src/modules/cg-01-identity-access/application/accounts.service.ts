@@ -47,9 +47,9 @@ export class AccountsService {
     const term=search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"";
     const conditions=String.raw`a.realm_id=$1 AND ($2='' OR lower(a.display_name) LIKE $2 OR a.normalized_email LIKE $2)
       AND ($3='all' OR a.status=$3)
-      AND ($4='' OR EXISTS(SELECT 1 FROM account_role xr
+      AND ($4::uuid IS NULL OR EXISTS(SELECT 1 FROM account_role xr
          WHERE xr.account_id=a.id AND xr.role_id=$4::uuid AND xr.revoked_at IS NULL))`;
-    const params=[actor.realmId,term,status,roleRef];
+    const params=[actor.realmId,term,status,roleRef||null];
     const records=await this.db.query<{
       id:string;display_name:string;normalized_email:string;contact_phone:string|null;status:string;revision:number;
       role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;delivery_status:string|null;
@@ -218,6 +218,7 @@ export class AccountsService {
     const email=typeof input.email==="string"?input.email.trim().toLowerCase():"";
     if(displayName.length<2||displayName.length>160||email.length>254||!EMAIL.test(email))
       throw new BadRequestException("Check the staff name and work email");
+    if(input.phone!==undefined&&typeof input.phone!=="string")throw new BadRequestException("Invalid contact number");
     const phone=input.phone===undefined||input.phone===""?null:input.phone.trim();
     if(phone!==null&&!/^\+[1-9][0-9]{7,14}$/.test(phone))
       throw new BadRequestException("Use international phone format such as +91...");
@@ -246,6 +247,7 @@ export class AccountsService {
     });
   }
   async resend(bearer:string,targetRef:string,input:AccountChange,correlationRef:string){
+    if(!input||typeof input!=="object")throw new BadRequestException();
     const target=checkRef(targetRef),expected=checkRevision(input.expectedRevision);
     return this.perform(bearer,"accounts.invite","RESEND",input.requestKey,
       {target,expected},correlationRef,async(client,actor)=>{
@@ -289,6 +291,7 @@ export class AccountsService {
   }
   async assign(bearer:string,targetRef:string,input:AccountChange&{roleRef:string},
     correlationRef:string):Promise<CommandResult>{
+    if(!input||typeof input!=="object")throw new BadRequestException();
     const target=checkRef(targetRef),roleRef=checkRef(input.roleRef),expected=checkRevision(input.expectedRevision);
     return this.perform(bearer,"roles.assign","ASSIGN",input.requestKey,
       {target,roleRef,expected},correlationRef,async(client,actor)=>{
@@ -308,6 +311,7 @@ export class AccountsService {
       });
   }
   async revoke(bearer:string,targetRef:string,input:AccountChange,correlationRef:string){
+    if(!input||typeof input!=="object")throw new BadRequestException();
     const target=checkRef(targetRef),expected=checkRevision(input.expectedRevision);
     return this.perform(bearer,"roles.assign","REVOKE",input.requestKey,
       {target,expected},correlationRef,async(client,actor)=>{
@@ -323,6 +327,7 @@ export class AccountsService {
   }
   async status(bearer:string,targetRef:string,input:AccountChange&{status:string},
     correlationRef:string){
+    if(!input||typeof input!=="object")throw new BadRequestException();
     const target=checkRef(targetRef),expected=checkRevision(input.expectedRevision);
     if(!["ACTIVE","SUSPENDED","DEACTIVATED"].includes(input.status))throw new BadRequestException();
     return this.perform(bearer,"accounts.status.manage","STATUS",input.requestKey,
