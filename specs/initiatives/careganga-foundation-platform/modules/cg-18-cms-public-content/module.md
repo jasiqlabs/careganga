@@ -3,7 +3,7 @@
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38.  
-**Stage:** Harness Planning / GREENFIELD · **State:** DRAFT_NOT_APPROVED; revised PRD/HLD approval & authenticated Harness resolver NOT_RUN.
+**Stage:** Harness Planning / GREENFIELD · **State:** OWNER_SCOPE_TRANSFER_RECORDED / DRAFT_NOT_APPROVED (15 Nov 2026). Public Login/Member Join/Volunteer Join publication controls are explicitly CG-18-owned and excluded from CG-21. CG-18's full independent design review, latest-hash delegated approval, local Harness resolver and Web/Public Android QA remain NOT_RUN.
 
 uiux_decision: REQUIRED
 uiux_reason: New cross-channel business UI must follow original CareGanga theme, motion and role-sensitive workflows.
@@ -11,8 +11,8 @@ dld_decision: REQUIRED
 dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
 database_impact: SCHEMA
 database_reason: New source-owned Hero/content, public pages, impact, 80G, navigation, safe publication state requires reliable relational constraints, concurrency and migration.
-mobile_store_impact: NONE
-mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
+mobile_store_impact: ANDROID
+mobile_store_reason: CG-18 has no native Admin editor, but **Public Android is an actual consumer** of approved public Login/Join/Volunteer navigation/visibility from the same protected publication API as responsive public Web. Changes to native navigation must follow the current approved Android dependency/store policy and independent device QA; no new Android CMS administrator page.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
@@ -22,7 +22,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Hero/content, public pages, impact, 80G, navigation, safe publication. **Delivery-critical, already-delivered owners:** CG-01 editor roles, CG-03 configured review, CG-19 genuine media asset. **Later integration owners, not blockers for the first self-contained feature:** CG-05 projects, CG-07 campaigns, CG-14 doctors/centers and CG-17 support feed approved public projections only when those real records exist. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
+**Owns:** Hero/content, public pages, impact, 80G, **one approved and revisioned public Login/Profile, Membership Join and Volunteer Join visibility/route publication policy**, navigation and safe publication. **Delivery-critical, already-delivered owners:** CG-01 editor roles, CG-03 configured review, CG-19 genuine media asset. **Later integration owners, not blockers for the first self-contained feature:** CG-05 projects, CG-07 campaigns, CG-14 doctors/centers and CG-17 support feed approved public projections only when those real records exist. Missing actual owner source must never be represented by a fake master or fake successful outcome; the later owner carries its own cross-module QA.
 
 **State and invariant:** Editorial draft/reviewed/published/hidden/scheduled. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -42,7 +42,7 @@ Detailed authoritative clauses:
 - **CG-18-BR06:** Create/manage blogs, articles, public news and updates with editorial publication controls.
 - **CG-18-BR07:** Maintain website contact-message submissions and public enquiries, with assigned responders/status and restricted personal details; related support tickets, service requests and FAQs use the shared support workflow in CG-19 rather than an independent CMS ticket database.
 - **CG-18-BR08:** Enable content preview, submit-for-review, approve/reject, authorized publishing/unpublishing and **scheduled publication** where supported, with author/reviewer/publisher rights from CG-01/03, public visibility/status and an audit trail.
-- **CG-18-BR09:** Manage enabled public navigation and supported page availability. The source explicitly includes toggles for **Login**, **Membership registration/join**, and **Volunteer registration/join**.
+- **CG-18-BR09:** Own and implement the three versioned CMS publication choices **Login/Profile**, **Membership registration/join**, **Volunteer registration/join** (C50 visual reference), with draft/preview/review/publish/unpublish and genuine public Web/Public Android effective visibility. A toggle never creates authentication capability or a membership/volunteer registration source; only publish a link when its real owner route exists and is permitted.
 - **CG-18-BR10:** Maintain editable public menu, heading, CTA, images, SEO metadata and page publication where supported; public channels reflect saved state, not UI hardcodes.
 - **CG-18-BR11:** Publish Foundation profile, mission/work, team information and other selected NGO information with correct editorial visibility.
 - **CG-18-BR12:** Provide the 80G information page editor for section enablement, ordering, title/subtitle/badge/description, hero/organization imagery, legal/approval numbers, PAN, dates/validity, issuing authority, attached approval documents, donation CTA and preview/publish.
@@ -62,6 +62,12 @@ Detailed authoritative clauses:
 - **CG-18-BR26:** Public team cards and upcoming-project teasers can be configured by authorized editors with display order, image, title/role/category/location/summary, published status and approved additional public biography/recognition fields. Where linked to a member, employee or project, the owning module remains authoritative.
 - **CG-18-BR27:** Gallery, reusable media, videos, publications/reports, articles and notices support categorization, metadata, publication status and authorized upload/preview/ordering. Public contact messages and support requests retain sender privacy and action history.
 - **CG-18-BR28:** Central Foundation CMS controls publication of approved healthcare services, centers, doctors and healthcare benefit messaging through existing public content tools, while verification, pricing, availability and contribution rules remain owned by CG-14–17.
+
+## CG-18-owned public navigation controls moved out of CG-21
+
+**Business owner contract (FR-066 / CG-18-BR09):** An authorized content publisher sees three distinguishable Login/Profile, Member Join/Apply and Volunteer Join/Apply publication controls in the **CG-18 CMS/Admin content navigation** using the CareGanga C50 toggle visual vocabulary. Draft edits are not publicly effective. Preview reflects the saved candidate, and only an approved publish action updates one actual effective navigation revision for both the public website and **Public Android** via the same safe versioned public projection. Unpublish/disable hides the CTA on both surfaces and invalidates stale cache; hidden links do **not** weaken real CG-01 auth or authorized route guards.
+
+**Independently testable before later owners:** CG-01 already provides real public authentication, so the Login/Profile toggle can be fully tested with the real CG-01 entry point. Membership and Volunteer CTAs have explicit desired publish flags but must not show an actionable link until a genuine supported CG-04 registration route exists; without CG-04, both show truthful **NOT_AVAILABLE_FOR_PUBLICATION** rather than fabricating joining or treating that absence as a failure of CG-18 CMS core. CG-04 later adds the valid target and end-to-end CTA QA. CG-21 is neither the public-toggle owner nor a future prerequisite; no duplicate system settings or fake forms.
 
 ## First usable vertical contract and regression
 
