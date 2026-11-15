@@ -14,7 +14,13 @@ const labels:Readonly<Record<string,string>>={
   "identity.role.create":"Role created",
   "identity.role.edit":"Role updated",
   "identity.role.copy":"Role copied",
-  "identity.role.retire":"Role retired"
+  "identity.role.retire":"Role retired",
+  "identity.account.invite":"Staff invited",
+  "identity.account.resend":"Invitation renewed",
+  "identity.account.assign":"Staff role assigned",
+  "identity.account.revoke":"Staff role revoked",
+  "identity.account.status":"Account status changed",
+  "identity.invitation.accept":"Invitation activated"
 };
 function cursorKey():Buffer{
   const b=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");

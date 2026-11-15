@@ -15,7 +15,7 @@ export class HealthController {
       );
       if (!result.rows[0]?.reg) throw new Error("Migration missing");
       const migrations = await this.db.query<{ filename: string }>(
-        "SELECT filename FROM schema_migration WHERE filename = $1", ["0008_cg01_account_assignment_invitation.sql"]
+        "SELECT filename FROM schema_migration WHERE filename = $1", ["0009_cg01_invitation_resend_contact.sql"]
       );
       if (!migrations.rowCount) throw new Error("CG-01 migrations incomplete");
       return { status: "ready" };

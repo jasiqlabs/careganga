@@ -17,6 +17,8 @@ function allowed(parts:string[],method:string):boolean{
     }
     return false;
   }
+  if(parts.length===4&&parts[0]==="accounts"&&UUID.test(parts[1])&&
+    parts[2]==="invitation"&&parts[3]==="resend")return method==="POST";
   if(parts.length!==3||!UUID.test(parts[1]))return false;
   if(parts[0]==="accounts"){
     return (parts[2]==="role"&&(method==="PUT"||method==="DELETE"))||

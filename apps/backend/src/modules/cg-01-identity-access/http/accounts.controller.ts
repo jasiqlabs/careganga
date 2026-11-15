@@ -23,9 +23,14 @@ export class AccountsController {
   }
   @Post("invitations")
   invite(@Headers("authorization") bearer:string,
-    @Body() body:{displayName:string;email:string;roleRef:string;requestKey:string},
+    @Body() body:{displayName:string;email:string;phone?:string;roleRef:string;requestKey:string},
     @Req() req:CareGangaRequest){
     return this.accounts.invite(bearer,body,req.cgRequestId??randomUUID());
+  }
+  @Post("accounts/:accountRef/invitation/resend")
+  resend(@Headers("authorization") bearer:string,@Param("accountRef") accountRef:string,
+    @Body() body:{expectedRevision:number;requestKey:string},@Req() req:CareGangaRequest){
+    return this.accounts.resend(bearer,accountRef,body,req.cgRequestId??randomUUID());
   }
   @Put("accounts/:accountRef/role")
   assign(@Headers("authorization") bearer:string,@Param("accountRef") accountRef:string,
