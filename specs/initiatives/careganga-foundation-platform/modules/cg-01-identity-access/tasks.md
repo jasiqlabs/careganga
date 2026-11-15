@@ -89,6 +89,6 @@ Dependencies: US-001, US-002
 
 ## Execution progress
 
-- US-001: READY | Planning definitions rebuilt; **Development unauthorized** until final design/Harness approval. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
-- US-002: READY | Depends on US-001; no future-module blockers. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
-- US-003: READY | Depends on US-001/002; Foundation-root only. Future CG-02/03/10/14 integrations assigned to those owners. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
+- US-001: BLOCKED | Planning definitions rebuilt; **Development unauthorized** until final design/Harness approval. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
+- US-002: BLOCKED | Depends on US-001; no future-module blockers. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
+- US-003: BLOCKED | Depends on US-001/002; Foundation-root only. Future CG-02/03/10/14 integrations assigned to those owners. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
