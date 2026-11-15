@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -12,10 +12,11 @@ type FoundationAdminNavProps={
   canViewSettings?:boolean;
   canViewAudit?:boolean;
   canViewRecovery?:boolean;
+  canViewApprovals?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
-  canViewAudit=false,canViewRecovery=false}:FoundationAdminNavProps){
+  canViewAudit=false,canViewRecovery=false,canViewApprovals=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const links=[
     {key:"account" as const,label:"My account",href:"/admin"},
@@ -24,7 +25,8 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(canManageSecurityPolicy?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(canViewSettings?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
     ...(canViewAudit?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
-    ...(canViewRecovery?[{key:"recovery" as const,label:"Backup & Restore",href:"/admin/backup-recovery"}]:[])
+    ...(canViewRecovery?[{key:"recovery" as const,label:"Backup & Restore",href:"/admin/backup-recovery"}]:[]),
+    ...(canViewApprovals?[{key:"approvals" as const,label:"Registration & Approval",href:"/admin/approvals"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
   return <nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
