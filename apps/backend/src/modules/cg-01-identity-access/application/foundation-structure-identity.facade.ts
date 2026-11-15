@@ -36,6 +36,18 @@ export class FoundationStructureIdentityFacade {
     if(!found.rowCount)throw new ForbiddenException("Select an eligible current Foundation account");
     return {accountRef:found.rows[0].id,displayName:found.rows[0].display_name};
   }
+  /** Read-only, root-scoped display projection for permitted CG-02 lists/history.
+   * Inactive accounts retain their actual historical names; this never grants access.
+   */
+  async accountLabels(client:PoolClient,actor:VerifiedFoundationActor,ids:readonly string[]):Promise<Record<string,string>>{
+    const distinct=[...new Set(ids)];
+    if(distinct.length>100)throw new ForbiddenException("Too many account labels requested");
+    if(distinct.length===0)return {};
+    const rows=await client.query<{id:string;display_name:string}>(`
+      SELECT id,display_name FROM account WHERE realm_id=$1 AND id=ANY($2::uuid[])`,
+      [actor.realmId,distinct]);
+    return Object.fromEntries(rows.rows.map(row=>[row.id,row.display_name]));
+  }
   async eligibleOfficeholderOptions(client:PoolClient,actor:VerifiedFoundationActor,search:string):Promise<{value:string;label:string}[]>{
     const rows=await client.query<{id:string;display_name:string}>(`
       SELECT DISTINCT a.id,a.display_name FROM account a
