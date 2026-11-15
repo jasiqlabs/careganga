@@ -230,6 +230,8 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       </Pressable><Text accessibilityRole="header" style={styles.title}>Users Management</Text></View>
       {screen==="list"&&!inviteOnly&&<>
         <Text>Foundation staff and current access</Text>
+        {busy&&<Text accessibilityRole="text" accessibilityLiveRegion="polite"
+          style={styles.note}>Refreshing verified staff accounts…</Text>}
         <View style={styles.stats}>{numbers.map(([label,value])=><View key={label} style={styles.stat}>
           <Text style={styles.statLabel}>{label}</Text>
           <Text style={styles.statValue}>{value??"—"}</Text>
