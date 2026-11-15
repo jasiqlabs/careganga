@@ -24,7 +24,7 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — source-owned public toggles:** Editor sets Login/Profile, Member Join and Volunteer Join independently, saves/preview/reviews/publishes one effective revision; Web/Public Android render only genuinely available published destinations. Login works via CG-01; without delivered CG-04 registration target both joins are unavailable; no CG-21 mirror or fabricated join.
 - **US-001-QA08 — public/nav regression:** Unauthorized or revoked publisher, stale revision/replayed publish, public Web/Android stale cache and forbidden deep link are denied/updated correctly. Unpublishing removes CTA on both while backend auth still guards target. Verify C50 source styling, native accessibility, no private/draft URL and no fake Join activation; runtime/visual/native QA NOT_RUN.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Publish editable Impact groups, geography/charts/stories with appropriate…
@@ -46,7 +46,7 @@ Dependencies: US-001
 
 ### US-003 — Manage galleries, videos, publications, media, articles, updates, events…
 
-Outcome: Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status.
+Outcome: Publish editorial gallery/media/articles/events and **approved public projections** of genuine CG-19 notices, and present CG-19's actual existing public contact form/receipt on the CMS website. **CG-19 alone stores private enquiries, operational notice recipients/delivery and media object bytes**, not CG-18.
 Requirements: FR-068, CG-18-BR05, CG-18-BR06, CG-18-BR07, CG-18-BR08, CG-18-BR24, CG-18-BR27; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-18 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Manage authorized public gallery, publication, video/news/event revision and media rights with clear publish state. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
@@ -57,8 +57,9 @@ QA cases:
 - **US-003-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-- **US-003-QA07 — Source-specific contract:** Publish a media/gallery article with scheduled date, display order and visibility; an upload that is private or virus-scan pending is not offered as public media, and unpublishing invalidates public route.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA07 — genuine CG-19 media source:** Publish gallery/article with a real CG-19 VALIDATED safe media ref and authorized CMS scheduled/publication status; a private/scan-pending/expired file is never publicly exposed and unpublishing invalidates its CG-18 route without changing CG-19 object audit.
+- **US-003-QA08 — moved public contact and notice ownership:** From a live CG-19 Foundation contact endpoint, the approved CMS Contact page embeds the same form/opaque receipt without any CG-18 contact-message row or inbox. From a real approved CG-19 operational notice, separately publish/withdraw a safe CG-18 public projection, never edit CG-19 original recipients/outbox/provider history or show a private internal notice publicly. CG-19 unavailable/denied returns truthful page state, no fabricated intake/delivery.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-004 — Show approved directory/category cards, provider profiles, doctors, current…
