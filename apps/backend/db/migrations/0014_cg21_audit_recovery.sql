@@ -31,6 +31,7 @@ CREATE TABLE recovery_operation (
   FOREIGN KEY(authorized_by,foundation_realm_id) REFERENCES account(id,realm_id)
     ON DELETE RESTRICT,
   CHECK(authorized_by IS NULL OR status<>'REQUESTED'),
+  CHECK(status<>'PRIVILEGED_AUTHORIZED' OR authorized_by IS NOT NULL),
   CHECK(status<>'RUNNING' OR provider_operation_ref IS NOT NULL),
   CHECK(status<>'VERIFIED_SUCCEEDED' OR
     (provider_operation_ref IS NOT NULL AND verified_proof_ref IS NOT NULL))
