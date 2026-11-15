@@ -44,7 +44,8 @@ export default async function AdminRoles(){
         canManageSecurityPolicy={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="identity.security-policy.manage")}
         canViewSettings={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.settings.view")}
         canViewAudit={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.audit.view")}
-        canViewRecovery={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.recovery.view")}/>
+        canViewRecovery={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.recovery.view")}
+        canViewApprovals={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){
