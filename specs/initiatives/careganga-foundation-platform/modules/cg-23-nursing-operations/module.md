@@ -44,7 +44,7 @@ mobile_dependency_audit: CURRENT_POLICY_SOURCE_DESIGN_ONLY; actual lockfile/Grad
 | **CG-23-BR01 / FR-085** | US-001 independent nurse credential/center affiliation plus US-002 availability; professional != CG-10 employee / CG-04 volunteer / CG-14 doctor |
 | **CG-23-BR02 / FR-085** | US-003 real CG-15 consented patient request, service/accepted fee, approved home/center place, recurring period/frequency and conflict-free assignment |
 | **CG-23-BR03 / FR-085** | US-003 global nurse-visit nonoverlap, US-004 immutable protected care plan/actual visit and original CG-19 evidence |
-| **CG-23-BR04 / conditional FR-087** | US-005 source-truth completion/financial adapter only when real CG-17 approved assistance exists, no CGI-09/17 duplicated authority; ERP OFF history preserved but private operational endpoints disabled |
+| **CG-23-BR04 / conditional FR-087** | US-005 source-truth completion/financial adapter only when real CG-17 approved assistance exists, no CG-09/17 duplicated authority; ERP OFF history preserved but private operational endpoints disabled |
 | **FR-081 / D-26/27** | US-001–005 effective GLOBAL OFF+CG-14 center ON+CG-01 current exact permission+actual schema gate; no jobs/data leak during OFF |
 | **D-23 / D-28** | CG-14 keeps core published nursing enquiry; no public checkout or invented 30% rate/commission/patient-cash Foundation ledger |
 
