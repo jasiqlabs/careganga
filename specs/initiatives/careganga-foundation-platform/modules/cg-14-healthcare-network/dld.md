@@ -22,6 +22,12 @@ Provider/doctor verification via CG-03 returns actual approved/rejected/returned
 
 **QA:** doctor in two real centers, center suspended/revoked, unverifiable doctor registration, overlapping fee versions, forged location lookup, wrong-center staff update, public unpublished center, fees changing after confirmed booking and CG-01 center-options minimum fields.
 
+## Specific owner contracts and source-QA
+
+- **Provider & locations:** `provider(id,legal_identity,verification_state,publish_state)`, `center_location(provider_ref,actual_geo,contact,facilities,status)`, `doctor(id,professional_registration,qualification,verification_state)` and `doctor_center(doctor_ref,center_location_ref,association_status,fee_version,active_period)`; doctor professional ID is unique and **not duplicated per affiliated center**.
+- **Verification/fees:** CG-03 authorized review finalizes provider/doctor verification. `center_service(center_ref,service,fee,valid_from,status)` effective-dates center-specific fees and restrictions, while CG-15 snapshots accepted prices. Provider bank/settlement credentials are protected and never in public directory.
+- **Visibility/scope:** only verified and separately published active center/doctor records display, using a minimum-field public projection with no fabricated ratings, review scores or eligibility badges. CG-01 center staff receive exact location scope, not blanket clinical access. **QA:** doctor at two centers, unverified provider public link, center suspension, stale fee, guessed other-center staff file, private bank leak and publication retraction.
+
 ## Typed API and coordination
 
 An authenticated `/api/healthcare-network` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

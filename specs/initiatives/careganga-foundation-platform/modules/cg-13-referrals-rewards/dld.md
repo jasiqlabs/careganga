@@ -22,6 +22,12 @@ State/invariant: **Referral pending/qualified; redemption requested/approved/ful
 
 **QA:** referral cycle/self-referral, duplicated applicant attribution, qualification reversal, no-balance redemption, last-unit parallel redemptions, invalid rank thresholds, refund/cancel points and public leaderboard privacy.
 
+## Specific owner contracts and source-QA
+
+- **Event model:** `referral(referrer_relationship_ref,applicant_ref,qualifying_event_ref,status)` uniquely attributes an approved new CG-04 member/volunteer; a shared link click earns no points. `points_event(owner_ref,source_kind,source_ref,delta,accepted_at)` is append-only and unique by approved cause; balance is sum of accepted/reversed events.
+- **Ranks/redeem:** versioned `rank_policy(thresholds,effective_period)`, `reward(type,points_cost,stock_ref,active)`, `redemption(owner_ref,reward_ref,points_reserved,inventory_issue_ref,state)`. Redeem requires sufficient available points and, for physical reward, an idempotent real CG-12 stock issue; cancellation reverses both once. No independent payment/bank ledger.
+- **QA:** self-referral/duplicate signup, candidate approval revoked, overlapping rank-threshold revisions, two simultaneous redemptions, out-of-stock reward, cancellation and leaderboards leaking private profile.
+
 ## Typed API and coordination
 
 An authenticated `/api/referrals-rewards` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

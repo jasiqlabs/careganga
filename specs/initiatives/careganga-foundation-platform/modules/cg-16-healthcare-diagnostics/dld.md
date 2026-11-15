@@ -23,6 +23,12 @@ Private report access requires authenticated own-patient identity or assigned tr
 
 **QA:** patient linked to wrong center, unauthorized report download, sample repeated, unapproved lab release, replaced report without version, stale package rate and public CTA accidentally creating checkout.
 
+## Specific owner contracts and source-QA
+
+- **Catalog:** `diagnostic_test(id,code,sample_type,parameter_schema,status)`, `package(id,code,included_tests,fee_version)`, `center_test_rate(center_ref,test_or_package_ref,amount,validity)` require real CG-14 center and effective price; package changes do not rewrite accepted order amounts.
+- **Internal lab:** `lab_order(id,patient_ref,center_ref,selected_test_version,status,price_snapshot)`, `sample_collection(order_ref,time,collector,state)`, `lab_report(order_ref,private_file_ref,version,released_by,released_at,status)`. A lab upload is only *result ready*; authorized professional release is a separate recorded transition, and report correction creates a new version.
+- **Clinical scope:** patient-own or treatment-purpose clinician access only; center public cards show real service menu/fee and enquiry rather than unsupported online lab/medicine/nursing checkout. **QA:** duplicate order, wrong-center order read, unauthorized report release, leaked signed file, new fee during processing and old report version retrieval.
+
 ## Typed API and coordination
 
 An authenticated `/api/healthcare-diagnostics` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

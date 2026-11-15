@@ -25,6 +25,12 @@ A public-safe **allowlist projection** reads real approved CG-05 projects, CG-14
 
 **QA:** draft invisible to anonymous, scheduled/expired page, unauthorized publish, changed source after preview, missing consent for beneficiary story, 80G expiry disclaimer, XSS in rich text, malicious CTA URL and Web/Public Android same published revision.
 
+## Specific owner contracts and source-QA
+
+- **Editorial versioning:** `cms_page(id,route,revision,editor,status)`, `content_section(page_ref,kind,order,payload,source_ref)`, `hero_banner(id,desktop_media,mobile_media,order,status)`, `publication_revision(id,source_ref,approved_by,approved_at)`; draft, reviewed, published and scheduled versions are distinct and reversible.
+- **Source projections:** published team/project/doctor/provider/benefit/impact figures use a **verified field allowlist from their real owners**; CMS may arrange/describe but not alter those masters or publish beneficiary/patient stories without privacy basis. If CG-14/17 or CG-20 are not implemented, no fictional provider cards/discount/statistics are rendered. 80G/PAN legal metadata remains editable evidence with current validity review, not automatic certification.
+- **QA:** unpublished hero visibility, scheduled publish while approval revoked, source project suspended after public post, fake 80G claims, menu Login/Join toggle, indexed private page, publication preview/rollback and tenant media ACL.
+
 ## Typed API and coordination
 
 An authenticated `/api/cms-public-content` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
