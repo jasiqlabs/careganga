@@ -11,6 +11,16 @@ Own a cohesive typed domain/application module for **Source-linked files/templat
 
 State/invariant: **File pending/validated; message queued/delivered/failed; case open/closed; No sensitive public document, fake delivery, duplicate receipt source or idle tenant worker**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete file, template, delivery and support design
+
+`stored_file(owner_type,owner_ref,classification,object_key,checksum,mime,size,scan_status)` requires proper file type/size and malware scan where applicable, verified authorized owner and short-lived signed downloads. Patient clinical, employee bank/payroll and private proofs never go onto public media paths. QR lookup returns minimal validity, not whole document.
+
+`document_template(type,version,allowed_fields,approved_by)` and `generated_document(source_owner,source_ref,template_version,checksum,status)` project real CG-04/09/10/15 sources. Front/back IDs, official letters and receipts preserve issue/reissue/revocation and original source amounts; no independently edited receipt total.
+
+`notification(source_event,recipient_or_audience,channel,template_version,status)` and `delivery_attempt(provider,provider_reference,retry_count,next_retry,status)` have unique source+recipient+channel dedupe. Persist business status/outbox atomically and send after commit with finite backoff; **zero eligible jobs must not trigger repeated all-tenant DB scans or network requests**, avoiding previously observed bandwidth amplification.
+
+`support_case(source_channel,requester,assigned_center_or_foundation,status)` is shared by public contact and center support; private contact fields and attachments remain scoped. **QA:** signed-file expiry, wrong-patient report, duplicate PDF/link, repeated send, provider timeout-after-success, dormant worker/idle egress, service restart and cross-center helpdesk visibility.
+
 ## Typed API and coordination
 
 An authenticated `/api/documents-notifications` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
