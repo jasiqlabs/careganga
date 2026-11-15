@@ -56,7 +56,7 @@ function validCase(x:unknown):x is CG03CaseView{
     typeof v.accountName==="string"&&typeof v.roleName==="string"&&
     typeof v.status==="string"&&Number.isInteger(v.revision);
 }
-export function ProposalWorkspace({mayConfigure}:{mayConfigure:boolean}){
+export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolean;mayPropose:boolean}){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [process,setProcess]=useState<CG03ProcessView|null>(null);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -108,7 +108,7 @@ export function ProposalWorkspace({mayConfigure}:{mayConfigure:boolean}){
     }
   }
   function begin(previous?:CG03CaseView){
-    if(busy||unknown)return;
+    if(busy||unknown||!mayPropose)return;
     key.current=crypto.randomUUID();setPendingKind("CASE");
     setPreviousCase(previous?.caseRef??null);
     setAccount("");setRole("");setAccounts([]);setRoles([]);
@@ -198,8 +198,8 @@ export function ProposalWorkspace({mayConfigure}:{mayConfigure:boolean}){
       <div className="toolbar">
         <button type="button" disabled={busy||loading||unknown}
           onClick={()=>void refresh()}>Refresh verified applications</button>
-        <button className="primary" type="button" disabled={busy||unknown}
-          onClick={()=>begin()}>Request protected role access</button>
+        {mayPropose&&<button className="primary" type="button" disabled={busy||unknown}
+          onClick={()=>begin()}>Request protected role access</button>}
       </div></header>
     {message&&<p className={"notice "+message.kind}
       role={message.kind==="success"?"status":"alert"}>{message.message}</p>}
@@ -248,7 +248,7 @@ export function ProposalWorkspace({mayConfigure}:{mayConfigure:boolean}){
             <td>{new Date(entry.submittedAt).toLocaleString()}</td>
             <td><div className="toolbar"><button type="button"
               onClick={()=>void viewCase(entry)}>View</button>
-              {entry.status==="RETURNED"&&<button type="button"
+              {mayPropose&&entry.status==="RETURNED"&&<button type="button"
                 disabled={busy||unknown} onClick={()=>begin(entry)}>
                   Submit correction</button>}</div></td>
           </tr>)}
