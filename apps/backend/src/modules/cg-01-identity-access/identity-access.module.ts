@@ -13,10 +13,12 @@ import { AccountsService } from "./application/accounts.service";
 import { AccountsController } from "./http/accounts.controller";
 import { InvitationEnrollmentService } from "./application/invitation-enrollment.service";
 import { InvitationController } from "./http/invitation.controller";
+import { SecurityPolicyService } from "./application/security-policy.service";
+import { SecurityPolicyController } from "./http/security-policy.controller";
 
 @Module({
-  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController],
-  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader],
+  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController],
+  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService],
   exports:[SessionService,AccessAuditReader,AccountsService]
 })
 export class IdentityAccessModule {}

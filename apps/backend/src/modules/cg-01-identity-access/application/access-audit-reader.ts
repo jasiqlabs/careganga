@@ -20,7 +20,8 @@ const labels:Readonly<Record<string,string>>={
   "identity.account.assign":"Staff role assigned",
   "identity.account.revoke":"Staff role revoked",
   "identity.account.status":"Account status changed",
-  "identity.invitation.accept":"Invitation activated"
+  "identity.invitation.accept":"Invitation activated",
+  "identity.security-policy.update":"Security policy updated"
 };
 function cursorKey():Buffer{
   const b=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");

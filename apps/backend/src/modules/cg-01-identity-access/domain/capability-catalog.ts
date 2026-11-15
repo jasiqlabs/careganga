@@ -16,7 +16,9 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"accounts.invite",businessLabel:"Invite staff accounts",group:"Accounts & access",assignable:true,sensitive:true},
   {key:"accounts.status.manage",businessLabel:"Suspend or reactivate staff",group:"Accounts & access",assignable:true,sensitive:true},
   {key:"roles.assign",businessLabel:"Assign eligible roles",group:"Accounts & access",assignable:true,sensitive:true},
-  {key:"access.audit.view",businessLabel:"View access history",group:"Security & audit",assignable:true,sensitive:true}
+  {key:"access.audit.view",businessLabel:"View access history",group:"Security & audit",assignable:true,sensitive:true},
+  {key:"identity.security-policy.view",businessLabel:"View security policy",group:"Security & audit",assignable:false,sensitive:true},
+  {key:"identity.security-policy.manage",businessLabel:"Manage security policy",group:"Security & audit",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
