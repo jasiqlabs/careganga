@@ -197,3 +197,14 @@ button:disabled { cursor:wait; opacity:.65; }
 .sidebar-brand-name{display:grid;gap:.1rem}
 .sidebar-brand>img,.cg-brandline img{flex:none;width:2.65rem;height:2.65rem;object-fit:contain}
 .cg-brandline{display:inline-flex;align-items:center;gap:.65rem;color:var(--cg-sidebar)}
+
+/* U02–U04 account workspace uses the original CareGanga tiles/table/drawer shell. */
+.account-status{font-size:.75rem;font-weight:700;border-radius:999px;padding:.3rem .6rem;
+ background:#EFF2F6;color:#42516B}
+.account-status.active{background:#E9F7EF;color:#126C42}
+.account-status.invited{background:#EDF4FF;color:#1E53DC}
+.account-status.suspended{background:#FFF1DA;color:#8B5512}
+.account-status.deactivated{background:#FFECEF;color:#A83F4D}
+.search-row>label{font-weight:600;font-size:.85rem}
+.role-drawer .field select{background:var(--cg-surface);color:var(--cg-text)}
+@media(min-width:70rem){.kpi-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
