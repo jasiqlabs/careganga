@@ -47,6 +47,7 @@ export function RolesPanel(){
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
   const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
+  const lastResumeCheck=useRef(0);
   const dialogRef=useRef<HTMLElement|null>(null);
   const savingRef=useRef(false);
   useEffect(()=>{savingRef.current=saving;},[saving]);
@@ -78,7 +79,14 @@ export function RolesPanel(){
   useEffect(()=>{void load("",0);},[load]);
   // Revalidate on focus/resume without a background polling loop.
   useEffect(()=>{
-    const onFocus=()=>{if(document.visibilityState==="visible")void load(appliedSearch,offset,tab);};
+    const onFocus=()=>{
+      if(document.visibilityState!=="visible")return;
+      // Browser focus and visibility may fire for the same user action.
+      const now=Date.now();
+      if(now-lastResumeCheck.current<1200)return;
+      lastResumeCheck.current=now;
+      void load(appliedSearch,offset,tab);
+    };
     window.addEventListener("focus",onFocus);
     document.addEventListener("visibilitychange",onFocus);
     return()=>{window.removeEventListener("focus",onFocus);
