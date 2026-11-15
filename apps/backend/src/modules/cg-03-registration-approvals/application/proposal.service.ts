@@ -36,6 +36,8 @@ function view(row:CaseRow){
     accountName:row.account_name_snapshot,roleName:row.role_name_snapshot,
     status:row.status,revision:row.revision,proposalRevision:row.proposal_revision,
     processVersion:row.process_version,currentStep:row.current_step,
+    sourceAccountAccessRevision:row.expected_access_version,
+    sourceRoleRevision:row.expected_role_revision,
     submittedAt:row.submitted_at.toISOString(),previousCaseRef:row.previous_case_id};
 }
 @Injectable()
