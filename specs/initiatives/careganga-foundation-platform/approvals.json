@@ -770,7 +770,7 @@
       },
       "formal_stage_gate": "BLOCKED_LOCAL_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_SECURITY_PROVIDER_DELIVERY_POSTGRES_ANDROID_WEB_RUNTIME_AND_REVIEW_QA_NOT_RUN",
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
-      "task_definitions_sha256": "7eefaf4e20944dbf203b55d52adc056f453249f3c9f505a680191c5386f05455",
+      "task_definitions_sha256": "cb4d443583282962a49a4376a0860bd2754938bbb49dc7e5b8cd538c2d49be27",
       "story_count": 3,
       "QA_count": 42,
       "approval_history": [
@@ -785,7 +785,7 @@
       "current_artifact_sha256": "fff49b3722839ee016ce02969e1309a614e714ad1ed8870cd3388fa4cb156ba0",
       "reapproval_reason": "SMS and Email independent first-class delivery contract; channel-specific SMS/email provider and outbox and consent requirements; US-002 three added real email/SMS delivery, opt-out and native QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited",
       "qa_count": 42,
-      "definition_hash_method": "sha256(UTF8 tasks.md prefix before `## Execution progress` trimmed trailing line-breaks)"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     },
     "uiux/cg-19-documents-notifications": {
       "status": "DELEGATED_APPROVED",
@@ -5043,7 +5043,7 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
       "story_count": 4,
       "qa_count": 51,
-      "task_definitions_sha256": "b2e684d81639035f9e32fab76e94e2427dc6b083c7c2544782fd9ec10dc1dddf",
+      "task_definitions_sha256": "868b0bef6de9be850da6fedf3c5c1d1f91c52f396ef673bcb2587a5675554ada",
       "approval_history": [
         {
           "approved_at": "2026-11-15T15:36:06.450Z",
@@ -5054,7 +5054,7 @@
         }
       ],
       "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited",
-      "definition_hash_method": "sha256(UTF8 tasks.md prefix before `## Execution progress` trimmed trailing line-breaks)"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     },
     "dld/cg-01-identity-access": {
       "status": "DELEGATED_APPROVED",
@@ -5205,7 +5205,7 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
       "story_count": 4,
       "qa_count": 51,
-      "task_definitions_sha256": "b2e684d81639035f9e32fab76e94e2427dc6b083c7c2544782fd9ec10dc1dddf",
+      "task_definitions_sha256": "868b0bef6de9be850da6fedf3c5c1d1f91c52f396ef673bcb2587a5675554ada",
       "approval_history": [
         {
           "approved_at": "2026-11-15T15:36:06.450Z",
@@ -5216,7 +5216,7 @@
         }
       ],
       "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited",
-      "definition_hash_method": "sha256(UTF8 tasks.md prefix before `## Execution progress` trimmed trailing line-breaks)"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     },
     "planning/cg-17-healthcare-assistance-settlements": {
       "status": "DELEGATED_APPROVED",
@@ -6197,8 +6197,8 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
       "story_count": 3,
       "qa_count": 42,
-      "task_definitions_sha256": "7eefaf4e20944dbf203b55d52adc056f453249f3c9f505a680191c5386f05455",
-      "definition_hash_method": "sha256(UTF8 tasks.md prefix before `## Execution progress` trimmed trailing line-breaks)"
+      "task_definitions_sha256": "cb4d443583282962a49a4376a0860bd2754938bbb49dc7e5b8cd538c2d49be27",
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     }
   }
 }
