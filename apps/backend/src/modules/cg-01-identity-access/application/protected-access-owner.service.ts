@@ -39,6 +39,33 @@ export class ProtectedAccessOwnerService{
     if(!rows.rowCount||!rows.rows[0].permitted)
       throw new ForbiddenException("Current access does not permit this request");
   }
+  /** Review-time privilege check with session/account/role row locks so a
+   *  concurrent role revocation cannot race the accepted CG-03 decision.
+   */
+  async verifyReviewer(client:PoolClient,actor:VerifiedFoundationActor,
+    capability:"roles.assign"|"approvals.review",rootRequired:boolean):Promise<void>{
+    const rows=await client.query<{is_protected:boolean;has_capability:boolean}>(`
+      SELECT r.is_protected,
+        EXISTS(SELECT 1 FROM role_grant grant_row
+          WHERE grant_row.role_id=r.id AND grant_row.capability_key=$4) AS has_capability
+      FROM auth_session s
+      JOIN account a ON a.id=s.account_id AND a.realm_id=$3
+        AND a.status='ACTIVE' AND s.account_access_version=a.access_version
+      JOIN access_realm realm ON realm.id=a.realm_id AND realm.realm_key='FOUNDATION_ROOT'
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
+        AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
+      WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+        AND s.expires_at>now()
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
+      FOR SHARE OF s,a,ar,r
+    `,[actor.activeSessionId,actor.accountId,actor.realmId,capability]);
+    const row=rows.rows[0];
+    if(!row||!(rootRequired?row.is_protected:(row.is_protected||row.has_capability)))
+      throw new ForbiddenException("Your reviewer authority is no longer current");
+  }
   async requireDistinctFinalReviewer(client:PoolClient,realm:string,proposer:string){
     const reviewers=await client.query(`
       SELECT 1 FROM account a JOIN account_role ar ON ar.account_id=a.id AND
