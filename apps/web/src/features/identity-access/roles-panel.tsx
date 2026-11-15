@@ -56,7 +56,7 @@ export function RolesPanel(){
 
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     const generation=++latestRead.current;
-    setLoading(true);setNotice(null);
+    setLoading(true);setNotice(null);setDetails(null);
     try{
       const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status});
       const [list,catalog,effective]=await Promise.all([
