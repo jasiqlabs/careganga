@@ -43,7 +43,7 @@ export function SecurityPolicyPanel(){
   const readGeneration=useRef(0);
   const dialog=useRef<HTMLElement|null>(null);
   const saveBusy=useRef(false);
-  const read=useCallback(async()=>{
+  const read=useCallback(async(expectedRevision?:number):Promise<boolean>=>{
     const gen=++readGeneration.current;setLoading(true);
     try{
       const resp=await fetch("/api/session/security-policy",{cache:"no-store",credentials:"same-origin"});
@@ -52,14 +52,16 @@ export function SecurityPolicyPanel(){
         "The current policy cannot be verified.");
       const body:unknown=await resp.json();
       if(!valid(body))throw Error("The policy response could not be verified.");
-      if(gen!==readGeneration.current)return;
+      if(gen!==readGeneration.current)return false;
       setPolicy(body);setValues(draft(body));setEditing(false);setReview(false);setTotp("");
       setUncertain(false);setNotice(null);requestKey.current="";
+      return expectedRevision===undefined||body.revision>=expectedRevision;
     }catch(e){
       if(gen!==readGeneration.current)return;
       // Denied or unverified data must not remain cached in a protected screen.
       setPolicy(null);setValues(null);setEditing(false);setReview(false);
       setNotice({kind:"error",message:e instanceof Error?e.message:"Security policy is unavailable."});
+      return false;
     }finally{if(gen===readGeneration.current)setLoading(false);}
   },[]);
   useEffect(()=>{void read();return()=>{++readGeneration.current;};},[read]);
@@ -138,8 +140,10 @@ export function SecurityPolicyPanel(){
       if(!ack||typeof ack!=="object"||!("revision" in ack)||
         !Number.isInteger(ack.revision))throw Error("Unconfirmed result");
       setEditing(false);setReview(false);setTotp("");requestKey.current="";
-      await read();
-      setNotice({kind:"success",message:"Security policy saved and reloaded. Existing staff sessions follow the updated limits."});
+      const verified=await read(Number(ack.revision));
+      setNotice(verified
+        ?{kind:"success",message:"Security policy saved and verified. Existing staff sessions follow the updated limits."}
+        :{kind:"uncertain",message:"The server acknowledged the change, but the current policy could not be reverified. Refresh before another edit."});
     }catch{
       setUncertain(true);setNotice({kind:"uncertain",message:
         "The result may already have been saved. Refresh the effective policy before another attempt."});
