@@ -208,3 +208,6 @@ button:disabled { cursor:wait; opacity:.65; }
 .search-row>label{font-weight:600;font-size:.85rem}
 .role-drawer .field select{background:var(--cg-surface);color:var(--cg-text)}
 @media(min-width:70rem){.kpi-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+.mfa-secret{display:block;padding:.85rem;border:1px dashed var(--cg-border);background:#F7F9FC;
+ border-radius:.4rem;overflow-wrap:anywhere;user-select:all;word-break:break-word;font-family:ui-monospace,monospace}
