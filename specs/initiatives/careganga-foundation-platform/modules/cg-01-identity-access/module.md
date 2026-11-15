@@ -33,7 +33,7 @@ Foundation-root is a real single-Foundation administrative context, **not** a fa
 
 ## 2. Data owner and boundaries
 
-**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit. It also owns a genuine pending protected access-change request referencing existing CG-01 accounts/roles; that request grants nothing before a later real CG-03 final decision.
+**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit. Approval-dependent protected access changes are introduced **by CG-03 after CG-01 works**; the first module creates no pending-only approval feature or CG-03 case.
 
 **CG-01 does not own:** HR employee profile/status (CG-10), geography/branch/department (CG-02), approval cases (CG-03), provider/center and doctor (CG-14), member/volunteer (CG-04), patient (CG-15), finance, files or communication delivery. The same verified login may link to future relationships only through the relevant owner, never by matching phone alone. Do not create fake master rows or a universal cross-module dropdown.
 
@@ -56,7 +56,7 @@ The permission catalog uses clear business labels in clients and stable internal
 | Later owner | What it introduces and must verify |
 | --- | --- |
 | CG-02 Foundation Structure | Real state/district/subdivision/block/branch and department records; scoped assignment selectors/authorization and negative cross-branch tests through CG-01 access |
-| CG-03 Approvals | Required protected-role/access approval routes; grant becomes effective only after real final authorized decision |
+| CG-03 Approvals | Adds genuine approval-dependent access-change applications targeting already-existing CG-01 accounts/roles; only after review may CG-03 call CG-01's guarded, idempotent grant finalization. No first-module dependency |
 | CG-10 HR | Verified employee-account association; employee type, designation, joining date, employment/status filters in the CG-01 people directory |
 | CG-14 Healthcare Network | Real center/location/staff affiliations and safe selector; center-specific role binding, revocation, and prevention of Foundation/medical privilege inheritance |
 | Every later owner | Register only its approved action keys; expose its own minimum-field `options` endpoint for required selectors, with distinct permission from confidential detail/list/export |
@@ -69,7 +69,7 @@ The permission catalog uses clear business labels in clients and stable internal
 
 **Pass condition:** Manual source inspection checks theme tokens, source-matched component usage and native/responsive behaviors; independently authorized live visual QA compares the result against original reference images/videos before declaring an exact-color/animation PASS. Until original assets and rendered screens are inspected, keep `VISUAL_NOT_RUN` and `REFERENCE_ASSETS_NOT_VERIFIED`. Preserve UI identity across future CG modules; do not duplicate the token catalog in every module.
 
-## 5. Non-negotiable acceptance
+## 6. Non-negotiable acceptance
 
 - Every protected action requires **current authenticated account + permitted action + valid actual resource scope**. Unknown scopes, revoked access and guessed IDs fail closed, including search, selector, export, files and direct API calls.
 - Protect the initial Super Admin/root authority (including recovery and last-root safeguards); no ordinary role edit, role copy or assignment may elevate to root. Audited role/grant/assignment mutations are atomic and concurrency-safe.
@@ -78,7 +78,17 @@ The permission catalog uses clear business labels in clients and stable internal
 - Credential protection, rate-limited recovery, session invalidation, privacy-safe logs, bounded directory pagination, database constraints/indexes, accessible responsive/native UX and no unbounded polling are mandatory.
 - Manual source QA per approved story covers backend, database, responsive Web and Android. **No CI/GitHub Actions.** Runtime, visual appearance, Play Store binary and performance remain NOT_RUN/NOT_MEASURED until independently authorized QA.
 
-## 6. Planning outputs and gate
+### Harness completeness — product-wide NFRs applied to CG-01
+
+**Database (CRITICAL):** accurate account/session/role/grant/multiple-role-assignment keys and UNIQUE/FK/CHECK constraints, protected last Super Admin, scoped read/search/options/export, versioned migrations and rollback/recovery. DLD owns exact schema, transaction locks and index choices. No technical Foundation-root row may substitute for CG-02 geography or branch.
+
+**Idle cost/workers:** MFA, invitations and recovery run only from genuine actions using bounded provider attempts and honest delivery status; zero due work must not cause tenant-wide polling, repeated DB scans or provider sends. No mandatory import worker, Redis or new queue. Request/DB/provider usage and costs are `NOT_MEASURED` until tested.
+
+**Human errors and diagnostics:** Same plain-language outcomes across Web/Android, including duplicate role, blocked action, stale edit, invalid/expired verification, delivery pending, provider unavailable and unknown save result; errors show safe next actions and never technical IDs. Append-only security audit is durable with authorized permission changes; structured **restricted** technical logs carry redacted correlation/support references, bounded metrics and no credential/PII payloads. Diagnostic failure cannot turn a committed update into a false failure.
+
+**Security/reliability:** enforce server authorization on every API/selector/search/export, current role and session revisions, MFA for privileged roles, rate limits, concurrency/idempotency, scoped caching, safe secret storage and old-client compatibility. CG-01 must be independently functional with only its technical bootstrap. UI retains original CareGanga tokens and source-supported transitions. Record unexecuted CRITICAL DB specialist review, visual/device checks and live measurements as pending, never PASS.
+
+## 7. Planning outputs and gate
 
 Only these four files constitute CG-01 Planning: `module.md`, `uiux.md`, `dld.md`, `tasks.md`. Tasks are cross-stack business outcomes, not backend/Web/mobile phases. No stories.md, duplicate tracker, future-owner task masquerading as CG-01 completion, or extra design stage.
 
