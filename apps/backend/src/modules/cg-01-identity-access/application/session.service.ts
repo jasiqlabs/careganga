@@ -39,7 +39,7 @@ export class SessionService implements IdentityAuthorization {
       throw new HttpException("Retry limit reached", HttpStatus.TOO_MANY_REQUESTS);
   }
 
-  async signIn(details: { email: string; password: string; totp: string; remoteAddress: string; deviceLabel: string }):
+  async signIn(details: { email: string; password: string; totp: string; remoteAddress: string; deviceLabel: string; correlationRef: string }):
       Promise<{ sessionToken: string; expiresAt: string; displayName: string }> {
     const email = details.email.trim().toLowerCase();
     // Do not globally lock out all users sharing one trusted Web BFF/proxy IP.
@@ -96,7 +96,7 @@ export class SessionService implements IdentityAuthorization {
           [row.id, matchedCounter]);
         await client.query(`
           INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,action_key,outcome,correlation_ref)
-          VALUES($1,$2,$2,'identity.session.login','SUCCESS',$3)`,[row.realm_id,row.id,randomUUID()]);
+          VALUES($1,$2,$2,'identity.session.login','SUCCESS',$3)`,[row.realm_id,row.id,details.correlationRef]);
         // The throttle cleanup is part of the transaction. Never report a failed sign-in
         // after the session and mandatory audit have already committed.
         await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[this.throttleKey("email",email)]);
