@@ -42,8 +42,10 @@ export function RolesPanel(){
   const [historyCursor,setHistoryCursor]=useState<string|null>(null);
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
+  const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
 
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
+    const generation=++latestRead.current;
     setLoading(true);setNotice(null);
     try{
       const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status});
@@ -52,15 +54,17 @@ export function RolesPanel(){
         read<{groups:Group[]}>("capabilities"),
         read<{actions:{key:string}[]}>("effective")
       ]);
+      if(generation!==latestRead.current)return;
       setRoles(list.roles);setGroups(catalog.groups);
       setActions(effective.actions.map(x=>x.key));setTotal(list.total);
       setOffset(skip);
     }catch(e){
+      if(generation!==latestRead.current)return;
       // Fail closed after revalidation failure: do not leave restricted role/audit content cached.
       setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
       setEditor(null);setPendingRetire(null);
       setNotice({kind:"error",text:e instanceof Error?e.message:"Information unavailable."});
-    }finally{setLoading(false);}
+    }finally{if(generation===latestRead.current)setLoading(false);}
   },[]);
 
   useEffect(()=>{void load("",0);},[load]);
