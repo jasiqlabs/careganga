@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **Salary versions, determinis
 
 State/invariant: **Payroll draft/review/approved/payment pending/settled; No duplicate period/source posting; payment initiation ≠ settled money**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete salary calculation and one-time payout
+
+`salary_structure(id,components,statutory_policy,valid_from,version)` and `employee_compensation(real_employee_ref,effective_from,revision,approved_components)` preserve salary/adjustment history without copying CG-10 employee master. Salary/bank details are accessible only to protected payroll/finance roles.
+
+`payroll_run(period,financial_year,version,attendance_snapshot_ref,policy_version,status)` has unique approved period/version and `payroll_line(run_id,employee_id,basic,allowance,deduction,arrears,gross,net,hold)` calculates deterministic gross/net with approved rounding and leave/late/hold rules. Frozen run snapshots remain unchanged when later attendance changes; create an auditable correction/arrears run instead.
+
+`payment_batch(run_id,approved_by,bank_instruction_ref,provider_payment_ref,status)` never marks PAID on mere submission. Verified actual payout links one CG-09 journal/payment by unique batch+employee source and produces private CG-19 payslip from approved run version; no duplicate salary expense.
+
+**QA:** competing draft runs same month, approval before calculation, stale employee compensation, leave revision after lock, blocked bank account, partial bank transfer, duplicate callback, private payslip and Foundation-only money posting.
+
 ## Typed API and coordination
 
 An authenticated `/api/payroll-compensation` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
