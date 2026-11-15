@@ -38,6 +38,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   const [review,setReview]=useState(false);
   const [totp,setTotp]=useState("");
   const [busy,setBusy]=useState(false);
+  const [checkingOutcome,setCheckingOutcome]=useState(false);
   const [loading,setLoading]=useState(true);
   const [unknown,setUnknown]=useState(false);
   const [message,setMessage]=useState("");
@@ -82,6 +83,28 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
     });
     return()=>sub.remove();
   },[read,editing,unknown]);
+  async function checkOutcome(){
+    if(!unknown||!requestKey.current||checkingOutcome)return;
+    setCheckingOutcome(true);
+    try{
+      const result=await identityRequest("/api/identity/security-policy/changes/"+
+        encodeURIComponent(requestKey.current),{
+          headers:{Authorization:"Bearer "+token}
+        });
+      if(result.status===401){onExpired();return;}
+      if(result.status===403){setCurrent(null);onExit();return;}
+      if(!result.ok)throw Error("Unavailable");
+      const body=await result.json() as {status?:string;revision?:number|null};
+      if(body.status==="CONFIRMED"&&Number.isInteger(body.revision)){
+        const verified=await read(Number(body.revision));
+        setUnknown(!verified);
+        setMessage(verified?"The earlier change is confirmed and the effective policy reloaded.":
+          "The change was recorded, but its effective policy cannot yet be confirmed.");
+      }else setMessage("No committed outcome is visible yet. Check again before retrying.");
+    }catch{
+      setMessage("The previous change cannot yet be confirmed. Check again before trying another edit.");
+    }finally{setCheckingOutcome(false);}
+  }
   function begin(){
     if(!current)return;
     requestKey.current=Crypto.randomUUID();setValues(form(current));setEditing(true);
@@ -186,7 +209,13 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
         disabled={busy||loading} onPress={()=>void read()}>
         <Text style={styles.buttonText}>Refresh effective policy</Text>
       </Pressable>
-      {unknown&&<Text style={styles.helper}>Do not repeat an unconfirmed change before refreshing.</Text>}
+      {unknown&&<View style={styles.field}>
+        <Text style={styles.helper}>Do not repeat an unconfirmed change before checking its result.</Text>
+        <Pressable accessibilityRole="button" disabled={checkingOutcome}
+          style={styles.button} onPress={()=>void checkOutcome()}>
+          <Text style={styles.buttonText}>{checkingOutcome?"Checking…":"Check previous change"}</Text>
+        </Pressable>
+      </View>}
     </ScrollView>
   </KeyboardAvoidingView></SafeAreaView>;
 }
