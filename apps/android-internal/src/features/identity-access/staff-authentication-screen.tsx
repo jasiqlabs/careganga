@@ -166,6 +166,7 @@ export function StaffAuthenticationScreen(){
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
     return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
+      canPropose={roleActions.includes("approvals.propose")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
