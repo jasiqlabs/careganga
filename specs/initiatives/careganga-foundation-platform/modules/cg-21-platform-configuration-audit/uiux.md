@@ -9,7 +9,7 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
-**Reference evidence boundary:** C54 API/Integrations and C55 Backup/Restore are disabled placeholder captures, **not functioning services**. PRD/BR require an accessible real private configuration/request view backed by approved operations; when provider or restore procedure is absent show Configured/Not verified or Recovery unavailable, never successful execution. C50's public Login/Join/Volunteer toggles are the original screen's visual evidence: actual publication control belongs to future CG-18 and cannot be duplicated in CG-21 or falsely shown active; until CG-18 delivers them, display an accurate ownership/unavailable explanation, not an inert enabled switch.
+**Reference evidence boundary:** C54 Integrations and C55 Backup/Restore are **visually documented placeholders**, not implemented source services; recreate their CareGanga visual identity but build only CG-21-owned configuration, real status, and permitted request controls. Without provider setup or an actual backup facility display truthful Not configured/Not available and **hide any misleading activation/restore action**. C50 public Login/Join/Volunteer toggles belong entirely to later CG-18: its owner builds and tests them when delivered, not a disabled mock implementation in CG-21.
 
 ## Screen/flow map
 
@@ -19,6 +19,18 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Responsive:** original desktop hierarchy remains recognisable; tablet/phone adapt the sidebar, search/filter and long tables; drawers use full width on narrow Web when required.  
 **Native:** No newly owned Android page, SDK/plugin or mobile permission (NOT_APPLICABLE for CG-21). Existing Public/Internal Android CG-01 authentication/security behavior must remain compatible with effective CG-01 policy; do not create a second native settings/audit editor.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
+
+## Source-owner screen boundaries — no future functionality in CG-21
+
+| Original Admin reference | CG-21 usable first-release screen | Excluded action (belongs to its original owner) |
+| --- | --- | --- |
+| C50/C51 General Settings | Save/version/history of real **CG-21-owned** operational settings; securely view/configure optional integration references; show current backed status | Foundation legal/contact profile is CG-02. Website/public-app Login/Join/Volunteer publication and visibility toggles belong to CG-18. Do not show enabled-looking dummy switches |
+| C54 Integrations | Provider **configuration status** and deliberate bounded verification, including truthful Not configured/Not verified/Failed/Unavailable; safe secret entry | Do not send SMS/WhatsApp/email/push (CG-19), collect money (CG-09/17) or maintain a fictitious live merchant account |
+| C09/C10/C52/C53 Audit | Protected **CG-01 + CG-21 original source events only**, with permitted detail, capped export, clear verified-empty/partial/error states | No fake payroll, approval, branch, publishing, medical or payment audit before their actual business owners exist; later owners add their event projections |
+| C55 Backup/Restore | Real availability/status and authorized **CG-21 recovery request** only when an actual secured backup exists, with fresh CG-01 MFA and clear independent evidence | Backup provider/configuration and real restoration are deployed operations responsibilities, not a future business module. Without a real facility show Not available and **no working-looking Restore button** |
+| CG-01 account/session security | Read only genuine supported CG-01 status, and show a policy action only if its **earlier delivered** protected API actually supports it | CG-21 never implements credential/session/MFA policy, protected role grants or another login UI |
+
+**UI acceptance with only CG-01 delivered:** Foundation Admin Web can actually save an allowed CG-21 setting and show version/history, read genuine CG-01 + CG-21 events, receive correct scope/validation/conflict/retry feedback and display secure optional integration/recovery availability. No future module screen, records, stats or provider effects are required to navigate and test these screens. **No CG-21 Android page**; the one shared CareGanga design tokens remain mandatory. Live screenshot and animation parity remain NOT_RUN.
 
 ## Task-first source screenshot and UX acceptance
 
