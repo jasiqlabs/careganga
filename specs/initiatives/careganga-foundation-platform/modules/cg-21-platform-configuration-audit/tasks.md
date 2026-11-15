@@ -2,44 +2,46 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
+**Stage:** Harness Planning DRAFT aligned to corrected PRD/HLD v1.1; [module](module.md), [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
 **Development gate:** PRD/HLD current approval REVIEW_REQUIRED, authenticated local resolver and hash-bound module/task/design approvals NOT_RUN. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
-## Proposed task definitions — NOT YET APPROVED
+## Approved task definitions
 
-### US-001 — Configure Foundation/system settings, approved payment/messaging/map…
+**Approval truth:** These are still PROPOSED / NOT_YET_APPROVED despite the Harness-required heading. Do not mark READY until authenticated resolver and current-hash PRD/HLD/Planning/UIUX/DLD approval gates pass.
 
-Outcome: Configure Foundation/system settings, approved payment/messaging/map integrations and public visibility through the owning modules; sensitive credentials restricted.
+### US-001 — Manage versioned platform settings and verified integrations
+
+Outcome: CG-01-authorized Foundation operator updates versioned typed platform settings, configures optional provider secret references and sees honest on-demand provider readiness; CG-02 Foundation profile and CG-18 public publication remain future-owned.
 Requirements: FR-075, CG-21-BR01, CG-21-BR03, CG-21-BR05; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-21 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Update typed Foundation/platform setting and verify actual provider integration state; handle secret reference safely. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
+Scope: Responsive Foundation Admin Web and one NestJS CG-21 owner/API/DB with genuine CG-01 root access and audit. Only typed settings, credential references and on-demand provider checks belong here; no native Android editor. CG-02/03/14/17/18 are not prerequisite masters or approval processes.
+Acceptance: Authorized root actor saves real setting with expected-version CAS, one source audit and safe success; competing stale change fails with explicit CONFLICT. Provider readiness is VERIFIED only after genuine bounded on-demand verification, otherwise NOT_VERIFIED/FAILED/UNAVAILABLE. Secrets never appear in API, Web or logs. No future owner blocks root settings.
 QA cases:
-- **US-001-QA01:** Starting from actual authorized actor and implemented owner record: update typed Foundation/platform setting and verify actual provider integration state; handle secret reference safely. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
+- **US-001-QA01:** On actual CG-01 root account with scope/grant, save and reread one typed CG-21 setting; verify version, single owner audit and accurate Web feedback without CG-02/03/18 records.
 - **US-001-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
-- **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
-- **US-001-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
-- **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
+- **US-001-QA03:** Competing expected-revision writes/replay after lost response produce one accepted change and audit; losing write returns CONFLICT and refresh, never duplicate effect.
+- **US-001-QA04:** Unknown key, wrong type, unconfigured optional provider or failed verification returns distinct VALIDATION/NOT_CONFIGURED/UNAVAILABLE; no fake VERIFIED status or unsafe retry of an unknown write.
+- **US-001-QA05:** Protected typed API returns same effective version to authorized consumers; denied users receive no secrets. CG-18 publication and CG-02 legal profile remain unavailable until their actual owner delivers.
 - **US-001-QA06:** Original CareGanga screenshot refs C09, C10, C50, C51, C52, C53, C54, C55, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-- **US-001-QA07 — owner-specific regression:** Stale setting write or configured-only external provider is not reported verified-ready. Confirm correct database/remote state, access scope and user response under repeat or conflict.
-- **US-001-QA08 — Source-specific contract:** Admin enters a payment/messaging provider credential and chooses Save but provider verification fails; show Configured / Not Verified, redact secret on refresh/logs, and do not enable checkout or report integration as live.
+- **US-001-QA07 — owner-specific regression:** CG-01 root login/role/MFA/audit authority remains unchanged; secret rotation invalidates VERIFIED; false ready and stale setting conflicts fail without creating a second auth or audit ledger.
+- **US-001-QA08 — secret and idle-cost:** Provider credential reference save succeeds but actual check fails → Configured/Not Verified, no secret exposed on reread/log/export, no fake checkout readiness. Zero pending checks cause zero CG-21 per-provider/tenant periodic scans on multiple instances; runtime egress remains NOT_MEASURED.
 Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
-### US-002 — Show protected logs for login, approvals, money, provider verification…
+### US-002 — View source-owned audit and administer protected recovery
 
-Outcome: Show protected logs for login, approvals, money, provider verification, sensitive accesses and publishing; restrict backup/restore to approved operations and support privileged MFA/session controls.
+Outcome: Privileged root operator views redacted CG-01 and CG-21 original audit events through one protected read view and manages real CG-01-MFA-gated recovery requests with truthful provider/restore status; future modules provide events only after implementation.
 Requirements: FR-076, CG-21-BR02, CG-21-BR04, CG-21-BR06; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-21 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Show protected redacted audit/history and privileged backup/restore state with real operations evidence. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
+Scope: Protected CG-21 Audit/Recovery responsive Foundation Admin Web, CG-01 access audit facade and active Super Admin/MFA, CG-21 owner audit and recovery record/API/DB. No native Android Admin screen and no dependence on future CG-03 approvals, CG-02 branches or nonexistent backup provider.
+Acceptance: Read actual CG-01 and CG-21 events without copying CG-01 access audit to another table, paginate/export only authorized redacted projections and show missing future feeds as unavailable/partial. Fresh CG-01 Super Admin MFA gates recovery-request authorization. Without a real secured backup provider show NOT_AVAILABLE; verified restore success requires separate actual drill evidence.
 QA cases:
-- **US-002-QA01:** Starting from actual authorized actor and implemented owner record: show protected redacted audit/history and privileged backup/restore state with real operations evidence. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
+- **US-002-QA01:** Generate genuine CG-01 role/session event and CG-21 setting event; authorized root sees them in one scoped read-only view with correct source/history. No second CG-01 audit ledger or invented CG-03/finance events.
 - **US-002-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
-- **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
-- **US-002-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
-- **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
+- **US-002-QA03:** Concurrent privileged recovery requests/authorizations and replay after ambiguous response result in one versioned authorized transition, not two restore effects; read current owner state first.
+- **US-002-QA04:** Missing backup provider or actual restore evidence shows NOT_AVAILABLE/UNKNOWN; transient CG-01 audit source failure shows partial/unavailable feed, not an empty complete history or fake verified restore.
+- **US-002-QA05:** Repeated root-authorized audit read is consistent; forbidden actor/export denied; nonexistent future owner audits not fabricated. Bound filter/sort/page and show partial feed accurately.
 - **US-002-QA06:** Original CareGanga screenshot refs C09, C10, C50, C51, C52, C53, C54, C55, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-- **US-002-QA07 — owner-specific regression:** Unauthorized restore, fake RPO/RTO PASS and foreign-scope log export remain blocked. Confirm correct database/remote state, access scope and user response under repeat or conflict.
-- **US-002-QA08 — Source-specific contract:** Ordinary staff tries backup restore from direct API and a Super Admin tries with missing MFA/required recovery authorization; both are blocked, while verified restoration preserves redacted audit and records independent recovery-test evidence as NOT_RUN until executed.
+- **US-002-QA07 — owner-specific regression:** Expired-MFA/revoked root, foreign-scope export and forged provider recovery proof are rejected. CG-01 original protected audit and revocation persist; no false RPO/RTO PASS.
+- **US-002-QA08 — recovery and worker cost:** Ordinary staff direct restore and Super Admin absent recent MFA both fail with safe messages. Without real backup mechanism a root request returns NOT_AVAILABLE; actual isolated restore drill/runtime QA NOT_RUN. Audit is paged and has no idle full-table/owner fanout or unnecessary provider calls; billing/egress NOT_MEASURED.
 Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
