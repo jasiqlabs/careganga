@@ -5572,12 +5572,12 @@
     "planning/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
-      "delegation_source": "User explicitly approved CG23 canonical full expert BR/PRD/HLD/DLD/UIUX/Web/native/backend/DB/NFR/QA source review and delegated SHA-bound approvals on 15 Nov 2026, and instructed to stop before CG24.",
+      "delegation_source": "Owner's prior explicit CG23 delegated approval plus 15 Nov 2026 final CG24/24-module current-SHA reconciliation request; source-only minor post-approval corrections re-reviewed",
       "artifact": "modules/cg-23-nursing-operations/module.md",
-      "sha256": "ef1e4e7384803471f3d9c2536af4479cb44586f609456d01356ae2222f77383c",
-      "current_artifact_sha256": "ef1e4e7384803471f3d9c2536af4479cb44586f609456d01356ae2222f77383c",
+      "sha256": "0bee9dc697f4e2df4416179a083ad6e56be421e0fe731c59872b9d881a015809",
+      "current_artifact_sha256": "0bee9dc697f4e2df4416179a083ad6e56be421e0fe731c59872b9d881a015809",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:44:29.306Z",
+      "approved_at": "2026-11-15T17:16:05.625Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/module.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -5606,14 +5606,30 @@
           "003": 18,
           "004": 18,
           "005": 18
-        }
+        },
+        "postapproval_change_review": "NARROW_COMPATIBLE_SOURCE_DESIGN_CORRECTION_RE_REVIEWED",
+        "correction_source_commit": "d74b46d4d7514977380df8b9dfd75197fdd549de",
+        "actual_independent_sql_runtime": "NOT_RUN"
       },
-      "formal_stage_gate": "BLOCKED_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_CLINICAL_DATABASE_PRIVACY_H13_PIXEL_AND_ALL_RUNTIME_QA_NOT_RUN",
-      "development_authority": "DELEGATED_SOURCE_DESIGN_ONLY_NO_CODE_COMPLETION_OR_PRODUCTION_OPERATION_AUTHORITY",
+      "formal_stage_gate": "BLOCKED_AUTHENTICATED_LOCAL_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_CLINICAL_DB_PRIVACY_VISUAL_AND_RUNTIME_QA_NOT_RUN",
+      "development_authority": "OWNER_DELEGATED_SOURCE_DESIGN_ONLY_NOT_IMPLEMENTED_OR_RELEASE_APPROVED",
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "541db5df4c6493cca2ae6c5e6329b628f0f6d536e57a2119ba5b67eaeb2f66ca",
-      "definition_hash_method": "UTF8 prefix of tasks.md before newline ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before newline ## Execution progress",
+      "approval_history": [
+        {
+          "approved_at": "2026-11-15T16:44:29.306Z",
+          "sha256": "ef1e4e7384803471f3d9c2536af4479cb44586f609456d01356ae2222f77383c",
+          "review_status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
+          "reason": "CG23 original delegated approved file before post-approval same-design correction"
+        }
+      ],
+      "previous_delegated_decision": {
+        "approved_at": "2026-11-15T16:44:29.306Z",
+        "sha256": "ef1e4e7384803471f3d9c2536af4479cb44586f609456d01356ae2222f77383c"
+      },
+      "reapproval_reason": "Post-approval narrow typo correction CGI-09/17→CG-09/17 in BR04 owner row; reviewed d74b46d4, no business or QA change"
     },
     "uiux/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
@@ -5662,12 +5678,12 @@
     "dld/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
-      "delegation_source": "User explicitly approved CG23 canonical full expert BR/PRD/HLD/DLD/UIUX/Web/native/backend/DB/NFR/QA source review and delegated SHA-bound approvals on 15 Nov 2026, and instructed to stop before CG24.",
+      "delegation_source": "Owner's prior explicit CG23 delegated approval plus 15 Nov 2026 final CG24/24-module current-SHA reconciliation request; source-only minor post-approval corrections re-reviewed",
       "artifact": "modules/cg-23-nursing-operations/dld.md",
-      "sha256": "87bb207ae410a84f20a6760e18c5b5d665bbe994b396209cd0c8d3d0a7ef6431",
-      "current_artifact_sha256": "87bb207ae410a84f20a6760e18c5b5d665bbe994b396209cd0c8d3d0a7ef6431",
+      "sha256": "baca4c797edc6c1c950eac7ec51543ed5a5bcf15a296986c7f4be69c321ef757",
+      "current_artifact_sha256": "baca4c797edc6c1c950eac7ec51543ed5a5bcf15a296986c7f4be69c321ef757",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:44:29.306Z",
+      "approved_at": "2026-11-15T17:16:05.625Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/dld.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -5696,12 +5712,28 @@
           "003": 18,
           "004": 18,
           "005": 18
-        }
+        },
+        "postapproval_change_review": "NARROW_COMPATIBLE_SOURCE_DESIGN_CORRECTION_RE_REVIEWED",
+        "correction_source_commit": "cf55f06ddfc99de56b8cfa9d3d86882e2fc15cc2",
+        "actual_independent_sql_runtime": "NOT_RUN"
       },
-      "formal_stage_gate": "BLOCKED_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_CLINICAL_DATABASE_PRIVACY_H13_PIXEL_AND_ALL_RUNTIME_QA_NOT_RUN",
-      "development_authority": "DELEGATED_SOURCE_DESIGN_ONLY_NO_CODE_COMPLETION_OR_PRODUCTION_OPERATION_AUTHORITY",
+      "formal_stage_gate": "BLOCKED_AUTHENTICATED_LOCAL_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_CLINICAL_DB_PRIVACY_VISUAL_AND_RUNTIME_QA_NOT_RUN",
+      "development_authority": "OWNER_DELEGATED_SOURCE_DESIGN_ONLY_NOT_IMPLEMENTED_OR_RELEASE_APPROVED",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "approval_history": [
+        {
+          "approved_at": "2026-11-15T16:44:29.306Z",
+          "sha256": "87bb207ae410a84f20a6760e18c5b5d665bbe994b396209cd0c8d3d0a7ef6431",
+          "review_status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
+          "reason": "CG23 original delegated approved file before post-approval same-design correction"
+        }
+      ],
+      "previous_delegated_decision": {
+        "approved_at": "2026-11-15T16:44:29.306Z",
+        "sha256": "87bb207ae410a84f20a6760e18c5b5d665bbe994b396209cd0c8d3d0a7ef6431"
+      },
+      "reapproval_reason": "Post-approval SQL definition reconciliation: visit_start_utc/end_utc exclusion and explicitly declared original_effect_kind source key; reviewed cf55f06d, same original US/QA/scope"
     },
     "tasks/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
