@@ -61,7 +61,12 @@ export type AppConfig = Readonly<{
   erpDeploymentCapabilities:ErpDeploymentCapabilities
 }>;
 
+// A single immutable process snapshot is shared by Nest bootstrap and DB factory.
+// Later env changes (including runtime tampering with ERP switches) cannot grant
+// an additional capability or alter the running process's validated settings.
+let processConfig: AppConfig | null = null;
 export function readConfig(): AppConfig {
+  if (processConfig) return processConfig;
   const databaseUrl = process.env.DATABASE_URL;
   const webOrigin = process.env.WEB_ORIGIN;
   const port = Number(process.env.PORT ?? 4000);
@@ -72,6 +77,8 @@ export function readConfig(): AppConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
   if (process.env.NODE_ENV === "production" && !webOrigin.startsWith("https://"))
     throw new Error("Production WEB_ORIGIN must use HTTPS");
-  return Object.freeze({ databaseUrl, port, webOrigin,
+  const validated:AppConfig=Object.freeze({ databaseUrl, port, webOrigin,
     erpDeploymentCapabilities:readErpDeploymentCapabilities() });
+  processConfig=validated;
+  return validated;
 }
