@@ -12,8 +12,10 @@ export class FoundationStructureController {
   }
   @Get("geography")
   areas(@Headers("authorization") bearer:string,@Query("level") level?:string,
-    @Query("parent") parent?:string,@Query("search") search?:string){
-    return this.service.areas(bearer,level,parent,search??"");
+    @Query("parent") parent?:string,@Query("search") search?:string,@Query("offset") offset?:string){
+    if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+      throw new BadRequestException("Check geography page");
+    return this.service.areas(bearer,level,parent,search??"",offset?Number(offset):0);
   }
   @Post("geography")
   createArea(@Headers("authorization") bearer:string,@Body() body:unknown){
@@ -22,6 +24,16 @@ export class FoundationStructureController {
   @Patch("geography/:areaRef")
   updateArea(@Headers("authorization") bearer:string,@Param("areaRef") areaRef:string,@Body() body:unknown){
     return this.service.updateArea(bearer,areaRef,body as Parameters<FoundationStructureService["updateArea"]>[2]);
+  }
+  @Get("history/:entityKind/:entityRef")
+  history(@Headers("authorization") bearer:string,@Param("entityKind") kind:string,
+    @Param("entityRef") ref:string){return this.service.history(bearer,kind,ref);}
+  @Get("export")
+  exportPage(@Headers("authorization") bearer:string,@Query("kind") kind?:string,
+    @Query("offset") offset?:string){
+    if(!kind||offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+      throw new BadRequestException("Check Foundation export parameters");
+    return this.service.exportPage(bearer,kind,offset?Number(offset):0);
   }
   @Get("departments")
   departments(@Headers("authorization") bearer:string,@Query("search") search?:string,@Query("kind") kind?:string){
