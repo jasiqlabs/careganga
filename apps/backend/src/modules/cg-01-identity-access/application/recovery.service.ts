@@ -91,7 +91,7 @@ export class RecoveryService {
     }
     return {message:GENERIC_DELIVERY,status:"DELIVERY_UNCONFIRMED",supportReference};
   }
-  async confirmRecovery(body:{token:string;password:string;totp:string;email:string},remoteAddress:string):
+  async confirmRecovery(body:{token:string;password:string;totp:string;email:string},remoteAddress:string,correlationRef:string):
       Promise<{ status:"PASSWORD_RESET"; message:string }> {
     const tokenDigest=digest(body.token);
     const email=body.email.trim().toLowerCase();
@@ -145,7 +145,7 @@ export class RecoveryService {
       await client.query("UPDATE auth_session SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL",[row.account_id]);
       await client.query("UPDATE auth_challenge SET consumed_at=now() WHERE id=$1",[row.id]);
       await client.query(`INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,action_key,outcome,correlation_ref)
-        VALUES($1,$2,$2,'identity.password.recovery','SUCCESS',$3)`,[row.realm_id,row.account_id,randomUUID()]);
+        VALUES($1,$2,$2,'identity.password.recovery','SUCCESS',$3)`,[row.realm_id,row.account_id,correlationRef]);
       await client.query("COMMIT");
       outcome="SUCCESS";
     }catch(e){
