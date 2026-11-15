@@ -1,7 +1,7 @@
 # CG-02 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED; latest CG-02 DLD corrected in source review (15 Nov 2026) for independent US-001 Foundation-only and US-002 branch-dependent scope, `database_impact: CRITICAL`. Historic owner-delegated SHA approval applies to earlier source, **not** this changed DLD (`REVIEW_FIXED_AWAITING_REAPPROVAL`). Latest PRD/HLD remain REVIEW_REQUIRED; authenticated local Harness resolver, qualified DB review, migration/restore and rendered Web/Android/runtime QA NOT_RUN. No implementation claimed.
+**State:** REQUIRED · **DELEGATED_APPROVED** for current CG-02 DLD source by JASIQ AI Design Review Agent (15 Nov 2026), after review/fix/re-review of ownership, real CG-03 branch-process and CG-19 draft-evidence extensions, CG-01 branch scope, PostgreSQL concurrency and restoration design. `database_impact: CRITICAL`; formal PRD/HLD review and development entry still BLOCKED. Authenticated Harness resolver, independent qualified DB reviewer, actual SQL/migration/restore and Web/Android/rendered visual/runtime checks `NOT_RUN`; no implementation or source-code QA claimed.
 
 ## Data ownership and decision boundary
 

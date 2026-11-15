@@ -1,7 +1,7 @@
 # CG-02 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED; CG-01-standard source review/fix of original CareGanga U18–U22, with Foundation-only U21/U22 in US-001 and post-activation Branch scope in US-002 (15 Nov 2026). Prior SHA-bound `DELEGATED_APPROVED` is historical; current UIUX changes are `REVIEW_FIXED_AWAITING_REAPPROVAL`. PRD/HLD REVIEW_REQUIRED, authenticated resolver NOT_RUN, exact rendered pixel/device and reference motion VISUAL_NOT_RUN/MOTION_REFERENCE_UNVERIFIED.
+**State:** REQUIRED · **DELEGATED_APPROVED** for current UI/UX source by JASIQ AI Design Review Agent (15 Nov 2026), preserving original U18–U22 and CG-01-only Foundation views versus CG-02 US-002 original branch workflow. Original CG-03 and CG-19 independent baselines are retained; US-002 introduces actual owner-controlled approval and draft-file integration. Formal PRD/HLD review and Harness/development entry remain blocked. Rendered pixel/device comparison `VISUAL_NOT_RUN`, original video motion `MOTION_REFERENCE_UNVERIFIED`, runtime QA `NOT_RUN`.
 
 ## Exact existing design and animation contract
 
