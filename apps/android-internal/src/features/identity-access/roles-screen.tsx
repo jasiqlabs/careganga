@@ -23,7 +23,13 @@ async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",b
   });
   if(result.status===401)throw new Error("SESSION_EXPIRED");
   if(result.status===403)throw new Error("PERMISSION_DENIED");
-  if(result.status===409)throw new Error("CONFLICT");
+  if(result.status===409){
+    const payload:unknown=await result.json();
+    const code=payload&&typeof payload==="object"&&"code" in payload&&
+      typeof payload.code==="string"?payload.code:"CONFLICT";
+    throw new Error(["DUPLICATE_ROLE","STALE_ROLE","ROLE_RETIRED","ROLE_ASSIGNED","REPLAY_CONFLICT"]
+      .includes(code)?code:"CONFLICT");
+  }
   if(!result.ok)throw new Error(result.status>=500?"UNKNOWN":"INVALID");
   return result.json() as Promise<unknown>;
 }
@@ -108,7 +114,11 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       if(e instanceof Error&&e.message==="UNKNOWN"){
         setUncertain(true);
         setError("The result could not be confirmed. Return to the role list before trying again.");
-      }else setError(e instanceof Error&&e.message==="CONFLICT"?
+      }else setError(e instanceof Error&&e.message==="DUPLICATE_ROLE"?
+        "A role with this name already exists. Choose another name.":
+        e instanceof Error&&e.message==="REPLAY_CONFLICT"?
+        "This request reference was already used. Refresh before retrying.":
+        e instanceof Error&&["STALE_ROLE","ROLE_RETIRED","CONFLICT"].includes(e.message)?
         "This role changed elsewhere. Refresh before saving.":e instanceof Error&&e.message==="PERMISSION_DENIED"?
         "You don't have permission for this change.":"Check the role details and try again.");
     }finally{setSaving(false);}
@@ -129,7 +139,9 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       await load(search,offset);setSuccess("Role retired.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
-      setError("Retirement could not be confirmed. Refresh roles before trying again.");
+      setError(e instanceof Error&&e.message==="ROLE_ASSIGNED"?
+        "Reassign accounts using this role before retiring it.":
+        "Retirement could not be confirmed. Refresh roles before trying again.");
     }finally{setSaving(false);}
   }
   async function loadHistory(){
