@@ -195,12 +195,13 @@ export class RolesService {
   }
   async copy(bearer:string,sourceRef:string,input:Change,correlationRef:string):Promise<Outcome>{
     parseRef(sourceRef);
-    const x=parseChange(input);
-    return this.perform(bearer,"COPY",x.requestKey,{...x,sourceRef},async(client,actor)=>{
+    const x=parseChange(input),expected=revision(input.expectedRevision);
+    return this.perform(bearer,"COPY",x.requestKey,{...x,sourceRef,expected},async(client,actor)=>{
       const source=await client.query<Row>(`
         SELECT * FROM role WHERE id=$1 AND realm_id=$2 AND active=true FOR SHARE`,[sourceRef,actor.realmId]);
       if(!source.rowCount)throw new NotFoundException();
       if(source.rows[0].is_protected)throw new ForbiddenException();
+      if(source.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const original=await client.query<{capability_key:string}>(`
         SELECT capability_key FROM role_grant WHERE role_id=$1`,[sourceRef]);
       const safeKeys=original.rows.map(r=>r.capability_key)
