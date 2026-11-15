@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **Provider/center and doctor 
 
 State/invariant: **Provider/doctor pending/approved/returned/suspended, publication separate; One doctor identity across centers; no fake verified badge or public private bank info**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete provider, center, doctor and publication design
+
+`provider(id,legal_name,verification_state,publication_state)`, `center_location(id,provider_id,address,geo,facilities,active)` distinguish independent provider centers from Foundation CG-02 operating branches. A center operator's role/scope is valid only for explicitly authorized active real locations.
+
+`doctor(id,registration_jurisdiction,registration_number,qualification,verification_state)` identifies one verified professional across multiple centers, with scoped uniqueness for verified registration. `doctor_center(doctor_id,center_location_id,affiliation_state,service,validity)` is a many-to-many link: no duplicate doctor profile per center. `center_fee(doctor_center_id,service,amount,effective_from/to,version)` retains fee history and supplies a versioned accepted quote to CG-15.
+
+Provider/doctor verification via CG-03 returns actual approved/rejected/returned status; source activation and publication are separately guarded. Public projections expose only verified active published center/doctor/service/fees, authenticated approved badges and genuine ratings only when a validated owner/source exists. Private bank, credential and verification documents are never public.
+
+**QA:** doctor in two real centers, center suspended/revoked, unverifiable doctor registration, overlapping fee versions, forged location lookup, wrong-center staff update, public unpublished center, fees changing after confirmed booking and CG-01 center-options minimum fields.
+
 ## Typed API and coordination
 
 An authenticated `/api/healthcare-network` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
