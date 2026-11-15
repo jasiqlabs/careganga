@@ -175,7 +175,7 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 
 | ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
 | --- | --- | --- | --- | --- | --- |
-| FR-066 | CG-18 | Admin edits Foundation site | Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs, website navigation and public Login/Join visibility with authorized preview/publish controls | A-18 | CG-18-BR01–04,08–11,25–26 |
+| FR-066 | CG-18 | Admin edits Foundation site | Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs and **three separate Login/Profile, Membership Join and Volunteer Join public navigation publication controls** with draft/preview/review/publish; one approved visibility revision serves public Web and Public Android, and unavailable future registration destinations are never shown as functioning | A-18 | CG-18-BR01–04,08–11,25–26 |
 | FR-067 | CG-18 | Admin edits NGO impact/transparency | Publish editable Impact groups, geography/charts/stories with appropriate provenance; maintain 80G/PAN/registration, annual and financial disclosure pages/documents | A-18 | CG-18-BR12–17 |
 | FR-068 | CG-18 | Admin publishes reusable content | Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status | A-18 | CG-18-BR05–08,24,27 |
 | FR-069 | CG-18 | Healthcare content is published | Show approved directory/category cards, provider profiles, doctors, current price/facility/benefit messaging; don't allow CMS to overwrite provider verification, scheduling or contribution ownership | A-18 | CG-18-BR18–23,28 |
