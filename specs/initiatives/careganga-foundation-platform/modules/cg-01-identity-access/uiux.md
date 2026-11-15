@@ -6,6 +6,8 @@
 
 ## 1. Mandatory visual fidelity — no redesign
 
+**Source-design review:** owner-delegated CURRENT_SHA_BOUND design approved; actual original U01–U10/B34 source images reopened from the verified CareGanga reference pack on 15 Nov 2026. Rendered Web/native pixel, precise source color extraction and motion verification remain NOT_RUN / UNVERIFIED.
+
 **Preserve the existing CareGanga Admin Panel visual identity.** Treat the supplied screenshots as the **design baseline** for color theme, typography hierarchy, spacing/density, component shape, icon style, status treatments, layout hierarchy and interaction patterns. No alternative brand colors, new dashboard theme, arbitrary gradients, glassmorphism, new card aesthetic or independent Android palette.
 
 Existing observed design cues:
