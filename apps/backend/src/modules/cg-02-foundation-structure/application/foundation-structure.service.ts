@@ -158,10 +158,13 @@ export class FoundationStructureService {
         return {id:actor.realmId,version:updated.rows[0].version};
       });
   }
-  async areas(bearer:string,level?:string,parentRef?:string,search=""){
+  async areas(bearer:string,level?:string,parentRef?:string,search="",offset=0){
     const actor=await this.actor(bearer,"foundation.geography.view");
-    if(level!==undefined&&!Object.hasOwn(levelParent,level)||search.length>80||
-       (parentRef!==undefined&&!UUID.test(parentRef)))throw new BadRequestException("Check geography filters");
+    if(level!==undefined&&(typeof level!=="string"||!Object.hasOwn(levelParent,level))||
+       typeof search!=="string"||search.length>80||
+       (parentRef!==undefined&&(typeof parentRef!=="string"||!UUID.test(parentRef)))||
+       !Number.isInteger(offset)||offset<0||offset>50000)
+      throw new BadRequestException("Check geography filters");
     const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\$&");
     const result=await this.db.query<{
       id:string;level:string;parent_area_id:string|null;display_name:string;code:string|null;status:string;version:number;
@@ -169,12 +172,12 @@ export class FoundationStructureService {
       WHERE root_realm_id=$1 AND ($2::text IS NULL OR level=$2)
         AND ($3::uuid IS NULL OR parent_area_id=$3)
         AND ($4='' OR normalized_name LIKE $4 ESCAPE '\\')
-      ORDER BY level,display_name,id LIMIT 100`,
-      [actor.realmId,level??null,parentRef??null,term?"%"+term+"%":""]);
+      ORDER BY level,display_name,id LIMIT 100 OFFSET $5`,
+      [actor.realmId,level??null,parentRef??null,term?"%"+term+"%":"",offset]);
     return {areas:result.rows.map(x=>({
       areaRef:x.id,level:x.level,parentRef:x.parent_area_id,name:x.display_name,code:x.code,
       status:x.status,version:x.version
-    })),limit:100};
+    })),limit:100,offset,nextOffset:result.rows.length===100?offset+100:null};
   }
   private async checkAreaParent(client:PoolClient,actor:VerifiedFoundationActor,
     level:string,parentRef:string|null,excludeRef?:string):Promise<void>{
@@ -427,6 +430,56 @@ export class FoundationStructureService {
         {recordRef:row.result_ref,version:row.result_version}:{}),
       message:row?.result_ref?"The original change is recorded. Refresh the information.":
         "This change has not been confirmed. Refresh before trying again."};
+  }
+
+  async history(bearer:string,entityKind:string,entityRef:string){
+    id(entityRef);
+    const grant:Record<string,string>={
+      PROFILE:"foundation.profile.view",AREA:"foundation.geography.view",
+      DEPARTMENT:"foundation.departments.view",PARTICIPANT:"foundation.departments.view"
+    };
+    const permission=grant[entityKind];
+    if(!permission)throw new BadRequestException("Unsupported Foundation history");
+    const actor=await this.actor(bearer,permission);
+    const records=await this.db.query<{action:string;version:number;at:Date}>(`
+      SELECT action,version,at FROM foundation_event WHERE root_realm_id=$1
+        AND entity_kind=$2 AND entity_ref=$3
+      ORDER BY at DESC,id DESC LIMIT 60`,[actor.realmId,entityKind,entityRef]);
+    return {events:records.rows.map(x=>({action:x.action,version:x.version,recordedAt:x.at.toISOString()})),limit:60};
+  }
+  async exportPage(bearer:string,kind:string,offset=0){
+    if(!["AREAS","DEPARTMENTS"].includes(kind)||!Number.isInteger(offset)||offset<0||offset>50000)
+      throw new BadRequestException("Choose an available Foundation export");
+    const permission=kind==="AREAS"?"foundation.geography.view":"foundation.departments.view";
+    const actor=await this.actor(bearer,permission);
+    let heading:string[];
+    let rows:string[][];
+    if(kind==="AREAS"){
+      const result=await this.db.query<{display_name:string;level:string;parent_name:string|null;status:string}>(`
+        SELECT a.display_name,a.level,parent.display_name AS parent_name,a.status
+        FROM geography_area a LEFT JOIN geography_area parent ON parent.id=a.parent_area_id
+          AND parent.root_realm_id=a.root_realm_id
+        WHERE a.root_realm_id=$1 ORDER BY a.level,a.display_name,a.id LIMIT 250 OFFSET $2`,
+        [actor.realmId,offset]);
+      heading=["Area","Level","Parent","Status"];
+      rows=result.rows.map(x=>[x.display_name,x.level,x.parent_name??"Foundation",x.status]);
+    }else{
+      const result=await this.db.query<{name:string;kind:string;parent_name:string|null;active:boolean}>(`
+        SELECT d.name,d.kind,parent.name AS parent_name,d.active FROM department d
+        LEFT JOIN department parent ON parent.id=d.parent_department_id
+          AND parent.root_realm_id=d.root_realm_id
+        WHERE d.root_realm_id=$1 ORDER BY d.name,d.id LIMIT 250 OFFSET $2`,
+        [actor.realmId,offset]);
+      heading=["Name","Type","Parent","Status"];
+      rows=result.rows.map(x=>[x.name,x.kind,x.parent_name??"Foundation",x.active?"Active":"Inactive"]);
+    }
+    const cell=(value:string)=>{
+      const safe=/^[=+@\-\t\r]/.test(value)?"'"+value:value;
+      return '"'+safe.replace(/"/g,'""')+'"';
+    };
+    const csv=[heading,...rows].map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+    return {filename:kind==="AREAS"?"Foundation-areas.csv":"Foundation-departments.csv",
+      csv,count:rows.length,limit:250,offset,nextOffset:rows.length===250?offset+250:null};
   }
 
 }
