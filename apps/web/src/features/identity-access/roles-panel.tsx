@@ -11,6 +11,7 @@ type Group={group:string;actions:Capability[]};
 type RoleList={roles:Role[];total:number;offset:number;limit:number};
 type AuditEvent={occurredAt:string;actorDisplay:string;actionLabel:string;targetDisplay:string;outcome:string};
 type FormMode="create"|"edit"|"copy";
+type RoleStatus="all"|"active"|"retired";
 type Notice={text:string;kind:"error"|"success"|"uncertain"};
 
 async function read<T>(path:string):Promise<T>{
@@ -26,7 +27,7 @@ export function RolesPanel(){
   const [actions,setActions]=useState<string[]>([]);
   const [search,setSearch]=useState("");
   const [appliedSearch,setAppliedSearch]=useState("");
-  const [tab,setTab]=useState<"all"|"active"|"retired">("all");
+  const [tab,setTab]=useState<RoleStatus>("all");
   const [total,setTotal]=useState(0);
   const [offset,setOffset]=useState(0);
   const [loading,setLoading]=useState(true);
@@ -42,10 +43,10 @@ export function RolesPanel(){
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
 
-  const load=useCallback(async(searchText:string,skip:number)=>{
+  const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     setLoading(true);setNotice(null);
     try{
-      const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip)});
+      const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status});
       const [list,catalog,effective]=await Promise.all([
         read<RoleList>("roles?"+params),
         read<{groups:Group[]}>("capabilities"),
@@ -65,12 +66,12 @@ export function RolesPanel(){
   useEffect(()=>{void load("",0);},[load]);
   // Revalidate on focus/resume without a background polling loop.
   useEffect(()=>{
-    const onFocus=()=>{if(document.visibilityState==="visible")void load(appliedSearch,offset);};
+    const onFocus=()=>{if(document.visibilityState==="visible")void load(appliedSearch,offset,tab);};
     window.addEventListener("focus",onFocus);
     document.addEventListener("visibilitychange",onFocus);
     return()=>{window.removeEventListener("focus",onFocus);
       document.removeEventListener("visibilitychange",onFocus);};
-  },[load,appliedSearch,offset]);
+  },[load,appliedSearch,offset,tab]);
   useEffect(()=>{
     const shortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
@@ -94,7 +95,7 @@ export function RolesPanel(){
   }
   const canManage=actions.includes("roles.manage");
   const canAudit=actions.includes("access.audit.view");
-  const shown=roles.filter(x=>tab==="all"||(tab==="active"?x.active:!x.active));
+  const shown=roles; // Filtering is authoritative server-side, before pagination.
   const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable);
 
   async function mutate(path:string,method:"POST"|"PATCH",body:unknown){
@@ -141,7 +142,7 @@ export function RolesPanel(){
     try{
       await mutate(path,method,payload);
       setEditor(null);requestKey.current="";
-      await load(appliedSearch,offset);
+      await load(appliedSearch,offset,tab);
       setNotice({kind:"success",text:"Role change saved."});
     }catch(error){
       if(error instanceof Error&&(error.message.includes("session expired")||error.message.includes("permission"))){
@@ -161,7 +162,7 @@ export function RolesPanel(){
       await mutate("roles/"+role.roleRef+"/retire","POST",{
         expectedRevision:role.revision,requestKey:crypto.randomUUID()
       });
-      await load(appliedSearch,offset);
+      await load(appliedSearch,offset,tab);
       setPendingRetire(null);
       setNotice({kind:"success",text:"Role retired."});
     }catch(error){
@@ -198,12 +199,12 @@ export function RolesPanel(){
       <div className="toolbar"><Link href="/admin">My account</Link><Link href="/">View site</Link></div>
     </header>
     <section aria-label="Role summary" className="kpi-grid">
-      <div className="kpi"><small>Role records</small><strong>{total}</strong></div>
+      <div className="kpi"><small>Matching roles</small><strong>{total}</strong></div>
       <div className="kpi"><small>Active on this page</small><strong>{roles.filter(r=>r.active).length}</strong></div>
       <div className="kpi"><small>Protected roles</small><strong>{roles.filter(r=>r.protected).length}</strong></div>
     </section>
     <div className="toolbar">
-      <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0);}}
+      <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0,tab);}}
         className="search-row">
         <label htmlFor="role-search">Find roles</label>
         <input id="role-search" ref={searchInput} value={search} maxLength={80}
@@ -215,7 +216,7 @@ export function RolesPanel(){
     </div>
     <div className="toolbar" role="group" aria-label="Filter roles">
       {(["all","active","retired"] as const).map(k=><button key={k} type="button"
-        aria-pressed={tab===k} onClick={()=>setTab(k)}>
+        aria-pressed={tab===k} onClick={()=>{setTab(k);void load(appliedSearch,0,k);}}>
         {k==="all"?"All roles":k==="active"?"Active":"Retired"}</button>)}
     </div>
     {notice&&<p className={notice.kind==="error"?"error":"notice"} role={notice.kind==="error"?"alert":"status"}>{notice.text}</p>}
@@ -239,9 +240,9 @@ export function RolesPanel(){
       </tr>)}</tbody></table></div>
     }
     {!loading&&total>30&&<div className="toolbar">
-      <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30))}>Previous</button>
+      <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30),tab)}>Previous</button>
       <span>{offset+1}–{Math.min(offset+30,total)} of {total}</span>
-      <button disabled={offset+30>=total} onClick={()=>void load(appliedSearch,offset+30)}>Next</button>
+      <button disabled={offset+30>=total} onClick={()=>void load(appliedSearch,offset+30,tab)}>Next</button>
     </div>}
     {history&&<section aria-labelledby="history-title">
       <h2 id="history-title">Foundation access history</h2>
