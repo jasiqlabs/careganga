@@ -33,15 +33,15 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 - **FR-008/A-03:** CG-03 authorizes final decision and durable PENDING_OWNER effect request only; **CG-01-owned protected finalizer** verifies that exact intent against current account/role versions, applies a single grant and records original CG-01 audit. Later actual business owners implement/test their own member/branch/provider/finance effects when delivered.
 
 Detailed authoritative clauses:
-- **CG-03-BR01:** Support application intake for members, volunteers, CSR partners, Foundation branches, employees and healthcare providers/doctors where approval is required.
+- **CG-03-BR01:** CG-03 owns the shared actual approval-case intake/decision route. Initial type is only a CG-01 protected role-change case; later CG-02/04/08/10/14 introducing owners supply real branch/member/volunteer/CSR/employee/provider sources when delivered. No initial fabricated business applicant.
 - **CG-03-BR02:** Assign an application/reference number at submission and expose permitted status tracking.
-- **CG-03-BR03:** Provide filtered approval queues (applicant/contact, registration type, membership plan, payment/status/date), applicant detail, submission source, uploaded documents, payment references, notes, communications and decision history; registration dashboard includes pending/approved/rejected counts, type breakdown, recent submissions and average approval time.
-- **CG-03-BR04:** Permit document preview and authorized download, verify/reject-by-document status and documented remarks.
+- **CG-03-BR03:** CG-03 owns permissioned bounded queues, actual case detail/decision history and real status counts/time from its **existing CG-01 access-change cases only**. Membership plans, payments, document previews, contact/employee/branch/provider filters are introduced by their true later source owners; no initial future-only tabs/filters or invented KPIs.
+- **CG-03-BR04:** Reviewer decision about genuine evidence remains CG-03 case authority; actual protected file upload/download/preview belongs to **CG-19**, which introduces/tests the real case-file integration after delivery. No initial CG-03 upload/download/document_verification table or fake preview.
 - **CG-03-BR05:** Permit approve, reject, return for correction and appropriate forwarding/intermediate decisions. Bulk actions must only cover records for which the actor is authorized and where the business status permits.
-- **CG-03-BR06:** Configure process-specific approval steps, reviewer roles and organization/area scopes. Illustrative membership chain: submission → district → state → HR/membership → Super Admin → finalization; the actual chain is a client-approved configuration.
+- **CG-03-BR06:** CG-03 owns versioned approval-process authoring and real eligible reviewer steps; the first usable process is a **FOUNDATION_ROOT CG-01 sensitive-role change** with distinct proposer and current protected Super Admin final approval/fresh MFA. District/state/HR/center scopes and membership chains cannot be configured as working routes before genuine CG-02/04/10/14 owners exist.
 - **CG-03-BR07:** Preserve reviewer, date/time, remarks, previous states and completed/pending approvals; show graphical queues/workflows and open pending records directly.
 - **CG-03-BR08:** Make rejected/returned requests actionable to eligible submitters without converting an unapproved record to active status.
-- **CG-03-BR09:** Create the final owner-module outcome only after final authorized approval, including IDs, accounts, budgets or authorized postings as applicable.
+- **CG-03-BR09:** CG-03 records the final approval/effect claim and confirmed owner outcome, never edits a future account/branch/member/finance master. Initial genuine effect is one guarded **CG-01 owner** custom-role assignment plus original CG-01 audit; future owner effects are implemented/tested by the introducing source modules.
 
 ## First-release independent acceptance and forward owners
 
