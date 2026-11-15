@@ -1,7 +1,7 @@
 # CG-02 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED; source design content `DELEGATED_APPROVED` by the owner-authorized JASIQ AI Design Review Agent (15 Nov 2026), following CG-01-benchmark review/fix/re-review. `database_impact: CRITICAL`. **Formal approval entry gate not yet verified:** canonical PRD v1.1/HLD v1.1 are REVIEW_REQUIRED; authenticated local Harness resolver NOT_RUN; independent qualified DB review, migrations, runtime and rendered Web/Android QA NOT_RUN. No implementation is claimed.
+**State:** REQUIRED; latest CG-02 DLD corrected in source review (15 Nov 2026) for independent US-001 Foundation-only and US-002 branch-dependent scope, `database_impact: CRITICAL`. Historic owner-delegated SHA approval applies to earlier source, **not** this changed DLD (`REVIEW_FIXED_AWAITING_REAPPROVAL`). Latest PRD/HLD remain REVIEW_REQUIRED; authenticated local Harness resolver, qualified DB review, migration/restore and rendered Web/Android/runtime QA NOT_RUN. No implementation claimed.
 
 ## Data ownership and decision boundary
 
