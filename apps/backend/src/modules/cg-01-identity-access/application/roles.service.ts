@@ -115,14 +115,16 @@ export class RolesService {
   private async startCommand(client:PoolClient,actor:VerifiedFoundationActor,action:string,
     requestKey:string,requestDigest:string):Promise<{id:string|null;replay:Outcome|null}>{
     const created=await client.query<{id:string}>(`
-      INSERT INTO role_command(actor_account_id,action,request_key)
-      VALUES($1,$2,$3) ON CONFLICT(actor_account_id,action,request_key) DO NOTHING
-      RETURNING id`,[actor.accountId,action,requestKey]);
+      INSERT INTO role_command(actor_account_id,action,request_key,request_digest)
+      VALUES($1,$2,$3,$4) ON CONFLICT(actor_account_id,action,request_key) DO NOTHING
+      RETURNING id`,[actor.accountId,action,requestKey,requestDigest]);
     if(created.rowCount)return {id:created.rows[0].id,replay:null};
-    const old=await client.query<{role_id:string;result_revision:number}>(`
-      SELECT role_id,result_revision FROM role_command WHERE actor_account_id=$1
+    const old=await client.query<{role_id:string;result_revision:number;request_digest:string}>(`
+      SELECT role_id,result_revision,request_digest FROM role_command WHERE actor_account_id=$1
       AND action=$2 AND request_key=$3 FOR SHARE`,[actor.accountId,action,requestKey]);
     if(!old.rowCount||!old.rows[0].role_id)throw new ConflictException("Previous request is still being confirmed");
+    if(old.rows[0].request_digest!==requestDigest)
+      throw new ConflictException("This request reference was already used for a different change.");
     // Replays do not execute the command or re-send audit entries.
     return {id:null,replay:{roleRef:old.rows[0].role_id,revision:old.rows[0].result_revision,message:"Previously confirmed."}};
   }
