@@ -11,7 +11,7 @@ import type {
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type Props={token:string;canConfigure:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canConfigure:boolean;canPropose:boolean;onExit:()=>void;onExpired:()=>void};
 async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
   let res:Response;
   try{
@@ -35,7 +35,7 @@ const friendly=(status:string)=>({
   OWNER_FAILED_RETRYABLE:"Awaiting source verification"
 } as Record<string,string>)[status]??"Status unavailable";
 
-export function ProposalScreen({token,canConfigure,onExit,onExpired}:Props){
+export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:Props){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [route,setRoute]=useState<CG03ProcessView|null>(null);
   const [accounts,setAccounts]=useState<CG03Option[]>([]),[roles,setRoles]=useState<CG03Option[]>([]);
@@ -95,7 +95,7 @@ export function ProposalScreen({token,canConfigure,onExit,onExpired}:Props){
     }
   }
   function begin(entry?:CG03CaseView){
-    if(busy||unknown)return;
+    if(busy||unknown||!canPropose)return;
     setForm(true);setRouteForm(false);
     setAccount("");setRole("");setAccountQuery(entry?.accountName??"");setRoleQuery("");
     setPrevious(entry?.caseRef??null);setKey(Crypto.randomUUID());setPendingKind("CASE");
@@ -202,8 +202,8 @@ export function ProposalScreen({token,canConfigure,onExit,onExpired}:Props){
             <Text>Version approval process</Text></Pressable>}
         </View>}
       {!form&&!routeForm&&!detail&&<View style={styles.card}>
-        <Pressable accessibilityRole="button" disabled={busy||unknown} style={styles.primary}
-          onPress={()=>begin()}><Text style={styles.primaryText}>Request protected role access</Text></Pressable>
+        {canPropose&&<Pressable accessibilityRole="button" disabled={busy||unknown} style={styles.primary}
+          onPress={()=>begin()}><Text style={styles.primaryText}>Request protected role access</Text></Pressable>}
         <Text style={styles.heading}>Visible applications</Text>
         {!cases.length&&!loading?<Text>No protected applications were found.</Text>:cases.map(item=>
           <View style={styles.item} key={item.caseRef}>
@@ -213,7 +213,7 @@ export function ProposalScreen({token,canConfigure,onExit,onExpired}:Props){
             <View style={styles.row}>
               <Pressable style={styles.button} accessibilityRole="button"
                 onPress={()=>void see(item)}><Text>View timeline</Text></Pressable>
-              {item.status==="RETURNED"&&<Pressable accessibilityRole="button"
+              {canPropose&&item.status==="RETURNED"&&<Pressable accessibilityRole="button"
                 disabled={busy||unknown} style={styles.button}
                 onPress={()=>begin(item)}><Text>Submit correction</Text></Pressable>}
             </View>
@@ -296,7 +296,7 @@ export function ProposalScreen({token,canConfigure,onExit,onExpired}:Props){
 const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:theme.background},
   content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:40},
-  title:{fontSize:21,fontWeight:"750",color:theme.text,flexShrink:1},
+  title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
   heading:{fontSize:15,fontWeight:"700",color:theme.text},
   muted:{color:theme.mutedText,fontSize:13},
   row:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:9},
