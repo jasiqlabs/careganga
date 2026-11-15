@@ -21,13 +21,17 @@ function form(p:Policy):Form{return{
   window:String(p.failedAttemptWindowSeconds/60),attempts:String(p.maxFailedAttempts)
 };}
 function validPolicy(x:unknown):x is Policy{
-  if(!x||typeof x!=="object")return false;
+  if(!x||typeof x!=="object"||Array.isArray(x))return false;
   const p=x as Record<string,unknown>;
-  return p.rootMfaRequired===true&&Number.isInteger(p.revision)&&Number(p.revision)>=0&&
-    Number.isInteger(Number(p.maxSessionAgeSeconds)/60)&&
-    Number.isInteger(Number(p.idleTimeoutSeconds)/60)&&
-    Number.isInteger(Number(p.failedAttemptWindowSeconds)/60)&&
-    typeof p.maxFailedAttempts==="number"&&Number.isInteger(p.maxFailedAttempts);
+  const max=p.maxSessionAgeSeconds,idle=p.idleTimeoutSeconds;
+  const window=p.failedAttemptWindowSeconds,attempts=p.maxFailedAttempts;
+  return p.rootMfaRequired===true&&Number.isSafeInteger(p.revision)&&
+    Number(p.revision)>=0&&
+    typeof max==="number"&&Number.isInteger(max)&&max>=900&&max<=28800&&max%60===0&&
+    typeof idle==="number"&&Number.isInteger(idle)&&idle>=300&&idle<=3600&&idle%60===0&&idle<=max&&
+    typeof window==="number"&&Number.isInteger(window)&&window>=300&&window<=3600&&window%60===0&&
+    typeof attempts==="number"&&Number.isInteger(attempts)&&attempts>=3&&attempts<=10&&
+    (p.updatedAt===null||typeof p.updatedAt==="string");
 }
 export function SecurityPolicyScreen({token,onExit,onExpired}:{
   token:string;onExit:()=>void;onExpired:()=>void
