@@ -7,7 +7,7 @@
 **Authoritative location:** `specs/initiatives/careganga-foundation-platform/hld.md`  
 **Working branch:** `feature/careganga-greenfield-prd-20261114`  
 **Architecture baseline:** Current product PRD `prd.md` (including mandatory N-13 visual/motion fidelity) and source BR/NFR documents in `docs/business-requirements/`; final PRD approval hash requires revalidation after the current changes.  
-**Harness stage policy:** Original design reviews used earlier Harness revisions; **CareGanga now adopts the reviewed merged `jasiq-harness/main` commit `3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd` (PR #58)** as its new stage baseline. This HLD has been reconciled with its database, design-pattern, background-work, mobile-store, UI-quality and manual source-review guidance. **Local Harness checkout/stage resolver and independent specialist review remain NOT_RUN**; the GitHub source review and pin update are not resolver PASS.  
+**Harness stage policy:** The latest reviewed `jasiq-harness/main` is `ec7c0b81fb2e1e7845ea1b0a46df1114022cd0b1` (15 November 2026), including scriptless latest-source authoring rules; the CareGanga bootstrap pin and root AGENTS.md match it. This HLD follows the database, design-pattern, background-work, mobile-store, UI-quality and source-review standards. **Authenticated local Harness checkout/stage resolver and independent specialist review remain NOT_RUN**; the GitHub source comparison and updated pin are not resolver PASS. New CG-01 security-policy ownership and CG-21 exclusion are source design revisions requiring current-hash reapproval.  
 **Prepared:** 14 November 2026  
 **Status:** **DRAFT / RE-REVIEW REQUIRED** against updated PRD N-13, Harness HLD and original CareGanga screenshot/video references. Earlier delegated HLD approval covered its prior file SHA only. Current hash-bound reapproval, local resolver and rendered visual comparison are NOT_RUN; no QA/release PASS is claimed.  
 **Approval integrity:** The owner explicitly authorized agent delegation for design review in this conversation. The current `initiative.json` opts in to narrowly scoped `OWNER_DELEGATED_DESIGN` for PRD/HLD. An approval must be truthfully attributed to the actual delegate as `DELEGATED_APPROVED` with the current file SHA-256, review evidence and validated resolver gate, never falsely as human/client sign-off. No resolver PASS or human/client approval is claimed by this document; any delegated design decision must be separately recorded and hash-checked in initiative-local `approvals.json`. QA/UAT/release/merges require independent owner authorization.
@@ -222,7 +222,7 @@ A **business owner module owns its lifecycle, data invariants and write operatio
 
 | Owner | High-level responsibility and authoritative records | Primary consumers |
 | --- | --- | --- |
-| **CG-01 Identity & Access** | Identity, sessions, roles, action grants, area/branch/center grants | All protected modules |
+| **CG-01 Identity & Access** | Identity, credentials, **Foundation-root password/session/MFA policy and enforcement**, protected security-policy changes, access sessions, roles, action grants, area/branch/center grants and original access audit | All protected modules, including CG-21 privileged recovery |
 | **CG-02 Foundation Structure** | Foundation profile, internal branches, geography, departments, committees | Staff, projects, budgets, admin reporting |
 | **CG-03 Applications & Approval** | Application case, steps/decisions, verification and finalization references | Registration, finance, CSR, providers, payroll |
 | **CG-04 Members & Volunteers** | Participant relationship, membership plan/term/fee entitlement, volunteer affiliation | Public self-service, programs, referrals |
@@ -242,7 +242,7 @@ A **business owner module owns its lifecycle, data invariants and write operatio
 | **CG-18 CMS & Publication** | Editorial sections, public presentations, publish visibility/revision | Public site and app |
 | **CG-19 Docs, Communication & Support** | Private/public file metadata, templates/generated documents, deliveries, tickets | Every owning workflow |
 | **CG-20 MIS & Analytics** | Scoped reports, saved views, aggregate/statistical projections, scheduled reports | Admin, center, authorized staff |
-| **CG-21 Platform & Audit** | System settings, external integration configuration references, audit, backup admin | All services |
+| **CG-21 Platform & Audit** | **Nonsecret versioned operational settings**, external provider credential-reference and readiness metadata, **read-only bounded central view of owner-held audit**, CG-21's own platform audit, and guarded recovery availability/requests | Existing CG-01 auth/audit first; later business owners integrate their real source events, CG-18 owns public visibility |
 
 ### 5.1 People and confidentiality model
 
@@ -253,6 +253,8 @@ Where the same contact number appears in multiple contexts, avoid auto-merging p
 ### 5.2 Foundation branch vs healthcare center
 
 Foundation organization geography and internal branch hierarchies come from CG-02; provider businesses, their locations and operational scopes come from CG-14. A geographic link may support reporting but **does not share staff/financial/clinical visibility automatically**. CG-01 policy validates the actual actor's assignment across these distinct boundaries.
+
+**Cross-owner rule for configuration UI:** CG-01 owns all mutable password/session/MFA security policy and real enforcement; CG-02 owns legal Foundation identity; CG-18 owns public Login/Member Join/Volunteer Join visibility and publication; CG-19 owns transmission/delivery; CG-09/17 own actual financial effects. The Admin Settings visual shell can link to each genuine source screen but CG-21 must not store or implement another owner's requirements. Only the introducing later owner builds and tests its own public/client/audit integration, never a required CG-21 startup dependency.
 
 ### 5.3 Cross-module dependency rules
 
