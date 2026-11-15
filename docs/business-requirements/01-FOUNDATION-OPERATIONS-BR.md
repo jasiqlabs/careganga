@@ -22,8 +22,9 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-01-BR06:** Enforce center/center-branch-specific scope for healthcare portal personnel, independently of Foundation geography.
 - **CG-01-BR07:** Ensure every list, search, record, report, export, linked-dropdown option and mutation respects the actor's access. Required supporting information must remain selectable for a permitted workflow without exposing unauthorized records.
 - **CG-01-BR10:** Internal user directory supports role, department, designation, employee/employment type, state/district/branch, joining-date and account-status filters and counts of active, probationary, on-hold, resigned/inactive and newly registered people. Staff account creation supports full name, role, work email, phone and secure first-credential setup, linked to CG-10 employee records.
-- **CG-01-BR08:** Preserve protected Super Admin authority and audit changes to roles, permissions and assignments.
+- **CG-01-BR08:** Preserve protected Super Admin authority, enforced privileged MFA/session security and audited changes to roles, permissions and assignments.
 - **CG-01-BR09:** Provide public login/registration or verified account self-service wherever a particular public business workflow calls for it; not every public visitor must have an internal role.
+- **CG-01-BR11:** Own and enforce password/session security configuration and privileged two-factor authentication: support a small allow-listed, securely defaulted Foundation-root policy for permitted password/session expiry, idle session limits and privileged MFA/attempt protections. Only a current Super Admin with fresh MFA may change permitted policy, with revision conflict checks, redacted audit, immediate correct backend enforcement and Web/Internal Android awareness. Never permit disabling the protected root's required MFA or creating a separate settings authority in CG-21.
 
 **Admin controls:** Role matrix, assignments, geographic/branch/center scope, account statuses, access reports.  
 **Cross-channel:** Foundation web, center portal, internal Android; public website/app for public accounts.  
@@ -276,12 +277,12 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 ## CG-21 — Settings, Audit, Integrations and Recovery
 
-- **CG-21-BR01:** Central configuration for Foundation information, operational settings, supported integrations and credentials via authorized administration.
-- **CG-21-BR02:** Auditable actions including logins where applicable, role changes, approvals, financial changes, publishing, provider verification and protected data access as appropriate.
-- **CG-21-BR03:** Provide authorized configuration/monitoring for payments, email/SMS/WhatsApp, push, GPS/maps and related external providers where required.
+- **CG-21-BR01:** Central authorized configuration of CG-21-owned nonsecret platform operational settings, effective revisions and supported external integration credential references; Foundation legal/organization identity belongs to CG-02 and password/session/MFA policy belongs to CG-01, not duplicated in CG-21.
+- **CG-21-BR02:** Provide permissioned bounded central **read-only** audit projections from genuinely implemented original owners (first CG-01 access-audit and CG-21 platform-operation events). Original login/role, approval, money, publishing and protected-access audit records remain with the actual source owner and appear only after that owner delivers them; never copy events into another master.
+- **CG-21-BR03:** Provide authorized nonsecret integration configuration references and truthful on-demand provider readiness for payment, messaging, push, GPS/maps and similar providers. CG-19 owns message sending/outbox/receipts; CG-09/17 own financial transactions/center collections. A configured or verified connection is not proof a message or payment succeeded.
 - **CG-21-BR04:** Provide controlled backup/restore access and a recovery operation model; restoration must not be available to routine staff.
 - **CG-21-BR05:** Provide human-readable errors, status and operational controls that avoid silently swallowing backend failures.
-- **CG-21-BR06:** Support password/session security configuration and two-factor authentication for privileged accounts, with policy and enforcement documented in CG-BR-600, and restrict restore operations to correctly authorized operators.
+- **CG-21-BR06:** Restrict backup/recovery visibility, requests and authorized recovery-operation status to **current privileged CG-01 accounts with freshly verified MFA**, with durable access audit and independent proof before restoration is reported successful. CG-01-BR11 owns password/session/MFA configuration and enforcement; CG-21 does not implement a shadow authentication policy.
 
 ## Cross-domain dependency guardrails
 
