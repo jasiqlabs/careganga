@@ -125,6 +125,8 @@ export class SecurityPolicyService {
   async update(bearer:string,body:unknown,correlationRef:string):
       Promise<{status:"SAVED"|"REPLAY_CONFIRMED";revision:number}> {
     const actor=await this.root(bearer);
+    // Update requires the separate, non-assignable protected write capability.
+    await this.sessions.requireAction(bearer,"identity.security-policy.manage");
     if(!body||typeof body!=="object"||Array.isArray(body))
       throw new BadRequestException();
     const input=body as Record<string,unknown>;
