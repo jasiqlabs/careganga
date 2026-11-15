@@ -125,9 +125,12 @@ export class PlatformAuditService{
     cursor?:unknown;limit?:unknown;source?:unknown;from?:unknown;to?:unknown
   }={}){
     const actor=await this.authorize(bearer);
-    const source:Scope=query.source===undefined?"ALL":query.source==="CG-01"||
-      query.source==="CG-21"||query.source==="ALL"?query.source as Scope:(()=>{
-      throw new BadRequestException("Invalid audit source");})();
+    let source:Scope="ALL";
+    if(query.source!==undefined){
+      if(query.source!=="ALL"&&query.source!=="CG-01"&&query.source!=="CG-21")
+        throw new BadRequestException("Invalid audit source");
+      source=query.source;
+    }
     const defaultSize=await this.effectivePageSize(actor.realmId);
     const size=query.limit===undefined?defaultSize:Number(query.limit);
     if(query.limit!==undefined&&
