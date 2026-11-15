@@ -336,6 +336,8 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
         <Text>{friendly(detail.status)}</Text>
         <Text>Proposal version {detail.proposalRevision};
           process version {detail.processVersion}</Text>
+        <Text>Original account access revision {detail.sourceAccountAccessRevision};
+          role revision {detail.sourceRoleRevision}</Text>
         {decisionUnknown&&<View style={styles.card}>
           <Text accessibilityRole="alert">A previous decision may have been saved.
             Do not repeat it until verified.</Text>
