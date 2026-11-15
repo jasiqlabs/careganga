@@ -1,4 +1,4 @@
-import { Body,Controller,Get,Headers,Patch,Req } from "@nestjs/common";
+import { Body,Controller,Get,Headers,Param,Patch,Req } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { CareGangaRequest } from "../../../core/observability/request-correlation";
 import { SecurityPolicyService } from "../application/security-policy.service";
@@ -9,6 +9,10 @@ export class SecurityPolicyController {
   @Get()
   read(@Headers("authorization") bearer:string){
     return this.service.read(bearer);
+  }
+  @Get("changes/:requestKey")
+  lookup(@Headers("authorization") bearer:string,@Param("requestKey") requestKey:string){
+    return this.service.lookup(bearer,requestKey);
   }
   @Patch()
   update(@Headers("authorization") bearer:string,@Body() body:unknown,
