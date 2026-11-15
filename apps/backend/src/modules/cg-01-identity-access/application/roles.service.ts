@@ -89,7 +89,29 @@ export class RolesService {
       AND ($3='all' OR active=($3='active'))
       AND ($4='all' OR is_protected=($4='system'))`,
       [actor.realmId,search?("%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):"",status,kind]);
-    return {roles:result.rows.map(toView),total:Number(total.rows[0].n),offset,limit};
+    // Six factual Foundation-role summaries corresponding to the original U05/U06 KPI row.
+    // This queries only CG-01 roles; do not invent future module permission counts.
+    const overall=await this.db.query<{
+      total_roles:string;active_roles:string;inactive_roles:string;
+      system_roles:string;custom_roles:string;
+    }>(`
+      SELECT count(*)::text AS total_roles,
+        count(*) FILTER (WHERE active)::text AS active_roles,
+        count(*) FILTER (WHERE NOT active)::text AS inactive_roles,
+        count(*) FILTER (WHERE is_protected)::text AS system_roles,
+        count(*) FILTER (WHERE NOT is_protected)::text AS custom_roles
+      FROM role WHERE realm_id=$1`,[actor.realmId]);
+    const summary=overall.rows[0];
+    return {roles:result.rows.map(toView),total:Number(total.rows[0].n),offset,limit,
+      summary:{
+        totalRoles:Number(summary.total_roles),
+        implementedActions:capabilitiesInUse().length,
+        activeRoles:Number(summary.active_roles),
+        inactiveRoles:Number(summary.inactive_roles),
+        customRoles:Number(summary.custom_roles),
+        systemRoles:Number(summary.system_roles)
+      }
+    };
   }
   async options(bearer:string,search=""){
     const actor=await this.sessions.requireAction(bearer,"roles.select");
