@@ -39,8 +39,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs B09, B10, U14, U15, U16, U17, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07 — Module-critical regression:** A paid membership application is rejected after verified fee receipt, then a duplicate refund callback occurs. Expected: the membership stays rejected, finance authorizes a single full joining-fee refund, no member number/card is issued and the applicant sees the actual refund status.
 - **US-002-QA08 — Source-specific boundary:** Submit a paid tier application, change the tier price during review, then reject the application; retain accepted fee snapshot, one approved refund trail, and issue neither member ID nor card.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 - **US-002-QA09 — transferred branch owner QA:** Register/renew an actual member linked to an authorized ACTIVE CG-02 branch. Verify CG-04 owns the member↔branch association/history and enforces scope on list/options/detail; closed or foreign branch rejected, a CG-02 branch remains unchanged, no synthetic CG-10 employee or CG-18 publication required.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Apply with personal/geographic profile, skills, experience, preferred…
@@ -57,8 +57,8 @@ QA cases:
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs B09, B10, U14, U15, U16, U17, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — Source-specific boundary:** Volunteer applies with Weekends Only and approved CG-02 department; a reviewer returns missing identity evidence, applicant corrects/resubmits, and no Internal Android staff privileges appear merely from volunteer approval.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 - **US-003-QA08 — transferred branch owner QA:** Submit/approve actual volunteer with permitted CG-02 branch/department preference and effective-dated CG-04 volunteer assignment. Wrong/closed branch or department denied, stale assignment rejected, old history retained on change; no CG-02 volunteer master or automatically granted CG-01 staff role. Web/Android show authentic state.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ## Execution progress
