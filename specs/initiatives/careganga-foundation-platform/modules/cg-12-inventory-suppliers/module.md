@@ -1,50 +1,56 @@
-# CG-12 — Inventory Suppliers
+# CG-12 — Suppliers & Inventory
 
-**Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
-
-**Authority:** [PRD](../../prd.md) FR-037, FR-038, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-12-BR01–CG-12-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Admin global shell; no separate verified capture.  
-**Stage:** Harness Planning / GREENFIELD · **State:** DRAFT_NOT_APPROVED; revised PRD/HLD approval & authenticated Harness resolver NOT_RUN.
+**Canonical order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — after genuine CG-01/02 foundation, independently from future beneficiary/reward/project modules. [Source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-12-BR01–06; [PRD](../../prd.md) FR-037–038; [HLD](../../hld.md); **[original Admin Panel screenshot UI/UX audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B19** `19_Requests_and_Inventory.png` with six exact tab names, status KPIs, filters, quick actions and alert/category panels; [DLD](dld.md); [UI/UX](uiux.md); [100 QA scenarios](tasks.md).
+**Stage:** Harness Planning / GREENFIELD · CURRENT_SOURCE_EXPERT_REVIEW_REQUIRED until exact current-hash delegated re-review. **5 genuine vertical stories, 100 unique QA (20/story)** specify real PostgreSQL, NestJS, B19 responsive Foundation Admin Web, native Internal Android, CG-03/19/09 owner adapters and no future module prerequisites. PRD/HLD latest global review pending; authenticated Harness resolver, actual existing code, independent CRITICAL DB/security, SQL migration/backup/restore, runnable Web/Android/device/pixel/motion/latency QA **NOT_RUN**; implementation remains BLOCKED.
 
 uiux_decision: REQUIRED
-uiux_reason: New cross-channel business UI must follow original CareGanga theme, motion and role-sensitive workflows.
+uiux_reason: **Original indexed Admin reference B19 is mandatory**, not only global shell. Reuse identical CareGanga shared tokens, six tabs and source-visible control patterns, with responsive and native Internal Android actual forms/states; original image/video pixels/rendered QA NOT_RUN.
 dld_decision: REQUIRED
-dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
+dld_reason: Exact item/supplier/store source, immutable movement ledger and reserved vs physical balances, version-pinned CG-03 reviews, CG-19 safe proof, typed APIs, concurrent last-unit/transfer/reversal and independent stories need one canonical implementation contract.
 database_impact: CRITICAL
-database_reason: New source-owned Item/supplier catalog, stock movement ledger, material requests/fulfilment state requires reliable relational constraints, concurrency and migration.
+database_reason: Quantity safety under last-unit race/holds, simultaneous branch transfer and source replay, same-root/real CG-02 branch constraints, immutable stock/event provenance, CG-03 exact approval and CG-19 private receipt proofs require an independently reviewed relational/migration/restore/locking strategy. Runtime SQL, specialist review NOT_RUN.
 mobile_store_impact: ANDROID
-mobile_store_reason: Approved native Android workflow uses maintained store-compatible baseline.
+mobile_store_reason: **Native Internal Android** stock/catalog/receipt/request/issue/report UI is required; **Public Android inventory NOT_APPLICABLE**. Store/toolchain and device constraints must be verified with actual build.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
-mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
-mobile_policy_checked_on: 2026-11-14
+mobile_platform_baseline: Official documentation baseline Expo SDK 58 / React Native 0.88 / React 19.3 and ordinary Google Play API 36, checked against current source on 15 Nov 2026; pin one compatible stable dependency matrix and actually verify signed AAB, 16 KB native page-size and Play requirement before release. No claim of installed app.
+mobile_policy_checked_on: 2026-11-15
 mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
-mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
+mobile_dependency_audit: OFFICIAL_SOURCE_REFERENCE_ONLY; actual Android lockfile/manifests/AAB/device/Play QA NOT_RUN.
 
-## Business owner and isolation
+## Business source owner and true foundational boundary
 
-**Owns:** Item/supplier catalog, stock movement ledger, material requests/fulfilment. **Delivery-critical, already-delivered owners:** CG-01 secured actor/role, CG-02 actual store/branch geography and CG-03 approval case when required. **Later owned integrations, never required to fake this module's first working path:** CG-09 adds accounting cost/payments, CG-06 uses issue for aid, CG-13 uses physical reward fulfillment; later consumer implements true integration. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
+**CG-12 owns:** item/SKU/category/base unit, actual supplier directory with protected business contacts, physical store label under Foundation/real CG-02 ACTIVE branch, request/approved qty/hold/current available, immutable receipt/issue/return/transfer/adjustment source event+lines, one guarded stock balance, Distribution Log projection, low-stock rules/actual stock reports. A `supplier` is procurement reference, **not** CG-09 vendor payable/invoice. Warehouse location is not a new CG-02 branch or healthcare center.
 
-**State and invariant:** Request draft/approved/rejected/fulfilled; receipt/issue/reversal. Atomic stock, no duplicate issues or unauthorized negative balance. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
+**Actually required earlier contracts, not asserted implemented:** CG-01 session/Foundation root/current role/action and CG-02 Foundation or ACTIVE branch. Only US-003 needs delivered original CG-03 reviewer/case engine and **introduces its own MATERIAL_REQUEST_REVIEW type inside CG-03**; US-004 adds STOCK_ADJUSTMENT_REVIEW when policy requires it. **US-002** adds CG-12 typed pre-review receipt-proof adapter inside original CG-19 (only when evidence required) before CG-03 material review exists, preserving CG-19 security. CG-09 may already exist, but US-001/002 physical stock **must not** need any invoice, voucher, finance year, supplier payee posting, or payment success; CG-12 optionally adds a typed source-supplier/confirmed receipt lookup into original CG-09 invoice/voucher only upon genuine financial use. No duplicate CG-03 case, CG-19 file, CG-09 ledger or financial vendor master.
 
-## Complete PRD and BR mapping
+**Later owners (requirements placed in their receiving implementation artifacts, not assumed delivered):** CG-06 owns private beneficiary request/assistance and real material distribution status with exactly one CG-12 approved issue, CG-13 owns points/reward product redemption and genuine reserved/issued CG-12 physical stock, CG-05 owns actual project/task, CG-20 owns cross-module MIS. CG-12 US-005 already shows real internal CG-01 branch/team issue in **B19 Distribution Log without any future aid/reward record**; later owners use the actual approved stock event, never create shadow balance or double consume physical stock. CG-13 B14–B16 reward store UI belongs CG-13, **not B19 warehouse**.
 
-- **FR-037/A-12:** Inventory officer manages stock — Maintain item/supplier master, receipts, issuance, authorized adjustment, availability, low-stock alerts and transaction history
-- **FR-038/A-12:** Staff requests material — Submit and track request through approval/rejection and fulfilled quantity, with project, beneficiary and reward consumption linked to one stock inventory
+**Scope/constraints:** Every item/store/source/supplier/request/hold/event list, option, import, preview, export and write is Foundation-root and actual CG-01 location/CG-02 real branch guarded, not generic client-supplied tenant/center/patient permission. No physical stock <0, reserved <0 or available `on_hand-reserved<0`; only committed immutable movement/hold events change stock. A submitted request is not approval/hold/issue, and a CG-09 approved voucher is not received stock. No Public Web/Public Android inventory pages.
 
-Detailed authoritative clauses:
-- **CG-12-BR01:** Maintain item catalog with category, details and available stock.
-- **CG-12-BR02:** Maintain supplier/vendor directory used by inventory and linked finance.
-- **CG-12-BR03:** Record stock receipts, issues and permitted adjustments with quantity changes and transaction history.
-- **CG-12-BR04:** Submit material requests, review/approve/reject them and track request/fulfilment status.
-- **CG-12-BR05:** Record inventory distributions, low-stock alerts and stock reports.
-- **CG-12-BR06:** Link relevant stock consumption to projects/beneficiary distribution/reward fulfillment without maintaining duplicate counters.
+## Complete BR/PRD source requirement map
 
-## Independently deliverable vertical flow
+- **FR-037/A-12, CG-12-BR01:** Real item catalog with name/category/details/base unit and actual available/physical stock, not a fake manually editable balance.
+- **FR-037, CG-12-BR02:** Procurement supplier/vendor business directory and safe optional original CG-09 financial source linkage, not a second payable.
+- **FR-037, CG-12-BR03:** One immutable stock event source for confirmed receipt/issue/return/transfer and separately authorized adjustment, with signed movement history/reversal, exact qty and real store.
+- **FR-038, CG-12-BR04:** Staff request with version-pinned genuine CG-03 review/approve/reject, approved/requested/held/issued lines and partial/full/shortage states.
+- **FR-037/038, CG-12-BR05:** Real B19 Distribution Log, category/low-stock per item/store threshold, bounded safe reports/search/export without a second stock report master.
+- **FR-038, CG-12-BR06:** Approved source movement can later be attributed by true CG-05 project, CG-06 beneficiary and CG-13 reward fulfillment **inside the later introducing owner**, using one original CG-12 quantity source, no duplicate counters/phantom records.
 
-**Concrete acceptance:** Create real supplier/item, receive stock, request/reserve/issue/return and reject simultaneous competing last-quantity issues; every movement has real source, stock never goes negative or silently changes another branch. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
+## Story-by-story complete vertical acceptance matrix
 
-## UI/UX, NFR and Planning acceptance
+| Story, strict within-module predecessor | PostgreSQL + NestJS/owner adaptation | **Original B19 Admin Web** | **Native Internal Android** | Real first usable acceptance |
+| --- | --- | --- | --- | --- |
+| **US-001 — None** | Same-root item/supplier/location/real CG-02 branch, unit/category/threshold, DTO+safe selector and uniqueness; **no CG-03 case** | Inventory Management, Vendors & Suppliers, Settings, New Item | Items/Stock permitted store and true zero | Create item/supplier/real store independently, with no future finance/aid/reward |
+| **US-002 — US-001** | Event/movement/balance immutable `numeric`, source-idempotent positive receipt, original CG-19 proof adapter when needed | Inventory Management Receive, Stock Transactions receipt and real stock KPIs | Receive Stock, current actual on-hand | Confirm stock once even with no CG-09 invoice/payment |
+| **US-003 — US-002** | Material request/lines, immutable CG-03 MATERIAL_REQUEST_REVIEW source revision, approved qty and atomic stock_hold/reserved | Requests Management, New Request, Request Approvals, real pending/rejected/hold counts | My/New Material Requests and actual review status | Approve and hold without issuing any physical item |
+| **US-004 — US-003** | Atomic partial/full stock issue, direct issue, bound return, two-store transfer and genuine reviewed adjustment with original event | Stock Transactions Issue/Return/Transfer/Adjustment, Requests Management fulfill (6+4) | Native Issue/Transfer/Return and authorized fulfillment | No negative available, no duplicate issue, exact event history |
+| **US-005 — US-004** | Indexed event-derived distribution, low-stock available threshold, root+store reporting/export+audit; no shadow aid table | Distribution Log, category/alerts, Filter/Export and Settings, six-tab B19 parity | Stock Summary, Low Stock and Distribution History | Reports reconcile with actual receipts/holds/issue/return, future CG-06/13 absent |
 
-Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: Admin global shell; no separate verified capture. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
+**Channel integrity:** Foundation Admin Web and backend/DB are required for **all 5**. Native **Internal Android** relevant real staff workflows for **all 5**. Public Android/Web inventory NOT_APPLICABLE. No extra Mobile/Admin WebView, fake third app or screens unsupported by source. B19 original exact six tabs, KPIs, status/type/priority/date/search, Filter/Export, New Request/New Item/Stock Adjustment/Request Approvals, category/alert panels are **mandatory**. Responsive theme, accessibility/motion and true states per [UI/UX](uiux.md). No exact original pixel/motion PASS without PNG/video inspection.
 
-All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+## NFR, QA, approvals and handoff gate
+
+[DLD](dld.md) fixes canonical DB table names, same-root composite FK/UNIQUE, one `stock_balance` transactional projection over immutable stock_events/hold events, exact decimal+unit, reversible linked movements, source idempotency/locks, CG-03+19 introducing owner adapters, safe typed endpoints and SQL migrations/recovery; [tasks](tasks.md) holds **100 unique US-001–005 QA01–QA20** including Admin/Web/native, role isolation, CG-01/02 original regression, concurrent last unit, negative stock, partial 6+4, transfer atomicity, double-return, approval proof, low stock, scoped reports, restore and original B19. No second tracker or CI.
+
+**Proposed, not verified NFR:** indexed bounded root/store queries, common API p95≤1s agreed load, deterministic multi-store locks, no unbounded idle scans, event-triggered low-stock alert, screenshot-faithful CareGanga tokens, WCAG 2.2 AA practical, native current stable Google Play setup, safe redacted logs, offline/unknown-write reconciliation, clear human statuses. **Independent qualified CRITICAL DB/security review, source code/real DB migration/backup/restore/EXPLAIN, Web/Internal Android device/runtime, pixel/video/motion and benchmarks NOT_RUN.** Design approval alone never authorizes marking development or manual QA PASS. All five stories remain BLOCKED pending actual Harness/PRD/HLD/predecessor and runtime gates.
