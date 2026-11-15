@@ -111,4 +111,62 @@ export class AccessAuditReader {
       coverage:"COMPLETE" as const
     };
   }
+  /**
+   * CG-01-owned private facade for CG-21's read-only merged audit. This returns
+   * a bounded page of already redacted facts; CG-21 never imports access_audit
+   * repositories/tables or mutates identity security history.
+   * ownerEventId stays server-side for encrypted composite cursors/detail refs.
+   */
+  async listPlatformProjection(bearer:string,range:{
+    from:Date;to:Date;after?:{at:Date;id:string}|null;limit:number
+  }){
+    const actor=await this.sessions.requireAction(bearer,"platform.audit.view");
+    if(!Number.isInteger(range.limit)||range.limit<1||range.limit>101||
+      !(range.from instanceof Date)||!(range.to instanceof Date)||
+      !Number.isFinite(range.from.getTime())||!Number.isFinite(range.to.getTime())||
+      range.to<range.from||range.to.getTime()-range.from.getTime()>90*86400000)
+      throw new BadRequestException("Invalid audit range");
+    const after=range.after??null;
+    if(after&&(!Number.isFinite(after.at.getTime())||
+      !/^[a-f0-9-]{36}$/i.test(after.id)))throw new BadRequestException("Invalid audit page");
+    const rows=await this.db.query<AuditRow>(`
+      SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        actor.display_name AS actor_display,target.display_name AS target_display
+      FROM access_audit au
+      LEFT JOIN account actor ON actor.id=au.actor_account_id AND actor.realm_id=au.realm_id
+      LEFT JOIN account target ON target.id=au.target_account_id AND target.realm_id=au.realm_id
+      WHERE au.realm_id=$1 AND au.occurred_at>=$2 AND au.occurred_at<=$3
+        AND ($4::timestamptz IS NULL OR
+          (au.occurred_at,au.id)<($4::timestamptz,$5::uuid))
+      ORDER BY au.occurred_at DESC,au.id DESC LIMIT $6
+    `,[actor.realmId,range.from,range.to,after?.at??null,after?.id??null,range.limit]);
+    return rows.rows.map(row=>({
+      ownerEventId:row.id,source:"CG-01" as const,
+      occurredAt:row.occurred_at.toISOString(),
+      actionLabel:labels[row.action_key]??"Account security event",
+      actorDisplay:row.actor_display??"System",
+      targetDisplay:displayTarget(row.safe_context,row.target_display),
+      outcome:row.outcome==="SUCCESS"?"Confirmed":row.outcome==="DENIED"?"Denied":"Pending"
+    }));
+  }
+  async readPlatformProjectionEvent(bearer:string,ownerEventId:string){
+    const actor=await this.sessions.requireAction(bearer,"platform.audit.view");
+    if(!/^[a-f0-9-]{36}$/i.test(ownerEventId))throw new BadRequestException("Invalid audit event");
+    const rows=await this.db.query<AuditRow>(`
+      SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        actor.display_name AS actor_display,target.display_name AS target_display
+      FROM access_audit au
+      LEFT JOIN account actor ON actor.id=au.actor_account_id AND actor.realm_id=au.realm_id
+      LEFT JOIN account target ON target.id=au.target_account_id AND target.realm_id=au.realm_id
+      WHERE au.realm_id=$1 AND au.id=$2
+    `,[actor.realmId,ownerEventId]);
+    const row=rows.rows[0];
+    if(!row)return null;
+    return {source:"CG-01" as const,occurredAt:row.occurred_at.toISOString(),
+      actionLabel:labels[row.action_key]??"Account security event",
+      actorDisplay:row.actor_display??"System",
+      targetDisplay:displayTarget(row.safe_context,row.target_display),
+      outcome:row.outcome==="SUCCESS"?"Confirmed":row.outcome==="DENIED"?"Denied":"Pending"};
+  }
+
 }
