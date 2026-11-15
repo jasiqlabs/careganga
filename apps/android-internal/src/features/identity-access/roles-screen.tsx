@@ -13,6 +13,7 @@ type Role=CG01RoleSummary;
 type Action=CG01Capability;
 type Group={group:string;actions:Action[]};
 type Editing={mode:"create"|"edit"|"copy";source?:Role};
+type RoleStatus="all"|"active"|"retired";
 type Audit=CG01AuditEvent;
 const base="/api/access/";
 async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
@@ -45,6 +46,8 @@ async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",b
 }
 export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>void;onExpired:()=>void}){
   const [roles,setRoles]=useState<Role[]>([]);
+  const [details,setDetails]=useState<Role|null>(null);
+  const [status,setStatus]=useState<RoleStatus>("all");
   const [groups,setGroups]=useState<Group[]>([]);
   const [allowed,setAllowed]=useState<string[]>([]);
   const [busy,setBusy]=useState(true);
@@ -68,10 +71,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [uncertain,setUncertain]=useState(false);
   const canEdit=allowed.includes("roles.manage");
   const canAudit=allowed.includes("access.audit.view");
-  const load=useCallback(async(q="",skip=0)=>{
+  const load=useCallback(async(q="",skip=0,filter:RoleStatus="all")=>{
     setBusy(true);setError("");
     try{
-      const query=new URLSearchParams({search:q,limit:"30",offset:String(skip)});
+      const query=new URLSearchParams({search:q,limit:"30",offset:String(skip),status:filter});
       const [list,cap,effective]=await Promise.all([
         call(token,"roles?"+query),
         call(token,"capabilities"),
@@ -87,7 +90,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     }catch(e){
       // Data cached on screen is not a source of current permission truth.
       setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setHistoryCursor(null);
-      setEditor(null);
+      setEditor(null);setDetails(null);
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError(e instanceof Error&&e.message==="PERMISSION_DENIED"?
         "You don't have access to Foundation roles.":"Roles cannot be verified right now.");
@@ -97,11 +100,12 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(editor&&!saving){setEditor(null);return true;}
+      if(details){setDetails(null);return true;}
       if(!editor){onExit();return true;}
       return true;
     });
     return()=>sub.remove();
-  },[editor,saving,onExit]);
+  },[editor,details,saving,onExit]);
   async function findCopySources(query:string){
     setCopySearching(true);setError("");
     try{
@@ -153,7 +157,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         actionKeys:selected,requestKey,
         ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})
       });
-      setEditor(null);await load(search,offset);setSuccess("Role change saved.");
+      setEditor(null);await load(search,offset,status);setSuccess("Role change saved.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
@@ -184,7 +188,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       await call(token,"roles/"+role.roleRef+"/retire","POST",{
         expectedRevision:role.revision,requestKey:Crypto.randomUUID()
       });
-      await load(search,offset);setSuccess("Role retired.");
+      await load(search,offset,status);setSuccess("Role retired.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError(e instanceof Error&&e.message==="ROLE_ASSIGNED"?
@@ -227,8 +231,18 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     <View style={styles.line}>
       <TextInput accessibilityLabel="Search roles" placeholder="Search role name"
         style={styles.input} value={search} onChangeText={setSearch}/>
-      <Pressable accessibilityRole="button" onPress={()=>void load(search,0)} style={styles.button}>
+      <Pressable accessibilityRole="button" onPress={()=>void load(search,0,status)} style={styles.button}>
         <Text>Search</Text></Pressable>
+    </View>
+    <View style={styles.line} accessibilityRole="toolbar">
+      {(["all","active","retired"] as const).map(filter=><Pressable key={filter}
+        accessibilityRole="button" accessibilityState={{selected:status===filter}}
+        style={[styles.button,status===filter&&styles.selectedTab]}
+        onPress={()=>{setStatus(filter);void load(search,0,filter);}}>
+        <Text style={status===filter?styles.selectedTabText:styles.buttonText}>
+          {filter==="all"?"All roles":filter==="active"?"Active":"Retired"}
+        </Text>
+      </Pressable>)}
     </View>
     <View style={styles.line}>
       {canEdit&&<Pressable accessibilityRole="button" style={styles.button}
@@ -249,6 +263,8 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       <Text>{role.assignedCount} assigned accounts</Text>
       <Text>{role.protected?"Protected authority":role.actionKeys.length+" allowed actions"}</Text>
       {!!role.description&&<Text>{role.description}</Text>}
+      <Pressable accessibilityRole="button" style={styles.button}
+        onPress={()=>setDetails(role)}><Text style={styles.buttonText}>View details</Text></Pressable>
       {canEdit&&!role.protected&&role.active&&<View style={styles.line}>
         <Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>open("edit",role)}><Text>Edit</Text></Pressable>
@@ -260,10 +276,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     </View>)}
     {!busy&&total>30&&<View style={styles.line}>
       <Pressable accessibilityRole="button" disabled={offset===0} style={styles.button}
-        onPress={()=>void load(search,Math.max(0,offset-30))}><Text>Previous</Text></Pressable>
+        onPress={()=>void load(search,Math.max(0,offset-30),status)}><Text>Previous</Text></Pressable>
       <Text>{offset+1}–{Math.min(offset+30,total)} of {total}</Text>
       <Pressable accessibilityRole="button" disabled={offset+30>=total} style={styles.button}
-        onPress={()=>void load(search,offset+30)}><Text>Next</Text></Pressable>
+        onPress={()=>void load(search,offset+30,status)}><Text>Next</Text></Pressable>
     </View>}
     {history&&<View style={styles.roleCard}>
       <Text style={styles.heading}>Recent access history</Text>
@@ -276,6 +292,37 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         onPress={()=>void moreHistory()}><Text>Load more history</Text></Pressable>}
     </View>}
   </ScrollView>
+  <Modal visible={Boolean(details)} animationType="slide" transparent={false}
+    onRequestClose={()=>setDetails(null)}>
+    <SafeAreaView style={styles.page}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <Text accessibilityRole="header" style={styles.title}>Role details</Text>
+        {details&&<>
+          <View style={styles.line}>
+            <View accessible={false} style={[styles.roleDot,{backgroundColor:roleColor(details.colorKey)}]}/>
+            <Text style={styles.heading}>{details.name}</Text>
+          </View>
+          <Text>{details.protected?"Protected Foundation role":details.active?"Active custom role":"Retired role"}</Text>
+          {!!details.description&&<Text>{details.description}</Text>}
+          <Text>Scope: Foundation</Text>
+          <Text>{details.assignedCount} assigned accounts</Text>
+          <Text style={styles.heading}>Permissions</Text>
+          {details.protected?<Text>
+            This role has protected administrator authority and cannot be edited or copied.
+          </Text>:groups.map(group=><View key={group.group} style={styles.group}>
+            <Text style={styles.heading}>{group.group}</Text>
+            {group.actions.map(action=><View key={action.key} style={styles.permission}>
+              <Text style={styles.permissionLabel}>{action.businessLabel}</Text>
+              <Text>{details.actionKeys.includes(action.key)?"Allowed":"Not granted"}</Text>
+            </View>)}
+          </View>)}
+          {!details.protected&&details.actionKeys.length===0&&<Text>No permissions granted.</Text>}
+        </>}
+        <Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>setDetails(null)}><Text style={styles.buttonText}>Back to roles</Text></Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
   <Modal visible={Boolean(editor)} animationType="slide" transparent={false}
     onRequestClose={()=>{if(!saving)setEditor(null);}}>
     <SafeAreaView style={styles.page}>
@@ -360,6 +407,9 @@ const styles=StyleSheet.create({
     paddingVertical:12,alignItems:"center",justifyContent:"center"},
   roleCard:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:8,padding:14,gap:8},
   roleDot:{width:16,height:16,borderRadius:8},
+  selectedTab:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
+  selectedTabText:{color:careGangaTheme.primaryText,fontWeight:"700"},
+  buttonText:{color:careGangaTheme.text,fontWeight:"600"},
   group:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:7,padding:12,gap:10},
   fieldLabel:{fontWeight:"600",color:careGangaTheme.text},
   swatches:{flexDirection:"row",flexWrap:"wrap",gap:8,alignItems:"center"},
