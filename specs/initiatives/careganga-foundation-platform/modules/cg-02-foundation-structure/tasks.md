@@ -7,7 +7,7 @@
 
 ## Approved task definitions
 
-**Approval truth:** These definitions are **PROPOSED / NOT_YET_APPROVED**, despite the Harness-required machine-readable heading above. No task becomes READY without the actual current-hash Planning/UIUX/DLD approvals and authenticated resolver. Existing execution progress is the sole tracker.
+**Approval truth:** The current 2-story/21-QA **design task definitions are owner-delegated content-approved (`DELEGATED_APPROVED`, JASIQ AI Design Review Agent, 15 Nov 2026)** and linked to the latest CG-02 module/UIUX/DLD. The formal Harness development entry gate is **BLOCKED**, because PRD/HLD v1.1 are still REVIEW_REQUIRED and authenticated local resolver and independent CRITICAL DB validation are NOT_RUN. No story becomes READY from this design decision alone; the single existing execution progress remains authoritative.
 
 ### US-001 — Configure Foundation identity, real geography and departments/committees
 
