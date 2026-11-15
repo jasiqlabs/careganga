@@ -10,6 +10,10 @@ export class ApprovalProposalController{
   process(@Headers("authorization") bearer:string){
     return this.proposals.process(bearer);
   }
+  @Get("process/changes/:key")
+  processLookup(@Headers("authorization") bearer:string,@Param("key") key:string){
+    return this.proposals.processLookup(bearer,key);
+  }
   @Post("process/versions")
   version(@Headers("authorization") bearer:string,@Body() body:unknown){
     return this.proposals.newProcessVersion(bearer,body);
