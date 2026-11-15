@@ -1,9 +1,10 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useRef,useState} from "react";
-type Setting={key:"audit.default_page_size";value:number;revision:number;updatedAt:string|null};
-type History={revision:number;value:number;changedAt:string;changedBy:string};
-type Connection={provider:string;purpose:string;revision:number;credentialRevision:number;
-  status:string;lastCheckedAt:string|null;referencePresent:boolean};
+import type {
+  CG21SettingView as Setting,
+  CG21SettingRevision as History,
+  CG21IntegrationView as Connection
+} from "@careganga/api-contracts";
 type Notice={kind:"success"|"error"|"uncertain";message:string};
 const label=(v:string)=>v.replace(/[_-]+/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 const referencePattern=/^secretref:[A-Za-z0-9/_-]{10,230}$/;
