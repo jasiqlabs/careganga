@@ -99,3 +99,38 @@ export interface CG21IntegrationReadiness {
   provider:string;purpose:string;verified:boolean;
   credentialRevision?:number;message?:string;
 }
+
+/** CG-21 / US-002 source-owned redacted audit; never a duplicate identity ledger. */
+export type CG21AuditSource="CG-01"|"CG-21";
+export interface CG21AuditEvent {
+  eventRef:string;source:CG21AuditSource;occurredAt:string;
+  actionLabel:string;actorDisplay:string;targetDisplay:string;outcome:string;
+}
+export interface CG21AuditPage{
+  events:CG21AuditEvent[];nextCursor:string|null;
+  coverage:"COMPLETE"|"PARTIAL";unavailableSources:CG21AuditSource[];
+  limit:number;source:"ALL"|CG21AuditSource;from:string;to:string;
+}
+export interface CG21AuditDetail {
+  source:CG21AuditSource;occurredAt:string;actionLabel:string;
+  actorDisplay:string;targetDisplay:string;outcome:string;
+}
+export interface CG21AuditCsv {
+  filename:string;csv:string;rows:number;coverage:"COMPLETE";truncated:boolean;
+}
+export interface CG21RecoveryAvailability {
+  status:"AVAILABLE"|"NOT_AVAILABLE";message:string;
+}
+export interface CG21RecoveryOperation{
+  operationRef:string;status:"REQUESTED"|"PRIVILEGED_AUTHORIZED"|"RUNNING"|
+    "VERIFIED_SUCCEEDED"|"FAILED"|"UNKNOWN";
+  version:number;backupReferencePresent:boolean;
+  requestedAt:string;updatedAt:string;
+}
+export interface CG21RecoveryRequest {
+  backupReference:string;expectedVersion:0;requestKey:string;totp:string;
+}
+export interface CG21RecoveryOutcome {
+  status:"NOT_AVAILABLE"|"REQUESTED"|"REPLAY_CONFIRMED";message?:string;
+  operationRef?:string;version?:number;
+}
