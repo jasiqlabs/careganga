@@ -7,7 +7,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {RecoveryFacility} from "../infrastructure/recovery-facility";
-type RecoveryRow={id:string;status:string;version:number;request_digest:string;
+type RecoveryRow={id:string;requested_by:string;status:string;version:number;request_digest:string;
   backup_reference:string;requested_at:Date;updated_at:Date};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const BACKUP=/^backupref:[A-Za-z0-9/_-]{6,170}$/;
@@ -35,7 +35,7 @@ export class RecoveryService{
   async list(bearer:string){
     const actor=await this.actor(bearer);
     const rows=await this.db.query<RecoveryRow>(`
-      SELECT id,status,version,backup_reference,requested_at,updated_at,request_digest
+      SELECT id,requested_by,status,version,backup_reference,requested_at,updated_at,request_digest
       FROM recovery_operation WHERE foundation_realm_id=$1
       ORDER BY requested_at DESC,id DESC LIMIT 30
     `,[actor.realmId]);
@@ -53,12 +53,13 @@ export class RecoveryService{
   private async existing(client:PoolClient,actor:VerifiedFoundationActor,
     requestKey:string,expectedDigest:string){
     const row=await client.query<RecoveryRow>(`
-      SELECT id,status,version,backup_reference,requested_at,updated_at,request_digest
+      SELECT id,requested_by,status,version,backup_reference,requested_at,updated_at,request_digest
       FROM recovery_operation
       WHERE foundation_realm_id=$1 AND request_key=$2 FOR SHARE
     `,[actor.realmId,requestKey]);
     const previous=row.rows[0];
-    if(previous&&previous.request_digest!==expectedDigest)
+    if(previous&&(previous.requested_by!==actor.accountId||
+      previous.request_digest!==expectedDigest))
       throw new ConflictException({code:"PLATFORM_REPLAY_CONFLICT"});
     return previous??null;
   }
@@ -76,11 +77,12 @@ export class RecoveryService{
     const digest=this.requestDigest(backupRef,0);
     // A committed response can be resolved after a provider becomes unavailable.
     const saved=await this.db.query<RecoveryRow>(`
-      SELECT id,status,version,backup_reference,requested_at,updated_at,request_digest
+      SELECT id,requested_by,status,version,backup_reference,requested_at,updated_at,request_digest
       FROM recovery_operation WHERE foundation_realm_id=$1 AND request_key=$2
     `,[actor.realmId,requestKey]);
     if(saved.rowCount){
-      if(saved.rows[0].request_digest!==digest)
+      if(saved.rows[0].requested_by!==actor.accountId||
+        saved.rows[0].request_digest!==digest)
         throw new ConflictException({code:"PLATFORM_REPLAY_CONFLICT"});
       return {status:"REPLAY_CONFIRMED",operationRef:saved.rows[0].id,
         version:saved.rows[0].version};
@@ -138,8 +140,8 @@ export class RecoveryService{
       throw new BadRequestException("Invalid recovery request");
     const rows=await this.db.query<{id:string;status:string;version:number}>(`
       SELECT id,status,version FROM recovery_operation
-      WHERE foundation_realm_id=$1 AND request_key=$2
-    `,[actor.realmId,requestKey]);
+      WHERE foundation_realm_id=$1 AND request_key=$2 AND requested_by=$3
+    `,[actor.realmId,requestKey,actor.accountId]);
     return rows.rowCount?
       {status:"CONFIRMED",operationRef:rows.rows[0].id,
         operationStatus:rows.rows[0].status,version:rows.rows[0].version}:
