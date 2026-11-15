@@ -3,6 +3,7 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { RecoveryDelivery } from "../infrastructure/recovery-delivery";
+import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
 
 const digest=(v:string)=>createHash("sha256").update(v).digest("hex");
@@ -25,6 +26,8 @@ export class RecoveryService {
     return createHmac("sha256",key).update("recovery:"+email+":"+requestKey).digest("hex");
   }
   private async throttle(email:string,remoteAddress:string,maxAttempts=5):Promise<void>{
+    // The shared cleanup is strictly on demand for bounded network-level requests.
+    if(email.startsWith("network-recovery-"))await maybePruneAuthThrottle(this.db);
     // Recovering a specific address cannot bypass login rate limits.
     const key=this.idempotency(email,"throttle:"+remoteAddress);
     const result=await this.db.query<{attempt_count:number}>(`
