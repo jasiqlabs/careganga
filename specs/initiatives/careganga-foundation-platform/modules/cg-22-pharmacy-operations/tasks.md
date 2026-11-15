@@ -101,7 +101,72 @@
 
 **Verification rule:** On real source change trace every exact QA ID through actual UI/navigation → current CG-01/14 effective grant and owner facade → typed NestJS API/transaction → own PostgreSQL/current CG-03 or CG-19 source result → same authorized Web/native state. Record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE and fix/re-review; independent DB/race/clinical/device execution must remain NOT_RUN until separately performed.
 
+### US-004 — Same-partner multi-location transfer, reception and in-transit reconciliation (ERP ON)
+
+**Outcome/acceptance:** One verified pharmacy partner with two separately approved actual CG-14 locations can reserve/dispatch original batch stock, recognize distinct in-transit quantity, receive a true partial/full shipment at its intended destination and reconcile return/loss without negative stock, duplicate effects or Foundation accounting.
+
+**Requirements:** FR-084, CG-22-BR04–05, D-23/26/27/28, H11. CG-NFR critical center isolation, exact quantity and recovery.
+
+**Full story implementation:** CG-22 pharmacy_transfer/transfer_line and per-batch original US-002 stock movement/balance; backend same-provider two-location+both-current-grant guard, source/dest role separation, Center Portal Send/Receive/Return/Loss Review and restricted Foundation Admin summary, eligible native Internal Android Foundation oversight if same audience. No GPS courier service, public stock, CG-12 movement or additional payment.
+
+**True dependencies:** US-002 real batches/balances and two independently approved CG-14 location grants of SAME real legal partner; **US-003 purchase and US-005 expiry reporting are not predecessors**. Global Pharmacy ERP ON and current CG-01 source/dest permissions.
+
+**Manual source QA — planned, NOT executed:**
+- **US-004-QA01 —** Using one genuine CG-14 pharmacy provider with Center A and B as different approved locations, create actual pending transfer of existing batch; permitted location picker includes only eligible same legal provider and current active Pharmacy ERP grants.
+- **US-004-QA02 —** Attempt send from Center A to Center C owned by unrelated pharmacy organization even under the same Foundation root → backend denies; no cross-provider transfer based merely on sharing root or district.
+- **US-004-QA03 —** Source dispatcher lacks current permission, destination receiver isn't current assigned Center B account, or either real PHARMACY_ERP grant suspended → no source/destination command, no guessed private stock or contact in selectors.
+- **US-004-QA04 —** Reserve 9 base units from actual Center A available balance for transfer; if two dispatchers race last unit, one valid reserve/dispatch wins by short lock and correct available/reserved invariants.
+- **US-004-QA05 —** Dispatch verified 9 from Center A → one original TRANSFER_DISPATCH movement reduces source on_hand exactly once, one immutable transfer line becomes IN_TRANSIT; destination B on_hand stays unchanged until actual receive.
+- **US-004-QA06 —** Destination Center B receives only 5 of 9 with actual lot/expiry/manufacturer proof → one destination-scoped matching batch and TRANSFER_RECEIVE +5, residual 4 IN_TRANSIT; the same stock cannot be available at A and B simultaneously.
+- **US-004-QA07 —** Receive remaining 4 later with legitimate separate event → one more original destination movement, transfer RECONCILED, source/dest balance and original in-transit totals agree without creating duplicate lot identities.
+- **US-004-QA08 —** Two destination operators concurrently receive the same transfer line with same/different idempotency keys → accepted cumulative received never exceeds dispatched, one winner or allowed bounded partial, duplicate returns original prior result.
+- **US-004-QA09 —** Retry lost response after dispatch or destination receive → repeat source line/effect digest returns one original event; changed quantity with same event key conflicts; transfer audit history unchanged.
+- **US-004-QA10 —** Destination refuses 2, source approves return and received transit back → original verified RETURN movement restores only true 2 to Center A once; no refund/phantom source stock from mere rejected state.
+- **US-004-QA11 —** Transit loss/mismatch/shortage reported by receiver → create protected review/reconciliation state with evidence, not automatically write off, recredit source or silently accept as received; authorized reviewer/audit applies one corrected effect.
+- **US-004-QA12 —** Destination has pre-existing medicine/lot identity with same manufacturer+lot+expiry → map true destination lot under its own center scope; mismatched expiry/medicine or tampered source batch never increment foreign lot.
+- **US-004-QA13 —** Lot expires or is recalled while transit → destination receipt may record controlled quarantined physical stock when true, but cannot silently mark issuable available or evade US-002 current eligibility and original US-005 quarantine when installed.
+- **US-004-QA14 —** Flip global ERP OFF after dispatch but before reception → no active new transfer/receive or worker, retained original source/transit evidence remains restricted audit; controlled later reactivation restores legitimate pending reconciliation, never deletes stock.
+- **US-004-QA15 —** Cross-branch/Center B manager guesses Center A transfer or private batch/source supplier → all history, options, exports and mutation paths validate same actual legal provider+specific effective center permission, no leak.
+- **US-004-QA16 —** One physical transfer never creates CG-12 Foundation warehouse movement, CG-09 payment, CG-17 patient service/benefit or duplicate partner ledger, even when both centers share one Foundation root.
+- **US-004-QA17 —** Original H11 Transfer Stock form and source/destination/lot/qty/in-transit detail work in responsive Center Portal and scoped Foundation Admin, with readable Return/Partial/Conflict/Denied; same Foundation oversight on native Internal Android if that authorized role has it, no Public Android menu.
+- **US-004-QA18 —** Manual source trace original FK/unique source+line/effect/lock ordering, sorted batch locks, lost reply, partial transfer, cancel/receive race, replay/restore, bounded index query and correct idle behavior; actual SQL/visual/runtime/performance NOT_RUN.
+
+**Verification rule:** On real source change trace every exact QA ID through actual UI/navigation → current CG-01/14 effective grant and owner facade → typed NestJS API/transaction → own PostgreSQL/current CG-03 or CG-19 source result → same authorized Web/native state. Record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE and fix/re-review; independent DB/race/clinical/device execution must remain NOT_RUN until separately performed.
+
+### US-005 — Expiry, quarantine/recall and scoped stock reports with bounded alerts (ERP ON)
+
+**Outcome/acceptance:** Current authorized center and Foundation reviewers can see accurate own-center low-stock/near-expiry/recall counts, instantly stop unlawful/unusable lots from issuing, quarantine/recall and conditionally release with protected reason/approval, and send at most one actual due alert through CG-19 when configured without idle scanning.
+
+**Requirements:** FR-084, CG-22-BR04–05; H11 inventory/alerts and H12 price unaffected; CG-NFR clinical/stock safety, privacy, idle/DB NFR and protected documents.
+
+**Full story implementation:** CG-22 pharmacy_batch_status_event and original US-002 batch/balance/movement views, bounded cursor/indexed reports and optional pharmacy_due_alert source linking original CG-19 communications. Center Portal own lot review, Foundation Admin authorization and native Internal Android same assigned oversight; no new CG-20 source, CG-09 ledger or public ERP. No unnecessary scheduler when no actual due alert.
+
+**True dependencies:** US-002 real batch and stock only. **US-003 supplier and US-004 transfer are NOT mandatory**, but actual completed source data from them may be reported if those stories exist. Current ERP ON+center grant+CG-01 rights.
+
+**Manual source QA — planned, NOT executed:**
+- **US-005-QA01 —** Center-local expiry_date is compared with the correct effective local business day even across UTC midnight and calendar/timezone boundaries; already expired lot cannot be reserved/issued as available despite historical positive on_hand.
+- **US-005-QA02 —** Authorized Center A keeper quarantines genuinely verified active batch with reason and protected source version → immutable status event and immediate API-level unavailable stock; no silent deletion of physical on_hand history.
+- **US-005-QA03 —** Other Center A operator has stock.read but not batch.quarantine/recall → privileged action hidden in Foundation/Center Web and denied on direct API; current Center B unrelated operator cannot select/source batch.
+- **US-005-QA04 —** Actual recall for manufacturer+lot affecting multiple approved locations is tracked by genuine affected per-center batch/provenance, with bounded authorization and review; a center manager cannot disclose unrelated partner inventory or run all-tenant unrestricted scan.
+- **US-005-QA05 —** Race a legitimate last-unit internal issue and a new recall/quarantine on same batch → serialized guard prevents post-recall ISSUE; any effect committed before recall remains in immutable audit and is flagged for lawful follow-up, not rewritten.
+- **US-005-QA06 —** Try ordinary RELEASE from recalled, expired, counterfeit-suspected or incompletely documented quarantined batch → deny absent actual qualified clearance/review; a reviewer cannot self-clear mandatory independent approval or forge evidence.
+- **US-005-QA07 —** For a genuinely non-expired quarantined batch with accepted lawful clearance/current license, authorized second reviewer approves new documented RELEASE state exactly once; duplicate/stale approval fails, prior history immutable.
+- **US-005-QA08 —** Generate low-stock summary using only actual center-approved on_hand-reserved and configured legitimate threshold; reserved stock not counted available; count labels show current source and date, no sample H11 KPIs.
+- **US-005-QA09 —** Generate near-expiry and expired reports by real lot/date/status including opening stock US-002 only → US-005 useful without supplier US-003 or transfer US-004, and missing owners never appear as fictional rows.
+- **US-005-QA10 —** User without pharmacy stock/reports permission attempts filter, private export, status history, supplier evidence, batch by guessed ref or deep link → backend denies before aggregate/query and masks sensitive tiny cells where required.
+- **US-005-QA11 —** Create a real eligible low-stock/near-expiry alert once by effective threshold period, with exactly one original CG-22 source key and CG-19 notification adapter only if provider configured; duplicate due/replay cannot create repeated business alert.
+- **US-005-QA12 —** No CG-19 external delivery channel configured or provider fails after durable alert → display PENDING/UNAVAILABLE/FAILED, not SENT or DELIVERED; legitimate inventory state remains committed and Center Portal shows truthful warning.
+- **US-005-QA13 —** Global Pharmacy ERP false or malformed after prior alerts/recalls → active new reports, alerts, outbound worker and attempts stop; historical restricted audit remains available under current separately authorized purpose without exposing private inventory to public.
+- **US-005-QA14 —** No eligible alerts across many center accounts and worker instances → due-only partial index claims zero jobs without per-tenant scan, repeated provider calls or mobile polling; DB/HTTP egress and idle cost measured in independent QA, not asserted PASS.
+- **US-005-QA15 —** Suspended CG-14 center, revoked CG-01 reviewer or disabled location while status form open → source current grant rechecked before review, export, alert retry and file download; no stale review effect or cross-center lot release.
+- **US-005-QA16 —** Show H11 Near Expiry/Low Stock/Quarantine/Recall reports and batch status panel in original CareGanga accessible Web layout; native Internal Android same authorized Foundation read/review options and proper focus/Back/permission treatment, not new partner ERP app.
+- **US-005-QA17 —** CG-20 MIS is absent or optional, and no US-003/004 source exists → actual own-center expiry/low-stock report and safe source export work independently, no duplicated reporting master or Foundation CG-09 status.
+- **US-005-QA18 —** Reconcile immutable movement/balance/batch-status events after restore, inspect source/trust scopes and real index/cursor use under representative data, real recall+issue concurrency and professional/legal retention review; SQL/device/browser/16KB AAB/visual/perf tests NOT_RUN.
+
+**Verification rule:** On real source change trace every exact QA ID through actual UI/navigation → current CG-01/14 effective grant and owner facade → typed NestJS API/transaction → own PostgreSQL/current CG-03 or CG-19 source result → same authorized Web/native state. Record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE and fix/re-review; independent DB/race/clinical/device execution must remain NOT_RUN until separately performed.
+
 ## Execution progress
 
-- US-001–005: PLANNING_REVIEW_IN_PROGRESS, no source implementation on planning branch. Full five-story definitions will be SHA-reviewed after QA completion.
-- Authenticated local Harness resolver, independent CRITICAL pharmacy/DB/legal review, migrations/restore, Web/native runtime/pixel/motion/Play, measured NFRs: NOT_RUN/NOT_MEASURED.
+- **US-001–005: OWNER_DELEGATED_SOURCE_DESIGN_APPROVED after current SHA-bound ledger commit, implementation NOT_STARTED on planning branch.** 5 independent vertical stories / 90 unique current QA cases: US-001 18, US-002 18, US-003 18, US-004 18, US-005 18. Latest code/progress must be verified on actual module development branch before claiming implementation. No future module or fake data prerequisite.
+- **Formal gates:** authenticated local Harness resolver NOT_RUN; qualified independent CRITICAL pharmacy/DB/security/regulatory review NOT_RUN; actual NestJS/Next.js/Android source QA NOT_RUN; Postgres migrations/backup/restore/race/EXPLAIN, original H11/H12 full-image pixels, device/Play/AAB, performance and zero-idle-worker/egress evidence NOT_RUN/NOT_MEASURED.
+- **Next implementation:** start source when actual dependency/authority gates permit; Implement → independent review → fix → re-review → exact QA01–18 source trace for each US; update only this mutable progress area. All optional ERP new execution stays globally OFF until real operations acceptance; public catalog remains enabled.
