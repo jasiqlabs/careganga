@@ -43,14 +43,14 @@ export class RecoveryService {
       Promise<{ message:string; status:"DELIVERY_UNCONFIRMED"|"UNAVAILABLE"; supportReference:string }> {
     const email=emailInput.trim().toLowerCase();
     if(!this.delivery.isConfigured())
-      return {message:"Account recovery delivery is currently unavailable. Contact Foundation support.",status:"UNAVAILABLE",supportReference:randomUUID()};
+      return {message:"Account recovery delivery is currently unavailable. Contact Foundation support.",status:"UNAVAILABLE",supportReference:"CG-UNAVAILABLE"};
     await this.throttle(email,remoteAddress);
     const key=this.idempotency(email,requestKey);
     const actor=await this.db.query<{id:string}>(`
       SELECT id FROM account WHERE normalized_email=$1 AND status='ACTIVE' AND email_verified_at IS NOT NULL
       LIMIT 1`,[email]);
-    const supportReference=randomUUID();
-    // No account existence or provider state is disclosed to public clients.
+    const supportReference="CG-"+key.slice(0,14).toUpperCase();
+    // Idempotent support reference without exposing a database identifier.
     if (!actor.rowCount)
       return {message:GENERIC_DELIVERY,status:"DELIVERY_UNCONFIRMED",supportReference};
     const client=await this.db.connect();
