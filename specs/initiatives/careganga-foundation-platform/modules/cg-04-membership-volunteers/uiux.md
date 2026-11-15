@@ -31,6 +31,11 @@ CG-04 membership/volunteer Web and applicable Android screens offer minimum-fiel
 
 With a verified **active CG-04 member**, real source-backed B41/B42-style front/back preview may use CG-19's shared template component and actual permitted member identity, branch, photo, issue/expiry fields. Before approval/valid verified fee, hide or deny issuance rather than showing a fake ID, QR or PDF. Approved cards show real issue/expiry/revoke and role-limited download/print. Changing personal fields requires source reapproval/versioning and new CG-19 issue history, with no public QR disclosure of phone/emergency/private metadata. CG-19 owns the original generated file and template; CG-04 owns the member/source eligibility and invokes integration only after it exists.
 
+## Actual CG-04 Join route publication into CG-18 public navigation
+
+Member Join/Apply and Volunteer Join/Apply buttons displayed on approved CG-18 public Web/Public Android are actionable **only when CG-04 actual current route and eligibility are confirmed**, and CG-18's separate current published flags permit it. CG-04 US-002 presents the genuine membership tier/identity/fee/approval journey and US-003 presents genuine volunteer profile/consent/skills/approval; neither displays fake activated membership or an unimplemented volunteer form. The CG-18 C50 screenshot informs switch styling but its underlying flags remain CG-18-owned. Deep links to hidden/unavailable routes deny safely, stale native cached nav refreshes and valid CG-01 Login stays independent. Original CareGanga brand, native touch/back and true denied/empty/failure states; device/pixel verification NOT_RUN.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Tier setup follows the original membership table/form density with plan name, amount, validity, benefit and publication state. Public join shows clear tier comparison, one coherent application path, verification, actual payment pending/verified and application tracking; volunteer form shows skill/geography and actual review result, never staff payroll fields.

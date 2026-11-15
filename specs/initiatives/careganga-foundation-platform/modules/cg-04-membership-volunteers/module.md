@@ -53,6 +53,11 @@ Detailed authoritative clauses:
 - **CG-04-BR10:** Enable permitted volunteer access according to CG-01 roles; not all volunteers automatically become internal operational staff.
 - **CG-04-BR11:** Provide authorized search, status filtering, activity summaries, exports and communication.
 
+## CG-04 introduces actual public Join destinations into prior CG-18 publication (transferred CG-18 BR09)
+
+CG-18 US-001 alone owns independent versioned *desired* Login/Profile, Member Join and Volunteer Join public publication flags; the initial real CG-01 Login operates without CG-04. **CG-04 US-002 owns the real member registration/public eligibility/tier/fee/approval route** and, when its first real eligible registration is delivered, introduces an actual member_join route availability+permission+current status projection into CG-18's already versioned publication/navigation facade. CG-04 US-003 analogously introduces *only* genuine volunteer registration/public-eligibility route. CG-18 controls whether to publish that existing CTA and its one effective Web/Public Android revision; CG-04 owns form, authentication/consent/privacy, registration source and real route. Desired enabled flags alone cannot expose a missing form, deep link or unauthorized data. Activation, deactivation, changed route permission and invalid/outdated public cache must behave identically in public Web and native Public Android; route guards still enforce CG-01 and CG-04. No CG-04 copy of CG-18 settings, no CG-18 member/volunteer table. These are later-introducing owner integration/QA changes, not original CG-18 requirements or full CG-04 design approval.
+
+
 ## Independent vertical delivery and acceptance
 
 This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Publish one tier then process a real verified application through final review; preserve fee validity/version and revoke permissions for foreign member/volunteer records. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
