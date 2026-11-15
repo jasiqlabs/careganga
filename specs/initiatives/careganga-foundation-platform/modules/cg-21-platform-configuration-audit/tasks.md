@@ -43,7 +43,7 @@ QA cases:
 - **US-002-QA07 — reviewed source case:** Revoke Super Admin or expire MFA; forged backup evidence, changed backup identity and foreign-scope export all fail at backend; only independently proven operations may verify restoration. CG-01 last-root and session enforcement remain intact.
 - **US-002-QA08 — reviewed source case:** CRITICAL DB recovery design: real root FK, UNIQUE(root,idempotency), guarded status+audit, additive migration/rollback/isolated restore. Without a real provider no operation success. Zero eligible recovery tasks on multiple instances → no fast root scans; actual runtime/DB/egress NOT_RUN.
 Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: Within CG-21 none (uses delivered CG-01 and CG-21 US-001 setting audit source when available; keep genuine CG-01-only audit/recovery access independent). External real CG-01 root and MFA. No CG-03 approval or backup provider prerequisite to truthful NOT_AVAILABLE.
+Dependencies: Within CG-21: US-001 (provides the real CG-21 operation-audit source and root setting/permission contracts). External: delivered CG-01 root accounts, active Super Admin/MFA and original CG-01 access-audit facade. No CG-03/02/18, future domain audit or configured backup provider required to show truthful NOT_AVAILABLE.
 
 ## Execution progress
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
