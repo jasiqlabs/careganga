@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **Dashboards, standard/custom
 
 State/invariant: **Report draft/running/completed/failed; schedule active/disabled; No cross-scope report, shadow accounting or unbounded scheduled polling**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete scoped analytics and scheduled reporting
+
+`report_definition(id,approved_source_contract,allowed_fields,grouping,filters,visibility)`, `saved_report(id,creator,definition,filter_json,version)`, `report_run(id,requester,scope_snapshot,status,rows,artifact_ref)` and `report_schedule(id,report_ref,recipient_scope,cadence,next_due,status)` never accept arbitrary SQL or unrestricted joins.
+
+Standard report values originate from owner-filtered CG-09 ledger, CG-04/05/06/07/08/10/11/14/15/17 sources. Aggregate counts do not silently become zero on failed APIs. Scheduled export must **recheck recipient's current permission and real scope at execution and download**, not blindly reuse saved administrator rights.
+
+Bound report queries by dates, row/page limit and estimated cost; long exports run bounded job with finite retry and recoverable state. No full-tenant idle polling: scheduler queries eligible due jobs only and uses stable safe checkpoints; measure DB rows/bytes and provider egress.
+
+**QA:** mixed Foundation/center scope filter, denied salary/clinical column, recipient revoked after saving, large report timeout, duplicate scheduled delivery after restart, malicious filter, empty vs API failure and finance report total vs authoritative ledger.
+
 ## Typed API and coordination
 
 An authenticated `/api/mis-reporting` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
