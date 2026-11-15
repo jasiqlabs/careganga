@@ -183,3 +183,11 @@ button:disabled { cursor:wait; opacity:.65; }
 .sidebar-user{border-top:1px solid #263F68;margin-top:auto;padding:1rem .25rem .25rem;display:grid;gap:.25rem}
 .sidebar-user strong{color:var(--cg-sidebar-text);font-size:.87rem}
 .sidebar-user span{font-size:.75rem;color:var(--cg-sidebar-muted)}
+
+/* Original U08 form drawer: anchored footer controls, responsive scroll and safe-area space. */
+.role-drawer{display:flex;flex-direction:column}
+.role-drawer .form{flex:1;min-height:0}
+.role-drawer .form>.toolbar:last-child{position:sticky;bottom:-1rem;margin-top:auto;
+ background:var(--cg-surface);border-top:1px solid var(--cg-border);padding:1rem 0 1.25rem;
+ justify-content:flex-end;z-index:1}
+@media(max-width:48rem){.role-drawer .form>.toolbar:last-child{bottom:-1rem;padding-bottom:max(1.25rem,env(safe-area-inset-bottom))}}
