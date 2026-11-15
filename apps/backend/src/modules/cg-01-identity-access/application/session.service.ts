@@ -49,7 +49,7 @@ export class SessionService implements IdentityAuthorization {
       SELECT a.id,a.realm_id,a.display_name,a.normalized_email,a.status,a.access_version,
              c.password_hash,c.totp_ciphertext,c.totp_nonce,c.totp_tag,c.last_totp_counter
       FROM account a JOIN identity_credential c ON c.account_id = a.id
-      WHERE a.normalized_email=$1 LIMIT 1`, [email]);
+      WHERE a.normalized_email=$1 AND a.email_verified_at IS NOT NULL LIMIT 1`, [email]);
     const row = lookup.rows[0];
     // Match scrypt work for unknown contacts without disclosing account existence.
     const passwordOk = row ? await verifyPassword(details.password,row.password_hash)
@@ -86,7 +86,7 @@ export class SessionService implements IdentityAuthorization {
           JOIN role r ON r.id=ar.role_id
           WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL AND r.active=true
           LIMIT 1`, [row.id,row.realm_id]);
-        if (!role.rowCount || !role.rows[0].is_protected)
+        if (!role.rowCount)
           throw new UnauthorizedException(INVALID_LOGIN);
         const session = await client.query<{ expires_at: Date }>(`
           INSERT INTO auth_session(account_id,token_digest,account_access_version,expires_at,mfa_verified_at,device_label)
