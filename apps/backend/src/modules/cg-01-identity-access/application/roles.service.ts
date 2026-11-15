@@ -37,8 +37,17 @@ function parseChange(input:Change):{name:string;normalized:string;description:st
   const colorKey=input.colorKey??null;
   if(colorKey!==null && (typeof colorKey!=="string"||!colorKeys.has(colorKey)))throw new BadRequestException();
   if(typeof input.requestKey!=="string"||!UUID.test(input.requestKey))throw new BadRequestException();
+  // Definition is restricted to currently protected root by authorizeWrite().
+  // roles.manage may be defined on a custom role, but CG-01 direct assignment
+  // remains forbidden and only the later approved CG-03 finalizer may grant it.
   let keys:string[];
-  try{keys=assignableKeys(input.actionKeys);}catch{throw new BadRequestException("Invalid permission selection");}
+  try{
+    if(!Array.isArray(input.actionKeys)||new Set(input.actionKeys).size!==input.actionKeys.length)
+      throw new Error("INVALID_CAPABILITIES");
+    const hasSensitive=input.actionKeys.includes("roles.manage");
+    keys=assignableKeys(input.actionKeys.filter((key:unknown)=>key!=="roles.manage"));
+    if(hasSensitive)keys=[...keys,"roles.manage"].sort();
+  }catch{throw new BadRequestException("Invalid permission selection");}
   return {name,normalized,description,colorKey,keys,requestKey:input.requestKey};
 }
 function revision(value:unknown):number{
