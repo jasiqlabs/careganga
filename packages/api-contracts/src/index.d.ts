@@ -140,7 +140,8 @@ export interface CG03Option{value:string;label:string;}
 export interface CG03CaseView{
   caseRef:string;reference:string;accountName:string;roleName:string;
   status:string;revision:number;proposalRevision:number;processVersion:number;
-  currentStep:number;submittedAt:string;previousCaseRef:string|null;
+  currentStep:number;sourceAccountAccessRevision:string;sourceRoleRevision:number;
+  submittedAt:string;previousCaseRef:string|null;
 }
 export interface CG03CaseDetail extends CG03CaseView{
   allowedDecisions:Array<"APPROVE"|"RETURN"|"REJECT"|"FORWARD">;
