@@ -35,6 +35,10 @@ export function RolesPanel(){
   const [editor,setEditor]=useState<{mode:FormMode;source?:Role}|null>(null);
   const [pendingRetire,setPendingRetire]=useState<Role|null>(null);
   const [selected,setSelected]=useState<string[]>([]);
+  const [copySearch,setCopySearch]=useState("");
+  const [copyCandidates,setCopyCandidates]=useState<Role[]>([]);
+  const [copyLoading,setCopyLoading]=useState(false);
+  const [copyError,setCopyError]=useState("");
   const [name,setName]=useState("");
   const [description,setDescription]=useState("");
   const [saving,setSaving]=useState(false);
@@ -113,10 +117,32 @@ export function RolesPanel(){
     document.addEventListener("keydown",keyDown);
     return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
   },[editor,pendingRetire,saving]);
+  async function findCopySources(searchText:string) {
+    setCopyLoading(true);setCopyError("");
+    try {
+      // Search only on explicit user action. Never poll or load a whole account directory.
+      const params=new URLSearchParams({search:searchText,status:"active",limit:"50",offset:"0"});
+      const response=await read<RoleList>("roles?"+params.toString());
+      setCopyCandidates(response.roles.filter(r=>r.active&&!r.protected));
+    } catch {
+      setCopyCandidates([]);setCopyError("Eligible roles could not be loaded. Try searching again.");
+    } finally {setCopyLoading(false);}
+  }
+  function selectCopySource(roleRef:string){
+    if(!editor||saving)return;
+    const source=copyCandidates.find(r=>r.roleRef===roleRef)||
+      (editor.source?.roleRef===roleRef?editor.source:undefined);
+    if(!roleRef){setEditor({mode:"create"});setSelected([]);return;}
+    if(!source||source.protected||!source.active)return;
+    setEditor({mode:"copy",source});
+    const eligible=new Set(groups.flatMap(g=>g.actions.filter(c=>c.assignable).map(c=>c.key)));
+    setSelected(source.actionKeys.filter(key=>eligible.has(key)));
+  }
   function open(mode:FormMode,source?:Role){
     if(!actions.includes("roles.manage"))return;
     if(source?.protected)return;
     setEditor({mode,source});
+    if(mode!=="edit"){setCopySearch("");void findCopySources("");}
     setName(mode==="copy"?(source?source.name+" copy":""):source?.name??"");
     setDescription(source?.description??"");
     const allowed=new Set(groups.flatMap(x=>x.actions.filter(a=>a.assignable).map(a=>a.key)));
@@ -307,6 +333,27 @@ export function RolesPanel(){
             value={name} onChange={e=>setName(e.target.value)}/></label>
           <label className="field">Description<textarea maxLength={350}
             value={description} onChange={e=>setDescription(e.target.value)} rows={3}/></label>
+          {editor.mode!=="edit"&&<div className="copy-source">
+            <label className="field">Copy permissions from
+              <select aria-label="Copy permissions from existing role" disabled={saving||copyLoading}
+                value={editor.mode==="copy"?editor.source?.roleRef??"":""}
+                onChange={event=>selectCopySource(event.target.value)}>
+                <option value="">Start with no permissions</option>
+                {[...copyCandidates,...(editor.source&&!copyCandidates.some(x=>x.roleRef===editor.source?.roleRef)?[editor.source]:[])]
+                  .filter(role=>role.active&&!role.protected).map(role=>
+                    <option key={role.roleRef} value={role.roleRef}>{role.name}</option>)}
+              </select>
+            </label>
+            <div className="search-row">
+              <label htmlFor="copy-source-search">Find a role to copy</label>
+              <input id="copy-source-search" value={copySearch} maxLength={80}
+                onChange={event=>setCopySearch(event.target.value)}
+                placeholder="Role name"/>
+              <button type="button" disabled={copyLoading||saving}
+                onClick={()=>void findCopySources(copySearch)}>{copyLoading?"Finding…":"Find role"}</button>
+            </div>
+            {copyError&&<p className="error" role="alert">{copyError}</p>}
+          </div>}
           <p>Color: CareGanga theme default. Additional options will follow verified brand tokens.</p>
           {editor.mode==="copy"&&<p>Only permitted role actions are copied. No people or special administrator rights are copied.</p>}
           {groups.map(group=><fieldset key={group.group} className="permission-group">
