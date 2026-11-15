@@ -138,9 +138,14 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
           await load();
         }else setMessage("No confirmed submission is visible. Ask Foundation support before retrying.");
       }else{
-        const current=await api<CG03ProcessView>(token,"process");
-        setRoute(current);
-        setMessage("Process status refreshed. Confirm the earlier change before creating another version.");
+        const saved=await api<{status:string;version:number|null}>(token,
+          "process/changes/"+key);
+        if(saved.status==="CONFIRMED"&&Number.isInteger(saved.version)){
+          const current=await api<CG03ProcessView>(token,"process");
+          if(current.version<Number(saved.version))throw Error("UNAVAILABLE");
+          setRoute(current);setUnknown(false);setKey("");setRouteForm(false);
+          setMessage("Original reviewer process change confirmed.");
+        }else setMessage("No confirmed process change is visible. Ask Foundation support before retrying.");
       }
     }catch{setMessage("The earlier result is still unconfirmed. Contact Foundation support.");}
     finally{setBusy(false);}
