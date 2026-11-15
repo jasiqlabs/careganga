@@ -4,9 +4,11 @@
 
 **Module:** [CG-01](module.md) · **PRD:** [FR-001–003, FR-080](../../prd.md) · **HLD:** [Architecture](../../hld.md) · **Required designs:** [UI/UX](uiux.md), [DLD](dld.md).  
 **Delivery:** After one-time technical bootstrap, build one **real Foundation-root capability** at a time. No dependency on future CG-02/03/10/14. Business owner data, the same backend, Web and applicable native Android are included in each story; no layer-specific phase/backlog.  
-**Planning review status:** SOURCE_REVIEWED (prior expert review and completed enhancements, self-review disclosed). Formal current-hash approval by the owner-authorized JASIQ AI Design Review Agent has NOT been recorded; authenticated pinned Harness resolver NOT_RUN. **All stories remain BLOCKED; do not begin Development before the real approval and dependency gates pass.**
+**Planning review status:** CG-01 OWNER_TRANSFER_UPDATED / SOURCE_REVIEW_REQUIRED (15 Nov 2026): explicit CG-01-BR11/FR-001 password/session/MFA security policy is added as original CG-01 US-004, not CG-21. Current-hash review/delegated approval still unrecorded; authenticated pinned Harness resolver, independent CRITICAL database review, runtime/visual QA NOT_RUN. **All stories remain BLOCKED pending genuine design and prerequisite gates.**
 
-## Proposed task definitions — current revision NOT approved
+## Approved task definitions
+
+**Approval truth:** The Harness parser requires this heading; these are **CURRENT_DRAFT / NOT_YET_DELEGATED_APPROVED** definitions, not approved execution. The CG-01-BR11 security-policy ownership transfer adds US-004 with eight explicit QA scenarios. Preserve the existing US-001/002/003 definitions/QA. Current PRD/HLD review is pending, local authenticated resolver NOT_RUN, and all stories stay BLOCKED.
 
 The heading above identifies the **intended immutable definitions**; they are **not yet formally approved**. After final review + resolver, record the module SHA and definition-prefix SHA-256 in initiative approvals.json as a truthful `DELEGATED_APPROVED` (never fake human approval). No extra stories file or QA tracker.
 
@@ -104,8 +106,33 @@ Verification: Trace all US-003-QA01–13 through each applicable Web/Android act
 
 Dependencies: US-001, US-002
 
+### US-004 — Configure and enforce CG-01 password/session/MFA security policy
+
+Outcome: A real Foundation-root Super Admin can inspect, securely configure and audit the **original CG-01-owned** password/session/privileged MFA protections; effective policy applies to real account/session authentication on permitted Web and Android channels without CG-21 or any future owner.
+
+Requirements: FR-001, FR-003, FR-080; CG-01-BR01, CG-01-BR08, **CG-01-BR11**; N-01/N-04/N-05/N-09/N-11/N-12/N-13; [CG-01 DLD §2A](dld.md) and [CG-01 UIUX security-policy editor](uiux.md).
+
+Scope: **CG-01 owns the entire vertical slice.** Extend existing CG-01 Foundation-root account/session/MFA service with one secure defaulted versioned auth_security_policy and immutable revisions, guarded current-root + fresh MFA protected `identity.security-policy.manage`, typed API and original CG-01 access_audit. First implement the authoritative backend/DB/permission/transaction and client session enforcement, then responsive Foundation Admin Web and native Internal Android security-policy screens, with Public Web/Public Android session-expiry/revocation enforcement **only** (no policy editor). No CG-21 setting/master, CG-03 case, CG-02 branch, CG-19 messaging provider, future records, extra service or generic settings DSL.
+
+Acceptance: The genuine CG-01 Super Admin reads/updates an allow-listed policy (maximum session age, idle inactivity timeout, permitted failed-attempt window/limit) using expected revision and fresh MFA. Privileged root MFA is mandatory/non-disableable; unauthorized, revoked or stale-MFA actors cannot read/write sensitive policy. An accepted revision + redacted original CG-01 access audit commits exactly once; lost result lookup and concurrent updates are safe. New and existing sessions across Web/Android enforce the verified policy, deny expired/revoked credentials and do not trust client timers. Unavailable downstream providers do not prevent secure policy management. UX uses the existing CareGanga theme, human units, confirmations, native navigation and accurate conflict/error/pending states; not a CG-21 general-settings screen.
+
+**Per-story source QA:**
+- **US-004-QA01 — real root policy:** With only delivered CG-01 records, an active Foundation Super Admin opens protected Web policy, reads effective safe defaults, saves an authorized changed session limit after fresh MFA and rereads one effective revised policy + immutable revision + original CG-01 access audit.
+- **US-004-QA02 — current actor and backend scope:** Ordinary role, copied role, revoked/suspended session, other root context, expired MFA or direct API/deep link attempts are denied at backend; no mutation, sensitive exposure or fake authorized navigation. The protected edit capability is non-assignable to ordinary roles.
+- **US-004-QA03 — privileged MFA safety floor:** Attempt to disable root MFA, set unbounded session life, invalid/negative/unsafe rate limit, unknown policy key or bypass client validation; backend rejects, current protected root and previous valid policy remain unchanged. Never expose verifier/OTP/session-token in the response or audit.
+- **US-004-QA04 — concurrent/replay:** Two Super Admins edit same expected revision concurrently, then retry an ambiguous committed response. Unique root policy + unique policy revision and idempotency guarantee one accepted version/audit, loser sees CONFLICT/refresh and replay returns the committed outcome, not repeated change.
+- **US-004-QA05 — cross-channel actual enforcement:** Shorten permitted session max/idle limit; backend authorizes/denies affected existing and new Web/Internal Android/Public Android sessions correctly, clears sensitive screens on revocation and does not rely on background client polling. Public apps never expose Admin policy editor.
+- **US-004-QA06 — existing CG-01 account/recovery regression:** Root bootstrap, normal login, MFA challenge expiry/rate limit, password recovery, role editor, last protected Super Admin, invite and auth audit still work with safe defaults and after authorized policy change; no dependency on CG-21/19/provider delivery and no second security source.
+- **US-004-QA07 — CareGanga UI/UX:** Inspect original CG-01 U02–U10/B34 Admin shell and shared design tokens; Web policy read/edit/review/MFA/validation/conflict/success states, responsive focus and accessible Internal Android native Back/keyboard/touch. Security Policy is CG-01 navigation, not a CG-21 setting; source QA is not a pixel/motion PASS.
+- **US-004-QA08 — CRITICAL DB/idle NFR:** Confirm one real access_realm FK, root UNIQUE, policy revision UNIQUE, row-local safe checks, append-only redacted audit, additive CG-01 migration and protected stale-session invalidation. Zero due auth/policy work on multiple instances triggers no per-user/root scans or provider wakeups. DB migration, restore, EXPLAIN, performance, device and visual QA remain NOT_RUN/NOT_MEASURED until independent execution.
+
+Verification: Manually trace **all US-004-QA01–QA08** through real CG-01 Web/Internal Android policy action → typed API + current session/MFA/root authorization → PostgreSQL policy/version/access_audit transaction → effective auth guard for existing/new Web/Public Android/Internal Android sessions → safe human error/success. Record exact file:function references and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE individually after real implementation, without claiming builds, device, rendered screenshots, live backend/DB or runtime PASS.
+
+Dependencies: US-001, US-002, US-003. No future business module or CG-21.
+
 ## Execution progress
 
 - US-001: BLOCKED | Planning definitions rebuilt; **Development unauthorized** until final design/Harness approval. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
 - US-002: BLOCKED | Depends on US-001; no future-module blockers. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
 - US-003: BLOCKED | Depends on US-001/002; Foundation-root only. Future CG-02/03/10/14 integrations assigned to those owners. Source code NOT_STARTED, QA runtime NOT_RUN, visual NOT_RUN.
+- US-004: BLOCKED | CG-01 security-policy owner transfer; depends on real CG-01 US-001/002/003. PRD/HLD current-hash and delegated design approval NOT_RECORDED; resolver/runtime/visual QA NOT_RUN. Source code NOT_STARTED.
