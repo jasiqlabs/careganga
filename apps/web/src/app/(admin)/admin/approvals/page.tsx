@@ -49,7 +49,8 @@ export default async function ApprovalsPage(){
         canViewApprovals/>
       <main className="workspace"><ProposalWorkspace
         mayConfigure={keys.includes("approvals.process.manage")}
-        mayPropose={keys.includes("approvals.propose")}/></main>
+        mayPropose={keys.includes("approvals.propose")}
+        mayReview={keys.includes("approvals.review")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
