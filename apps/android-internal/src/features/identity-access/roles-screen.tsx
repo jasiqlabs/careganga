@@ -6,6 +6,7 @@ import {
 import * as Crypto from "expo-crypto";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { identityRequest } from "./http-client";
+import { careGangaTheme,roleColorOptions,roleColor } from "../../../../../packages/design-tokens/src/index";
 
 import type { CG01RoleSummary,CG01Capability,CG01AuditEvent } from "@careganga/api-contracts";
 type Role=CG01RoleSummary;
@@ -54,6 +55,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [editor,setEditor]=useState<Editing|null>(null);
   const [name,setName]=useState("");
   const [description,setDescription]=useState("");
+  const [colorKey,setColorKey]=useState("blue");
+  const [copyQuery,setCopyQuery]=useState("");
+  const [copyCandidates,setCopyCandidates]=useState<Role[]>([]);
+  const [copySearching,setCopySearching]=useState(false);
   const [selected,setSelected]=useState<string[]>([]);
   const [requestKey,setRequestKey]=useState("");
   const [history,setHistory]=useState<Audit[]|null>(null);
@@ -97,11 +102,40 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     });
     return()=>sub.remove();
   },[editor,saving,onExit]);
+  async function findCopySources(query:string){
+    setCopySearching(true);setError("");
+    try{
+      const params=new URLSearchParams({search:query.trim(),status:"active",limit:"30",offset:"0"});
+      const result=await call(token,"roles?"+params.toString()) as {roles:Role[]};
+      if(!Array.isArray(result.roles))throw new Error("INVALID");
+      setCopyCandidates(result.roles.filter(role=>role.active&&!role.protected));
+    }catch(e){
+      setCopyCandidates([]);
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
+        setRoles([]);setGroups([]);setAllowed([]);setEditor(null);
+      }
+      setError("Eligible roles could not be searched. Return to roles and retry.");
+    }finally{setCopySearching(false);}
+  }
+  function chooseCopySource(source?:Role){
+    if(saving)return;
+    if(!source){
+      setEditor({mode:"create"});setSelected([]);setColorKey("blue");return;
+    }
+    if(!source.active||source.protected)return;
+    setEditor({mode:"copy",source});
+    setColorKey(source.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
+    const keys=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
+    setSelected(source.actionKeys.filter(k=>keys.has(k)));
+  }
   function open(mode:Editing["mode"],source?:Role){
     if(!canEdit||source?.protected)return;
     setEditor({mode,source});
     setName(mode==="copy"?(source?.name??"")+" copy":source?.name??"");
     setDescription(source?.description??"");
+    setColorKey(source?.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
+    setCopyQuery("");if(mode!=="edit")void findCopySources("");
     const eligible=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
     setSelected(source?.actionKeys.filter(k=>eligible.has(k))??[]);
     setRequestKey(Crypto.randomUUID());setError("");setSuccess("");setUncertain(false);
@@ -115,7 +149,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     const method=editor.mode==="edit"?"PATCH":"POST";
     try{
       await call(token,url,method,{
-        name:name.trim(),description:description.trim(),colorKey:"default",
+        name:name.trim(),description:description.trim(),colorKey,
         actionKeys:selected,requestKey,
         ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})
       });
