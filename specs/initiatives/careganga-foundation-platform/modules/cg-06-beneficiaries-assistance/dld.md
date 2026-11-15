@@ -10,6 +10,16 @@ Own a cohesive typed domain/application module for **Restricted beneficiary and 
 
 State/invariant: **Beneficiary new/verified; aid requested/approved/issued/reversed; Material and cash aid require genuine owner movement, no duplicate stock/expense**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete beneficiary confidentiality and aid distribution
+
+`beneficiary(id,verified_contact_or_local_ref,approved_area,status,restricted_profile)` and `beneficiary_project(beneficiary_id,project_id,validity)` link only permitted real project and geography. Sensitive beneficiary identity, addresses and eligibility evidence are not available to general public or unauthorized staff, even via search/export.
+
+`assistance_event(id,beneficiary_id,category,quantity,value,actor,project_ref,source_type,source_ref,status,version)` is the source of each delivered aid event, not a duplicate CG-12 stock or CG-09 expense ledger. Material assistance completes only against a valid authorized inventory issue; cash assistance completes only against a verified source posting/payment. Reversal references original movement and event.
+
+Repeated aid to same beneficiary may be legitimate and must remain traceable; dedupe only **same request/source event**, not distinct actual help. Public impact projection exposes aggregated approved totals without personally identifying beneficiaries.
+
+**QA:** cross-area beneficiary lookup, duplicate request/retry, valid repeated help on two dates, item issue without available stock, finance paid vs initiated, partial delivery/reversal and public de-identification/consent.
+
 ## Typed API and coordination
 
 An authenticated `/api/beneficiaries-assistance` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
