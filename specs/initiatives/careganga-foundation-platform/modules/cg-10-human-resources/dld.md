@@ -17,6 +17,10 @@ CG-10 owns only employee employment record, attendance/leave, transfer/performan
 
 **QA:** duplicate employee ID, rejected activation, wrong-scope salary/bank export, overlapping leave, two attendance corrections, shift grace, transfer into unauthorized branch, exit with pending payroll and cross-channel staff permission revocation.
 
+## CG-10-owned branch employment association (transferred CG-02-BR06)
+
+Store CG-10 employee/coordinator identity plus versioned current/history of CG-02 branch/department assignment within CG-10, using genuine CG-02 ACTIVE branch and same-branch department scoped projections; never create a CG-02 employee link master. On enrollment and transfer, validate CG-01 HR action/scope, active destination branch and related department, source version and old/new access; preserve history and prohibit cross-branch data leakage. A linked existing CG-01 login is not automatically elevated. Test US-001-QA10 and US-003-QA09 without CG-11 payroll payout or future modules.
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Create employee with actual CG-01 identity and CG-02 branch, protect bank/salary and leave notes; transfer across branches preserves employment history while revoking old scope. Attendance/leave adjustments are versioned; staff cannot approve own sensitive change if policy forbids it; duplicate payroll inputs and invalid overlaps fail safely. Source letters use real CG-19 issued reference.
