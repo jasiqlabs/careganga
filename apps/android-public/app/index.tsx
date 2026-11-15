@@ -1,5 +1,5 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { careGangaTheme } from "../../../../packages/design-tokens/src/index";
+import { careGangaTheme } from "../../../packages/design-tokens/src/index";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 export default function PublicHome() {
   return <SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.content}>
