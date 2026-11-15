@@ -222,6 +222,24 @@ Foundation organization geography and internal branch hierarchies come from CG-0
 - CG-21 audit is appended during/alongside protected business transitions with correlation and redaction; no user-visible “success” without confirmed business state.
 
 
+### Delivery dependency order — independently useful modules (mandatory Planning gate)
+
+The following is a **logical prerequisite order, not one mandatory sequential release train**. Independently ready modules may progress in parallel. A one-time technical bootstrap plus CG-01 establish real shared primitives; each later module's own acceptance must use **real completed** contracts, not records belonging to future modules.
+
+| Dependency band | Business modules and delivery boundary |
+| --- | --- |
+| Bootstrap / core | Technical bootstrap → **CG-01** real Foundation-root accounts, role editor, grants and session enforcement |
+| Shared foundation | **CG-21** real settings/audit → **CG-03** real scoped approval cases and protected CG-01 access-request finalization → **CG-19** real protected files, templates and configured delivery |
+| Organization/finance | **CG-02** real branches/geography/department after approval; **CG-09** balanced Foundation accounting, budgets and payments |
+| Public and business owners | **CG-18** editorial/public CMS core; **CG-14** real provider/doctor directory; **CG-10** employees; **CG-04** memberships/volunteers; **CG-05** projects; **CG-12** inventory. Order by their actual prerequisite source data |
+| Transaction consumers | **CG-07** verified donations; **CG-08** CSR; **CG-06** beneficiary aid; **CG-11** payroll; **CG-13** points/rewards |
+| Healthcare workflows | **CG-15** patient/schedule/booking with verified CG-14 inventory, **CG-16** internal diagnostics and controlled reports, **CG-17** support policy, verified center collection and Foundation settlement |
+| Cross-domain reads | **CG-20** final integrated dashboards, custom/scheduled reports and exports using only real owner projections |
+
+**Forward-owner integration rule:** CG-18 may deliver genuine editorial pages and neutral healthcare categories before CG-14/17 exist, but it must **not** publish fabricated providers, fees, support percentages or stats. CG-14 delivers actual public provider directory bindings; CG-17 delivers approved support/price projection into existing CMS/booking; CG-15's own booking must remain functional with true full-fee/due state before CG-17 payment support and cannot claim settled payment. CG-10 supplies employee filters/links and CG-02 supplies area/branch selectors to CG-01; CG-14 supplies actual center affiliation. The later introducing owner must trace the cross-module UI/API/DB/privacy cases and cannot mark them satisfied from placeholder contracts. The PRD requirements stay in scope, never silently deleted or duplicated as shadow masters.
+
+Every module's `module.md` must explain its genuinely available dependencies; `tasks.md` must use exact within-module story dependencies (not artificial US-ID ordering). A task requiring an unfinished later owner is rejected or the prerequisite is moved before it. No release sign-off without later cross-module integration QA.
+
 ### 5.4 Scenario-driven architecture-pattern selection (latest Harness gate)
 
 Patterns are chosen to protect **real variation or invariants**, not to maximize classes. Per `standards/ENGINEERING_STANDARD.md`, these are architectural seams; exact interfaces, constraints and errors belong to a REQUIRED module DLD.
