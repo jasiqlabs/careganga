@@ -3,11 +3,21 @@
 **Canonical order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md), position **15**. **Sources:** [Foundation BR CG-06-BR01–05](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md), [PRD FR-015/016](../../prd.md), [HLD](../../hld.md), [original Admin audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) **A07/A08**; supporting CG-05 **A05/A06** and CG-12 **B19**. Exact saved reference-pack A07/A08 WebP previews inspected 15 Nov 2026; original full-resolution pixel/video timing and rendered app comparisons **NOT_RUN**.
 **Stage:** Harness Planning / source-design expert-reviewed; delegated design decision only after current hashes recorded in [approvals.json](../../approvals.json). Authenticated local Harness resolver, qualified independent CRITICAL database/security/privacy review, implementation, code source review and actual SQL/Web/Android/visual QA **NOT_RUN**.
 uiux_decision: REQUIRED
+uiux_reason: Original A07/A08 private Admin beneficiary dashboard, new BR-defined intake/aid forms, exact shared brand semantics and action-equivalent Internal Android require material adaptive UI/UX.
 dld_decision: REQUIRED
+dld_reason: New restricted beneficiary/aid PostgreSQL schema, real CG-12 issue and CG-09 payment/return ownership, immutable idempotency, CG-03 review and multiple cross-channel state/race/privacy boundaries.
 database_impact: CRITICAL
+database_reason: Sensitive root+area+project profile data and once-only stock/payment effects, partial aid/reversal, report permissions and migration/rollback/concurrent last-unit correctness.
 mobile_store_impact: ANDROID
+mobile_store_reason: CG-06 adds actual native Internal Android beneficiary/aid/report screens and may change UI and permissioned file/notification dependencies; no iOS app, no separate Android ERP shell.
 mobile_android_app_category: INTERNAL
-mobile_policy: Use CG-01's real maintained Expo/React Native/Android toolchain and current Play policy, reverify at build time; no new alternate native app, no WebView replacement.
+mobile_android_policy_api: 36
+mobile_platform_baseline: Expo SDK 58.0.0 (stable) + React Native 0.88 + React 19.3, compileSdk 37 and targetSdk 36 in existing CG-01 Internal Android app; use its generated SDK-compatible Gradle/AGP/NDK and pinned lockfile (exact native toolchain versions NOT_VERIFIED until original CG-01 app code/lockfile exists), no manual unsupported overrides. Google Play 64-bit AAB and 16 KB native-page compatibility must be independently verified before release.
+mobile_policy_checked_on: 2026-11-15
+mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878 ; https://developer.android.com/guide/practices/page-sizes
+mobile_dependency_audit: OFFICIAL_DOCS_REFERENCE_VERIFIED_BUT_NO_LOCAL_LOCKFILE_OR_BINARY; Android device/AAB/16KB/Play runtime NOT_RUN.
+background_work_impact: LIMITED_DURABLE_RECONCILIATION_ONLY; trigger one accepted aid issue/payment with unknown original owner result, zero eligible due jobs => no per-root/tenant polling, bounded indexed retry/restart and observed DB/egress NOT_MEASURED.
+
 
 ## 1. Exact business ownership and scope
 
