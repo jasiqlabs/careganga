@@ -192,7 +192,7 @@ export function RecoveryPanel(){
           </div>:<p role="alert">Readiness cannot be verified. No restore action is available.</p>}
       </div>
     </section>
-    {availability?.status==="AVAILABLE"&&<div className="role-pane">
+    {availability?.status==="AVAILABLE"&&!authorization&&<div className="role-pane">
       <div className="role-pane-heading"><h2>Request protected recovery</h2></div>
       <form className="form role-detail-content" onSubmit={e=>void request(e)}>
         <p>Creates a guarded request only. It cannot execute a restore or claim success.</p>
@@ -223,13 +223,47 @@ export function RecoveryPanel(){
         {!loading&&!operations.length?<p>No recovery requests recorded. No restore activity is claimed.</p>:
         <div className="role-table-wrap"><table className="role-table">
           <thead><tr><th>Requested</th><th>State</th><th>Revision</th>
-            <th>Last updated</th></tr></thead>
+            <th>Last updated</th><th>Action</th></tr></thead>
           <tbody>{operations.map(o=><tr key={o.operationRef}>
             <td>{new Date(o.requestedAt).toLocaleString()}</td>
             <td><span className="account-status">{stateLabel(o.status)}</span></td>
             <td>{o.version}</td><td>{new Date(o.updatedAt).toLocaleString()}</td>
+            <td>{availability?.status==="AVAILABLE"&&o.status==="REQUESTED"?
+              <button type="button" disabled={saving||unknown}
+                onClick={()=>startAuthorization(o)}>Review authorization</button>:
+              "No action available"}</td>
           </tr>)}</tbody></table></div>}
       </div>
     </section>
+    {authorization&&availability?.status==="AVAILABLE"&&<div className="drawer-backdrop" role="presentation">
+      <section className="role-drawer" role="dialog" aria-modal="true"
+        aria-labelledby="recovery-authorization-title">
+        <header className="topbar"><h2 id="recovery-authorization-title">Authorize recovery request</h2>
+          <button type="button" disabled={saving||unknown} onClick={()=>{
+            setAuthorization(null);setAuthorizationTotp("");setAuthorizationReview(false);
+            requestKey.current="";
+          }}>Close</button></header>
+        <form className="form" onSubmit={e=>void saveAuthorization(e)}>
+          <p>Authorization is not a restore command. An independently verified
+            operations adapter and successful isolated drill are still required.</p>
+          <p>Current request revision: {authorization.version}</p>
+          <label className="field">Fresh Super Admin authenticator code
+            <input required inputMode="numeric" autoComplete="one-time-code"
+              maxLength={6} pattern="[0-9]{6}" value={authorizationTotp}
+              onChange={e=>{setAuthorizationTotp(e.target.value.replace(/[^0-9]/g,""));
+                setAuthorizationReview(false);}}/>
+          </label>
+          {authorizationReview&&<p role="status">Review this guarded authorization.
+            No backup execution or completion will be claimed.</p>}
+          <div className="toolbar">
+            <button type="button" disabled={saving||unknown} onClick={()=>{
+              setAuthorization(null);requestKey.current="";setAuthorizationReview(false);
+            }}>Cancel</button>
+            <button type="submit" className="primary" disabled={saving||unknown}>
+              {saving?"Saving…":authorizationReview?"Confirm authorization":"Review authorization"}</button>
+          </div>
+        </form>
+      </section>
+    </div>}
   </section>;
 }
