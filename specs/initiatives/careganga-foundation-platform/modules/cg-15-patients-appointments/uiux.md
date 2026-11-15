@@ -3,6 +3,12 @@
 **Authority:** [PRD](../../prd.md) FR-047, FR-048, FR-049, FR-050, FR-051, FR-052, FR-053, FR-054, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-15-BR01–CG-15-BR25, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
 
+## Original H07/H15 UI: consultation core independent of optional partner ERP
+
+H07 Doctor Schedule & Availability Control (doctor list, weekly schedule, slots, leave, center mapping, holiday/appointment rule) and H15 Patient & Booking Management (patient identity/virtual ID, genuine consultation appointments, own booking history and protected patient view) are the mandatory **core**. These must function with all four ERP flags OFF and no CG-16/22/23/24 operational records. Preserve CareGanga original navy/blue sidebar, status KPI cards, filter/table/right detail and responsive patient/doctor detail. Other service category labels may appear only as **verified partner service information/enquiry**; do not show active Create Lab Booking/Nursing Booking/OT Booking/Pharmacy Order from CG-15 alone.
+
+When another optional owner is enabled/approved and actually delivered, its existing typed source-safe patient transaction may be linked into patient's own unified history, with clear service owner, source status and permissioned CG-19 medical document. Disabled/historical advanced services do not become new bookable CTAs or leak private patient data. Public Android native consultation and patient-own booking are real original journeys; no full Admin copy. Source QA US-004-QA10–11 and US-008-QA09–10; original PNG/video visual QA NOT_RUN.
+
 ## Exact existing design and animation contract
 
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: Healthcare BR/UI references; not Admin screenshot IDs. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
