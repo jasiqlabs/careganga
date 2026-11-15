@@ -43,6 +43,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [areas,setAreas]=useState<Area[]>([]);
   const [areaNextOffset,setAreaNextOffset]=useState<number|null>(null);
   const [departments,setDepartments]=useState<Dept[]>([]);
+  const [departmentNextOffset,setDepartmentNextOffset]=useState<number|null>(null);
   const [departmentSummary,setDepartmentSummary]=useState<DeptSummary|null>(null);
   const [departmentEditorOpen,setDepartmentEditorOpen]=useState(false);
   const departmentDialogRef=useRef<HTMLDialogElement>(null);
@@ -92,9 +93,9 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     if(can("foundation.geography.view"))work.push(json<{areas:Area[];nextOffset:number|null}>("/geography")
       .then(x=>{setAreas(x.areas);setAreaNextOffset(x.nextOffset);})
       .catch(error=>{setAreas([]);setAreaNextOffset(null);throw error;}));
-    if(can("foundation.departments.view"))work.push(json<{departments:Dept[];summary:DeptSummary}>("/departments")
-      .then(x=>{setDepartments(x.departments);setDepartmentSummary(x.summary);})
-      .catch(error=>{setDepartments([]);setDepartmentSummary(null);setFocusedDept(null);throw error;}));
+    if(can("foundation.departments.view"))work.push(json<{departments:Dept[];summary:DeptSummary;nextOffset:number|null}>("/departments")
+      .then(x=>{setDepartments(x.departments);setDepartmentSummary(x.summary);setDepartmentNextOffset(x.nextOffset);})
+      .catch(error=>{setDepartments([]);setDepartmentSummary(null);setDepartmentNextOffset(null);setFocusedDept(null);throw error;}));
     if(can("foundation.departments.assign"))work.push(json<{options:Officeholder[]}>("/officeholders/options")
       .then(x=>setOfficeholders(x.options))
       .catch(error=>{setOfficeholders([]);throw error;}));
@@ -168,6 +169,20 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       });
       setAreaNextOffset(next.nextOffset);
     }catch(e){setError(e instanceof Error?e.message:"Additional areas could not be loaded.");}
+    finally{setBusy(false);}
+  }
+  async function loadMoreDepartments(){
+    if(departmentNextOffset===null||busy)return;
+    setBusy(true);setError("");
+    try{
+      const data=await json<{departments:Dept[];nextOffset:number|null}>(
+        "/departments?offset="+departmentNextOffset);
+      setDepartments(previous=>{
+        const seen=new Set(previous.map(x=>x.departmentRef));
+        return [...previous,...data.departments.filter(x=>!seen.has(x.departmentRef))];
+      });
+      setDepartmentNextOffset(data.nextOffset);
+    }catch(e){setError(e instanceof Error?e.message:"Additional departments could not be loaded.");}
     finally{setBusy(false);}
   }
   async function showHistory(kind:"PROFILE"|"AREA"|"DEPARTMENT",ref:string,title:string){
@@ -355,6 +370,8 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       </tr>)}</tbody></table>
       {visibleDepartments.length===0&&<p style={{padding:"1rem"}}>No recorded departments match the loaded filter.</p>}
       <div className="toolbar" style={{padding:"1rem"}}>
+        {departmentNextOffset!==null&&<button type="button" disabled={busy}
+          onClick={()=>void loadMoreDepartments()}>Load more verified departments</button>}
         <button type="button" disabled={busy} onClick={()=>void downloadPage("DEPARTMENTS")}>
           Download verified departments {exportOffset.DEPARTMENTS?"(next page)":""}</button>
       </div></div>
