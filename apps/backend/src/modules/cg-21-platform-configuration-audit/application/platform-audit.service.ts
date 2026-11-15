@@ -19,7 +19,7 @@ type Cursor={
 type EventToken={kind:"event";v:1;realm:string;actor:string;source:AuditSource;id:string};
 type Event={source:AuditSource;ownerEventId:string;occurredAt:string;
   actionLabel:string;actorDisplay:string;targetDisplay:string;outcome:string};
-type PlatformAuditRow={id:string;occurred_at:Date;action_key:string;
+type PlatformAuditRow={id:string;occurred_at:Date;exact_at:string;action_key:string;
   outcome:string;actor_display:string|null;safe_context:unknown};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ACTION_LABELS:Readonly<Record<string,string>>={
@@ -103,6 +103,8 @@ export class PlatformAuditService{
     after:Position|null,limit:number):Promise<Event[]>{
     const rows=await this.db.query<PlatformAuditRow>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        to_char(au.occurred_at AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS exact_at,
         a.display_name AS actor_display
       FROM platform_operation_audit au
       LEFT JOIN account a ON a.id=au.actor_account_id AND a.realm_id=au.foundation_realm_id
@@ -112,7 +114,7 @@ export class PlatformAuditService{
       ORDER BY au.occurred_at DESC,au.id DESC LIMIT $6
     `,[actor.realmId,start,end,after?.at??null,after?.id??null,limit]);
     return rows.rows.map(x=>({
-      source:"CG-21" as const,ownerEventId:x.id,occurredAt:x.occurred_at.toISOString(),
+      source:"CG-21" as const,ownerEventId:x.id,occurredAt:x.exact_at,
       actionLabel:ACTION_LABELS[x.action_key]??"Platform operation",
       actorDisplay:x.actor_display??"Foundation operator",
       targetDisplay:displayResource(x.safe_context),
@@ -163,8 +165,7 @@ export class PlatformAuditService{
     const results=await Promise.allSettled([
       selection==="CG-21"?Promise.resolve([] as Event[]):
         this.identityAudit.listPlatformProjection(bearer,{
-          from:start,to:end,after:cursor?.cg01?
-            {at:new Date(cursor.cg01.at),id:cursor.cg01.id}:null,limit:pageSize+1
+          from:start,to:end,after:cursor?.cg01??null,limit:pageSize+1
         }),
       selection==="CG-01"?Promise.resolve([] as Event[]):
         this.platformSource(actor,start,end,cursor?.cg21??null,pageSize+1)
@@ -220,6 +221,8 @@ export class PlatformAuditService{
     }
     const rows=await this.db.query<PlatformAuditRow>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
+        to_char(au.occurred_at AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS exact_at,
         a.display_name actor_display
       FROM platform_operation_audit au
       LEFT JOIN account a ON a.id=au.actor_account_id AND a.realm_id=au.foundation_realm_id
@@ -227,7 +230,7 @@ export class PlatformAuditService{
     `,[actor.realmId,ref.id]);
     const row=rows.rows[0];
     if(!row)throw new NotFoundException("Audit event unavailable");
-    return {source:"CG-21",occurredAt:row.occurred_at.toISOString(),
+    return {source:"CG-21",occurredAt:row.exact_at,
       actionLabel:ACTION_LABELS[row.action_key]??"Platform operation",
       actorDisplay:row.actor_display??"Foundation operator",
       targetDisplay:displayResource(row.safe_context),
