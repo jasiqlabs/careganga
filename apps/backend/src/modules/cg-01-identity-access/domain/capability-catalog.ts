@@ -23,7 +23,11 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"platform.settings.view",businessLabel:"View platform settings",group:"Platform settings",assignable:false,sensitive:true},
   {key:"platform.settings.manage",businessLabel:"Manage platform settings",group:"Platform settings",assignable:false,sensitive:true},
   {key:"platform.integrations.view",businessLabel:"View integration readiness",group:"Platform settings",assignable:false,sensitive:true},
-  {key:"platform.integrations.manage",businessLabel:"Manage integration references",group:"Platform settings",assignable:false,sensitive:true}
+  {key:"platform.integrations.manage",businessLabel:"Manage integration references",group:"Platform settings",assignable:false,sensitive:true},
+  {key:"platform.audit.view",businessLabel:"View platform audit",group:"Platform audit",assignable:false,sensitive:true},
+  {key:"platform.audit.export",businessLabel:"Export platform audit",group:"Platform audit",assignable:false,sensitive:true},
+  {key:"platform.recovery.view",businessLabel:"View backup readiness",group:"Backup & recovery",assignable:false,sensitive:true},
+  {key:"platform.recovery.request",businessLabel:"Request protected recovery",group:"Backup & recovery",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
