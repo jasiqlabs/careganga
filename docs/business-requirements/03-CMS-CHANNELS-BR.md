@@ -29,7 +29,7 @@ The CMS can set visibility, narrative and display order for an **approved busine
 - **CG-18-BR06:** Create/manage blogs, articles, public news and updates with editorial publication controls.
 - **CG-18-BR07:** Maintain website contact-message submissions and public enquiries, with assigned responders/status and restricted personal details; related support tickets, service requests and FAQs use the shared support workflow in CG-19 rather than an independent CMS ticket database.
 - **CG-18-BR08:** Enable content preview, submit-for-review, approve/reject, authorized publishing/unpublishing and **scheduled publication** where supported, with author/reviewer/publisher rights from CG-01/03, public visibility/status and an audit trail.
-- **CG-18-BR09:** Manage enabled public navigation and supported page availability. The source explicitly includes toggles for **Login**, **Membership registration/join**, and **Volunteer registration/join**.
+- **CG-18-BR09:** Own three separate, versioned **Login/Profile**, **Membership registration/join**, and **Volunteer registration/join** visibility/publication controls. Authorized CG-18 preview/review/publish controls their effective navigation on the public website and Public Android; actual Login stays CG-01 and member/volunteer registration stays CG-04 when delivered. A desired enabled flag is not permission to show a link to an absent registration route; never duplicate these switches in CG-21.
 - **CG-18-BR10:** Maintain editable public menu, heading, CTA, images, SEO metadata and page publication where supported; public channels reflect saved state, not UI hardcodes.
 
 ### 2.2 Foundation information, NGO transparency and compliance pages
