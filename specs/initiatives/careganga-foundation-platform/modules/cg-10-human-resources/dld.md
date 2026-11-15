@@ -14,6 +14,16 @@ Own a cohesive typed domain/application module for **Employment/ID, attendance/l
 
 State/invariant: **New/review/active/probation/hold/exit; leave pending/approved/rejected; Employment not login; payroll/salary and bank data remain private/owned**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete employee lifecycle and protected HR data
+
+`employee(id,verified_account_ref,employee_number,approved_branch,designation,employment_type,hire_date,status,revision)` distinguishes CG-01 login from employment and generates employee ID only after real CG-03 final approval. `employee_private_profile` holds restricted identity/bank/tax/qualification references and CG-19 private file links; ordinary directory `options` exposes minimal safe name/designation without salary or KYC.
+
+`shift_policy(id,work_start,end,break,grace,weekly_off,effective_from)`, `attendance(employee_id,date,shift_ref,status,revision)` unique employee/day/authorized shift; `leave_request` and correction maintain requester, reviewer, dates, status and conflict checks. A late leave/attendance correction does not silently edit a frozen CG-11 payroll run.
+
+`employee_change(id,kind,old_assignment,new_assignment,effective_date,approval,status)` covers transfer/promotion/exit, protects real branch and role change sequencing and audited prior history. `employee_letter(source_employee,kind,template_version,status,dispatch_or_receipt)` generates from CG-19, not a second document engine.
+
+**QA:** duplicate employee ID, rejected activation, wrong-scope salary/bank export, overlapping leave, two attendance corrections, shift grace, transfer into unauthorized branch, exit with pending payroll and cross-channel staff permission revocation.
+
 ## Typed API and coordination
 
 An authenticated `/api/human-resources` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
