@@ -60,9 +60,11 @@ export function PlatformSettingsPanel(){
   const [checking,setChecking]=useState("");
   const requestKey=useRef("");
   const pendingAction=useRef<"SETTING_SAVE"|"INTEGRATION_REFERENCE">("SETTING_SAVE");
+  const pendingConnection=useRef<{provider:string;purpose:string}|null>(null);
   const generation=useRef(0);
 
-  const reload=useCallback(async(expectedRevision?:number):Promise<boolean>=>{
+  const reload=useCallback(async(expectedRevision?:number,
+    expectedConnection?:{provider:string;purpose:string;revision:number}):Promise<boolean>=>{
     const seq=++generation.current;setLoading(true);
     try{
       const [s,h,c]=await Promise.all([
@@ -75,8 +77,14 @@ export function PlatformSettingsPanel(){
       if(seq!==generation.current)return false;
       setSetting(s);setHistory(h.events);setConnections(c.connections);
       setPageSize(String(s.value));
-      const matched=expectedRevision===undefined||s.revision>=expectedRevision;
-      if(matched&&expectedRevision!==undefined){
+      const matchedSetting=expectedRevision===undefined||s.revision>=expectedRevision;
+      const savedConnection=expectedConnection?c.connections.find(x=>
+        x.provider===expectedConnection.provider&&x.purpose===expectedConnection.purpose):null;
+      const matchedConnection=!expectedConnection||
+        (savedConnection!==null&&savedConnection!==undefined&&
+          savedConnection.revision>=expectedConnection.revision);
+      const matched=matchedSetting&&matchedConnection;
+      if(matched&&(expectedRevision!==undefined||expectedConnection!==undefined)){
         setUnknown(false);requestKey.current="";
       }
       return matched;
@@ -131,7 +139,10 @@ export function PlatformSettingsPanel(){
       const result=await request<{status:string;revision:number|null}>(
         "changes/"+pendingAction.current+"/"+encodeURIComponent(requestKey.current));
       if(result.status==="CONFIRMED"&&Number.isInteger(result.revision)){
-        const ok=await reload(Number(result.revision));
+        const ref=pendingConnection.current;
+        const ok=pendingAction.current==="SETTING_SAVE"
+          ?await reload(Number(result.revision))
+          :ref?await reload(undefined,{...ref,revision:Number(result.revision)}):false;
         if(!ok)setUnknown(true);
         setNotice(ok?{kind:"success",message:"Previously submitted change confirmed."}:
           {kind:"uncertain",message:"Recorded change has not been reverified. Check again."});
@@ -144,7 +155,7 @@ export function PlatformSettingsPanel(){
   }
   function startIntegration(row?:Connection){
     if(unknown)return;
-    pendingAction.current="INTEGRATION_REFERENCE";
+    pendingAction.current="INTEGRATION_REFERENCE";pendingConnection.current=null;
     requestKey.current=crypto.randomUUID();
     setFormProvider(row?.provider??"");setFormPurpose(row?.purpose??"");
     setFormReference("");setIntegrationTotp("");setIntegrationReview(false);
@@ -166,15 +177,16 @@ export function PlatformSettingsPanel(){
     }
     setBusy(true);setNotice(null);
     const existing=connections.find(x=>x.provider===provider&&x.purpose===purpose);
+    pendingConnection.current={provider,purpose};
     try{
       const result=await request<{revision:number}>("integrations","POST",{
         provider,purpose,secretReference:formReference,
         expectedRevision:existing?.revision??0,requestKey:requestKey.current,totp:integrationTotp
       });
       if(!Number.isInteger(result.revision))throw Error("UNCONFIRMED");
-      const ok=await reload();
+      const ok=await reload(undefined,{provider,purpose,revision:result.revision});
       if(!ok){setUnknown(true);setNotice({kind:"uncertain",message:
-        "Reference was saved but its current status could not be reread. Check the previous change."});}
+        "Reference was saved but its current revision could not be verified. Check the previous change."});}
       else{
         requestKey.current="";setFormReference("");setIntegrationTotp("");
         setIntegrationEdit(false);setNotice({kind:"success",message:
