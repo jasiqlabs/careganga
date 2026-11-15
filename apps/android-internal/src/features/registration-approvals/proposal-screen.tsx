@@ -6,12 +6,12 @@ import {
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import type {
-  CG03CaseView,CG03CaseDetail,CG03Lookup,CG03Option,CG03ProcessView
+  CG03CaseView,CG03CaseDetail,CG03Lookup,CG03Option,CG03ProcessView,CG03OwnerOutcome
 } from "@careganga/api-contracts";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type Props={token:string;canConfigure:boolean;canPropose:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canConfigure:boolean;canPropose:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
   let res:Response;
   try{
@@ -35,7 +35,7 @@ const friendly=(status:string)=>({
   OWNER_FAILED_RETRYABLE:"Awaiting source verification"
 } as Record<string,string>)[status]??"Status unavailable";
 
-export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:Props){
+export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,onExpired}:Props){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [route,setRoute]=useState<CG03ProcessView|null>(null);
   const [accounts,setAccounts]=useState<CG03Option[]>([]),[roles,setRoles]=useState<CG03Option[]>([]);
@@ -50,6 +50,8 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
   const [detail,setDetail]=useState<CG03CaseDetail|null>(null);
+  const [ownerOutcome,setOwnerOutcome]=useState<CG03OwnerOutcome|null>(null);
+  const [ownerBusy,setOwnerBusy]=useState(false);
   const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
   const [decisionRemarks,setDecisionRemarks]=useState("");
   const [decisionTotp,setDecisionTotp]=useState("");
@@ -157,14 +159,38 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
     finally{setBusy(false);}
   }
   async function see(entry:CG03CaseView){
-    setBusy(true);setDetail(null);setDecisionAction(null);setDecisionTotp("");
+    setBusy(true);setDetail(null);setOwnerOutcome(null);setDecisionAction(null);setDecisionTotp("");
     setDecisionConfirmed(false);
     try{
       const result=await api<CG03CaseDetail>(token,"cases/"+entry.caseRef);
       if(!Array.isArray(result.history)||!Array.isArray(result.allowedDecisions))throw Error();
       setDetail(result);
+      if(["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(result.status)){
+        try{
+          const outcome=await api<CG03OwnerOutcome>(token,
+            "cases/"+result.caseRef+"/owner-status");
+          if(["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(outcome.status))
+            setOwnerOutcome(outcome);
+        }catch{setMessage("Source assignment could not be verified. No access grant is claimed.");}
+      }
     }catch{setMessage("The application details could not be verified.");}
     finally{setBusy(false);}
+  }
+  async function retryOwner(){
+    if(!detail||!canReview||!ownerOutcome?.canRetry||busy||ownerBusy)return;
+    setOwnerBusy(true);
+    try{
+      const result=await api<{status:string}>(token,
+        "cases/"+detail.caseRef+"/retry-owner","POST");
+      const original=detail;
+      setMessage(result.status==="OWNER_COMPLETED"?
+        "Original CG-01 role grant is confirmed. No second grant was made.":
+        result.status==="OWNER_BLOCKED"?
+        "Source changed; a new proposal must be reviewed.":
+        "Access remains unconfirmed. The same original source key was checked.");
+      await load();await see(original);
+    }catch{setMessage("Owner effect could not be verified. Do not repeat the approval.");}
+    finally{setOwnerBusy(false);}
   }
   function selectDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
     if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
@@ -338,6 +364,20 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
           process version {detail.processVersion}</Text>
         <Text>Original account access revision {detail.sourceAccountAccessRevision};
           role revision {detail.sourceRoleRevision}</Text>
+        {["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(detail.status)&&
+          <View style={styles.card}>
+            <Text style={styles.heading}>Verified CG-01 account effect</Text>
+            <Text>{ownerOutcome?.status==="OWNER_COMPLETED"?
+              "One approved role assignment is confirmed in the original account ledger.":
+              ownerOutcome?.status==="OWNER_BLOCKED"?
+              "The original source changed. This decision cannot grant access.":
+              "Account access is still being verified. Approval alone grants nothing."}</Text>
+            {canReview&&ownerOutcome?.canRetry&&<Pressable accessibilityRole="button"
+              style={styles.button} disabled={busy||ownerBusy}
+              onPress={()=>void retryOwner()}>
+              <Text>{ownerBusy?"Checking…":"Recheck original owner effect"}</Text>
+            </Pressable>}
+          </View>}
         {decisionUnknown&&<View style={styles.card}>
           <Text accessibilityRole="alert">A previous decision may have been saved.
             Do not repeat it until verified.</Text>
