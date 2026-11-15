@@ -45,6 +45,18 @@ export class FoundationStructureController {
   participants(@Headers("authorization") bearer:string,@Param("departmentRef") ref:string){
     return this.service.participants(bearer,ref);
   }
+  @Post("departments/:departmentRef/participants/:participationRef/end")
+  endParticipant(@Headers("authorization") bearer:string,@Param("departmentRef") dep:string,
+    @Param("participationRef") ref:string,@Body() body:unknown){
+    if(!body||typeof body!=="object"||Array.isArray(body)||!("requestKey" in body))
+      throw new BadRequestException("Check the officeholder change");
+    return this.service.endParticipant(bearer,dep,ref,body.requestKey as string);
+  }
+  @Get("changes/:action/:requestKey")
+  change(@Headers("authorization") bearer:string,@Param("action") action:string,
+    @Param("requestKey") key:string){
+    return this.service.lookupChange(bearer,action,key);
+  }
   @Post("departments/:departmentRef/participants")
   addParticipant(@Headers("authorization") bearer:string,@Param("departmentRef") ref:string,@Body() body:unknown){
     return this.service.addParticipant(bearer,ref,body as Parameters<FoundationStructureService["addParticipant"]>[2]);
