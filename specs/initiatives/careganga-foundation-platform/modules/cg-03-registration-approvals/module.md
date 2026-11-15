@@ -3,16 +3,16 @@
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29.  
-**Stage:** Harness Planning / GREENFIELD · **State:** DRAFT_NOT_APPROVED; revised PRD/HLD approval & authenticated Harness resolver NOT_RUN.
+**Stage:** Harness Planning / GREENFIELD · **State:** DRAFT_NOT_APPROVED, aligned with canonical PRD/HLD v1.1 (15 November 2026); authenticated local Harness resolver and hash-bound delegated approvals NOT_RUN.
 
 uiux_decision: REQUIRED
-uiux_reason: New cross-channel business UI must follow original CareGanga theme, motion and role-sensitive workflows.
+uiux_reason: Source-backed U11–U13/B29 approval queue, applicant detail, decision/history and role-scoped Internal Android reviewer actions require accessible CareGanga visual/motion parity without a public Android approval admin.
 dld_decision: REQUIRED
-dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
+dld_reason: Versioned immutable submission/case and reviewer route, secure authorization, CG-01 final grant application, concurrent decisions and bounded owner retry require exact DB/typed API design.
 database_impact: CRITICAL
 database_reason: New source-owned Approval process/step, case intake, document check, review history, finalization reference state requires reliable relational constraints, concurrency and migration.
 mobile_store_impact: ANDROID
-mobile_store_reason: Approved native Android workflow uses maintained store-compatible baseline.
+mobile_store_reason: Only appropriately authorized Internal Android reviewers use native scoped pending-case, decision and result history; Public Android does not gain administrative approval capabilities.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
@@ -22,9 +22,9 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Approval process/step, case intake, document check, review history, finalization reference. Its first real case requests a protected grant change to an *existing* CG-01 account/role; CG-01 applies the verified approved outcome once. No prior CG-01 pending-request table or incomplete workflow is needed. **Delivery-critical, already-delivered owners:** CG-01 real verified account/role, permissions and authorized reviewers; CG-03 itself introduces protected change applications after CG-01 is complete. **Later owned integrations, not prerequisites for this module's core path:** CG-19 actual file evidence; CG-02 branch, CG-04 member, CG-10 employee and CG-14 provider owner finalizers join later when sources exist. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
+**Owns:** Approval process/step, case intake, document check, review history, finalization reference. Its first real case requests a protected grant change to an *existing* CG-01 account/role; CG-01 applies the verified approved outcome once. No prior CG-01 pending-request table or incomplete workflow is needed. **Implementation prerequisites (scheduled earlier, not yet actually delivered):** real CG-01 verified account/role, privileges and eligible reviewers; CG-03 introduces protected change applications only after CG-01 is complete. **Later owned integrations, not prerequisites for this module's core path:** CG-19 actual file evidence; CG-02 branch, CG-04 member, CG-10 employee and CG-14 provider owner finalizers join later when sources exist. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
-**State and invariant:** Draft/submitted/in-review/returned/rejected/approved. Only owning module applies one business effect after genuine final approval. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
+**State and invariant:** Draft → frozen submitted revision → in-review → returned/resubmitted (new immutable source revision and case) or rejected/final approved. Each case pins one genuine source-owner revision/digest, process version and reviewer steps; an old case cannot approve edited content. Final CG-03 decision is separate from source-owner effect (PENDING_OWNER until verified); only the real CG-01 guarded grant finalizer may apply the initial protected account/role change, at most once. Reviewer authority must be evaluated at decision time (no revoked reviewer or self-approval privilege escalation). Initial scope uses real CG-01 Foundation-root only; do not fabricate future branch, healthcare center, patient or payment scope. Authorize all list/detail/options/exports/writes server-side, redact protected data and show truthful states.
 
 ## Complete PRD and BR mapping
 
@@ -45,7 +45,7 @@ Detailed authoritative clauses:
 
 ## Independent vertical delivery and acceptance
 
-This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Approve/return/reject an actual CG-01 access change, pin current reviewer sequence/version and apply one CG-01 grant effect; concurrent/stale reviewers must not activate future records. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
+This module must complete real protected case creation, scoped reviewer decision/history and CG-01 source-effect verification on responsive Admin Web and permitted Internal Android before source QA may be marked complete. **Concrete acceptance:** Freeze a proposed existing-account/role grant change, pin the current authorized reviewer sequence and source revision, return/reject/resubmit without reusing old approval, and apply at most one guarded CG-01 grant after the actual final decision. Approval status remains PENDING_OWNER until the CG-01 effect is confirmed. No CG-19 attachment, future business case, provider or fake owner record is needed for this initial journey; CG-02/04/09/10/14/19 later own their real integrations and QA. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 
