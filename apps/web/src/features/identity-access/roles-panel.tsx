@@ -32,6 +32,7 @@ export function RolesPanel(){
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState<Notice|null>(null);
   const [editor,setEditor]=useState<{mode:FormMode;source?:Role}|null>(null);
+  const [pendingRetire,setPendingRetire]=useState<Role|null>(null);
   const [selected,setSelected]=useState<string[]>([]);
   const [name,setName]=useState("");
   const [description,setDescription]=useState("");
@@ -133,13 +134,13 @@ export function RolesPanel(){
   }
   async function retire(role:Role){
     if(!canManage||role.protected||role.assignedCount>0||!role.active)return;
-    if(!window.confirm("Retire "+role.name+"? This role will no longer be available for new assignments."))return;
     setSaving(true);setNotice(null);
     try{
       await mutate("roles/"+role.roleRef+"/retire","POST",{
         expectedRevision:role.revision,requestKey:crypto.randomUUID()
       });
       await load(appliedSearch,offset);
+      setPendingRetire(null);
       setNotice({kind:"success",text:"Role retired."});
     }catch(error){
       setNotice({kind:"error",text:error instanceof Error&&error.message==="UNCERTAIN"?
@@ -211,7 +212,7 @@ export function RolesPanel(){
           <button type="button" onClick={()=>open("copy",role)}>Copy</button>
           <button type="button" disabled={role.assignedCount>0||saving}
             title={role.assignedCount>0?"Reassign accounts before retiring":undefined}
-            onClick={()=>void retire(role)}>Retire</button>
+            onClick={()=>setPendingRetire(role)}>Retire</button>
         </>}</div></td>
       </tr>)}</tbody></table></div>
     }
@@ -229,6 +230,18 @@ export function RolesPanel(){
         </li>)}</ul>}
       {historyCursor&&<button type="button" onClick={()=>void moreHistory()}>Load more history</button>}
     </section>}
+    {pendingRetire&&<div className="drawer-backdrop" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="retire-role-title" className="role-drawer">
+        <h2 id="retire-role-title">Retire {pendingRetire.name}?</h2>
+        <p>The role will no longer be available for new assignments.</p>
+        <p>Any existing assignments must be reassigned before retirement is permitted.</p>
+        <div className="toolbar">
+          <button type="button" disabled={saving} onClick={()=>setPendingRetire(null)}>Cancel</button>
+          <button type="button" className="primary" disabled={saving}
+            onClick={()=>void retire(pendingRetire)}>{saving?"Retiring…":"Confirm retirement"}</button>
+        </div>
+      </section>
+    </div>}
     {editor&&<div className="drawer-backdrop" role="presentation">
       <section role="dialog" aria-modal="true" aria-labelledby="role-editor-title" className="role-drawer">
         <header className="topbar">
