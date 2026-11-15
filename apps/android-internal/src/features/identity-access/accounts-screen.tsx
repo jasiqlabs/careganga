@@ -1,5 +1,5 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback,useEffect,useRef,useState } from "react";
 import { BackHandler,KeyboardAvoidingView,Platform,Pressable,ScrollView,
   StyleSheet,Text,TextInput,View } from "react-native";
 import * as Crypto from "expo-crypto";
@@ -31,6 +31,9 @@ export function AccountsScreen({token,onExit,onExpired}:{
   token:string;onExit:()=>void;onExpired:()=>void
 }){
   const [list,setList]=useState<CG01AccountList|null>(null);
+  const listGeneration=useRef(0);
+  const optionsGeneration=useRef(0);
+  const historyGeneration=useRef(0);
   const [actions,setActions]=useState<string[]>([]);
   const [roles,setRoles]=useState<Option[]>([]);
   const [search,setSearch]=useState("");
@@ -54,11 +57,13 @@ export function AccountsScreen({token,onExit,onExpired}:{
   const canStatus=actions.includes("accounts.status.manage");
   const canAudit=actions.includes("access.audit.view");
   const deny=useCallback((kind:string)=>{
+    ++listGeneration.current;++optionsGeneration.current;++historyGeneration.current;
     setList(null);setActions([]);setRoles([]);setSelected(null);setPending(null);
     setScreen("list");setMessage("Your account access cannot be verified. Restricted information was cleared.");
     if(kind==="SESSION_EXPIRED")onExpired();
   },[onExpired]);
   const load=useCallback(async(q="",skip=0,status="all")=>{
+    const generation=++listGeneration.current;
     setBusy(true);setMessage("");
     try{
       const params=new URLSearchParams({search:q,limit:"20",offset:String(skip),status});
@@ -70,16 +75,17 @@ export function AccountsScreen({token,onExit,onExpired}:{
         !Array.isArray(listData.accounts)||!("summary" in listData))throw new Error("UNAVAILABLE");
       if(!access||typeof access!=="object"||!("actions" in access)||!Array.isArray(access.actions))
         throw new Error("UNAVAILABLE");
+      if(generation!==listGeneration.current)return;
       setList(listData as CG01AccountList);
       setActions(access.actions.map((a:{key:string})=>a.key));
       setOffset(skip);setFilter(status);
       setSelected(prev=>(listData as CG01AccountList).accounts.find(x=>x.accountRef===prev?.accountRef)??null);
     }catch(e){
+      if(generation!==listGeneration.current)return;
       if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))
         deny(e.message);
-      else{setList(null);setRoles([]);setActions([]);setSelected(null);
-        setMessage("Staff accounts are temporarily unavailable. Protected information remains hidden.");}
-    }finally{setBusy(false);}
+      else deny("UNAVAILABLE");
+    }finally{if(generation===listGeneration.current)setBusy(false);}
   },[token,deny]);
   useEffect(()=>{void load();},[load]);
   useEffect(()=>{
@@ -91,21 +97,27 @@ export function AccountsScreen({token,onExit,onExpired}:{
     return()=>sub.remove();
   },[pending,screen,onExit]);
   async function searchRoles(q=""){
+    const generation=++optionsGeneration.current;
     setRoleQuery(q);
     try{
       const result=await call(token,"roles/options?"+new URLSearchParams({search:q})) as {options:Option[]};
+      if(generation!==optionsGeneration.current)return;
+      if(!Array.isArray(result.options))throw new Error("UNAVAILABLE");
       setRoles(result.options.filter(x=>x.context==="Foundation"));
     }catch(e){
+      if(generation!==optionsGeneration.current)return;
       setRoles([]);
       if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))deny(e.message);
       else setMessage("Eligible roles are unavailable. Try again later.");
     }
   }
   function beginInvite(){
+    ++optionsGeneration.current;++historyGeneration.current;
     setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   function beginDetail(row:CG01AccountView){
+    ++optionsGeneration.current;++historyGeneration.current;
     setSelected(row);setRoleRef(row.roleRef??"");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("detail");setRequestKey(Crypto.randomUUID());
     if(canAssign)void searchRoles();
@@ -149,13 +161,17 @@ export function AccountsScreen({token,onExit,onExpired}:{
     }finally{setBusy(false);}
   }
   async function showAudit(targetRef?:string){
+    const generation=++historyGeneration.current;
     try{
       const params=new URLSearchParams({limit:"20",...(targetRef?{targetRef}:{})});
       const result=await call(token,"audit?"+params.toString()) as {
         events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string}[]
       };
-      setHistory(Array.isArray(result.events)?result.events:[]);
+      if(generation!==historyGeneration.current)return;
+      if(!Array.isArray(result.events))throw new Error("UNAVAILABLE");
+      setHistory(result.events);
     }catch(e){
+      if(generation!==historyGeneration.current)return;
       if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))deny(e.message);
       else setMessage("Security history could not be verified.");
     }
