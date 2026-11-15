@@ -7,6 +7,8 @@ export function correlateRequest(req:CareGangaRequest,res:Response,next:NextFunc
   // Generate on the server; no client-supplied tracing input can poison log correlation.
   req.cgRequestId=randomUUID();
   res.setHeader("X-Request-ID",req.cgRequestId);
+  res.setHeader("Cache-Control","private, no-store");
+  res.setHeader("X-Content-Type-Options","nosniff");
   const started=process.hrtime.bigint();
   res.on("finish",()=>{
     const elapsedMs=Number(process.hrtime.bigint()-started)/1e6;
