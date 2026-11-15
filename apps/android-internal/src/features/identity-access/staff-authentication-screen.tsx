@@ -1,7 +1,8 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { RecoveryScreen } from "./recovery-screen";
 import { identityRequest } from "./http-client";
-import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
 
