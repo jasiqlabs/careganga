@@ -2,7 +2,7 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
+**Stage:** Harness Planning DRAFT / OWNER_BOUNDARY_TRANSFER_APPLIED (15 Nov 2026): CG-19 owns message transmission/delivery source; CG-21 owns only provider configuration references. [module](module.md), [PRD](../../prd.md) FR-070–072, [HLD](../../hld.md), [UIUX](uiux.md), [DLD](dld.md). Module full review/approval still pending.  
 **Development gate:** CG-19 REVIEW_IN_PROGRESS (module and DLD corrected; UIUX/tasks final review pending). PRD/HLD v1.1 current approval REVIEW_REQUIRED; pinned Harness resolver and current-hash module/task/UIUX/DLD approvals NOT_RUN. Stories remain BLOCKED pending owner-confirmed continuation. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
 ## Proposed task definitions — NOT YET APPROVED
@@ -27,10 +27,10 @@ Dependencies: None
 
 ### US-002 — Provide configured email/SMS/WhatsApp/push, broadcast notice…
 
-Outcome: Provide configured email/SMS/WhatsApp/push, broadcast notice, audience/priority/expiry/template control and observable delivery/failure history without duplicating module records.
+Outcome: **CG-19 alone** resolves a real authorized source event/recipient and sends configured email/SMS/WhatsApp/push, maintaining the one bounded notification outbox, attempts, retry and confirmed delivery/failure history. CG-21 only owns the secure provider configuration/readiness reference, never actual sending or message state.
 Requirements: FR-071, CG-19-BR03, CG-19-BR04, CG-19-BR06, CG-19-BR09; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-19 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Send one permitted templated message after real owner event via bounded outbox/retry, with truthful delivery states. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
+Acceptance: From one genuine CG-01/03 business event, CG-19 records exactly one deduplicated source notification/recipient, shows QUEUED/PROVIDER_UNAVAILABLE when an optional CG-21-configured provider is absent, and only attempts delivery when real configured provider readiness permits. Track sent-to-provider separately from acknowledged recipient delivery, bounded retry/expiry, safe recipient permissions and source event audit. No CG-21 delivery rows, fake provider success or future record required; authorized Web/native consumers show truthful statuses.
 QA cases:
 - **US-002-QA01:** Starting from actual authorized actor and implemented owner record: send one permitted templated message after real owner event via bounded outbox/retry, with truthful delivery states. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-002-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
@@ -38,7 +38,7 @@ QA cases:
 - **US-002-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-002-QA06:** Original CareGanga screenshot refs B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-- **US-002-QA07 — Source-specific contract:** Send a time-limited targeted notice to one authorized role; an SMS/WhatsApp provider timeout leaves pending/retry and one deduplicated delivery log, and a later revoked recipient cannot read the message.
+- **US-002-QA07 — source-owned send and reconciliation:** From one genuine eligible CG-03 approval event, send a time-limited authorized notice via CG-19's bounded outbox and provider adapter; absent configured CG-21 provider → QUEUED/UNAVAILABLE, not DELIVERED. Provider timeout/retry produces one deduped source notification and auditable bounded delivery attempts; a revoked recipient cannot read it. CG-21 stores no sending history or recipient outcomes.
 Verification: On actual implementation source-trace US-002-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
