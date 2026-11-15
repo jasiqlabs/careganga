@@ -230,3 +230,22 @@ button:disabled { cursor:wait; opacity:.65; }
 .audit-detail>dt,.audit-detail>dd{border-bottom:1px solid var(--cg-border);padding-bottom:.7rem}
 @media(max-width:32rem){.audit-detail{grid-template-columns:1fr;gap:.3rem}
   .audit-detail dd{padding-bottom:.9rem}}
+
+/* CG-02: reuse established CareGanga form/nav tokens for the Foundation-only U21/U22 views. */
+.role-workspace .field textarea {
+  width:100%;max-width:100%;min-height:5.5rem;resize:vertical;
+  background:var(--cg-surface);color:var(--cg-text);font:inherit;
+  padding:.75rem;border:1px solid var(--cg-border);border-radius:.4rem;
+}
+.role-workspace .role-pane>.form {max-width:46rem}
+.role-workspace button:not(.primary) {
+  min-height:2.75rem;padding:.5rem .7rem;border-radius:.4rem;
+  border:1px solid var(--cg-border);background:var(--cg-surface);color:var(--cg-text);
+}
+.role-workspace button:not(.primary):disabled {opacity:.65}
+.role-workspace input[type="date"] {min-width:0}
+.role-workspace [role="tab"][aria-selected="true"] {
+  background:var(--cg-accent);color:var(--cg-accent-text);
+  border-color:var(--cg-accent);
+}
+.role-workspace .notice {background:var(--cg-surface)}
