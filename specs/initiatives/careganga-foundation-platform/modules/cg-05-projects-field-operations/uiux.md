@@ -19,6 +19,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-05 original ownership of project branch links — channel interaction
+
+The CG-05 project creation/edit and field-work views display actual authorized CG-02 branch/geography, reject closed/foreign scope and show a verified current project branch. An operator can see only projects in current permitted branch scope. A project does not appear in CG-02 as an editable project-master item, and no nonexistent beneficiary or invented budget amount is shown. Maintain original CareGanga project/task screen components and native permission feedback.
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Preserve reference A01-A06 project/field-visit KPI+filter+tabular layout, visit details with Overview, Route/Map, Report, Photos/Videos, Documents, Team, Beneficiaries, Approval and Log tabs where real data exists. The Add Field Visit dialog keeps captured geography/clock state and file-progress indicators; mobile operators get task-first check-in and evidence controls, not a miniature admin table.
