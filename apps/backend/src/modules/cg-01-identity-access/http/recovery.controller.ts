@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, HttpCode, Post, Req, ServiceUnavailableException } from "@nestjs/common";
 import type { Request } from "express";
 import { RecoveryService } from "../application/recovery.service";
 
@@ -12,7 +12,9 @@ export class RecoveryController{
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
       ||typeof body.requestKey!=="string"|| !/^[0-9a-f-]{36}$/i.test(body.requestKey))
       throw new BadRequestException();
-    return this.service.requestRecovery(body.email,body.requestKey,req.ip??"unknown");
+    const outcome=await this.service.requestRecovery(body.email,body.requestKey,req.ip??"unknown");
+    if(outcome.status==="UNAVAILABLE")throw new ServiceUnavailableException("Credential recovery is unavailable");
+    return outcome;
   }
   @Post("confirm")
   @HttpCode(200)
