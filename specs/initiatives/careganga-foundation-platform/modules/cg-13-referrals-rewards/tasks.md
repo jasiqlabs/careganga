@@ -108,6 +108,6 @@ Verification: Trace US-003-QA01–QA20 individually via current actual client UI
 Dependencies: US-001, US-002
 
 ## Execution progress
-- US-001: BLOCKED | OWNER_DELEGATED_DESIGN_SOURCE_REVIEWED_HASH_APPROVAL_REQUIRED; first actual CG-01/02 bootstrap and optional CG-12 proof NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; actual SQL/Web/Public Android/Internal Android/visual/Play NOT_RUN.
-- US-002: BLOCKED | OWNER_DELEGATED_DESIGN_SOURCE_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001 actual source and CG-04 eligible application event NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; actual SQL/Web/Public Android/Internal Android/security/visual NOT_RUN.
-- US-003: BLOCKED | OWNER_DELEGATED_DESIGN_SOURCE_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001/002 and optional real CG-12/CG-03/19 owner implementation NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; live SQL/stock concurrency/native/Web/Play/motion/security NOT_RUN.
+- US-001: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_CRITICAL_DB_SQL_AND_RUNTIME_NOT_RUN; first actual CG-01/02 bootstrap and optional CG-12 proof NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; actual SQL/Web/Public Android/Internal Android/visual/Play NOT_RUN.
+- US-002: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_CRITICAL_DB_SQL_AND_RUNTIME_NOT_RUN; prerequisite US-001 actual source and CG-04 eligible application event NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; actual SQL/Web/Public Android/Internal Android/security/visual NOT_RUN.
+- US-003: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_CRITICAL_DB_SQL_AND_RUNTIME_NOT_RUN; prerequisite US-001/002 and optional real CG-12/CG-03/19 owner implementation NOT_VERIFIED; code NOT_STARTED; 20 source QA NOT_RUN; live SQL/stock concurrency/native/Web/Play/motion/security NOT_RUN.
