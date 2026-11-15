@@ -149,7 +149,7 @@ export class AccountsService {
   private async perform(bearer:string,permission:string,action:"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
     requestKey:string,payload:unknown,correlationRef:string,
     work:(client:PoolClient,actor:VerifiedFoundationActor)=>Promise<{
-      accountRef:string;revision:number;status:string;displayName:string;inviteToken?:string;contact?:string;
+      accountRef:string;revision:number;status:string;displayName:string;inviteToken?:string;contact?:string;challengeRef?:string;
     }>):Promise<CommandResult>{
     checkRef(requestKey);
     const actor=await this.actor(bearer,permission);
@@ -172,8 +172,8 @@ export class AccountsService {
       await client.query("COMMIT");transactionOpen=false;
       committed={accountRef:result.accountRef,revision:result.revision,status:result.status,
         message:"Account change confirmed."};
-      if(result.inviteToken&&result.contact) delivery={
-        token:result.inviteToken,contact:result.contact,id:result.accountRef
+      if(result.inviteToken&&result.contact&&result.challengeRef) delivery={
+        token:result.inviteToken,contact:result.contact,id:result.challengeRef
       };
       }
     }catch(e){
@@ -187,7 +187,7 @@ export class AccountsService {
       try{
         const claimed=await this.db.query(String.raw`
           UPDATE auth_challenge SET delivery_status='CLAIMED',delivery_attempts=1
-          WHERE account_id=$1 AND kind='INVITATION' AND consumed_at IS NULL
+          WHERE id=$1 AND kind='INVITATION' AND consumed_at IS NULL
             AND delivery_status='PENDING' AND delivery_attempts=0 RETURNING id`,[delivery.id]);
         if(claimed.rowCount){
           const outcome=await this.delivery.submitInvitation(delivery.contact,delivery.token);
@@ -238,12 +238,13 @@ export class AccountsService {
         INSERT INTO account_role(account_id,role_id,realm_id,assigned_by)
         VALUES($1,$2,$3,$4)`,[id,roleRef,actor.realmId,actor.accountId]);
       const token=randomBytes(32).toString("base64url");
-      await client.query(String.raw`
+      const challenge=await client.query<{id:string}>(String.raw`
         INSERT INTO auth_challenge(account_id,kind,digest,request_key,expires_at)
-        VALUES($1,'INVITATION',$2,$3,now()+interval '24 hours')`,
+        VALUES($1,'INVITATION',$2,$3,now()+interval '24 hours') RETURNING id`,
         [id,digest(token),digest("invite:"+input.requestKey)]);
       return {accountRef:id,revision:created.rows[0].revision,
-        status:"INVITED",displayName,inviteToken:token,contact:email};
+        status:"INVITED",displayName,inviteToken:token,contact:email,
+        challengeRef:challenge.rows[0].id};
     });
   }
   async resend(bearer:string,targetRef:string,input:AccountChange,correlationRef:string){
@@ -264,15 +265,16 @@ export class AccountsService {
         UPDATE auth_challenge SET consumed_at=now()
         WHERE account_id=$1 AND kind='INVITATION' AND consumed_at IS NULL`,[target]);
       const token=randomBytes(32).toString("base64url");
-      await client.query(`
+      const challenge=await client.query<{id:string}>(`
         INSERT INTO auth_challenge(account_id,kind,digest,request_key,expires_at)
-        VALUES($1,'INVITATION',$2,$3,now()+interval '24 hours')`,
+        VALUES($1,'INVITATION',$2,$3,now()+interval '24 hours') RETURNING id`,
         [target,digest(token),digest("resend:"+input.requestKey)]);
       const rev=await client.query<{revision:number}>(`
         UPDATE account SET revision=revision+1,updated_at=now()
         WHERE id=$1 RETURNING revision`,[target]);
       return {accountRef:target,revision:rev.rows[0].revision,status:"INVITED",
-        displayName:account.display_name,inviteToken:token,contact:account.normalized_email};
+        displayName:account.display_name,inviteToken:token,contact:account.normalized_email,
+        challengeRef:challenge.rows[0].id};
     });
   }
 
