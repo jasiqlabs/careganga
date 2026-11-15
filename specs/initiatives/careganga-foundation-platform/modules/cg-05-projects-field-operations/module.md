@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Projects, tasks, events/activity, GPS visit and private evidence. **Real prerequisite owners:** CG-01, CG-02, real CG-10 assignee and CG-19 evidence. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Projects, tasks, events/activity, GPS visit and private evidence. **Delivery-critical, already-delivered owners:** CG-01 scoped operators, CG-02 real branches/geography, CG-19 protected photos/files. **Later owned integrations, not prerequisites for this module's core path:** CG-10 adds real employee assignees, CG-06 impact/beneficiary ownership, CG-09 budget authority, CG-20 scoped reporting. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Planned/active/hold/completed/cancelled. No fake GPS, duplicate CMS project or shadow financial/beneficiary source. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -42,6 +42,10 @@ Detailed authoritative clauses:
 - **CG-05-BR09:** Make only expressly published projects, achievements and stories visible publicly via CG-18.
 - **CG-05-BR10:** Allow authorized creation and management of Foundation events linked to programs/projects or campaigns where relevant, including event information and public publication through CG-18. The exact event registration/ticketing workflow, if any, requires a separate supported client requirement and must not be assumed from a menu label.
 - **CG-05-BR11:** A field visit has one detailed record with contextual views for visit report, check-in/check-out, location/route/GPS, photographs/videos, documents, assigned team, beneficiary assistance, approval records, comments and activity history. These views reference their owning records; they are not independent visit modules.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Create a real project/field task, capture actual authorized visit evidence and check-in/out; failed upload and wrong-branch report do not mutate source and no made-up map trace is shown. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 

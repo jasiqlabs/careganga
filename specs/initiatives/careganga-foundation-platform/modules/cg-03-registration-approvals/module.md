@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Approval process/step, case intake, document check, review history, finalization reference. **Real prerequisite owners:** CG-01. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Approval process/step, case intake, document check, review history, finalization reference. **Delivery-critical, already-delivered owners:** CG-01 actual protected access-change request and current role/scoped reviewers. **Later owned integrations, not prerequisites for this module's core path:** CG-19 actual file evidence; CG-02 branch, CG-04 member, CG-10 employee and CG-14 provider owner finalizers join later when sources exist. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Draft/submitted/in-review/returned/rejected/approved. Only owning module applies one business effect after genuine final approval. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -40,6 +40,10 @@ Detailed authoritative clauses:
 - **CG-03-BR07:** Preserve reviewer, date/time, remarks, previous states and completed/pending approvals; show graphical queues/workflows and open pending records directly.
 - **CG-03-BR08:** Make rejected/returned requests actionable to eligible submitters without converting an unapproved record to active status.
 - **CG-03-BR09:** Create the final owner-module outcome only after final authorized approval, including IDs, accounts, budgets or authorized postings as applicable.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Approve/return/reject an actual CG-01 access change, pin current reviewer sequence/version and apply one CG-01 grant effect; concurrent/stale reviewers must not activate future records. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 

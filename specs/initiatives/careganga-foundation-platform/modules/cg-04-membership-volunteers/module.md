@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Member tiers/terms, fees, renewals, volunteer applications and skills. **Real prerequisite owners:** CG-01, CG-03, CG-09, CG-19, real CG-02. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Member tiers/terms, fees, renewals, volunteer applications and skills. **Delivery-critical, already-delivered owners:** CG-01 roles, CG-02 actual geography, CG-03 final approval, CG-09 verified fees, CG-19 issued member file/card. **Later owned integrations, not prerequisites for this module's core path:** CG-18 publishes only configured safe tier fields, CG-13 credits referrals after eligible membership becomes active. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Draft/submitted/approved/rejected/active/expired/renewed. Approved fee and case precede member ID; rejected paid membership requires authorized refund. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -42,6 +42,10 @@ Detailed authoritative clauses:
 - **CG-04-BR09:** Verify/approve volunteer applications, maintain volunteer roster/status/assignments and link actual work to CG-05.
 - **CG-04-BR10:** Enable permitted volunteer access according to CG-01 roles; not all volunteers automatically become internal operational staff.
 - **CG-04-BR11:** Provide authorized search, status filtering, activity summaries, exports and communication.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Publish one tier then process a real verified application through final review; preserve fee validity/version and revoke permissions for foreign member/volunteer records. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 

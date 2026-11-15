@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Campaigns, donor intent, payment verification, refund and receipt sources. **Real prerequisite owners:** CG-01, CG-03, CG-09, CG-19 and CG-18. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Campaigns, donor intent, payment verification, refund and receipt sources. **Delivery-critical, already-delivered owners:** CG-01/CG-03 approvals, CG-09 source-of-truth cash ledger, CG-19 receipt, CG-18 published campaign. **Later owned integrations, not prerequisites for this module's core path:** CG-05 project linkage only for real project-backed campaigns; CG-20 impact and reconciliation reporting consume real verified donations. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Campaign draft/approved/published; payment initiated/pending/verified/failed/refunded. Pending money never receipt, provider replay never duplicate finance posting. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -40,6 +40,10 @@ Detailed authoritative clauses:
 - **CG-07-BR07:** Provide donation lists, filters, dashboards, campaign progress, summaries and exports.
 - **CG-07-BR08:** Campaign setup supports an editable draft and review flow across basic information, project/category and geography, team/assignment, budget/targets, documents/media and final review. Campaign launch/publication is separately authorized and may not be inferred from saving a draft.
 - **CG-07-BR09:** A manual donation record, generated online payment link, payment request, verified payment, authorized receipt and any subsequent correction/refund have distinct statuses linked to the same donor/campaign transaction.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Build six-stage campaign draft/approval/publication, accept actual donor intent, show pending until provider verification and issue one correctly linked receipt; reject duplicate webhook and failed-refund false balance. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 

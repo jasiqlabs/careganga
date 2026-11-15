@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Foundation profile, region hierarchy, branches, departments/committees. **Real prerequisite owners:** CG-01; CG-03 active branch approval. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Foundation profile, region hierarchy, branches, departments/committees. **Delivery-critical, already-delivered owners:** CG-01 identity + CG-03 genuine approval decisions + CG-19 protected evidence for seven-step branch submission. **Later owned integrations, not prerequisites for this module's core path:** CG-10 employee heads, CG-05 projects, CG-04 members, CG-09 budgets and CG-18 public listing link only from their delivered source owners. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Draft/submitted/returned/rejected/approved/active/closed. Only finally approved branches activate or receive code; geography never invented. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -40,6 +40,10 @@ Detailed authoritative clauses:
 - **CG-02-BR08:** Provide branch directory, search/filter, authorized status changes and exports.
 - **CG-02-BR09:** Internal Foundation branches must **not be automatically published**; only expressly approved organization information appears publicly.
 - **CG-02-BR10:** Department and committee setup supports name, type, parent department where applicable, branch/location, assigned head/manager, opening date, description and active status. Reporting and staff assignment reuse the same department/committee record.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Register a branch in seven resumable stages, reject a missing agreement, obtain a real CG-03 final approval, then issue one unique branch code and activate once; prevent foreign-area/department links. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 

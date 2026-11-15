@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** CSR partners, funding proposals/agreements, commitments and allocations. **Real prerequisite owners:** CG-01, CG-03, CG-05 and CG-09. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** CSR partners, funding proposals/agreements, commitments and allocations. **Delivery-critical, already-delivered owners:** CG-01/CG-03 authorization and approvals, CG-05 real project, CG-09 receipts/allocations, CG-19 protected agreements. **Later owned integrations, not prerequisites for this module's core path:** CG-18 approved partner publicity and CG-20 scoped CSR reporting join as later read-only consumers. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
 **State and invariant:** Partner requested/approved/returned; amount proposed/committed/received/allocated. Pledge not money; funding allocation not utilization; no shadow ledger. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -39,6 +39,10 @@ Detailed authoritative clauses:
 - **CG-08-BR06:** Link approved funds to project allocations, utilization and reporting through CG-09; public partner publication is independent of partner verification.
 - **CG-08-BR07:** Funding work distinguishes proposed/requested funding, documented commitments, received funds, approved allocations to projects/categories and actual utilization or release. Funder agreements and source references remain attached; no individual project or CSR screen creates a competing fund balance.
 - **CG-08-BR08:** CSR partner reviews can result in approval, rejection or request for correction with reviewer remarks, partner-contact details and linked proposal/contribution history.
+
+## Independent vertical delivery and acceptance
+
+This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Record verified CSR organization/proposal, then distinguish committed, received and utilized money; test restricted agreement preview, excess allocation and correction to a previous approved amount. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 
