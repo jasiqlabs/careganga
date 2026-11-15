@@ -100,6 +100,17 @@ export class ApprovalProposalService{
       message:q.rowCount?"Protected access route is configured":
         "The protected route is initialized with the first eligible submission"};
   }
+  async processLookup(bearer:string,requestKeyInput:unknown){
+    const actor=await this.sessions.requireAction(bearer,"approvals.process.manage");
+    const requestKey=requireUuid(requestKeyInput);
+    const rows=await this.db.query<{version:number}>(`
+      SELECT p.version FROM cg03_process_command c
+      JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id
+      WHERE c.realm_id=$1 AND c.actor_id=$2 AND c.request_key=$3
+    `,[actor.realmId,actor.accountId,requestKey]);
+    return rows.rowCount?{status:"CONFIRMED",version:rows.rows[0].version}:
+      {status:"NOT_FOUND",version:null};
+  }
   async newProcessVersion(bearer:string,body:unknown){
     const payload=checkInput(body,["firstReviewerCapability","requestKey","totp"]);
     if(payload.firstReviewerCapability!==null&&payload.firstReviewerCapability!=="roles.assign")
