@@ -48,6 +48,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [departmentEditorOpen,setDepartmentEditorOpen]=useState(false);
   const departmentDialogRef=useRef<HTMLDialogElement>(null);
   const [officeholders,setOfficeholders]=useState<Officeholder[]>([]);
+  const [officeholderSearch,setOfficeholderSearch]=useState("");
   const [participants,setParticipants]=useState<Participant[]>([]);
   const [focusedDept,setFocusedDept]=useState<string|null>(null);
   const [areaRef,setAreaRef]=useState<string|null>(null);
@@ -176,6 +177,18 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     }catch(e){setError(e instanceof Error?e.message:"Additional areas could not be loaded.");}
     finally{setBusy(false);}
   }
+  async function findEligibleOfficeholders(){
+    if(busy||!can("foundation.departments.assign"))return;
+    setBusy(true);setError("");
+    try{
+      const result=await json<{options:Officeholder[]}>(
+        "/officeholders/options?search="+encodeURIComponent(officeholderSearch.trim()));
+      setOfficeholders(result.options);
+      if(result.options.length===0)setNotice("No eligible staff account matched. Try another name.");
+    }catch(e){setOfficeholders([]);setError(e instanceof Error?e.message:
+      "Eligible staff accounts cannot be verified.");}
+    finally{setBusy(false);}
+  }
   async function loadMoreDepartments(){
     if(departmentNextOffset===null||busy)return;
     setBusy(true);setError("");
@@ -190,7 +203,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     }catch(e){setError(e instanceof Error?e.message:"Additional departments could not be loaded.");}
     finally{setBusy(false);}
   }
-  async function showHistory(kind:"PROFILE"|"AREA"|"DEPARTMENT",ref:string,title:string){
+  async function showHistory(kind:"PROFILE"|"AREA"|"DEPARTMENT"|"PARTICIPANT",ref:string,title:string){
     setError("");setAudit(null);
     try{
       const result=await json<{events:{action:string;version:number;recordedAt:string}[]}>(
@@ -419,9 +432,20 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
           <select value={deptParent} onChange={e=>setDeptParent(e.target.value)} disabled={busy||Boolean(pending)}>
             <option value="">Foundation top level</option>{departments.filter(x=>x.active&&x.departmentRef!==deptRef).map(x=>
               <option key={x.departmentRef} value={x.departmentRef}>{x.name}</option>)}</select></label>
-        {can("foundation.departments.assign")&&<label className="field">Head officeholder (optional)
-          <select value={deptHead} onChange={e=>setDeptHead(e.target.value)} disabled={busy||Boolean(pending)}>
-            <option value="">Unassigned</option>{officeholders.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>}
+        {can("foundation.departments.assign")&&<>
+          <div className="search-row"><label>Find eligible staff by name
+            <input value={officeholderSearch} maxLength={80} onChange={e=>setOfficeholderSearch(e.target.value)}
+              placeholder="Staff name" disabled={busy||Boolean(pending)}/></label>
+            <button type="button" disabled={busy||Boolean(pending)} onClick={()=>void findEligibleOfficeholders()}>
+              Search staff</button></div>
+          <label className="field">Head officeholder (optional)
+            <select value={deptHead} onChange={e=>setDeptHead(e.target.value)} disabled={busy||Boolean(pending)}>
+              <option value="">Unassigned</option>
+              {deptHead&&!officeholders.some(x=>x.value===deptHead)&&
+                <option value={deptHead}>{departments.find(x=>x.departmentRef===deptRef)?.headDisplayName??"Previously assigned account"}</option>}
+              {officeholders.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
+            </select></label>
+        </>}
         {deptRef&&<label className="field">Status
           <select value={deptActive?"ACTIVE":"INACTIVE"} onChange={e=>setDeptActive(e.target.value==="ACTIVE")}
             disabled={busy||Boolean(pending)}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>}
@@ -435,12 +459,19 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
           {!p.activeUntil&&can("foundation.departments.assign")&&
             <button type="button" disabled={busy||Boolean(pending)} onClick={()=>save(
               "POST","/departments/"+focusedDept+"/participants/"+p.participationRef+"/end",
-              "PARTICIPANT_END",{})}>End assignment</button>}</li>)}</ul>
+              "PARTICIPANT_END",{})}>End assignment</button>}
+          <button type="button" onClick={()=>void showHistory("PARTICIPANT",p.participationRef,
+            "Officeholder assignment")}>History</button></li>)}</ul>
         {participants.length===0&&<p>No officeholders have been recorded.</p>}
         {can("foundation.departments.assign")&&selectedDept.active&&<form className="form" onSubmit={e=>{
           e.preventDefault();save("POST","/departments/"+focusedDept+"/participants",
             "PARTICIPANT_ADD",{accountRef:participantAccount,officeRole:participantRole});
         }}>
+          <div className="search-row"><label>Find eligible staff by name
+            <input maxLength={80} value={officeholderSearch} onChange={e=>setOfficeholderSearch(e.target.value)}
+              placeholder="Staff name" disabled={busy||Boolean(pending)}/></label>
+            <button type="button" disabled={busy||Boolean(pending)}
+              onClick={()=>void findEligibleOfficeholders()}>Search staff</button></div>
           <label className="field">Eligible Foundation account
             <select required value={participantAccount} onChange={e=>setParticipantAccount(e.target.value)}>
               <option value="">Choose current staff account</option>
