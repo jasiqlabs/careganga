@@ -1,8 +1,8 @@
 # CG-BR-300 — CMS, Public Website and Application Channels
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
-**Status:** Consolidated business requirements · Client decisions identified separately  
-**Coverage:** CG-18 CMS/publication; presentation and permissions of CG-01–21 across all intended interfaces.
+**Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
+**Coverage:** CG-18 CMS/publication; presentation and permissions of canonical CG-01–CG-24 across the five approved interfaces, with optional healthcare ERP functions disabled by default and subject to the original owning-module permissions.
 
 ## 1. Core operating principle
 
@@ -23,13 +23,13 @@ The CMS can set visibility, narrative and display order for an **approved busine
 
 - **CG-18-BR01:** Provide a web-based authorized content dashboard with supported pages/sections, their status, preview and publication controls.
 - **CG-18-BR02:** Create, edit, preview and publish homepage hero banners, text, CTA labels/links, images, display order and applicable page visibility.
-- **CG-18-BR03:** Manage publicly authorized team member profiles (name, designation, photograph, description, order and published/unpublished status), **referencing HR/employee records where appropriate**, without exposing full employee files.
-- **CG-18-BR04:** Publish selected upcoming/current projects with media and descriptions derived from CG-05; a website teaser is not a second project master.
+- **CG-18-BR03:** CG-18 initially owns consented editorial public team biography/name/designation/photo/order/preview/published status without CG-10 employee prerequisite. **CG-10 US-001** later introduces optional current real employee identity/consent/public safe-field link; private HR fields never copied or assumed public.
+- **CG-18-BR04:** CG-18 owns public teaser placement/visual and can initially show truthful empty/neutral editorial initiative. **CG-05 US-001** introduces actual approved project name/status/dates/financial reference via its own public projection and QA after real source exists; CMS never creates an operational project master.
 - **CG-18-BR05:** Maintain reusable website gallery and media library, including uploaded image/document metadata and permissions.
 - **CG-18-BR06:** Create/manage blogs, articles, public news and updates with editorial publication controls.
-- **CG-18-BR07:** Maintain website contact-message submissions and public enquiries, with assigned responders/status and restricted personal details; related support tickets, service requests and FAQs use the shared support workflow in CG-19 rather than an independent CMS ticket database.
+- **CG-18-BR07:** Own public website **contact form presentation and approved page/route publication only**, using the genuine CG-19 public-contact submit/receipt/status API. The **single original contact enquiry/support record, private contact details, responder assignment, replies, status and history are owned by CG-19**, not a second CG-18 CMS table. CG-19 Foundation contact works before CG-18 website is published.
 - **CG-18-BR08:** Enable content preview, submit-for-review, approve/reject, authorized publishing/unpublishing and **scheduled publication** where supported, with author/reviewer/publisher rights from CG-01/03, public visibility/status and an audit trail.
-- **CG-18-BR09:** Manage enabled public navigation and supported page availability. The source explicitly includes toggles for **Login**, **Membership registration/join**, and **Volunteer registration/join**.
+- **CG-18-BR09:** Own three separate, versioned **Login/Profile**, **Membership registration/join**, and **Volunteer registration/join** visibility/publication controls. Authorized CG-18 preview/review/publish controls their effective navigation on the public website and Public Android; actual Login stays CG-01 and member/volunteer registration stays CG-04 when delivered. A desired enabled flag is not permission to show a link to an absent registration route; never duplicate these switches in CG-21.
 - **CG-18-BR10:** Maintain editable public menu, heading, CTA, images, SEO metadata and page publication where supported; public channels reflect saved state, not UI hardcodes.
 
 ### 2.2 Foundation information, NGO transparency and compliance pages
@@ -62,17 +62,17 @@ The source explicitly enumerates **ten** editable content groups:
 
 ### 2.4 Healthcare-specific publication
 
-- **CG-18-BR18:** Public Healthcare Assistance landing page shows approved hero, service categories, search entry, featured providers/doctors, centers and Foundation-benefit information under authorized CMS control.
-- **CG-18-BR19:** Directory/search cards use **verified CG-14 center and doctor records**, status, current published services/facilities and prices. CMS configures headings and placement; does not manually maintain medical registration or scheduling.
-- **CG-18-BR20:** Benefit banners use **applicable CG-17 policies** or clearly identified general promotional text. The admin controls whether the displayed percentage is eligible/current and how it is described (e.g., "up to").
-- **CG-18-BR21:** Center staff may submit center-specific descriptive web content/photos through Center Portal where supported; publication remains subject to Foundation publishing authorization.
-- **CG-18-BR22:** Public booking CTA availability is controlled by **actual service transaction scope**, provider eligibility and booking configuration, not merely by appearance of a prototype button.
+- **CG-18-BR18:** CG-18 US-004 independently owns approved Healthcare Assistance editorial hero/general categories/neutral informational CTA and existing page shell with no provider prerequisite. Genuine provider/doctor search and cards are introduced by **CG-14 US-004**, actual booking by **CG-15 US-002/004** and source-backed support copy by **CG-17 US-007**; no fake online directory or numerical discount in original CMS.
+- **CG-18-BR19 — transferred delivery to CG-14 US-004:** Real center/doctor directory, status, service/facility/fees and public Web/Public Android search/card UI/API/QA are delivered by CG-14 with genuine approved records; CG-18 owns only editorial headings/placement/revision and never duplicates provider or fee source.
+- **CG-18-BR20 — transferred delivery to CG-17 US-007:** Real benefit percentage/cap/eligible policy-based public badge and current provider/service applicability are created and verified by CG-17, which introduces its approved public-safe content into CG-18 placement. CG-18 initial copy is nonnumeric editorial text and cannot promise an unverified percentage.
+- **CG-18-BR21 — transferred delivery to CG-14 US-005:** Only a real verified center operator uses CG-14 Center Portal to submit own services/description/CG-19-validated photos/FAQs, then source-safe approved content is introduced into CG-18 publication. CG-18 does not create center records or a second center profile.
+- **CG-18-BR22 — transferred delivery to CG-15 US-002/004:** Actual enabled Book Appointment route, provider/doctor/center/slot eligibility and public Web/Public Android CTA are CG-15 source integrations into CG-18/CG-14 presentation, not a CG-18 mockup or a booking master. First CG-18 healthcare page has no bookable button.
 - **CG-18-BR23:** Public health content cannot expose patient files, clinical consultations or detailed doctor/center internal financial information.
-- **CG-18-BR24:** Support authorized publication of Foundation events and event updates from CG-05; the public site and public app can display approved upcoming events without duplicating event records or implying paid/event-seat booking.
+- **CG-18-BR24 — transferred operational delivery to CG-05 US-002:** Actual operational event/activity/date/status and approved public event view are introduced and QA-tested by CG-05 into CG-18 editorial placement. CG-18 US-003 independently publishes news/editorial updates but cannot maintain fake operational events or paid seats.
 - **CG-18-BR25:** Homepage hero/banner administration includes draft/active/publication state, order, desktop and optional mobile images, heading/tagline/description, accessible typography/visual treatment, optional overlay, primary/secondary CTA labels and targets, and a realistic desktop/mobile preview. These are editorial presentation controls; configuration is stored once and reflected in applicable public channels.
 - **CG-18-BR26:** Public team cards and upcoming-project teasers can be configured by authorized editors with display order, image, title/role/category/location/summary, published status and approved additional public biography/recognition fields. Where linked to a member, employee or project, the owning module remains authoritative.
-- **CG-18-BR27:** Gallery, reusable media, videos, publications/reports, articles and notices support categorization, metadata, publication status and authorized upload/preview/ordering. Public contact messages and support requests retain sender privacy and action history.
-- **CG-18-BR28:** Central Foundation CMS controls publication of approved healthcare services, centers, doctors and healthcare benefit messaging through existing public content tools, while verification, pricing, availability and contribution rules remain owned by CG-14–17.
+- **CG-18-BR27:** CG-18 owns approved public **publication/order/metadata** of gallery, articles, reports and selected notices; **CG-19 owns file/media bytes and original operational notice/audience/delivery/source**. Public notices consume a permissioned CG-19 safe approved projection and separate CG-18 publish state, never duplicate CG-19 notice rows. Contact requests and replies stay entirely in CG-19's protected single source.
+- **CG-18-BR28 — split by true owner:** CG-18 owns editorial slot/page publication. CG-14 US-004/005 introduces actual center/doctor/service/status/fees; CG-15 US-002/004 introduces enabled booking CTA; CG-17 US-007 introduces verified eligible percentage/cap copy. Each later owner integrates real public-safe projection and QA, not duplicate CMS health masters.
 
 ## 3. Public website navigation and page ownership
 
@@ -118,7 +118,7 @@ The screenshots supplied in November 2026 illustrate these design reference scre
 | Booking confirmation and PDF slip | CG-15 booking/QR and patient/doctor/center; CG-17 payment and contribution; CG-19 template/generation |
 | My Appointments and verification | CG-15 authenticated history, QR/ID lookup with access control; CG-16/17 permitted reports/receipts |
 
-**Visual elements requiring explicit scope decision:** Public **Book Lab Test**, **Order Medicine**, **Book Nursing/OT** actions; example benefit percentages; family-member workflows; prescriptions tab; review/rating creation; printed 100%-subsidized examples. They must be logged in CG-BR-900 before transactional PRDs are authorized.
+**Initial publication policy:** Extra public lab/medicine/nursing/OT buttons are informational/enquiry-only, not active checkout. Do not publish sample support percentages or review counts as facts, and do not show unavailable family/prescription functionality as enabled. Current provider and appointment data come from their authoritative modules; see [CG-BR-900](04-TRACEABILITY-DECISIONS.md).
 
 ## 5. Admin Panel operating model: one control point per capability
 

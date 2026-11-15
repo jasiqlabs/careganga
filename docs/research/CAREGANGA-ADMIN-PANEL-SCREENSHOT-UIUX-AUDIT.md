@@ -351,7 +351,7 @@ Detailed dialog placements, screen ordering, icon/color treatment and responsive
 - [x] Current Foundation and integrated healthcare scope clearly separated from any non-current archived screen material.
 - [x] UI-only observations retained for UX/PRD design without creating duplicate BR capabilities.
 - [ ] Working UI/API/payment/security behaviour — **not established by static images** and must be verified during implementation/QA.
-- [ ] Client policy decisions on unresolved matters — recorded in CG-BR-900.
+- [x] Earlier policy questions now have delegated initial-launch defaults in CG-BR-900; real merchant credentials and clinical/legal verification remain release readiness checks.
 
 ## 12. ZIP integrity and navigation-only evidence
 
@@ -401,3 +401,64 @@ Several navigation labels are visible while the corresponding page is not opened
 **Uncaptured depth:** Hidden dropdown options and unvisited submenu screens cannot be guaranteed by the ZIP; preserve this as an explicit PRD verification boundary.
 
 **Next action:** Use the aligned BR and this evidence to generate modular PRDs in dependency order. Resolve client-policy decisions that block specific workflows; do not create modules from sidebar entries or substitute static imagery for live QA.
+
+## 13. Original archive reattached — persistent exact-visual evidence (15 November 2026)
+
+**New actual-source verification.** The user reattached `careganga_features_screenshot(1).zip` in the development conversation. The archive was opened directly and independently checked against this audit: **167 PNGs** in four groups (**A01–A19 = 19, B01–B51 = 51, C01–C55 = 55, U01–U42 = 42**) plus **8 JPG contact sheets**, **3 CSV source indexes** and directory entries. Most A/B/C screenshots are 2400×1440 pixels; the U-series images are approximately 2877×1660–1686. Source SHA-256: `8d077f8e1101ef7de73f65965730eb9058bed1b188cf075cd6968289202925fe`; original file size: **127,650,073 bytes**. No missing A/B/C/U IDs were found.
+
+**Persistent exact original:** `/CareGanga/CareGanga-Original-Admin-Screenshots-Verified-20261115.zip` in the owner's CareGanga Library, independently reopened and checksum-confirmed identical to the source. This is the pixel-level authority for **all** 167 screens, not just CG-01. The compact pack below is a faster derivative.
+
+**Persistent developer copy:** `/CareGanga/CareGanga-UIUX-Golden-Reference-Pack-20261115.zip` in the owner's CareGanga Library, SHA-256 `727029fe1797180fec889b29f5ccd98ef52949e13044d09c7a5ba7dbabe0cb7d`. Its `MANIFEST.csv` records 167 IDs, the exact original path, width/height and original PNG SHA-256 plus a corresponding compact WebP preview/hash. `original-critical/U01.png`–`U10.png` and `original-critical/B34.png` retain the exact input PNG bytes for identity/roles. This is a **private design-evidence pack**, not a public product asset; do not ship demo/contact/business data in any app. The full reattached ZIP is the pixel-fidelity authority for other modules.
+
+### 13.1 Directly inspected screenshots — original roles and common shell
+
+- **U05 102933, U06 102941, U07 102952:** dark navy, scrollable left sidebar; saturated blue selected item; pale-neutral page background; white card surfaces; a compact top toolbar; five-plus colored KPI cards; role-list panel, permission matrix with grouped action columns and role details panel. A role's human-readable name, counts, permission groups, protected badge and details must be driven by real CG-01 data, not screenshot samples.
+- **U08 103012, U09 103020, U10 103025:** right-side **white Create Role drawer**, dimmed underlying app (not a centered modal), header/close, labeled Role Name and Description fields, **Copy Permissions From** drop-down with explicit **Start with no permissions**, Area Level (organization-wide at CG-01; other geography levels only after CG-02), **seven colored selection circles**, bottom Cancel and primary Create Role actions. The selected swatch shows a dark outline. Copying a template copies permitted action grants, never people or protected authority. Native Android uses accessible equivalent selection/form controls.
+- **B34:** role-assignment workspace, staff/role filters and current assignment/history references; CG-01 owns account/role assignments, CG-10 later owns HR-specific links. A visual reference does not authorize early HR records or options.
+
+### 13.2 Sampled screen pixels — evidence, not an invented CSS palette
+
+From original **U05** unmodified screenshot (sampled as screen pixels, not original CSS declarations): dark sidebar dominant `#0A1F44`; selected navigation blue examples approximately `#1E53DC`–`#2461E9`; main white surfaces `#FFFFFF`; neutral canvas near `#F4F4F1`. From original **U08** center pixels of the seven color circles, left to right: `#1064CB` (blue), `#1BAF7A` (green), `#EDA100` (amber), `#EB6834` (orange), `#4A3AA7` (violet), `#E87BA4` (pink), `#0E7490` (teal). These are **captured RGB pixels**, not verified CSS token source or WCAG contrast certificates: browsers, overlays, antialiasing, screenshot conversion and app-state effects may affect values. Use the actual PNG and verified visual comparison before freezing token semantics or asserting exact rendered parity. Font family, CSS radius, transition duration/easing and exact mobile layout are **not established by static Admin screenshots**.
+
+### 13.3 Mandatory every-module use
+
+For every CG module: (1) inspect actual matching A/B/C/U images and this audit's module ownership table; (2) map only genuine delivered functions/screens; (3) use the shared source-verified CareGanga Web token/component system; (4) implement native counterparts for the corresponding business journey, not desktop screenshots compressed into phone layouts; (5) source-review navigation, hierarchy, labels, control types, feedback, permissions, responsive behavior, color/surface use and placeholders; (6) record reference IDs and genuine `VISUAL_NOT_RUN` until pixel/motion/device checks execute. If binary evidence is unavailable to a developer, request the compact pack; **never silently replace the original palette**. This is a standing project instruction, **not another QA tracker, module, release authorization or fabricated approval**.
+
+## 13. Additional partner-healthcare visual references — supplied 15 November 2026
+
+**Evidence category:** User-uploaded additional CareGanga Admin Panel JPG screenshots shared after the 167-image original ZIP audit. These images are a **separate evidence group**; the original 167-file ZIP count and A/B/C/U labels remain unchanged. H01–H24 below index visibly recognizable screen subjects, not OCR certifications, full click-path execution, file-based pixel comparison or proof of authenticated backend functionality. The uploaded client-call MP3 has not yielded a reliable transcript; no spoken requirement is attributed to it.
+
+| Visual reference | Shown Admin screen | Source-visible capability | Owning business plan / activation |
+| --- | --- | --- | --- |
+| **H01** | Healthcare Super Admin Dashboard | Foundation central network KPI, bookings, contributions, approvals, partner performance | CG-14/17/20; figures illustrative |
+| **H02** | Partner Center Management | provider filter/table, status chips, center capability and bulk actions | CG-14 |
+| **H03** | Center Registration & Verification | document verification, case history, decision actions | CG-14 with CG-03/19 |
+| **H04** | Application Details — Partner Center | center license/location/infrastructure, protected evidence, approval timeline | CG-14 with CG-03/19 |
+| **H05** | Center Service Management | center service assignment, enablement and effective policy | CG-14 center capability grants |
+| **H06** | Doctor Registration & Verification | single professional profile, license and center association | CG-14 |
+| **H07** | Doctor Schedule & Availability Control | one doctor multiple centers, weekly slot/leave/holiday rules | CG-15 |
+| **H08** | Diagnostic & Lab Management | verified partner labs, center-specific test availability | CG-14/16 |
+| **H09** | Lab Test Master & Pricing | test/sample type, effective center fee and discount | CG-16 catalog available ERP OFF |
+| **H10** | Sample Collection & Report Management | test booking, sample custody, approved private report | CG-16 Lab ERP OFF default |
+| **H11** | Pharmacy & Medicine Management | medicine stock, batch/expiry/low stock/transfer | CG-22 Pharmacy ERP OFF default |
+| **H12** | Medicine Pricing & Discount Management | MRP/price/discount and mapped-center effective history | CG-22 catalog; price not proof of stock |
+| **H13** | Nursing Service Management | nurse assignment, visit frequency/plan/progress | CG-23 Nursing ERP OFF default |
+| **H14** | OT & Procedure Management | room/surgeon/team/resource schedule and pre-/post-op | CG-24 OT ERP OFF default |
+| **H15** | Patient & Booking Management | patient virtual ID, doctor vs other services and health record tabs | CG-15 consultation core; other services only when enabled |
+| **H16** | Foundation Contribution Management | patient/CSR/discount source categories and patient-payable split | CG-17/07/08; money owner must be verified |
+| **H17** | Center-wise Settlement & Payment Management | service gross, contribution, partner payable and transfer status | CG-17/09; screenshot formula not authoritative |
+| **H18** | Finance & Accounts Management | Foundation vouchers, income/expense/budget/ledger report | CG-09; partner collections not Foundation income by default |
+| **H19** | Approval & Workflow Management | source-case approval and reviewer history | CG-03 |
+| **H20** | User, Staff & Role Management | role-scope assignment, doctor/nurse references | CG-01/10/14/23, no identity duplication |
+| **H21** | Reports & MIS Dashboard | aggregate service/center/fund metrics and exports | CG-20 read only genuine owner sources |
+| **H22** | Notifications & Communication Management | source-bound SMS/email/WhatsApp/in-app delivery | CG-19 with CG-21 configured provider |
+| **H23** | Security, API & System Settings | role guard, integration readiness, security policies | CG-01/21 according to actual owner |
+| **H24** | Audit Logs, Backup & Monitoring | restricted audit/restore and system visibility | CG-01/21, screenshot uptime/example values not live proof |
+
+### 13.1 Mandatory visual continuity
+
+- Preserve original CareGanga dark navy sidebar, bright blue selected state, white/very pale blue cards, KPI color coding, compact filters/tables, split record detail panels, five-stage progress bars, workflow decisions and clear human business labels. Exact HEX/fonts/spacing/motion values require original asset and live rendered comparison and must **not** be invented solely from these JPGs.
+- Public website and native Public Android are **not** copies of the Super Admin sidebar. Center Portal shows only own-center permitted forms; core portal remains available when advanced ERP flags OFF. Hide disabled ERP menus, detail widgets, create actions, notifications, exports and counts; backend must also deny them.
+- Distinguish **base price**, **partner quoted price**, **authorized patient payable**, **approved Foundation contribution**, **partner-collected money**, **Foundation liability** and **verified Foundation settlement**. The UI shows example figures, but does not validate who gets the money or payment processing.
+- Lab/Pharmacy/Nursing/OT screenshots contain full operational controls, not mere menu labels; these form optional built-to-enable source design requirements in CG-16/22/23/24 after the owner's instruction. The screenshot alone cannot establish external clinical provider credentials, signed patient consent, merchant eligibility or executed results.
+- For each visible screen, future UI/UX and story QA must reference H IDs, original CG-01 design tokens and a real backend/role/center/flag state. Run separate original asset comparison, responsive Web/native Android testing, API security and data migrations later; until then visual/runtime/clinical QA = NOT_RUN.

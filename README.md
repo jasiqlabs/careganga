@@ -16,9 +16,9 @@ PRDs are created from these requirements in dependency order. All interfaces sha
 
 ## Developer and AI-agent setup
 
-Read **[AGENTS.md](AGENTS.md)** before planning, development, review or QA. It defines the pinned JASIQ Harness v2 workflow, one task at a time, manual code review and end-to-end verification, privacy and financial integrity, and the **no CI / no GitHub Actions** policy.
+Read **[AGENTS.md](AGENTS.md)** before every planning, design, development, review, handoff or QA stage. It mandates a **fresh check of the latest `jasiqlabs/jasiq-harness/main` SHA before every new stage**, a reviewed exact commit for the stage, one-task execution, manual verification, privacy/financial integrity, and **no CI / no GitHub Actions**. An upstream Harness update must never go unnoticed or silently change an in-progress approved artifact.
 
-- Run `python3 scripts/resolve-jasiq-harness.py` with the full approved `JASIQ_HARNESS_EXPECTED_SHA` shown in AGENTS.md. On Windows, use `py -3`.
+- Run `python3 scripts/resolve-jasiq-harness.py` (Windows: `py -3 scripts/resolve-jasiq-harness.py`). It checks the live remote Harness `main` and the product-reviewed SHA; no manual environment variable is required. If the pin is stale, review the upstream diff and update the pin in the product feature branch **before continuing**. After a reviewed update, `--sync` can safely refresh a clean local Harness checkout.
 - Treat the [always-on agent rule](.agents/rules/real-api-truthfulness.md) and [shared NFR baseline](docs/business-requirements/06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) as mandatory quality gates.
 - The repo includes `.gitignore` and `.editorconfig`; app-specific dependency/stack configuration will be added only after the HLD selects an implementation stack.
 - **Verification is local/manual.** Do not introduce `.github/workflows/`, CI pipelines or automated GitHub Actions; do not claim tests were executed unless they were.

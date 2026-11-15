@@ -1,0 +1,87 @@
+# CG-10 — Human Resources
+
+**Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
+
+**Authority:** [PRD](../../prd.md) FR-029–033, [HLD](../../hld.md), [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–15, [original UI audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) actual CG-10 B20–B28, B30–B33, B35–B42, B44–B51 with B29 CG-03 reviewer, B34 CG-01 role, B38 CG-19 PDF owner, B43 CG-11 payroll, B49 visible allowance (not filename leave), B19 CG-12 inventory.
+**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED — DESIGN ONLY** by **JASIQ AI Design Review Agent**, 15 November 2026, after complete expert current-source review/fix/re-review of five independently deliverable CG-10 HR stories (all CG-10-BR01–15), **100 unique QA (20 each)**, PostgreSQL CRITICAL model/approval/access/leave/doc/changes, NestJS/current owner typed facade, real Foundation Admin Web, native Internal Android, original CareGanga UI and truthful public exclusions. Required later owner integrations moved into CG-05/CG-11 with their own DLD/UI/QA and remain unapproved there. CG-10 US-005 needs genuine CG-09 claim only, no payroll prerequisite for US-001–004. Global latest PRD/HLD REVIEW_REQUIRED, authenticated Harness resolver, independent CRITICAL DB/privacy review, real migrations/backup/restore, source-code, Web/native/Play/PNG-video pixel-motion/performance QA NOT_RUN; development BLOCKED.
+
+uiux_decision: REQUIRED
+uiux_reason: New cross-channel business UI must follow original CareGanga theme, motion and role-sensitive workflows.
+dld_decision: REQUIRED
+dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
+database_impact: CRITICAL
+database_reason: HR application/private identity/bank, real CG-03 exact approval→CG-01 staff activation, same-root/branch employee assignment, attendance/leave period overlaps, transfer/exit access revocation, CG-19 official document/QR and optional consented public identity carry CRITICAL privacy/security/relational integrity. Independent specialist DB review, migration/backup/restore NOT_RUN.
+mobile_store_impact: ANDROID
+mobile_store_reason: Native **Internal Android** My Employment/Attendance/Leave/Appraisal+Transfer/Own Documents and genuine CG-09-linked My Allowances where eligible, consuming current protected HR API. Public Android has no private HR data/browser/employee editor; only optional minimal CG-19 public card verifier if enabled. Real Android lockfile/toolchain/AAB/API/16KB/Play device QA NOT_RUN.
+mobile_android_app_category: GENERAL
+mobile_android_policy_api: 36
+mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
+mobile_policy_checked_on: 2026-11-14
+mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
+mobile_dependency_audit: OFFICIAL_DOC_REFERENCE_ONLY_2026-11-15; actual apps/android-internal package lockfile, compatible Expo/RN/native matrix, 16KB page and signed AAB/Play testing NOT_VERIFIED.
+
+## Business owner and isolation
+
+**Owns:** CG-10 employee applications/immutable submitted revisions, one approved employment/person association, current/history of actual CG-02 branch/department/manager assignments, private HR file/bank references, effective shift/attendance/leave, appraisal/transfer/promotion/exit, HR document source intents. **Actual predecessor owners (code NOT_VERIFIED):** CG-01 Foundation identities/roles/grants, CG-02 real geography+ACTIVE branches/depts, CG-03 genuine original case engine, CG-19 protected file/PDF and support infrastructure. **Introducing inside earlier owners:** CG-10 US-001 adds EMPLOYEE_ENROLLMENT approval in CG-03, CG-19 HR draft pre-case evidence and CG-01 protected employment grant/affiliation source; US-002 adds leave/attendance correction process; US-003 adds transfer/exit process; US-004 adds document review and real CG-19 HR template/ID/letter/receipt adapters. **Later owners:** CG-11 salary structure/payroll/payslip/payment; CG-09 original claim/payable/payment (only US-005 depends on actual CG-09 claim); CG-18 public team biography after true consent; CG-05 US-002 later owns **assigned project/task and actual Internal Android My Assigned Tasks** using current CG-10 eligible employee/branch; CG-05 US-003 owns field visit proof, with no CG-10 task table. CG-20 reporting consumes only safe current HR source. No duplicate CG-01 role, CG-03 case, CG-19 PDF/card, CG-09 claim or CG-11 payroll master.
+
+**State and invariant:** Applicant DRAFT/SUBMITTED/RETURNED/REJECTED and APPROVED employment/role-PENDING_ACCESS/ACTIVE/PROBATION/HOLD/EXITED distinct. One active employee identity and one current allowed CG-02 assignment; no branch role from mere HR selection, and access to old branch is revoked at transfer/exit effective time. Shift/attendance/leave corrections immutable and current approved source only; protected KYC/bank/compensation proposal never leaks via list/select/export/native/public. CG-19 owns final letter/card issuance, CG-09 owns verified reimbursement and CG-11 owns effective payroll compensation. Every private list/option/detail/export/file/write verifies current CG-01 action **and real employee+Foundation-root/CG-02 branch**; no invented healthcare center/patient scope.
+
+## CG-10 ownership of actual employee/coordinator branch relations
+
+CG-02-BR06 staff/coordinator association is fulfilled by **CG-10 US-001 and US-003**, not by CG-02. CG-10 owns the actual employee/coordinator identity, current authorized CG-02 ACTIVE branch/department assignment and effective-dated transfer history; CG-01 owns the linked login and action grants. No CG-02 shadow employee table, no future salary payout/beneficiary prerequisite, and no automatic root grant from assignment. The employee/transfer story QA validates the real scope and history.
+
+## Complete PRD and BR mapping
+
+- **FR-029/A-10:** HR enrolls employee — Capture employment, branch/department, reporting line, needed personal/identity/bank/qualification documents; follow configured verification until approved ID/access
+- **FR-030/A-10:** Employee reports work — Capture attendance/shift/grace/weekly-off/late/leave, corrections and leave applications with authorized approvals and protected history
+- **FR-031/A-10:** HR manages employment — Record performance assessments, assignments, transfer/promotion, effective-dated role/salary/branch, resignation, clearances, final dues and approved exit
+- **FR-032/A-10:** HR issues official record — Prepare, review, sign/issue, dispatch, receive/reissue employee letters/memos and ID cards, using source-linked shared document templates
+- **FR-033/A-10:** Employee requests allowance — Submit and track allowance/claim from applicable Internal Android or Admin workflow; only CG-09 records actual liability/payment
+
+Detailed authoritative clauses:
+- **CG-10-BR01:** Create/verify employees with personal/employment information, branch, department, designation, line manager, joining data and permitted documents.
+- **CG-10-BR02:** Generate employee ID after applicable authorization; link access roles in CG-01 without duplicating an employee account manager.
+- **CG-10-BR03:** Provide HR dashboard, employee directory, status (active, probation, hold, resigned/inactive) and authorized profile changes.
+- **CG-10-BR04:** Record daily attendance, present/absent/late/leave/weekly-off status, monthly calendar, summaries and correction approval.
+- **CG-10-BR05:** Configure working times, break, grace period and weekly-off rules where required.
+- **CG-10-BR06:** Enable staff leave application, leave history, supervisor/HR review and approval.
+- **CG-10-BR07:** Maintain defined staff performance assessments and role-scoped reporting; details to be completed against approved reference screens.
+- **CG-10-BR08:** Process transfer/promotion requests, posting/designation changes, resignation and approved exits, retaining history.
+- **CG-10-BR09:** Generate employee appointment/relieving and other permitted letters, memos and ID cards via shared document templates.
+- **CG-10-BR10:** CG-10 US-005 owns eligible real employee/branch proof and Admin Web/Internal Android employee allowance request presentation; **CG-09 owns exactly one original expense_claim, approved payable, voucher, payout and financial journal**. CG-10 calls CG-09's real finance claim facade with an immutable request key and shows source-confirmed status; no second CG-10 claim/payable/payment table. CG-04 handles volunteer eligibility separately.
+- **CG-10-BR11:** Make role-scoped attendance, leave, tasks and employee self-service accessible from Internal Android.
+- **CG-10-BR12:** Employee registration/activation supports stage-appropriate application and document reviews, for example initial submission, state verification, zonal review, HR verification and final authorized approval. Registration stores personal, employment/branch, reporting manager, secure identity/bank, compensation proposal and documents as separately permissioned information; employee ID and user access arise only from the applicable approved lifecycle.
+- **CG-10-BR13:** Employee letter/memo records support draft, edit, preview, authorized approval, issuance/dispatch, acknowledgment or received-copy upload where applicable, reissue/history and PDF/print. Supported templates include appointment, offer, joining, experience, relieving and other approved official letters; the generator is shared under CG-19.
+- **CG-10-BR14:** Transfer, promotion and exit workflows preserve current/proposed role, branch, reporting manager, salary and effective dates. Exit review can track handover, HR/finance/assets clearance and final dues/settlement without silently marking salary or reimbursements as paid.
+- **CG-10-BR15:** Employee ID-card issuance, reissue, deactivation, print/download and authorized QR verification use shared document templates; authorized display fields and history derive from approved person/employment data, not a separate manual identity store.
+
+## Optional real HR-to-public biography link (CG-18 BR03/26 original owner integration)
+
+CG-18 US-001 can independently publish a consented editorial Foundation team/public biography card without any CG-10 employee record. Once CG-10 US-001 genuine verified employee exists, **CG-10 owns the optional employment relationship, current status, data minimization and consent/authorization for linking that real person** to a CG-18 public team biography. CG-18 alone owns editorial display text, image placement and public publish/unpublish approval; CG-10 alone owns employee identity, bank/salary/HR files and revocation of eligibility on departure. The CG-10 introducing owner must supply a typed minimal allow-listed public identity/status/consent proof, no private salary/address/bank/emergency fields, and update/withdraw linked public visibility if source consent or employment eligibility is revoked. No CG-18 employee master and no CG-10 CMS publication table. Optional source-link QA belongs to CG-10 US-001, not a CG-18 startup prerequisite. This limited receiving-owner addition does not approve CG-10.
+
+
+## Mandatory story-by-story PostgreSQL, backend, Web, Internal Android and QA coverage
+
+| Story | PostgreSQL and NestJS/API | Foundation Admin Web (original source) | Internal Android and public exclusion | Core dependencies |
+| --- | --- | --- | --- | --- |
+| **US-001** | Real applicant+immutable revisions+employee/current assignment/private refs, source registration/CG-03 EMPLOYEE_ENROLLMENT, CG-19 pre-case upload, CG-01 grant effect, idempotent activation and safe minimal employee selector | B20, B27/B28/B29(CG-03), B30/B31 registration/stages/directory/current human status, B34 links CG-01 role only | Native **My Employment** current own approved identity/status/branch; Public HR directory NOT_APPLICABLE | Actual CG-01/02/03/19, no later module |
+| **US-002** | Shift policies, assignment, attendance day and revisions, approved leave policy/request/balance and CG-03 leave/correction, same-root period constraints | B21–B25 calendar/matrix/leave/shift/correction/policy and B20 derived counts | Native **My Attendance/Apply Leave/My Leave/Correction**, no Public Android HR data | US-001 only (plus original CG-03), no CG-11 payroll |
+| **US-003** | Appraisal/change/clearance/effective assignment/CG-01 access guards and CG-03 change/exit exact decision + bounded future effect | B26 performance, B44–B48 transfer/promotion/resignation/clearance, salary **proposal not CG-11 effect** | Native own allowed appraisal/change/exit status; public HR NOT_APPLICABLE | US-001, real CG-02 destination; CG-09/11 not required |
+| **US-004** | CG-10 document intent from eligible employee **or genuine pending application for separately reviewed Offer only**; CG-03 review and **CG-19 original issued PDF/card** from valid template, receipt/reissue/revoke/QR with owner source adapter | B32–B33, B35–B42 signed letter/memo, card front/back, source preview/issuance/history | Native **My Documents/ID** safe download and receipt. Public only minimal CG-19 QR validity, no HR directory | US-001; specific Relieving item additionally requires real approved US-003 exit |
+| **US-005** | Current CG-10 employee/branch eligibility→genuine **CG-09 expense_claim** typed API; CG-19 scanned bill; **no** CG-10 claim or money table | B49–B51 visible My Allowance Requests + form, exact CG-09 status | Native **My Allowances** request/attachment/status; no public finance | US-001 **and genuine delivered CG-09 original claim only for US-005** |
+
+**Independent delivery graph:** US-001 first; US-002, US-003 and general US-004 can develop/test from US-001; US-005 cannot begin until genuine CG-09 claim is integrated. No future owner source is mandatory to finish basic HR employee, attendance, transfer, original appointment-letter or private ID card. One central state/approval authority per owner; previous Foundation modules remain independently runnable. User-facing source IDs kept opaque and normal labels readable.
+
+**Database and reviewer gates:** [DLD](dld.md) defines one canonical HR record model/real source adapters, same-root FKs and composite key, unique employee/account code, attendance/leave/effective assignment overlap guards, short idempotent CG-03 finalizer/CG-01 grant, protected document source and migrations/rollback/backup/restore. This is **CRITICAL**, not mere SCHEMA. Qualified independent DB/privacy and actual SQL/restore are separate NOT_RUN evidence requirements. [UIUX](uiux.md) maps B20–B51 by actual owner (B19 inventory, B43 payroll) and native self workflows; [tasks](tasks.md) contains **100 explicit unique scenario QA** including concurrency/privacy/failure/recovery, full story/channel acceptance, and true NOT_APPLICABLE public HR data. Original PNG/video and rendered native/pixel QA NOT_RUN.
+
+**NFR proposed/unmeasured:** Root+branch first index/finite paging, redacted audit and logs, no idle per-employee scans, bounded due-only effect and receipt providers, retries with original immutable key, default deny/permission-hidden actions. Per CG-NFR proposed common API p95≤1s at representative load, Web public Core Web Vitals on genuine later CG-18 public source only, responsive/accessible original CareGanga tokens and WCAG 2.2 AA where practical. Do NOT claim a measured performance or mobile-store PASS on documentation alone.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Create real staff, record attendance/leave and transfer with versioned changes; maintain old/new branch scope correctly, deny unauthorized bank/salary access and issue real document proof without claiming a payout. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
+
+## UI/UX, NFR and Planning acceptance
+
+Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B30, B31, B32, B33, B34, B35, B36, B37, B38, B39, B40, B41, B42, B43, B44, B45, B46, B47, B48, B49, B50, B51. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
+
+All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.

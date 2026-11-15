@@ -26,8 +26,8 @@
 | §5 / pp6–7 | Application dashboard, document-by-document verification, approval history and chain | CG-03 | **R**: added average approval time, application type/payment/status filters, recent cases |
 | §6 / pp8–9 | Public membership registration/fee, verification, member ID, documents, renewal | CG-04, CG-03, CG-09, CG-19 | **C**; pricing, expiry/refund/renewal edge rules **D-11** |
 | §7 / pp9–10 | Volunteer full registration, departments, availability, approvals, activities | CG-04, CG-05 | **R**: exact full-/part-time, weekend and on-call choices; departments preserved |
-| §8 / pp10–12 | Branch dashboard, search and seven-step setup, geography, approvals, code | CG-02, CG-03 | **R**: each of seven stages now has source-specific fields; public visibility remains gated |
-| §9 / p12 | Departments and committees | CG-02 | **C**, committee-specific detail requires **D-21** |
+| §8 / pp10–12 | Branch dashboard, search and seven-step setup, geography, approvals, code | CG-02 US-001 Foundation-only; CG-02 US-002 real branch + CG-03/19 | **R**: stage 6 uses genuine existing Foundation departments; no CG-10/04/05/09 future records. US-001 has no branch dependency; post-activation branch-scoped department belongs to US-002. Public visibility belongs to CG-18 |
+| §9 / p12 | Departments and committees | CG-02 US-001 Foundation; CG-02 US-002 branch | **R**: Foundation-wide committee/dept is fully testable with zero branches; branch-scoped dept and links only after real activation. Committee specifics remain subject to D-21, not a fabricated member/employee master |
 | §10 / pp12–13 | 80G/PAN/registration/annual/financial/transparency pages | CG-18, CG-09/20 | **C**: distinct editable/publishable public compliance information |
 | §11 / pp13–15 | Our Impact **ten** editable sections | CG-18, CG-20 | **C** all ten, including maps/charts/stories; source-derived vs manual figures **D-16** |
 | §12 / pp15–16 | Project creation/status, staff/budgets, reporting/search | CG-05/09 | **C** |
@@ -42,7 +42,7 @@
 | §21 / pp22–23 | Debit/credit ledgers and guided manual posting, searches, audit | CG-09 | **C**, server-side accounting correctness reinforced as NFR |
 | §22 / pp23–24 | Multi-stage invoice and receipt, docs, responsible verifier, sharing | CG-09/19 | **R**: explicit full invoice-stage field groups, note/tag and verification assignment |
 | §23 / pp24–25 | Expense claims/proof/review/payment state and dashboard | CG-09/03 | **C** |
-| §24 / pp25–26 | Project/branch budget create/approval/utilization | CG-09/03 | **C** |
+| §24 / pp25–26 | Project/branch budget create/approval/utilization | CG-09/03, real CG-02 branch; project integration by CG-05 later | **R**: CG-09 owns branch-only budget allocation/ledger, available before CG-05 project; project source association is added and tested when CG-05 arrives, no CG-02 budget master |
 | §25 / p26 | CSR partner applications and verification | CG-08/03 | **C** |
 | §26 / pp26–27 | Funding proposals/shared CSR/Foundation allocations | CG-08/09 | **C**, accounting state rule **D-19** |
 | §27 / pp27–28 | Membership tier fees, validity, icon/color, benefits, active and public display | CG-04/18 | **C**, application of rules at renewal **D-11** |
@@ -58,9 +58,9 @@
 | §39 / pp34–35 | Allowance claim, purpose/amount/status/finance approval | CG-10/09/03 | **C**, not a second finance engine |
 | §40 / pp35–36 | Salary configuration, reserve, verification, batch, deduction and payslip | CG-11/10/09/03 | **C** as one payroll process, no unrelated seven engines |
 | §41 / pp36–37 | Notices, communications, SMS/email and message history | CG-19/18 | **C** |
-| §42 / pp37–38 | CMS dashboards, banners, team, projects, gallery, blog, contact/support | CG-18/19 | **R**: shared ticket/FAQ owner and controlled publication clarified |
+| §42 / pp37–38 | CMS dashboards, banners, team, projects, gallery, blog, contact/support | CG-18 public pages/publication; **CG-19 original contact/support/FAQ and validated file/notice sources** | **R**: CG-19 public Foundation contact works first; CG-18 embeds existing form, publicly publishes approved safe notices/media only. No second CMS contact/ticket/operational notice master |
 | §43 / pp38–40 | MIS, charts, custom/grouped/pivot reports, export and schedule | CG-20 | **C**, restricted exports/scheduling **NFR P0** |
-| §44 / pp40–41 | Settings, audit, integrations, backups and restore | CG-21 | **R**: explicit password/session, 2FA and protected restore controls |
+| §44 / pp40–41 | Settings, audit, integrations, backups and restore | **CG-21** operational settings/audit/recovery; **CG-01-BR11** password/session/MFA security-policy owner; **CG-18-BR09** public navigation | **R**: moved security policy and UI into CG-01; public Login/Member Join/Volunteer Join switches into CG-18; CG-21 holds only provider references, central audit read and protected recovery |
 | §45 / p41 | Public Android app audience and services | CG-BR-300 §7 | **C** current integrated public/member/volunteer/healthcare scope |
 | §46 / pp41–42 | Internal Android app permission-based operational modules | CG-BR-300 §8 | **C**; exact role-screen matrix **D-17** |
 | §47 / pp42–43 | Central backend, docs, gateway, SMS/push/maps, logging, recovery | CG-BR-000, CG-19/21/600 | **R**: explicit measurable NFR and evidence requirements added |
@@ -122,8 +122,8 @@
 | 42 / 51–52 | Part-paid/due, overdue aging and follow-up/refunds | CG-17 | **R** overdue follow-up explicit |
 | 43 / 52 | Center support paid/pending and provider settlement | CG-17/09 | **C**, merchant/fund flow **D-04** |
 | 44 / 52 | Center reports/export | CG-20 | **C** |
-| 45 / 52 | Center staff roles, website content, support tickets, FAQs and settings | CG-01/14/18/19/21 | **R** shared tickets/service requests/FAQ and content submission clarified |
-| 46 / 52 | Center access logs, password/session rules, restricted recovery | CG-01/21/600 | **R** two-factor/security baseline added; restore authority **D-25** |
+| 45 / 52 | Center staff roles, website content, support tickets, FAQs and settings | CG-01 current roles, **CG-14 real center identity/own-center support scope**, CG-18 public content, **CG-19 single ticket/reply/FAQ source**, CG-21 provider/system settings | **R**: CG-19 Foundation support is independent; CG-14 US-005 later integrates Center A/B access to existing CG-19 ticket, no center-specific duplicate source/table or false early test |
+| 46 / 52 | Center access logs, password/session rules, restricted recovery | **CG-01-BR11** password/session/MFA config/enforcement; **CG-21-BR04/06** protected recovery; CG-BR-600 | **R**: CG-01 independently implements/QA-tests root security policy and session/MFA controls; CG-21 only checks CG-01 privilege/MFA for real recovery, no duplicate policy or log ledger; restore authority D-25 |
 
 ## 5. Healthcare — central Foundation administration features 47–75
 
@@ -208,6 +208,6 @@ The transcription is partly noisy, so treat it as **corroborating context**, not
 
 **Evidence boundary:** Screenshots establish visible content and interaction affordances, but not successful API behaviour, persistence, accounting accuracy, permission enforcement, publication, deployment, payment delivery or clinical correctness. Test those during PRD/manual QA. The original moving videos do not need to be replayed to establish that all **167 submitted screenshot files were inventoried**, but unrecorded video interactions cannot be verified.
 
-**Client decisions:** Reconcile the genuinely unresolved scope and policy questions in the [single decision register](04-TRACEABILITY-DECISIONS.md). Do not silently add checkout/delivery/services or obscure confirmed requirements because the visual UI differs from prose.
+**Adopted client-scope defaults:** The previously open business-policy questions have delegated safe initial-release answers in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). This appendix remains historical source evidence; it is not a second active decision register. Do not silently add unsupported checkout/delivery services or obscure confirmed written requirements.
 
 **Business-module boundary:** Every source-backed function belongs to an existing CG module. UI pages, payroll links, receipt templates, dashboards, content tabs, report packs and approval queues are **presentations and workflows** of those modules—not permission to create competing data stores or independent engines.

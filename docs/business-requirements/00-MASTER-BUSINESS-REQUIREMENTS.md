@@ -2,7 +2,7 @@
 
 **Document ID:** CG-BR-000  
 **Baseline:** Single consolidated BR for modular PRDs  
-**Status:** Internally reviewed; client decisions and sign-off remain outstanding  
+**Status:** Consolidated source-reviewed BR baseline; SHA-bound internal owner-delegated business-design approval is recorded in `specs/initiatives/careganga-foundation-platform/approvals.json`. **Independent client/business sign-off remains required** before treating unverified commercial, medical, legal or numerical targets as contractual/operational approval  
 **Prepared by:** JASIQ Labs
 
 ## 1. Purpose and document hierarchy
@@ -19,7 +19,7 @@ The following are companion parts of this *one BR package*:
 | [CG-BR-300 — Experience, CMS and Channels](03-CMS-CHANNELS-BR.md) | Public website, CMS, Foundation Admin, center portal, Android apps, publication ownership and reusable user journeys |
 | [Source Coverage Appendix](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) | Evidence mapping of all PDF requirement sections and 75 healthcare feature IDs; not an alternative BR |
 | [CG-BR-600 — Non-Functional Business Requirements](06-NON-FUNCTIONAL-BUSINESS-REQUIREMENTS.md) | One reusable cross-platform P0 quality baseline, measurable proposed P1 targets and manual QA gates |
-| [CG-BR-900 — Business Decisions](04-TRACEABILITY-DECISIONS.md) | Single register of unresolved client business-policy and scope decisions |
+| [CG-BR-900 — Business Decisions](04-TRACEABILITY-DECISIONS.md) | Single register of 24 adopted default policies and release prerequisites |
 
 **Authoritative client scope:** \`SAM-CAREGANGA-121126-113332.pdf\` (61 pages, section numbers as supplied), the healthcare screens supplied in November 2026, and the CareGanga client meeting of 19 October 2026 (transcript: \`Project discussion with CareGanga foundation (1).docx\`). The meeting helps interpret workflows; the consolidated written requirements and the latest UI references govern current scope. The supplied Admin ZIP has been reviewed and all **167 screenshots** are individually indexed in [the Admin UI reference audit](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md). Static captures establish visible controls, not whether they work in production.
 
@@ -78,12 +78,17 @@ The module register is the proposed **PRD boundary**. A dashboard, configuration
 | **CG-15** | Healthcare Schedules, Patients & Appointments | Center-wise doctor availability, patient identity, bookings, queue, patient documents | Website/app, center portal |
 | **CG-16** | Healthcare Diagnostics & Center Services | Test master, pricing, packages, lab orders, samples, reports; non-consultation service operations | Center portal, patient history, finance |
 | **CG-17** | Healthcare Assistance, Billing & Settlements | Eligibility, contribution rules, patient/provider amounts, dues, settlement/reconciliation | Booking, lab, finance, providers |
+| **CG-22** | Pharmacy Catalog & Optional ERP | Verified medicine-price/discount catalog and opt-in partner stock, batches, GRN, suppliers, transfers and expiry | CG-14 center, CG-17 support |
+| **CG-23** | Nursing Optional ERP | Approved nursing service enquiry plus opt-in nurse/visit/care-plan/assignment management | CG-14, CG-15, CG-19 |
+| **CG-24** | OT & Procedure Optional ERP | Approved procedure information plus opt-in room/team/resource/clinical status workflow | CG-14, CG-15, CG-19 |
 | **CG-18** | CMS, Publication & Public Content | Editorial pages, banners, media, stories, impact, compliance, notices; publication controls | Website and public app |
 | **CG-19** | Communications, Documents & Notifications | Templates, files, receipts/ID/letters as shared generation services, messages, delivery history | All applicable modules |
 | **CG-20** | MIS, Analytics & Reporting | Reports, exports, dashboards, saved/custom/scheduled reporting over owner data | Leadership and authorized users |
 | **CG-21** | Platform Configuration, Audit & Integrations | General controls, integration settings, audit logs, backup/restore administration | All modules |
 
 **Ownership rule:** Each module owns its business state and validation; shared infrastructure serves it without inventing a competing record. A doctor profile may appear on the public site, a center page and a booking receipt, but it is maintained in **CG-14**, not copied into three CMS databases. An approved voucher creates linked accounting entries in **CG-09**; individual source modules do not maintain private general ledgers.
+
+**Healthcare scope decision (15 November 2026):** Product owner authorizes building partner Lab (CG-16), Pharmacy (CG-22), Nursing (CG-23) and OT (CG-24) ERP operations as optional capabilities **disabled by default at deployment**. Core partner/provider network, verified public directory, consultation booking, original contribution rules and partner settlement work independently. See integrated [healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md) §12 and [decision register](04-TRACEABILITY-DECISIONS.md) D-22/23/26–28. No patient-money-as-Foundation-income, full hospital EMR, public medicine commerce or unverified clinical automation. Screenshots are source UI references; spoken client call remains untranscribed in this session.
 
 ## 5. Cross-module records: define one source of truth
 
@@ -170,7 +175,7 @@ The details of each control and channel are in CG-BR-300.
 Healthcare is **fully integrated** with Foundation operations, but its patient/clinical data remains permission-separated.
 
 - The approved written baseline provides **public doctor consultation booking**. Other healthcare service information (diagnostics, checkups, camps and provider services) is publicly discoverable, while center-side diagnostic booking, test orders and report processing are operational requirements.
-- Healthcare mockups additionally show **Book Lab Test, Order Medicine, Book Nursing/OT**, pharmacy, home delivery and service-percentage banners. These are recorded in **CG-BR-900 as design-to-scope decisions**, rather than automatically extending the first public transactional release.
+- Healthcare mockups show additional service actions. Under the adopted planning defaults, only doctor consultations have public online booking at launch; other categories remain discoverable with enquiry and internal center-side lab services. No unverified discount is advertised.
 - **Default consultation illustration:** eligible patient ₹500 / CareGanga ₹500 on a ₹1,000 fee (50% / 50%). Admin-controlled, eligible fixed/percentage support and limits must be possible. Receipt mockups also illustrate a **100% contribution** case; it is an example of potential configurable support, **not** a universal policy.
 - Center-specific doctor scheduling, both **manual center choice** and **slot-driven auto center assignment**, should be specified as supported views of the **same** availability inventory. Do not implement competing schedulers.
 - Provider settlement, patient payment, discounts and Foundation contribution must remain separate, attributable monetary records.
@@ -215,22 +220,14 @@ This BR package is ready for client review when:
 3. The Foundation, healthcare center, public site and two Android audiences have explicit responsibilities and data visibility.
 4. Membership, volunteer, branch, donation, CSR, project, expense, voucher, payroll, referral/rewards and healthcare workflows can be traced end to end in PRDs.
 5. Medical/private information, finance posting, verification and approval access remain correctly restricted, with documented acceptance checks for simultaneous bookings, payment retries, refunds, payroll/stock posting, logs and recovery.
-6. Unresolved screenshot-versus-written-scope differences are recorded as explicit client decisions, not silently assumed.
+6. Screenshot-versus-written-scope differences are resolved in the delegated policy register, without inventing transactional features.
 7. The BR remains business-focused; technical design, implementation tasks and exact screen acceptance criteria are deferred to subsequent approved PRDs/HLD/DLD. Shared P0 NFR criteria are mapped by ID without copying the entire specification into every PRD.
 8. The client PDF, current healthcare reference images and all 167 Admin screenshots are traceable to an owning module or a documented policy question. The [source coverage appendix](05-SOURCE-TO-BR-COVERAGE-AUDIT.md) and [UI reference audit](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) retain evidence without creating competing BR versions.
 
-## 13. Client decisions required before locking PRDs
+## 13. Adopted business policies and launch safeguards
 
-See [CG-BR-900](04-TRACEABILITY-DECISIONS.md). The priority decisions are:
+All 27 currently recorded business decisions have delegated planning defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). These cover service scope, appointment selection, verified 50% consultation assistance, center collection and monthly Foundation support, delegated versus protected approvals, linked identity/privacy, source-backed mobile functions and accurate CMS/publication.
 
-- Public booking of lab tests, medicines, nursing/OT vs initial doctor-only online appointment scope.
-- How to reconcile center-first vs slot-first booking paths and the exact auto-assignment selection rules.
-- Approval hierarchy per process and the precise final Super Admin decision policy.
-- Financial flow of Center "pay at center" and whether patient payment is received by Foundation or provider, and settlement/account ownership.
-- Scope of 100% Foundation coverage, diagnostics support percentage, eligibility caps and authorization.
-- Whether member, patient and beneficiary relationships may be linked and under what explicit consent/verification.
-- Extent of public Android healthcare functionality and internal Android heavy back-office actions.
-- Public availability and governance of reviews/ratings, prescriptions, family profiles, QR verification, and non-doctor service buttons.
-- Publication behaviour for internal Foundation branches vs publicly listed provider centers.
+**Readiness is different from scope approval:** Do not enable real payment, clinical document access or statutory claims until verified merchant accounts, legitimate professional credentials/consent and authentic tax/legal data are in place. Performance and recovery numerical goals remain proposed until realistic hosting and workload are validated. The full PDF/healthcare/Admin screenshot coverage and P0 NFRs remain required.
 
-**BR scope:** A single integrated Foundation and Healthcare Assistance baseline. Its owner-module requirements and P0 quality gates are ready for PRD decomposition; specific client-policy questions remain in the decision register and are not silently assumed.
+**Formal Harness approval** is a separate externally verifiable human sign-off tied to the exact PRD/HLD hash; delegated planning decisions do not impersonate that record.

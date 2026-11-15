@@ -22,13 +22,14 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-01-BR06:** Enforce center/center-branch-specific scope for healthcare portal personnel, independently of Foundation geography.
 - **CG-01-BR07:** Ensure every list, search, record, report, export, linked-dropdown option and mutation respects the actor's access. Required supporting information must remain selectable for a permitted workflow without exposing unauthorized records.
 - **CG-01-BR10:** Internal user directory supports role, department, designation, employee/employment type, state/district/branch, joining-date and account-status filters and counts of active, probationary, on-hold, resigned/inactive and newly registered people. Staff account creation supports full name, role, work email, phone and secure first-credential setup, linked to CG-10 employee records.
-- **CG-01-BR08:** Preserve protected Super Admin authority and audit changes to roles, permissions and assignments.
+- **CG-01-BR08:** Preserve protected Super Admin authority, enforced privileged MFA/session security and audited changes to roles, permissions and assignments.
 - **CG-01-BR09:** Provide public login/registration or verified account self-service wherever a particular public business workflow calls for it; not every public visitor must have an internal role.
+- **CG-01-BR11:** Own and enforce password/session security configuration and privileged two-factor authentication: support a small allow-listed, securely defaulted Foundation-root policy for permitted password/session expiry, idle session limits and privileged MFA/attempt protections. Only a current Super Admin with fresh MFA may change permitted policy, with revision conflict checks, redacted audit, immediate correct backend enforcement and Web/Internal Android awareness. Never permit disabling the protected root's required MFA or creating a separate settings authority in CG-21.
 
 **Admin controls:** Role matrix, assignments, geographic/branch/center scope, account statuses, access reports.  
 **Cross-channel:** Foundation web, center portal, internal Android; public website/app for public accounts.  
 **Not separate modules:** “User Directory,” “Role Manager,” “Role Copy,” “Permissions Matrix” are views of CG-01.  
-**Dependencies:** CG-02 organization geography; CG-03 approval of protected assignments where policy requires.
+**Delivery independence:** CG-01 works first after bootstrap, with real accounts, sign-in, roles, ordinary root-context assignment and revocation. **Later owner enhancements:** CG-02 supplies real geography/branch scopes; CG-03 introduces review and finalization of protected grants; CG-10 supplies employment links; CG-14 supplies healthcare center scope. These later requirements remain mandatory when those owners ship but do not block CG-01's own finished business flows.
 
 ## CG-02 — Foundation Organization, Branches, Departments and Committees
 
@@ -36,11 +37,11 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 - **CG-02-BR01:** Maintain Foundation identity, official contact/address, registrations and appropriately authorized organization settings.
 - **CG-02-BR02:** Maintain Foundation branch names/types/codes, status (active/inactive/closed), geographic location, contact, photos, opening date, registration and agreements.
-- **CG-02-BR03:** Support the specified seven-stage branch registration: (1) basic information with name/type/opening date/geography/address/PIN/GPS/photo; (2) additional location and contact; (3) official photo and registration records; (4) agreement and supporting documents; (5) manager/in-charge appointment; (6) link staff, volunteers, departments and projects; (7) review/submit with required-document validation.
+- **CG-02-BR03:** Support seven-stage branch registration: (1) name/type/opening date/geography/address/PIN/GPS/photo; (2) location/contact; (3) official photo/registration records; (4) genuine protected agreement/evidence; (5) select a real eligible CG-01 manager/in-charge; (6) link **existing CG-02 Foundation departments/committees** upon branch activation; (7) revision-bound review/submit with required-document checks. Staff/coordinators (CG-10), volunteers/members (CG-04), projects (CG-05) and budgets (CG-09) are original business requirements fulfilled by **their later owner modules** after actual branch activation; CG-02 must not invent them or block the seven stages until they exist.
 - **CG-02-BR04:** Save incomplete branch drafts; show setup completeness, missing documents, verification and approval status.
 - **CG-02-BR05:** Generate branch code after applicable final approval; preserve change history.
-- **CG-02-BR06:** Associate branches with employees, coordinators, volunteers, departments, members, projects and budget allocations without duplicating their owner profiles.
-- **CG-02-BR07:** Maintain departments and their functions, branch associations and member assignments; maintain committees and committee/personnel associations.
+- **CG-02-BR06:** CG-02 owns branch identity and its real **Foundation-department/committee relations**. Branch association for employees/coordinators is owned by CG-10, volunteers/members by CG-04, projects by CG-05 and budget allocations by CG-09. Each later owner must implement its actual branch selector, scoped relation/history and own QA after both source records exist; CG-02 never duplicates those domain masters or associations.
+- **CG-02-BR07:** Maintain real Foundation-scoped departments and committees, eligible CG-01 account officeholder participation **with zero branches (CG-02 US-001)**, then after actual approved branch activation create/manage branch-scoped departments, link existing Foundation departments and retain historical committee/account associations **in CG-02 US-002**. CG-04 memberships and CG-10 employment are not created by department participation.
 - **CG-02-BR08:** Provide branch directory, search/filter, authorized status changes and exports.
 - **CG-02-BR09:** Internal Foundation branches must **not be automatically published**; only expressly approved organization information appears publicly.
 - **CG-02-BR10:** Department and committee setup supports name, type, parent department where applicable, branch/location, assigned head/manager, opening date, description and active status. Reporting and staff assignment reuse the same department/committee record.
@@ -254,14 +255,14 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 **Supporting business capability, not another owner of applications or financial records.**
 
-- **CG-19-BR01:** Provide templates and authorized generation of membership documents, staff letters/ID cards, invoices, vouchers, donation receipts, appointment slips and other required PDFs.
+- **CG-19-BR01:** CG-19 owns versioned templates, secure source-confirmed PDF/letter/ID-card issuance, print/reissue/revoke and download service. Initial independently testable source is genuine CG-01/03 approved-access confirmation and restricted file. **CG-04/10/09/15/16 later introduce** their actual member/volunteer/staff identities, financial receipts, appointment/clinical records and required source-specific template/QA; no future business record/picker is a CG-19 startup prerequisite.
 - **CG-19-BR02:** Store user-submitted and business-submitted photographs, document scans, medical reports and proof with owner association and restricted access.
 - **CG-19-BR03:** Support common SMS/email/mobile-push communications and WhatsApp where configured, with business-triggered templates, audience, delivery history and error states.
-- **CG-19-BR04:** Admin notices/bulletins with content/publication status and authorized notification sending.
+- **CG-19-BR04:** CG-19 owns actual notices/bulletins, audience, draft/approval, sending/scheduling/expiry and delivery status. Public website publication of an approved safe notice is separately **CG-18-owned**, and never implies a notice was sent or copies the original CG-19 message row.
 - **CG-19-BR05:** Expose appropriate records to correct audience (donor receipt to donor, appointment slip to patient/center, salary slip to employee).
 - **CG-19-BR06:** Offer communication logs and template controls without adding independent message histories to every module.
-- **CG-19-BR07:** Maintain one scoped service-request/helpdesk capability for Foundation public contact requests and healthcare-center support tickets, service requests and FAQs where required. Center operators see only their authorized cases; ownership, status, responses and permissions are shared, not duplicated per portal.
-- **CG-19-BR08:** Shared document templates support front/back ID cards for authorized members, volunteers and employees, optional visible fields, issue/expiry, preview, barcode/QR verification, print/PDF/reissue history, and official letters/memos with signature/seal and received-copy tracking where applicable. Document generation must reference approved source records.
+- **CG-19-BR07:** CG-19 owns **one** Foundation public-contact request submission/opaque receipt, original support cases/replies/assignment/history/FAQs, anti-abuse and sensitive contact privacy. CG-19's initial public form/API and CG-01 Foundation responder are complete **without CG-18 website or CG-14 centers**. CG-18 later embeds the real form but stores no contact message. CG-14 later introduces authenticated own-center portal and A/B scope isolation against CG-19's same existing support source, not an independent ticket table.
+- **CG-19-BR08:** Shared versioned document templates support genuine later CG-04/10 member/volunteer/employee front/back ID cards with approved source fields, issue/expiry, preview, barcode/QR, print/reissue/revoke and required official letters/seals/received-copy tracking. Initial CG-01/03 source is a **private approved-access letter only**, never a fabricated member/staff/financial card. Public QR verification is limited to explicitly source-approved public proof and must never expose private CG-01/03 account/role or medical/salary details.
 - **CG-19-BR09:** Notifications distinguish direct transaction events, role/group broadcasts, individual messages and public notices. Authorized senders can configure recipient audience, category, priority, title, message, optional link, schedule/expiry and delivery status, without revealing contacts outside their permission scope.
 
 ## CG-20 — Dashboards, MIS, Reporting and Exports
@@ -276,12 +277,12 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 
 ## CG-21 — Settings, Audit, Integrations and Recovery
 
-- **CG-21-BR01:** Central configuration for Foundation information, operational settings, supported integrations and credentials via authorized administration.
-- **CG-21-BR02:** Auditable actions including logins where applicable, role changes, approvals, financial changes, publishing, provider verification and protected data access as appropriate.
-- **CG-21-BR03:** Provide authorized configuration/monitoring for payments, email/SMS/WhatsApp, push, GPS/maps and related external providers where required.
+- **CG-21-BR01:** Central authorized configuration of CG-21-owned nonsecret platform operational settings, effective revisions and supported external integration credential references; Foundation legal/organization identity belongs to CG-02 and password/session/MFA policy belongs to CG-01, not duplicated in CG-21.
+- **CG-21-BR02:** Provide permissioned bounded central **read-only** audit projections from genuinely implemented original owners (first CG-01 access-audit and CG-21 platform-operation events). Original login/role, approval, money, publishing and protected-access audit records remain with the actual source owner and appear only after that owner delivers them; never copy events into another master.
+- **CG-21-BR03:** Provide authorized nonsecret integration configuration references and truthful on-demand provider readiness for payment, messaging, push, GPS/maps and similar providers. CG-19 owns message sending/outbox/receipts; CG-09/17 own financial transactions/center collections. A configured or verified connection is not proof a message or payment succeeded.
 - **CG-21-BR04:** Provide controlled backup/restore access and a recovery operation model; restoration must not be available to routine staff.
 - **CG-21-BR05:** Provide human-readable errors, status and operational controls that avoid silently swallowing backend failures.
-- **CG-21-BR06:** Support password/session security configuration and two-factor authentication for privileged accounts, with policy and enforcement documented in CG-BR-600, and restrict restore operations to correctly authorized operators.
+- **CG-21-BR06:** Restrict backup/recovery visibility, requests and authorized recovery-operation status to **current privileged CG-01 accounts with freshly verified MFA**, with durable access audit and independent proof before restoration is reported successful. CG-01-BR11 owns password/session/MFA configuration and enforcement; CG-21 does not implement a shadow authentication policy.
 
 ## Cross-domain dependency guardrails
 
