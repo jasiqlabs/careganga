@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **Item/supplier catalog, stoc
 
 State/invariant: **Request draft/approved/rejected/fulfilled; receipt/issue/reversal; Atomic stock, no duplicate issues or unauthorized negative balance**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete inventory ledger and source issue rules
+
+`inventory_item(id,sku,name,unit,category,status)` unique normalized item code per applicable source; `supplier(id,name,contact,status)` serves inventory procurement references while actual vendor payable remains CG-09 finance. `stock_location(id,real_branch_ref,status)` cannot accept an unapproved or guessed location.
+
+`stock_movement(id,item_ref,location_ref,source_owner,source_ref,kind,signed_qty,status,revision)` unique `(source_owner,source_ref,kind,revision)`. A guarded transaction locks the affected item/location balance (or an equivalent proven DB constraint) for last-unit issue; no negative available quantity except a documented approved adjustment policy. Reversal creates a compensating movement.
+
+`material_request(id,requester,location,status,version)` plus item lines, approved quantities and fulfilled quantities supports pending/rejected/partial/full states, with idempotent fulfillment linked to actual movements. CG-06 aid and CG-13 rewards must consume verified movement references, not edit item stock directly.
+
+**QA:** parallel last-unit issue, replayed material fulfillment, stock transfer between real branches, wrong-branch options, adjusted negative stock, item unit mismatch, low-stock alert without idle scan and export matching movement history.
+
 ## Typed API and coordination
 
 An authenticated `/api/inventory-suppliers` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
