@@ -1,8 +1,8 @@
 # CG-10 — User Stories & Manual QA (one canonical tracker)
 
 **Authority:** [canonical development order](../../DEVELOPMENT_ORDER.md), [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [PRD](../../prd.md) FR-029–033, [HLD](../../hld.md), [HR BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–15 and original screenshot audit B20–B51 with real owner filter.
-**Stage:** Harness Planning / CG-10_FULLSTACK_EXPERT_REVIEW_PENDING. Five independently testable HR owner stories; **100 unique detailed QA cases, 20 each**. Full PostgreSQL/NestJS/CG-01/02/03/19, Foundation Admin Web, eligible **Internal Android**, private/public exclusion and CG-09/11 later boundaries documented. Actual source/rendered/DB evidence NOT_RUN.
-**Development gate:** PRD/HLD current source global REVIEW_REQUIRED, authenticated Harness resolver NOT_RUN, qualified independent CRITICAL HR DB/privacy review and real SQL migrations/restore NOT_RUN, predecessor implementations NOT_VERIFIED, code/Web/Internal Android/PNG/video/performance Play policy NOT_RUN. Development stories BLOCKED; no CI/GH Actions.
+**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design only)** by JASIQ AI Design Review Agent (15 Nov 2026) for current 5 independently testable CG-10 full-stack stories and exactly 100 unique explicit manual QA (20/story), with PostgreSQL/real CG-01/02/03/19 source extension/NestJS/Admin Web/native Internal Android and legitimate public exclusions. No external DB/source/runtime test marked complete.
+**Development gate:** Five current-source HR story definitions are delegated design approved only; global PRD/HLD latest-hash review REQUIRED, authenticated Harness resolver NOT_RUN, verified real CG-01/02/03/19 predecessor code NOT_RUN, qualified independent CRITICAL HR DB/security reviewer and actual SQL migration/backup/restore NOT_RUN, source-code QA, live Admin Web/Internal Android native/mobile-store/PDF/PNG/video/pixel/motion/performance QA NOT_RUN. All five stories remain BLOCKED/NOT_STARTED; no CI/GitHub Actions, no false implementation or test PASS.
 
 ## Mandatory Harness scriptless per-story execution rules
 
@@ -10,7 +10,7 @@ Read latest branch HEAD, current BR/PRD/HLD/module/UIUX/DLD/DEVELOPMENT_ORDER/ap
 
 Per QA record real source action→typed API→current CG-01 action + CG-02 branch/CG-10 employee scope→CG-03/19/09 owner source where applicable→PostgreSQL verified constraint/transaction→Admin Web/Internal Android response, audit and safer failure. Trace actual file:function and mark SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE; separate SQL/real-device/PNG-video/motion/performance results remain NOT_RUN until actually run. Update **only** the matching one progress line after `## Execution progress`; never add a second tracker or erase definitions. Source approval does not mean code/QA PASS.
 
-## Full-stack story definitions and explicit manual QA — current-source review pending
+## Delegated-approved design-only HR stories and 100 full-stack manual QA cases
 
 ### US-001 — Enroll and approve one employee with actual account, branch and private evidence
 
