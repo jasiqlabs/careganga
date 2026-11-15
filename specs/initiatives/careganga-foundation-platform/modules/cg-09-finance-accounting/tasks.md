@@ -3,15 +3,15 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
-**Development gate:** PRD/HLD current approval REVIEW_REQUIRED, authenticated local resolver and hash-bound module/task/design approvals NOT_RUN. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
+**Development gate:** Six CG-09 stories are undergoing source review/fix/re-review against actual Foundation BR, original UI, CRITICAL finance DB, CG-03/19 owner extensions and future-owner independence. Current latest source has no delegated approval. PRD/HLD REVIEW_REQUIRED; authenticated Harness resolver, independent DB/SQL/migration/restore, actual source-code QA, Web/Android runtime and pixel/motion QA NOT_RUN; all implementation stories remain BLOCKED.
 
-## Proposed task definitions — NOT YET APPROVED
+## Reviewed task definitions — awaiting current-hash delegated approval
 
 ### US-001 — Configure chart of accounts/groups, financial year, branch/project…
 
-Outcome: Configure chart of accounts/groups, financial year, **actual Foundation/CG-02 branch allocation** (and project allocation only after a real CG-05 project exists), cash/bank accounts, opening balances and controlled statuses. CG-09 finance/account master works with zero CG-05 project records.
+Outcome: Configure chart of accounts/groups, financial year, **actual Foundation/CG-02 branch allocation** (a project association is introduced only by later CG-05 and is not required), cash/bank accounts, opening balances and controlled statuses. CG-09 finance/account master works with zero CG-05 project records.
 Requirements: FR-023, CG-09-BR01, CG-09-BR02, CG-09-BR03; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: Root-scoped CG-09 finance setup: Admin Web and backend first, Android read-only only if truly required. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Create valid chart/year/bank/cash accounts with genuine CG-02 branch scope, opening balance integrity and no CG-05 project prerequisite; a project field is not a required selector until real CG-05 delivers its owner/association.  Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-001-QA01:** Given an authorized actor and actual prerequisite records, create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -22,14 +22,16 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner regression:** Closed period or duplicate normalized account code cannot be used for new posting. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-001-QA08 — Source-specific workflow:** Admin defines a new financial year and bank/cash account with controlled opening balance; duplicate account code and unauthorized branch scope are rejected without changing chart or trial balance.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — first module independence and root-unique chart:** With only actual CG-01 and real CG-02 Foundation/ACTIVE branch, create one valid financial year, categories, real bank/cash accounts and balanced opening journal. No CG-03/19 file/case, CG-04/05/10/12 project/person/vendor, gateway or invented records. Concurrent duplicate normalized code/year/branch and foreign-root account cause atomic denial; zero-first-data and disabled branch feedback are truthful.
+- **US-001-QA10 — critical schema and safe account selector:** Inspect real DB migration+index+composite same-root FK for account/year/group and opening entry; reject overlapping fiscal years, invalid sign/group, closed-year edit, inactive account, forged project, unprivileged account picker and raw bank data leakage; restore a disposable backup and validate bounded account query/idle zero scans (actual DB/restore/EXPLAIN NOT_RUN).
+Verification: On actual implementation source-trace US-001-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Enter authorized balanced journal, payment/expense/contra voucher with…
 
 Outcome: Enter authorized balanced journal, payment/expense/contra voucher with item/rate/tax/charges, payee, source, attachments and applicable approval/paid state.
 Requirements: FR-024, CG-09-BR02, CG-09-BR04, CG-09-BR06, CG-09-BR07, CG-09-BR08, CG-09-BR17; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: Verified Web journal/voucher and applicable native review, with CG-09 introducing genuine CG-03 finance process and CG-19 finance evidence adapters. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Post balanced debits/credits once per immutable source event; correct paid vs approved state. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-002-QA01:** Given an authorized actor and actual prerequisite records, post balanced debits/credits once per immutable source event; correct paid vs approved state. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -41,14 +43,17 @@ QA cases:
 - **US-002-QA07 — owner regression:** Two revisions of one source event cannot bypass the unique posting key. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-002-QA08 — Critical integrated scenario:** Operator submits a voucher/journal with unequal debits and credits or a replay of a previously posted source event. Expected: backend rejects imbalance before posting, creates neither orphan line nor phantom bank balance; duplicate source returns original accepted posting and finance reports reconcile.
 - **US-002-QA09 — Source-specific workflow:** Post a multi-item voucher with tax/charges and account picker; select a cashier account using a permitted minimum-label selector without broad ledger permission, reject a missing balancing debit/credit side and do not mark the voucher paid.
-Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA10 — balanced DB integrity / replay / paid proof:** With actual CG-09 chart/year, submit one manual two-line balanced journal and multi-item voucher: reject one-sided/zero/unbalanced/mixed currency, stale account/closed period, wrong branch and simultaneous duplicate immutable event key+different digest. DB must not expose POSTED unbalanced rows; immutable posted lines, one reversal and source-only trial balance agree after replay/rollback. Approved voucher/payment requested is not PAID_VERIFIED until real authorized bank/cash proof.
+- **US-002-QA11 — owner-introduced CG-03 finance approval:** Begin with the original CG-03 protected CG-01 role case only; CG-09 US-002 introduces a genuine CG-03-owned pinned FINANCE_VOUCHER process/typed finance source revision/digest, current distinct authorized reviewers, RETURNED/revised case and guarded final CG-09 posting. Reject missing process, forged decision, revoked reviewer, replay and source changed; original CG-01 protected role review still works. No CG-09 case table/direct CG-03 write.
+- **US-002-QA12 — CG-19 finance voucher evidence before approval:** With original CG-19 CG-01/03 file adapter only, CG-09 introduces CG-19-owned voucher upload/scanner/authorized preview before the case. Freeze actual VALIDATED file/version into immutable voucher submission, deny missing/revoked/unverified/foreign evidence, signed-link abuse and uncertain network status. Original protected CG-01/03 evidence continues working. CG-09 never stores original bytes/attempt log.
+Verification: On actual implementation source-trace US-002-QA01–QA12 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Submit claim with purpose/amount/date/project and bill
 
-Outcome: Submit claim with purpose/amount/date/project and bill; route approval then single linked payable, voucher, payment and posting, not multiple expenses.
+Outcome: Receive a genuine eligible CG-01 Foundation requestor expense claim with purpose/date/category/amount and verified CG-19 bill; route real CG-03 financial review and create one CG-09-owned payable/voucher/verified payment and posted journal. CG-10 employees/CG-04 volunteers later introduce their eligibility/request screens into this same finance claim, not shadow claim masters. No project/employee/volunteer required now.
 Requirements: FR-025, CG-09-BR09, CG-09-BR10; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: CG-09 original claim/payable/posting and Finance Web; later CG-10/04 own person-specific Android/public request UI and eligibility. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Create reviewed reimbursement claim linked to one approved payable/voucher and actual payment evidence. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-003-QA01:** Given an authorized actor and actual prerequisite records, create reviewed reimbursement claim linked to one approved payable/voucher and actual payment evidence. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -59,14 +64,17 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — owner regression:** A rejected claim never creates another expense or payable under retry. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-003-QA08 — Source-specific workflow:** Submit employee reimbursement with proof, route final CG-03 decision, create one payable/voucher, and reconcile bank payment once; a pending claim must not inflate expense totals twice.
-Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+- **US-003-QA09 — original financial claimant without future people masters:** Use a genuine current CG-01 Foundation finance account and CG-09 expense_claim source to file/review reimbursable Foundation expense with real verified CG-19 bill and actual finance CG-03 approval; require no CG-10 employee, CG-04 volunteer or CG-05 project. The one CG-09 claim/payable/voucher/posting/payment identity survives resubmission/retries and cannot count as expense twice.
+- **US-003-QA10 — later employee/volunteer owner responsibility:** Verify the *CG-09 base* has stable typed single-claim intake/status/eligibility facade and zero foreign CG-04/10 table/FK or future UI. The later CG-10/04 story (not this story) must add person-specific current eligibility + Admin/Internal/Public Android entry to that original finance claim, and test no second source claim/master. Unknown policy/absent future source fails closed, not fake eligible employee.
+- **US-003-QA11 — claim financial approval and payout race:** Two claim approval callbacks, stale returned revision, duplicate voucher issuance and concurrent cash/bank verification yield at most one approved payable, one balanced posting, one verified payment, and correct separate posted/paid states. Revoked bill or bank authority blocks post/payout, unavailable CG-03 finance route/CG-19 file reports honest pending/unavailable; enforce actual root/branch/account privacy.
+Verification: On actual implementation source-trace US-003-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+Dependencies: US-002
 
 ### US-004 — Use staged invoice/receipt preparation, items, dates/amounts, attachments…
 
-Outcome: Use staged invoice/receipt preparation, items, dates/amounts, attachments, verifier and payment terms; save, approve, print/share securely and link actual money states.
+Outcome: Issue original CG-09 finance invoice/receipt using actual permitted current Foundation source and legitimate counterparty snapshot, with genuine CG-19-owned protected PDF/template and optional delivery, while keeping issue, approved, posted, paid and delivered statuses distinct. No future CG-04/05/07/12 business master required.
 Requirements: FR-026, CG-09-BR11, CG-09-BR12; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: CG-09 original invoice/receipt in Web and applicable native secure view, CG-19 owns protected template/PDF/download/send. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Create validated itemized invoice/receipt, calculate tax/charges and preserve issue/payment history. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-004-QA01:** Given an authorized actor and actual prerequisite records, create validated itemized invoice/receipt, calculate tax/charges and preserve issue/payment history. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -77,14 +85,17 @@ QA cases:
 - **US-004-QA06:** Original CareGanga screenshot refs A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07 — owner regression:** Posted total is corrected by linked reversal rather than editing old lines. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-004-QA08 — Source-specific workflow:** Create an invoice in stages, save draft with items then approve, issue PDF through CG-19 and record partial payment; receipt/print must show the approved snapshot, not a later edited total.
-Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+- **US-004-QA09 — original invoice and CG-19 issuance:** With CG-01/02, genuine CG-09 financial counterparty snapshot and CG-19 initial protected-file/template owner, CG-09 introduces CG-19-owned invoice/receipt source adapter, versioned template/PDF/issue/authorized download and optional delivery. Actual invoice stages/line totals/number/fiscal period are persisted by CG-09, not duplicated in CG-19. Unknown issue/send uses same source key and confirmed lookup; no phantom PDF/PAID/SENT.
+- **US-004-QA10 — no future parties and correct money/source distinction:** Complete a real Foundation-side invoice/receipt without member, donor, supplier, campaign or project master; external party typed minimal per-transaction snapshot is not new vendor master. Paid/settled requires genuine CG-09 money evidence, CG-19 issuance/delivery is independent. Later CG-04/07/12 owner adds real source refs/QA, not duplicate receipts or finance-ledger masters.
+- **US-004-QA11 — issue/reissue privacy, race and UI:** Concurrent duplicate invoice number/issue key, changed source total, revoked document/evidence, denied export/QR or stale branch must not produce duplicate legal receipt. Original CG-19 protected template/issued bytes and CG-09 invoice source remain one each with immutable amendment/reissue history. Match A19/U finance wizard/forms, accessible native/read permissions and safe provider outage error.
+Verification: On actual implementation source-trace US-004-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+Dependencies: US-002
 
 ### US-005 — Create/approve budgets and reveal committed, allocated, utilized, released…
 
-Outcome: Create/approve budgets and reveal committed, allocated, utilized, released, available/over-budget amounts with funding/project/branch drill-down.
+Outcome: Create and approve genuine CG-09 Foundation/ACTIVE-branch/category/period budgets with immutable source effect history and precise committed/allocated/utilized/released/available/over-budget definitions. CG-05 later introduces project-specific links and selectors; no such future requirement blocks this original story.
 Requirements: FR-027, CG-09-BR13, CG-09-BR14, CG-09-BR15, CG-09-BR16; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: CG-09 root/actual branch budgets and scoped Web finance controls; no CG-05 project. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Approve one budget, distinguish committed/allocated/utilized/released and real balance. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-005-QA01:** Given an authorized actor and actual prerequisite records, approve one budget, distinguish committed/allocated/utilized/released and real balance. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -96,14 +107,16 @@ QA cases:
 - **US-005-QA07 — owner regression:** Two concurrent allocations exceeding available funds cannot both commit. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-005-QA08 — Source-specific workflow:** Allocate a budget with committed funding and utilized/released amounts; over-budget and available figures must remain distinct under two concurrent allocation requests.
 - **US-005-QA09 — transferred branch owner QA:** With a genuine ACTIVE CG-02 branch and CG-09 chart/year, create/approve one branch-only budget when CG-05 does not yet exist. CG-09 owns allocation, released/committed/utilized/remaining balances and historical source effects; duplicate callback and wrong/closed branch are denied. CG-02 stores no budget master or finance ledger. The later CG-05 owner introduces any project-budget linkage when real project exists.
-Verification: On actual implementation source-trace US-005-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA10 — first branch budget without project:** With actual CG-01 account/CG-02 ACTIVE branch, real CG-09 chart/year and a true CG-03 FINANCE_BUDGET source-case route introduced by CG-09, create/approve/allocate a branch/category budget with no CG-05 project/funder. Verify unique same-root budget, current branch status, historical events, case final decision and no CG-02 budget shadow table. CG-05 later adds project associations.
+- **US-005-QA11 — competing money definitions and race:** Race two budget allocations/commitments against one current approved ceiling, verify one accepted guarded event, no overdraw unless authorized overbudget policy, stale revision/replay idempotent. Approved budget is not cash; committed, released, utilized, available and over-budget are source-based and reconcile to actual journal, without double-counting a pledge or invented future CSR/project balance.
+Verification: On actual implementation source-trace US-005-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-006 — See scoped general ledger, cash/bank/day books, trial balance…
 
-Outcome: See scoped general ledger, cash/bank/day books, trial balance, vendor/CSR/project views, payables, corrections and reconciled reports with audit.
+Outcome: See actual CG-09 root/branch/account/period general ledger, cash/bank/day books, trial balance, genuine payables/reversals and bank-item reconciliation, with authorized filters and bounded exports. CG-07/08/05 later introduce donor/CSR/project source details, and CG-20 broader MIS; neither is a first-story prerequisite.
 Requirements: FR-028, CG-09-BR03, CG-09-BR05, CG-09-BR14, CG-09-BR15, CG-09-BR16, CG-09-BR17; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
-Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
+Scope: CG-09-only finance ledger/reconciliation source reports, bounded protected Web/export; other modules add their source projections later. Use genuine CG-01/02 authorization, typed owner facades, owned API/DB and audited state; do not create another master's data, future selectors or invented financial effect.
 Acceptance: Show scoped day book, cash/bank ledger, trial balance and reconciliation from posted lines. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-006-QA01:** Given an authorized actor and actual prerequisite records, show scoped day book, cash/bank ledger, trial balance and reconciliation from posted lines. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
@@ -114,7 +127,9 @@ QA cases:
 - **US-006-QA06:** Original CareGanga screenshot refs A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-006-QA07 — owner regression:** Foreign branch export and account picker do not leak financial data. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-006-QA08 — Source-specific workflow:** Run general ledger/trial balance/cash-book/vendor and project scoped exports after reversal; reconciled total debit=credit, private branch data hidden and original/reversal journals both traceable.
-Verification: On actual implementation source-trace US-006-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-006-QA09 — finance-only true-source reporting:** After real CG-09 opening and balanced posted/reversed journals, reconcile root/branch/period GL, cash/bank/day and trial balance totals to immutable journal lines; no CG-20 MIS source, fake CG-04 member fee, CG-07 donation, CG-08 CSR or CG-11 payroll numbers. A closed branch remains visible only through authorized history; foreign root reports/exports fail closed.
+- **US-006-QA10 — reconciliation and bounded private export:** Import/manual-enter a genuine masked bank statement item, match exactly one authorized posting, track unmatched/variance/duplicate statement key and correction history. Check indexed root-first pagination, stable cursor/page, redacted bank/PII export, false restored source, source audit and zero background scans when idle (actual EXPLAIN/DB/runtime NOT_RUN).
+Verification: On actual implementation source-trace US-006-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ## Execution progress

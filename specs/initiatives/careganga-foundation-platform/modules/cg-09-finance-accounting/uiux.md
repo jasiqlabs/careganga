@@ -1,7 +1,7 @@
 # CG-09 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+**State:** REQUIRED; current CG-09 UI/UX source under expert review for original A19/B01/B02/U33–U42 and actual owner-specific finance flows. Source visual/motion comparison, Web/Android runtime, Harness and independent CRITICAL DB review NOT_RUN. Revised design awaits current-hash delegated decision.
 
 ## Exact existing design and animation contract
 
@@ -9,13 +9,13 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
-**Screen ownership correction:** A17/A18 are CG-07 donation intake/records linked to this finance owner, not independent CG-09 finance UI screens. Preserve A19 voucher, B01–B02 budget and U33–U42 financial references.
+**Screen ownership correction:** CG-09 owns original financial invoice/receipt/claim/accounting and budget screens; employee/volunteer request UI belongs to later CG-10/04 and reads/writes the one CG-09 claim source. Real CG-19 owns original evidence, PDF, templates, delivery; CG-03 owns review cases. CG-20 owns broader MIS, not CG-09's ledger derivation.  A17/A18 are CG-07 donation intake/records linked to this finance owner, not independent CG-09 finance UI screens. Preserve A19 voucher, B01–B02 budget and U33–U42 financial references.
 
 ## Screen/flow map
 
 - **FR-023:** Finance Admin opens accounts — Configure chart of accounts/groups, financial year, branch/project allocation, cash/bank accounts, opening balances and controlled statuses. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-024:** Finance user posts a transaction — Enter authorized balanced journal, payment/expense/contra voucher with item/rate/tax/charges, payee, source, attachments and applicable approval/paid state. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
-- **FR-025:** Employee/volunteer requests reimbursement — Submit claim with purpose/amount/date/project and bill; route approval then single linked payable, voucher, payment and posting, not multiple expenses. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-025:** Finance-owned reimbursement, initially eligible real CG-01 Foundation user; later CG-10 employee / CG-04 volunteer own their request views into the same CG-09 claim — Submit claim with purpose/amount/date/project and bill; route approval then single linked payable, voucher, payment and posting, not multiple expenses. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-026:** Authorized user invoices or receipts — Use staged invoice/receipt preparation, items, dates/amounts, attachments, verifier and payment terms; save, approve, print/share securely and link actual money states. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-027:** Finance allocates budget — Create/approve budgets and reveal committed, allocated, utilized, released, available/over-budget amounts with funding/project/branch drill-down. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-028:** Reviewer checks statements — See scoped general ledger, cash/bank/day books, trial balance, vendor/CSR/project views, payables, corrections and reconciled reports with audit. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
@@ -27,6 +27,17 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 ## CG-09 owner — genuine CG-02 branch budget selection
 
 Budget screens use **real CG-02 ACTIVE branch** minimum-field selectors and source-backed CG-09 allocation/utilization history. A real branch-only budget succeeds with zero CG-05 projects; project linkage is offered only after a genuine CG-05 project owner delivers it. Wrong/closed branch denies on client and backend, without CG-02 budget editor or invented finance data. Maintain original CareGanga finance form/table patterns.
+
+## Six story-specific original Web/native screen contracts
+
+- **US-001:** True Foundation/real CG-02 ACTIVE-branch chart, fiscal years, restricted named account/bank pickers and balanced opening transaction. No employee, project, provider or donor selector until source exists; show one real empty chart and human validation/conflict, no fictional totals.
+- **US-002:** A19/U33–U42 guided multi-line journal, expense/payment/contra voucher and server-verified decimal line totals. Show a real CG-03 pinned FINANCE_VOUCHER review and CG-19 private evidence/upload/scanning preview as needed. Approved, POSTED, PAYMENT_REQUESTED, PAID_VERIFIED and reconciled are visibly distinct, including uncertain payment verification and retry.
+- **US-003:** An authorized real CG-01 Foundation requester may submit a genuine finance-owned claim before CG-10/04. Finance Web review shows one request→case→payable→voucher→verified payment; CG-10 employee Internal Android and CG-04 volunteer entry are later owner-introduced screens into this same claim, not new expense registers.
+- **US-004:** Original four-stage invoice/receipt drawer or wizard with actual counterparty snapshot, items/unit/quantity/rate/tax, issuer/approver, CG-19-owned invoice PDF preview/issue/reissue, separately protected download/print and optional channel sharing. No fake CG-12 vendor/CG-04 member/CG-07 donor master; provider unavailable is not SENT/DELIVERED.
+- **US-005:** B01–B02 authorized actual Foundation/ACTIVE-branch budget/category/period screens, distinguish approved, allocated, committed, released, utilized, available and over-budget from CG-09 event source; no CG-05 project selection until real delivery.
+- **US-006:** Finance-only book, trial balance, bank reconciliation/variance, original source-posting and reversal history, root/branch/year search, bounded private export and financial audit; no speculative CG-20 reporting dashboard.
+
+Follow original blue selected navigation, brand color/type/icons, forms/tables/cards/drawers/staged steps and source-supported animations with shared tokens. Admin Web is the full accountant workspace. Applicable Internal Android screens are native, role-scoped current finance requests/read/approvals only, with proper Back/keyboard/touch, accessibility and upload permissions; do not invent duplicate general-ledger Android administration. Every screen shows verified loading, empty, denied, invalid, stale/conflict, scan/pending, unknown network, retry and successful source status. Exact screenshot/video motion and pixel QA remain NOT_RUN.
 
 ## Original-theme and task-specific interaction blueprint
 
