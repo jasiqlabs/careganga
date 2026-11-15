@@ -26,8 +26,8 @@
 | §5 / pp6–7 | Application dashboard, document-by-document verification, approval history and chain | CG-03 | **R**: added average approval time, application type/payment/status filters, recent cases |
 | §6 / pp8–9 | Public membership registration/fee, verification, member ID, documents, renewal | CG-04, CG-03, CG-09, CG-19 | **C**; pricing, expiry/refund/renewal edge rules **D-11** |
 | §7 / pp9–10 | Volunteer full registration, departments, availability, approvals, activities | CG-04, CG-05 | **R**: exact full-/part-time, weekend and on-call choices; departments preserved |
-| §8 / pp10–12 | Branch dashboard, search and seven-step setup, geography, approvals, code | CG-02, CG-03 | **R**: each of seven stages now has source-specific fields; public visibility remains gated |
-| §9 / p12 | Departments and committees | CG-02 | **C**, committee-specific detail requires **D-21** |
+| §8 / pp10–12 | Branch dashboard, search and seven-step setup, geography, approvals, code | CG-02 US-001 Foundation-only; CG-02 US-002 real branch + CG-03/19 | **R**: stage 6 uses genuine existing Foundation departments; no CG-10/04/05/09 future records. US-001 has no branch dependency; post-activation branch-scoped department belongs to US-002. Public visibility belongs to CG-18 |
+| §9 / p12 | Departments and committees | CG-02 US-001 Foundation; CG-02 US-002 branch | **R**: Foundation-wide committee/dept is fully testable with zero branches; branch-scoped dept and links only after real activation. Committee specifics remain subject to D-21, not a fabricated member/employee master |
 | §10 / pp12–13 | 80G/PAN/registration/annual/financial/transparency pages | CG-18, CG-09/20 | **C**: distinct editable/publishable public compliance information |
 | §11 / pp13–15 | Our Impact **ten** editable sections | CG-18, CG-20 | **C** all ten, including maps/charts/stories; source-derived vs manual figures **D-16** |
 | §12 / pp15–16 | Project creation/status, staff/budgets, reporting/search | CG-05/09 | **C** |
@@ -42,7 +42,7 @@
 | §21 / pp22–23 | Debit/credit ledgers and guided manual posting, searches, audit | CG-09 | **C**, server-side accounting correctness reinforced as NFR |
 | §22 / pp23–24 | Multi-stage invoice and receipt, docs, responsible verifier, sharing | CG-09/19 | **R**: explicit full invoice-stage field groups, note/tag and verification assignment |
 | §23 / pp24–25 | Expense claims/proof/review/payment state and dashboard | CG-09/03 | **C** |
-| §24 / pp25–26 | Project/branch budget create/approval/utilization | CG-09/03 | **C** |
+| §24 / pp25–26 | Project/branch budget create/approval/utilization | CG-09/03, real CG-02 branch; project integration by CG-05 later | **R**: CG-09 owns branch-only budget allocation/ledger, available before CG-05 project; project source association is added and tested when CG-05 arrives, no CG-02 budget master |
 | §25 / p26 | CSR partner applications and verification | CG-08/03 | **C** |
 | §26 / pp26–27 | Funding proposals/shared CSR/Foundation allocations | CG-08/09 | **C**, accounting state rule **D-19** |
 | §27 / pp27–28 | Membership tier fees, validity, icon/color, benefits, active and public display | CG-04/18 | **C**, application of rules at renewal **D-11** |
