@@ -2739,17 +2739,17 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy + explicit owner approval 2026-11-15 current chat",
       "artifact": "modules/cg-04-membership-volunteers/module.md",
-      "sha256": "daaa4da930e847846a99dad7aefc5f449a17c767920aaadfab00c5bd06c493ba",
-      "current_artifact_sha256": "daaa4da930e847846a99dad7aefc5f449a17c767920aaadfab00c5bd06c493ba",
+      "sha256": "212e9665478098957149136181e8549851fddf217565042722bf0c5e414950de",
+      "current_artifact_sha256": "212e9665478098957149136181e8549851fddf217565042722bf0c5e414950de",
       "approved_by": "ChatGPT GPT-6 (JASIQ delegated design reviewer)",
-      "approved_at": "2026-11-15T11:14:55.037Z",
+      "approved_at": "2026-11-15T11:19:55.577Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-04-membership-volunteers/module.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "daaa4da930e847846a99dad7aefc5f449a17c767920aaadfab00c5bd06c493ba",
+        "artifact_sha256": "212e9665478098957149136181e8549851fddf217565042722bf0c5e414950de",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "CG-04 full three-story original BR/PRD/HLD/167-screen Admin audited B09–B10/U11–U17, root privacy/money/approvals, independent public Join, current CG-05/18 receiving owners and 60 planned QA",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2765,14 +2765,15 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "daaa4da930e847846a99dad7aefc5f449a17c767920aaadfab00c5bd06c493ba",
+        "artifact_sha256": "212e9665478098957149136181e8549851fddf217565042722bf0c5e414950de",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "CG-04 full three-story original BR/PRD/HLD/167-screen Admin audited B09–B10/U11–U17, root privacy/money/approvals, independent public Join, current CG-05/18 receiving owners and 60 planned QA",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2788,27 +2789,29 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_approved_sha256": "daaa4da930e847846a99dad7aefc5f449a17c767920aaadfab00c5bd06c493ba"
     },
     "dld/cg-04-membership-volunteers": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy + explicit owner approval 2026-11-15 current chat",
       "artifact": "modules/cg-04-membership-volunteers/dld.md",
-      "sha256": "4753185257af9e28bd72a638ca4f36672d71901c648063dda6a80265289ae4a1",
-      "current_artifact_sha256": "4753185257af9e28bd72a638ca4f36672d71901c648063dda6a80265289ae4a1",
+      "sha256": "33d87554b46a1a9594f7ffb7003fe27a00d7e4c9e8002f743667bfb5382319e8",
+      "current_artifact_sha256": "33d87554b46a1a9594f7ffb7003fe27a00d7e4c9e8002f743667bfb5382319e8",
       "approved_by": "ChatGPT GPT-6 (JASIQ delegated design reviewer)",
-      "approved_at": "2026-11-15T11:14:55.037Z",
+      "approved_at": "2026-11-15T11:19:55.577Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-04-membership-volunteers/dld.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "4753185257af9e28bd72a638ca4f36672d71901c648063dda6a80265289ae4a1",
+        "artifact_sha256": "33d87554b46a1a9594f7ffb7003fe27a00d7e4c9e8002f743667bfb5382319e8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "CRITICAL CG-04 database/model/FK/finance/approval/source-actor API/DLD, three full-stack stories and real Web/public native/internal Android scope",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2824,14 +2827,15 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "4753185257af9e28bd72a638ca4f36672d71901c648063dda6a80265289ae4a1",
+        "artifact_sha256": "33d87554b46a1a9594f7ffb7003fe27a00d7e4c9e8002f743667bfb5382319e8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "CRITICAL CG-04 database/model/FK/finance/approval/source-actor API/DLD, three full-stack stories and real Web/public native/internal Android scope",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2847,27 +2851,29 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_approved_sha256": "4753185257af9e28bd72a638ca4f36672d71901c648063dda6a80265289ae4a1"
     },
     "uiux/cg-04-membership-volunteers": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy + explicit owner approval 2026-11-15 current chat",
       "artifact": "modules/cg-04-membership-volunteers/uiux.md",
-      "sha256": "a7d238deae9e8879b15b5e16759d815eef125108cc19193a42d4a2f359b9d264",
-      "current_artifact_sha256": "a7d238deae9e8879b15b5e16759d815eef125108cc19193a42d4a2f359b9d264",
+      "sha256": "83c8fb25d10b649fad9eb4bbd6378470cfd79776c32905b1241fe57499ed0416",
+      "current_artifact_sha256": "83c8fb25d10b649fad9eb4bbd6378470cfd79776c32905b1241fe57499ed0416",
       "approved_by": "ChatGPT GPT-6 (JASIQ delegated design reviewer)",
-      "approved_at": "2026-11-15T11:14:55.037Z",
+      "approved_at": "2026-11-15T11:19:55.577Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-04-membership-volunteers/uiux.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "a7d238deae9e8879b15b5e16759d815eef125108cc19193a42d4a2f359b9d264",
+        "artifact_sha256": "83c8fb25d10b649fad9eb4bbd6378470cfd79776c32905b1241fe57499ed0416",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "Source-faithful B09/B10 U11–U17 B41/B42 C50 A04 A09 role-accessible responsive branded Web and native Android channel source review",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2883,14 +2889,15 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "a7d238deae9e8879b15b5e16759d815eef125108cc19193a42d4a2f359b9d264",
+        "artifact_sha256": "83c8fb25d10b649fad9eb4bbd6378470cfd79776c32905b1241fe57499ed0416",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "Source-faithful B09/B10 U11–U17 B41/B42 C50 A04 A09 role-accessible responsive branded Web and native Android channel source review",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2906,27 +2913,29 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_approved_sha256": "a7d238deae9e8879b15b5e16759d815eef125108cc19193a42d4a2f359b9d264"
     },
     "tasks/cg-04-membership-volunteers": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy + explicit owner approval 2026-11-15 current chat",
       "artifact": "modules/cg-04-membership-volunteers/tasks.md",
-      "sha256": "7d029b5ebf210622cd230e6e03851f367fdbe382c39332a870ee51020d07ccc7",
-      "current_artifact_sha256": "7d029b5ebf210622cd230e6e03851f367fdbe382c39332a870ee51020d07ccc7",
+      "sha256": "a4fdfa427f817a9a54664a8fb8b41acafd254295963c8cbeb1856c37434aea9a",
+      "current_artifact_sha256": "a4fdfa427f817a9a54664a8fb8b41acafd254295963c8cbeb1856c37434aea9a",
       "approved_by": "ChatGPT GPT-6 (JASIQ delegated design reviewer)",
-      "approved_at": "2026-11-15T11:14:55.037Z",
+      "approved_at": "2026-11-15T11:19:55.577Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-04-membership-volunteers/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "7d029b5ebf210622cd230e6e03851f367fdbe382c39332a870ee51020d07ccc7",
+        "artifact_sha256": "a4fdfa427f817a9a54664a8fb8b41acafd254295963c8cbeb1856c37434aea9a",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "Three independent stories and 60 unique detailed planned manual QA, no known missing source-ownership test",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2942,14 +2951,15 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "7d029b5ebf210622cd230e6e03851f367fdbe382c39332a870ee51020d07ccc7",
+        "artifact_sha256": "a4fdfa427f817a9a54664a8fb8b41acafd254295963c8cbeb1856c37434aea9a",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "FULL_CG04_THREE_STORY_OWNER_INDEPENDENCE_DB_WEB_NATIVE_QA",
-        "scope": "Three independent stories and 60 unique detailed planned manual QA, no known missing source-ownership test",
+        "review_kind": "FULL_CG04_THREE_STORY_REVIEW_PLUS_NARROW_U42_SOURCE_RECONCILIATION",
+        "scope": "Previously source-reviewed full 3-story/60-QA CG-04 design preserved; narrow completion of source Admin U42 Submit Volunteer Expense Claim (applicant, fee amount/date/category/method, optional legitimate project/UTR, remarks, original CG-19 receipt) in CG-04 native/public Web presentation into one original CG-09 expense_claim. No CG-04 ledger, invoice-created/paid from click, or unmerged CG-18 prerequisite. Actual source QA, DB, live Web/Android and Harness resolver NOT_RUN.",
         "stories": 3,
         "plannedQA": 60,
         "open_actionable_source_design_gaps": 0,
@@ -2965,12 +2975,14 @@
         "original_png_video_pixel_motion": "NOT_RUN",
         "actual_play_aab_16kb": "NOT_RUN",
         "actual_NFR_benchmarks": "NOT_RUN",
-        "predecessor_code_state": "NOT_VERIFIED"
+        "predecessor_code_state": "NOT_VERIFIED",
+        "source_review_commit": "c152f8628e5aaacd656a53e1333af38c266b9a9b"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
       "development_authority": "NOT_READY",
       "stories": 3,
-      "qa_cases": 60
+      "qa_cases": 60,
+      "previous_approved_sha256": "7d029b5ebf210622cd230e6e03851f367fdbe382c39332a870ee51020d07ccc7"
     }
   }
 }
