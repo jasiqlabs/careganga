@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { Pool, PoolClient } from "pg";
+import { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
 import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-api";
@@ -92,8 +92,10 @@ export class SessionService implements IdentityAuthorization {
         await client.query(`
           INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,action_key,outcome,correlation_ref)
           VALUES($1,$2,$2,'identity.session.login','SUCCESS',$3)`,[row.realm_id,row.id,randomUUID()]);
+        // The throttle cleanup is part of the transaction. Never report a failed sign-in
+        // after the session and mandatory audit have already committed.
+        await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[this.throttleKey("email",email)]);
         await client.query("COMMIT");
-        await this.db.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[this.throttleKey("email",email)]);
         return {sessionToken:raw,expiresAt:session.rows[0].expires_at.toISOString(),displayName:row.display_name};
       } catch(e) { await client.query("ROLLBACK"); throw e; }
     } finally { client.release(); }
