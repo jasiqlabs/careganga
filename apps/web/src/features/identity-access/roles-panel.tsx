@@ -172,7 +172,7 @@ export function RolesPanel(){
     if(!roleRef){setEditor({mode:"create"});setSelected([]);return;}
     if(!source||source.protected||!source.active)return;
     setEditor({mode:"copy",source});
-    const eligible=new Set(groups.flatMap(g=>g.actions.filter(c=>c.assignable).map(c=>c.key)));
+    const eligible=new Set(groups.flatMap(g=>g.actions.filter(c=>c.assignable||c.key==="roles.manage").map(c=>c.key)));
     setSelected(source.actionKeys.filter(key=>eligible.has(key)));
   }
   function open(mode:FormMode,source?:Role){
@@ -183,7 +183,7 @@ export function RolesPanel(){
     setName(mode==="copy"?(source?source.name+" copy":""):source?.name??"");
     setDescription(source?.description??"");
     setColorKey(source?.colorKey&&roleColorOptions.some(x=>x.key===source.colorKey)?source.colorKey:"blue");
-    const allowed=new Set(groups.flatMap(x=>x.actions.filter(a=>a.assignable).map(a=>a.key)));
+    const allowed=new Set(groups.flatMap(x=>x.actions.filter(a=>a.assignable||a.key==="roles.manage").map(a=>a.key)));
     setSelected(source?.actionKeys.filter(k=>allowed.has(k))??[]);
     requestKey.current=crypto.randomUUID();
     setNotice(null);
@@ -191,7 +191,7 @@ export function RolesPanel(){
   const canManage=actions.includes("roles.manage");
   const canAudit=actions.includes("access.audit.view");
   const selectedRole=roles.find(role=>role.roleRef===selectedRoleRef)??null;
-  const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable);
+  const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable||c.key==="roles.manage");
 
   async function mutate(path:string,method:"POST"|"PATCH",body:unknown){
     let result:Response;
@@ -519,7 +519,7 @@ export function RolesPanel(){
           {groups.filter(group=>group.actions.some(cap=>cap.assignable)).map(group=>
             <fieldset key={group.group} className="permission-group">
               <legend>{group.group}</legend>
-              {group.actions.filter(cap=>cap.assignable).map(cap=><label key={cap.key} className="permission-row">
+              {group.actions.filter(cap=>cap.assignable||cap.key==="roles.manage").map(cap=><label key={cap.key} className="permission-row">
                 <input type="checkbox" disabled={editor.mode==="copy"}
                   checked={selected.includes(cap.key)}
                   onChange={e=>setSelected(prev=>e.target.checked?[...prev,cap.key]:prev.filter(k=>k!==cap.key))}/>
