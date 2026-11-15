@@ -35,7 +35,7 @@ export default async function ApprovalsPage(){
       throw Error("No verified permission evidence");
     const keys=(rights.actions as unknown[]).filter((x):x is {key:string}=>
       !!x&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
-    if(!keys.includes("approvals.view"))
+    if(!keys.includes("approvals.view")&&!keys.includes("approvals.propose"))
       return <main className="page main"><h1>Access denied</h1>
         <Link href="/admin">My account</Link></main>;
     return <div className="shell">
@@ -48,7 +48,8 @@ export default async function ApprovalsPage(){
         canViewRecovery={keys.includes("platform.recovery.view")}
         canViewApprovals/>
       <main className="workspace"><ProposalWorkspace
-        mayConfigure={keys.includes("approvals.process.manage")}/></main>
+        mayConfigure={keys.includes("approvals.process.manage")}
+        mayPropose={keys.includes("approvals.propose")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
