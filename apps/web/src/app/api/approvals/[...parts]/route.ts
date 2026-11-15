@@ -16,6 +16,8 @@ function allow(parts:string[],method:"GET"|"POST"):boolean{
     if(parts[0]==="options"&&["account","role"].includes(parts[1]))return method==="GET";
     if(parts[0]==="cases"&&UUID.test(parts[1]))return method==="GET";
   }
+  if(parts.length===3&&parts[0]==="process"&&parts[1]==="changes"&&UUID.test(parts[2]))
+    return method==="GET";
   if(parts.length===3&&parts[0]==="cases"&&parts[1]==="requests"&&UUID.test(parts[2]))
     return method==="GET";
   return false;
