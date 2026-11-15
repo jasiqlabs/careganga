@@ -19,6 +19,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## Source-backed volunteer reimbursement presentation
+
+An eligible real CG-04 volunteer's authenticated Web/Public Android expense request form is a **later CG-04-owned person-specific presentation** into CG-09's already delivered single finance claim. CG-04 verifies its own volunteer, current CG-02 branch and CG-01 identity; CG-09 supplies actual Submitted/Reviewed/Approved/Posted/PAID_VERIFIED status and CG-19 supplies real scanned protected bill/evidence. Do not add an independent CG-04 financial master or a disabled future-volunteer form in CG-09. Show current authorized status, invalid/denied/unknown network and native Back/keyboard/file feedback with original CareGanga tokens.
+
 ## CG-04 original ownership of member/volunteer branch affiliation — channel interaction
 
 CG-04 membership/volunteer Web and applicable Android screens offer minimum-field CG-02-approved branch/department options only where the current CG-04 workflow permits them. Validate disabled/closed/foreign branch and revoked operator in the actual CG-04 form, show existing member or volunteer's current affiliation/history and safe correction. Do not place a membership/volunteer editor in CG-02 or imply assignment grants staff account privileges. No fabricated future owner data or new CareGanga theme.

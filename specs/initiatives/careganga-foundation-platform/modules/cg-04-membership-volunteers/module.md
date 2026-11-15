@@ -26,6 +26,10 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **State and invariant:** Draft/submitted/approved/rejected/active/expired/renewed. Approved fee and case precede member ID; rejected paid membership requires authorized refund. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
+## Volunteer reimbursement: introducing owner, not a new money master
+
+An existing genuinely approved CG-04 volunteer with real CG-01 account/CG-02 ACTIVE branch may request a policy-eligible allowance or reimbursement using **CG-04's own volunteer-specific Web/Public Android eligibility and presentation added during US-003**. The immutable request is submitted to the delivered **CG-09-owned original expense_claim API**, not stored as a CG-04 claim/payable/payment/journal duplicate. CG-09 owns actual finance approval-linked voucher/payout and status, CG-19 owns protected proof, and no volunteer expense can be considered PAID from a submitted request or fake provider reply. The initial CG-09 claim works without this future CG-04 volunteer integration.
+
 ## CG-04 original ownership of member/volunteer branch affiliation — transferred CG-02-BR06 scope
 
 CG-04-BR04 and CG-02-BR06 are fulfilled **here**, not in CG-02: each member and volunteer application/assignment may select only a genuinely authorized existing ACTIVE CG-02 branch/department and store the owner-linked effective-dated relation in CG-04. A missing branch is represented according to the genuine organization rule; never fabricate a CG-02 branch, person or personnel employment row. CG-04 US-002 owns membership association; US-003 owns volunteer branch/dept availability/assignment. Review and test both in CG-04 before calling their outcomes complete.
