@@ -66,6 +66,10 @@ export class RolesService {
   }
   async list(bearer:string,query:{search?:string;offset?:number;limit?:number;status?:"all"|"active"|"retired";type?:"all"|"system"|"custom"}={}){
     const actor=await this.sessions.requireAction(bearer,"roles.view");
+    if(query.search!==undefined&&typeof query.search!=="string"||
+       query.status!==undefined&&typeof query.status!=="string"||
+       query.type!==undefined&&typeof query.type!=="string")
+      throw new BadRequestException("Check the role search filters");
     const search=(query.search??"").trim();
     const offset=query.offset??0,limit=query.limit??20,status=query.status??"all",kind=query.type??"all";
     if(search.length>80||!["all","active","retired"].includes(status)||!["all","system","custom"].includes(kind)||!Number.isInteger(offset)||offset<0||offset>10000||
