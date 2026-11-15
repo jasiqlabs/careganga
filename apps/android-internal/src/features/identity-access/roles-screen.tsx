@@ -42,6 +42,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [selected,setSelected]=useState<string[]>([]);
   const [requestKey,setRequestKey]=useState("");
   const [history,setHistory]=useState<Audit[]|null>(null);
+  const [historyCursor,setHistoryCursor]=useState<string|null>(null);
   const [offset,setOffset]=useState(0);
   const [total,setTotal]=useState(0);
   const [uncertain,setUncertain]=useState(false);
@@ -128,12 +129,25 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   async function loadHistory(){
     setBusy(true);setError("");
     try{
-      const result=await call(token,"audit?limit=30") as {events:Audit[]};
+      const result=await call(token,"audit?limit=30") as {events:Audit[];nextCursor:string|null};
       if(!Array.isArray(result.events))throw new Error("INVALID");
-      setHistory(result.events);
+      setHistory(result.events);setHistoryCursor(result.nextCursor);
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError("Security history is unavailable.");
+    }finally{setBusy(false);}
+  }
+  async function moreHistory(){
+    if(!historyCursor||busy)return;
+    setBusy(true);
+    try{
+      const data=await call(token,"audit?limit=30&cursor="+encodeURIComponent(historyCursor))
+        as {events:Audit[];nextCursor:string|null};
+      if(!Array.isArray(data.events))throw new Error("INVALID");
+      setHistory(old=>[...(old??[]),...data.events]);setHistoryCursor(data.nextCursor);
+    }catch(e){
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      setError("Additional history could not be confirmed.");
     }finally{setBusy(false);}
   }
   return <SafeAreaView style={styles.page}><ScrollView
@@ -189,6 +203,8 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         <Text>{a.outcome} · {a.actorDisplay}</Text>
         <Text>{new Date(a.occurredAt).toLocaleString()}</Text>
       </View>)}
+      {historyCursor&&<Pressable accessibilityRole="button" disabled={busy} style={styles.button}
+        onPress={()=>void moreHistory()}><Text>Load more history</Text></Pressable>}
     </View>}
   </ScrollView>
   <Modal visible={Boolean(editor)} animationType="slide" transparent={false}
