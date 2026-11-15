@@ -1,6 +1,6 @@
 # CG-06 — Implementation-ready user stories & 60 manual QA cases
 
-**Source of truth:** [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [PRD FR-015/016](../../prd.md), [HLD](../../hld.md), CG-06-BR01–05, original [Admin audit A07/A08](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) plus CG-05 A05 and CG-12 B19. Current original screenshot previews visually inspected; exact original full-res/pixel/motion and Web/native render comparison NOT_RUN.
+**Source of truth:** [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [PRD FR-015/016](../../prd.md), [HLD](../../hld.md), CG-06-BR01–05, original [Admin audit A07/A08](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) plus CG-05 A05 and CG-12 B19. The verified original full-resolution A07/A08 (2400×1440) PNGs were visually inspected and SHA-256 original archive checked; rendered app pixel/motion/native comparison and runtime QA NOT_RUN.
 
 **Stage:** Owner-delegated expert **DESIGN** review (approval hash must be present in `../../approvals.json`), not implementation. Three current independently valid vertical stories with 20 unique source/DB/Web/Internal Android manual QA each. `PLANNED` = designed only, not executed. **Implementation NOT_STARTED; authenticated JASIQ Harness resolver, independent qualified CRITICAL DB/security/financial review, real SQL/concurrency/device/Play/perf/visual QA NOT_RUN.** Formal development gate remains NOT_READY until actual predecessor/source, Harness and required code QA evidence exist. No CI/GitHub Actions or second task tracker.
 
@@ -110,7 +110,7 @@ Acceptance: Successful real main outcome plus all US-003-QA01–QA20 source/DB/a
 - **US-003-QA12 — source scenario:** Small regional/child/rare eligibility group and withdrawn consent or unpublished impact must suppress/withhold potential re-identifying counts and CMS stale source; publication revocation removes public source, protected private history remains.
 - **US-003-QA13 — source scenario:** Public Next.js and native Public Android show same approved de-identified CG-18 impact snapshot and human updated/unknown state; neither exposes protected A07 list/detail, QR lookup or export.
 - **US-003-QA14 — source scenario:** Authenticated Internal Android staff sees same permitted six KPI filters, source assistance history, project/status source labels and role-limited export/download as Admin Web; native accessibility/Back, scopes and exact results must match.
-- **US-003-QA15 — source scenario:** Actual A07/A08 KPI cards, status tabs, filters, right Overview/Details/Verification/By Project and recent activity render source-derived count/empty state using original shared navy/indigo tokens; screenshot preview inspection is not rendered PASS.
+- **US-003-QA15 — source scenario:** Actual A07/A08 KPI cards, status tabs, filters, right Overview/Details/Verification/By Project and recent activity render source-derived count/empty state using original shared navy/indigo tokens; full-resolution source screenshot inspected; actual app-render pixel QA remains NOT_RUN.
 - **US-003-QA16 — source scenario:** When zero valid scoped records exist show truthful 'No beneficiaries match these filters'; when CG-09/12 report source unavailable show 'Unable to verify deliveries' not misleading zero/green result or leaked stack.
 - **US-003-QA17 — source scenario:** Compare simultaneous aid return and ongoing report request using consistent original source snapshot/revision: no mix of pre-return stock and post-return net cash, show as-of/reconciled state and safe refresh.
 - **US-003-QA18 — source scenario:** Protect total vs per-project/branch multi-association sums with cross-scope mapping, stable money currency and service units: never add unlike items, double count one person, or include another root's events.
@@ -118,7 +118,7 @@ Acceptance: Successful real main outcome plus all US-003-QA01–QA20 source/DB/a
 - **US-003-QA20 — source scenario:** Full source QA trace across original CG-01 scopes, CG-05/09/12 source, CG-18 CMS, CG-19 docs, Admin/native/public, audit/redacted logs and no zero-job worker traffic; actual SQL/security/device/visual/load tests NOT_RUN.
 
 Verification: Source-trace US-003-QA01–QA20 by exact real backend/API/DB/UI source file:function, role/scope, owner transaction/refund/recovery, responsive Web and named native Android, safe public when applicable; record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE/NOT_APPLICABLE separately from SQL/browser/native/visual/Play NOT_RUN.
-Dependencies: US-001; US-002 required only for delivered-aid figures (with zero aid show authentic empty/zero, not a fake success); no CG-20.
+Dependencies: US-001
 
 ## Execution progress
 - US-001: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
