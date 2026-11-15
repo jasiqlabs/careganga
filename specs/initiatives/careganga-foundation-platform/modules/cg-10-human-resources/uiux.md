@@ -23,6 +23,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-10-owned employee branch selectors
+
+Enrollment and transfer in existing CareGanga HR Web/Internal Android views use genuine permitted CG-02 branch+department options, with active/current and effective-dated previous affiliation. Closed or foreign destination yields safe form error, stale assignment a clear conflict; no separate CG-02 employee editor or fabricated staff option, and an account-role grant cannot be inferred from HR branch selection. Follow original HR visual tokens, drawer and native focus/error treatment; visual/device QA remains NOT_RUN.
+
 ## Original-theme and task-specific interaction blueprint
 
 Preserve staff directory, employee right-drawer onboarding, attendance/leave calendar/statuses, transfer review, performance and letter/memo preview. Group employment and permissions separately from payroll; an employee never sees another staff member's bank fields. Native Internal Android prioritizes own attendance/leave/claim workflows with clear date selector, keyboard/back and offline error.
