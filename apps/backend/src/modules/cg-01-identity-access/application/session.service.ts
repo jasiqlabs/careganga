@@ -5,6 +5,7 @@ import { DATABASE } from "../../../core/infrastructure/database.module";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
 import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-api";
 import { capabilitiesInUse, implementedCapability } from "../domain/capability-catalog";
+import { DEFAULT_SECURITY_POLICY } from "../domain/security-policy";
 
 const INVALID_LOGIN = "The account details or verification code could not be confirmed.";
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -25,17 +26,34 @@ export class SessionService implements IdentityAuthorization {
     return createHmac("sha256", key).update(kind + ":" + value).digest("hex");
   }
 
-  private async takeAttempt(kind: string, value: string, limit: number): Promise<void> {
+  /** Reads the one Foundation-root policy, with secure defaults before initial configuration. */
+  private async loginRules():Promise<{maxSessionAgeSeconds:number;failedAttemptWindowSeconds:number;maxFailedAttempts:number}>{
+    const current=await this.db.query<{
+      max_session_age_seconds:number;failed_attempt_window_seconds:number;max_failed_attempts:number
+    }>(`
+      SELECT COALESCE(p.max_session_age_seconds,$1)::integer AS max_session_age_seconds,
+        COALESCE(p.failed_attempt_window_seconds,$2)::integer AS failed_attempt_window_seconds,
+        COALESCE(p.max_failed_attempts,$3)::integer AS max_failed_attempts
+      FROM access_realm r LEFT JOIN auth_security_policy p ON p.access_realm_id=r.id
+      WHERE r.realm_key='FOUNDATION_ROOT'`,
+      [DEFAULT_SECURITY_POLICY.maxSessionAgeSeconds,DEFAULT_SECURITY_POLICY.failedAttemptWindowSeconds,
+       DEFAULT_SECURITY_POLICY.maxFailedAttempts]);
+    const v=current.rows[0];
+    if(!v)throw new Error("Foundation identity realm is not configured");
+    return {maxSessionAgeSeconds:v.max_session_age_seconds,failedAttemptWindowSeconds:v.failed_attempt_window_seconds,
+      maxFailedAttempts:v.max_failed_attempts};
+  }
+  private async takeAttempt(kind: string, value: string, limit: number,windowSeconds:number): Promise<void> {
     const digest = this.throttleKey(kind, value);
     const result = await this.db.query<{ attempt_count: number }>(`
       INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
       VALUES($1,now(),1)
       ON CONFLICT(key_digest) DO UPDATE SET
-        attempt_count = CASE WHEN auth_login_attempt.window_started_at < now() - interval '15 minutes'
+        attempt_count = CASE WHEN auth_login_attempt.window_started_at < now() - make_interval(secs=>$2)
           THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
         window_started_at = CASE WHEN auth_login_attempt.window_started_at < now() - interval '15 minutes'
           THEN now() ELSE auth_login_attempt.window_started_at END
-      RETURNING attempt_count`, [digest]);
+      RETURNING attempt_count`, [digest,windowSeconds]);
     if (result.rows[0].attempt_count > limit)
       throw new HttpException("Retry limit reached", HttpStatus.TOO_MANY_REQUESTS);
   }
@@ -43,9 +61,11 @@ export class SessionService implements IdentityAuthorization {
   async signIn(details: { email: string; password: string; totp: string; remoteAddress: string; deviceLabel: string; correlationRef: string }):
       Promise<{ sessionToken: string; expiresAt: string; displayName: string }> {
     const email = details.email.trim().toLowerCase();
-    // Do not globally lock out all users sharing one trusted Web BFF/proxy IP.
-    await this.takeAttempt("ip-email", details.remoteAddress + "|" + email, 20);
-    await this.takeAttempt("email", email, 6);
+    const rules=await this.loginRules();
+    // Bound contact-scoped guesses without globally locking users sharing a proxy.
+    await this.takeAttempt("ip-email",details.remoteAddress+"|"+email,
+      Math.min(30,rules.maxFailedAttempts*3),rules.failedAttemptWindowSeconds);
+    await this.takeAttempt("email",email,rules.maxFailedAttempts,rules.failedAttemptWindowSeconds);
     const lookup = await this.db.query<AccountCredential>(`
       SELECT a.id,a.realm_id,a.display_name,a.normalized_email,a.status,a.access_version,
              c.password_hash,c.totp_ciphertext,c.totp_nonce,c.totp_tag,c.last_totp_counter
@@ -91,8 +111,8 @@ export class SessionService implements IdentityAuthorization {
           throw new UnauthorizedException(INVALID_LOGIN);
         const session = await client.query<{ expires_at: Date }>(`
           INSERT INTO auth_session(account_id,token_digest,account_access_version,expires_at,mfa_verified_at,device_label)
-          VALUES($1,$2,$3,now()+interval '8 hours',now(),$4) RETURNING expires_at`,
-          [row.id,digest,current.access_version,details.deviceLabel]);
+          VALUES($1,$2,$3,now()+make_interval(secs=>$5),now(),$4) RETURNING expires_at`,
+          [row.id,digest,current.access_version,details.deviceLabel,rules.maxSessionAgeSeconds]);
         await client.query("UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1",
           [row.id, matchedCounter]);
         await client.query(`
@@ -121,10 +141,13 @@ export class SessionService implements IdentityAuthorization {
       FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.active=true
       WHERE s.token_digest=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
-        AND s.expires_at > now() AND s.last_seen_at > now() - interval '30 minutes'
+        AND s.expires_at > now()
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
       LIMIT 1`,[tokenDigest]);
     const actor=result.rows[0];
     if (!actor) throw new UnauthorizedException();
@@ -144,11 +167,14 @@ export class SessionService implements IdentityAuthorization {
       FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.active=true
       LEFT JOIN role_grant rg ON rg.role_id=r.id
       WHERE s.id=$1 AND s.account_id=$2 AND s.revoked_at IS NULL
-        AND s.expires_at>now() AND s.last_seen_at>now()-interval '30 minutes'
+        AND s.expires_at>now()
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
         AND s.mfa_verified_at IS NOT NULL AND a.realm_id=$3`,
       [actor.activeSessionId,actor.accountId,actor.realmId]);
     if (!result.rowCount)throw new UnauthorizedException();
