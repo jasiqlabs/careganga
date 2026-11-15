@@ -72,6 +72,12 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
   const [previousCase,setPreviousCase]=useState<string|null>(null);
   const [detail,setDetail]=useState<CG03CaseDetail|null>(null);
   const [detailBusy,setDetailBusy]=useState(false);
+  const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
+  const [decisionRemarks,setDecisionRemarks]=useState("");
+  const [decisionTotp,setDecisionTotp]=useState("");
+  const [decisionReview,setDecisionReview]=useState(false);
+  const [decisionUnknown,setDecisionUnknown]=useState(false);
+  const decisionKey=useRef("");
   const [firstReviewer,setFirstReviewer]=useState<"NONE"|"ACCESS_MANAGER">("NONE");
   const [totp,setTotp]=useState("");
   const [unknown,setUnknown]=useState(false);
@@ -165,15 +171,68 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
   }
   async function viewCase(entry:CG03CaseView){
     const seq=++detailSeq.current;setDetailBusy(true);setDetail(null);
+    setDecisionAction(null);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionReview(false);
     try{
       const data=await api<CG03CaseDetail>(
         "cases/"+encodeURIComponent(entry.caseRef));
-      if(seq===detailSeq.current&&validCase(data)&&Array.isArray(data.history))
+      if(seq===detailSeq.current&&validCase(data)&&Array.isArray(data.history)&&
+        Array.isArray(data.allowedDecisions))
         setDetail(data);
       else if(seq===detailSeq.current)throw Error("UNAVAILABLE");
     }catch(e){
       if(seq===detailSeq.current)setMessage({kind:"error",message:explanation(e)});
     }finally{if(seq===detailSeq.current)setDetailBusy(false);}
+  }
+  function chooseDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
+    if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
+    setDecisionAction(action);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionReview(false);decisionKey.current=crypto.randomUUID();setMessage(null);
+  }
+  async function commitDecision(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!detail||!decisionAction||!detail.allowedDecisions.includes(decisionAction)||
+      decisionUnknown||busy)return;
+    if(detail.requiresFreshAuthenticator&&!/^[0-9]{6}$/.test(decisionTotp)){
+      setMessage({kind:"error",message:"A fresh authenticator code is required for the final decision."});
+      return;
+    }
+    if(!decisionReview){setDecisionReview(true);return;}
+    setBusy(true);setMessage(null);
+    try{
+      const result=await api<{status:string;revision:number}>(
+        "cases/"+encodeURIComponent(detail.caseRef)+"/decisions","POST",{
+          action:decisionAction,remarks:decisionRemarks.trim(),expectedRevision:detail.revision,
+          requestKey:decisionKey.current,totp:decisionTotp
+        });
+      if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
+      const selected=detail;
+      setDecisionAction(null);setDecisionReview(false);setDecisionTotp("");
+      decisionKey.current="";
+      setMessage({kind:"success",message:humanStatus(result.status)+
+        ". This records a review decision; access changes are verified separately."});
+      await refresh();await viewCase(selected);
+    }catch(error){
+      if(error instanceof Error&&error.message==="UNKNOWN")setDecisionUnknown(true);
+      setMessage({kind:"error",message:explanation(error)});
+    }finally{setBusy(false);}
+  }
+  async function verifyDecision(){
+    if(!detail||!decisionUnknown||!decisionKey.current||busy)return;
+    setBusy(true);
+    try{
+      const result=await api<{status:string;revision:number|null}>(
+        "cases/"+encodeURIComponent(detail.caseRef)+"/decisions/requests/"+
+          encodeURIComponent(decisionKey.current));
+      if(result.status==="CONFIRMED"&&Number.isInteger(result.revision)){
+        const original=detail;
+        setDecisionUnknown(false);setDecisionAction(null);decisionKey.current="";
+        setMessage({kind:"success",message:"Original review decision confirmed. No duplicate was submitted."});
+        await refresh();await viewCase(original);
+      }else setMessage({kind:"info",message:
+        "No decision is confirmed. Contact Foundation support before retrying."});
+    }catch(error){setMessage({kind:"error",message:explanation(error)});}
+    finally{setBusy(false);}
   }
   async function saveProcess(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(busy||unknown)return;
@@ -341,6 +400,44 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
             </li>)}</ol>}
           <p>Approval is not an access grant. The account source applies changes only
             after a verified final decision.</p>
+          {decisionUnknown&&<div className="permission-group" role="alert">
+            <strong>Review outcome needs verification</strong>
+            <p>Do not send another approval or rejection until the original result is known.</p>
+            <button type="button" disabled={busy} onClick={()=>void verifyDecision()}>
+              Check previous decision</button>
+          </div>}
+          {!decisionUnknown&&detail.allowedDecisions.length>0&&<section
+            className="permission-group" aria-label="Permitted reviewer decisions">
+            <h3>Current review action</h3>
+            <div className="toolbar">
+              {detail.allowedDecisions.map(action=><button type="button" key={action}
+                disabled={busy} aria-pressed={decisionAction===action}
+                onClick={()=>chooseDecision(action)}>
+                {action==="APPROVE"?"Approve":action==="RETURN"?"Send back":
+                  action==="REJECT"?"Reject":"Forward"}</button>)}
+            </div>
+            {decisionAction&&<form className="form" onSubmit={e=>void commitDecision(e)}>
+              <label className="field">Reviewer remarks
+                <textarea maxLength={500} value={decisionRemarks}
+                  onChange={e=>{setDecisionRemarks(e.target.value);setDecisionReview(false);}}
+                  placeholder="Explain the decision and next step"/></label>
+              {detail.requiresFreshAuthenticator&&<label className="field">
+                Fresh authenticator code
+                <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
+                  autoComplete="one-time-code" value={decisionTotp}
+                  onChange={e=>{setDecisionTotp(e.target.value.replace(/[^0-9]/g,""));
+                    setDecisionReview(false);}}/>
+              </label>}
+              {decisionReview&&<p role="status">Confirm your {decisionAction.toLowerCase()}
+                decision for {detail.reference}. A permanent reviewer entry will be recorded.</p>}
+              <div className="toolbar">
+                <button type="button" disabled={busy} onClick={()=>setDecisionAction(null)}>
+                  Cancel</button>
+                <button type="submit" className="primary" disabled={busy}>
+                  {busy?"Recording…":decisionReview?"Confirm decision":"Review decision"}</button>
+              </div>
+            </form>}
+          </section>}
         </div>:<p role="status">Verifying case details…</p>}
       </section></div>}
   </section>;
