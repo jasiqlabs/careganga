@@ -26,6 +26,10 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **State and invariant:** Draft/submitted/approved/rejected/active/expired/renewed. Approved fee and case precede member ID; rejected paid membership requires authorized refund. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
+## CG-04 original ownership of member/volunteer branch affiliation — transferred CG-02-BR06 scope
+
+CG-04-BR04 and CG-02-BR06 are fulfilled **here**, not in CG-02: each member and volunteer application/assignment may select only a genuinely authorized existing ACTIVE CG-02 branch/department and store the owner-linked effective-dated relation in CG-04. A missing branch is represented according to the genuine organization rule; never fabricate a CG-02 branch, person or personnel employment row. CG-04 US-002 owns membership association; US-003 owns volunteer branch/dept availability/assignment. Review and test both in CG-04 before calling their outcomes complete.
+
 ## Complete PRD and BR mapping
 
 - **FR-009/A-04:** Person applies as member — Select configured public membership tier, provide contact/address/referral/documents, pay applicable fee, track review, and receive member ID/certificate/card **only after required conditions**
