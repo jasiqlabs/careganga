@@ -14,6 +14,16 @@ Own a cohesive typed domain/application module for **Approval process/step, case
 
 State/invariant: **Draft/submitted/in-review/returned/rejected/approved; Only owning module applies one business effect after genuine final approval**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete approval case and finalization design
+
+`approval_process(id,type,scope,version,enabled)`, `approval_step(process_id,ordinal,reviewer_role_capability,scope_rule)` freeze a versioned valid route per case; unique process type/version and step ordinal. No developer-hardcoded routing based on status text.
+
+`application_case(id,owner_type,owner_record_ref,applicant,process_version,status,revision,submitted_at)` holds the case and real source reference, unique per owner/source/submission generation. `case_decision(case_id,step_id,actor,action,remarks,expected_revision,idempotency_key,at)` is append-only and current-reviewer/area checked. `document_verification(case_id,file_ref,decision,actor,remarks)` accesses CG-19 protected files only after ownership checks.
+
+Authoritative states: DRAFT→SUBMITTED→IN_REVIEW→FORWARDED/RETURNED/REJECTED/FINAL_APPROVED. Reviewer must have current CG-01 capability **and** actual stage/area assignment; simultaneous reviewer decisions use optimistic version/row lock and return conflict for the loser.
+
+A **real owner module** applies its final business outcome after CG-03 final approval with a unique finalization key. No CG-03 direct writes to member/branch/doctor/accounting tables; unavailable future finalizer remains clearly pending. Callback retry/reconciliation must not activate twice. **QA:** parallel reviewers, stale step, process version changed midcase, document unauthorized, repeat final callback, returned/resubmitted correction, batch action scope and owner outage.
+
 ## Typed API and coordination
 
 An authenticated `/api/registration-approvals` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
