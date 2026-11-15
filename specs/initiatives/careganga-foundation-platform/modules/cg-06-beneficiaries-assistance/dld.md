@@ -20,6 +20,12 @@ Repeated aid to same beneficiary may be legitimate and must remain traceable; de
 
 **QA:** cross-area beneficiary lookup, duplicate request/retry, valid repeated help on two dates, item issue without available stock, finance paid vs initiated, partial delivery/reversal and public de-identification/consent.
 
+## Specific owner contracts and source-QA
+
+- **Beneficiary:** `beneficiary(id,private_profile,geography_ref,consent_ref,status)`, `beneficiary_project(beneficiary_id,project_ref)` and `assistance_event(id,idempotency_key,beneficiary_ref,project_ref,kind,qty,approved_value,stock_movement_ref,financial_posting_ref,status)`. One beneficiary may have several independently audited aid events; source linkage must not be lost in reporting.
+- **Distribution:** only actual permitted CG-12 inventory issue or CG-09 authorized money expense can advance the matching aid event to issued. A failed linked effect stays pending/reconcilable; don't create fake inventory or independent fund balance. Public impact aggregates require CG-18 approved privacy-safe projection or legitimate publication consent.
+- **QA:** last-item race, duplicated payment/issue button, insufficient stock, unapproved aid, repeat legitimate aid, private beneficiary export, cross-region access and reversal reconciliation.
+
 ## Typed API and coordination
 
 An authenticated `/api/beneficiaries-assistance` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

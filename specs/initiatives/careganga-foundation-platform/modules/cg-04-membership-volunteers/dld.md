@@ -23,6 +23,12 @@ State/invariant: **Draft/submitted/approved/rejected/active/expired/renewed; App
 
 **QA:** expired tier, two simultaneous applications/renewals, denied member card before payment/approval, rejected-paid refund, volunteer without staff role, private identity upload, public status by verified applicant and membership/volunteer name option scope.
 
+## Specific owner contracts and source-QA
+
+- **Membership:** `membership_tier(id,fee,duration,benefits,publish_state,version)`, `member_application(id,account_ref,tier_version,approval_ref,fee_state)`, `membership(id,member_code,approved_at,valid_until,status)` and immutable term/renewal history. Unique approved membership ID is *not* application reference. Snapshot tier/fee accepted on application; later price changes do not rewrite submitted fees.
+- **Volunteers:** `volunteer_application` holds verified personal/geographic profile, skills, availability, preferred real CG-02 department, source referral and attachments; approved volunteer relationship is not an employee or automatic staff account. Final CG-03 approval and CG-09 verified member fee are required before CG-19 prints active card/certificate. Rejected paid application requires authorized refund, not disappearing money.
+- **QA:** same applicant retries, failed/pending payment, tier renewal after expiry, approved volunteer vs unapproved staff access, refund, inactive tier not public, cross-area volunteer directory.
+
 ## Typed API and coordination
 
 An authenticated `/api/membership-volunteers` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

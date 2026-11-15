@@ -23,6 +23,12 @@ State/invariant: **Planned/active/hold/completed/cancelled; No fake GPS, duplica
 
 **QA:** forged project/employee ID, concurrent task reassignment, visit checkout before checkin, location permission denied, photo upload failure, inaccurate route evidence, public draft project leak and real budget source mismatch.
 
+## Specific owner contracts and source-QA
+
+- **Projects/tasks:** `project(id,code,status,location_ref,coordinator_ref,budget_ref,revision)`, `project_task(id,project_ref,assignee_ref,priority,due_at,status,revision)`, `activity(id,project_ref,kind,starts_at,status)`. Validate real CG-02 location and actual eligible CG-10/04 assignee (not shadow employee/volunteer). Budget utilization remains CG-09 truth; CG-18 owns public teaser.
+- **Field visit:** `field_visit(id,project_ref,assigned_actor_ref,check_in_at,check_out_at,geo_lat,geo_long,verification_state)` plus source-linked CG-19 media/notes/route and supervisor review history. User-entered coordinate is not falsely marked GPS-verified; check-out cannot precede check-in; upload failures keep evidence pending.
+- **QA:** forged field GPS, denied location permission, duplicate field visit while offline retry, reversed task completion, wrong project scope, project published without approval and finance/beneficiary links from real source.
+
 ## Typed API and coordination
 
 An authenticated `/api/projects-field-operations` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

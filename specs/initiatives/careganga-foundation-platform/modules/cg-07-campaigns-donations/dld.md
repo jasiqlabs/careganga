@@ -23,6 +23,12 @@ Only confirmed received money creates one CG-09 posting keyed by source event an
 
 **QA:** six-step draft recovery, unauthorized publication, missing merchant, two webhook deliveries, pending payment falsely shown received, refund race, campaign closed before late receipt, donor privacy in reports and receipt amount versus CG-09 balance.
 
+## Specific owner contracts and source-QA
+
+- **Campaign:** `campaign(id,source_project_ref,goal,period,status,current_draft_step,approval_ref,publication_version)` keeps the six-stage draft separate from final review/public display. `donation(id,campaign_ref,donor_ref,amount,method,payment_ref,status)` distinguishes payment link/manual contribution, requested vs received.
+- **Verified money:** `payment_event(provider,merchant_ref,event_id,donation_ref,verified_status)` UNIQUE by provider+merchant+event; validate real webhook signature and merchant. Only verified receipt leads to one idempotent CG-09 entry and source-based CG-19 receipt; `donation_refund(parent_payment_ref,amount,status)` cannot exceed accepted amount. Duplicate callbacks, late after campaign close, lost-provider response and manual cash confirmation require accurate reconciliation.
+- **QA:** spoofed webhook, replayed gateway callback, parallel refund, donor privacy, cash recorded pending, receipt before posting, campaign progress net of refund and unauthorized public draft.
+
 ## Typed API and coordination
 
 An authenticated `/api/campaigns-donations` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
