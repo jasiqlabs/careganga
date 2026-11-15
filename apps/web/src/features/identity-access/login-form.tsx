@@ -28,6 +28,6 @@ export function LoginForm() {
     <label className="field">Authenticator code<input autoComplete="one-time-code" required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={totp} onChange={e=>setTotp(e.target.value.replace(/\D/g,""))}/></label>
     {message&&<p role="alert" className="error">{message}</p>}
     <button className="primary" type="submit" disabled={state==="busy"}>{state==="busy"?"Verifying…":"Sign in"}</button>
-    <small>Account recovery requires Foundation support until a verified delivery channel is configured.</small>
+    <small>Recovery depends on your Foundation's verified email service; contact support if unavailable.</small>
   </form>;
 }
