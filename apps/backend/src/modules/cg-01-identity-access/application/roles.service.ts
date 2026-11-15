@@ -273,8 +273,9 @@ export class RolesService {
         SELECT capability_key FROM role_grant WHERE role_id=$1`,[sourceRef]);
       if(!root&&original.rows.some(entry=>entry.capability_key==="roles.manage"))
         throw new ForbiddenException("Protected role definitions require Foundation root");
-      const safeKeys=original.rows.map(r=>r.capability_key)
-        .filter(k=>capabilitiesInUse().some(c=>c.key===k&&c.assignable));
+      // Copy the permissions explicitly selected in the review form.
+      // Protected managers may include roles.manage; non-root editors are denied.
+      const safeKeys=x.keys;
       const result=await client.query<{id:string;revision:number}>(`
         INSERT INTO role(realm_id,name,normalized_name,description,color_key)
         VALUES($1,$2,$3,$4,$5) RETURNING id,revision`,
