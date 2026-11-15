@@ -99,7 +99,7 @@ export function PlatformSettingsPanel(){
   useEffect(()=>{void reload();return()=>{++generation.current;};},[reload]);
 
   function begin(){
-    if(!setting||unknown)return;
+    if(!setting||unknown||busy||integrationEdit)return;
     pendingAction.current="SETTING_SAVE";requestKey.current=crypto.randomUUID();
     setPageSize(String(setting.value));setTotp("");setReview(false);
     setEdit(true);setNotice(null);
@@ -155,7 +155,7 @@ export function PlatformSettingsPanel(){
     finally{setBusy(false);}
   }
   function startIntegration(row?:Connection){
-    if(unknown)return;
+    if(unknown||busy||edit)return;
     pendingAction.current="INTEGRATION_REFERENCE";pendingConnection.current=null;
     requestKey.current=crypto.randomUUID();
     setFormProvider(row?.provider??"");setFormPurpose(row?.purpose??"");
@@ -216,7 +216,7 @@ export function PlatformSettingsPanel(){
     <header className="topbar">
       <div><h1>General Settings</h1>
         <p>System Settings &amp; Governance · Foundation operations</p></div>
-      <div className="toolbar"><button type="button" disabled={loading||busy||unknown}
+      <div className="toolbar"><button type="button" disabled={loading||busy||unknown||edit||integrationEdit}
         onClick={()=>void reload()}>Refresh verified settings</button></div>
     </header>
     {notice&&<p role={notice.kind==="success"?"status":"alert"} className={"notice "+notice.kind}>
@@ -231,7 +231,7 @@ export function PlatformSettingsPanel(){
       <section className="role-pane" aria-label="System parameters">
         <div className="role-pane-heading"><div><h2>System Parameters</h2>
           <p>Operational defaults managed by the Foundation</p></div>
-          <button type="button" disabled={busy||unknown||edit} onClick={begin}>Edit setting</button></div>
+          <button type="button" disabled={busy||unknown||edit||integrationEdit} onClick={begin}>Edit setting</button></div>
         <div className="role-detail-content"><p>Default audit page size</p>
           <strong>{setting.value} records per page</strong>
           <p>Server safety limit: 100 records per request</p>
@@ -251,7 +251,7 @@ export function PlatformSettingsPanel(){
       <section className="role-pane" aria-label="Integrations">
         <div className="role-pane-heading"><div><h2>API &amp; Integrations</h2>
           <p>Secured references and verified provider readiness</p></div>
-          <button type="button" disabled={busy||unknown} onClick={()=>startIntegration()}>
+          <button type="button" disabled={busy||unknown||edit||integrationEdit} onClick={()=>startIntegration()}>
             Add reference</button></div>
         <div className="role-detail-content">
           {!connections.length?<p>No integration references configured. Optional providers remain unavailable.</p>:
@@ -262,7 +262,7 @@ export function PlatformSettingsPanel(){
                 c.status==="FAILED"?"Verification failed":"Verification unavailable"}</p>
               <p>Credential revision {c.credentialRevision}
                 {c.lastCheckedAt?" · Checked "+new Date(c.lastCheckedAt).toLocaleString():" · Not checked"}</p>
-              <div className="toolbar"><button type="button" disabled={busy||unknown}
+              <div className="toolbar"><button type="button" disabled={busy||unknown||edit||integrationEdit}
                 onClick={()=>startIntegration(c)}>Rotate reference</button>
                 <button type="button" disabled={busy||unknown||!!checking}
                   onClick={()=>void checkIntegration(c.provider,c.purpose)}>
