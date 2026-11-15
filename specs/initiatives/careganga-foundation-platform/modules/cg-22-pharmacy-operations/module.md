@@ -25,6 +25,17 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; actual lockfile/Gradle/AAB/SDK-de
 
 **No expanded pharmacy sales service:** Core published medicinal pricing is informational, not proof of availability, patient eligibility, licensed dispensing, prescription, medication delivery, cart, sale/checkout, tax result, wholesale transaction, clinical advice or retail invoice. Under ERP ON, a stock `ISSUE` is an auditable internal stock-out reason under licensed responsible supervision where required, **not** a patient prescription fulfillment or cash sale. No medicine stock movement alone creates a CG-17 patient benefit/center invoice/CG-09 Foundation cash or FR-087 settlement. **Expired, recalled or quarantined physical stock remains on-hand for audit but has zero issuable available quantity. Each verified partial transfer reception is separately immutable and replay-safe.** Such financial link would need a separately authorized **real completed payable service** and CG-17 existing policy with original source adapter in the actual initiating owner; it is NOT invented by this module.
 
+## Canonical BR / PRD / delivery coverage
+
+| Source requirement | Actual owning CG-22 story and complete acceptance |
+| --- | --- |
+| **CG-22-BR01 / FR-083** | US-001 verifies genuine medicine product/pack, own-center effective MRP/price/discount review, real price-only public catalogue/enquiry **while ERP OFF** |
+| **CG-22-BR02 / FR-084** | US-002 holds one scoped immutable batch/stock movement and nonnegative base-unit physical/reserved/issuable stock with protected adjustments and source replay |
+| **CG-22-BR03 / FR-084** | US-003 owns pharmacy supplier, local purchase lines, verified partial GRN receipt, sourced lot cost/quantity and original CG-19 protected evidence; never CG-12/CG-09 finance |
+| **CG-22-BR04 / FR-084** | US-004 owns two eligible same-partner-location stock dispatch/transit/receipt/return, and US-005 independently owns expiry, quarantine, recall, alert and source-truth reporting |
+| **CG-22-BR05 / FR-081** | US-001 source catalogue remains available with default-off global ERP; US-002–US-005 enforce real global flag + CG-14 center grant + current CG-01 action on list/write/export/jobs, retain old records without operational OFF exposure |
+| **FR-087 / D-28 conditional** | No authorized patient medicine checkout/dispensing business source in CG-22; do **not** post CG-17 money from stock issue, supplier GRN or catalogue. Later separately approved completed service would require its actual owner adapter into existing CG-17 with own acceptance/QA, not a fictitious current US. |
+
 ## Source design and independent story order
 
 | Story | CG-22-owned useful outcome | Actual prerequisites | Cross-stack owner and safeguards |
