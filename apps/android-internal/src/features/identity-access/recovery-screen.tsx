@@ -52,6 +52,7 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
      behavior={Platform.OS==="ios"?"padding":undefined}><ScrollView
      keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
     <Text accessibilityRole="header" style={styles.title}>Recover Foundation staff access</Text>
+    <View style={styles.formCard}>
     <Text style={styles.label}>Work email</Text><TextInput accessibilityLabel="Work email" autoComplete="email"
       keyboardType="email-address" autoCapitalize="none" value={email}
       editable={!complete} onChangeText={setEmail} style={styles.input}/>
@@ -76,12 +77,14 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
     <Pressable accessibilityRole="button" style={styles.button} onPress={onExit}>
       <Text>Return to sign in</Text>
     </Pressable>
+    </View>
   </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:careGangaTheme.background},
   content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
   title:{fontSize:25,fontWeight:"700",color:careGangaTheme.text},
+  formCard:{padding:20,backgroundColor:careGangaTheme.surface,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:12,gap:12},
   group:{gap:8},
   label:{fontWeight:"600",color:careGangaTheme.text},
   input:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,paddingHorizontal:12,backgroundColor:careGangaTheme.surface,color:careGangaTheme.text},
