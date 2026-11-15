@@ -5,10 +5,11 @@ import {ApprovalProposalController} from "./http/proposal.controller";
 import {ApprovalDecisionController} from "./http/decision.controller";
 import {ApprovalDecisionService} from "./application/decision.service";
 import {ApprovalFinalizationService} from "./application/finalization.service";
+import {ApprovalFinalizationController} from "./http/finalization.controller";
 @Module({
   imports:[IdentityAccessModule],
   providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService],
-  controllers:[ApprovalProposalController,ApprovalDecisionController],
+  controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController],
   exports:[ApprovalProposalService]
 })
 export class RegistrationApprovalsModule {}
