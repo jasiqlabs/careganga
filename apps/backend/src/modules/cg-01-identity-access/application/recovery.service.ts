@@ -91,10 +91,22 @@ export class RecoveryService {
     }
     return {message:GENERIC_DELIVERY,status:"DELIVERY_UNCONFIRMED",supportReference};
   }
-  async confirmRecovery(body:{token:string;password:string;totp:string;email:string}):
+  async confirmRecovery(body:{token:string;password:string;totp:string;email:string},remoteAddress:string):
       Promise<{ status:"PASSWORD_RESET"; message:string }> {
     const tokenDigest=digest(body.token);
     const email=body.email.trim().toLowerCase();
+    // Bound costly scrypt work before inspecting even fabricated tokens.
+    const key=this.idempotency(email,"confirm:"+remoteAddress);
+    const attempts=await this.db.query<{attempt_count:number}>(`
+      INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
+      VALUES($1,now(),1)
+      ON CONFLICT(key_digest) DO UPDATE SET
+        attempt_count=CASE WHEN auth_login_attempt.window_started_at<now()-interval '1 hour'
+          THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
+        window_started_at=CASE WHEN auth_login_attempt.window_started_at<now()-interval '1 hour'
+          THEN now() ELSE auth_login_attempt.window_started_at END
+      RETURNING attempt_count`,[key]);
+    if(attempts.rows[0].attempt_count>10) throw new HttpException("Retry limited",HttpStatus.TOO_MANY_REQUESTS);
     const newHash=await hashPassword(body.password);
     const client=await this.db.connect();
     let outcome:"SUCCESS"|"DENIED"="DENIED";

@@ -16,7 +16,7 @@ export class RecoveryController{
   }
   @Post("confirm")
   @HttpCode(200)
-  async confirm(@Body() body:{email?:unknown;token?:unknown;password?:unknown;totp?:unknown}){
+  async confirm(@Body() body:{email?:unknown;token?:unknown;password?:unknown;totp?:unknown},@Req() req:Request){
     if(!body||typeof body.email!=="string"||body.email.length>254||
       typeof body.token!=="string"||!/^[a-zA-Z0-9_-]{40,100}$/.test(body.token)||
       typeof body.password!=="string"||body.password.length<14||Buffer.byteLength(body.password)>1024||
@@ -24,6 +24,6 @@ export class RecoveryController{
       throw new BadRequestException();
     return this.service.confirmRecovery({
       email:body.email,token:body.token,password:body.password,totp:body.totp
-    });
+    },req.ip??"unknown");
   }
 }
