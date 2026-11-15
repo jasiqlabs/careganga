@@ -14,6 +14,18 @@ Own a cohesive typed domain/application module for **Patients and consent, sched
 
 State/invariant: **Slot free/held/booked/blocked; appointment confirmed/completed/cancelled/no-show; Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete scheduling and clinical access contracts
+
+**Patient and schedule:** `patients(id,verified_contact_ref,virtual_patient_id,consent_version,status)` has a unique issued patient number; identity links require verification/consent. `doctor_schedules(doctor_center_ref,day,window,slot_duration,capacity,version)` and `schedule_exceptions(leave,holiday,block)` validate real approved CG-14 affiliations. Medical files require patient/care-relationship authorization.
+
+**Doctor-wide occupancy and center capacity:** `doctor_reservations(id,doctor_id,center_location_id,start_at,end_at,status,hold_expires_at,appointment_id)` is one authority for held and confirmed in-person periods. PostgreSQL time-range exclusion (or proven transactional doctor-wide lock) prevents overlapping active doctor reservations **at different centers**. Center-specific slot capacity must be checked under the same transaction. Temporary holds expire/release explicitly; no client-only availability claim.
+
+**Two journeys, one inventory:** center-first and date/time-first search consume the same database slots. Patient explicitly selects correct center/address/fee where multiple centers match. `appointments` retains accepted fee and real CG-17 policy/amount snapshot where available; booking and payment (DUE/PENDING/PAID) statuses are distinct. No invented benefit before actual owner integration.
+
+**Late payment and visit:** online callback verified after hold expiry reconciles or starts authorized refund/manual recovery, not silent overbooking. `visit_queue` tracks check-in/waiting/in-consultation/completed/no-show/canceled within own center and purpose-specific access.
+
+**Source QA:** simultaneous Web/Android/reception last-slot and same doctor cross-center booking; block/leave after booking; expired hold + late payment; stale fee; forged patient/QR lookup; missed payment/notification and cancellation. Exact locking and exclusion constraint must be DB-reviewed before approval.
+
 ## Typed API and coordination
 
 An authenticated `/api/patients-appointments` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
