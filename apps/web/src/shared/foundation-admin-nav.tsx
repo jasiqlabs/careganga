@@ -16,7 +16,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles}:Fo
     ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
   return <nav className="sidebar" aria-label="Foundation navigation">
-    <div className="sidebar-brand"><strong>CAREGANGA</strong><span>FOUNDATION</span></div>
+    <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
     <div className="sidebar-filter">
       <label htmlFor="foundation-menu-filter">Search menu</label>
       <input id="foundation-menu-filter" type="search" value={query}

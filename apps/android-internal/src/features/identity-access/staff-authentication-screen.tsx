@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RolesScreen } from "./roles-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { identityRequest } from "./http-client";
-import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
 
@@ -154,7 +154,7 @@ export function StaffAuthenticationScreen(){
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={styles.brandBar}><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
+        <View style={styles.brandBar}><Image source={require("../../../assets/careganga-mark.png")} accessibilityLabel="CareGanga Foundation" style={styles.brandImage}/><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
         <Text accessibilityRole="header" style={styles.title}>Foundation staff access</Text>
         {state==="checking"?<ActivityIndicator accessibilityLabel="Verifying saved session"/>:actor?
           <View style={styles.formCard}>
@@ -191,6 +191,7 @@ const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:careGangaTheme.background},
   content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
   brandBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:8},
+  brandImage:{width:48,height:48,borderRadius:24},
   brandMark:{width:46,height:46,borderRadius:23,backgroundColor:careGangaTheme.sidebar,alignItems:"center",justifyContent:"center"},
   brandLetter:{color:careGangaTheme.sidebarText,fontWeight:"800",fontSize:16},
   brand:{fontWeight:"800",fontSize:18,letterSpacing:.8,color:careGangaTheme.sidebar},

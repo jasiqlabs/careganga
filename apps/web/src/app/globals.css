@@ -191,3 +191,9 @@ button:disabled { cursor:wait; opacity:.65; }
  background:var(--cg-surface);border-top:1px solid var(--cg-border);padding:1rem 0 1.25rem;
  justify-content:flex-end;z-index:1}
 @media(max-width:48rem){.role-drawer .form>.toolbar:last-child{bottom:-1rem;padding-bottom:max(1.25rem,env(safe-area-inset-bottom))}}
+
+/* Source-derived mark cropped from owner's original U02 Admin screenshot, not generated artwork. */
+.sidebar-brand{display:flex;flex-direction:row;align-items:center;gap:.7rem}
+.sidebar-brand-name{display:grid;gap:.1rem}
+.sidebar-brand>img,.cg-brandline img{flex:none;width:2.65rem;height:2.65rem;object-fit:contain}
+.cg-brandline{display:inline-flex;align-items:center;gap:.65rem;color:var(--cg-sidebar)}
