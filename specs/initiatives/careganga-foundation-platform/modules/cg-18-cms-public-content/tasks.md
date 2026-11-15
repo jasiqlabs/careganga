@@ -10,9 +10,9 @@
 Outcome: Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs, website navigation and public Login/Join visibility with authorized preview/publish controls.
 Requirements: FR-066, CG-18-BR01, CG-18-BR02, CG-18-BR03, CG-18-BR04, CG-18-BR08, CG-18-BR09, CG-18-BR10, CG-18-BR11, CG-18-BR25, CG-18-BR26; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-18 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification.
+Acceptance: Create/edit/preview/approve/publish real homepage/About/Our Work content with source-preserving navigation and media. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-001-QA01:** Given a permitted **Admin edits Foundation site** and real source data, perform: **Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs, website navigation and public Login/Join visibility with authorized preview/publish controls**. Expected: UI reports actual committed or pending state; backend enforces action plus real resource scope, and persists one correctly audited owner transition.
+- **US-001-QA01:** Starting from actual authorized actor and implemented owner record: Create/edit/preview/approve/publish real homepage/About/Our Work content with source-preserving navigation and media. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-001-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -27,9 +27,9 @@ Dependencies: None
 Outcome: Publish editable Impact groups, geography/charts/stories with appropriate provenance; maintain 80G/PAN/registration, annual and financial disclosure pages/documents.
 Requirements: FR-067, CG-18-BR12, CG-18-BR13, CG-18-BR14, CG-18-BR15, CG-18-BR16, CG-18-BR17; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-18 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification.
+Acceptance: Publish approved de-identified impact sections only from true operational owner projections or genuine editorial content. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-002-QA01:** Given a permitted **Admin edits NGO impact/transparency** and real source data, perform: **Publish editable Impact groups, geography/charts/stories with appropriate provenance; maintain 80G/PAN/registration, annual and financial disclosure pages/documents**. Expected: UI reports actual committed or pending state; backend enforces action plus real resource scope, and persists one correctly audited owner transition.
+- **US-002-QA01:** Starting from actual authorized actor and implemented owner record: Publish approved de-identified impact sections only from true operational owner projections or genuine editorial content. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-002-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -44,9 +44,9 @@ Dependencies: US-001
 Outcome: Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status.
 Requirements: FR-068, CG-18-BR05, CG-18-BR06, CG-18-BR07, CG-18-BR08, CG-18-BR24, CG-18-BR27; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-18 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification.
+Acceptance: Manage authorized public gallery, publication, video/news/event revision and media rights with clear publish state. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-003-QA01:** Given a permitted **Admin publishes reusable content** and real source data, perform: **Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status**. Expected: UI reports actual committed or pending state; backend enforces action plus real resource scope, and persists one correctly audited owner transition.
+- **US-003-QA01:** Starting from actual authorized actor and implemented owner record: Manage authorized public gallery, publication, video/news/event revision and media rights with clear publish state. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-003-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-003-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-003-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -61,9 +61,9 @@ Dependencies: US-001
 Outcome: Show approved directory/category cards, provider profiles, doctors, current price/facility/benefit messaging; don't allow CMS to overwrite provider verification, scheduling or contribution ownership.
 Requirements: FR-069, CG-18-BR18, CG-18-BR19, CG-18-BR20, CG-18-BR21, CG-18-BR22, CG-18-BR23, CG-18-BR28; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-18 owns the full responsive Web/no owned native Android screen (NOT_APPLICABLE)/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification.
+Acceptance: Show only genuinely approved/published provider/doctor/service directory data when owning CG-14/17 sources exist. Business result must agree with real authorized source, rejected/concurrent/retried state, permitted Web/native consumer and original CareGanga component/motion reference.
 QA cases:
-- **US-004-QA01:** Given a permitted **Healthcare content is published** and real source data, perform: **Show approved directory/category cards, provider profiles, doctors, current price/facility/benefit messaging; don't allow CMS to overwrite provider verification, scheduling or contribution ownership**. Expected: UI reports actual committed or pending state; backend enforces action plus real resource scope, and persists one correctly audited owner transition.
+- **US-004-QA01:** Starting from actual authorized actor and implemented owner record: Show only genuinely approved/published provider/doctor/service directory data when owning CG-14/17 sources exist. Expected: verified persisted result or accurately pending state, safe UI feedback and one audited owner transition.
 - **US-004-QA02:** Wrong role, revoked user or out-of-scope actor attempts deep link, direct API, selector or export → backend denies with no protected data leak or unauthorized write; UI uses clear wording.
 - **US-004-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-004-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -74,7 +74,7 @@ Verification: On actual implementation source-trace US-004-QA01–QA07 UI→requ
 Dependencies: US-001
 
 ## Execution progress
-- US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-002: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-003: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-004: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
