@@ -7,7 +7,7 @@
 
 ## Approved task definitions
 
-**Approval truth:** The two revised story definitions and all 16 QA cases are source-reviewed proposals; CG-21 is not yet user-confirmed or formally delegated-approved. Do not change blocked execution progress or call this release/DB proof.
+**Approval truth:** Two stories and 16 QA cases have been source-reviewed, but CG-21 owner confirmation and formal stage approval are still pending. Each initial story uses only real CG-01 predecessor data and CG-21 source records. Optional unconfigured providers are represented truthfully as unavailable, without blocking ordinary settings/audit. Neither missing future business-module data nor mock provider results are acceptable. Keep existing BLOCKED progress unchanged.
 
 ### US-001 — Manage versioned platform settings and verified integrations
 
