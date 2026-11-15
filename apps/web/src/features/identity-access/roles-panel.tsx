@@ -117,7 +117,7 @@ export function RolesPanel(){
     const source=editor.source;
     const payload={name:name.trim(),description:description.trim(),colorKey:"default",
       actionKeys:selected,requestKey:requestKey.current,
-      ...(editor.mode==="edit"&&source?{expectedRevision:source.revision}:{})};
+      ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})};
     const path=editor.mode==="edit"&&source?"roles/"+source.roleRef:
       editor.mode==="copy"&&source?"roles/"+source.roleRef+"/copy":"roles";
     const method=editor.mode==="edit"?"PATCH":"POST";
