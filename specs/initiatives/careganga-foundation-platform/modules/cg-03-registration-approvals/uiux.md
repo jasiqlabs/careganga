@@ -1,7 +1,7 @@
 # CG-03 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+**State:** REQUIRED/DRAFT aligned to current PRD/HLD v1.1 and CG-03 immutable-approval contracts; authenticated Harness stage resolver and current-hash approval NOT_RUN; original PNG/video pixel/motion parity UNVERIFIED.
 
 ## Exact existing design and animation contract
 
@@ -11,17 +11,17 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 ## Screen/flow map
 
-- **FR-006:** Member/volunteer/employee/CSR/branch/provider submits — Give application number and tracking; support application-specific documents, verifications, notes, evidence and configurable stepwise routing. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
-- **FR-007:** Authorized reviewer decides — Approve, reject, return for correction or forward; show pending and prior steps, reviewer, remarks and time; prevent action by unrelated or revoked reviewer. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
-- **FR-008:** Final authorized approval occurs — Produce exactly one owner-domain effect (member/employee/provider/branch activation, entitlement or authorized financial outcome), never from a pending stage. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-006:** Initial real submission is a protected CG-01 access-change for an existing verified account/role, with one readable application reference, immutable submitted revision, frozen reviewer route and safe tracking. Show future member/branch/provider categories only after those owners exist. A no-attachment access case must work before CG-19. Preserve CareGanga Admin registration list, actual status cards, U11/U12/U13/B29 information hierarchy, never sample applicants.
+- **FR-007:** Protected reviewer Web and Internal Android inbox shows only real assigned cases/step, genuine account/source details, expected revision, decision timeline and permitted Approve/Reject/Return/Forward actions. Revoked, foreign-scope, stale, conflicting or self-approval attempts are disabled in UI and denied in backend with clear reason. Returned correction starts a **new** submitted source revision/case linked to prior history; old approval does not authorize current proposal. CG-19 document preview and verify-by-file appear only for real available authorized evidence.
+- **FR-008:** Render distinct **Final decision recorded → Applying source change → Change confirmed / Unable to confirm / Owner rejected** states. A CG-03 approved case is not proof of changed CG-01 grants. Show verified current source outcome only after guarded CG-01 finalization; repeated callbacks and unknown-write response resolve by existing application/status lookup, not duplicate mutation. Future branch/member/provider/finance effects remain unavailable until true owners integrate.
 
 **Responsive:** original desktop hierarchy remains recognisable; tablet/phone adapt the sidebar, search/filter and long tables; drawers use full width on narrow Web when required.  
-**Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
+**Native:** CG-03 has only **Internal Android** native case inbox, assigned review detail, permitted decision/remark and timeline, with native Back/keyboard/touch/accessibility. No Public Android administrative approvals. Reuse existing source-derived brand/motion tokens, never a disguised Admin WebView; offline/unknown submission must not claim approval.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
 ## Reference-faithful screen hierarchy and interaction tests
 
-Keep original registration list and status counters, scoped inbox, applicant/source summary, approval-step timeline, supporting documents (only when real CG-19 source exists), remarks and Confirm/Return/Reject/Forward footer. Keep approval pending distinct from final source activation. Narrow layouts expose status/history before secondary metrics; reject inaccessible deep links.
+Keep U11–U13/B29 original registration list, filter/status counters based on real CG-01 cases, scoped inbox, account/role proposal summary, pinned revision and process-step timeline, remarks, and permissioned Confirm/Return/Reject/Forward footer. Attachment panel is absent/clearly not required in the initial no-file access-change case; later real CG-19 evidence alone enables document preview. Separate Submitted/In review/Returned/Rejected/Final decision/Pending owner/Confirmed source states, and distinguish incomplete current case from earlier returned case history. Narrow Web/Android prioritize status/next action; deep link denial and stale expected revision show human errors rather than leaked data.
 
 **Original identity is mandatory on every relevant state:** reuse the exact extracted CareGanga sidebar/header, navigation selection, semantic color/typography/spacing/icons, cards, tables, drawers, modal shapes, badges and source-supported transitions. Screen opening, permission denial, pending confirmation, validation, conflict, successful commit and unknown network response must have designed states. Compare original screenshot/video against rendered reference-sized desktop, narrow Web and applicable native Android during independent QA; video-unknown animation timing remains NOT_VERIFIED, not invented. Keep motion reduced for accessibility.
 
