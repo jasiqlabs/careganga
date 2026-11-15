@@ -387,8 +387,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
               <Text>{role.name}{editor?.mode==="copy"&&editor.source?.roleRef===role.roleRef?" — selected":""}</Text>
             </Pressable>)}
           </View>}
-          <Text style={styles.fieldLabel}>Area level</Text>
-          <Text>Foundation (organization-wide)</Text>
+          <Text style={styles.fieldLabel}>Applies to: Entire foundation</Text>
           <Text style={styles.fieldLabel}>Colour</Text>
           <View style={styles.swatches}>
             {roleColorOptions.map(option=><Pressable key={option.key}
@@ -400,17 +399,16 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
             </Pressable>)}
           </View>
           {editor?.mode==="copy"&&<Text>Only permitted actions are copied. People and protected rights are not copied.</Text>}
-          {groups.map(g=><View key={g.group} style={styles.group}>
+          {groups.filter(g=>g.actions.some(c=>c.assignable)).map(g=><View key={g.group} style={styles.group}>
             <Text style={styles.heading}>{g.group}</Text>
-            {g.actions.map(c=><View key={c.key} style={styles.permission}>
-              <Text style={styles.permissionLabel}>
-                {c.businessLabel}{c.assignable?"":" — Protected"}
-              </Text>
-              <Switch accessibilityLabel={c.businessLabel} disabled={!c.assignable||saving||editor?.mode==="copy"}
-                value={c.assignable&&selected.includes(c.key)}
+            {g.actions.filter(c=>c.assignable).map(c=><View key={c.key} style={styles.permission}>
+              <Text style={styles.permissionLabel}>{c.businessLabel}</Text>
+              <Switch accessibilityLabel={c.businessLabel} disabled={saving||editor?.mode==="copy"}
+                value={selected.includes(c.key)}
                 onValueChange={value=>setSelected(old=>value?[...old,c.key]:old.filter(k=>k!==c.key))}/>
             </View>)}
           </View>)}
+          <Text>Administrator-only permissions are managed by the system.</Text>
           <Text>{selected.length} actions selected</Text>
           {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           {!!success&&<Text>{success}</Text>}
