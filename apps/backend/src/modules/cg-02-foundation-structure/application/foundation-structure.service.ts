@@ -302,6 +302,7 @@ export class FoundationStructureService {
     if(!["DEPARTMENT","COMMITTEE"].includes(x.kind))throw new BadRequestException("Select department or committee");
     return this.perform(bearer,"foundation.departments.manage","DEPARTMENT_CREATE",input.requestKey,x,"DEPARTMENT",
       async(client,actor)=>{
+        if(x.headRef)await this.identity.assertCurrent(client,actor,"foundation.departments.assign");
         await this.departmentSources(client,actor,x.geographyRef,x.parentRef,x.headRef);
         const row=await client.query<{id:string;version:number}>(`
           INSERT INTO department(root_realm_id,kind,name,normalized_name,description,opening_date,
@@ -324,11 +325,13 @@ export class FoundationStructureService {
       throw new BadRequestException("Check Foundation department details");
     return this.perform(bearer,"foundation.departments.manage","DEPARTMENT_UPDATE",input.requestKey,x,"DEPARTMENT",
       async(client,actor)=>{
-        const old=await client.query<{version:number}>(`
-          SELECT version FROM department WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
+        const old=await client.query<{version:number;head_account_ref:string|null}>(`
+          SELECT version,head_account_ref FROM department WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
           [departmentRef,actor.realmId]);
         if(!old.rowCount)throw new NotFoundException("Department is unavailable");
         if(old.rows[0].version!==x.expectedVersion)throw new ConflictException("Department was changed. Refresh.");
+        if(x.headRef!==old.rows[0].head_account_ref)
+          await this.identity.assertCurrent(client,actor,"foundation.departments.assign");
         await this.departmentSources(client,actor,x.geographyRef,x.parentRef,x.headRef,departmentRef);
         if(!x.active){
           const active=await client.query(`SELECT 1 FROM department
@@ -387,4 +390,43 @@ export class FoundationStructureService {
       activeFrom:x.active_from.toISOString(),activeUntil:x.active_until?.toISOString()??null
     })),limit:100};
   }
+  async endParticipant(bearer:string,departmentRef:string,participationRef:string,requestKey:string){
+    id(departmentRef);id(participationRef);
+    return this.perform(bearer,"foundation.departments.assign","PARTICIPANT_END",requestKey,
+      {departmentRef,participationRef},"PARTICIPANT",
+      async(client,actor)=>{
+        const dep=await client.query(`SELECT 1 FROM department
+          WHERE id=$1 AND root_realm_id=$2 FOR SHARE`,[departmentRef,actor.realmId]);
+        if(!dep.rowCount)throw new NotFoundException("Department is unavailable");
+        const done=await client.query<{id:string}>(`
+          UPDATE department_participation SET active_until=now()
+          WHERE id=$1 AND root_realm_id=$2 AND department_id=$3 AND active_until IS NULL
+          RETURNING id`,[participationRef,actor.realmId,departmentRef]);
+        if(!done.rowCount)throw new ConflictException("This officeholder assignment has changed");
+        return {id:done.rows[0].id,version:2};
+      },true);
+  }
+  async lookupChange(bearer:string,action:string,requestKey:string){
+    id(requestKey);
+    const actions:Record<string,string>={
+      PROFILE_SAVE:"foundation.profile.manage",AREA_CREATE:"foundation.geography.manage",
+      AREA_UPDATE:"foundation.geography.manage",DEPARTMENT_CREATE:"foundation.departments.manage",
+      DEPARTMENT_UPDATE:"foundation.departments.manage",PARTICIPANT_ADD:"foundation.departments.assign",
+      PARTICIPANT_END:"foundation.departments.assign"
+    };
+    const permission=actions[action];
+    if(!permission)throw new BadRequestException("This change type is not supported");
+    const actor=await this.actor(bearer,permission);
+    const rows=await this.db.query<{result_ref:string|null;result_version:number|null}>(`
+      SELECT result_ref,result_version FROM foundation_command
+      WHERE root_realm_id=$1 AND actor_ref=$2 AND action=$3 AND request_key=$4`,
+      [actor.realmId,actor.accountId,action,requestKey]);
+    const row=rows.rows[0];
+    return {status:row?.result_ref&&row.result_version!==null?"CONFIRMED":"NOT_CONFIRMED",
+      ...(row?.result_ref&&row.result_version!==null?
+        {recordRef:row.result_ref,version:row.result_version}:{}),
+      message:row?.result_ref?"The original change is recorded. Refresh the information.":
+        "This change has not been confirmed. Refresh before trying again."};
+  }
+
 }
