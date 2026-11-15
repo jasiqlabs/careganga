@@ -104,7 +104,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       await call(token,url,method,{
         name:name.trim(),description:description.trim(),colorKey:"default",
         actionKeys:selected,requestKey,
-        ...(editor.mode==="edit"&&source?{expectedRevision:source.revision}:{})
+        ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})
       });
       setEditor(null);await load(search,offset);setSuccess("Role change saved.");
     }catch(e){
