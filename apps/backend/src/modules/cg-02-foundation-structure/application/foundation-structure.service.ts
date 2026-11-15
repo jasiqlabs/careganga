@@ -266,10 +266,18 @@ export class FoundationStructureService {
         AND ($3='' OR normalized_name LIKE $3 ESCAPE '\\')
         ORDER BY name,id LIMIT 100`,
       [actor.realmId,kind??null,term?"%"+term+"%":""]);
+    // Read-only CG-01 name projection; no account table imports into the CG-02 owner.
+    const labelClient=await this.db.connect();
+    let labels:Record<string,string>;
+    try{
+      labels=await this.identity.accountLabels(labelClient,actor,
+        r.rows.flatMap(d=>d.head_account_ref?[d.head_account_ref]:[]));
+    }finally{labelClient.release();}
     return {departments:r.rows.map(d=>({
       departmentRef:d.id,kind:d.kind,name:d.name,description:d.description,
       active:d.active,version:d.version,parentRef:d.parent_department_id,
       geographyRef:d.geography_area_id,headAccountRef:d.head_account_ref,
+      headDisplayName:d.head_account_ref?labels[d.head_account_ref]??null:null,
       openingDate:d.opening_date,scope:"Foundation"
     })),limit:100};
   }
@@ -388,8 +396,15 @@ export class FoundationStructureService {
       SELECT id,account_ref,office_role,active_from,active_until FROM department_participation
       WHERE root_realm_id=$1 AND department_id=$2 ORDER BY active_from DESC,id DESC LIMIT 100`,
       [actor.realmId,departmentRef]);
+    const labelClient=await this.db.connect();
+    let labels:Record<string,string>;
+    try{
+      labels=await this.identity.accountLabels(labelClient,actor,
+        rows.rows.map(row=>row.account_ref));
+    }finally{labelClient.release();}
     return {participants:rows.rows.map(x=>({
-      participationRef:x.id,accountRef:x.account_ref,officeRole:x.office_role,
+      participationRef:x.id,accountRef:x.account_ref,displayName:labels[x.account_ref]??null,
+      officeRole:x.office_role,
       activeFrom:x.active_from.toISOString(),activeUntil:x.active_until?.toISOString()??null
     })),limit:100};
   }
