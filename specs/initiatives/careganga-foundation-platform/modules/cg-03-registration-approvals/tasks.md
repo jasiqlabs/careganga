@@ -3,7 +3,7 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content DELEGATED_APPROVED (15 Nov 2026) by JASIQ AI Design Review Agent, owner-confirmed after completed source review/fix/re-review of [PRD](../../prd.md) FR-006–008, [HLD](../../hld.md), [module](module.md), [UIUX](uiux.md), [DLD](dld.md); 3 stories/31 unique planned QA cases. No source-code execution/runtime/visual QA claimed.  
-**Development gate:** CG-03 design source review/fix/re-review COMPLETE for the **owner's next module-by-module decision**; current-hash CG-03 design approval NOT_RECORDED, latest PRD/HLD REVIEW_REQUIRED, authenticated pinned Harness resolver, independent CRITICAL DB/migration and runtime/device/visual QA NOT_RUN. All three stories remain BLOCKED; developer sequence is vertical code → manual source expert review/fix/re-review → every QA trace, no CI/GH Actions or invented PASS.
+**Development gate:** CG-03 owner-delegated current-content design approval RECORDED; **not a formal development-ready stage**: current PRD/HLD REVIEW_REQUIRED, real CG-01 prerequisite NOT_DELIVERED, authenticated Harness resolver and qualified CRITICAL DB/migration review NOT_RUN. All 3 stories BLOCKED; implementation source → expert review/fix/re-review → QA trace requires real developer authority, and runtime/device/visual QA NOT_RUN. No CI/GH Actions or invented PASS.
 
 ## Approved task definitions
 
