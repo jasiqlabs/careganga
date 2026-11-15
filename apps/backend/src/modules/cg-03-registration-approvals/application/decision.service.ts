@@ -6,9 +6,11 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import {UUID,hash} from "./proposal.service";
+import {ApprovalFinalizationService} from "./finalization.service";
 
 type CaseRow={id:string;realm_id:string;case_number:string;proposer_id:string;
-  process_id:string;status:string;revision:number;current_step:number};
+  process_id:string;status:string;revision:number;current_step:number;
+  proposal_digest:string};
 type StepRow={ordinal:number;capability_key:"roles.assign"|"approvals.review";
   protected_root_required:boolean};
 type DecisionRow={actor_id:string;request_digest:string;action:string;
@@ -35,9 +37,22 @@ function inputRecord(value:unknown){
 export class ApprovalDecisionService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
-    private readonly owner:ProtectedAccessOwnerService){}
+    private readonly owner:ProtectedAccessOwnerService,
+    private readonly finalizer:ApprovalFinalizationService){}
 
   async decide(bearer:string,caseInput:unknown,payload:unknown,correlationRef:string){
+    const committed=await this.decideCommitted(bearer,caseInput,payload,correlationRef);
+    if("effectKey" in committed&&typeof committed.effectKey==="string"){
+      const {effectKey,...safe}=committed;
+      let result:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED"="PENDING_OWNER";
+      try{result=(await this.finalizer.applyPending(effectKey)).status;}
+      catch{/* The immutable pending owner effect is still authoritative. */}
+      return {...safe,status:result,sourceEffect:result};
+    }
+    return committed;
+  }
+  private async decideCommitted(bearer:string,caseInput:unknown,payload:unknown,
+    correlationRef:string){
     if(typeof caseInput!=="string"||!UUID.test(caseInput))
       throw new BadRequestException("Choose a valid application");
     const body=inputRecord(payload);
@@ -48,8 +63,8 @@ export class ApprovalDecisionService{
     try{
       await client.query("BEGIN");active=true;
       const result=await client.query<CaseRow>(`
-        SELECT id,realm_id,case_number,proposer_id,process_id,status,revision,current_step
-        FROM cg03_case WHERE realm_id=$1 AND id=$2 FOR UPDATE
+        SELECT id,realm_id,case_number,proposer_id,process_id,status,revision,
+          current_step,proposal_digest FROM cg03_case WHERE realm_id=$1 AND id=$2 FOR UPDATE
       `,[actor.realmId,caseInput]);
       const row=result.rows[0];
       if(!row)throw new NotFoundException("Application unavailable");
@@ -98,7 +113,7 @@ export class ApprovalDecisionService{
       }
       const state=body.action==="RETURN"?"RETURNED":
         body.action==="REJECT"?"REJECTED":
-        expected.protected_root_required?"FINAL_APPROVED":"IN_REVIEW";
+        expected.protected_root_required?"PENDING_OWNER":"IN_REVIEW";
       const nextStep=state==="IN_REVIEW"?row.current_step+1:row.current_step;
       const saved=await client.query<{revision:number}>(`
         UPDATE cg03_case
@@ -109,22 +124,38 @@ export class ApprovalDecisionService{
       if(!saved.rowCount)throw new ConflictException({code:"APPROVAL_STALE"});
       const decision=await client.query<{id:string}>(`
         INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,
-          expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
+          expected_case_revision,accepted_case_revision,request_key,request_digest,
+          safe_remarks,fresh_mfa_verified_at)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+          CASE WHEN $11::boolean THEN now() ELSE NULL END) RETURNING id
       `,[actor.realmId,row.id,actor.accountId,body.action,row.current_step,
-        row.revision,saved.rows[0].revision,body.requestKey,digest,body.remarks]);
+        row.revision,saved.rows[0].revision,body.requestKey,digest,body.remarks,
+        expected.protected_root_required]);
       const event=body.action==="RETURN"?"RETURNED":
         body.action==="REJECT"?"REJECTED":
-        state==="FINAL_APPROVED"?"FINAL_APPROVED":
+        state==="PENDING_OWNER"?"FINAL_APPROVED":
         body.action==="FORWARD"?"FORWARDED":"APPROVED";
       await client.query(`
         INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,
           safe_remarks,correlation_ref) VALUES($1,$2,$3,$4,$5,$6,$7)
       `,[actor.realmId,row.id,actor.accountId,event,row.current_step,
         body.remarks,correlationRef]);
+      let effectKey:string|undefined;
+      if(state==="PENDING_OWNER"){
+        const effect=await client.query<{effect_key:string}>(`
+          INSERT INTO cg03_finalization(realm_id,case_id,final_decision_id,proposal_digest)
+          VALUES($1,$2,$3,$4) RETURNING effect_key
+        `,[actor.realmId,row.id,decision.rows[0].id,row.proposal_digest]);
+        effectKey=effect.rows[0].effect_key;
+        await client.query(`
+          INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,
+            correlation_ref) VALUES($1,$2,$3,'PENDING_OWNER',$4,$5)
+        `,[actor.realmId,row.id,actor.accountId,row.current_step,correlationRef]);
+      }
       await client.query("COMMIT");active=false;
       return {status:state,caseNumber:row.case_number,revision:saved.rows[0].revision,
-        decisionRecorded:true,sourceEffect:"NOT_APPLICABLE_UNTIL_FINALIZATION"};
+        decisionRecorded:true,sourceEffect:state==="PENDING_OWNER"?"PENDING_OWNER":"NOT_APPLICABLE",
+        effectKey};
     }catch(e){
       if(active)try{await client.query("ROLLBACK");}catch{}
       if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
