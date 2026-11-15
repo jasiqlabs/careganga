@@ -143,7 +143,20 @@ export interface CG03CaseView{
   currentStep:number;submittedAt:string;previousCaseRef:string|null;
 }
 export interface CG03CaseDetail extends CG03CaseView{
+  allowedDecisions:Array<"APPROVE"|"RETURN"|"REJECT"|"FORWARD">;
+  requiresFreshAuthenticator:boolean;
   history:Array<{action:string;remarks:string;at:string;by:string}>;
+}
+export interface CG03DecisionInput {
+  action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD";
+  remarks:string;expectedRevision:number;requestKey:string;totp:string;
+}
+export interface CG03DecisionResult {
+  status:string;caseNumber:string;revision:number;
+  decisionRecorded?:boolean;sourceEffect?:string;
+}
+export interface CG03DecisionLookup {
+  status:"CONFIRMED"|"NOT_FOUND";revision:number|null;action?:string;
 }
 export interface CG03ProcessView{
   active:boolean;version:number;firstReviewer:string|null;
