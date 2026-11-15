@@ -121,9 +121,10 @@ export class RecoveryService {
     if(!preflight.rowCount)throw new BadRequestException("Recovery cannot be confirmed");
     const newHash=await hashPassword(body.password);
     const client=await this.db.connect();
-    let outcome:"SUCCESS"|"DENIED"="DENIED";
+    let transactionOpen=false;
     try{
       await client.query("BEGIN");
+      transactionOpen=true;
       const found=await client.query<RecoveryRow>(`
         SELECT c.id,c.account_id,c.expires_at,c.attempts,c.consumed_at,
                a.realm_id,a.status,ic.password_hash,ic.last_totp_counter,
@@ -137,6 +138,7 @@ export class RecoveryService {
       if (!row || row.consumed_at || row.attempts>=5 || row.expires_at<=new Date() || row.status!=="ACTIVE" ||
          !row.totp_ciphertext || !row.totp_nonce || !row.totp_tag) {
         await client.query("ROLLBACK");
+        transactionOpen=false;
         throw new BadRequestException("Recovery cannot be confirmed");
       }
       const secret=decryptTotpSecret(row.totp_ciphertext,row.totp_nonce,row.totp_tag);
@@ -145,10 +147,12 @@ export class RecoveryService {
       if(matched===null || matched<=Number(row.last_totp_counter)){
         await client.query("UPDATE auth_challenge SET attempts=attempts+1 WHERE id=$1",[row.id]);
         await client.query("COMMIT");
+        transactionOpen=false;
         throw new BadRequestException("Recovery cannot be confirmed");
       }
       if(await verifyPassword(body.password,row.password_hash)){
         await client.query("ROLLBACK");
+        transactionOpen=false;
         throw new BadRequestException("Use a new password");
       }
       await client.query("UPDATE identity_credential SET password_hash=$2,credential_version=credential_version+1,last_totp_counter=$3,updated_at=now() WHERE account_id=$1",
@@ -159,10 +163,10 @@ export class RecoveryService {
       await client.query(`INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,action_key,outcome,correlation_ref)
         VALUES($1,$2,$2,'identity.password.recovery','SUCCESS',$3)`,[row.realm_id,row.account_id,correlationRef]);
       await client.query("COMMIT");
-      outcome="SUCCESS";
+      transactionOpen=false;
     }catch(e){
-      if(outcome!=="SUCCESS"){
-        try {await client.query("ROLLBACK");}catch { /* already committed denied-attempt counter */ }
+      if(transactionOpen){
+        try {await client.query("ROLLBACK");}catch { /* original error remains authoritative */ }
       }
       throw e;
     }finally{client.release();}
