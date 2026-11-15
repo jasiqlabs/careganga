@@ -173,3 +173,12 @@ export interface CG03CaseOutcome extends CG03CaseView{
 export interface CG03Lookup{
   status:"CONFIRMED"|"NOT_FOUND";case:CG03CaseView|null;
 }
+
+/** CG-03 / US-003: approval decision and actual CG-01 role effect are separate. */
+export interface CG03OwnerOutcome{
+  status:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED";
+  attempts:number;canRetry:boolean;
+}
+export interface CG03OwnerRetry{
+  status:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED";
+}
