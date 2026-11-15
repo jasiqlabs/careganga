@@ -81,7 +81,7 @@ Dependencies: US-003
 Outcome: Submit provider photos, services, published information/FAQs and own-center profile updates for Foundation-controlled review and publication.
 Requirements: FR-046, CG-14-BR19; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-14 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Submit approved provider service/photos/FAQ and secure center-only management for its own profile. Actual authorization, concurrency/replay, Web/native and original CareGanga UI states are verified against authoritative source; no technical IDs or fake downstream records.
+Acceptance: Center staff submit own real provider service/photos/FAQ for authorized review and only current center data is visible/publishable. **Once true CG-14 center source is delivered**, Center Portal support actions reuse the **one CG-19 support_case/reply source** through authenticated own-center scope; Center A cannot view or reply to Center B, and CG-14 never stores another ticket/message master. Source, permission, conflict and Web/native UI states remain genuine; existing provider/profile workflows do not require support tickets.
 QA cases:
 - **US-005-QA01:** Given correctly scoped actor and genuine delivered owner records, submit approved provider service/photos/FAQ and secure center-only management for its own profile. Expected: true Web/Android state (where applicable), one guarded DB commit or explicit pending result, secure audit and no fabricated integration.
 - **US-005-QA02:** Unrelated, unauthorized or revoked actor tries Web/native deep link, guessed resource ID, selector or export → protected API denies without any data leak or mutation.
@@ -90,7 +90,8 @@ QA cases:
 - **US-005-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-005-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07 — Healthcare source-specific boundary:** Center operator edits own facilities/photos and FAQ but attempts a second center's profile; edit stays pending Foundation publication when required, other-center update fails and previously published fees remain owner-controlled.
-Verification: On actual implementation source-trace US-005-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA08 — original CG-19 center support integration:** With two real CG-14 active centers A/B and their actual CG-01 permitted center accounts, introduce the center-scope facade for **existing CG-19 support_case**; A may create/read/reply only own tickets, cannot list/export/guess B IDs, and revoked/suspended staff or cross-center source fail backend authorization. Foundation support operator sees the legitimate single CG-19 record and append-only reply history. No CG-14 ticket table, no fake earlier center ticket; original CG-14 registration/doctor paths work without helpdesk.
+Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress
