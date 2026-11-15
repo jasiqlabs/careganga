@@ -19,6 +19,11 @@ CG-17 owns only effective-dated healthcare assistance policy, eligibility award,
 
 **QA:** duplicate/late callbacks, wrong merchant/center, pending versus verified, full-support approval and cap rounding, pay-at-center outstanding, canceled/refunded case, concurrent partial settlement, repeated month close and downstream journal agreement. Do not claim source-complete without real CG-09 and center scope integration.
 
+## CG-17 original benefit eligibility and public copy (transferred CG-18 BR20/28)
+
+CG-17 US-007 owns real effective-dated Foundation contribution, eligible provider/doctor/service, support percentage/fixed amount/cap/current validity and the public-safe benefit text/eligibility projection. It **introduces** source-bounded approved benefit banners, appropriate 'up to' and allowed percentage into existing CG-18 editorial healthcare slots and real CG-14/15 verified fee/booking views only after actual CG-17 policy exists. CG-18 US-004 beforehand publishes only general nonnumeric information; neither CMS nor a prototype mockup may claim 40% lab/20% medicine or unconditional 50% patient eligibility. CG-17 owns all amount computations and policy revision, not CMS. Revoke/expire policy or disqualify provider and CG-17 invalidates public Web/Public Android copy before it can mislead; no CMS subsidy table, cached promise or fake paid flag. CG-17-owned US-007 QA validates source policy/cap/fee truth, current eligibility, provider scope, permitted disclaimer and publication withdrawal. These narrow receiving-owner additions do not approve the CG-17 module.
+
+
 ## Monetary balance and settlement invariants
 
 **Every eligible calculation** snapshots policy version, accepted fee, patient obligation, Foundation share, center merchant, and evidence. Currency decimal rounding policy is deterministic; reject negative/capped/invalid benefit and gross mismatches. Persist patient collection and Foundation payable as separate source ledgers with one unique immutable financial-event id per payment/adjustment. Verified patient receipt is a center receipt, not automatically Foundation cash. Unverified provider callbacks yield PENDING/RECONCILIATION, not PAID.

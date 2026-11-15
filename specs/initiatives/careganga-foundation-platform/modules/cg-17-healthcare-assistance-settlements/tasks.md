@@ -128,7 +128,8 @@ QA cases:
 - **US-007-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-007-QA07 — Healthcare source-specific boundary:** CMS tries to publish a mockup 40% lab or 20% medicine support badge without CG-17 approved policy; prohibit unsupported percentage, while standard eligible consultation benefit and approved exceptional full aid use actual policy source.
-Verification: On actual implementation source-trace US-007-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-007-QA08 — transferred public CG-18 benefit banner owner QA:** After a true active CG-17 support policy with current real CG-14 approved center/doctor/service and CG-15 fee, introduce source-backed effective percentage/cap/eligibility text into CG-18's CMS-approved healthcare placement and real provider/booking screens. CG-18 original neutral page works with zero CG-17 policies; deny a mockup unsupported lab/medicine percentage, expired/superseded support policy, wrong center, client-edited up-to text, stale cached public Android copy and private patient eligibility leakage. CG-17 alone owns rule/amount, CG-18 only page publication.
+Verification: On actual implementation source-trace US-007-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress

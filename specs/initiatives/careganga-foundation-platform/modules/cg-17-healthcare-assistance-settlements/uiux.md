@@ -23,6 +23,11 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## CG-17 public eligible benefit copy and original policy authority
+
+CG-17 US-007 introduces current verified benefit source projection into approved CG-18 healthcare editorial placement and CG-14/15 actual provider/booking pages, showing only an authorized up-to percentage/fixed contribution/cap and eligibility disclaimer. CG-18 initial public hero/category page never shows mockup numeric subsidy. If a real plan changes, expires or does not apply to selected doctor/service/center, remove or correct the previous public badge in Web/Public Android rather than persisting copied content. Never imply verified discount/paid status from mere display; detail and booking remain current CG-17 calculations. Original CareGanga brand and true loading/denied/stale/expiry states apply; runtime/device/pixel QA NOT_RUN.
+
+
 ## Task-first source screenshot and UX acceptance
 
 Present accepted service fee, eligible Foundation support and patient amount as one accessible calculation summary before payment. Make center merchant, pending/unverified collection, Foundation payable, disbursed/failed/refund states visibly distinct, never one green PAID badge for unrelated ledgers. Preserve the CareGanga Admin financial table/forms/badge style and protect invoices/support notes from other centers. Public booking shows benefit only after verified policy selection.
