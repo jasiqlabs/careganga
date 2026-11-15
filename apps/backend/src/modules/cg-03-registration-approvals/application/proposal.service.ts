@@ -159,9 +159,22 @@ export class ApprovalProposalService{
         return {version:replay.rows[0].version,status:"PREVIOUSLY_CONFIRMED"};
       }
       await this.sessions.requireFreshFoundationRootProof(client,actor,payload.totp);
+      // A new Foundation with no process may explicitly choose the secure
+      // Super-Admin-only default. Record that first version as a real command;
+      // changing an existing process to its own version remains a no-op error.
+      const hadRoute=await client.query(`
+        SELECT 1 FROM cg03_process_current WHERE realm_id=$1
+      `,[actor.realmId]);
       const current=await this.current(client,actor);
-      if(current.first_reviewer_capability===payload.firstReviewerCapability)
-        throw new BadRequestException("Choose a different reviewer route");
+      if(current.first_reviewer_capability===payload.firstReviewerCapability){
+        if(hadRoute.rowCount)throw new BadRequestException("Choose a different reviewer route");
+        await client.query(`
+          INSERT INTO cg03_process_command(realm_id,actor_id,request_key,request_digest,process_id)
+          VALUES($1,$2,$3,$4,$5)
+        `,[actor.realmId,actor.accountId,requestKey,digest,current.id]);
+        await client.query("COMMIT");active=false;
+        return {version:current.version,status:"CONFIRMED"};
+      }
       const process=await client.query<ProcessRow>(`
         INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,configured_by)
         VALUES($1,$2,$3,$4) RETURNING id,version,first_reviewer_capability
