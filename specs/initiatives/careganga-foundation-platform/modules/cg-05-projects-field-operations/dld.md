@@ -17,6 +17,10 @@ CG-05 owns only project master, task/event and field-visit source events. The fo
 
 **QA:** forged project/employee ID, concurrent task reassignment, visit checkout before checkin, location permission denied, photo upload failure, inaccurate route evidence, public draft project leak and real budget source mismatch.
 
+## CG-05 original ownership of project branch links — source data and authorization
+
+The CG-05 project record holds a real CG-02 branch reference and its owner-managed effective-dated history. Create/transfer validates genuine CG-02 ACTIVE branch through its minimal owner facade and current CG-01 action/scope; reject inactive, closed, foreign or stale changes in the CG-05 transaction. Project budgets are only CG-09-owned external source projections with current project link if genuinely delivered; no CG-02 project link table, no invented member/beneficiary or duplicated finance data. Include project scoped create/transfer and narrow search/list options in CG-05 US-001 QA.
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Create an approved project with a real CG-02 branch; plan a field task; record authorized GPS visit/check-in and linked private evidence using CG-19. Reject check-out before check-in, invalid coordinate provenance, inactive branch, swapped location and stale approval. Project budget and beneficiary counts must reflect real CG-09/06 owners rather than manually maintained duplicate numbers.
