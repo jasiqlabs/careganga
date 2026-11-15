@@ -8,6 +8,18 @@ import { careGangaTheme } from "../../../../../packages/design-tokens/src/index"
 import { identityRequest } from "./http-client";
 
 type Option={value:string;label:string;context:string};
+/** Display business words, never the wire status code. */
+const accountStatusLabel=(status:string):string=>({
+  INVITED:"Invited",ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
+} as Record<string,string>)[status]??"Status unavailable";
+const deliveryLabel=(status:string|null):string=>status===null?"Not applicable":({
+  PENDING:"Waiting to send",CLAIMED:"Sending status not confirmed",
+  PROVIDER_ACCEPTED:"Accepted by email service",UNKNOWN:"Delivery not confirmed",
+  UNAVAILABLE:"Email service unavailable"
+} as Record<string,string>)[status]??"Delivery status unavailable";
+const auditOutcomeLabel=(outcome:string):string=>({
+  SUCCESS:"Completed",DENIED:"Not permitted",PENDING:"Awaiting confirmation"
+} as Record<string,string>)[outcome]??"Outcome unavailable";
 type Pending={kind:"assign"|"revoke"|"status"|"resend";row:CG01AccountView;status?:string};
 async function call(token:string,path:string,method="GET",body?:object):Promise<unknown>{
   let response:Response;
@@ -47,7 +59,6 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const [pending,setPending]=useState<Pending|null>(null);
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
-  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [roleQuery,setRoleQuery]=useState("");
   const [requestKey,setRequestKey]=useState("");
@@ -128,7 +139,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   }
   function beginInvite(){
     ++optionsGeneration.current;++historyGeneration.current;
-    setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
+    setName("");setEmail("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   useEffect(()=>{
@@ -148,7 +159,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       if(screen==="invite"){
         if(!roleRef)throw new Error("SELECT_ROLE");
         await call(token,"invitations","POST",{displayName:name.trim(),email:email.trim().toLowerCase(),
-          phone:phone.trim(),roleRef,requestKey});
+          roleRef,requestKey});
         setMessage("Invitation saved. Email delivery is not guaranteed; check account status.");
       }else if(pending){
         const root="accounts/"+pending.row.accountRef;
@@ -241,7 +252,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
           accessibilityRole="button" style={styles.card} onPress={()=>beginDetail(account)}>
           <Text style={styles.heading}>{account.displayName}</Text>
           <Text>{account.email}</Text>
-          <Text>{account.roleName??"No role assigned"} · {account.status}</Text>
+          <Text>{account.roleName??"No role assigned"} · {accountStatusLabel(account.status)}</Text>
           <Text style={styles.note}>View account details</Text>
         </Pressable>)}
         {list&&list.total>20&&<View style={styles.line}>
@@ -256,8 +267,8 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         {history&&<View style={styles.card}>
           <Text style={styles.heading}>Recent security activity</Text>
           {history.map(item=><View key={item.eventRef} style={styles.group}>
-            <Text>{item.actionLabel} · {item.outcome}</Text>
-            <Text style={styles.note}>{item.occurredAt}</Text>
+            <Text>{item.actionLabel} · {auditOutcomeLabel(item.outcome)}</Text>
+            <Text style={styles.note}>{new Date(item.occurredAt).toLocaleString()}</Text>
           </View>)}
           {!history.length&&<Text>No accessible security history.</Text>}
         </View>}
@@ -270,10 +281,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         <Text style={styles.label}>Work email</Text>
         <TextInput accessibilityLabel="Work email" style={styles.input} maxLength={254}
           autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail}/>
-        <Text style={styles.label}>Phone (optional, unverified)</Text>
-        <TextInput accessibilityLabel="Phone optional" style={styles.input} keyboardType="phone-pad"
-          placeholder="+91..." maxLength={16} value={phone} onChangeText={setPhone}/>
-        <Text>Area level: Foundation (organization-wide)</Text>
+        <Text style={styles.note}>Applies to: Entire foundation</Text>
         <Text style={styles.label}>Find eligible roles</Text>
         <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
           maxLength={80} value={roleQuery} onChangeText={setRoleQuery}/>
@@ -293,17 +301,17 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         <Text style={styles.heading}>{row.displayName}</Text>
         <Text>{row.email}</Text>
         {row.phone&&<Text>Phone (unverified): {row.phone}</Text>}
-        <Text>Account status: {row.status}</Text>
+        <Text>Account status: {accountStatusLabel(row.status)}</Text>
         <Text>Current role: {row.roleName??"Not assigned"}</Text>
-        <Text>Scope: Foundation</Text>
-        <Text>Invitation delivery: {row.deliveryStatus??"Not applicable"}</Text>
+        <Text>Applies to: Entire foundation</Text>
+        <Text>Invitation delivery: {deliveryLabel(row.deliveryStatus)}</Text>
         {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>void showAudit(row.accountRef)}><Text>View account access history</Text></Pressable>}
         {history&&<View style={styles.group}>
           <Text style={styles.heading}>Recent account access</Text>
           {history.map(event=><View style={styles.option} key={event.eventRef}>
-            <Text>{event.actionLabel} · {event.outcome}</Text>
-            <Text style={styles.note}>{event.occurredAt}</Text>
+            <Text>{event.actionLabel} · {auditOutcomeLabel(event.outcome)}</Text>
+            <Text style={styles.note}>{new Date(event.occurredAt).toLocaleString()}</Text>
           </View>)}
           {!history.length&&<Text>No account access events found.</Text>}
         </View>}
