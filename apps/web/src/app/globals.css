@@ -1,14 +1,21 @@
 :root {
-  /* System semantics only; original Admin screenshot tokens still require approved PNG extraction. */
-  --cg-surface: Canvas;
-  --cg-text: CanvasText;
-  --cg-accent: Highlight;
-  --cg-accent-text: HighlightText;
-  --cg-border: ButtonBorder;
+  /* Original CareGanga U05/U08 sampled reference values (see audit §13). */
+  --cg-sidebar: #0A1F44;
+  --cg-sidebar-text: #EFF4FF;
+  --cg-sidebar-muted: #BBCBE6;
+  --cg-surface: #FFFFFF;
+  --cg-text: #16233B;
+  --cg-muted: #637084;
+  --cg-canvas: #F4F4F1;
+  --cg-accent: #1E53DC;
+  --cg-accent-text: #FFFFFF;
+  --cg-accent-hover: #1748BE;
+  --cg-border: #E0E5ED;
+  --cg-focus: #1E53DC;
   color-scheme: light;
 }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--cg-surface); color:var(--cg-text); font-family:system-ui,sans-serif; }
+body { margin:0; background:var(--cg-canvas); color:var(--cg-text); font-family:system-ui,sans-serif; line-height:1.5; }
 a { color:inherit; }
 button,input { font:inherit; }
 button { cursor:pointer; }
@@ -24,9 +31,14 @@ button:disabled { cursor:wait; opacity:.65; }
 .primary { padding:.8rem 1rem; background:var(--cg-accent); color:var(--cg-accent-text); border:1px solid transparent; border-radius:.35rem; min-height:2.75rem; }
 .error { border-inline-start:3px solid currentColor; padding:.5rem .75rem; }
 .shell { display:grid; grid-template-columns:minmax(13rem,16rem) 1fr; min-height:100vh; }
-.sidebar { padding:1.5rem; border-inline-end:1px solid var(--cg-border); }
+.sidebar { padding:1.5rem; background:var(--cg-sidebar); color:var(--cg-sidebar-text);
+  border-inline-end:1px solid #243A61; position:sticky;top:0;height:100vh;overflow-y:auto; }
+.sidebar a{display:block;padding:.65rem .8rem;border-radius:.5rem;text-decoration:none;color:var(--cg-sidebar-text)}
+.sidebar a:hover,.sidebar a:focus-visible{background:#193966}
+.sidebar strong{font-size:1.04rem;letter-spacing:.01em}
+.sidebar p{color:var(--cg-sidebar-muted);font-size:.85rem}
 .selected { background:var(--cg-accent); color:var(--cg-accent-text); padding:.65rem; border-radius:.4rem; }
-.workspace { padding:clamp(1rem,3vw,2rem); }
+.workspace { min-width:0; padding:clamp(1rem,2vw,2rem); }
 @media(max-width:48rem){ .shell {grid-template-columns:1fr;} .sidebar{border-inline-end:0;border-bottom:1px solid var(--cg-border);} .auth-card{margin:2rem auto;} }
 @media(prefers-reduced-motion:reduce){ *,*:before,*:after {scroll-behavior:auto!important;transition:none!important;animation:none!important;} }
 
@@ -39,15 +51,20 @@ button:disabled { cursor:wait; opacity:.65; }
 .search-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 .search-row input{padding:.65rem;min-width:min(20rem,100%);min-height:2.75rem;border:1px solid var(--cg-border);border-radius:.4rem}
 .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.kpi{display:grid;gap:.5rem;border:1px solid var(--cg-border);padding:1rem;border-radius:.6rem}
+.kpi{display:grid;gap:.5rem;border:1px solid var(--cg-border);background:var(--cg-surface);
+ padding:1rem;border-radius:.6rem;box-shadow:0 3px 18px rgba(16,28,54,.035)}
 .kpi strong{font-size:1.4rem;font-variant-numeric:tabular-nums}
-.role-table-wrap{overflow-x:auto;border:1px solid var(--cg-border);border-radius:.5rem}
+.role-table-wrap{overflow-x:auto;border:1px solid var(--cg-border);border-radius:.6rem;
+ background:var(--cg-surface);box-shadow:0 3px 18px rgba(16,28,54,.035)}
 .role-table{width:100%;border-collapse:collapse;text-align:left}
 .role-table th,.role-table td{padding:.85rem;border-bottom:1px solid var(--cg-border);vertical-align:top}
 .role-table td p{margin:.25rem 0;font-size:.9rem}
 .role-table th{white-space:nowrap}
-.drawer-backdrop{position:fixed;inset:0;z-index:20;background:rgb(0 0 0 / .32);display:flex;justify-content:flex-end}
-.role-drawer{height:100%;width:min(100%,34rem);overflow-y:auto;background:var(--cg-surface);color:var(--cg-text);padding:clamp(1rem,3vw,2rem);border-inline-start:1px solid var(--cg-border)}
+.drawer-backdrop{position:fixed;inset:0;z-index:20;background:rgba(9,17,35,.52);
+ display:flex;justify-content:flex-end}
+.role-drawer{height:100%;width:min(100%,34rem);overflow-y:auto;background:var(--cg-surface);
+ color:var(--cg-text);padding:clamp(1rem,3vw,2rem);border-inline-start:1px solid var(--cg-border);
+ box-shadow:-6px 0 24px rgba(13,31,67,.13)}
 .role-drawer textarea{font:inherit;padding:.65rem;border:1px solid var(--cg-border);border-radius:.4rem;min-height:5rem;color:var(--cg-text);background:var(--cg-surface)}
 .permission-group{border:1px solid var(--cg-border);border-radius:.4rem;padding:1rem;display:grid;gap:.6rem}
 .permission-row{display:flex;gap:.75rem;align-items:center;min-height:2.75rem}
@@ -64,3 +81,16 @@ button:disabled { cursor:wait; opacity:.65; }
 /* Copy-role selector reuses original right-drawer/form hierarchy without a new palette. */
 .copy-source{display:grid;gap:.8rem;border-block:1px solid var(--cg-border);padding-block:1rem}
 .copy-source .search-row input{min-width:min(14rem,100%)}
+
+/* Original U08 role swatches; selection ring must remain visible without colour alone. */
+.role-color-fieldset{border:0;padding:0;margin:.2rem 0 .75rem}
+.role-color-fieldset legend{font-weight:600;font-size:.92rem;margin-bottom:.5rem}
+.role-color-options{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
+.role-color-choice{position:relative;display:inline-flex;align-items:center;justify-content:center;width:2.3rem;height:2.3rem;cursor:pointer;border:2px solid transparent;border-radius:50%}
+.role-color-choice.is-selected{border-color:var(--cg-text)}
+.role-color-choice:focus-within{outline:2px solid var(--cg-focus);outline-offset:2px}
+.role-color-choice input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
+.role-color-circle{display:block;width:1.55rem;height:1.55rem;border-radius:50%}
+.role-name{display:flex;gap:.65rem;align-items:flex-start}
+.role-dot{display:inline-block;flex:none;margin-top:.35rem;width:.9rem;height:.9rem;border-radius:50%}
+@media(max-width:48rem){.sidebar{height:auto;position:relative;overflow:visible;padding:1rem}.role-color-choice{width:2.75rem;height:2.75rem}}

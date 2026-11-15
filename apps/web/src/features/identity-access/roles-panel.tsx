@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {roleColorOptions, roleColor} from "../../../../../packages/design-tokens/src/index";
 
 type Role={
   roleRef:string;name:string;description:string;colorKey:string|null;
@@ -42,6 +43,7 @@ export function RolesPanel(){
   const [copyError,setCopyError]=useState("");
   const [name,setName]=useState("");
   const [description,setDescription]=useState("");
+  const [colorKey,setColorKey]=useState("blue");
   const [saving,setSaving]=useState(false);
   const [history,setHistory]=useState<AuditEvent[]|null>(null);
   const [historyCursor,setHistoryCursor]=useState<string|null>(null);
@@ -170,6 +172,7 @@ export function RolesPanel(){
     if(mode!=="edit"){setCopySearch("");void findCopySources("");}
     setName(mode==="copy"?(source?source.name+" copy":""):source?.name??"");
     setDescription(source?.description??"");
+    setColorKey(source?.colorKey&&roleColorOptions.some(x=>x.key===source.colorKey)?source.colorKey:"blue");
     const allowed=new Set(groups.flatMap(x=>x.actions.filter(a=>a.assignable).map(a=>a.key)));
     setSelected(source?.actionKeys.filter(k=>allowed.has(k))??[]);
     requestKey.current=crypto.randomUUID();
@@ -215,7 +218,7 @@ export function RolesPanel(){
     if(!editor||saving)return;
     setSaving(true);setNotice(null);
     const source=editor.source;
-    const payload={name:name.trim(),description:description.trim(),colorKey:"default",
+    const payload={name:name.trim(),description:description.trim(),colorKey,
       actionKeys:selected,requestKey:requestKey.current,
       ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})};
     const path=editor.mode==="edit"&&source?"roles/"+source.roleRef:
@@ -318,7 +321,7 @@ export function RolesPanel(){
         <th scope="col">Role</th><th scope="col">Status</th><th scope="col">Assigned accounts</th>
         <th scope="col">Permissions</th><th scope="col">Actions</th>
       </tr></thead><tbody>{shown.map(role=><tr key={role.roleRef}>
-        <td><strong>{role.name}</strong><p>{role.description}</p></td>
+        <td><span className="role-name"><span className="role-dot" aria-hidden="true" style={{background:roleColor(role.colorKey)}}/><span><strong>{role.name}</strong><p>{role.description}</p></span></span></td>
         <td>{role.protected?"Protected":role.active?"Active":"Retired"}</td>
         <td>{role.assignedCount}</td>
         <td>{role.protected?"Protected Foundation access":role.actionKeys.length+" allowed actions"}</td>
@@ -412,7 +415,21 @@ export function RolesPanel(){
             </div>
             {copyError&&<p className="error" role="alert">{copyError}</p>}
           </div>}
-          <p>Color: CareGanga theme default. Additional options will follow verified brand tokens.</p>
+          <fieldset className="role-color-fieldset">
+            <legend>Colour</legend>
+            <div className="role-color-options" role="radiogroup" aria-label="Role colour">
+              {roleColorOptions.map(option=><label key={option.key}
+                className={"role-color-choice"+(colorKey===option.key?" is-selected":"")}
+                title={option.name}>
+                <input type="radio" name="roleColor" value={option.key}
+                  checked={colorKey===option.key} disabled={saving}
+                  onChange={()=>setColorKey(option.key)}
+                  aria-label={option.name}/>
+                <span aria-hidden="true" className="role-color-circle"
+                  style={{backgroundColor:option.hex}}/>
+              </label>)}
+            </div>
+          </fieldset>
           {editor.mode==="copy"&&<p>Only permitted role actions are copied. No people or special administrator rights are copied.</p>}
           {groups.map(group=><fieldset key={group.group} className="permission-group">
             <legend>{group.group}</legend>

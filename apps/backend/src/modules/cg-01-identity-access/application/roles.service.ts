@@ -14,7 +14,8 @@ type ListRow = Row & {assigned_count:string;grant_keys:string[]|null};
 type Change = {name:string;description?:string;colorKey?:string|null;actionKeys:unknown;requestKey:string;expectedRevision?:number};
 type Outcome = {roleRef:string;revision:number;message:string};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const colorKeys=new Set(["default"]); // Until the original CareGanga asset palette is authoritatively sampled.
+// Keep wire keys stable: values and visible labels live in packages/design-tokens.
+const colorKeys=new Set(["default","blue","green","amber","orange","violet","pink","teal"]);
 const hash=(s:string)=>createHash("sha256").update(s).digest("hex");
 
 function parseRef(value:string):string{
