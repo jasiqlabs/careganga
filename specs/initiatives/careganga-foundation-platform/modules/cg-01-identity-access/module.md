@@ -4,7 +4,7 @@
 
 **Initiative:** careganga-foundation-platform  
 **Planning scope:** CG-01 only · GREENFIELD · 14 November 2026  
-**Source of truth:** [PRD](../../prd.md) FR-001–003, FR-080; BR-001/002/017 · [HLD](../../hld.md) §§4–5, 7–9 · [Foundation BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-01-BR01–10  
+**Source of truth:** [PRD](../../prd.md) FR-001–003, FR-080; BR-001/002/017 · [HLD](../../hld.md) §§4–5, 7–9 · [Foundation BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-01-BR01–11  
 **Stage state (15 Nov 2026):** OWNER_REQUIREMENT_TRANSFER_APPLIED / SOURCE_REVIEW_REQUIRED. CG-01 now explicitly owns former CG-21 password/session/MFA security-policy configuration and enforcement (new CG-01-BR11, FR-001, US-004). Existing bootstrap/role/account scope and QA IDs retained. Latest PRD/HLD edits require fresh current-hash review and delegated approval; authenticated pinned Harness resolver, qualified CRITICAL DB review and runtime/device/visual QA NOT_RUN. Stories remain BLOCKED.
 
 uiux_decision: REQUIRED
