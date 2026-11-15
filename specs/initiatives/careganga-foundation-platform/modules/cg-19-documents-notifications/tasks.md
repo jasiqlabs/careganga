@@ -3,7 +3,7 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
-**Development gate:** PRD/HLD current approval REVIEW_REQUIRED, authenticated local resolver and hash-bound module/task/design approvals NOT_RUN. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
+**Development gate:** CG-19 REVIEW_IN_PROGRESS (module and DLD corrected; UIUX/tasks final review pending). PRD/HLD v1.1 current approval REVIEW_REQUIRED; pinned Harness resolver and current-hash module/task/UIUX/DLD approvals NOT_RUN. Stories remain BLOCKED pending owner-confirmed continuation. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
 ## Proposed task definitions — NOT YET APPROVED
 
