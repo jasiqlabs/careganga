@@ -22,7 +22,8 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs A01, A02, A03, A04, A05, A06, A09, A10, A11, U31, U32, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — Source-specific boundary:** Create a scoped project with a planned CG-09 budget but no verified expense; project list shows allocated versus utilized truth without independent amount edits, and CG-18 sees no public teaser until approved publication.
 - **US-001-QA08 — transferred branch owner QA:** With genuine active CG-02 branches, create and transfer one CG-05 project using allowed branch selector; owner records keep current branch and history, permissions scoped before/after transfer, foreign/closed branch and concurrent stale edit denied. CG-02 does not create a second project association/master and actual CG-09 budgets remain a read-only finance source.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — transferred public project owner QA:** Create real CG-05 approved project in actual CG-02 branch with source CG-09 budget if genuinely available, then introduce safe project name/status/dates/category into CG-18 C27–C30 editorial placement/Web/Public Android. No duplicate CG-18 project record/date/budget. Wrong branch, revoked permission, source project closure or changed date removes/revises public projection; original CG-18 Home works with no projects.
+Verification: On actual implementation source-trace US-001-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Create, assign and monitor tasks, events and activities with owners…
@@ -39,7 +40,8 @@ QA cases:
 - **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-002-QA06:** Original CareGanga screenshot refs A01, A02, A03, A04, A05, A06, A09, A10, A11, U31, U32, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07 — Source-specific boundary:** Reassign an overdue high-priority task between two real workers in different authorized branches; only permitted assignee/location is selectable, source due history stays correct, and revoked previous assignee cannot change it.
-Verification: On actual implementation source-trace US-002-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA08 — transferred operational event owner QA:** With a real CG-05 approved event/activity, introduce actual safe event title/date/location/status into separately published CG-18 site/app Events/Updates and verify owner-sourced revision, withdrawal and privacy. CG-18 ordinary news still works with no CG-05 event; canceled/foreign/edited event is not an active public booking or invented seat/payment, and CMS never writes CG-05 event master.
+Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Record geotag/GPS/location, check-in/out, photos/video, notes, documents…

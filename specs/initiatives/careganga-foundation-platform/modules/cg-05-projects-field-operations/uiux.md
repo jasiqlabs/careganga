@@ -23,6 +23,11 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 The CG-05 project creation/edit and field-work views display actual authorized CG-02 branch/geography, reject closed/foreign scope and show a verified current project branch. An operator can see only projects in current permitted branch scope. A project does not appear in CG-02 as an editable project-master item, and no nonexistent beneficiary or invented budget amount is shown. Maintain original CareGanga project/task screen components and native permission feedback.
 
+## Genuine CG-05 project/event source feeds into existing CG-18 public cards
+
+After an approved CG-05 project exists, US-001 adds original C27–C30 CareGanga public project teaser presentation through CG-18 publication while actual name/date/category/location and verified CG-09 funding stay sourced only to CG-05/09. Before this, CG-18 homepage is usable with zero projects. Withdrawn/foreign/closed project or revised source date invalidates public Web/Public Android snapshot. US-002 adds original operational event date/source into CG-18 editorial Events/Updates; an editorial article does not equal a CG-05 event. No second CMS project/event master, invented participant/seats or payment. Preserve original brand and genuine empty/pending/revoked states; visual/device QA NOT_RUN.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Preserve reference A01-A06 project/field-visit KPI+filter+tabular layout, visit details with Overview, Route/Map, Report, Photos/Videos, Documents, Team, Beneficiaries, Approval and Log tabs where real data exists. The Add Field Visit dialog keeps captured geography/clock state and file-progress indicators; mobile operators get task-first check-in and evidence controls, not a miniature admin table.
