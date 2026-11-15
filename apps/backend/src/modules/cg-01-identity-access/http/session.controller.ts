@@ -15,7 +15,7 @@ export class SessionController {
   async signIn(@Body() body: SignInBody, @Req() request: CareGangaRequest) {
     if (!body || typeof body.email !== "string" || body.email.length > 254
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
-      || typeof body.password !== "string" || body.password.length < 1 || body.password.length > 1024
+      || typeof body.password !== "string" || body.password.length < 1 || Buffer.byteLength(body.password,"utf8") > 1024
       || typeof body.totp !== "string" || !/^\d{6}$/.test(body.totp)
       || (body.deviceLabel !== undefined && (typeof body.deviceLabel !== "string" || body.deviceLabel.length > 60)))
       throw new BadRequestException();
