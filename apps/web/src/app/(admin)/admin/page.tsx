@@ -16,6 +16,7 @@ export default async function AdminHome() {
   let canViewSettings=false;
   let canViewAudit=false;
   let canViewRecovery=false;
+  let canViewApprovals=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -35,6 +36,7 @@ export default async function AdminHome() {
           canViewSettings=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.settings.view");
           canViewAudit=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.audit.view");
           canViewRecovery=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.recovery.view");
+          canViewApprovals=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="approvals.view"||x.key==="approvals.propose");
         }
         const data:unknown=await response.json();
         if(data&&typeof data==="object"&&"displayName" in data&&"roleName" in data&&"scope" in data
@@ -48,7 +50,7 @@ export default async function AdminHome() {
   return <div className="shell">
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
-      canViewRecovery={canViewRecovery}/>
+      canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
     </main>
