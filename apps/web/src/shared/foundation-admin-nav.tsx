@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"foundation";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -12,15 +12,38 @@ type FoundationAdminNavProps={
   canViewSettings?:boolean;
   canViewAudit?:boolean;
   canViewRecovery?:boolean;
+  canViewFoundation?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
-  canViewAudit=false,canViewRecovery=false}:FoundationAdminNavProps){
+  canViewAudit=false,canViewRecovery=false,canViewFoundation=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
+  const [foundationAccess,setFoundationAccess]=useState(canViewFoundation);
+  // One authenticated current-rights refresh per navigation mount. No polling or client-only authority.
+  useEffect(()=>{
+    let live=true;
+    void fetch("/api/access/effective",{cache:"no-store"})
+      .then(async response=>{
+        if(!response.ok)throw new Error("Access unavailable");
+        return response.json() as Promise<unknown>;
+      })
+      .then(result=>{
+        if(!live)return;
+        const allowed=Boolean(result&&typeof result==="object"&&"actions" in result
+          &&Array.isArray(result.actions)&&result.actions.some((x:unknown)=>
+            Boolean(x)&&typeof x==="object"&&"key" in x&&
+              ["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(String(x.key))));
+        setFoundationAccess(allowed);
+      })
+      .catch(()=>{if(live)setFoundationAccess(false);});
+    return()=>{live=false;};
+  },[]);
+
   const links=[
     {key:"account" as const,label:"My account",href:"/admin"},
     ...(canViewAccounts?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
     ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
+    ...(foundationAccess?[{key:"foundation" as const,label:"Foundation Structure",href:"/admin/foundation"}]:[]),
     ...(canManageSecurityPolicy?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(canViewSettings?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
     ...(canViewAudit?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
