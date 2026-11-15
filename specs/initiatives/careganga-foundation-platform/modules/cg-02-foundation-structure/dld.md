@@ -3,31 +3,29 @@
 **Source:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Data ownership and decision boundary
 
-Own a cohesive typed domain/application module for **Foundation profile, region hierarchy, branches, departments/committees** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Foundation profile:** source attributes/status from CG-02-BR01–CG-02-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **region hierarchy:** source attributes/status from CG-02-BR01–CG-02-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **branches:** source attributes/status from CG-02-BR01–CG-02-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **departments/committees:** source attributes/status from CG-02-BR01–CG-02-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+CG-02 owns exactly one Foundation profile, the geography tree, editable seven-step branch registration, the final branch directory, and branch-scoped departments/committees. CG-01 owns authenticated actors; CG-03 owns approval decisions; CG-19 owns protected file bytes. A business actor, not a fabricated employee, may be linked during the initial branch draft. CG-10 employment/CG-05 projects/CG-04 memberships/CG-09 budgets introduce their own real links after they exist.
 
-State/invariant: **Draft/submitted/returned/rejected/approved/active/closed; Only finally approved branches activate or receive code; geography never invented**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+Only a completed authorized CG-03 decision may activate a branch and issue its unique code. Draft and approved data remain distinguishable, with one idempotent finalization for one registration. Store all cross-owner references as verified opaque keys; render readable business names, not identifiers.
 
-## Concrete geography, branch and governance design
+## Canonical database and workflow contracts
 
-`foundation_profile` holds verified Foundation identity only. `geography_unit(id,level,parent_id,name,code,status)` validates level order (state→district→subdivision→block), noncyclic parent, actual authorized owner and uniqueness within parent; no fabricated region defaults.
+- foundation_profile(id, legal_name, contact_details, legal_registration_ref, version, updated_at): verified single Foundation identity, auditable changes. Internal profile fields are not automatically public.
+- geography_area(id, level, parent_area_id, display_name, normalized_name, code, status, version): one canonical geography table, not a second geography_unit alias. Enforce allowed parent level, self/cycle prohibition, unique (parent_area_id, normalized_name), and scoped lookup. A user may select only actually configured areas; no seeded fictional districts.
+- branch_registration(id, foundation_id, current_step, draft_version, status, requested_by, submitted_at, approval_case_ref, profile_payload): one editable seven-step draft with step-specific validation; CG-19 protected document references are attached by verified owner. Status DRAFT -> SUBMITTED -> RETURNED/REJECTED or FINAL_APPROVED. Returned submissions are revised and resubmitted without losing original evidence or reviewer history. Only a published real CG-03 case can confirm FINAL_APPROVED.
+- branch(id, registration_id, geography_area_id, branch_code, status, version, activated_at): UNIQUE registration_id and UNIQUE non-null branch_code, created/activated once by the finalizer after verified approval. There is no second provisional branch master populated merely for a draft.
+- department(id, branch_id, parent_department_id, kind, name, active, head_account_ref, version): parent must belong to the same active branch and cannot produce cycles. An actual CG-01 account may be head if authorized; future CG-10 employee assignment is a later owner-supplied integration, not a required fake foreign key.
 
-`branch(id,area_id,legal_name,contacts,opening_date,status,approval_case_id,branch_code,version)` keeps branch code NULL until verified final CG-03 approval; unique non-null generated code and approved activation. `branch_draft(branch_id,step,version,payload,document_refs)` persists seven registration steps and completeness safely; pending/returned/rejected draft cannot silently become an active branch or appear publicly.
+Commands: GET scoped geography/options, POST/GET/PATCH Foundation profile and department, POST/GET/PATCH branch-registration draft with expected draft_version, POST submit branch-registration (returns PENDING_APPROVAL), and POST finalize-approved-registration (CG-03 protected owner callback only). For creation return saved reference + authoritative state; do not expose implementation UUID in UI. Every write verifies current actor/capability/scope, expected revision and source-idempotency key; authorized queries are bounded and filtered at the database.
 
-`department(id,branch_id,parent_department_id,type,name,head_employee_ref,status)` supports department/committee hierarchy and prevents self-parent/cycle. Employee, project, membership and budget references are verified through CG-10/05/04/09 owners only when they exist, not copied as local master rows.
+Transaction: finalizer locks approved registration and unique-source claim, checks CG-03 final decision, generates unique code, inserts/activates branch, writes redacted audit, commits once. Conflicting callback, duplicate normalized geography, stale draft, inaccessible documents and foreign-branch department parent return distinct controlled errors without partial changes.
 
-**CG-01 integration:** When real branch activation exists, CG-02 exposes scope-limited branch/area `options` with names/context and validates actual ownership for role-assignment integration. Role grants do not infer global branch permission. **QA:** seven-step resume/invalid upload; two admin code races; forged region path; pending branch activation attempt; department parent loop; inactive branch revocation; unpublished branch public search.
+## Forward-owner integrations and source QA
 
-## Specific owner contracts and verification
+CG-02 never requires an employee, project, budget, member, or public CMS record to complete its own creation and activation path. When CG-10/05/09/04/18 subsequently provides those owners, that later module adds verified selectors, links, authorization and end-to-end QA; absence today appears as an unavailable optional section, not a fabricated completed link.
 
-- **Geography & branches:** `geography_area(id,level,parent_id,code,name,status)` rejects orphan/cyclic hierarchy and duplicate normalized names within parent. `branch_registration(id,foundation_id,current_step,draft_version,status,approval_case_id)` preserves seven-stage draft with CG-19 file refs, missing-document completion and verification status. `branch(id,approved_registration_id,area_id,branch_code,operational_status)` receives a unique non-null branch code only on real CG-03 final approval.
-- **Departments and scope:** `department(id,branch_id,parent_id,type,head_employee_ref,status)` rejects parent cycles; real CG-10 head/manager links are added when that module exists, not invented now. A new branch is private and CG-01 scoped access only binds to actual active branch.
-- **QA:** resume any draft step, invalid geography parent, simultaneous branch code generation, pending branch without code, unauthorized branch export and approval finalization retries.
+Source cases: complete seven-stage draft -> submit -> actual CG-03 decision -> one branch code; reject approval -> no branch; resume/revise after step 3; duplicate finalizer replay; concurrent branch codes; cross-scope geography/departments; parent cycle; unpublished branch not public; protected file access only via actual CG-19. Test every form, drawer, progress step and review state against the original U18-U22 UI reference, with rendered visual parity NOT_RUN.
 
 ## Typed API and coordination
 

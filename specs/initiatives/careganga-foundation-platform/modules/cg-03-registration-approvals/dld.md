@@ -3,32 +3,25 @@
 **Source:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Data ownership and independent initial workflow
 
-Own a cohesive typed domain/application module for **Approval process/step, case intake, document check, review history, finalization reference** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Approval process/step:** source attributes/status from CG-03-BR01–CG-03-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **case intake:** source attributes/status from CG-03-BR01–CG-03-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **document check:** source attributes/status from CG-03-BR01–CG-03-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **review history:** source attributes/status from CG-03-BR01–CG-03-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **finalization reference:** source attributes/status from CG-03-BR01–CG-03-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+CG-03 owns its approval process configuration, cases, decisions, and immutable history. It never owns branch/member/provider/financial source data. The first fully functional owner integration is CG-01: an authorized sensitive access-change request supplies a real source record and CG-03 returns a final decision; other module finalizers join only when those owners actually exist. CG-19 evidence verification is added when real protected file storage is available; a no-attachment initial access case must work without CG-19.
 
-State/invariant: **Draft/submitted/in-review/returned/rejected/approved; Only owning module applies one business effect after genuine final approval**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+## Canonical approval model and typed transitions
 
-## Concrete approval case and finalization design
+- approval_process(id, process_type, owner_kind, scope_policy, version, enabled): unique active process type+version and validated current roles. approval_step(process_id, ordinal, reviewer_capability, area_scope_policy) requires unique ordinal and existing CG-01 capabilities. Once submitted, a case pins the exact process version and steps.
+- application_case(id, owner_kind, owner_ref, source_submission_key, process_version, status, current_step, revision, submitted_at): unique source owner+source submission key; a verified CG-01 change request is the first real source. Never create a case for a nonexistent future member/employee/provider.
+- case_decision(id, case_id, step_ordinal, actor_account_ref, action, remarks, expected_revision, idempotency_key, at): append-only and unique accepted decision key, actor must hold both current action permission and case-specific step/geography scope. Record RETURN/REJECT/APPROVE/FORWARD as immutable events.
+- document_verification(id, case_id, actual_file_ref, decision, reviewer, at): optional for the first case; only enabled against a real CG-19 protected file and current preview authorization. Never copy sensitive files into approval tables.
+- application_finalization(id, case_id, final_decision_ref, owner_outcome_key, state, attempt_count): one unique final owner effect, with PENDING_OWNER/COMPLETED/FAILED_RETRYABLE and bounded retry. CG-03 final decision does NOT itself fabricate activated source state.
 
-`approval_process(id,type,scope,version,enabled)`, `approval_step(process_id,ordinal,reviewer_role_capability,scope_rule)` freeze a versioned valid route per case; unique process type/version and step ordinal. No developer-hardcoded routing based on status text.
+States: DRAFT -> SUBMITTED -> IN_REVIEW -> RETURNED -> RESUBMITTED or REJECTED / FINAL_APPROVED. Only the current step accepts a decision. An approval transition and append-only decision are committed in the same transaction under row revision/lock; competing reviewers produce one winner and one CONFLICT. The source owner idempotently applies its actual business change after final approval, and the case displays PENDING_OWNER until verified. Revised approval routes never rewrite cases already in flight.
 
-`application_case(id,owner_type,owner_record_ref,applicant,process_version,status,revision,submitted_at)` holds the case and real source reference, unique per owner/source/submission generation. `case_decision(case_id,step_id,actor,action,remarks,expected_revision,idempotency_key,at)` is append-only and current-reviewer/area checked. `document_verification(case_id,file_ref,decision,actor,remarks)` accesses CG-19 protected files only after ownership checks.
+API contracts: POST approval/process-version (super-admin protected); POST cases (real source owner adapter + source key); GET scoped cases/steps/options; POST case/{case}/decision (action, remark, expected_revision, idempotency_key); GET case/{case}/history; GET source outcome. Provider unavailable, stale actor, repeat decision, missing real source, unauthorized document access and last-root escalation all fail safely without a fake APPROVED+ACTIVE state.
 
-Authoritative states: DRAFT→SUBMITTED→IN_REVIEW→FORWARDED/RETURNED/REJECTED/FINAL_APPROVED. Reviewer must have current CG-01 capability **and** actual stage/area assignment; simultaneous reviewer decisions use optimistic version/row lock and return conflict for the loser.
+## Genuine early acceptance and later integrations
 
-A **real owner module** applies its final business outcome after CG-03 final approval with a unique finalization key. No CG-03 direct writes to member/branch/doctor/accounting tables; unavailable future finalizer remains clearly pending. Callback retry/reconciliation must not activate twice. **QA:** parallel reviewers, stale step, process version changed midcase, document unauthorized, repeat final callback, returned/resubmitted correction, batch action scope and owner outage.
-
-## Specific owner contracts and verification
-
-- **Workflow ownership:** `approval_process(id,type,version,enabled)` and immutable `approval_step(process_id,ordinal,required_role,scope_policy)` freeze the configuration in force on submission. `application_case(id,owner_type,owner_ref,application_ref,process_version,status,revision)` has unique owner source+submission key. `decision(case_id,step_id,reviewer,action,remarks,idempotency_key)` is append-only and unique per accepted step/action; document checks reference CG-19 actual protected file.
-- **Real initial use:** a protected CG-01 access/role assignment requiring approval can supply the first real case; future CG-02/04/10/14 owners add their own intake and idempotent finalizer. Current reviewer must have both action and actual step scope. Approval record != source-business activation, which happens once through true owner callback.
-- **QA:** two competing reviewers, returned case resubmit, stale configuration version, forged stage/reviewer, foreign document preview, duplicate approval and owner temporarily unavailable without fake success.
+Initial source tests: CG-01 protected grant request -> submitted case -> authorized reviewer -> final decision -> exactly one CG-01 grant change; rejected/returned must leave grants unchanged. Test reviewer-scope denial, concurrent reviewer actions, lost finalizer response/retry and process-version pinning. When CG-19 is delivered, attach/verify actual access evidence; when CG-02/04/10/14 are delivered, their respective owner workflows register real source cases and test finalization. The later owner—not CG-03 placeholders—owns that cross-module QA.
 
 ## Typed API and coordination
 
