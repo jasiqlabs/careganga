@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **Verified referral attributi
 
 State/invariant: **Referral pending/qualified; redemption requested/approved/fulfilled/reversed; No unearned points or repeated redemption/stock issue**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete referral/points/rewards contracts
+
+`referral(id,referrer_member_or_volunteer,applicant_source_ref,channel,status,qualified_at)` is unique per qualifying registration/source event and does not award on mere click or unverified contact. `points_event(id,owner_ref,source_owner,source_event,delta,state)` has unique qualified event and is append-only: accepted point balance derives from earned − redeemed + reversed events.
+
+`rank_policy(id,effective_from,thresholds,benefits,version)` requires monotonic threshold validation; the illustrated seven ranks remain configurable. `reward_product(id,type,points_cost,category,availability,physical_item_ref)` links genuine CG-12 stock only for physical items, not a duplicate warehouse.
+
+`redemption(id,owner_ref,reward_ref,points_snapshot,status,fulfilment_source)` uses one transaction/unique source for point hold/debit and authorized physical-stock reservation; cancel/failed fulfillment produces compensating points/stock events and audit, not a second independent balance.
+
+**QA:** referral cycle/self-referral, duplicated applicant attribution, qualification reversal, no-balance redemption, last-unit parallel redemptions, invalid rank thresholds, refund/cancel points and public leaderboard privacy.
+
 ## Typed API and coordination
 
 An authenticated `/api/referrals-rewards` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
