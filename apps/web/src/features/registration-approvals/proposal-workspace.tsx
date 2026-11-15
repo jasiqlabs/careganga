@@ -392,6 +392,8 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
           <p>Proposed role: <strong>{detail.roleName}</strong></p>
           <p>State: <strong>{humanStatus(detail.status)}</strong></p>
           <p>Proposal revision {detail.proposalRevision} · Process version {detail.processVersion}</p>
+          <p>Frozen account access revision {detail.sourceAccountAccessRevision}
+            · Frozen role revision {detail.sourceRoleRevision}</p>
           <h3>Approval history</h3>
           {!detail.history.length?<p>No decisions have been recorded.</p>:
             <ol>{detail.history.map((e,i)=><li key={i}>
