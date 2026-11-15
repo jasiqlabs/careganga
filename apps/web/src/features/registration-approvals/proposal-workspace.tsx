@@ -149,12 +149,16 @@ export function ProposalWorkspace({mayConfigure,mayPropose}:{mayConfigure:boolea
         }else setMessage({kind:"info",message:
           "No committed result is visible. Ask Foundation support before sending another request."});
       }else{
-        // Process changes do not have a command lookup endpoint; only verify the
-        // effective read without assuming an unknown response meant failure.
-        const updated=await api<CG03ProcessView>("process");
-        setProcess(updated);
-        setMessage({kind:"info",message:
-          "The current process version was refreshed. Confirm the earlier request with Foundation support before another edit."});
+        const prior=await api<{status:string;version:number|null}>(
+          "process/changes/"+encodeURIComponent(key.current));
+        if(prior.status==="CONFIRMED"&&Number.isInteger(prior.version)){
+          const active=await api<CG03ProcessView>("process");
+          if(active.version<Number(prior.version))throw Error("UNAVAILABLE");
+          setProcess(active);setUnknown(false);setEditingProcess(false);key.current="";
+          setMessage({kind:"success",message:
+            "The original process change is confirmed. Older cases keep their pinned route."});
+        }else setMessage({kind:"info",message:
+          "No committed process change is visible. Ask Foundation support before a new attempt."});
       }
     }catch(e){setMessage({kind:"error",message:explanation(e)});}
     finally{setBusy(false);}
