@@ -3,7 +3,7 @@ import { FormEvent,useCallback,useEffect,useRef,useState } from "react";
 import type { CG01AccountList,CG01AccountView,CG01AccountOption } from "@careganga/api-contracts";
 type RoleOption={value:string;label:string;context:string};
 type Notice={kind:"success"|"error"|"uncertain";text:string};
-type Pending={kind:"assign"|"revoke"|"status";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
+type Pending={kind:"assign"|"revoke"|"status"|"resend";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
 type Editor="invite"|"detail"|null;
 
 async function read<T>(path:string):Promise<T>{
@@ -45,6 +45,7 @@ export function AccountsPanel(){
   const [pending,setPending]=useState<Pending|null>(null);
   const [fullName,setFullName]=useState("");
   const [email,setEmail]=useState("");
+  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [searchRole,setSearchRole]=useState("");
@@ -97,7 +98,7 @@ export function AccountsPanel(){
     }
   }
   function openInvite(){
-    setEditor("invite");setPending(null);setFullName("");setEmail("");setRoleRef("");
+    setEditor("invite");setPending(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
@@ -111,7 +112,7 @@ export function AccountsPanel(){
     setBusy(true);setNotice(null);
     try{
       await change("invitations","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase(),
-        roleRef,requestKey:requestKey.current});
+        phone:phone.trim(),roleRef,requestKey:requestKey.current});
       setEditor(null);setNotice({kind:"success",text:
         "Invitation saved. Email delivery is not guaranteed; check the account's delivery status."});
       requestKey.current="";await load(applied,0,filter);
@@ -132,6 +133,8 @@ export function AccountsPanel(){
       if(choice.kind==="assign"){
         if(!roleRef)return;
         await change(path+"/role","PUT",{roleRef,expectedRevision:choice.target.revision,requestKey:key});
+      }else if(choice.kind==="resend"){
+        await change(path+"/invitation/resend","POST",{expectedRevision:choice.target.revision,requestKey:key});
       }else if(choice.kind==="revoke"){
         await change(path+"/role","DELETE",{expectedRevision:choice.target.revision,requestKey:key});
       }else if(choice.status){
@@ -223,6 +226,10 @@ export function AccountsPanel(){
             value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
           <label className="field">Work email<input required type="email" maxLength={254}
             value={email} onChange={event=>setEmail(event.target.value)}/></label>
+          <label className="field">Phone (optional, unverified)
+            <input type="tel" placeholder="+91..." value={phone} maxLength={16}
+              onChange={event=>setPhone(event.target.value)}/>
+          </label>
           <p>Area level: Foundation (organization-wide)</p>
           <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
             onChange={event=>setSearchRole(event.target.value)}/></label>
@@ -240,10 +247,14 @@ export function AccountsPanel(){
         </form>}
         {editor==="detail"&&target&&!pending&&<div className="form">
           <h3>{target.displayName}</h3><p>{target.email}</p>
+          {target.phone&&<p>Phone (unverified): {target.phone}</p>}
           <p>Status: {target.status}</p>
           <p>Current role: {target.roleName??"Not assigned"}</p>
           <p>Foundation scope · Invitation: {target.deliveryStatus??"Not applicable"}</p>
           {target.roleProtected?<p>This protected administrator cannot be changed here.</p>:<>
+            {target.status==="INVITED"&&canInvite&&<button type="button" onClick={()=>{
+              requestKey.current=crypto.randomUUID();setPending({kind:"resend",target});
+            }}>Resend invitation</button>}
             {canAssign&&<div className="form">
               <label className="field">Find eligible roles<input maxLength={80}
                 value={searchRole} onChange={event=>setSearchRole(event.target.value)}/></label>
@@ -274,7 +285,7 @@ export function AccountsPanel(){
         </div>}
         {pending&&<div className="form">
           <p>Confirm the {pending.kind==="assign"?"role assignment":
-            pending.kind==="revoke"?"role revocation":"account status change"} for {pending.target.displayName}.</p>
+            pending.kind==="revoke"?"role revocation":pending.kind==="resend"?"invitation resend":"account status change"} for {pending.target.displayName}.</p>
           {pending.kind==="assign"&&<p>Selected role: {roles.find(r=>r.value===roleRef)?.label??"Please choose a role"}</p>}
           {pending.kind==="status"&&<p>New status: {pending.status}</p>}
           <p>This will invalidate previously issued sessions if access changes.</p>
