@@ -1,9 +1,10 @@
-import { HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
 import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-api";
+import { capabilitiesInUse, implementedCapability } from "../domain/capability-catalog";
 
 const INVALID_LOGIN = "The account details or verification code could not be confirmed.";
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -136,10 +137,42 @@ export class SessionService implements IdentityAuthorization {
       activeSessionId:actor.id,mfaVerifiedAt:actor.mfa_verified_at
     };
   }
+  private async allowedActionsFor(actor: VerifiedFoundationActor): Promise<string[]> {
+    // Reconfirm session and membership in the same guarded query: client roles never confer authority.
+    const result=await this.db.query<{is_protected:boolean;capability_key:string|null}>(`
+      SELECT r.is_protected,rg.capability_key
+      FROM auth_session s
+      JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
+        AND a.access_version=s.account_access_version
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.active=true
+      LEFT JOIN role_grant rg ON rg.role_id=r.id
+      WHERE s.id=$1 AND s.account_id=$2 AND s.revoked_at IS NULL
+        AND s.expires_at>now() AND s.last_seen_at>now()-interval '30 minutes'
+        AND s.mfa_verified_at IS NOT NULL AND a.realm_id=$3`,
+      [actor.activeSessionId,actor.accountId,actor.realmId]);
+    if (!result.rowCount)throw new UnauthorizedException();
+    const implemented=capabilitiesInUse();
+    // A protected Foundation root has ONLY the concrete implemented CG-01 actions.
+    if(result.rows[0].is_protected)return implemented.map(c=>c.key);
+    return [...new Set(result.rows.map(r=>r.capability_key)
+      .filter((k):k is string=>Boolean(k)&&Boolean(implementedCapability(k!))))];
+  }
+  async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
+    const actor=await this.verifySession(bearer);
+    const granted=await this.allowedActionsFor(actor);
+    return {
+      displayName:actor.displayName,roleName:actor.roleName,
+      actions:capabilitiesInUse().filter(c=>granted.includes(c.key))
+        .map(({key,businessLabel,group})=>({key,businessLabel,group}))
+    };
+  }
   async requireAction(bearer: string, capability: string): Promise<VerifiedFoundationActor> {
     const actor=await this.verifySession(bearer);
-    // The first story only implements self-session access; all future module actions default-deny.
-    if (capability !== "identity.session.self") throw new UnauthorizedException();
+    if(capability==="identity.session.self")return actor;
+    if(!implementedCapability(capability))throw new ForbiddenException();
+    if(!(await this.allowedActionsFor(actor)).includes(capability))
+      throw new ForbiddenException();
     return actor;
   }
   async signOut(bearer: string): Promise<void> {
