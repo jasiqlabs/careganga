@@ -16,8 +16,10 @@ function allow(parts:string[],method:"GET"|"POST"):boolean{
     if(parts[0]==="options"&&["account","role"].includes(parts[1]))return method==="GET";
     if(parts[0]==="cases"&&UUID.test(parts[1]))return method==="GET";
   }
-  if(parts.length===3&&parts[0]==="cases"&&UUID.test(parts[1])&&
-     parts[2]==="decisions")return method==="POST";
+  if(parts.length===3&&parts[0]==="cases"&&UUID.test(parts[1])){
+    if(parts[2]==="decisions"||parts[2]==="retry-owner")return method==="POST";
+    if(parts[2]==="owner-status")return method==="GET";
+  }
   if(parts.length===5&&parts[0]==="cases"&&UUID.test(parts[1])&&
      parts[2]==="decisions"&&parts[3]==="requests"&&UUID.test(parts[4]))
      return method==="GET";
@@ -35,7 +37,8 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"){
   if(!session)return reply(401,"Sign in to continue.");
   if(!process.env.BACKEND_URL)return reply(503,"Foundation approvals are unavailable.");
   let body:string|undefined;
-  if(method==="POST"){
+  if(method==="POST"&&!(parts.length===3&&parts[0]==="cases"&&
+      parts[2]==="retry-owner")){
     try{
       const input:unknown=await req.json();
       if(!input||typeof input!=="object"||Array.isArray(input))throw Error();
