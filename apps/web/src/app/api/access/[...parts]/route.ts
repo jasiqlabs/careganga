@@ -5,16 +5,24 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function allowed(parts:string[],method:string):boolean{
   if(parts.length===1){
-    if(parts[0]==="effective"||parts[0]==="capabilities"||parts[0]==="audit")return method==="GET";
+    if(["effective","capabilities","audit"].includes(parts[0]))return method==="GET";
+    if(parts[0]==="invitations")return method==="POST";
+    if(parts[0]==="accounts")return method==="GET";
     return parts[0]==="roles"&&(method==="GET"||method==="POST");
   }
-  if(parts[0]!=="roles")return false;
   if(parts.length===2){
-    if(parts[1]==="options")return method==="GET";
-    return UUID.test(parts[1])&&method==="PATCH";
+    if(parts[0]==="accounts"||parts[0]==="roles"){
+      if(parts[1]==="options")return method==="GET";
+      return parts[0]==="roles"&&UUID.test(parts[1])&&method==="PATCH";
+    }
+    return false;
   }
-  return parts.length===3&&UUID.test(parts[1])&&
-    (parts[2]==="copy"||parts[2]==="retire")&&method==="POST";
+  if(parts.length!==3||!UUID.test(parts[1]))return false;
+  if(parts[0]==="accounts"){
+    return (parts[2]==="role"&&(method==="PUT"||method==="DELETE"))||
+      (parts[2]==="status"&&method==="PATCH");
+  }
+  return parts[0]==="roles"&&(parts[2]==="copy"||parts[2]==="retire")&&method==="POST";
 }
 async function proxy(request:NextRequest,parts:string[],method:string){
   if(!allowed(parts,method))return NextResponse.json({message:"This action is not available."},{status:404});
@@ -53,7 +61,9 @@ async function proxy(request:NextRequest,parts:string[],method:string){
           const payload:unknown=await response.json();
           if(payload&&typeof payload==="object"&&"code" in payload&&
             typeof payload.code==="string"&&
-            ["DUPLICATE_ROLE","STALE_ROLE","ROLE_RETIRED","ROLE_ASSIGNED","REPLAY_CONFLICT"].includes(payload.code))
+            ["DUPLICATE_ROLE","STALE_ROLE","ROLE_RETIRED","ROLE_ASSIGNED","REPLAY_CONFLICT",
+              "DUPLICATE_ACCOUNT_OR_ASSIGNMENT","STALE_ACCOUNT","ROLE_ALREADY_ASSIGNED",
+              "ROLE_ALREADY_REVOKED","ACCOUNT_ALREADY_IN_STATUS"].includes(payload.code))
             errorCode=payload.code;
         }catch{ /* no unreviewed server content in the browser */ }
       }
@@ -85,3 +95,6 @@ export async function POST(request:NextRequest,ctx:Context){
 export async function PATCH(request:NextRequest,ctx:Context){
   return proxy(request,(await ctx.params).parts,"PATCH");
 }
+
+export async function PUT(request:NextRequest,ctx:Context){return proxy(request,(await ctx.params).parts,"PUT");}
+export async function DELETE(request:NextRequest,ctx:Context){return proxy(request,(await ctx.params).parts,"DELETE");}
