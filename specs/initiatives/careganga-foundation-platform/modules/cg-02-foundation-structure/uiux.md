@@ -1,7 +1,7 @@
 # CG-02 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED; current-hash REVIEW_REQUIRED after further review of U18–U22, original approved branch versus editable current profile, and stage-1 protected media. Prior delegated approval remains historical; PRD/HLD REVIEW_REQUIRED. Authenticated Harness and source/runtime/Web/Android/pixel/motion QA NOT_RUN.
+**State:** REQUIRED · **DELEGATED_APPROVED** for exact current CareGanga CG-02 U18–U22 UI/UX source by JASIQ AI Design Review Agent (15 Nov 2026), preserving original palette/shell/forms/drawers and verified real branch profile versus immutable approved application. Earlier approved SHA is historical. PRD/HLD REVIEW_REQUIRED, Harness resolver/runtime/device/pixel/motion verification NOT_RUN; no appearance PASS asserted.
 
 ## Exact existing design and animation contract
 

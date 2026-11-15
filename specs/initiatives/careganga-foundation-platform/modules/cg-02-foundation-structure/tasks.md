@@ -3,11 +3,11 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
-**Development gate:** CG-02 2 stories / 25 unique QA cases undergoing latest-source independent-boundary expert review; earlier hashes have historical approval only. Current PRD/HLD REVIEW_REQUIRED; Harness resolver, independent CRITICAL DB/SQL/migration/restore, actual source-code QA, Web/Android runtime, pixel/motion QA NOT_RUN. Stories remain BLOCKED | PLANNING_DRAFT_ONLY; no development executed.
+**Development gate:** **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for exact current task-definition source (2 stories / 25 unique QA: US-001-QA01–09, US-002-QA01–16) after ownership/independence/QA source review and correction. Earlier approval hashes remain historical. PRD/HLD REVIEW_REQUIRED; authenticated Harness resolver, actual predecessor delivery, independent CRITICAL DB/SQL/migration/restore, source-code QA, Web/Android runtime and pixel/motion QA NOT_RUN. Both stories remain BLOCKED | PLANNING_DRAFT_ONLY; no code or CI/Actions executed.
 
-## Reviewed task definitions — current-hash reapproval pending
+## Delegated-approved task definitions — design only
 
-**Approval truth:** Historical owner-delegated decisions and former QA snapshots remain in `approvals.json`. The earlier delegated design decision covered the moved branch-scoped department work and US-002-owned CG-03 branch-approval and CG-19 pre-submission file extensions (QA14/15) with retained CG-01 scope verification in QA02/QA12. It does **not** authorize coding or source completion: latest PRD/HLD `REVIEW_REQUIRED`, authenticated resolver and independent database checks `NOT_RUN`; no story becomes `READY` without real entry gates.
+**Approval truth:** Historical owner-delegated decisions and former QA snapshots remain in `approvals.json`. The earlier delegated design decision covered the moved branch-scoped department work and US-002-owned CG-03 branch-approval and CG-19 pre-submission file extensions (QA14/15) with retained CG-01 scope verification in QA02/QA12. The current latest-source re-review added and verified QA16 and root-scope/transaction-proof coverage; delegated approval is design only and does **not** authorize coding or source completion: latest PRD/HLD `REVIEW_REQUIRED`, authenticated resolver and independent database checks `NOT_RUN`; no story becomes `READY` without real entry gates.
 
 ### US-001 — Configure Foundation identity, real geography and departments/committees
 

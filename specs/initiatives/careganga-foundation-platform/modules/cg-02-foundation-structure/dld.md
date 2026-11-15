@@ -1,7 +1,7 @@
 # CG-02 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED; re-review corrections to critical database/root/branch maintenance and transaction-bound proof guard require **current-hash delegated reapproval**. The preceding SHA's approval remains historical in `approvals.json`. `database_impact: CRITICAL`. Latest PRD/HLD REVIEW_REQUIRED; Harness resolver, independent DB review, actual SQL/migration/restore, source/runtime/Web/Android/visual QA NOT_RUN. No implementation.
+**State:** REQUIRED · **DELEGATED_APPROVED** for exact current CG-02 DLD source by JASIQ AI Design Review Agent (15 Nov 2026), after two source-review passes of single-owner schemas, same-root FK guards, immutable branch/profile history, actual CG-03/19 introduced extensions, short in-transaction proof fencing and 25 QA. `database_impact: CRITICAL`; independent DB review, SQL/migration/restore, Harness resolver, source-code/runtime/Web/Android/visual QA NOT_RUN. PRD/HLD REVIEW_REQUIRED; no development clearance.
 
 ## Data ownership and decision boundary
 
