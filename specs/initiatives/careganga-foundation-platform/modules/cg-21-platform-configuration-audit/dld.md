@@ -1,7 +1,7 @@
 # CG-21 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-21-BR01–CG-21-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C09, C10, C50, C51, C52, C53, C54, C55 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, source review/fix/re-review against CG-01 benchmark, current PRD/HLD v1.1 and Harness ec7c0b81 (15 November 2026); database_impact: CRITICAL. CG-21 owner-confirmed delegated design approval NOT_RECORDED; authenticated local Harness resolver, independent CRITICAL DB review, migrations, restore, runtime/visual QA NOT_RUN.
+**State:** REQUIRED / OWNER_DELEGATED_DESIGN_CONTENT_APPROVED (15 Nov 2026) by **JASIQ AI Design Review Agent**, after owner confirmation and CG-01-benchmark source review/fix/re-review against current PRD/HLD and Harness ec7c0b81; database_impact: CRITICAL. Formal entry remains BLOCKED because current PRD/HLD approvals REVIEW_REQUIRED; authenticated local Harness resolver, independent CRITICAL DB review, migrations/restore and runtime/visual QA NOT_RUN.
 
 ## Canonical source, authorization and data ownership
 
