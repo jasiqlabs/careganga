@@ -1,0 +1,56 @@
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
+export const dynamic="force-dynamic";
+export default async function AdminHome() {
+  const token=(await cookies()).get("cg_staff_session")?.value;
+  if (!token) redirect("/admin/login");
+  const backend=process.env.BACKEND_URL;
+  let current:{displayName:string;roleName:string;scope:string}|null=null;
+  let invalidSession=false;
+  let canViewRoles=false;
+  let canViewAccounts=false;
+  let canManageSecurityPolicy=false;
+  let canViewSettings=false;
+  let canViewAudit=false;
+  let canViewRecovery=false;
+  if (backend) {
+    try {
+      const response=await fetch(new URL("/api/identity/me",backend),{
+        headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(7000)
+      });
+      if (response.status===401) invalidSession=true;
+      if(response.ok) {
+        const permissions=await fetch(new URL("/api/access/effective",backend),{
+          headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(7000)
+        });
+        if(permissions.status===401) invalidSession=true;
+        if(permissions.ok){
+          const effective=await permissions.json() as {actions?:{key?:string}[]};
+          canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
+          canViewAccounts=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="accounts.view");
+          canManageSecurityPolicy=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="identity.security-policy.manage");
+          canViewSettings=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.settings.view");
+          canViewAudit=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.audit.view");
+          canViewRecovery=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.recovery.view");
+        }
+        const data:unknown=await response.json();
+        if(data&&typeof data==="object"&&"displayName" in data&&"roleName" in data&&"scope" in data
+          &&typeof data.displayName==="string"&&typeof data.roleName==="string"&&typeof data.scope==="string")
+          current={displayName:data.displayName,roleName:data.roleName,scope:data.scope};
+      }
+    }catch { /* Offline is not permission to show protected data. */ }
+  }
+  if (invalidSession) redirect("/admin/login");
+  if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
+  return <div className="shell">
+    <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
+      canViewSettings={canViewSettings} canViewAudit={canViewAudit}
+      canViewRecovery={canViewRecovery}/>
+    <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
+    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
+    </main>
+  </div>;
+}

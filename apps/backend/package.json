@@ -1,0 +1,26 @@
+{
+  "name": "@careganga/backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "db:migrate": "tsx db/migrate.ts",
+    "bootstrap:root": "tsx src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.5.0",
+    "@nestjs/core": "12.5.0",
+    "@nestjs/platform-express": "12.5.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "pg": "8.16.3",
+    "nodemailer": "10.5.0"
+  },
+  "devDependencies": {
+    "tsx": "4.20.6",
+    "@types/pg": "8.15.5",
+    "@types/express": "5.0.3"
+  }
+}

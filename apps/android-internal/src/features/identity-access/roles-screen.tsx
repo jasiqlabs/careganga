@@ -1,0 +1,459 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Modal, Platform,
+  Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View
+} from "react-native";
+import * as Crypto from "expo-crypto";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { identityRequest } from "./http-client";
+import { careGangaTheme,roleColorOptions,roleColor } from "../../../../../packages/design-tokens/src/index";
+
+import type { CG01RoleSummary,CG01Capability,CG01AuditEvent } from "@careganga/api-contracts";
+type Role=CG01RoleSummary;
+type Action=CG01Capability;
+type Group={group:string;actions:Action[]};
+type Editing={mode:"create"|"edit"|"copy";source?:Role};
+type RoleStatus="all"|"active"|"retired";
+type RoleKind="all"|"system"|"custom";
+type Audit=CG01AuditEvent;
+type RoleSummary={totalRoles:number;implementedActions:number;activeRoles:number;
+  inactiveRoles:number;customRoles:number;systemRoles:number};
+const base="/api/access/";
+async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
+  let result:Response;
+  try {
+    result=await identityRequest(base+path,{
+      method,headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
+      ...(body?{body:JSON.stringify(body)}:{})
+    });
+  } catch {
+    // Lost response after a mutation may conceal a successful commit.
+    throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");
+  }
+  if(result.status===401)throw new Error("SESSION_EXPIRED");
+  if(result.status===403)throw new Error("PERMISSION_DENIED");
+  if(result.status===409){
+    const payload:unknown=await result.json();
+    const code=payload&&typeof payload==="object"&&"code" in payload&&
+      typeof payload.code==="string"?payload.code:"CONFLICT";
+    throw new Error(["DUPLICATE_ROLE","STALE_ROLE","ROLE_RETIRED","ROLE_ASSIGNED","REPLAY_CONFLICT"]
+      .includes(code)?code:"CONFLICT");
+  }
+  if(!result.ok)throw new Error(result.status>=500?"UNKNOWN":"INVALID");
+  try {
+    return await result.json() as unknown;
+  } catch {
+    // A successful HTTP response with a truncated body is not confirmation of the write.
+    throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");
+  }
+}
+export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>void;onExpired:()=>void}){
+  const [roles,setRoles]=useState<Role[]>([]);
+  const [details,setDetails]=useState<Role|null>(null);
+  const [status,setStatus]=useState<RoleStatus>("all");
+  const [roleKind,setRoleKind]=useState<RoleKind>("all");
+  const [groups,setGroups]=useState<Group[]>([]);
+  const [allowed,setAllowed]=useState<string[]>([]);
+  const [busy,setBusy]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  const [success,setSuccess]=useState("");
+  const [search,setSearch]=useState("");
+  const [editor,setEditor]=useState<Editing|null>(null);
+  const [name,setName]=useState("");
+  const [description,setDescription]=useState("");
+  const [colorKey,setColorKey]=useState("blue");
+  const [copyQuery,setCopyQuery]=useState("");
+  const [copyCandidates,setCopyCandidates]=useState<Role[]>([]);
+  const [copySearching,setCopySearching]=useState(false);
+  const [selected,setSelected]=useState<string[]>([]);
+  const [requestKey,setRequestKey]=useState("");
+  const [history,setHistory]=useState<Audit[]|null>(null);
+  const [historyCursor,setHistoryCursor]=useState<string|null>(null);
+  const [offset,setOffset]=useState(0);
+  const [total,setTotal]=useState(0);
+  const [summary,setSummary]=useState<RoleSummary|null>(null);
+  const [uncertain,setUncertain]=useState(false);
+  const canEdit=allowed.includes("roles.manage");
+  const canAudit=allowed.includes("access.audit.view");
+  const load=useCallback(async(q="",skip=0,filter:RoleStatus="all",kind:RoleKind="all")=>{
+    setBusy(true);setError("");
+    try{
+      const query=new URLSearchParams({search:q,limit:"30",offset:String(skip),status:filter,type:kind});
+      const [list,cap,effective]=await Promise.all([
+        call(token,"roles?"+query),
+        call(token,"capabilities"),
+        call(token,"effective")
+      ]);
+      const a=list as {roles:Role[];total:number;summary:RoleSummary};
+      const c=cap as {groups:Group[]};
+      const eff=effective as {actions:{key:string}[]};
+      if(!Array.isArray(a.roles)||!Array.isArray(c.groups)||!Array.isArray(eff.actions))
+        throw new Error("INVALID");
+      setRoles(a.roles);setGroups(c.groups);setAllowed(eff.actions.map(x=>x.key));
+      setOffset(skip);setTotal(a.total);setSummary(a.summary);
+    }catch(e){
+      // Data cached on screen is not a source of current permission truth.
+      setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setHistoryCursor(null);setSummary(null);
+      setEditor(null);setDetails(null);
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      setError(e instanceof Error&&e.message==="PERMISSION_DENIED"?
+        "You don't have access to Foundation roles.":"Roles cannot be verified right now.");
+    }finally{setBusy(false);}
+  },[token,onExpired]);
+  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{
+    const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
+      if(editor&&!saving){setEditor(null);return true;}
+      if(details){setDetails(null);return true;}
+      if(!editor){onExit();return true;}
+      return true;
+    });
+    return()=>sub.remove();
+  },[editor,details,saving,onExit]);
+  async function findCopySources(query:string){
+    setCopySearching(true);setError("");
+    try{
+      const params=new URLSearchParams({search:query.trim(),status:"active",limit:"30",offset:"0"});
+      const result=await call(token,"roles?"+params.toString()) as {roles:Role[]};
+      if(!Array.isArray(result.roles))throw new Error("INVALID");
+      setCopyCandidates(result.roles.filter(role=>role.active&&!role.protected));
+    }catch(e){
+      setCopyCandidates([]);
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
+        setRoles([]);setGroups([]);setAllowed([]);setEditor(null);
+      }
+      setError("Eligible roles could not be searched. Return to roles and retry.");
+    }finally{setCopySearching(false);}
+  }
+  function chooseCopySource(source?:Role){
+    if(saving)return;
+    if(!source){
+      setEditor({mode:"create"});setSelected([]);setColorKey("blue");return;
+    }
+    if(!source.active||source.protected)return;
+    setEditor({mode:"copy",source});
+    setColorKey(source.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
+    const keys=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
+    setSelected(source.actionKeys.filter(k=>keys.has(k)));
+  }
+  function open(mode:Editing["mode"],source?:Role){
+    if(!canEdit||source?.protected)return;
+    setEditor({mode,source});
+    setName(mode==="copy"?(source?.name??"")+" copy":source?.name??"");
+    setDescription(source?.description??"");
+    setColorKey(source?.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
+    setCopyQuery("");if(mode!=="edit")void findCopySources("");
+    const eligible=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
+    setSelected(source?.actionKeys.filter(k=>eligible.has(k))??[]);
+    setRequestKey(Crypto.randomUUID());setError("");setSuccess("");setUncertain(false);
+  }
+  async function submit(){
+    if(!editor||saving||uncertain||name.trim().length<2)return;
+    setSaving(true);setError("");setSuccess("");
+    const source=editor.source;
+    const url=editor.mode==="create"?"roles":editor.mode==="copy"&&source?
+      "roles/"+source.roleRef+"/copy":"roles/"+source?.roleRef;
+    const method=editor.mode==="edit"?"PATCH":"POST";
+    try{
+      await call(token,url,method,{
+        name:name.trim(),description:description.trim(),colorKey,
+        actionKeys:selected,requestKey,
+        ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})
+      });
+      setEditor(null);await load(search,offset,status,roleKind);setSuccess("Role change saved.");
+    }catch(e){
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
+        setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setEditor(null);
+      }
+      if(e instanceof Error&&e.message==="UNKNOWN"){
+        setUncertain(true);
+        setError("The result could not be confirmed. Return to the role list before trying again.");
+      }else setError(e instanceof Error&&e.message==="DUPLICATE_ROLE"?
+        "A role with this name already exists. Choose another name.":
+        e instanceof Error&&e.message==="REPLAY_CONFLICT"?
+        "This request reference was already used. Refresh before retrying.":
+        e instanceof Error&&["STALE_ROLE","ROLE_RETIRED","CONFLICT"].includes(e.message)?
+        "This role changed elsewhere. Refresh before saving.":e instanceof Error&&e.message==="PERMISSION_DENIED"?
+        "You don't have permission for this change.":"Check the role details and try again.");
+    }finally{setSaving(false);}
+  }
+  function confirmRetire(role:Role){
+    if(!canEdit||role.protected||!role.active||role.assignedCount>0)return;
+    Alert.alert("Retire role?","This role cannot be selected again after retirement.",[
+      {text:"Cancel",style:"cancel"},{text:"Retire role",style:"destructive",onPress:()=>void retire(role)}
+    ]);
+  }
+  async function retire(role:Role){
+    if(!canEdit||role.protected||!role.active||role.assignedCount>0||saving)return;
+    setSaving(true);setError("");setSuccess("");
+    try{
+      await call(token,"roles/"+role.roleRef+"/retire","POST",{
+        expectedRevision:role.revision,requestKey:Crypto.randomUUID()
+      });
+      await load(search,offset,status,roleKind);setSuccess("Role retired.");
+    }catch(e){
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      setError(e instanceof Error&&e.message==="ROLE_ASSIGNED"?
+        "Reassign accounts using this role before retiring it.":
+        "Retirement could not be confirmed. Refresh roles before trying again.");
+    }finally{setSaving(false);}
+  }
+  async function loadHistory(){
+    setBusy(true);setError("");
+    try{
+      const result=await call(token,"audit?limit=30") as {events:Audit[];nextCursor:string|null};
+      if(!Array.isArray(result.events))throw new Error("INVALID");
+      setHistory(result.events);setHistoryCursor(result.nextCursor);
+    }catch(e){
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      setError("Security history is unavailable.");
+    }finally{setBusy(false);}
+  }
+  async function moreHistory(){
+    if(!historyCursor||busy)return;
+    setBusy(true);
+    try{
+      const data=await call(token,"audit?limit=30&cursor="+encodeURIComponent(historyCursor))
+        as {events:Audit[];nextCursor:string|null};
+      if(!Array.isArray(data.events))throw new Error("INVALID");
+      setHistory(old=>[...(old??[]),...data.events]);setHistoryCursor(data.nextCursor);
+    }catch(e){
+      if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
+      setError("Additional history could not be confirmed.");
+    }finally{setBusy(false);}
+  }
+  return <SafeAreaView style={styles.page}><ScrollView
+    keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <View style={styles.line}>
+      <Pressable onPress={onExit} accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>My account</Text></Pressable>
+      <Text accessibilityRole="header" style={styles.title}>Roles & permissions</Text>
+    </View>
+    <Text>Foundation staff access</Text>
+    <View style={styles.kpiGrid} accessibilityLabel="Foundation role statistics">
+      {([
+        ["Total Roles",summary?.totalRoles],
+        ["Current Permission Actions",summary?.implementedActions],
+        ["Active Roles",summary?.activeRoles],
+        ["Inactive Roles",summary?.inactiveRoles],
+        ["Custom Roles",summary?.customRoles],
+        ["System Roles",summary?.systemRoles]
+      ] as const).map(([label,value])=><View key={label} style={styles.kpiCard}>
+        <Text style={styles.kpiLabel}>{label}</Text>
+        <Text style={styles.kpiValue}>{value??"—"}</Text>
+      </View>)}
+    </View>
+    <View style={styles.line}>
+      <TextInput accessibilityLabel="Search roles" placeholder="Search role name"
+        style={styles.input} value={search} onChangeText={setSearch}/>
+      <Pressable accessibilityRole="button" onPress={()=>void load(search,0,status,roleKind)} style={styles.button}>
+        <Text>Search</Text></Pressable>
+    </View>
+    <Text style={styles.fieldLabel}>Role type</Text>
+    <View style={styles.line} accessibilityRole="toolbar">
+      {(["all","system","custom"] as const).map(kind=><Pressable key={kind}
+        accessibilityRole="button" accessibilityState={{selected:roleKind===kind}}
+        style={[styles.button,roleKind===kind&&styles.selectedTab]}
+        onPress={()=>{setRoleKind(kind);void load(search,0,status,kind);}}>
+        <Text style={roleKind===kind?styles.selectedTabText:styles.buttonText}>
+          {kind==="all"?"All types":kind==="system"?"System":"Custom"}
+        </Text>
+      </Pressable>)}
+    </View>
+    <View style={styles.line} accessibilityRole="toolbar">
+      {(["all","active","retired"] as const).map(filter=><Pressable key={filter}
+        accessibilityRole="button" accessibilityState={{selected:status===filter}}
+        style={[styles.button,status===filter&&styles.selectedTab]}
+        onPress={()=>{setStatus(filter);void load(search,0,filter,roleKind);}}>
+        <Text style={status===filter?styles.selectedTabText:styles.buttonText}>
+          {filter==="all"?"All roles":filter==="active"?"Active":"Retired"}
+        </Text>
+      </Pressable>)}
+    </View>
+    <View style={styles.line}>
+      {canEdit&&<Pressable accessibilityRole="button" style={styles.button}
+        onPress={()=>open("create")}><Text>Create role</Text></Pressable>}
+      {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
+        onPress={()=>void loadHistory()}><Text>Access history</Text></Pressable>}
+    </View>
+    {busy&&<ActivityIndicator accessibilityLabel="Loading roles"/>}
+    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {!!success&&<Text accessibilityRole="alert">{success}</Text>}
+    {!busy&&!roles.length&&<Text>No matching roles are available.</Text>}
+    {!busy&&roles.map(role=><View key={role.roleRef} style={styles.roleCard}>
+      <View style={styles.line}>
+        <View accessible={false} style={[styles.roleDot,{backgroundColor:roleColor(role.colorKey)}]}/>
+        <Text style={styles.heading}>{role.name}</Text>
+      </View>
+      <Text>{role.protected?"Protected Foundation role":role.active?"Active":"Retired"}</Text>
+      <Text>{role.assignedCount} assigned accounts</Text>
+      <Text>{role.protected?"Protected authority":role.actionKeys.length+" allowed actions"}</Text>
+      {!!role.description&&<Text>{role.description}</Text>}
+      <Pressable accessibilityRole="button" style={styles.button}
+        onPress={()=>setDetails(role)}><Text style={styles.buttonText}>View details</Text></Pressable>
+      {canEdit&&!role.protected&&role.active&&<View style={styles.line}>
+        <Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>open("edit",role)}><Text>Edit</Text></Pressable>
+        <Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>open("copy",role)}><Text>Copy</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={saving||role.assignedCount>0}
+          style={styles.button} onPress={()=>confirmRetire(role)}><Text>Retire</Text></Pressable>
+      </View>}
+    </View>)}
+    {!busy&&total>30&&<View style={styles.line}>
+      <Pressable accessibilityRole="button" disabled={offset===0} style={styles.button}
+        onPress={()=>void load(search,Math.max(0,offset-30),status,roleKind)}><Text>Previous</Text></Pressable>
+      <Text>{offset+1}–{Math.min(offset+30,total)} of {total}</Text>
+      <Pressable accessibilityRole="button" disabled={offset+30>=total} style={styles.button}
+        onPress={()=>void load(search,offset+30,status,roleKind)}><Text>Next</Text></Pressable>
+    </View>}
+    {history&&<View style={styles.roleCard}>
+      <Text style={styles.heading}>Recent access history</Text>
+      {history.map((a,i)=><View key={i} style={styles.historyLine}>
+        <Text>{a.actionLabel} · {a.targetDisplay}</Text>
+        <Text>{a.outcome} · {a.actorDisplay}</Text>
+        <Text>{new Date(a.occurredAt).toLocaleString()}</Text>
+      </View>)}
+      {historyCursor&&<Pressable accessibilityRole="button" disabled={busy} style={styles.button}
+        onPress={()=>void moreHistory()}><Text>Load more history</Text></Pressable>}
+    </View>}
+  </ScrollView>
+  <Modal visible={Boolean(details)} animationType="slide" transparent={false}
+    onRequestClose={()=>setDetails(null)}>
+    <SafeAreaView style={styles.page}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <Text accessibilityRole="header" style={styles.title}>Role details</Text>
+        {details&&<>
+          <View style={styles.line}>
+            <View accessible={false} style={[styles.roleDot,{backgroundColor:roleColor(details.colorKey)}]}/>
+            <Text style={styles.heading}>{details.name}</Text>
+          </View>
+          <Text>{details.protected?"Protected Foundation role":details.active?"Active custom role":"Retired role"}</Text>
+          {!!details.description&&<Text>{details.description}</Text>}
+          <Text>Scope: Foundation</Text>
+          <Text>{details.assignedCount} assigned accounts</Text>
+          <Text style={styles.heading}>Permissions</Text>
+          {details.protected?<Text>
+            This role has protected administrator authority and cannot be edited or copied.
+          </Text>:groups.map(group=><View key={group.group} style={styles.group}>
+            <Text style={styles.heading}>{group.group}</Text>
+            {group.actions.map(action=><View key={action.key} style={styles.permission}>
+              <Text style={styles.permissionLabel}>{action.businessLabel}</Text>
+              <Text>{details.actionKeys.includes(action.key)?"Allowed":"Not granted"}</Text>
+            </View>)}
+          </View>)}
+          {!details.protected&&details.actionKeys.length===0&&<Text>No permissions granted.</Text>}
+        </>}
+        {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>{setDetails(null);void loadHistory();}}>
+          <Text style={styles.buttonText}>Access history</Text>
+        </Pressable>}
+        <Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>setDetails(null)}><Text style={styles.buttonText}>Back to roles</Text></Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>
+  <Modal visible={Boolean(editor)} animationType="slide" transparent={false}
+    onRequestClose={()=>{if(!saving)setEditor(null);}}>
+    <SafeAreaView style={styles.page}>
+      <KeyboardAvoidingView style={styles.page} behavior={Platform.OS==="ios"?"padding":undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text accessibilityRole="header" style={styles.title}>
+            {editor?.mode==="edit"?"Edit role":editor?.mode==="copy"?"Copy role":"Create role"}
+          </Text>
+          <Text>Role name</Text>
+          <TextInput accessibilityLabel="Role name" style={styles.input}
+            value={name} maxLength={80} onChangeText={setName}/>
+          <Text>Description</Text>
+          <TextInput accessibilityLabel="Role description" style={styles.input}
+            multiline value={description} maxLength={350} onChangeText={setDescription}/>
+          {editor?.mode!=="edit"&&<View style={styles.group}>
+            <Text style={styles.fieldLabel}>Copy permissions from</Text>
+            <Pressable accessibilityRole="button" disabled={saving} style={styles.button}
+              onPress={()=>chooseCopySource()}><Text>Start with no permissions</Text></Pressable>
+            <TextInput accessibilityLabel="Find eligible roles to copy" value={copyQuery}
+              maxLength={80} style={styles.input} onChangeText={setCopyQuery}
+              placeholder="Search role name"/>
+            <Pressable accessibilityRole="button" disabled={copySearching||saving} style={styles.button}
+              onPress={()=>void findCopySources(copyQuery)}>
+              <Text>{copySearching?"Finding…":"Find roles"}</Text>
+            </Pressable>
+            {copyCandidates.map(role=><Pressable key={role.roleRef}
+              accessibilityRole="button" accessibilityLabel={"Copy permissions from "+role.name}
+              accessibilityState={{selected:editor?.mode==="copy"&&editor.source?.roleRef===role.roleRef}}
+              disabled={saving} style={styles.option} onPress={()=>chooseCopySource(role)}>
+              <Text>{role.name}{editor?.mode==="copy"&&editor.source?.roleRef===role.roleRef?" — selected":""}</Text>
+            </Pressable>)}
+          </View>}
+          <Text style={styles.fieldLabel}>Applies to: Entire foundation</Text>
+          <Text style={styles.fieldLabel}>Colour</Text>
+          <View style={styles.swatches}>
+            {roleColorOptions.map(option=><Pressable key={option.key}
+              accessibilityRole="radio" accessibilityLabel={option.name}
+              accessibilityState={{checked:colorKey===option.key,disabled:saving}}
+              disabled={saving} onPress={()=>setColorKey(option.key)}
+              style={[styles.swatchRing,colorKey===option.key&&styles.swatchSelected]}>
+              <View style={[styles.swatch,{backgroundColor:option.hex}]}/>
+            </Pressable>)}
+          </View>
+          {editor?.mode==="copy"&&<Text>Only permitted actions are copied. People and protected rights are not copied.</Text>}
+          {groups.filter(g=>g.actions.some(c=>c.assignable)).map(g=><View key={g.group} style={styles.group}>
+            <Text style={styles.heading}>{g.group}</Text>
+            {g.actions.filter(c=>c.assignable).map(c=><View key={c.key} style={styles.permission}>
+              <Text style={styles.permissionLabel}>{c.businessLabel}</Text>
+              <Switch accessibilityLabel={c.businessLabel} disabled={saving||editor?.mode==="copy"}
+                value={selected.includes(c.key)}
+                onValueChange={value=>setSelected(old=>value?[...old,c.key]:old.filter(k=>k!==c.key))}/>
+            </View>)}
+          </View>)}
+          <Text>Administrator-only permissions are managed by the system.</Text>
+          <Text>{selected.length} actions selected</Text>
+          {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+          {!!success&&<Text>{success}</Text>}
+          <View style={styles.line}>
+            <Pressable accessibilityRole="button" style={styles.button} disabled={saving}
+              onPress={()=>setEditor(null)}><Text>Cancel</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.button}
+              disabled={saving||uncertain||name.trim().length<2} onPress={()=>void submit()}>
+              <Text>{saving?"Saving…":"Save role"}</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  </Modal>
+  </SafeAreaView>;
+}
+const styles=StyleSheet.create({
+  page:{flex:1,backgroundColor:careGangaTheme.background},
+  content:{padding:20,gap:12,paddingBottom:36},
+  title:{fontSize:24,fontWeight:"700",flexShrink:1,color:careGangaTheme.text},
+  heading:{fontSize:18,fontWeight:"700",color:careGangaTheme.text},
+  line:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:10},
+  kpiGrid:{flexDirection:"row",flexWrap:"wrap",gap:9},
+  kpiCard:{flexBasis:"47%",flexGrow:1,minWidth:130,backgroundColor:careGangaTheme.surface,
+    borderColor:careGangaTheme.border,borderWidth:1,borderRadius:8,padding:12,gap:6},
+  kpiLabel:{color:careGangaTheme.mutedText,fontSize:12,fontWeight:"600"},
+  kpiValue:{color:careGangaTheme.text,fontSize:21,fontWeight:"800"},
+  input:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:6,minHeight:48,paddingHorizontal:12,flexGrow:1,color:careGangaTheme.text},
+  button:{minHeight:48,minWidth:72,borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:6,paddingHorizontal:12,
+    paddingVertical:12,alignItems:"center",justifyContent:"center"},
+  roleCard:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:8,padding:14,gap:8},
+  roleDot:{width:16,height:16,borderRadius:8},
+  selectedTab:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
+  selectedTabText:{color:careGangaTheme.primaryText,fontWeight:"700"},
+  buttonText:{color:careGangaTheme.text,fontWeight:"600"},
+  group:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:7,padding:12,gap:10},
+  fieldLabel:{fontWeight:"600",color:careGangaTheme.text},
+  swatches:{flexDirection:"row",flexWrap:"wrap",gap:8,alignItems:"center"},
+  swatchRing:{width:48,height:48,borderWidth:2,borderColor:"transparent",borderRadius:24,alignItems:"center",justifyContent:"center"},
+  swatchSelected:{borderColor:careGangaTheme.text},
+  swatch:{width:29,height:29,borderRadius:15},
+  option:{padding:12,minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:6,backgroundColor:careGangaTheme.surface,justifyContent:"center"},
+  permission:{flexDirection:"row",alignItems:"center",gap:12,minHeight:48},
+  permissionLabel:{flex:1},
+  historyLine:{paddingVertical:8,borderBottomWidth:1},
+  error:{padding:12,borderWidth:1}
+});
