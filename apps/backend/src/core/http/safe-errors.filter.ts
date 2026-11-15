@@ -17,7 +17,20 @@ export class SafeErrorsFilter implements ExceptionFilter {
       : status === 400 ? "Please check your information and try again."
       : status === 409 ? "This was already changed. Refresh and try again."
       : "Request could not be completed.";
+    // Only these reviewed application error codes may cross the API boundary.
+    const safeCodes:Record<string,string>={
+      DUPLICATE_ROLE:"A role with this name already exists. Choose another name.",
+      STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
+      ROLE_RETIRED:"This role was already retired.",
+      ROLE_ASSIGNED:"Reassign accounts using this role before retiring it.",
+      REPLAY_CONFLICT:"This request reference has already been used. Refresh before retrying."
+    };
+    const payload=error instanceof HttpException?error.getResponse():null;
+    const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
+    const code=status===409&&typeof rawCode==="string"&&Object.hasOwn(safeCodes,rawCode)
+      ?rawCode:null;
     // No passwords, tokens, OTPs, raw contacts, SQL exceptions or provider payloads in response.
-    response.status(status).json({ status: "error", message, requestId });
+    response.status(status).json({status:"error",message:code?safeCodes[code]:message,
+      ...(code?{code}:{}),requestId});
   }
 }
