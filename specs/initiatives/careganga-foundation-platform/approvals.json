@@ -24,7 +24,7 @@
         "local_stage_resolver": "NOT_RUN"
       },
       "previous_approved_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
-      "reapproval_reason": "Product-wide original CareGanga screenshot/theme/component/motion fidelity added on 2026-11-14; earlier delegated approval only binds previous artifact SHA. Updated PRD/HLD and dependent planning require fresh quality review and authenticated Harness resolver before new design approval."
+      "reapproval_reason": "The current canonical draft was revised in place after the old delegated artifact hash: original CareGanga visual/motion fidelity, forward-owner delivery order, canonical DLD record ownership, genuine CG-01→CG-03 source, and 21 module story/QA corrections. Earlier approval evidence applies only to its prior immutable Git revision. A current exact-hash source review and authenticated Harness stage resolver are required before any new delegated approval."
     },
     "hld": {
       "status": "REVIEW_REQUIRED",
@@ -51,7 +51,7 @@
         "current_artifact_review": "PENDING"
       },
       "previous_approved_sha256": "5f149d9c4eea4da788c4660d8fbe37a60acf7741bf72b15ac62ce758e6517154",
-      "reapproval_reason": "Product-wide original CareGanga screenshot/theme/component/motion fidelity added on 2026-11-14; earlier delegated approval only binds previous artifact SHA. Updated PRD/HLD and dependent planning require fresh quality review and authenticated Harness resolver before new design approval."
+      "reapproval_reason": "The current canonical draft was revised in place after the old delegated artifact hash: original CareGanga visual/motion fidelity, forward-owner delivery order, canonical DLD record ownership, genuine CG-01→CG-03 source, and 21 module story/QA corrections. Earlier approval evidence applies only to its prior immutable Git revision. A current exact-hash source review and authenticated Harness stage resolver are required before any new delegated approval."
     }
   }
 }
