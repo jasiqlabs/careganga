@@ -15,10 +15,10 @@ mobile_store_impact: ANDROID
 mobile_store_reason: CG-18 has no native Admin editor, but **Public Android must display all four stories' actually published Home/About, Impact/80G, media/articles/Contact and neutral Healthcare editorial content, as well as public Login/Join/Volunteer navigation**, from the same protected approved projection as responsive public Web. Changes to native navigation must follow the current approved Android dependency/store policy and independent device QA; no new Android CMS administrator page.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
-mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
+mobile_platform_baseline: Official docs on 15 Nov 2026 reference Expo SDK 58/React Native 0.88/React 19.3 and ordinary Google Play new/update target API 36. Pin only one supported compatible stable package/native dependency matrix and verify 16 KB page-size, 64-bit and actual signed AAB/device/store requirements at release. Current docs check is NOT a binary or app-compatibility PASS.
 mobile_policy_checked_on: 2026-11-14
 mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
-mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
+mobile_dependency_audit: OFFICIAL_DOC_REFERENCE_CHECKED_2026-11-15; apps/android-public lockfile/manifests and native binary/16KB/Play device verification NOT_RUN.
 
 ## Business owner and isolation
 
