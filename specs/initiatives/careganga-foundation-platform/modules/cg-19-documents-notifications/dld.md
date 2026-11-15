@@ -1,7 +1,7 @@
 # CG-19 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, reviewed for owner isolation and implementation-ready first CG-01/03 file, real message outbox and Foundation-only support against latest PRD/HLD and Harness ec7c0b81 (15 Nov 2026). CG-19 delegated approval NOT_RECORDED; authenticated Harness resolver, independent CRITICAL DB/migration/restore review, code/runtime/device/visual QA NOT_RUN.
+**State:** REQUIRED / owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026), **JASIQ AI Design Review Agent**, after review/fix/re-review of actual CG-01/03 private files, safe document issuance, durable CG-03 event/outbox reconciliation, truthful optional provider states and CG-19 Foundation support. `database_impact: CRITICAL`; latest PRD/HLD formal approvals REVIEW_REQUIRED, authenticated Harness resolver and qualified independent DB/migration/object-restore/runtime/mobile/visual/provider QA NOT_RUN. No source-code/runtime PASS claimed.
 
 ## Canonical source, authorization and data ownership
 
