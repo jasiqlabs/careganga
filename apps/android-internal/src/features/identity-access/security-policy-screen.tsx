@@ -56,9 +56,14 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       const payload:unknown=await result.json();
       if(!validPolicy(payload))throw Error("Policy response could not be verified");
       if(seq!==generation.current)return false;
+      const matched=expectedRevision===undefined||payload.revision>=expectedRevision;
       setCurrent(payload);setValues(form(payload));setEditing(false);setReview(false);
-      setTotp("");setUnknown(false);setMessage("");requestKey.current="";
-      return expectedRevision===undefined||payload.revision>=expectedRevision;
+      setTotp("");
+      // Preserve the exact request reference until the saved revision is confirmed.
+      if(matched){setUnknown(false);setMessage("");requestKey.current="";}
+      else{setUnknown(true);setMessage(
+        "The saved revision is not visible yet. Check the previous change before retrying.");}
+      return matched;
     }catch{
       if(seq!==generation.current)return false;
       setCurrent(null);setValues(null);setEditing(false);
