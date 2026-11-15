@@ -6,7 +6,7 @@ export default function PublicHome() {
     <View style={styles.brandRow}><Image source={require("../assets/careganga-mark.png")} accessibilityLabel="CareGanga Foundation" style={styles.brandImage}/><Text accessibilityRole="header" style={styles.title}>CareGanga Foundation</Text></View>
     <Text>Foundation operations and healthcare assistance.</Text>
     <View style={styles.gap}/>
-    <Text>Public features will become available as their owning modules are delivered.</Text>
+    <Text>More ways to connect with CareGanga Foundation are being prepared. Please check back soon.</Text>
   </ScrollView></SafeAreaView>;
 }
 const styles=StyleSheet.create({

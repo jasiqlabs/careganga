@@ -223,9 +223,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     {inviteOnly&&<p>Invite an eligible Foundation staff member without access to the private staff directory.</p>}
     {inviteOnly&&notice&&<p role={notice.kind==="success"?"status":"alert"}
       className={"notice "+notice.kind}>{notice.text}</p>}
-    {inviteOnly&&uncertain&&<button type="button" onClick={()=>{
-      setUncertain(false);setPending(null);setEditor(null);void load("",0,"all");
-    }}>Check invitation outcome with Foundation support before retrying</button>}
+    {inviteOnly&&uncertain&&<p role="alert">Contact Foundation support to check whether the invitation was saved before sending it again. An unconfirmed invitation must not be repeated blindly.</p>}
     {!inviteOnly&&<>
     <form className="search-row" onSubmit={event=>{
       event.preventDefault();void load(query.trim(),0,filter);
