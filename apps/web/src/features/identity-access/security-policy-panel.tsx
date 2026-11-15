@@ -54,9 +54,14 @@ export function SecurityPolicyPanel(){
       const body:unknown=await resp.json();
       if(!valid(body))throw Error("The policy response could not be verified.");
       if(gen!==readGeneration.current)return false;
+      const matched=expectedRevision===undefined||body.revision>=expectedRevision;
       setPolicy(body);setValues(draft(body));setEditing(false);setReview(false);setTotp("");
-      setUncertain(false);setNotice(null);requestKey.current="";
-      return expectedRevision===undefined||body.revision>=expectedRevision;
+      // A stale replica/cached read is not proof the acknowledged revision took effect.
+      // Retain the idempotency key so the exact committed command can be checked again.
+      if(matched){setUncertain(false);setNotice(null);requestKey.current="";}
+      else{setUncertain(true);setNotice({kind:"uncertain",
+        message:"The saved revision is not visible yet. Check the previous change before retrying."});}
+      return matched;
     }catch(e){
       if(gen!==readGeneration.current)return false;
       // Denied or unverified data must not remain cached in a protected screen.
