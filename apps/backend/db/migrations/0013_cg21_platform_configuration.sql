@@ -8,7 +8,8 @@ CREATE TABLE platform_setting (
   revision integer NOT NULL DEFAULT 1 CHECK(revision BETWEEN 1 AND 2147483647),
   updated_by uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(foundation_realm_id,setting_key)
+  UNIQUE(foundation_realm_id,setting_key),
+  FOREIGN KEY(updated_by,foundation_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE TABLE platform_setting_revision (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,6 +43,7 @@ CREATE TABLE integration_connection (
   updated_by uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(scope_kind,foundation_realm_id,provider,purpose),
+  FOREIGN KEY(updated_by,foundation_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   CHECK((last_checked_at IS NULL AND last_checked_credential_revision IS NULL
       AND last_result_class IS NULL)
     OR (last_checked_at IS NOT NULL AND last_checked_credential_revision IS NOT NULL
@@ -61,7 +63,8 @@ CREATE TABLE platform_operation_audit (
   safe_context jsonb NOT NULL DEFAULT '{}'::jsonb
     CHECK(jsonb_typeof(safe_context)='object'),
   correlation_ref uuid NOT NULL,
-  occurred_at timestamptz NOT NULL DEFAULT now()
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY(actor_account_id,foundation_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg21_platform_audit_root_time
   ON platform_operation_audit(foundation_realm_id,occurred_at DESC,id DESC);
@@ -75,7 +78,8 @@ CREATE TABLE platform_command (
   resource_ref uuid NOT NULL,
   result_revision integer NOT NULL CHECK(result_revision BETWEEN 1 AND 2147483647),
   created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(actor_account_id,action,request_key)
+  UNIQUE(actor_account_id,action,request_key),
+  FOREIGN KEY(actor_account_id,foundation_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg21_platform_command_actor
   ON platform_command(actor_account_id,created_at DESC);
