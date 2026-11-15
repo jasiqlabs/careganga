@@ -11,8 +11,8 @@ dld_decision: REQUIRED
 dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
 database_impact: SCHEMA
 database_reason: New source-owned Foundation profile, region hierarchy, branches, departments/committees state requires reliable relational constraints, concurrency and migration.
-mobile_store_impact: NONE
-mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
+mobile_store_impact: ANDROID
+mobile_store_reason: Internal Android allows a scoped branch manager to resume the real seven-stage registration, attach evidence and view/submit status using the shared backend; Foundation-wide geography and committee administration remains Web-first. No public Android branch-admin screen.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
@@ -24,7 +24,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **Owns:** Foundation profile, region hierarchy, branches, departments/committees. **Delivery-critical, already-delivered owners:** CG-01 identity + CG-03 genuine approval decisions + CG-19 protected evidence for seven-step branch submission. **Later owned integrations, not prerequisites for this module's core path:** CG-10 employee heads, CG-05 projects, CG-04 members, CG-09 budgets and CG-18 public listing link only from their delivered source owners. Only real validated records may populate selectors; later owner supplies cross-module implementation and its own QA. No shadow master or fake operational status.
 
-**State and invariant:** Draft/submitted/returned/rejected/approved/active/closed. Only finally approved branches activate or receive code; geography never invented. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
+**State and invariant:** Foundation identity/area/department/committee is usable before any branch; a branch-scoped department requires an actually active branch. Registration is draft/submitted/returned/rejected/final-approved/active/closed. Only CG-03 may authorize final approval and CG-19 owns genuine document evidence. Only finally approved branches activate or receive code; geography never invented. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
 ## Complete PRD and BR mapping
 
@@ -43,9 +43,16 @@ Detailed authoritative clauses:
 - **CG-02-BR09:** Internal Foundation branches must **not be automatically published**; only expressly approved organization information appears publicly.
 - **CG-02-BR10:** Department and committee setup supports name, type, parent department where applicable, branch/location, assigned head/manager, opening date, description and active status. Reporting and staff assignment reuse the same department/committee record.
 
+## Business-first delivery slices and developer boundaries
+
+1. **US-001 — Foundation identity, real geography and Foundation-level departments/committees:** The Super Admin may configure verified legal/contact/registration details, real state/district/subdivision/block hierarchy, organization-wide departments/committees and permitted CG-01 account head, and search permitted actual records. A department/committee can belong to the Foundation as a whole **without a branch**; only an explicitly branch-scoped department requires an existing active CG-02 branch. Do not require an application/approval/document service merely to maintain Foundation settings. Existing CG-21 system/provider configuration must not duplicate the CG-02 legal organization profile.
+2. **US-002 — Seven-stage branch application and after-approval directory:** The manager can save/resume the actual seven-stage Web/Android application; CG-19 supplies genuine uploaded photo/registration/agreement evidence; CG-03 supplies a true branch review case, return/reject or final decision; one idempotent CG-02 finalizer creates one active branch and one visible unique business code only on approval. Stage 5 may select a **real eligible CG-01 account** as manager. Stage 6 may link real CG-02 departments; actual CG-04 volunteer, CG-05 project, CG-10 employee and CG-09 budget associations are **not fabricated** and are implemented/tested by those introducing owners.
+3. **Channel ownership:** Admin Web is the full organization/geography/directory/department editor using U18–U22. Internal Android offers the branch-manager's current draft, step completion, safe local evidence capture/upload, submission and tracked status using the same API and CareGanga theme. There is no separate Android region/department administration or public branch-management capability.
+4. **NFR gates:** CRITICAL path for branch approval/activation, scoped relational migrations/rollback and unique branch code; foreign-area, wrong-branch department and circular parent denial; safe staff options, reference-based evidence uploads, bounded queries/pagination and no idle per-branch approval poll; redacted structured diagnostics, auditable business change, actionable human messages and original screenshot-derived UI states.
+
 ## Independent vertical delivery and acceptance
 
-This module must complete actual create/read/update/review and permissioned Web/Android routes using the above delivered contracts before any source QA may be marked complete. **Concrete acceptance:** Register a branch in seven resumable stages, reject a missing agreement, obtain a real CG-03 final approval, then issue one unique branch code and activate once; prevent foreign-area/department links. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
+This module must complete actual create/read/update/review and permissioned responsive Admin Web/role-scoped Internal Android routes using CG-01, CG-03 and CG-19 real delivered contracts before source QA can be marked complete. **Concrete acceptance:** Register a branch in seven resumable stages, reject a missing agreement, obtain a real CG-03 final approval, then issue one unique branch code and activate once; prevent foreign-area/department links. Inaccessible future features display truthful unavailable states and are verified when their owner ships; do not mark them satisfied today.
 
 ## UI/UX, NFR and Planning acceptance
 
