@@ -68,19 +68,25 @@ export class ApprovalProposalService{
     `,[actor.realmId,process.id]);
     return process;
   }
-  private async readActor(bearer:string):Promise<{actor:VerifiedFoundationActor;root:boolean}>{
+  private async readActor(bearer:string):Promise<{
+    actor:VerifiedFoundationActor;root:boolean;reviewer:boolean
+  }>{
     let actor:VerifiedFoundationActor;
     try{actor=await this.sessions.requireAction(bearer,"approvals.view");}
     catch(error){
       if(!(error instanceof ForbiddenException))throw error;
-      actor=await this.sessions.requireAction(bearer,"approvals.propose");
+      try{actor=await this.sessions.requireAction(bearer,"approvals.propose");}
+      catch(next){
+        if(!(next instanceof ForbiddenException))throw next;
+        actor=await this.sessions.requireAction(bearer,"roles.assign");
+      }
     }
-    let root=false;
-    try{
-      await this.sessions.requireAction(bearer,"approvals.review");
-      root=true;
-    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
-    return {actor,root};
+    let root=false,reviewer=false;
+    try{await this.sessions.requireAction(bearer,"approvals.review");root=true;}
+    catch(error){if(!(error instanceof ForbiddenException))throw error;}
+    try{await this.sessions.requireAction(bearer,"roles.assign");reviewer=true;}
+    catch(error){if(!(error instanceof ForbiddenException))throw error;}
+    return {actor,root,reviewer};
   }
   async options(bearer:string,kind:unknown,search:unknown){
     return this.owner.options(bearer,kind,search??"");
@@ -252,7 +258,7 @@ export class ApprovalProposalService{
     }finally{client.release();}
   }
   async list(bearer:string,query:{status?:unknown;limit?:unknown}={}){
-    const {actor,root}=await this.readActor(bearer);
+    const {actor,root,reviewer}=await this.readActor(bearer);
     const status=query.status===undefined?"all":query.status;
     const limit=query.limit===undefined?20:Number(query.limit);
     if(typeof status!=="string"||
@@ -261,21 +267,31 @@ export class ApprovalProposalService{
       !Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Check case filters");
     const rows=await this.db.query<CaseRow>(`
-      SELECT * FROM cg03_case WHERE realm_id=$1
-        AND ($2::boolean OR proposer_id=$3)
-        AND ($4='all' OR status=$4)
-      ORDER BY submitted_at DESC,id DESC LIMIT $5
-    `,[actor.realmId,root,actor.accountId,status,limit]);
+      SELECT c.* FROM cg03_case c WHERE c.realm_id=$1
+        AND ($2::boolean OR c.proposer_id=$3 OR ($6::boolean AND
+          (EXISTS(SELECT 1 FROM cg03_process_step step
+            WHERE step.process_id=c.process_id AND step.ordinal=c.current_step
+              AND step.capability_key='roles.assign' AND c.status IN('SUBMITTED','IN_REVIEW'))
+            OR EXISTS(SELECT 1 FROM cg03_case_decision d
+              WHERE d.case_id=c.id AND d.actor_id=$3))))
+        AND ($4='all' OR c.status=$4)
+      ORDER BY c.submitted_at DESC,c.id DESC LIMIT $5
+    `,[actor.realmId,root,actor.accountId,status,limit,reviewer]);
     return {cases:rows.rows.map(view),limit};
   }
   async detail(bearer:string,caseRef:unknown){
-    const {actor,root}=await this.readActor(bearer);
+    const {actor,root,reviewer}=await this.readActor(bearer);
     if(typeof caseRef!=="string"||!UUID.test(caseRef))
       throw new BadRequestException("Choose a valid application");
     const rows=await this.db.query<CaseRow>(`
-      SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2
-        AND ($3::boolean OR proposer_id=$4)
-    `,[actor.realmId,caseRef,root,actor.accountId]);
+      SELECT c.* FROM cg03_case c WHERE c.realm_id=$1 AND c.id=$2
+        AND ($3::boolean OR c.proposer_id=$4 OR ($5::boolean AND
+          (EXISTS(SELECT 1 FROM cg03_process_step step
+            WHERE step.process_id=c.process_id AND step.ordinal=c.current_step
+              AND step.capability_key='roles.assign' AND c.status IN('SUBMITTED','IN_REVIEW'))
+            OR EXISTS(SELECT 1 FROM cg03_case_decision d
+              WHERE d.case_id=c.id AND d.actor_id=$4))))
+    `,[actor.realmId,caseRef,root,actor.accountId,reviewer]);
     if(!rows.rowCount)throw new NotFoundException("Application unavailable");
     const row=rows.rows[0];
     const events=await this.db.query<{action:string;safe_remarks:string;occurred_at:Date;
@@ -285,7 +301,21 @@ export class ApprovalProposalService{
       WHERE e.realm_id=$1 AND e.case_id=$2
       ORDER BY e.occurred_at,e.id LIMIT 50
     `,[actor.realmId,row.id]);
-    return {...view(row),history:events.rows.map(e=>({
+    const eligible=actor.accountId!==row.proposer_id&&
+      ["SUBMITTED","IN_REVIEW"].includes(row.status);
+    const pending=eligible?await this.db.query<{capability_key:string;
+      protected_root_required:boolean}>(`
+      SELECT capability_key,protected_root_required FROM cg03_process_step
+      WHERE process_id=$1 AND ordinal=$2
+    `,[row.process_id,row.current_step]):null;
+    const step=pending?.rows[0];
+    const canAct=!!step&&(step.protected_root_required?root:reviewer||root);
+    const allowedDecisions=canAct?
+      step.protected_root_required?["APPROVE","RETURN","REJECT"]:
+      ["APPROVE","FORWARD","RETURN","REJECT"]:[];
+    return {...view(row),allowedDecisions,requiresFreshAuthenticator:canAct&&
+      Boolean(step?.protected_root_required),
+      history:events.rows.map(e=>({
       action:e.action,remarks:e.safe_remarks,at:e.occurred_at.toISOString(),
       by:e.actor_name
     }))};
