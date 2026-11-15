@@ -28,6 +28,12 @@ Authorized Admin Web publisher views each desired flag with its current **Draft 
 
 This module owns **responsive Admin CMS editor + public Web + public Android navigation consumer**. No new CG-18 native Admin editor; Internal Android is not a CMS publication editor. Cover loading, saved draft, stale edit CONFLICT, denied publisher, pending review, link unavailable, publish confirmed, cache stale/unknown and reduced-motion semantics. Pixel/device/motion QA remains NOT_RUN.
 
+## CG-18 public contact and CG-19 notice presentation boundary
+
+CG-18 may show a genuinely published Contact page with the **actual CG-19 contact form**, validated submit, safe opaque receipt/unknown-result feedback and appropriate privacy notice. Do not show a CG-18 private contact inbox, duplicate responder controls, contact table or unsupported chat component: the original C39–C43 Foundation contact/helpdesk UI belongs to CG-19. Site cannot falsely promise a delivered email if CG-19 only confirmed DB intake.
+
+A CG-19 operational Notice is only eligible for CMS public display after genuine source permission and a **separate CG-18 publication**. Show original CareGanga headline/status hierarchy, preview, publish/unpublish, expired/withdrawn state and real public visibility revision, not a notification-send button or recipient list. CG-19 safely validated media asset can be placed/published by CMS with original preview; private/scan-pending file must not enter public gallery. Runtime/pixel QA not run.
+
 ## Task-first source screenshot and UX acceptance
 
 Follow original public CMS screens for page/hero/menu/media editing, right-drawer forms, tabbed draft/scheduled/published states, preview and public View Site action. Keep edit vs publish distinct; when source-backed campaign/doctor/impact is unavailable, hide the corresponding source selector rather than inventing a linked card. Render actual responsive site with the same CareGanga palette/type/icon language and purposeful transition treatment.
