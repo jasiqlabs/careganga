@@ -1,7 +1,7 @@
 import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
-import { Pool } from "pg";
+import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
 import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-api";
@@ -205,6 +205,69 @@ export class SessionService implements IdentityAuthorization {
       throw new ForbiddenException();
     return actor;
   }
+  /** Root-only, one-use CG-01 MFA proof for privileged owners such as CG-21.
+   *  Caller holds a transaction and owns any resulting business/audit write.
+   *  No owner module gets raw credential keys, role tables or bypass authority.
+   */
+  async requireFreshFoundationRootProof(
+    client:PoolClient,actor:VerifiedFoundationActor,totp:string
+  ):Promise<void>{
+    if(!/^[0-9]{6}$/.test(totp))throw new ForbiddenException("Fresh authenticator proof required");
+    const current=await client.query<{
+      account_id:string;last_totp_counter:string;totp_ciphertext:Buffer|null;
+      totp_nonce:Buffer|null;totp_tag:Buffer|null;
+    }>(`
+      SELECT a.id AS account_id,c.last_totp_counter,c.totp_ciphertext,
+        c.totp_nonce,c.totp_tag
+      FROM auth_session s
+      JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
+        AND a.access_version=s.account_access_version
+      JOIN access_realm realm ON realm.id=a.realm_id AND realm.realm_key='FOUNDATION_ROOT'
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
+        AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
+      JOIN identity_credential c ON c.account_id=a.id
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
+      WHERE s.id=$1 AND s.account_id=$2 AND a.realm_id=$3
+        AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+        AND s.expires_at>now()
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
+      FOR UPDATE OF s,a,ar,r,c
+    `,[actor.activeSessionId,actor.accountId,actor.realmId]);
+    const row=current.rows[0];
+    if(!row||!row.totp_ciphertext||!row.totp_nonce||!row.totp_tag)
+      throw new ForbiddenException("Current root access could not be verified");
+    const raw=decryptTotpSecret(row.totp_ciphertext,row.totp_nonce,row.totp_tag);
+    const counter=matchedTotpCounter(raw,totp);
+    raw.fill(0);
+    if(counter===null||counter<=Number(row.last_totp_counter))
+      throw new ForbiddenException("Use a fresh authenticator code");
+    await client.query(
+      "UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1",
+      [row.account_id,counter]
+    );
+  }
+
+  /** Throttle fresh privileged MFA attempts outside the caller's write transaction,
+   * so failed proofs cannot roll back their own failed-attempt counter. */
+  async limitFoundationRootProof(actor:VerifiedFoundationActor):Promise<void>{
+    const rules=await this.loginRules();
+    const digest=this.throttleKey("foundation-root-fresh-proof",actor.accountId);
+    const count=await this.db.query<{attempt_count:number}>(`
+      INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
+      VALUES($1,now(),1)
+      ON CONFLICT(key_digest) DO UPDATE SET
+        attempt_count=CASE WHEN auth_login_attempt.window_started_at <
+          now()-make_interval(secs=>$2) THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
+        window_started_at=CASE WHEN auth_login_attempt.window_started_at <
+          now()-make_interval(secs=>$2) THEN now() ELSE auth_login_attempt.window_started_at END
+      RETURNING attempt_count
+    `,[digest,rules.failedAttemptWindowSeconds]);
+    if(count.rows[0].attempt_count>rules.maxFailedAttempts)
+      throw new HttpException("Fresh proof retry limit",HttpStatus.TOO_MANY_REQUESTS);
+  }
+
   async signOut(bearer: string): Promise<void> {
     const digest=this.digestFromBearer(bearer);
     await this.db.query(`UPDATE auth_session SET revoked_at=now()
