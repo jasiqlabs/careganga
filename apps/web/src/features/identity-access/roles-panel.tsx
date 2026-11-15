@@ -13,6 +13,7 @@ type RoleList={roles:Role[];total:number;offset:number;limit:number};
 type AuditEvent={occurredAt:string;actorDisplay:string;actionLabel:string;targetDisplay:string;outcome:string};
 type FormMode="create"|"edit"|"copy";
 type RoleStatus="all"|"active"|"retired";
+type RoleKind="all"|"system"|"custom";
 type Notice={text:string;kind:"error"|"success"|"uncertain"};
 
 async function read<T>(path:string):Promise<T>{
@@ -30,6 +31,7 @@ export function RolesPanel(){
   const [search,setSearch]=useState("");
   const [appliedSearch,setAppliedSearch]=useState("");
   const [tab,setTab]=useState<RoleStatus>("all");
+  const [roleKind,setRoleKind]=useState<RoleKind>("all");
   const [total,setTotal]=useState(0);
   const [offset,setOffset]=useState(0);
   const [loading,setLoading]=useState(true);
@@ -69,11 +71,11 @@ export function RolesPanel(){
     setNotice({kind:"error",text:message});
   },[]);
 
-  const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
+  const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all",kind:RoleKind="all")=>{
     const generation=++latestRead.current;
     setLoading(true);setNotice(null);setDetails(null);
     try{
-      const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status});
+      const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status,type:kind});
       const [list,catalog,effective]=await Promise.all([
         read<RoleList>("roles?"+params),
         read<{groups:Group[]}>("capabilities"),
@@ -99,13 +101,13 @@ export function RolesPanel(){
       const now=Date.now();
       if(now-lastResumeCheck.current<1200)return;
       lastResumeCheck.current=now;
-      void load(appliedSearch,offset,tab);
+      void load(appliedSearch,offset,tab,roleKind);
     };
     window.addEventListener("focus",onFocus);
     document.addEventListener("visibilitychange",onFocus);
     return()=>{window.removeEventListener("focus",onFocus);
       document.removeEventListener("visibilitychange",onFocus);};
-  },[load,appliedSearch,offset,tab]);
+  },[load,appliedSearch,offset,tab,roleKind]);
   useEffect(()=>{
     const shortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
@@ -230,7 +232,7 @@ export function RolesPanel(){
     try{
       await mutate(path,method,payload);
       setEditor(null);requestKey.current="";
-      await load(appliedSearch,offset,tab);
+      await load(appliedSearch,offset,tab,roleKind);
       setNotice({kind:"success",text:"Role change saved."});
     }catch(error){
       if(error instanceof Error&&/session expired|permission/i.test(error.message)){
@@ -248,7 +250,7 @@ export function RolesPanel(){
       await mutate("roles/"+role.roleRef+"/retire","POST",{
         expectedRevision:role.revision,requestKey:crypto.randomUUID()
       });
-      await load(appliedSearch,offset,tab);
+      await load(appliedSearch,offset,tab,roleKind);
       setPendingRetire(null);
       setNotice({kind:"success",text:"Role retired."});
     }catch(error){
@@ -302,7 +304,7 @@ export function RolesPanel(){
       <div className="kpi"><small>Protected roles</small><strong>{roles.filter(r=>r.protected).length}</strong></div>
     </section>
     <div className="toolbar">
-      <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0,tab);}}
+      <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0,tab,roleKind);}}
         className="search-row">
         <label htmlFor="role-search">Find roles</label>
         <input id="role-search" ref={searchInput} value={search} maxLength={80}
@@ -312,9 +314,19 @@ export function RolesPanel(){
       {canManage&&<button type="button" className="primary" onClick={()=>open("create")}>Create role</button>}
       {canAudit&&<button type="button" onClick={()=>void audit()}>Access history</button>}
     </div>
+    <div className="toolbar role-kind-filter">
+      <label htmlFor="role-kind">Role type</label>
+      <select id="role-kind" value={roleKind} disabled={loading}
+        onChange={event=>{const next=event.target.value as RoleKind;
+          setRoleKind(next);void load(appliedSearch,0,tab,next);}}>
+        <option value="all">All types</option>
+        <option value="system">System roles</option>
+        <option value="custom">Custom roles</option>
+      </select>
+    </div>
     <div className="toolbar" role="group" aria-label="Filter roles">
       {(["all","active","retired"] as const).map(k=><button key={k} type="button"
-        aria-pressed={tab===k} onClick={()=>{setTab(k);void load(appliedSearch,0,k);}}>
+        aria-pressed={tab===k} onClick={()=>{setTab(k);void load(appliedSearch,0,k,roleKind);}}>
         {k==="all"?"All roles":k==="active"?"Active":"Retired"}</button>)}
     </div>
     {notice&&<p className={notice.kind==="error"?"error":"notice"} role={notice.kind==="error"?"alert":"status"}>{notice.text}</p>}
@@ -395,9 +407,9 @@ export function RolesPanel(){
       </div>
     }
     {!loading&&total>30&&<div className="toolbar">
-      <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30),tab)}>Previous</button>
+      <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30),tab,roleKind)}>Previous</button>
       <span>{offset+1}–{Math.min(offset+30,total)} of {total}</span>
-      <button disabled={offset+30>=total} onClick={()=>void load(appliedSearch,offset+30,tab)}>Next</button>
+      <button disabled={offset+30>=total} onClick={()=>void load(appliedSearch,offset+30,tab,roleKind)}>Next</button>
     </div>}
     {history&&<section aria-labelledby="history-title">
       <h2 id="history-title">Foundation access history</h2>
