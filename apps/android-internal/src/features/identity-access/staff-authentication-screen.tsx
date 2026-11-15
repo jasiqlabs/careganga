@@ -73,7 +73,7 @@ export function StaffAuthenticationScreen(){
     let active=true;
     const subscription=AppState.addEventListener("change",state=>{
       if(state!=="active")return;
-      setActor(null);setRoleActions([]);
+      setState("checking");setActor(null);setRoleActions([]);
       void (async()=>{
         try{
           const fresh=await sessionView(token);
@@ -82,6 +82,8 @@ export function StaffAuthenticationScreen(){
           else {const actions=await currentRoleActions(token);if(active){setRoleActions(actions);setActor(fresh);}}
         }catch{
           if(active){setActor(null);setMessage("Access cannot be verified. Protected information remains hidden.");}
+        }finally{
+          if(active)setState("idle");
         }
       })();
     });
