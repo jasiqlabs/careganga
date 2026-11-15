@@ -37,6 +37,7 @@ export function SecurityPolicyPanel(){
   const [totp,setTotp]=useState("");
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
+  const [checkingOutcome,setCheckingOutcome]=useState(false);
   const [notice,setNotice]=useState<Notice|null>(null);
   const [uncertain,setUncertain]=useState(false);
   const requestKey=useRef("");
@@ -90,6 +91,33 @@ export function SecurityPolicyPanel(){
     document.addEventListener("keydown",key);
     return()=>{document.removeEventListener("keydown",key);previous?.focus();};
   },[editing]);
+  async function checkOutcome(){
+    if(!uncertain||!requestKey.current||checkingOutcome)return;
+    setCheckingOutcome(true);
+    try{
+      const result=await fetch("/api/session/security-policy/changes/"+
+        encodeURIComponent(requestKey.current),{cache:"no-store",credentials:"same-origin"});
+      if(result.status===401||result.status===403){
+        setPolicy(null);setEditing(false);
+        setNotice({kind:"error",message:"Protected access expired. Sign in again to check the change."});
+        return;
+      }
+      if(!result.ok)throw Error("No confirmation");
+      const value=await result.json() as {status?:string;revision?:number|null};
+      if(value.status==="CONFIRMED"&&Number.isInteger(value.revision)){
+        const verified=await read(Number(value.revision));
+        setUncertain(!verified);
+        setNotice(verified
+          ?{kind:"success",message:"The previously submitted security change was confirmed and reloaded."}
+          :{kind:"uncertain",message:"The change was recorded, but its effective revision needs another verification."});
+      }else{
+        setNotice({kind:"uncertain",message:
+          "No committed result is visible for that request yet. Check again or contact Foundation support before retrying."});
+      }
+    }catch{
+      setNotice({kind:"uncertain",message:"The result remains unconfirmed. Check again before making another change."});
+    }finally{setCheckingOutcome(false);}
+  }
   function start(){
     if(!policy)return;
     requestKey.current=crypto.randomUUID();
@@ -158,7 +186,11 @@ export function SecurityPolicyPanel(){
       </div>
     </header>
     {notice&&<p className={"notice "+notice.kind} role={notice.kind==="success"?"status":"alert"}>{notice.message}</p>}
-    {uncertain&&<p role="alert">Do not submit the same change again until you have checked the effective policy revision.</p>}
+    {uncertain&&<div className="permission-group">
+      <p role="alert">Do not submit the same change again until its saved outcome is checked.</p>
+      <button type="button" disabled={checkingOutcome}
+        onClick={()=>void checkOutcome()}>{checkingOutcome?"Checking…":"Check previous change"}</button>
+    </div>}
     {loading?<p role="status">Verifying policy…</p>:policy&&<>
       <div className="policy-grid">{controls.map(c=><article className="kpi" key={c.key}>
         <small>{c.name}</small>
