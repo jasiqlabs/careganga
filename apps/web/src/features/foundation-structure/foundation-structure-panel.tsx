@@ -1,11 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Profile={legalName:string;officialContact:string;postalAddress:string;registrationRef:string|null;
   registrationAuthority:string|null;registrationDate:string|null;version:number;updatedAt:string};
 type Area={areaRef:string;level:string;name:string;parentRef:string|null;code:string|null;status:string;version:number};
 type Dept={departmentRef:string;name:string;kind:string;description:string;active:boolean;version:number;
   scope:string;openingDate:string|null;parentRef:string|null;geographyRef:string|null;headAccountRef:string|null;headDisplayName:string|null};
+type DeptSummary={total:number;active:number;inactive:number;committees:number};
 type Officeholder={value:string;label:string};
 type Participant={participationRef:string;accountRef:string;displayName:string|null;officeRole:string;activeUntil:string|null};
 type Pending={method:"PATCH"|"POST";url:string;action:string;body:Record<string,unknown>;requestKey:string};
@@ -42,6 +43,9 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [areas,setAreas]=useState<Area[]>([]);
   const [areaNextOffset,setAreaNextOffset]=useState<number|null>(null);
   const [departments,setDepartments]=useState<Dept[]>([]);
+  const [departmentSummary,setDepartmentSummary]=useState<DeptSummary|null>(null);
+  const [departmentEditorOpen,setDepartmentEditorOpen]=useState(false);
+  const departmentDialogRef=useRef<HTMLDialogElement>(null);
   const [officeholders,setOfficeholders]=useState<Officeholder[]>([]);
   const [participants,setParticipants]=useState<Participant[]>([]);
   const [focusedDept,setFocusedDept]=useState<string|null>(null);
@@ -84,10 +88,16 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         registrationAuthority:x.profile.registrationAuthority??"",
         registrationDate:x.profile.registrationDate??""
       }:initialProfile);
-    }));
-    if(can("foundation.geography.view"))work.push(json<{areas:Area[];nextOffset:number|null}>("/geography").then(x=>{setAreas(x.areas);setAreaNextOffset(x.nextOffset);}));
-    if(can("foundation.departments.view"))work.push(json<{departments:Dept[]}>("/departments").then(x=>setDepartments(x.departments)));
-    if(can("foundation.departments.assign"))work.push(json<{options:Officeholder[]}>("/officeholders/options").then(x=>setOfficeholders(x.options)));
+    }).catch(error=>{setProfile(null);setForm(initialProfile);throw error;}));
+    if(can("foundation.geography.view"))work.push(json<{areas:Area[];nextOffset:number|null}>("/geography")
+      .then(x=>{setAreas(x.areas);setAreaNextOffset(x.nextOffset);})
+      .catch(error=>{setAreas([]);setAreaNextOffset(null);throw error;}));
+    if(can("foundation.departments.view"))work.push(json<{departments:Dept[];summary:DeptSummary}>("/departments")
+      .then(x=>{setDepartments(x.departments);setDepartmentSummary(x.summary);})
+      .catch(error=>{setDepartments([]);setDepartmentSummary(null);setFocusedDept(null);throw error;}));
+    if(can("foundation.departments.assign"))work.push(json<{options:Officeholder[]}>("/officeholders/options")
+      .then(x=>setOfficeholders(x.options))
+      .catch(error=>{setOfficeholders([]);throw error;}));
     const results=await Promise.allSettled(work);
     if(results.some(x=>x.status==="rejected"))
       setError("Some Foundation information could not be verified. Try refreshing the section.");
@@ -102,6 +112,13 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       .catch(()=>{if(active){setParticipants([]);setError("Officeholder history cannot be verified.");}});
     return()=>{active=false;};
   },[focusedDept,notice,actions.join(",")]);
+  // The native modal supplies keyboard focus containment and Escape handling.
+  useEffect(()=>{
+    const dialog=departmentDialogRef.current;
+    if(!dialog)return;
+    if(departmentEditorOpen&&!dialog.open)dialog.showModal();
+    if(!departmentEditorOpen&&dialog.open)dialog.close();
+  },[departmentEditorOpen]);
   const eligibleParents=useMemo(()=>areas.filter(x=>parentLevels[areaLevel]?.includes(x.level)&&x.status==="ACTIVE"&&x.areaRef!==areaRef),[areas,areaLevel,areaRef]);
   const selectedDept=departments.find(x=>x.departmentRef===focusedDept);
   const label=(ref:string|null)=>ref?(officeholders.find(x=>x.value===ref)?.label??"Previously assigned account"):"None";
@@ -188,12 +205,14 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   function resetDepartment(){
     setDeptRef(null);setDeptName("");setDeptKind("DEPARTMENT");setDeptDescription("");setDeptArea("");
     setDeptParent("");setDeptHead("");setDeptOpening("");setDeptActive(true);setDeptVersion(0);
+    setDepartmentEditorOpen(false);
   }
   function editDepartment(x:Dept){
     setDeptRef(x.departmentRef);setDeptName(x.name);setDeptKind(x.kind);
     setDeptDescription(x.description);setDeptArea(x.geographyRef??"");
     setDeptParent(x.parentRef??"");setDeptHead(x.headAccountRef??"");setDeptOpening(x.openingDate??"");
     setDeptActive(x.active);setDeptVersion(x.version);setFocusedDept(x.departmentRef);
+    setDepartmentEditorOpen(true);
   }
   const setProfileField=(name:keyof typeof initialProfile,value:string)=>{
     setForm(previous=>({...previous,[name]:value}));
@@ -313,8 +332,17 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     {tab==="departments"&&can("foundation.departments.view")&&<section className="role-workspace">
       <div className="role-table-wrap"><div className="role-pane-heading"><div>
         <h2>Foundation departments & committees</h2><p>Foundation-wide records only; branch management belongs to a later stage.</p>
-      </div></div>
-      <div className="search-row" style={{padding:"1rem"}}><label>Search departments <input
+      </div>{can("foundation.departments.manage")&&
+        <button type="button" onClick={()=>{resetDepartment();setDepartmentEditorOpen(true);}}>
+          Add department / committee
+        </button>}</div>
+      {departmentSummary&&<div className="kpi-grid foundation-overview" aria-label="Foundation department overview">
+        <div className="kpi"><span>Total records</span><strong>{departmentSummary.total}</strong></div>
+        <div className="kpi"><span>Active</span><strong>{departmentSummary.active}</strong></div>
+        <div className="kpi"><span>Inactive</span><strong>{departmentSummary.inactive}</strong></div>
+        <div className="kpi"><span>Committees</span><strong>{departmentSummary.committees}</strong></div>
+      </div>}
+      <div className="search-row" style={{padding:"1rem"}}><label>Search loaded departments <input
         value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name"/></label></div>
       <table className="role-table"><thead><tr><th>Name</th><th>Type</th><th>Head</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{visibleDepartments.map(x=><tr key={x.departmentRef}>
@@ -330,7 +358,12 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         <button type="button" disabled={busy} onClick={()=>void downloadPage("DEPARTMENTS")}>
           Download verified departments {exportOffset.DEPARTMENTS?"(next page)":""}</button>
       </div></div>
-      {can("foundation.departments.manage")&&<form className="role-pane form" style={{padding:"1rem"}} onSubmit={e=>{
+      {can("foundation.departments.manage")&&
+      <dialog ref={departmentDialogRef} className="role-drawer foundation-department-dialog"
+        aria-labelledby="foundation-department-editor-title"
+        onCancel={e=>{if(busy||pending)e.preventDefault();}}
+        onClose={()=>resetDepartment()}>
+      <form className="form" onSubmit={e=>{
         e.preventDefault();
         const existing=departments.find(x=>x.departmentRef===deptRef);
         const body={name:deptName,kind:deptKind,description:deptDescription,openingDate:deptOpening||null,
@@ -340,7 +373,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         save(deptRef?"PATCH":"POST",deptRef?"/departments/"+deptRef:"/departments",
           deptRef?"DEPARTMENT_UPDATE":"DEPARTMENT_CREATE",body);
       }}>
-        <h2>{deptRef?"Edit Foundation record":"Add Foundation department / committee"}</h2>
+        <h2 id="foundation-department-editor-title">{deptRef?"Edit Foundation record":"Add Foundation department / committee"}</h2>
         <label className="field">Record type <select value={deptKind} onChange={e=>setDeptKind(e.target.value)} disabled={busy||Boolean(pending)}>
           <option value="DEPARTMENT">Department</option><option value="COMMITTEE">Committee</option></select></label>
         <label className="field">Name <input required minLength={2} maxLength={100} value={deptName}
@@ -363,8 +396,8 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
           <select value={deptActive?"ACTIVE":"INACTIVE"} onChange={e=>setDeptActive(e.target.value==="ACTIVE")}
             disabled={busy||Boolean(pending)}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>}
         <div className="toolbar"><button className="primary" disabled={busy||Boolean(pending)}>{deptRef?"Save department":"Add department / committee"}</button>
-          {deptRef&&<button type="button" onClick={resetDepartment}>Cancel editing</button>}</div>
-      </form>}
+          <button type="button" onClick={resetDepartment} disabled={busy||Boolean(pending)}>Cancel</button></div>
+      </form></dialog>}
       {focusedDept&&selectedDept&&<section className="role-pane" style={{padding:"1rem"}}>
         <h2>Officeholders — {selectedDept.name}</h2>
         <ul>{participants.map(p=><li key={p.participationRef}>{p.displayName??"Previously assigned account"} — {p.officeRole}
