@@ -58,7 +58,7 @@ export function SecurityPolicyPanel(){
       setUncertain(false);setNotice(null);requestKey.current="";
       return expectedRevision===undefined||body.revision>=expectedRevision;
     }catch(e){
-      if(gen!==readGeneration.current)return;
+      if(gen!==readGeneration.current)return false;
       // Denied or unverified data must not remain cached in a protected screen.
       setPolicy(null);setValues(null);setEditing(false);setReview(false);
       setNotice({kind:"error",message:e instanceof Error?e.message:"Security policy is unavailable."});
