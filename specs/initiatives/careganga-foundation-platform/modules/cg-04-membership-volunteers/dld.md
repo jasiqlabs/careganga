@@ -17,6 +17,10 @@ CG-04 owns only member tier versions, applications, issued membership and volunt
 
 **QA:** expired tier, two simultaneous applications/renewals, denied member card before payment/approval, rejected-paid refund, volunteer without staff role, private identity upload, public status by verified applicant and membership/volunteer name option scope.
 
+## CG-04 original ownership of member/volunteer branch affiliation — source data and authorization
+
+The CG-04 member and volunteer owner records reference existing CG-02 ACTIVE branch and eligible CG-02 department via typed scoped owner projections, never CG-02's member/volunteer master. Member-branch association and volunteer branch/department preference or assignment are CG-04-owned historical/revisioned relations with one current permitted association by genuine business rule. Validate CG-01 actor/member/volunteer permission, CG-02 scope and current branch status before saving; preserve history on branch change or closure, revoke old visibility without giving an account a new CG-01 grant. CG-04 US-002/003 source QA traces these relations with **no CG-05/13/18 records**.
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Configure a live tier with valid price/validity and receive one real paid or pending application. Only approved real CG-03 member outcomes issue active membership. For a different branch/member role deny private roster or file access; idempotent payment confirmation never issues two memberships. Volunteer skill applications remain separate from employed staff.
