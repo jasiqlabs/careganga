@@ -40,6 +40,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [profile,setProfile]=useState<Profile|null>(null);
   const [form,setForm]=useState(initialProfile);
   const [areas,setAreas]=useState<Area[]>([]);
+  const [areaNextOffset,setAreaNextOffset]=useState<number|null>(null);
   const [departments,setDepartments]=useState<Dept[]>([]);
   const [officeholders,setOfficeholders]=useState<Officeholder[]>([]);
   const [participants,setParticipants]=useState<Participant[]>([]);
@@ -68,6 +69,8 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
   const [pending,setPending]=useState<Pending|null>(null);
+  const [audit,setAudit]=useState<{title:string;events:{action:string;version:number;recordedAt:string}[]}|null>(null);
+  const [exportOffset,setExportOffset]=useState<Record<string,number>>({AREAS:0,DEPARTMENTS:0});
   const [search,setSearch]=useState("");
 
   const reload=useCallback(async()=>{
@@ -82,7 +85,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         registrationDate:x.profile.registrationDate??""
       }:initialProfile);
     }));
-    if(can("foundation.geography.view"))work.push(json<{areas:Area[]}>("/geography").then(x=>setAreas(x.areas)));
+    if(can("foundation.geography.view"))work.push(json<{areas:Area[];nextOffset:number|null}>("/geography").then(x=>{setAreas(x.areas);setAreaNextOffset(x.nextOffset);}));
     if(can("foundation.departments.view"))work.push(json<{departments:Dept[]}>("/departments").then(x=>setDepartments(x.departments)));
     if(can("foundation.departments.assign"))work.push(json<{options:Officeholder[]}>("/officeholders/options").then(x=>setOfficeholders(x.options)));
     const results=await Promise.allSettled(work);
@@ -133,6 +136,44 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     }catch(e){setError(e instanceof Error?e.message:"Confirmation is unavailable.");}
     finally{setBusy(false);}
   }
+  async function loadMoreAreas(){
+    if(areaNextOffset===null||busy)return;
+    setBusy(true);setError("");
+    try{
+      const next=await json<{areas:Area[];nextOffset:number|null}>("/geography?offset="+areaNextOffset);
+      setAreas(previous=>{
+        const prior=new Set(previous.map(x=>x.areaRef));
+        return [...previous,...next.areas.filter(x=>!prior.has(x.areaRef))];
+      });
+      setAreaNextOffset(next.nextOffset);
+    }catch(e){setError(e instanceof Error?e.message:"Additional areas could not be loaded.");}
+    finally{setBusy(false);}
+  }
+  async function showHistory(kind:"PROFILE"|"AREA"|"DEPARTMENT",ref:string,title:string){
+    setError("");setAudit(null);
+    try{
+      const result=await json<{events:{action:string;version:number;recordedAt:string}[]}>(
+        "/history/"+kind+"/"+encodeURIComponent(ref));
+      setAudit({title,events:result.events});
+    }catch{setError("This Foundation history cannot be verified.");}
+  }
+  async function downloadPage(kind:"AREAS"|"DEPARTMENTS"){
+    if(busy)return;
+    setBusy(true);setError("");
+    try{
+      const data=await json<{csv:string;filename:string;count:number;nextOffset:number|null}>(
+        "/export?kind="+kind+"&offset="+exportOffset[kind]);
+      const objectUrl=URL.createObjectURL(new Blob([data.csv],{type:"text/csv;charset=utf-8"}));
+      const element=document.createElement("a");
+      element.href=objectUrl;element.download=kind==="AREAS"?"Foundation-areas.csv":"Foundation-departments.csv";
+      document.body.appendChild(element);element.click();element.remove();
+      URL.revokeObjectURL(objectUrl);
+      setExportOffset(old=>({...old,[kind]:data.nextOffset??0}));
+      setNotice(data.nextOffset===null?
+        "Exported the final page of source records.":"Exported one page. More verified records can be exported in the next page.");
+    }catch{setError("Cannot confirm the Foundation export. Please try again.");}
+    finally{setBusy(false);}
+  }
   function resetArea(){
     setAreaRef(null);setAreaName("");setAreaLevel("STATE");setAreaParent("");setAreaCode("");setAreaStatus("ACTIVE");setAreaVersion(0);
   }
@@ -168,6 +209,15 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
     {loading&&<p role="status">Checking current Foundation records…</p>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     {error&&<p className="error" role="alert">{error}</p>}
+    {audit&&<section className="role-pane" style={{padding:"1rem"}} aria-label="Foundation change history">
+      <div className="toolbar"><h2>{audit.title} — history</h2>
+        <button type="button" onClick={()=>setAudit(null)}>Close history</button></div>
+      <ol>{audit.events.map((event,i)=><li key={event.action+"-"+event.recordedAt+"-"+i}>
+        {event.action.replaceAll("_"," ").toLowerCase()} · version {event.version} ·
+        {" "}{new Date(event.recordedAt).toLocaleString()}
+      </li>)}</ol>
+      {audit.events.length===0&&<p>No recorded changes yet.</p>}
+    </section>}
     {pending&&<div className="notice" role="status">
       <p>The previous save is not confirmed. Do not submit a different request yet.</p>
       <button type="button" disabled={busy} onClick={()=>void checkPending()}>Check original request</button>
@@ -203,6 +253,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
           disabled={!can("foundation.profile.manage")||busy||Boolean(pending)}
           value={form.registrationDate} onChange={e=>setProfileField("registrationDate",e.target.value)}/></label>
         {profile&&<small>Last verified update: {new Date(profile.updatedAt).toLocaleDateString()}</small>}
+        {profile&&<button type="button" onClick={()=>void showHistory("PROFILE","self","Foundation profile")}>View change history</button>}
         {can("foundation.profile.manage")&&<button className="primary" disabled={busy||Boolean(pending)}>Save official profile</button>}
       </form>
     </section>}
@@ -217,9 +268,15 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       <tbody>{visibleAreas.map(x=><tr key={x.areaRef}>
         <td>{x.name}</td><td>{x.level.toLowerCase()}</td>
         <td>{areas.find(a=>a.areaRef===x.parentRef)?.name??"Foundation"}</td><td>{x.status}</td>
-        <td>{can("foundation.geography.manage")&&<button type="button" onClick={()=>editArea(x)}>Edit</button>}</td>
+        <td>{can("foundation.geography.manage")&&<button type="button" onClick={()=>editArea(x)}>Edit</button>} <button type="button" onClick={()=>void showHistory("AREA",x.areaRef,x.name)}>History</button></td>
       </tr>)}</tbody></table>
-      {visibleAreas.length===0&&<p style={{padding:"1rem"}}>No recorded areas match the filter.</p>}
+      {visibleAreas.length===0&&<p style={{padding:"1rem"}}>No recorded areas match the loaded filter.</p>}
+      <div className="toolbar" style={{padding:"1rem"}}>
+        {areaNextOffset!==null&&<button type="button" disabled={busy}
+          onClick={()=>void loadMoreAreas()}>Load more verified areas</button>}
+        <button type="button" disabled={busy} onClick={()=>void downloadPage("AREAS")}>
+          Download verified areas {exportOffset.AREAS?"(next page)":""}</button>
+      </div>
       </div>
       {can("foundation.geography.manage")&&<form className="role-pane form" style={{padding:"1rem"}} onSubmit={e=>{
         e.preventDefault();
@@ -261,9 +318,14 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         <td>{x.active?"Active":"Inactive"}</td><td>
           <button type="button" onClick={()=>setFocusedDept(x.departmentRef)}>Officeholders</button>{" "}
           {can("foundation.departments.manage")&&<button type="button" onClick={()=>editDepartment(x)}>Edit</button>}
+          <button type="button" onClick={()=>void showHistory("DEPARTMENT",x.departmentRef,x.name)}>History</button>
         </td>
       </tr>)}</tbody></table>
-      {visibleDepartments.length===0&&<p style={{padding:"1rem"}}>No recorded departments match the filter.</p>}</div>
+      {visibleDepartments.length===0&&<p style={{padding:"1rem"}}>No recorded departments match the loaded filter.</p>}
+      <div className="toolbar" style={{padding:"1rem"}}>
+        <button type="button" disabled={busy} onClick={()=>void downloadPage("DEPARTMENTS")}>
+          Download verified departments {exportOffset.DEPARTMENTS?"(next page)":""}</button>
+      </div></div>
       {can("foundation.departments.manage")&&<form className="role-pane form" style={{padding:"1rem"}} onSubmit={e=>{
         e.preventDefault();
         const existing=departments.find(x=>x.departmentRef===deptRef);
