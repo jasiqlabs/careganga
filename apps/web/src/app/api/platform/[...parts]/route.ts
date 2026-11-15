@@ -23,6 +23,10 @@ function permitted(parts:string[],method:string):boolean{
     /^[A-Za-z0-9_-]{35,1300}$/.test(parts[2]))return method==="GET";
   if(parts.length===3&&parts[0]==="recovery"&&parts[1]==="changes"&&
     UUID.test(parts[2]))return method==="GET";
+  if(parts.length===4&&parts[0]==="recovery"&&parts[1]==="operations"&&
+    UUID.test(parts[2])&&parts[3]==="authorize")return method==="POST";
+  if(parts.length===4&&parts[0]==="recovery"&&parts[1]==="authorization"&&
+    parts[2]==="changes"&&UUID.test(parts[3]))return method==="GET";
   if(parts.length===3&&parts[0]==="changes"&&
     ["SETTING_SAVE","INTEGRATION_REFERENCE"].includes(parts[1])&&UUID.test(parts[2]))
     return method==="GET";
@@ -39,7 +43,9 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"|"PATCH")
   if(!backend)return reply("Platform settings are temporarily unavailable.",503);
   let body:string|undefined;
   if(method!=="GET"){
-    if(parts.length===1||(parts.length===2&&parts[0]==="recovery"&&parts[1]==="request")){
+    if(parts.length===1||(parts.length===2&&parts[0]==="recovery"&&parts[1]==="request")||
+      (parts.length===4&&parts[0]==="recovery"&&parts[1]==="operations"&&
+        parts[3]==="authorize")){
       try{
         const input:unknown=await req.json();
         if(!input||typeof input!=="object"||Array.isArray(input))throw Error();
