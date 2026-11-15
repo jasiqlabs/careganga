@@ -26,6 +26,10 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **State and invariant:** New/review/active/probation/hold/exit; leave pending/approved/rejected. Employment not login; payroll/salary and bank data remain private/owned. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
+## CG-10 ownership of actual employee/coordinator branch relations
+
+CG-02-BR06 staff/coordinator association is fulfilled by **CG-10 US-001 and US-003**, not by CG-02. CG-10 owns the actual employee/coordinator identity, current authorized CG-02 ACTIVE branch/department assignment and effective-dated transfer history; CG-01 owns the linked login and action grants. No CG-02 shadow employee table, no future salary payout/beneficiary prerequisite, and no automatic root grant from assignment. The employee/transfer story QA validates the real scope and history.
+
 ## Complete PRD and BR mapping
 
 - **FR-029/A-10:** HR enrolls employee — Capture employment, branch/department, reporting line, needed personal/identity/bank/qualification documents; follow configured verification until approved ID/access
