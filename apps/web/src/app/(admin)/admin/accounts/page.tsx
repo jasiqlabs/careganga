@@ -40,7 +40,8 @@ export default async function FoundationAccounts(){
       <FoundationAdminNav active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={canViewAccounts||canInviteOnly}
-        canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}/>
+        canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
+        canViewSettings={keys.includes("platform.settings.view")}/>
       <main className="workspace"><AccountsPanel inviteOnly={canInviteOnly}/></main>
     </div>;
   }catch(error){
