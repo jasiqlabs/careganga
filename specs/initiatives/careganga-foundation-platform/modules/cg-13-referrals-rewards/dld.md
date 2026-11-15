@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-039, FR-040, FR-041, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-13-BR01–CG-13-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B11, B12, B13, B14, B15, B16 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Verified referral attribution, point/rank ledger, reward catalog/redemption** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Verified referral attribution:** source attributes/status from CG-13-BR01–CG-13-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **point/rank ledger:** source attributes/status from CG-13-BR01–CG-13-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **reward catalog/redemption:** source attributes/status from CG-13-BR01–CG-13-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Referral pending/qualified; redemption requested/approved/fulfilled/reversed; No unearned points or repeated redemption/stock issue**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-13 owns only verified referral attribution, one points ledger and controlled reward redemption. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete referral/points/rewards contracts
 
@@ -22,11 +17,13 @@ State/invariant: **Referral pending/qualified; redemption requested/approved/ful
 
 **QA:** referral cycle/self-referral, duplicated applicant attribution, qualification reversal, no-balance redemption, last-unit parallel redemptions, invalid rank thresholds, refund/cancel points and public leaderboard privacy.
 
-## Specific owner contracts and source-QA
+## Real source integration and module-specific QA
 
-- **Event model:** `referral(referrer_relationship_ref,applicant_ref,qualifying_event_ref,status)` uniquely attributes an approved new CG-04 member/volunteer; a shared link click earns no points. `points_event(owner_ref,source_kind,source_ref,delta,accepted_at)` is append-only and unique by approved cause; balance is sum of accepted/reversed events.
-- **Ranks/redeem:** versioned `rank_policy(thresholds,effective_period)`, `reward(type,points_cost,stock_ref,active)`, `redemption(owner_ref,reward_ref,points_reserved,inventory_issue_ref,state)`. Redeem requires sufficient available points and, for physical reward, an idempotent real CG-12 stock issue; cancellation reverses both once. No independent payment/bank ledger.
-- **QA:** self-referral/duplicate signup, candidate approval revoked, overlapping rank-threshold revisions, two simultaneous redemptions, out-of-stock reward, cancellation and leaderboards leaking private profile.
+**Critical acceptance:** A verified real member refers one eligible new member; issue referral credit once after CG-04 confirms actual eligible outcome. Block self-referral, circular credits, replayed signup and expired/refunded conversion. Two redemptions racing against the same point balance result in one valid claim, not negative points; physical reward fulfillment moves one real CG-12 stock source and value transfer uses CG-09.
+
+**Contract availability:** A member and approval are genuine CG-04/03 sources; inventory only for applicable physical rewards. Show pending rather than fake points before evidence.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-073, FR-074, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-20-BR01–CG-20-BR07, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U01, C44, C45, C46, C47, C49 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Dashboards, standard/custom/saved reports, scheduled exports** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Dashboards:** source attributes/status from CG-20-BR01–CG-20-BR07; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **standard/custom/saved reports:** source attributes/status from CG-20-BR01–CG-20-BR07; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **scheduled exports:** source attributes/status from CG-20-BR01–CG-20-BR07; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Report draft/running/completed/failed; schedule active/disabled; No cross-scope report, shadow accounting or unbounded scheduled polling**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-20 owns only permission-filtered reporting query definitions and scheduled read-only delivery. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete scoped analytics and scheduled reporting
 
@@ -22,12 +17,13 @@ Bound report queries by dates, row/page limit and estimated cost; long exports r
 
 **QA:** mixed Foundation/center scope filter, denied salary/clinical column, recipient revoked after saving, large report timeout, duplicate scheduled delivery after restart, malicious filter, empty vs API failure and finance report total vs authoritative ledger.
 
-## Specific reporting contracts and source-QA
+## Real source integration and module-specific QA
 
-- **Data:** `report_definition(id,source_module,approved_columns,filter_schema,visibility)`, `saved_report(id,owner_ref,filters,revision)`, `report_run(id,actor_ref,recipient_scope,source_watermark,status,export_file_ref)` and `report_schedule(id,recipient_ref,next_due_at,cadence,enabled)`. Reports do not independently own copies of patient, salary, financial or provider business records.
-- **Owner reads and permission:** CG-20 calls typed permission-filtered projections of **already implemented** modules only. A scheduled report or asynchronous export rechecks current recipient and source record scope at run time *and* download time, not just when saving the filter. Custom reporting accepts approved data sources, column/group/filter allowlists, not arbitrary SQL or private cross-domain joins. Future module metrics appear as unavailable/omitted, not false zeros.
-- **Performance and background:** bound page size, date window, download bytes and export job timeout; due-job query indexes on enabled+next_due_at and skips idle tenants. Cancel/retry is idempotent and does not send a report after permission revocation.
-- **QA:** revoked recipient with queued report, unrelated center report export, invalid saved filter after source schema change, high-volume query budget, no scheduled work idle, report counts reconcile with CG-09/15/17 and safely redacted diagnostics.
+**Critical acceptance:** An authorized Foundation admin opens a dashboard with only actual records from already-delivered owners; cross-branch reporter sees no restricted totals or donor/patient/employee fields. Scheduled export re-checks current recipient permission and safe field allowlist at delivery time; job with zero due reports performs no tenant-wide polling or costly joins. Reports reconcile back to CG-09 authoritative journals.
+
+**Contract availability:** Offer empty-but-truthful cards for absent sources; add owner projections and independent QA as CG-05/06/07/10/14/15/17 mature. Never seed fake impact or financial statistics.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

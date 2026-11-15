@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-042, FR-043, FR-044, FR-045, FR-046, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-14-BR01–CG-14-BR20, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Provider/center and doctor professional profiles, many-center affiliation, fee/service catalog** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Provider/center and doctor professional profiles:** source attributes/status from CG-14-BR01–CG-14-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **many-center affiliation:** source attributes/status from CG-14-BR01–CG-14-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **fee/service catalog:** source attributes/status from CG-14-BR01–CG-14-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Provider/doctor pending/approved/returned/suspended, publication separate; One doctor identity across centers; no fake verified badge or public private bank info**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-14 owns only healthcare provider entity, physical center, professional doctor and center-specific approved associations/fees. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete provider, center, doctor and publication design
 
@@ -22,11 +17,13 @@ Provider/doctor verification via CG-03 returns actual approved/rejected/returned
 
 **QA:** doctor in two real centers, center suspended/revoked, unverifiable doctor registration, overlapping fee versions, forged location lookup, wrong-center staff update, public unpublished center, fees changing after confirmed booking and CG-01 center-options minimum fields.
 
-## Specific owner contracts and source-QA
+## Real source integration and module-specific QA
 
-- **Provider & locations:** `provider(id,legal_identity,verification_state,publish_state)`, `center_location(provider_ref,actual_geo,contact,facilities,status)`, `doctor(id,professional_registration,qualification,verification_state)` and `doctor_center(doctor_ref,center_location_ref,association_status,fee_version,active_period)`; doctor professional ID is unique and **not duplicated per affiliated center**.
-- **Verification/fees:** CG-03 authorized review finalizes provider/doctor verification. `center_service(center_ref,service,fee,valid_from,status)` effective-dates center-specific fees and restrictions, while CG-15 snapshots accepted prices. Provider bank/settlement credentials are protected and never in public directory.
-- **Visibility/scope:** only verified and separately published active center/doctor records display, using a minimum-field public projection with no fabricated ratings, review scores or eligibility badges. CG-01 center staff receive exact location scope, not blanket clinical access. **QA:** doctor at two centers, unverified provider public link, center suspension, stale fee, guessed other-center staff file, private bank leak and publication retraction.
+**Critical acceptance:** Register center, verify license/business evidence, associate one doctor with two genuinely approved centers and publish only permitted fields. A doctor suspended at one center remains represented accurately at the other; center operators cannot read unrelated professional files/bank data or edit global doctor identity. Canceled/rejected center is never searchable. Fee change is versioned for future bookings, not retroactive CG-15 price rewrite.
+
+**Contract availability:** CG-01 authenticates users, CG-02 provides real geography, CG-03 approves; CG-15 subsequently consumes doctor-center availability, CG-17 subsidy and CG-18 safe directory projection. No future booking/payment record required for provider creation.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

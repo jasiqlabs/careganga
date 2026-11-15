@@ -3,17 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Hero/content, public pages, impact, 80G, navigation, safe publication** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Hero/content:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **public pages:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **impact:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **80G:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **navigation:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **safe publication:** source attributes/status from CG-18-BR01–CG-18-BR28; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Editorial draft/reviewed/published/hidden/scheduled; CMS may not edit actual project/doctor/clinical/financial business source or claim statutory certification**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-18 owns only editorial page/content, public navigation, media references and approved immutable publication snapshot. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete CMS, publication and public projection
 
@@ -25,11 +17,13 @@ A public-safe **allowlist projection** reads real approved CG-05 projects, CG-14
 
 **QA:** draft invisible to anonymous, scheduled/expired page, unauthorized publish, changed source after preview, missing consent for beneficiary story, 80G expiry disclaimer, XSS in rich text, malicious CTA URL and Web/Public Android same published revision.
 
-## Specific owner contracts and source-QA
+## Real source integration and module-specific QA
 
-- **Editorial versioning:** `cms_page(id,route,revision,editor,status)`, `content_section(page_ref,kind,order,payload,source_ref)`, `hero_banner(id,desktop_media,mobile_media,order,status)`, `publication_revision(id,source_ref,approved_by,approved_at)`; draft, reviewed, published and scheduled versions are distinct and reversible.
-- **Source projections:** published team/project/doctor/provider/benefit/impact figures use a **verified field allowlist from their real owners**; CMS may arrange/describe but not alter those masters or publish beneficiary/patient stories without privacy basis. If CG-14/17 or CG-20 are not implemented, no fictional provider cards/discount/statistics are rendered. 80G/PAN legal metadata remains editable evidence with current validity review, not automatic certification.
-- **QA:** unpublished hero visibility, scheduled publish while approval revoked, source project suspended after public post, fake 80G claims, menu Login/Join toggle, indexed private page, publication preview/rollback and tenant media ACL.
+**Critical acceptance:** An editor creates a genuine static page/campaign description and publishes approved content with correct preview/version/schedule. Non-public branch, donor identity, patient, clinical result or unpublished doctor must never leak through search, SEO, cache, public API, stale preview or a mobile deep link. Revocation/unpublish invalidates public projection and cache.
+
+**Contract availability:** Publish independent editor-authored pages using CG-01 roles/CG-19 assets/CG-03 review. Add real CG-14 centers, CG-07 campaigns, CG-05 projects and CG-17 support only when those owners ship, with integration QA in introducing owner.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

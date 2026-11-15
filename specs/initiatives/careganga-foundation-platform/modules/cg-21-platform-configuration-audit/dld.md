@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-21-BR01–CG-21-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C09, C10, C50, C51, C52, C53, C54, C55 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Platform/integration settings, security audit, privileged backup/restore** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Platform/integration settings:** source attributes/status from CG-21-BR01–CG-21-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **security audit:** source attributes/status from CG-21-BR01–CG-21-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **privileged backup/restore:** source attributes/status from CG-21-BR01–CG-21-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Settings draft/active; integration disabled/verified; recovery requested/approved; No secrets in UI/log, ordinary staff restore or simulated provider success**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-21 owns only effective system configuration, integration verification status, append-only redacted security audit and privileged recovery request. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete security settings, audit and recovery contracts
 
@@ -24,11 +19,13 @@ State/invariant: **Settings draft/active; integration disabled/verified; recover
 
 **QA:** unauthorized restore, two concurrent setting writes, secret appearing in API/log, false integration-ready state, foreign-scope audit export, failed backup/restore, dormant worker bandwidth and still-pending verification behavior.
 
-## Specific owner contracts and verification
+## Real source integration and module-specific QA
 
-- **Configuration & secrets:** `platform_setting(key,scope,value_class,version,changed_by)`, `integration_connection(provider,purpose,encrypted_secret_reference,status,last_verified_at)`. Never store/display raw credentials; configured is not verified-ready. Public CMS visibility is CG-18's source, not duplicated here.
-- **Audit & recovery:** append-only `audit_event(actor,resource,action,outcome,correlation,safe_diff,at)` redacts patient, money, credential and identity payload; owner events join through typed append interface. `recovery_operation(kind,backup_ref,requester,approval,state,evidence)` requires privileged MFA and additional authorization where configured. Actual restore proof is independent operations QA, not an enabled toggle.
-- **QA:** wrong-role restore, failed setting transaction, leaked secret in audit/export, provider unreachable despite configured status, bounded provider health job, backup evidence missing, last-root recovery.
+**Critical acceptance:** CG-01 protected admin changes a permitted setting with version conflict protection, verifies real provider readiness and sees accurate verification failure. Audit records CG-01 access/permission changes with no OTP/token/medical/bank payload. Unauthorized restore, two concurrent setting writes, foreign-scope audit export and false backup PASS are blocked; restore is evidenced only after actual privileged recovery drill.
+
+**Contract availability:** CG-21 has real CG-01 audit as its first provider, without waiting for approval, finance, healthcare or CMS. Later modules append audit events through the same protected contract, not an independent log.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

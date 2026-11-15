@@ -3,13 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Source-linked files/templates/PDF/QR, notices/messaging and support tickets** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Source-linked files/templates/PDF/QR:** source attributes/status from CG-19-BR01–CG-19-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **notices/messaging and support tickets:** source attributes/status from CG-19-BR01–CG-19-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **File pending/validated; message queued/delivered/failed; case open/closed; No sensitive public document, fake delivery, duplicate receipt source or idle tenant worker**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-19 owns only protected object file reference, approved document template, issued source-derived document, bounded delivery queue and support ticket. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete file, template, delivery and support design
 
@@ -21,11 +17,13 @@ State/invariant: **File pending/validated; message queued/delivered/failed; case
 
 `support_case(source_channel,requester,assigned_center_or_foundation,status)` is shared by public contact and center support; private contact fields and attachments remain scoped. **QA:** signed-file expiry, wrong-patient report, duplicate PDF/link, repeated send, provider timeout-after-success, dormant worker/idle egress, service restart and cross-center helpdesk visibility.
 
-## Specific owner contracts and verification
+## Real source integration and module-specific QA
 
-- **Private source-linked files:** `stored_file(owner_type,owner_ref,acl_class,checksum,mime,size,scan_state,object_key)`; short-lived signed download rechecks real owner/actor/clinical purpose. `document_template(type,version,allowed_fields)` and `generated_document(source_owner,source_ref,template_version,checksum,status)` hold immutable issued versions, not independently edited receipts/IDs. Support source-backed front/back cards, QR safe lookup and letter/memo reissue.
-- **Notifications & support:** `notification(source_event,recipient,channel,status)`, `delivery_attempt(provider,event_ref,attempt,next_retry_at,status)` unique per recipient/source/channel, and one scoped `support_case` for public and center requests. Provider failure is pending/failed rather than fake delivered; finite retries and bounded due-job queries avoid idle tenant-wide polling/bandwidth drain.
-- **QA:** forged private signed report, duplicate message on retry, recipient loses role, job restart/idle traffic, wrong-center support, current PDF versus previous version, no public medical/salary documents.
+**Critical acceptance:** Generate an authorized CG-01 or CG-03 source document, verify its source state, sign restricted download and prevent wrong-patient/staff access; future receipts/appointment slips join only when owners exist. Persist one notification event/outbox, survive send timeout/restart with finite retries and no duplicate recipient. Verify 0 eligible jobs across many idle tenants causes 0 polling/provider requests and bounded bandwidth.
+
+**Contract availability:** CG-01/03 are initial real sources; later CG-04/09/10/15/16 introduce their own document/notification integration and QA. No placeholder receipt/medical record, no always-on import worker.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

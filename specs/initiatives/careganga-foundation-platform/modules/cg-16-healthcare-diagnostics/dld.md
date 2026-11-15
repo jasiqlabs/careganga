@@ -3,15 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-055, FR-056, FR-057, FR-058, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-16-BR01–CG-16-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Test/package catalog, center prices, internal order, sample and released report** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Test/package catalog:** source attributes/status from CG-16-BR01–CG-16-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **center prices:** source attributes/status from CG-16-BR01–CG-16-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **internal order:** source attributes/status from CG-16-BR01–CG-16-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **sample and released report:** source attributes/status from CG-16-BR01–CG-16-BR10; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Order created/collected/processing/report ready/released; No public lab checkout or release of private patient report to strangers**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-16 owns only test catalog, center-specific price, internal order, sample processing and signed released clinical result. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete diagnostics, patient privacy and service information
 
@@ -23,11 +17,13 @@ Private report access requires authenticated own-patient identity or assigned tr
 
 **QA:** patient linked to wrong center, unauthorized report download, sample repeated, unapproved lab release, replaced report without version, stale package rate and public CTA accidentally creating checkout.
 
-## Specific owner contracts and source-QA
+## Real source integration and module-specific QA
 
-- **Catalog:** `diagnostic_test(id,code,sample_type,parameter_schema,status)`, `package(id,code,included_tests,fee_version)`, `center_test_rate(center_ref,test_or_package_ref,amount,validity)` require real CG-14 center and effective price; package changes do not rewrite accepted order amounts.
-- **Internal lab:** `lab_order(id,patient_ref,center_ref,selected_test_version,status,price_snapshot)`, `sample_collection(order_ref,time,collector,state)`, `lab_report(order_ref,private_file_ref,version,released_by,released_at,status)`. A lab upload is only *result ready*; authorized professional release is a separate recorded transition, and report correction creates a new version.
-- **Clinical scope:** patient-own or treatment-purpose clinician access only; center public cards show real service menu/fee and enquiry rather than unsupported online lab/medicine/nursing checkout. **QA:** duplicate order, wrong-center order read, unauthorized report release, leaked signed file, new fee during processing and old report version retrieval.
+**Critical acceptance:** A verified CG-15 patient receives an authorized lab order at a real CG-14 center; sample labeling, result validation and clinician release are separately authorized. A draft report must never appear in patient download or a foreign center export; corrected final report receives a new immutable revision while previous issued version remains auditable. A scanned QR validates only minimal report validity.
+
+**Contract availability:** No standalone online OTC pharmacy or lab booking is inferred from a screenshot. CG-17 may later price/support actual services; until then CG-16 uses real center price and truthfully pending due states, not paid.
+
+**API acceptance:** Commands validate current action + actual record scope, owner/source ref, expected revision and idempotency key on irreversible writes; responses distinguish confirmed, pending, invalid, forbidden, conflict, provider unavailable and unknown write status. Scoped options/search may show readable authorized labels without full master read. Each named story QA case traces the real channel -> request -> authorization -> transaction -> stored status -> permitted report/published view.
 
 ## Typed API and coordination
 

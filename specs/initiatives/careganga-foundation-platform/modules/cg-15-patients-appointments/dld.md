@@ -3,16 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-047, FR-048, FR-049, FR-050, FR-051, FR-052, FR-053, FR-054, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-15-BR01–CG-15-BR25, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Patients and consent, schedules, slot holds, booking, reception queue** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Patients and consent:** source attributes/status from CG-15-BR01–CG-15-BR25; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **schedules:** source attributes/status from CG-15-BR01–CG-15-BR25; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **slot holds:** source attributes/status from CG-15-BR01–CG-15-BR25; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **booking:** source attributes/status from CG-15-BR01–CG-15-BR25; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **reception queue:** source attributes/status from CG-15-BR01–CG-15-BR25; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Slot free/held/booked/blocked; appointment confirmed/completed/cancelled/no-show; Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-15 owns only verified patient and consent, doctor-center schedules, authoritative doctor-wide occupancy, reservation holds and appointment queue. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete scheduling and clinical access contracts
 
@@ -25,6 +18,14 @@ State/invariant: **Slot free/held/booked/blocked; appointment confirmed/complete
 **Late payment and visit:** online callback verified after hold expiry reconciles or starts authorized refund/manual recovery, not silent overbooking. `visit_queue` tracks check-in/waiting/in-consultation/completed/no-show/canceled within own center and purpose-specific access.
 
 **Source QA:** simultaneous Web/Android/reception last-slot and same doctor cross-center booking; block/leave after booking; expired hold + late payment; stale fee; forged patient/QR lookup; missed payment/notification and cancellation. Exact locking and exclusion constraint must be DB-reviewed before approval.
+
+## Capacity, clinical-privacy and forward-integration acceptance
+
+**Canonical reservations:** The doctor_reservations time-range exclusion (or equivalent proven doctor-row transactional lock) is scoped to the actual doctor and time interval across *all* associated centers. The exclusion key must not include center_id in a way that permits overlapping in-person appointments; doctor timezone, DST, valid duration, cancellations and hold expiry are defined and tested. Center capacity and doctor occupancy are checked and committed together. An unlocked SELECT-then-INSERT check is not acceptable. Preserve pending payment state independently of booking.
+
+**Cross-module:** CG-14 owns real doctors/centers, CG-19 issues source-backed slips; CG-17 later adds true online collection/support and financial callbacks. In the initial CG-15 delivery, permit correctly disclosed DUE or pay-at-center intent without falsely marking PAID or inventing a subsidy.
+
+**QA:** Two patients on Web/native/reception request the last doctor slot across two centers. Only one reservation can commit under the same doctor-wide overlap + center-capacity transaction; the second receives an actionable alternative. Block overlapping confirmed in-person visits across centers, release expired holds, reconcile late verified payment without overbooking, and retain patient/doctor/fee snapshot on reschedule or refund.
 
 ## Typed API and coordination
 

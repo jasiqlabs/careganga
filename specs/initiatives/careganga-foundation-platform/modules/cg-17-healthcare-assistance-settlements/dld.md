@@ -3,16 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-17-BR01–CG-17-BR20, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical source, authorization and data ownership
 
-Own a cohesive typed domain/application module for **Versioned subsidy policy, eligibility, center collection, Foundation liability, provider settlement** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Versioned subsidy policy:** source attributes/status from CG-17-BR01–CG-17-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **eligibility:** source attributes/status from CG-17-BR01–CG-17-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **center collection:** source attributes/status from CG-17-BR01–CG-17-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **Foundation liability:** source attributes/status from CG-17-BR01–CG-17-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **provider settlement:** source attributes/status from CG-17-BR01–CG-17-BR20; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Support requested/approved; patient due/paid/refunded; Foundation due/settled; Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-17 owns only effective-dated healthcare assistance policy, eligibility award, center collection evidence and Foundation settlement obligation. All concrete database names and transactions below are authoritative; earlier planning aliases are not duplicate tables or optional alternative models. Enforce actual typed source references, resource-scope authorization, valid transitions, DB uniqueness and versioned edits. No future owner record, fake provider response or shadow financial/medical master may be inserted to make this module appear operational.
 
 ## Concrete healthcare finance and merchant contracts
 
@@ -25,6 +18,14 @@ State/invariant: **Support requested/approved; patient due/paid/refunded; Founda
 **Foundation payable:** `foundation_liabilities(provider,service,approved_amount,due_period,status)` plus `provider_settlements(provider,month,approved_total,paid_total,adjustment,status)` reconcile completed eligible services and authorized dues. Accepted settlement posts Foundation liability/payment in CG-09 exactly once with unique source identity, respecting partial payments and corrections.
 
 **QA:** duplicate/late callbacks, wrong merchant/center, pending versus verified, full-support approval and cap rounding, pay-at-center outstanding, canceled/refunded case, concurrent partial settlement, repeated month close and downstream journal agreement. Do not claim source-complete without real CG-09 and center scope integration.
+
+## Monetary balance and settlement invariants
+
+**Every eligible calculation** snapshots policy version, accepted fee, patient obligation, Foundation share, center merchant, and evidence. Currency decimal rounding policy is deterministic; reject negative/capped/invalid benefit and gross mismatches. Persist patient collection and Foundation payable as separate source ledgers with one unique immutable financial-event id per payment/adjustment. Verified patient receipt is a center receipt, not automatically Foundation cash. Unverified provider callbacks yield PENDING/RECONCILIATION, not PAID.
+
+**QA:** Given a versioned eligible consultation price, compute full/percentage/capped Foundation share with rounding and enforce patient_due + foundation_share = accepted_total. Center merchant collection must never silently create Foundation cash; verified external payment, refund and center invoice/reconciliation are distinct. Two settlement claims or webhook retries cannot settle one event twice. A later policy change does not rewrite an earlier booked snapshot.
+
+**Owner integration:** Requires actual CG-14 fees, CG-15 booking/service source, CG-09 Foundation ledger and CG-19 document proof. Integrate payment adapter only for verified owner merchant; unavailable provider leaves payment pending, not artificially settled.
 
 ## Typed API and coordination
 
