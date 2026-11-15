@@ -35,6 +35,11 @@ Budget screens use **real CG-02 ACTIVE branch** minimum-field selectors and sour
 **US-006 finance reports:** Actual CG-09 vendor/payables/payment/ledger search may filter current authorized supplier/source receipt with genuine original financial status/amount, no shadow inventory quantity, zero/failure state truthful. Responsive original CareGanga invoice/report UI and privileged Internal Android read use same source, no public vendor ledger; original PNG/video/device/p95 NOT_RUN.
 
 
+## Real CG-05 project budget and voucher source in original CG-09 UI
+
+**US-002** A19/U33–U34 original voucher editor and authorized Internal Android finance view: optionally select actual current permitted CG-05 project (when delivered), verify branch/date/finance approval, show posted/payable/PAID only from CG-09. **US-005** B01/B02 budget scope lets finance select real project within existing CG-09 financial-year/branch and category allocation while Foundation/branch-only remains valid. Distinguish Project Planned Estimate (CG-05, non-ledger), CG-09 Approved/Allocated/Committed/Utilized/Released/Available and no-data. **US-006** original GL/Project Ledger shows CG-09 posted original financial lines grouped by authorized real CG-05 project, without CG-05 manually updated donut/ledger. Wrong-branch source, closed project, stale project transfer and private export denied. Do not duplicate U31 Create Project editor in finance. Pixel/native/video QA NOT_RUN.
+
+
 ## Six story-specific original Web/native screen contracts
 
 - **US-001:** Original U36 chart/accounts and U35 real finance summary: true Foundation/real CG-02 ACTIVE-branch chart, fiscal years, restricted named account/bank pickers and balanced opening transaction using US-001's minimal double-entry posting engine. No employee, project, provider or donor selector until source exists; show one real empty chart and human validation/conflict, no fictional totals.

@@ -80,6 +80,11 @@ Follow the 72 concrete US-001–004 QA cases in [tasks.md](tasks.md) (18 per sto
 
 **Mandatory shared visual/behavior:** Original brand blue sidebar selection, title, icons, spacing, labels, dense cards/tables/drawers, editorial preview, page controls and source-supported animation. Public Web/native share brand tokens and current effective revision, not identical desktop layout. Show loading, actual empty, draft, submitted, returned, approved, scheduled, published, withdrawn, scan pending, expired 80G, forbidden, stale update, unknown publish and safe retry. Sanitize text and safe CTA; do not expose internal IDs or private CG-19 file links. Original stills do not prove motion timing; video/device/pixel QA NOT_RUN.
 
+## CG-05 source integrations: C27–C30 and C31–C38 public Web/Public Android
+
+**C27–C30 project section:** Authorized CG-18 editor can choose *only verified current CG-05 public-safe project* in real project teaser list/placement with editorial order/approved headline, and preview true source-allowed image/generalized area. A private, cancelled or revoked source displays "Not eligible for publication" in Admin and disappears from public Web/Public Android even on old cached CMS version. **C31–C38 event/news:** An actual CG-05 US-003 approved Foundation event may be selected as a distinct operational source behind an editorial story/calendar card; publishing still requires original CG-18 CMS review, not merely an A10 activity save. Keep separate ordinary editorial Blog/Latest Update available without any operational event. No event ticket/RSVP/payment, staff location route, beneficiary photo or private visit source shown on public. Original CareGanga CMS tokens and native public layout, no actual original PNG/video/pixel/motion QA PASS.
+
+
 ## Task-first source screenshot and UX acceptance
 
 Follow original public CMS screens for page/hero/menu/media editing, right-drawer forms, tabbed draft/scheduled/published states, preview and public View Site action. Keep edit vs publish distinct; when source-backed campaign/doctor/impact is unavailable, hide the corresponding source selector rather than inventing a linked card. Render actual responsive site with the same CareGanga palette/type/icon language and purposeful transition treatment.
