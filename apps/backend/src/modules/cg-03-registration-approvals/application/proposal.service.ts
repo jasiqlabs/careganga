@@ -69,7 +69,12 @@ export class ApprovalProposalService{
     return process;
   }
   private async readActor(bearer:string):Promise<{actor:VerifiedFoundationActor;root:boolean}>{
-    const actor=await this.sessions.requireAction(bearer,"approvals.view");
+    let actor:VerifiedFoundationActor;
+    try{actor=await this.sessions.requireAction(bearer,"approvals.view");}
+    catch(error){
+      if(!(error instanceof ForbiddenException))throw error;
+      actor=await this.sessions.requireAction(bearer,"approvals.propose");
+    }
     let root=false;
     try{
       await this.sessions.requireAction(bearer,"approvals.review");
@@ -81,7 +86,7 @@ export class ApprovalProposalService{
     return this.owner.options(bearer,kind,search??"");
   }
   async process(bearer:string){
-    const actor=await this.sessions.requireAction(bearer,"approvals.propose");
+    const {actor}=await this.readActor(bearer);
     const q=await this.db.query<ProcessRow>(`
       SELECT p.id,p.version,p.first_reviewer_capability
       FROM cg03_process_current cur JOIN cg03_process p ON p.id=cur.process_id
