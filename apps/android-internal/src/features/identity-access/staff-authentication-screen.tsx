@@ -2,6 +2,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { useCallback, useEffect, useState } from "react";
 import { RolesScreen } from "./roles-screen";
+import { SecurityPolicyScreen } from "./security-policy-screen";
 import { AccountsScreen } from "./accounts-screen";
 import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
@@ -48,11 +49,13 @@ export function StaffAuthenticationScreen(){
   const [activate,setActivate]=useState(false);
   const [accountsOpen,setAccountsOpen]=useState(false);
   const [rolesOpen,setRolesOpen]=useState(false);
+  const [policyOpen,setPolicyOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
+  const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -145,7 +148,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -159,6 +162,8 @@ export function StaffAuthenticationScreen(){
   if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
     inviteOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
+  if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
+    return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -175,6 +180,10 @@ export function StaffAuthenticationScreen(){
             </Pressable>}
             {roleActions.includes("roles.view")&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setRolesOpen(true)}><Text style={styles.buttonText}>Roles & permissions</Text></Pressable>}
+            {roleActions.includes("identity.security-policy.manage")&&<Pressable accessibilityRole="button"
+              style={styles.button} onPress={()=>setPolicyOpen(true)}>
+              <Text style={styles.buttonText}>Security Policy</Text>
+            </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
             </Pressable>
