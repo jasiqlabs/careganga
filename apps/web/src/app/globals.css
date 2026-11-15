@@ -97,3 +97,68 @@ button:disabled { cursor:wait; opacity:.65; }
 .role-name{display:flex;gap:.65rem;align-items:flex-start}
 .role-dot{display:inline-block;flex:none;margin-top:.35rem;width:.9rem;height:.9rem;border-radius:50%}
 @media(max-width:48rem){.sidebar{height:auto;position:relative;overflow:visible;padding:1rem}.role-color-choice{width:2.75rem;height:2.75rem}}
+
+/* Original U05–U07 role workspace: role list / permission manager / details. */
+.role-three-pane{display:grid;grid-template-columns:minmax(13rem,1fr) minmax(20rem,1.6fr) minmax(13rem,.92fr);
+  align-items:start;gap:1rem;min-width:0}
+.role-pane{min-width:0;overflow:hidden;background:var(--cg-surface);border:1px solid var(--cg-border);
+  border-radius:.7rem;box-shadow:0 4px 20px rgba(10,31,68,.035)}
+.role-pane-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;
+  border-bottom:1px solid var(--cg-border);padding:1rem 1.1rem}
+.role-pane-heading h2{margin:0;font-size:1rem;font-weight:750;color:var(--cg-text)}
+.role-pane-heading p{margin:.2rem 0 0;color:var(--cg-muted);font-size:.82rem}
+.role-list-options{display:grid;padding:.35rem;max-height:40rem;overflow-y:auto}
+.role-list-option{width:100%;min-height:4rem;display:flex;align-items:center;text-align:left;gap:.65rem;
+  background:transparent;color:var(--cg-text);border:1px solid transparent;border-radius:.45rem;
+  padding:.65rem .6rem;cursor:pointer}
+.role-list-option:hover{background:#F4F8FF}
+.role-list-option.is-active{background:#EEF4FF;border-color:#D5E5FC}
+.role-list-option-text{display:grid;gap:.25rem;min-width:0;flex:1}
+.role-list-option-text strong{font-size:.86rem;overflow-wrap:anywhere}
+.role-list-option-text span{font-size:.78rem;color:var(--cg-muted)}
+.role-list-chevron{color:var(--cg-muted);font-size:1.25rem}
+.role-dot.role-dot-large{height:2rem;width:2rem;margin:0}
+.role-dot.role-dot-avatar{height:3rem;width:3rem;margin:.8rem 0 0}
+.role-permission-count{white-space:nowrap;background:#EDF4FF;color:#1E53DC;border:1px solid #D8E5FA;
+  border-radius:.4rem;padding:.3rem .5rem;font-size:.75rem;font-weight:650}
+.role-permission-grid{padding:.8rem 1rem;max-height:41rem;overflow-y:auto}
+.role-permission-details{border-bottom:1px solid var(--cg-border);padding:.5rem 0}
+.role-permission-details summary{padding:.4rem .2rem;font-weight:650;cursor:pointer;list-style:disclosure-closed}
+.role-permission-details[open] summary{list-style:disclosure-open}
+.role-permission-details ul{list-style:none;padding:0;margin:.3rem 0}
+.role-permission-line{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
+  padding:.65rem .3rem;border-bottom:1px solid #EFF2F6;font-size:.84rem}
+.role-permission-line:last-child{border-bottom:0}
+.role-permission-status{border-radius:999px;padding:.25rem .5rem;background:#F1F3F6;color:var(--cg-muted);
+  font-size:.7rem;font-weight:650;white-space:nowrap}
+.role-permission-status.granted{background:#E5F7EC;color:#167A45}
+.permission-note{font-size:.85rem;line-height:1.55;color:var(--cg-muted)}
+.role-detail-content{padding:1.05rem}
+.role-detail-content h3{margin:.25rem 0;font-size:1.1rem}
+.role-detail-content p{font-size:.84rem;color:var(--cg-muted);overflow-wrap:anywhere}
+.role-detail-content .role-meta{font-weight:650;color:var(--cg-accent)}
+.role-detail-content dl{margin:1.3rem 0;display:grid;gap:.7rem}
+.role-detail-content dl>div{display:flex;justify-content:space-between;gap:.5rem;padding-bottom:.55rem;
+  border-bottom:1px solid var(--cg-border)}
+.role-detail-content dt{color:var(--cg-muted);font-size:.8rem}
+.role-detail-content dd{margin:0;font-size:.82rem;font-weight:650;text-align:right}
+.role-detail-actions{display:grid;gap:.55rem}
+.role-detail-actions button{min-height:2.6rem;background:var(--cg-surface);color:var(--cg-text);
+  border:1px solid var(--cg-border);border-radius:.4rem;text-align:center;padding:.65rem}
+.role-detail-actions button:hover:not(:disabled){border-color:var(--cg-accent);color:var(--cg-accent)}
+.role-detail-actions button:first-child{background:#F7F9FC}
+.role-detail-actions button:disabled{opacity:.6}
+.role-empty{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:.65rem;
+  padding:2rem;text-align:center}
+@media(max-width:78rem){.role-three-pane{grid-template-columns:minmax(13rem,1fr) minmax(18rem,1.6fr)}
+ .role-pane-detail{grid-column:1/-1}
+ .role-detail-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:.5rem}
+ .role-detail-content dl,.role-detail-actions{grid-column:1/-1}
+}
+@media(max-width:56rem){.role-three-pane{grid-template-columns:minmax(0,1fr)}
+ .role-pane-detail{grid-column:auto}
+ .role-detail-content{display:block}
+ .role-list-options{max-height:22rem}
+ .role-permission-grid{max-height:none}
+}
+@media(prefers-reduced-motion:reduce){.role-list-option{scroll-behavior:auto}}
