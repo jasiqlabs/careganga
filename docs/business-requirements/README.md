@@ -37,4 +37,4 @@ Use the **single canonical product PRD and HLD** plus module-owned planning, UI/
 
 Keep module PRDs clean: **refer to the single source BR and shared NFR baseline** rather than copying the whole specification into every PRD. Do not add a new business module for each Admin menu item or static mockup.
 
-**Business decisions:** All 24 earlier questions have safe delegated defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Verified merchant accounts, clinical consent and statutory evidence remain go-live prerequisites, not unanswered product questions; formal Harness stage approval remains separate.
+**Business decisions:** All 27 currently numbered policy decisions (D-01–D-23, D-25–D-28; D-24 unissued) have safe delegated planning defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Verified merchant accounts, clinical consent and statutory evidence remain go-live prerequisites, not unanswered product questions; formal Harness stage approval remains separate.
