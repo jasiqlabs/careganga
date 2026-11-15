@@ -21,3 +21,26 @@ export interface CG01AuditEvent {
   eventRef:string;occurredAt:string;actorDisplay:string;actionLabel:string;
   targetDisplay:string;outcome:"Confirmed"|"Denied"|"Pending";source:"CG-01";
 }
+
+/** US-003 original Foundation-root staff identity; refs are opaque transport-only. */
+export type CG01AccountStatus="INVITED"|"ACTIVE"|"SUSPENDED"|"DEACTIVATED";
+export interface CG01AccountView {
+  accountRef:string;displayName:string;email:string;status:CG01AccountStatus;
+  revision:number;roleName:string|null;roleRef:string|null;assignedAt:string|null;
+  deliveryStatus:"PENDING"|"CLAIMED"|"PROVIDER_ACCEPTED"|"UNKNOWN"|"UNAVAILABLE"|null;
+}
+export interface CG01AccountList {
+  accounts:CG01AccountView[];total:number;offset:number;limit:number;
+  summary:{total:number;active:number;invited:number;suspended:number;deactivated:number};
+}
+export interface CG01AccountOption {value:string;label:string;context:"Foundation"}
+export interface CG01AccountChangeOutcome {accountRef:string;revision:number;status:string;message:string}
+export interface CG01AccountInvite {
+  displayName:string;email:string;roleRef:string;requestKey:string
+}
+export interface CG01AccountAssignment {
+  roleRef:string;expectedRevision:number;requestKey:string
+}
+export interface CG01AccountStatusChange {
+  status:"ACTIVE"|"SUSPENDED"|"DEACTIVATED";expectedRevision:number;requestKey:string
+}

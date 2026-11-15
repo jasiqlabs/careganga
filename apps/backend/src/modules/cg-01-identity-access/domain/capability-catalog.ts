@@ -11,6 +11,11 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"roles.select",businessLabel:"Select roles",group:"Roles & permissions",assignable:true,sensitive:false},
   // Until CG-03 approves non-root role-management proposals, this stays root-only.
   {key:"roles.manage",businessLabel:"Create and manage roles",group:"Roles & permissions",assignable:false,sensitive:true},
+  {key:"accounts.view",businessLabel:"View staff accounts",group:"Accounts & access",assignable:true,sensitive:false},
+  {key:"accounts.select",businessLabel:"Select eligible accounts",group:"Accounts & access",assignable:true,sensitive:false},
+  {key:"accounts.invite",businessLabel:"Invite staff accounts",group:"Accounts & access",assignable:true,sensitive:true},
+  {key:"accounts.status.manage",businessLabel:"Suspend or reactivate staff",group:"Accounts & access",assignable:true,sensitive:true},
+  {key:"roles.assign",businessLabel:"Assign eligible roles",group:"Accounts & access",assignable:true,sensitive:true},
   {key:"access.audit.view",businessLabel:"View access history",group:"Security & audit",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
