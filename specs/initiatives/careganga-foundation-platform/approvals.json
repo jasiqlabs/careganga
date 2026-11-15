@@ -402,14 +402,14 @@
       "development_authority": "NOT_READY"
     },
     "planning/cg-03-registration-approvals": {
-      "status": "REVIEW_REQUIRED",
-      "approval_mode": "OWNER_DELEGATED_PENDING_CONFIRMATION",
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegate": "JASIQ AI Design Review Agent",
       "artifact": "modules/cg-03-registration-approvals/module.md",
-      "current_artifact_sha256": "2cfc09eeb39f27a2560dcf99b6102f1a3d97755630c9a54ef772b67146a1ff5a",
+      "current_artifact_sha256": "c122acec7c7bf39e47a024d1f944a754394cb5d00f4f42843e7e968b15a0a83b",
       "current_source_review": {
-        "status": "SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION",
-        "artifact_sha256": "2cfc09eeb39f27a2560dcf99b6102f1a3d97755630c9a54ef772b67146a1ff5a",
+        "status": "SOURCE_REVIEW_COMPLETED_AND_OWNER_DELEGATED_APPROVED",
+        "artifact_sha256": "c122acec7c7bf39e47a024d1f944a754394cb5d00f4f42843e7e968b15a0a83b",
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_rounds": 2,
@@ -420,21 +420,29 @@
         "local_stage_resolver": "NOT_RUN",
         "independent_critical_db_review": "NOT_RUN",
         "runtime_qa": "NOT_RUN",
-        "visual_qa": "NOT_RUN"
+        "visual_qa": "NOT_RUN",
+        "approval_decision": "DELEGATED_APPROVED"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_CURRENT_HASH_REVIEW_REQUIRED_HARNESS_RESOLVER_AND_CRITICAL_DB_NOT_RUN",
       "development_authority": "NOT_READY",
-      "current_task_definitions_sha256": "6be253bad1a3b0b55c5ed6de5869192e07a8fbb4ad385972bca73577f68a0f9d"
+      "current_task_definitions_sha256": "cb3659ac77a5f75431cf14dbaaaac01daf8b8dec63ba3d8ba13bc07bbc9de664",
+      "sha256": "c122acec7c7bf39e47a024d1f944a754394cb5d00f4f42843e7e968b15a0a83b",
+      "approved_by": "JASIQ AI Design Review Agent",
+      "approved_at": "2026-11-15",
+      "owner_confirmation": "15 Nov 2026: 'If ownership and everything is correct the approve and move to next' (owner authorized conditional delegated approval; prior CG-03 complete source review and fix/re-review confirmed)",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-03-registration-approvals/module.md",
+      "story_count": 3,
+      "qa_count": 31
     },
     "uiux/cg-03-registration-approvals": {
-      "status": "REVIEW_REQUIRED",
-      "approval_mode": "OWNER_DELEGATED_PENDING_CONFIRMATION",
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegate": "JASIQ AI Design Review Agent",
       "artifact": "modules/cg-03-registration-approvals/uiux.md",
-      "current_artifact_sha256": "4c01415b80ee51188b7bc7115785406a4932e7a05846392b1a189f8252fa5cb3",
+      "current_artifact_sha256": "68fe113b44f8b37cf2afb010e86a253f491d4efcbd51ef0afbd7f979a196b23d",
       "current_source_review": {
-        "status": "SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION",
-        "artifact_sha256": "4c01415b80ee51188b7bc7115785406a4932e7a05846392b1a189f8252fa5cb3",
+        "status": "SOURCE_REVIEW_COMPLETED_AND_OWNER_DELEGATED_APPROVED",
+        "artifact_sha256": "68fe113b44f8b37cf2afb010e86a253f491d4efcbd51ef0afbd7f979a196b23d",
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_rounds": 2,
@@ -445,20 +453,26 @@
         "local_stage_resolver": "NOT_RUN",
         "independent_critical_db_review": "NOT_RUN",
         "runtime_qa": "NOT_RUN",
-        "visual_qa": "NOT_RUN"
+        "visual_qa": "NOT_RUN",
+        "approval_decision": "DELEGATED_APPROVED"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_CURRENT_HASH_REVIEW_REQUIRED_HARNESS_RESOLVER_AND_CRITICAL_DB_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "sha256": "68fe113b44f8b37cf2afb010e86a253f491d4efcbd51ef0afbd7f979a196b23d",
+      "approved_by": "JASIQ AI Design Review Agent",
+      "approved_at": "2026-11-15",
+      "owner_confirmation": "15 Nov 2026: 'If ownership and everything is correct the approve and move to next' (owner authorized conditional delegated approval; prior CG-03 complete source review and fix/re-review confirmed)",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-03-registration-approvals/uiux.md"
     },
     "dld/cg-03-registration-approvals": {
-      "status": "REVIEW_REQUIRED",
-      "approval_mode": "OWNER_DELEGATED_PENDING_CONFIRMATION",
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegate": "JASIQ AI Design Review Agent",
       "artifact": "modules/cg-03-registration-approvals/dld.md",
-      "current_artifact_sha256": "16dd79cfd6af3d70b7a352366641e316f3e87b90c3eafa2d03f373b5813858e3",
+      "current_artifact_sha256": "a03b7a038a1f51f816c476d579fb142ea2da1a08a0e4c1fb304cb75e71dd6b54",
       "current_source_review": {
-        "status": "SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION",
-        "artifact_sha256": "16dd79cfd6af3d70b7a352366641e316f3e87b90c3eafa2d03f373b5813858e3",
+        "status": "SOURCE_REVIEW_COMPLETED_AND_OWNER_DELEGATED_APPROVED",
+        "artifact_sha256": "a03b7a038a1f51f816c476d579fb142ea2da1a08a0e4c1fb304cb75e71dd6b54",
         "method": "SELF_REVIEW_DISCLOSED",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_rounds": 2,
@@ -469,10 +483,16 @@
         "local_stage_resolver": "NOT_RUN",
         "independent_critical_db_review": "NOT_RUN",
         "runtime_qa": "NOT_RUN",
-        "visual_qa": "NOT_RUN"
+        "visual_qa": "NOT_RUN",
+        "approval_decision": "DELEGATED_APPROVED"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_CURRENT_HASH_REVIEW_REQUIRED_HARNESS_RESOLVER_AND_CRITICAL_DB_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "sha256": "a03b7a038a1f51f816c476d579fb142ea2da1a08a0e4c1fb304cb75e71dd6b54",
+      "approved_by": "JASIQ AI Design Review Agent",
+      "approved_at": "2026-11-15",
+      "owner_confirmation": "15 Nov 2026: 'If ownership and everything is correct the approve and move to next' (owner authorized conditional delegated approval; prior CG-03 complete source review and fix/re-review confirmed)",
+      "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-03-registration-approvals/dld.md"
     }
   }
 }
