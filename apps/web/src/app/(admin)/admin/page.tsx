@@ -13,6 +13,7 @@ export default async function AdminHome() {
   let canViewRoles=false;
   let canViewAccounts=false;
   let canManageSecurityPolicy=false;
+  let canViewSettings=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -29,6 +30,7 @@ export default async function AdminHome() {
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
           canViewAccounts=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="accounts.view");
           canManageSecurityPolicy=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="identity.security-policy.manage");
+          canViewSettings=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.settings.view");
         }
         const data:unknown=await response.json();
         if(data&&typeof data==="object"&&"displayName" in data&&"roleName" in data&&"scope" in data
@@ -40,7 +42,8 @@ export default async function AdminHome() {
   if (invalidSession) redirect("/admin/login");
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
-    <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}/>
+    <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
+      canViewSettings={canViewSettings}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
     </main>
