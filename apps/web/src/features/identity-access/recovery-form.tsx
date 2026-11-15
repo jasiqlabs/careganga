@@ -64,6 +64,6 @@ export function RecoveryForm() {
       {busy?"Checking…":step==="request"?"Request recovery":"Confirm recovery"}
     </button>}
     {uncertain&&<p>Try signing in with your new password or contact Foundation support before attempting another reset.</p>}
-    {done&&<a href="/admin/login">Return to sign in</a>}
+    <a href="/admin/login">Return to sign in</a>
   </form>;
 }
