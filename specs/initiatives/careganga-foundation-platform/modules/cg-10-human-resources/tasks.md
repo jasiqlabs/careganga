@@ -134,7 +134,7 @@ QA cases:
 - **US-004-QA19 — Internal channel and Public Android exclusion:** Current Public Android app is not a private employee-ID editor or letter registry; only minimal anonymous QR verification endpoint if policy allows, and true employee native files are Internal Android only.
 - **US-004-QA20 — Original CGI process and NFR regression:** Actual CG-03 role cases and CG-19 first approved access letter still work after HR adapters; review bounded issuance worker/no idle scans/PII log redaction, PDF/QR source, actual database/object-store restore and PNG comparisons NOT_RUN.
 Verification: On actual implementation source-trace US-004-QA01–QA20 protected Web/Internal Android action → valid API/CG-01 grant/CG-02 true branch/CG-10 source → real CG-03/CG-19/CG-09 owner when applicable → PostgreSQL FK/unique/transaction and audit → safe UI result. For every case name file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE; real SQL/runtime/native/visual/performance remain NOT_RUN unless independently executed.
-Dependencies: US-001 approved employee, genuine CG-03/CG-19 document/template/files. A *relieving* letter needs actual approved US-003 exit for that one document, but appointment/offer/ID work without US-003.
+Dependencies: US-001 **actual application workflow** and genuine CG-03/CG-19 document/template/files. **Offer** can use legitimate pending application and separate authorized CG-03 document review; Appointment/Joining/ID require approved US-001 employee, Relieving additionally requires actual approved US-003 exit. None of these initial document paths requires CG-11 payroll or CG-09 money.
 
 ### US-005 — Submit and track a real employee allowance via CG-09's sole existing expense claim
 

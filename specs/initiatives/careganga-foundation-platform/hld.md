@@ -231,8 +231,8 @@ A **business owner module owns its lifecycle, data invariants and write operatio
 | **CG-07 Fundraising & Donations** | Campaign/donor donation intent, verified transaction status and receipt source | Finance, CMS, donor portal |
 | **CG-08 CSR & Funding** | CSR partner, proposal, commitment, funding split and allocation intent | Project/finance/budgets |
 | **CG-09 Finance & Budgets** | Chart of accounts, posted entries, bank/cash ownership, voucher/invoice, fund/project allocations | All monetary owners and financial MIS |
-| **CG-10 HR & Employees** | Employee relationship, attendance, leave, lifecycle/letters | Internal app, payroll, approval |
-| **CG-11 Payroll** | Salary policy, period calculation/run, payment batch/payslip source | HR, finance, documents |
+| **CG-10 HR & Employees** | Original pending application/approved employment, real CG-02 branch assignments, attendance/leave, appraisal/transfer/exit, HR document source intent | Actual CG-01/02/03/19; real Internal Android self-service; optional CG-09 claim only US-005; later CG-11 salary/payroll, CG-18 editorial bio |
+| **CG-11 Payroll** | Original approved effective salary structure and HR promotion adjustment, immutable period/attendance revisions, actual payment batch/private payslip/final exit dues | Real CG-10 employee/attendance/approved HR proposals; CG-03/09/19; no HR-side salary paid flag |
 | **CG-12 Inventory & Vendors** | Items, vendors, stock receipt/issue/adjustment, material request/fulfillment | Beneficiaries, projects, rewards |
 | **CG-13 Referrals & Rewards** | Attribution, points ledger, ranks, redemption and reward entitlement | Members, inventory, reporting |
 | **CG-14 Healthcare Network** | Provider/center/branch, doctors, professional verification, affiliation, center-specific price/services | Directory, scheduling, CMS |
@@ -330,7 +330,7 @@ Patterns are chosen to protect **real variation or invariants**, not to maximize
 - **Donation/campaign/member payment** remains pending until verified provider confirmation; capture linked cash receipt, donor/membership effects and financial posting without double credit or duplicate PDF.
 - **CSR** tracks proposal/commitment/receipt/allocation/expense separately. An approved pledge is **not** cash/bank income.
 - **Expense/reimbursement**: real eligible CG-01 Foundation request first creates original CG-09 expense_claim with actual CG-19 proof → CG-03 genuine finance-process case/decision → exactly one CG-09 payable/voucher → actual bank/cash verified payment → one balanced posting. CG-10 employee and CG-04 volunteer later add person-specific eligibility/request screens into the *same claim*. An approved/posted claim never becomes PAID without payment proof. Status changes neither duplicate the expense nor make it paid prematurely.
-- **Payroll**: approved employees and attendance → draft calculation in CG-11 → authorized verification/payment batch → CG-09 financial posting → private payslip and notification. Repeated runs do not pay employees twice.
+- **Payroll**: CG-10 approved employee, actual current branch and frozen attendance/policy snapshot → **CG-11 independently approved effective salary structure** (CG-10 promotion proposed salary has no direct pay effect) → immutable draft/run/authorized calculation and verified batch → **original CG-09** financial posting/payment → CG-19 private payslip. A late CG-10 correction requires explicit CG-11 arrears/adjustment; HR exit clearance without CG-09/11 proof must not claim PAID. Repeated runs cannot create two salary obligations or verified payouts.
 - **Inventory/rewards**: a fulfillment or redemption may require an atomic points/stock result plus a linked accounting/assistance outcome. Never issue a reward twice or show negative available stock from concurrent last-unit requests.
 - **Corrections:** Apply tracked reversal/adjustment records, not silent edits to final journal/receipt/settlement history.
 
