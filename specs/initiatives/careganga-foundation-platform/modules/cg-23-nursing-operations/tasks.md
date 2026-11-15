@@ -101,6 +101,71 @@
 
 **Review requirement:** trace each QA ID to current server scope/owner, concrete SQL constraint/source revision, relevant Web/native action/denial and CG-03/15/19 facade. Record real code evidence, manually fix/re-review. Independent migrations/device/visual QA NOT_RUN.
 
-## Execution progress
+### US-004 — Protected care plan, verified visit delivery and corrections
 
-- US-001–005: design review IN_PROGRESS; no implementation claimed on planning branch. Independent local Harness, clinical DB, migrations/restore, responsive/browser/native/Play/device/visual and measured NFR tests NOT_RUN.
+**Outcome/acceptance:** Own-center qualified nurse and approved care team securely record actual assigned visits and protected immutable care-plan revisions with CG-19 original evidence; no invented visit completion or CG-17 money.
+
+**Requirements:** CG-23-BR02–03, FR-085, H13 Care Plan/Visit & Progress/Documents.
+
+**Actual dependencies:** Actual US-003 assigned reservation and current CG-15 patient-care consent, professional verification and current Center+CG-01 action. Introduce own CG-19 evidence adapter; no CG-17/20 need.
+
+**Implementation contract:** NestJS signed original event and encrypted plan revision, CG-23 clinical access guard + original CG-19 documents, Center Portal H13 full nursing view, actual qualified Foundation Admin/Internal Android clinical review only, Public Web/native patient own released limited status.
+
+**Story-level QA (PLANNED / NOT EXECUTED):**
+- **US-004-QA01 —** Assigned professionally verified current nurse with actual Center A clinical purpose opens only consented patient's correct plan, not arbitrary shared Foundation notes.
+- **US-004-QA02 —** Save first real care-plan draft with actual author, source revision, review/patient context and protected content; no public or generic Center Admin exposure.
+- **US-004-QA03 —** Concurrent plan updates using stale revision reject losing update and retain prior immutable plan, with human revision conflict.
+- **US-004-QA04 —** Different Center B worker, unassigned nurse, revoked care team and unrelated root cannot list, access, export or guess private care plan.
+- **US-004-QA05 —** Consent revoked while plan/files are displayed denies next read/write, expires protected file access and clears local Web/native cached PHI.
+- **US-004-QA06 —** Only actual assigned nurse can START an existing scheduled visit within authorized source rule; future unassigned times do not become performed.
+- **US-004-QA07 —** Visit COMPLETE requires genuine work evidence and professional confirmation/independent review if required, not elapsed schedule time or screen badge.
+- **US-004-QA08 —** Two duplicate completion callbacks or retries return same original event and one final state, not two visits or patient invoices.
+- **US-004-QA09 —** Missed visit, sick nurse, cancellation and handover are separate original events and preserve true history rather than false Completed.
+- **US-004-QA10 —** Professionally authorized correction/retraction creates linked new event to exact original signed visit and revision without deleting prior notes.
+- **US-004-QA11 —** Original CG-19 evidence adapter validates scanner/MIME/size/owner/source and only returns verified current authorized file; missing file is PENDING.
+- **US-004-QA12 —** Forged, expired, cross-root or stale CG-19 document token and revoked clinical role fail on direct file API with no patient information disclosed.
+- **US-004-QA13 —** Original H13 Service Details, Nurse & Assignment, Care Plan, Visit & Progress, Documents tabs map to actual verified restricted statuses and safe actions; direct H13 image pixel pending.
+- **US-004-QA14 —** Responsive Center Portal tabs, form/date, narrow stack, keyboard, focus and nontechnical empty/pending/conflict/error states align with CareGanga original Admin tokens.
+- **US-004-QA15 —** Public Web and Public Android patient status only for actual authenticated consented own patient if implemented, never notes/diagnosis/coordinates/third-party files.
+- **US-004-QA16 —** Internal Android authorized Foundation clinician mirrors applicable Admin clinical review for same role using native Back/keyboard/secure storage; general Admin sees no plan.
+- **US-004-QA17 —** SQL source FK/immutable revision, race, consent revocation, backup/restore and independent qualified clinical reviewer trace are mandatory separate QA, NOT_RUN.
+- **US-004-QA18 —** Harness §4A enforces human-readable labels, necessary fields only, safe nontechnical errors and restricted redacted logs for any backend/API/Web/mobile change.
+
+**Review requirement:** Trace every QA identifier to actual file:function, original owner and patient-purpose checks, SQL record and applicable Web/native actions; source-only QA does not certify live/device/clinical tests.
+
+### US-005 — Source-backed nursing reports, due reminders and conditional CG-17 finance
+
+**Outcome/acceptance:** Real nurse request/visit metrics and bounded reminder work remain usable without CG-17; only genuinely completed and separately approved eligible service can signal original CG-17 settlement once.
+
+**Requirements:** CG-23-BR04, FR-081/085, conditional FR-087 and H13 status cards.
+
+**Actual dependencies:** US-003 genuine request sufficient for assigned/booked report; US-004 genuine professional completion for completed metric and optional financial signal; current CG-17 policy only for optional money, not for source reports.
+
+**Implementation contract:** CG-23 bounded source projection and indexed due-only notification event through original CG-19 when configured, conditional nursing_financial_source_event and typed CG-17 completion adapter. Center Portal own reports, Foundation Admin permitted summaries, native Internal Android same role; no CG-20 requirement.
+
+**Story-level QA (PLANNED / NOT EXECUTED):**
+- **US-005-QA01 —** Real Center A requests/assignments produce correct H13 counts, as-of, date/status and original source with no screenshot sample KPI.
+- **US-005-QA02 —** With US-003 only and no US-004 completion/CG-17 policy, report safely shows booked/assigned without invented completed source or money.
+- **US-005-QA03 —** Scheduled/assigned, performed, professionally completed, missed, canceled, returned and corrected remain distinct source and chart statuses.
+- **US-005-QA04 —** Foundation general reporter can view allowed aggregate only without private patient's plan, home location, diagnosis or sensitive small cells.
+- **US-005-QA05 —** Center B/revoked actor tries list/filter/options/export of Center A report → backend source authorization denies before aggregation.
+- **US-005-QA06 —** CG-10/11 employee/salary and nurse earnings never created or leaked from CG-23 reports even where a nurse works in several centers.
+- **US-005-QA07 —** Actual US-004 confirmed completed service with NO CG-17 approved policy remains COMPLETED without Foundation contribution or CG-09 journal.
+- **US-005-QA08 —** Current approved CG-17 nursing policy + actual accepted fee and completed source allow one narrow CG-23 completion adapter event to original CG-17 decision.
+- **US-005-QA09 —** Client-provided 30% discount or `paid=true` from screenshot cannot create patient cash, benefit, liability or auto-settlement.
+- **US-005-QA10 —** Actual approved Foundation liability and patient center collection retain separate DUE/APPROVED/SETTLED statuses, patient cash not Foundation income.
+- **US-005-QA11 —** Race/replay duplicate completion signal or CG-17 missing acknowledgement yields one original source effect and safe Pending reconciliation, not duplicate payout.
+- **US-005-QA12 —** Cancel/retract professionally verified visit after financial effect sends one linked compensating original CG-17 correction, never silently deletes clinical/posted history.
+- **US-005-QA13 —** Opted-in real due visit with eligible recipient and current consent produces one CG-19 reminder effect, actual sent status only from original owner.
+- **US-005-QA14 —** No recipient grant, canceled booking, no channel or failed provider → reminder suppressed/pending/failed truthfully, no PHI in push or email.
+- **US-005-QA15 —** Global ERP OFF, center revoked, or zero due reminders across tenants: all CG-23 jobs/private report APIs denied or idle, no tenant scan/egress.
+- **US-005-QA16 —** Foundation Admin and equally authorized Internal Android show matching source summaries/actions, Center Portal own-center only, Public apps no private MIS; H13 direct visual QA pending.
+- **US-005-QA17 —** Test root+center scoped SQL indices/source timestamps, CG-17 unique key and original CG-09 journal state, retries, migration/restore, due-only EXPLAIN separately, NOT_RUN.
+- **US-005-QA18 —** Apply Harness §4A to every user-facing value, PDF/export/status, safe error and clinical redacted log; preserve native accessibility and honest unknown outcomes.
+
+**Review requirement:** Trace every QA identifier to actual file:function, original owner and patient-purpose checks, SQL record and applicable Web/native actions; source-only QA does not certify live/device/clinical tests.
+
+## Execution progress
+- **US-001–005: current owner-delegated SOURCE DESIGN only** (after actual approval-ledger commit). Five source-owned vertical stories with **90 distinct QA (18 per story)**. Implementation on planning branch NOT_STARTED; no clinical/runtime/code completion claimed.
+- **Gates NOT_RUN:** local Harness resolver; independent qualified clinical, CRITICAL database and privacy review; migrations/backup/restore, cross-center no-overlap 20-way race, CG-19/17 integration; actual responsive Web, Public/Internal Android, Play/AAB/16KB, rendered H13 pixel/motion; idle DB/HTTP egress NOT_MEASURED.
+- Development follows newest approved source and real predecessor order. Execute one dependency-ready story, independent code review → fix → re-review → exact scenario QA source trace, update only this progress section. ERP globally OFF by default; original CG-14 nursing partner public enquiry remains available. No CI/GH Actions.
