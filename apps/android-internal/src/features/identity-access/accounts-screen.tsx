@@ -27,8 +27,8 @@ async function call(token:string,path:string,method="GET",body?:object):Promise<
   try{return await response.json() as unknown;}
   catch{throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");}
 }
-export function AccountsScreen({token,onExit,onExpired}:{
-  token:string;onExit:()=>void;onExpired:()=>void
+export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
+  token:string;onExit:()=>void;onExpired:()=>void;inviteOnly?:boolean
 }){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const listGeneration=useRef(0);
@@ -42,7 +42,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [unknown,setUnknown]=useState(false);
-  const [screen,setScreen]=useState<"list"|"invite"|"detail">("list");
+  const [screen,setScreen]=useState<"list"|"invite"|"detail">(inviteOnly?"invite":"list");
   const [selected,setSelected]=useState<CG01AccountView|null>(null);
   const [pending,setPending]=useState<Pending|null>(null);
   const [name,setName]=useState("");
@@ -67,6 +67,17 @@ export function AccountsScreen({token,onExit,onExpired}:{
     const generation=++listGeneration.current;
     setBusy(true);setMessage("");
     try{
+      if(inviteOnly){
+        // Use only the effective permission contract; never query the private staff list.
+        const access=await call(token,"effective") as {actions?:{key:string}[]};
+        if(generation!==listGeneration.current)return false;
+        if(!access||!Array.isArray(access.actions)||
+          !access.actions.every(a=>a&&typeof a.key==="string"))throw new Error("UNAVAILABLE");
+        const keys=access.actions.map(a=>a.key);
+        if(!keys.includes("accounts.invite")||!keys.includes("roles.assign"))
+          throw new Error("PERMISSION_DENIED");
+        setList(null);setActions(keys);return true;
+      }
       const params=new URLSearchParams({search:q,limit:"20",offset:String(skip),status});
       const [listData,access]=await Promise.all([
         call(token,"accounts?"+params.toString()),
@@ -89,16 +100,17 @@ export function AccountsScreen({token,onExit,onExpired}:{
       else deny("UNAVAILABLE");
       return false;
     }finally{if(generation===listGeneration.current)setBusy(false);}
-  },[token,deny]);
+  },[token,deny,inviteOnly]);
   useEffect(()=>{void load();},[load]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(pending){setPending(null);return true;}
+      if(inviteOnly){onExit();return true;}
       if(screen!=="list"){setScreen("list");return true;}
       onExit();return true;
     });
     return()=>sub.remove();
-  },[pending,screen,onExit]);
+  },[pending,screen,onExit,inviteOnly]);
   async function searchRoles(q=""){
     const generation=++optionsGeneration.current;
     setRoleQuery(q);
@@ -119,6 +131,9 @@ export function AccountsScreen({token,onExit,onExpired}:{
     setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
+  useEffect(()=>{
+    if(inviteOnly)beginInvite();
+  },[inviteOnly]);
   function beginDetail(row:CG01AccountView){
     ++optionsGeneration.current;++historyGeneration.current;
     setSelected(row);setRoleRef(row.roleRef??"");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
@@ -151,7 +166,11 @@ export function AccountsScreen({token,onExit,onExpired}:{
         }
         setMessage("Account change confirmed.");
       }
-      setPending(null);setScreen("list");setRequestKey("");
+      setPending(null);setScreen(inviteOnly?"invite":"list");setRequestKey("");
+      if(inviteOnly&&wasInvite){
+        setName("");setEmail("");setPhone("");setRoleRef("");
+        setRequestKey(Crypto.randomUUID());
+      }
       const verified=await load(search,0,filter);
       if(verified)setMessage(wasInvite?
         "Invitation saved. Email delivery is not guaranteed; check account status.":
@@ -192,10 +211,10 @@ export function AccountsScreen({token,onExit,onExpired}:{
     behavior={Platform.OS==="ios"?"padding":undefined}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <View style={styles.line}><Pressable accessibilityRole="button" style={styles.button}
-        onPress={()=>{if(pending)setPending(null);else if(screen!=="list")setScreen("list");else onExit();}}>
-        <Text style={styles.buttonText}>{screen==="list"?"My account":"Back"}</Text>
+        onPress={()=>{if(pending)setPending(null);else if(inviteOnly)onExit();else if(screen!=="list")setScreen("list");else onExit();}}>
+        <Text style={styles.buttonText}>{inviteOnly?"My account":screen==="list"?"My account":"Back"}</Text>
       </Pressable><Text accessibilityRole="header" style={styles.title}>Users Management</Text></View>
-      {screen==="list"&&<>
+      {screen==="list"&&!inviteOnly&&<>
         <Text>Foundation staff and current access</Text>
         <View style={styles.stats}>{numbers.map(([label,value])=><View key={label} style={styles.stat}>
           <Text style={styles.statLabel}>{label}</Text>
@@ -343,7 +362,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
       </View>}
       {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
       {unknown&&<Pressable accessibilityRole="button" style={styles.button} onPress={()=>{
-        setUnknown(false);setPending(null);setScreen("list");void load(search,0,filter);
+        setUnknown(false);setPending(null);setScreen(inviteOnly?"invite":"list");void load(search,0,filter);
       }}><Text>Refresh status before trying again</Text></Pressable>}
     </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
