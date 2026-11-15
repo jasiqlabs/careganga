@@ -23,8 +23,8 @@ QA cases:
 - **US-001-QA07 — owner regression:** Transfer revokes old branch access but preserves HR history. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-001-QA08 — Critical integrated scenario:** HR links an existing login to an employee and submits restricted bank/identity documents while a branch reviewer is out of scope. Expected: one employee relationship and ID only after genuine final approval, CG-01 role not automatically escalated and bank/ID documents inaccessible to unrelated roles.
 - **US-001-QA09 — Source-specific workflow:** Enroll a verified staff applicant into a real branch/department, follow configured CG-03 review, issue official employee ID only on approval, and ensure an existing member/account is linked rather than duplicated.
-Verification: On actual implementation source-trace US-001-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 - **US-001-QA10 — transferred branch owner QA:** Enroll a real CG-10 employee/coordinator with authorized ACTIVE CG-02 branch and matching department and optional existing CG-01 account; deny closed/wrong branch, forged department, duplicate employee-account link and unauthorized bank exposure. CG-10 owns employment association; no CG-02 staff master or automatic staff/root grants.
+Verification: On actual implementation source-trace US-001-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Capture attendance/shift/grace/weekly-off/late/leave, corrections and leave…
@@ -60,8 +60,8 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B30, B31, B32, B33, B34, B35, B36, B37, B38, B39, B40, B41, B42, B43, B44, B45, B46, B47, B48, B49, B50, B51, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — owner regression:** Pending transfer never implies access to target branch. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-003-QA08 — Source-specific workflow:** Transfer a supervisor between branches while promotion and resignation requests are pending; retain effective dates/old reporting history, revoke prior branch access and ensure salary changes are not applied without proper approval.
-Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 - **US-003-QA09 — transferred branch owner QA:** Transfer one CG-10 employee between genuine authorized CG-02 branches/departments with effective-dated history. Old branch scope is revoked and new branch access appears only through CG-01's authorized integration; stale/concurrent transfer and closed destination denied; no silent CG-09 finance or CG-11 payroll mutation.
+Verification: On actual implementation source-trace US-003-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-004 — Prepare, review, sign/issue, dispatch, receive/reissue employee letters/memos…
