@@ -90,7 +90,7 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 
 | ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
 | --- | --- | --- | --- | --- | --- |
-| FR-001 | CG-01 | Authorized administrator manages staff access | Create, invite or activate accounts; recover credentials; suspend/revoke access; link roles and appropriate member/employee/center relationship without duplicate identity | A-01 | CG-01-BR01,08–10 |
+| FR-001 | CG-01 | Authorized administrator manages identity and session security | Create/invite/activate accounts, recover credentials, suspend/revoke access and link valid owner relationships. CG-01 alone configures and enforces secure password/session limits and required privileged MFA with guarded Super Admin edits, versioned policy audit and correct Web/Internal Android session outcomes; no CG-21 shadow policy or future employee/center master | A-01 | CG-01-BR01,08–11 |
 | FR-002 | CG-01 | Super Admin configures duties | Define protected and custom roles, edit grouped action permissions, copy a role's grants without copying its assigned people; see assignment/audit history | A-01 | CG-01-BR02–04,08 |
 | FR-003 | CG-01 | Scoped user accesses a feature | Apply permitted action and organization/state/district/sub-division/block/branch/center record scope to menus, linked selectors, search, exports and every protected operation; deny unauthorized access | A-01 | CG-01-BR05–07 |
 | FR-004 | CG-02 | Admin configures Foundation | Maintain one Foundation legal/contact profile and real geography; create Foundation-wide departments/committees before any branch, or branch-scoped ones only after a real branch is active; associate eligible current account heads/committee participants, with employee/member/project/budget links populated only when their later owners exist; keep internal records private until expressly approved for publication | A-02 | CG-02-BR01–02,06–10 |
@@ -184,8 +184,8 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 | FR-072 | CG-19 | Visitor or center requests assistance | Track public contact/helpdesk and center support tickets/FAQs, owner, replies/status and restricted identity; share support workflow across channels | A-19 | CG-19-BR07 |
 | FR-073 | CG-20 | Manager examines business | Show scope-filtered dashboards and quick actions for Foundation, modules, centers, finance and operations from verified owner records | A-20 | CG-20-BR01–03 |
 | FR-074 | CG-20 | Authorized user produces reports | Use standard and custom/saved/grouped reports, filters, supported export formats and schedules; mask/restrict sensitive records by recipient and scope | A-20 | CG-20-BR03–07 |
-| FR-075 | CG-21 | Super Admin manages platform | Configure Foundation/system settings, approved payment/messaging/map integrations and public visibility through the owning modules; sensitive credentials restricted | A-21 | CG-21-BR01,03,05 |
-| FR-076 | CG-21 | Administrator audits or recovers | Show protected logs for login, approvals, money, provider verification, sensitive accesses and publishing; restrict backup/restore to approved operations and support privileged MFA/session controls | A-21 | CG-21-BR02,04,06 |
+| FR-075 | CG-21 | Super Admin manages platform operations | Configure **CG-21-owned versioned operational settings** and protected external provider credential references; present genuine on-demand integration readiness and safe error/status reporting. CG-02 owns legal Foundation information, CG-18 owns public Login/Join/Volunteer visibility, CG-19 owns message delivery, CG-09/17 own financial effects and CG-01 owns session/MFA policy | A-21 | CG-21-BR01,03,05 |
+| FR-076 | CG-21 | Administrator views source audit or recovery | Present authorized redacted read-only CG-01/CG-21 events initially and later genuine source-owner audit projections as delivered; restrict backup/recovery status and request/operation controls using **CG-01's existing active Super Admin, fresh MFA and session policy**. Actual backup/restore success requires independent operational proof; no second audit ledger or CG-21-owned auth policy | A-21 | CG-21-BR02,04,06 |
 | FR-077 | CG-300 | Public website/app user navigates | Experience coherent public Foundation pages, memberships, volunteering, donations, rewards and eligible doctor booking/receipts on responsive web and Public Android with identical current business outcomes | A-18, A-15 | CG-300-BR01–06,14–20 |
 | FR-078 | CG-300 | Employee/volunteer uses Internal Android | Sign in to role-appropriate task list and complete applicable registrations, approvals, visits/photo/GPS, attendance, leave, claims, inventory and permitted coordination with current backend state | A-01, A-05, A-10 | CG-300-BR07–11 |
 | FR-079 | CG-300 | Center worker uses Portal | Operate authorized own-center profile, doctors, schedules, patient registration, reception, labs, receipts, dues and reports without seeing unrelated center/private records | A-14–A-17 | CG-300-BR14–15; CG-14–17 |
@@ -354,7 +354,7 @@ The product PRD groups detailed business clauses into observable journeys. **Eve
 
 | Existing business owner | Source BR clauses retained | Product FRs | Acceptance |
 | --- | --- | --- | --- |
-| CG-01 Identity & RBAC | CG-01-BR01–10 | FR-001–003 | A-01 |
+| CG-01 Identity & RBAC | CG-01-BR01–11 | FR-001–003 | A-01 |
 | CG-02 Foundation structure | CG-02-BR01–10 | FR-004–005 | A-02 |
 | CG-03 Applications & approvals | CG-03-BR01–09 | FR-006–008 | A-03 |
 | CG-04 Member & volunteer | CG-04-BR01–11 | FR-009–011 | A-04 |
