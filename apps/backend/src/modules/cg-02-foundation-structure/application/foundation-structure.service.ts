@@ -267,6 +267,12 @@ export class FoundationStructureService {
         ORDER BY name,id LIMIT 100`,
       [actor.realmId,kind??null,term?"%"+term+"%":""]);
     // Read-only CG-01 name projection; no account table imports into the CG-02 owner.
+    const count=await this.db.query<{total:string;active:string;inactive:string;committees:string}>(`
+      SELECT count(*)::text AS total,
+        count(*) FILTER (WHERE active)::text AS active,
+        count(*) FILTER (WHERE NOT active)::text AS inactive,
+        count(*) FILTER (WHERE kind='COMMITTEE')::text AS committees
+      FROM department WHERE root_realm_id=$1`,[actor.realmId]);
     const labelClient=await this.db.connect();
     let labels:Record<string,string>;
     try{
@@ -279,7 +285,10 @@ export class FoundationStructureService {
       geographyRef:d.geography_area_id,headAccountRef:d.head_account_ref,
       headDisplayName:d.head_account_ref?labels[d.head_account_ref]??null:null,
       openingDate:d.opening_date,scope:"Foundation"
-    })),limit:100};
+    })),limit:100,summary:{
+      total:Number(count.rows[0].total),active:Number(count.rows[0].active),
+      inactive:Number(count.rows[0].inactive),committees:Number(count.rows[0].committees)
+    }};
   }
   private async departmentSources(client:PoolClient,actor:VerifiedFoundationActor,
     geographyRef:string|null,parentRef:string|null,headRef:string|null,excludeRef?:string){
