@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
 async function migrate(): Promise<void> {
@@ -17,7 +16,7 @@ async function migrate(): Promise<void> {
         sha256 text NOT NULL,
         applied_at timestamptz NOT NULL DEFAULT now()
       )`);
-      const directory = fileURLToPath(new URL("./migrations/", import.meta.url));
+      const directory = join(process.cwd(), "db", "migrations");
       const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x)).sort();
       for (const name of files) {
         const sql = await readFile(join(directory, name), "utf8");
@@ -26,7 +25,7 @@ async function migrate(): Promise<void> {
           "SELECT sha256 FROM schema_migration WHERE filename = $1", [name]
         );
         if (prior.rowCount) {
-          if (prior.rows[0].sha256 !== digest) throw new Error("An applied migration has changed: " + name);
+          if (prior.rows[0].sha256 !== digest) throw new Error("Applied migration changed: " + name);
           continue;
         }
         await client.query("BEGIN");
@@ -34,9 +33,9 @@ async function migrate(): Promise<void> {
           await client.query(sql);
           await client.query("INSERT INTO schema_migration (filename, sha256) VALUES ($1,$2)", [name, digest]);
           await client.query("COMMIT");
-        } catch (e) {
+        } catch (error) {
           await client.query("ROLLBACK");
-          throw e;
+          throw error;
         }
       }
     } finally {
@@ -48,6 +47,6 @@ async function migrate(): Promise<void> {
   }
 }
 void migrate().catch(() => {
-  process.stderr.write("CareGanga migration failed; the failing migration transaction was rolled back.\n");
+  process.stderr.write("CareGanga migration failed; no partial changes from failing migration committed.\n");
   process.exitCode = 1;
 });
