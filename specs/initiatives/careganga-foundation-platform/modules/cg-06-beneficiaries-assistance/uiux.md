@@ -21,6 +21,9 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **CG-06 receiving UI A07/A08:** In legitimate Admin Add Assistance and permitted Internal Android delivery, show approved beneficiary and real CG-12 item/warehouse/available/held/qty per allowed root+branch, with statuses Approved Aid, Pending Stock, Partially Delivered, Delivered (only confirmed original CG-12 issue), Returned and Unavailable. Never show a mock aid completion when merely reserved or approved, and never leak beneficiary identity in CG-12 B19 Distribution Log, Public Web or Public Android. A07/A08 are the specific beneficiary source, **not** a second warehouse screen. Current protected source, CG-19 document right, real click/Back/error and original CareGanga visual tokens required; no pixel/motion QA PASS from planning.
 
 
+**Original A07/A08 beneficiary UI source + CG-05 contextual A05:** Choose genuine permitted CG-05 project in beneficiary profile/assistance form with current branch/project label and support history; optionally select real approved visit in CG-06 US-002, never dummy visit or forced field activity. CG-05 A05 Beneficiaries contextual tab shows authorized safe summary and separately permissioned link to original A07 detail, otherwise real empty/not-available. Internal Android authorized aid team can see only current eligible project/visit; Public Web/Android never exposes beneficiary case, medical/aid identity or private GPS.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Follow reference A07 beneficiary status counters, scoped filters and list/detail, with protected Add Beneficiary and Assistance form. Put beneficiary eligibility, consent and verification before aid type/quantity/value; show approved/pending/failed distribution separately. Android capture uses privacy-aware minimal labels, no sensitive fields in toast or notifications.

@@ -22,7 +22,8 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs A07, A08, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner regression:** Potential duplicate beneficiary does not silently merge aid histories. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-001-QA08 — Source-specific workflow:** Register a beneficiary with two real approved CG-05 projects in different areas; an authorized scope sees only permitted relationship/history, and an unrelated staff search/export hides personal details.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — Real CG-05 project association and privacy:** Link approved genuine CG-05 project(s) to one private CG-06 beneficiary from original A07/A08, including two scoped projects; wrong branch/inactive project/duplicate link/foreign-root denied. CG-06 profile works with no CG-05 visit and current CG-05 project never duplicates person master.
+Verification: On actual implementation source-trace US-001-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Record aid category, money/item, quantity/value, date and responsible person
@@ -45,7 +46,8 @@ QA cases:
 - **US-002-QA11 — Last-unit conflict and retry:** Two genuine delivery staff race for final CG-12 item, only one original issue accepted. Losing CG-06 aid remains PENDING_STOCK/SHORTAGE; unknown response queries same original event key and never duplicates benefit or stock issue.
 - **US-002-QA12 — Partial return and linked correction:** Approve 10, physically deliver 6 then 4 when available, show partial/full against original issue refs; authorized return creates one CG-12 RETURN and CG-06 corrected assistance event, preserves immutable history and cannot return more than issued.
 - **US-002-QA13 — Current scope and recipient privacy:** Foreign branch, revoked CG-01 employee, guessed beneficiary or missing CG-12 stock source denied at both APIs. Private beneficiary data absent from ordinary CG-12 B19 Distribution Log and Public Android; original A07/A08 uses true error/status, no fake success.
-Verification: On actual implementation source-trace US-002-QA01–QA13 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA14 — Actual CG-05 field visit beneficiary contextual source:** When real CG-05 US-004 visit and CG-06 beneficiary/aid exist, bind one same-project scoped assistance record to the real visit, surface private minimal context in original CG-05 A05 Beneficiaries tab only to eligible viewer; revoke project/visit grants and confirm both APIs deny. No fake CG-05 beneficiary/stock or public PII.
+Verification: On actual implementation source-trace US-002-QA01–QA14 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress
