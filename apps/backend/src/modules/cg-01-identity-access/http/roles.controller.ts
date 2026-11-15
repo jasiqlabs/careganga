@@ -21,13 +21,16 @@ export class RolesController {
   }
   @Get("roles")
   async list(@Headers("authorization") bearer:string,
-    @Query("search") search?:string,@Query("limit") limit?:string,@Query("offset") offset?:string){
+    @Query("search") search?:string,@Query("limit") limit?:string,@Query("offset") offset?:string,@Query("status") status?:string){
     const numberOr=(v:string|undefined,d:number)=>{
       if(v===undefined)return d;
       if(!/^(0|[1-9]\d{0,4})$/.test(v))throw new BadRequestException();
       return Number(v);
     };
-    return this.roles.list(bearer,{search,limit:numberOr(limit,20),offset:numberOr(offset,0)});
+    if(status!==undefined&&!["all","active","retired"].includes(status))
+      throw new BadRequestException();
+    return this.roles.list(bearer,{search,limit:numberOr(limit,20),offset:numberOr(offset,0),
+      status:(status??"all") as "all"|"active"|"retired"});
   }
   @Get("roles/options")
   async options(@Headers("authorization") bearer:string,@Query("search") search?:string){
