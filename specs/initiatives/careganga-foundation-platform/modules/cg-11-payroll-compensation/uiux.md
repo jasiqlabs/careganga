@@ -19,6 +19,13 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## Receiving UI from actual CG-10 employment changes
+
+**CG-11 US-001:** original payroll Setup **B43** and actual C-series payroll component view displays genuine eligible CG-10 staff, approved proposed HR compensation changes only as restricted *source-linked Pending Proposal* with effective date; authorized payroll operator separately approves/saves a versioned pay structure. Old salary remains effective until an actual authorized CG-11 change takes effect. CG-10's B44 salary is not a second payroll editor. All restricted employee bank/pay are hidden from ordinary CG-10 selector and Internal Android staff not entitled to payroll details.
+
+**CG-11 US-002:** actual verified CG-10 attendance/leave snapshot revision appears on payroll draft/run validation; an approved late CG-10 correction triggers a source-version warning and an explicit pending adjustment/arrears workflow, not an automatic rewrite of approved/payrolled staff. **CG-11 US-003:** a real CG-10 exited employee shows outstanding/final payroll dues and genuine verified CG-09 payout outcome; HR exit B48 shows NOT_VERIFIED until this source exists, never a fake paid chip. Keep original CareGanga tokens, responsive error/success, no runtime pixel QA PASS.
+
+
 ## Original-theme and task-specific interaction blueprint
 
 Match payroll components from the original admin form/modal, period selector, employee row, gross/deduction/arrears/net breakdown, preview and authorized approval. Pay-now is never available before verified approval; receipt/payslip shows authoritative paid/pending result. Keep employee/private salary restricted in selectors, badges, export, Android and notifications.
