@@ -7,14 +7,12 @@ import * as Crypto from "expo-crypto";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { identityRequest } from "./http-client";
 
-type Role={
-  roleRef:string;name:string;description:string;protected:boolean;active:boolean;
-  revision:number;assignedCount:number;actionKeys:string[];
-};
-type Action={key:string;businessLabel:string;group:string;assignable:boolean;sensitive:boolean};
+import type { CG01RoleSummary,CG01Capability,CG01AuditEvent } from "@careganga/api-contracts";
+type Role=CG01RoleSummary;
+type Action=CG01Capability;
 type Group={group:string;actions:Action[]};
 type Editing={mode:"create"|"edit"|"copy";source?:Role};
-type Audit={occurredAt:string;actorDisplay:string;actionLabel:string;targetDisplay:string;outcome:string};
+type Audit=CG01AuditEvent;
 const base="/api/access/";
 async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
   const result=await identityRequest(base+path,{
