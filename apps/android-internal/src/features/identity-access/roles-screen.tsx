@@ -14,6 +14,7 @@ type Action=CG01Capability;
 type Group={group:string;actions:Action[]};
 type Editing={mode:"create"|"edit"|"copy";source?:Role};
 type RoleStatus="all"|"active"|"retired";
+type RoleKind="all"|"system"|"custom";
 type Audit=CG01AuditEvent;
 const base="/api/access/";
 async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
@@ -48,6 +49,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [roles,setRoles]=useState<Role[]>([]);
   const [details,setDetails]=useState<Role|null>(null);
   const [status,setStatus]=useState<RoleStatus>("all");
+  const [roleKind,setRoleKind]=useState<RoleKind>("all");
   const [groups,setGroups]=useState<Group[]>([]);
   const [allowed,setAllowed]=useState<string[]>([]);
   const [busy,setBusy]=useState(true);
@@ -71,10 +73,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [uncertain,setUncertain]=useState(false);
   const canEdit=allowed.includes("roles.manage");
   const canAudit=allowed.includes("access.audit.view");
-  const load=useCallback(async(q="",skip=0,filter:RoleStatus="all")=>{
+  const load=useCallback(async(q="",skip=0,filter:RoleStatus="all",kind:RoleKind="all")=>{
     setBusy(true);setError("");
     try{
-      const query=new URLSearchParams({search:q,limit:"30",offset:String(skip),status:filter});
+      const query=new URLSearchParams({search:q,limit:"30",offset:String(skip),status:filter,type:kind});
       const [list,cap,effective]=await Promise.all([
         call(token,"roles?"+query),
         call(token,"capabilities"),
@@ -157,7 +159,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         actionKeys:selected,requestKey,
         ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})
       });
-      setEditor(null);await load(search,offset,status);setSuccess("Role change saved.");
+      setEditor(null);await load(search,offset,status,roleKind);setSuccess("Role change saved.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       if(e instanceof Error&&e.message==="PERMISSION_DENIED"){
@@ -188,7 +190,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       await call(token,"roles/"+role.roleRef+"/retire","POST",{
         expectedRevision:role.revision,requestKey:Crypto.randomUUID()
       });
-      await load(search,offset,status);setSuccess("Role retired.");
+      await load(search,offset,status,roleKind);setSuccess("Role retired.");
     }catch(e){
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError(e instanceof Error&&e.message==="ROLE_ASSIGNED"?
@@ -231,14 +233,25 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     <View style={styles.line}>
       <TextInput accessibilityLabel="Search roles" placeholder="Search role name"
         style={styles.input} value={search} onChangeText={setSearch}/>
-      <Pressable accessibilityRole="button" onPress={()=>void load(search,0,status)} style={styles.button}>
+      <Pressable accessibilityRole="button" onPress={()=>void load(search,0,status,roleKind)} style={styles.button}>
         <Text>Search</Text></Pressable>
+    </View>
+    <Text style={styles.fieldLabel}>Role type</Text>
+    <View style={styles.line} accessibilityRole="toolbar">
+      {(["all","system","custom"] as const).map(kind=><Pressable key={kind}
+        accessibilityRole="button" accessibilityState={{selected:roleKind===kind}}
+        style={[styles.button,roleKind===kind&&styles.selectedTab]}
+        onPress={()=>{setRoleKind(kind);void load(search,0,status,kind);}}>
+        <Text style={roleKind===kind?styles.selectedTabText:styles.buttonText}>
+          {kind==="all"?"All types":kind==="system"?"System":"Custom"}
+        </Text>
+      </Pressable>)}
     </View>
     <View style={styles.line} accessibilityRole="toolbar">
       {(["all","active","retired"] as const).map(filter=><Pressable key={filter}
         accessibilityRole="button" accessibilityState={{selected:status===filter}}
         style={[styles.button,status===filter&&styles.selectedTab]}
-        onPress={()=>{setStatus(filter);void load(search,0,filter);}}>
+        onPress={()=>{setStatus(filter);void load(search,0,filter,roleKind);}}>
         <Text style={status===filter?styles.selectedTabText:styles.buttonText}>
           {filter==="all"?"All roles":filter==="active"?"Active":"Retired"}
         </Text>
@@ -276,10 +289,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     </View>)}
     {!busy&&total>30&&<View style={styles.line}>
       <Pressable accessibilityRole="button" disabled={offset===0} style={styles.button}
-        onPress={()=>void load(search,Math.max(0,offset-30),status)}><Text>Previous</Text></Pressable>
+        onPress={()=>void load(search,Math.max(0,offset-30),status,roleKind)}><Text>Previous</Text></Pressable>
       <Text>{offset+1}–{Math.min(offset+30,total)} of {total}</Text>
       <Pressable accessibilityRole="button" disabled={offset+30>=total} style={styles.button}
-        onPress={()=>void load(search,offset+30,status)}><Text>Next</Text></Pressable>
+        onPress={()=>void load(search,offset+30,status,roleKind)}><Text>Next</Text></Pressable>
     </View>}
     {history&&<View style={styles.roleCard}>
       <Text style={styles.heading}>Recent access history</Text>
