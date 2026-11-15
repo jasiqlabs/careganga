@@ -98,6 +98,21 @@ export class SecurityPolicyService {
     if(!result.rowCount)throw new ForbiddenException("Root access could not be confirmed");
     return result.rows[0];
   }
+  /** Authenticated result lookup for a lost acknowledgement; never repeats a change. */
+  async lookup(bearer:string,requestKey:string):
+      Promise<{status:"CONFIRMED"|"NOT_FOUND";revision:number|null}>{
+    if(typeof requestKey!=="string"||!UUID.test(requestKey))
+      throw new BadRequestException("Invalid request reference");
+    const actor=await this.root(bearer);
+    await this.sessions.requireAction(bearer,"identity.security-policy.manage");
+    const found=await this.db.query<{result_revision:number}>(`
+      SELECT result_revision FROM auth_security_policy_command
+      WHERE actor_account_id=$1 AND idempotency_key=$2 LIMIT 1`,
+      [actor.accountId,requestKey]);
+    return found.rowCount
+      ?{status:"CONFIRMED",revision:found.rows[0].result_revision}
+      :{status:"NOT_FOUND",revision:null};
+  }
   private async rateLimitMfa(actor:VerifiedFoundationActor):Promise<void>{
     // Bound online proof guesses before checking an authenticator; no raw session identifiers in this table.
     const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
