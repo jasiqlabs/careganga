@@ -20,7 +20,7 @@ button:disabled { cursor:wait; opacity:.65; }
 .auth-card { max-width:26rem; margin:4rem auto; padding:clamp(1rem,3vw,2rem); border:1px solid var(--cg-border); border-radius:.75rem; }
 .form { display:grid; gap:1rem; }
 .field { display:grid; gap:.4rem; }
-.field input { border:1px solid var(--cg-border); border-radius:.35rem; padding:.75rem; background:var(--cg-surface); color:var(--cg-text); width:100%; min-height:2.75rem; }
+.field input,.field select { border:1px solid var(--cg-border); border-radius:.35rem; padding:.75rem; background:var(--cg-surface); color:var(--cg-text); width:100%; min-height:2.75rem; }
 .primary { padding:.8rem 1rem; background:var(--cg-accent); color:var(--cg-accent-text); border:1px solid transparent; border-radius:.35rem; min-height:2.75rem; }
 .error { border-inline-start:3px solid currentColor; padding:.5rem .75rem; }
 .shell { display:grid; grid-template-columns:minmax(13rem,16rem) 1fr; min-height:100vh; }
@@ -60,3 +60,7 @@ button:disabled { cursor:wait; opacity:.65; }
   .search-row input{flex:1;min-width:9rem}
   .role-drawer{border-inline-start:0}
 }
+
+/* Copy-role selector reuses original right-drawer/form hierarchy without a new palette. */
+.copy-source{display:grid;gap:.8rem;border-block:1px solid var(--cg-border);padding-block:1rem}
+.copy-source .search-row input{min-width:min(14rem,100%)}
