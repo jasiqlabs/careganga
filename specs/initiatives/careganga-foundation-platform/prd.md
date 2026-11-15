@@ -1,5 +1,6 @@
 # CareGanga Foundation — Integrated Platform Product Requirements Document
 
+**Document version:** 1.1 — DRAFT / REVIEW_REQUIRED; preceding owner-delegated approved baseline is preserved as version 1.0 by its prior Git commit and SHA-256 in `approvals.json`. This current file replaces the working draft **at the same canonical path**; no v2 folder or parallel document. Changes after renewed approval require another explicit version increment and review.  
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
