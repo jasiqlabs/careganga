@@ -222,7 +222,7 @@ Foundation organization geography and internal branch hierarchies come from CG-0
 - CG-21 audit is appended during/alongside protected business transitions with correlation and redaction; no user-visible “success” without confirmed business state.
 
 
-**Canonical contract review:** An owner DLD must define one unambiguous table/record/command contract, not competing alias schemas; privacy and scope are checked on options, full reads, exports, files and mutations. A cross-owner finalization commits exactly once using the immutable source business event, even when an editable record revision changes. CG-02 owns one branch registration and one approved branch record, CG-03 owns only approval case/decision, CG-09 enforces balanced posting per immutable financial event, and CG-15 owns one doctor-wide time occupancy authority independent of center. Concrete migrations and DTOs stay in their owning DLDs. CG-01 retains a genuine protected access-change request source that CG-03 may later approve, while CG-01 remains useful independently.
+**Canonical contract review:** An owner DLD must define one unambiguous table/record/command contract, not competing alias schemas; privacy and scope are checked on options, full reads, exports, files and mutations. A cross-owner finalization commits exactly once using the immutable source business event, even when an editable record revision changes. CG-02 owns one branch registration and one approved branch record, CG-03 owns only approval case/decision, CG-09 enforces balanced posting per immutable financial event, and CG-15 owns one doctor-wide time occupancy authority independent of center. Concrete migrations and DTOs stay in their owning DLDs. CG-01 completes root-context accounts and ordinary role management without an approval request. CG-03 later introduces a genuine protected-access-change case for existing verified CG-01 account/role targets and calls CG-01's guarded single-application finalizer only after final review.
 
 ### Delivery dependency order — independently useful modules (mandatory Planning gate)
 
@@ -231,7 +231,7 @@ The following is a **logical prerequisite order, not one mandatory sequential re
 | Dependency band | Business modules and delivery boundary |
 | --- | --- |
 | Bootstrap / core | Technical bootstrap → **CG-01** real Foundation-root accounts, role editor, grants and session enforcement |
-| Shared foundation | **CG-21** real settings/audit → **CG-03** real scoped approval cases and protected CG-01 access-request finalization → **CG-19** real protected files, templates and configured delivery |
+| Shared foundation | **CG-21** real settings/audit → **CG-03** real scoped approval cases over actual CG-01 account/role targets and guarded grant finalization → **CG-19** real protected files, templates and configured delivery |
 | Organization/finance | **CG-02** real branches/geography/department after approval; **CG-09** balanced Foundation accounting, budgets and payments |
 | Public and business owners | **CG-18** editorial/public CMS core; **CG-14** real provider/doctor directory; **CG-10** employees; **CG-04** memberships/volunteers; **CG-05** projects; **CG-12** inventory. Order by their actual prerequisite source data |
 | Transaction consumers | **CG-07** verified donations; **CG-08** CSR; **CG-06** beneficiary aid; **CG-11** payroll; **CG-13** points/rewards |
@@ -583,7 +583,7 @@ Verify a real backup restore in an isolated non-production environment before pr
 | Scalability, operations, backups and mobile release | Covered as **proposed** design | §9 targets unmeasured; operational vendors/scale pending |
 | Solution alternatives and maintainability | Covered | §10 H-01–H-10 |
 | Detailed APIs/DB schema/UI/task leakage | Intentionally excluded | Correctly left to Planning/UIUX/DLD |
-| Canonical DLD ownership and forward-owner module independence | Source-review updated | §5.3 dependency rule, CG-01 protected request, CG-02/03/09/15 contracts; full stage resolver/independent design review NOT_RUN |
+| Canonical DLD ownership and forward-owner module independence | Source-review updated | §5.3 dependency rule, later CG-01/03 protected access integration, CG-02/03/09/15 contracts; full stage resolver/independent design review NOT_RUN |
 | **Independent specialist review** | **NOT_RUN** | No independent HLD reviewer invoked; self-review only |
 | **Pinned resolver + authenticated local clean Git check** | **NOT_RUN** | GitHub connector accessed source, but a pinned sibling Harness/product filesystem checkout is unavailable |
 | **Formal product design approval** | **Verify current artifact hash in `approvals.json`** | Owner-delegated design decisions are permitted by `initiative.json`, but the live approval applies only if the registry SHA-256 matches the exact HLD file. It does not equal independent specialist review, local resolver PASS or client sign-off |

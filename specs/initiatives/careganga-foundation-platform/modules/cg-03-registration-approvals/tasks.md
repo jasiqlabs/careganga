@@ -10,16 +10,16 @@
 Outcome: Give application number and tracking; support application-specific documents, verifications, notes, evidence and configurable stepwise routing.
 Requirements: FR-006, CG-03-BR01, CG-03-BR02, CG-03-BR03, CG-03-BR04, CG-03-BR06; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-03 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Submit real CG-01 protected access-change source and display correct case/step/version and scoped pending reviewer. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
+Acceptance: Submit a genuine CG-03 protected-change application for an existing CG-01 account/role and display correct case/step/version and scoped pending reviewer. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-001-QA01:** Given an authorized actor and actual prerequisite records, submit real CG-01 protected access-change source and display correct case/step/version and scoped pending reviewer. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
+- **US-001-QA01:** Given an authorized actor and actual prerequisite records, submit a genuine CG-03 protected-change application for an existing CG-01 account/role and display correct case/step/version and scoped pending reviewer. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-001-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs U11, U12, U13, B29, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner regression:** A missing future provider/member source cannot be submitted as a fake case. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
-- **US-001-QA08 — Source-specific boundary:** Submit a real CG-01 protected-access request through the current verified account/role contract; receive an actual case reference and frozen reviewer route, not fabricated branch/member/provider records.
+- **US-001-QA08 — Source-specific boundary:** Create an actual CG-03 protected access-change case targeting a verified existing CG-01 account and role; receive an actual case reference and frozen reviewer route, not fabricated branch/member/provider records.
 Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 

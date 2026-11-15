@@ -28,7 +28,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 **Admin controls:** Role matrix, assignments, geographic/branch/center scope, account statuses, access reports.  
 **Cross-channel:** Foundation web, center portal, internal Android; public website/app for public accounts.  
 **Not separate modules:** “User Directory,” “Role Manager,” “Role Copy,” “Permissions Matrix” are views of CG-01.  
-**Dependencies:** CG-02 organization geography; CG-03 approval of protected assignments where policy requires.
+**Delivery independence:** CG-01 works first after bootstrap, with real accounts, sign-in, roles, ordinary root-context assignment and revocation. **Later owner enhancements:** CG-02 supplies real geography/branch scopes; CG-03 introduces review and finalization of protected grants; CG-10 supplies employment links; CG-14 supplies healthcare center scope. These later requirements remain mandatory when those owners ship but do not block CG-01's own finished business flows.
 
 ## CG-02 — Foundation Organization, Branches, Departments and Committees
 
