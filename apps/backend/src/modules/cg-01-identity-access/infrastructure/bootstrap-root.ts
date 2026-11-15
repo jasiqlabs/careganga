@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
-import { decodeBase32, encryptTotpSecret, hashPassword, verifyTotp } from "../domain/secret-crypto";
+import { decodeBase32, encryptTotpSecret, hashPassword, matchedTotpCounter } from "../domain/secret-crypto";
 
 // Run once, from a secured operator shell, against a new database. No public bootstrap API.
 // Never log secrets, passwords, enrollment QR, TOTP or the DB URL.
@@ -16,7 +16,8 @@ async function bootstrapRoot(): Promise<void> {
   if (!url || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !name || name.length < 2)
     throw new Error("Secure operator name/email and migration DB URL required");
   const rawSecret = decodeBase32(base32);
-  if (!verifyTotp(rawSecret, proof)) throw new Error("Authenticator proof is missing or invalid");
+  const matchedCounter = matchedTotpCounter(rawSecret, proof);
+  if (matchedCounter === null) throw new Error("Authenticator proof is missing or invalid");
   const passwordHash = await hashPassword(password);
   const encrypted = encryptTotpSecret(rawSecret);
   rawSecret.fill(0);
@@ -38,8 +39,8 @@ async function bootstrapRoot(): Promise<void> {
       );
       const accountId = root.rows[0].id;
       await client.query(
-        "INSERT INTO identity_credential(account_id,password_hash,totp_ciphertext,totp_nonce,totp_tag) VALUES($1,$2,$3,$4,$5)",
-        [accountId,passwordHash,encrypted.ciphertext,encrypted.nonce,encrypted.tag]
+        "INSERT INTO identity_credential(account_id,password_hash,totp_ciphertext,totp_nonce,totp_tag,last_totp_counter) VALUES($1,$2,$3,$4,$5,$6)",
+        [accountId,passwordHash,encrypted.ciphertext,encrypted.nonce,encrypted.tag,matchedCounter]
       );
       const role = await client.query<{ id: string }>(
         `INSERT INTO role(realm_id,name,normalized_name,description,is_protected)

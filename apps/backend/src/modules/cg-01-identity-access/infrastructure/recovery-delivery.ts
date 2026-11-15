@@ -18,7 +18,7 @@ export class RecoveryDelivery {
       host:process.env.AUTH_SMTP_HOST,
       port:465,
       secure:true,
-      auth:{user:process.env.AUTH_SMTP_USER,password:process.env.AUTH_SMTP_PASSWORD},
+      auth:{user:process.env.AUTH_SMTP_USER,pass:process.env.AUTH_SMTP_PASSWORD},
       connectionTimeout:5000,
       greetingTimeout:5000,
       socketTimeout:7000,

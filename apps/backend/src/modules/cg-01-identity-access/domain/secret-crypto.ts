@@ -1,7 +1,14 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-const derive = promisify(scrypt);
 const COST = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+
+function derive(password: string | Buffer, salt: Buffer, keylen: number, cost: typeof COST): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, keylen, cost, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(derivedKey);
+    });
+  });
+}
 
 export async function hashPassword(password: string): Promise<string> {
   if (password.length < 14 || Buffer.byteLength(password, "utf8") > 1024)

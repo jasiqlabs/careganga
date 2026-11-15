@@ -116,7 +116,9 @@ def main() -> int:
         if root != harness:
             raise RuntimeError("BLOCKED_HARNESS_PATH: not a Harness checkout root")
         origin = git("-C", str(harness), "remote", "get-url", "origin")
-        origin = origin.removesuffix(".git").rstrip("/")
+        if origin.endswith(".git"):
+            origin = origin[:-4]
+        origin = origin.rstrip("/")
         if origin not in (
             "https://github.com/jasiqlabs/jasiq-harness",
             "git@github.com:jasiqlabs/jasiq-harness",
