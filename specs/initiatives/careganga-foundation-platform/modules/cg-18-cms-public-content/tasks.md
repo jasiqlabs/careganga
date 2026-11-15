@@ -2,12 +2,12 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design-only)** by JASIQ AI Design Review Agent (15 Nov 2026) after full source review/fix/re-review of four actual owner-independent vertical CG-18 stories, 72 unique QA (18 each), each with real PostgreSQL, backend/API, Admin Web, public Next.js, native Public Android, original UI, security/NFR and later-owner protections.
+**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design-only)** by JASIQ AI Design Review Agent (15 Nov 2026) after full source review/fix/re-review of four actual owner-independent vertical CG-18 stories, 76 unique QA (US-001 20 / US-002 18 / US-003 20 / US-004 18), each with real PostgreSQL, backend/API, Admin Web, public Next.js, native Public Android, original UI, security/NFR and later-owner protections.
 **Development gate:** All four CG-18 current-source task definitions have delegated design approval only. PRD/HLD latest global review REQUIRED; authenticated Harness resolver, independent qualified CRITICAL DB/security review, actual migrations/backup/restore/EXPLAIN, predecessor implementation verification, code review, public/Admin Web and native Android device/runtime tests, source image/video pixel/motion QA and proposed NFR measurements NOT_RUN. Implementation remains BLOCKED/NOT_STARTED, no CI/GitHub Actions and no false code/test PASS.
 
-## Delegated-approved full-stack story specifications and 72 manual QA cases — design only
+## Delegated-approved full-stack story specifications and 76 manual QA cases — design only
 
-**Approval truth:** Current source-hash delegated design approval is recorded in approvals.json; no executed implementation/source QA, authenticated Harness, independent DB, actual Web/Android/API test, original screenshot pixel/motion, release or deployment PASS is claimed. Developer may execute the 72 planned cases only when real predecessor source and approved development gate are satisfied. Existing four story progress lines remain BLOCKED.
+**Approval truth:** Current source-hash delegated design approval is recorded in approvals.json; no executed implementation/source QA, authenticated Harness, independent DB, actual Web/Android/API test, original screenshot pixel/motion, release or deployment PASS is claimed. Developer may execute the 76 planned cases only when real predecessor source and approved development gate are satisfied. Existing four story progress lines remain BLOCKED.
 
 ### US-001 — Publish original editorial Homepage/About/Hero/Team and CG-18 public navigation, without future project masters
 

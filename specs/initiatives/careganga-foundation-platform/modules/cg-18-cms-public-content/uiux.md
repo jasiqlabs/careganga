@@ -1,7 +1,7 @@
 # CG-18 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 · PRD N-13/HLD H-12.  
-**State:** REQUIRED · **DELEGATED_APPROVED by JASIQ AI Design Review Agent** (15 Nov 2026) after extended full UI/UX source review/fix/re-review for each of 4 CG-18 stories: original C20–C38/C50/U23–U30 source component map, actual Admin Web, responsive public Next.js and native Public Android published-content screens, 72 matched QA, real backend statuses, input/validation/scope, media/SEO/privacy/accessibility and original theme/motion contract. This approves design only; source PNG/video on this GitHub branch NOT_FOUND, and exact rendered pixel/motion/native/device QA, source-code/backend/DB QA and Harness resolver NOT_RUN.
+**State:** REQUIRED · **DELEGATED_APPROVED by JASIQ AI Design Review Agent** (15 Nov 2026) after extended full UI/UX source review/fix/re-review for each of 4 CG-18 stories: original C20–C38/C50/U23–U30 source component map, actual Admin Web, responsive public Next.js and native Public Android published-content screens, 76 matched QA, real backend statuses, input/validation/scope, media/SEO/privacy/accessibility and original theme/motion contract. This approves design only; source PNG/video on this GitHub branch NOT_FOUND, and exact rendered pixel/motion/native/device QA, source-code/backend/DB QA and Harness resolver NOT_RUN.
 
 ## Exact existing design and animation contract
 
@@ -66,7 +66,7 @@ This is a **screen implementation specification**, not merely a design reference
 
 ### Per-story UI QA trace to tasks
 
-Follow the 72 concrete US-001–004 QA cases in [tasks.md](tasks.md) (18 per story): Admin desktop/tablet/narrow Web, Next.js SSR/SEO/deep link, native Public Android read/navigation/Back/offline, current server-side publication state, current CG-03/19 source and PostgreSQL result. For each UI control use actual field validation and confirmed backend outcome. Record rendered pixel, static screenshot and original-video motion comparisons separately when reference assets and runnable app exist; their current status is NOT_RUN.
+Follow the 76 current concrete US-001–004 QA cases in [tasks.md](tasks.md) (18 per story): Admin desktop/tablet/narrow Web, Next.js SSR/SEO/deep link, native Public Android read/navigation/Back/offline, current server-side publication state, current CG-03/19 source and PostgreSQL result. For each UI control use actual field validation and confirmed backend outcome. Record rendered pixel, static screenshot and original-video motion comparisons separately when reference assets and runnable app exist; their current status is NOT_RUN.
 
 ## Original source screenshot-to-story and public app acceptance
 
