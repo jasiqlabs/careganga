@@ -13,6 +13,16 @@ Own a cohesive typed domain/application module for **Campaigns, donor intent, pa
 
 State/invariant: **Campaign draft/approved/published; payment initiated/pending/verified/failed/refunded; Pending money never receipt, provider replay never duplicate finance posting**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete fundraising and payment verification
+
+`campaign(id,owner,source_project_ref,category,goal,period,draft_step,status,approval_ref,publish_state)` persists all six source-required draft steps; review and actual public publication are separate. Live fundraising progress derives from net verified donation events, not pledged/pending requests.
+
+`donation(id,campaign_ref,donor_verified_ref,amount,currency,method,payment_request_ref,status)` supports general/campaign, real manual, link and provider payments. `payment_event(provider,merchant_ref,event_id,donation_id,verified_status)` unique authenticated source (provider, merchant, event ID) prevents webhook replay/amount spoofing; manual money requires real authorized verification.
+
+Only confirmed received money creates one CG-09 posting keyed by source event and one CG-19 receipt. `donation_refund(parent_donation,amount,approval,provider_status)` must not cumulatively exceed verified received amount; pending refund is not completed. Provider succeeded but response lost is reconciled rather than charged again.
+
+**QA:** six-step draft recovery, unauthorized publication, missing merchant, two webhook deliveries, pending payment falsely shown received, refund race, campaign closed before late receipt, donor privacy in reports and receipt amount versus CG-09 balance.
+
 ## Typed API and coordination
 
 An authenticated `/api/campaigns-donations` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
