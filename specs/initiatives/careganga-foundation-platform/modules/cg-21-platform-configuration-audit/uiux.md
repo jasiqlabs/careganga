@@ -1,7 +1,7 @@
 # CG-21 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-21-BR01–CG-21-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C09, C10, C50, C51, C52, C53, C54, C55 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, reviewed/fixed against CG-01 UI quality standard, current PRD/HLD v1.1, CRITICAL CG-21 DLD and original C09/C10/C50–C55 screens (15 Nov 2026). Owner-confirmed delegated CG-21 design approval and authenticated local Harness resolver NOT_RUN; exact rendered reference pixels and video motion remain VISUAL_NOT_RUN.
+**State:** REQUIRED / OWNER_DELEGATED_DESIGN_CONTENT_APPROVED (15 Nov 2026), **JASIQ AI Design Review Agent**, expressly confirmed by owner after CG-01-benchmark review against latest PRD/HLD, actual C09/C10/C50–C55 and CG-21 DLD. Formal PRD/HLD/current-hash resolver stage remains BLOCKED/NOT_RUN; exact image/video parity and responsive/device runtime QA remain VISUAL_NOT_RUN.
 
 ## Exact existing design and animation contract
 
