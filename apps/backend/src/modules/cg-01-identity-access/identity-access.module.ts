@@ -15,10 +15,11 @@ import { InvitationEnrollmentService } from "./application/invitation-enrollment
 import { InvitationController } from "./http/invitation.controller";
 import { SecurityPolicyService } from "./application/security-policy.service";
 import { SecurityPolicyController } from "./http/security-policy.controller";
+import { ProtectedAccessOwnerService } from "./application/protected-access-owner.service";
 
 @Module({
   controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController],
-  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService],
-  exports:[SessionService,AccessAuditReader,AccountsService]
+  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService],
+  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService]
 })
 export class IdentityAccessModule {}
