@@ -159,8 +159,11 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       if(!ack||typeof ack!=="object"||!("revision" in ack)||
         !Number.isInteger(ack.revision))throw Error("Unconfirmed");
       const verified=await read(Number(ack.revision));
+      // A committed write may be followed by a failed or stale read.
+      // Retain the request key for an authenticated status lookup.
+      if(!verified)setUnknown(true);
       setMessage(verified?"Security policy saved and verified. Existing sessions follow these limits.":
-        "Save was acknowledged but the effective revision could not be checked. Refresh before editing.");
+        "Save was acknowledged, but the effective revision could not be verified. Check the previous change before editing.");
     }catch{
       setUnknown(true);
       setMessage("The outcome cannot be confirmed. Refresh the policy before trying again.");
