@@ -34,6 +34,7 @@ export function RolesPanel(){
   const [notice,setNotice]=useState<Notice|null>(null);
   const [editor,setEditor]=useState<{mode:FormMode;source?:Role}|null>(null);
   const [pendingRetire,setPendingRetire]=useState<Role|null>(null);
+  const [details,setDetails]=useState<Role|null>(null);
   const [selected,setSelected]=useState<string[]>([]);
   const [copySearch,setCopySearch]=useState("");
   const [copyCandidates,setCopyCandidates]=useState<Role[]>([]);
@@ -51,7 +52,7 @@ export function RolesPanel(){
   const dialogRef=useRef<HTMLElement|null>(null);
   const savingRef=useRef(false);
   useEffect(()=>{savingRef.current=saving;},[saving]);
-  const editorOpen=Boolean(editor),retireOpen=Boolean(pendingRetire);
+  const editorOpen=Boolean(editor),retireOpen=Boolean(pendingRetire),detailsOpen=Boolean(details);
 
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     const generation=++latestRead.current;
@@ -71,7 +72,7 @@ export function RolesPanel(){
       if(generation!==latestRead.current)return;
       // Fail closed after revalidation failure: do not leave restricted role/audit content cached.
       setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
-      setEditor(null);setPendingRetire(null);
+      setEditor(null);setPendingRetire(null);setDetails(null);
       setNotice({kind:"error",text:e instanceof Error?e.message:"Information unavailable."});
     }finally{if(generation===latestRead.current)setLoading(false);}
   },[]);
@@ -104,7 +105,7 @@ export function RolesPanel(){
 
   // Keyboard focus stays inside the current drawer and returns to its trigger.
   useEffect(()=>{
-    if(!editorOpen&&!retireOpen)return;
+    if(!editorOpen&&!retireOpen&&!detailsOpen)return;
     const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
     const first=dialogRef.current?.querySelector<HTMLElement>("input:not([disabled]),button:not([disabled])");
     first?.focus();
@@ -113,7 +114,7 @@ export function RolesPanel(){
       if(!dialog)return;
       if(event.key==="Escape"){
         if(savingRef.current)return;
-        event.preventDefault();setEditor(null);setPendingRetire(null);
+        event.preventDefault();setEditor(null);setPendingRetire(null);setDetails(null);
         return;
       }
       if(event.key!=="Tab")return;
@@ -127,7 +128,7 @@ export function RolesPanel(){
     };
     document.addEventListener("keydown",keyDown);
     return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
-  },[editorOpen,retireOpen]);
+  },[editorOpen,retireOpen,detailsOpen]);
   async function findCopySources(searchText:string) {
     setCopyLoading(true);setCopyError("");
     try {
@@ -216,7 +217,7 @@ export function RolesPanel(){
       if(error instanceof Error&&(error.message.includes("session expired")||error.message.includes("permission"))){
         // Permission loss invalidates all protected list and audit content.
         setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
-        setEditor(null);setPendingRetire(null);
+        setEditor(null);setPendingRetire(null);setDetails(null);
       }
       if(error instanceof Error&&error.message==="UNCERTAIN"){
         setNotice({kind:"uncertain",text:"The result could not be confirmed. Refresh the list before submitting another change."});
@@ -298,7 +299,7 @@ export function RolesPanel(){
         <td>{role.protected?"Protected":role.active?"Active":"Retired"}</td>
         <td>{role.assignedCount}</td>
         <td>{role.protected?"Protected Foundation access":role.actionKeys.length+" allowed actions"}</td>
-        <td><div className="toolbar">{canManage&&!role.protected&&role.active&&<>
+        <td><div className="toolbar"><button type="button" onClick={()=>setDetails(role)}>Details</button>{canManage&&!role.protected&&role.active&&<>
           <button type="button" onClick={()=>open("edit",role)}>Edit</button>
           <button type="button" onClick={()=>open("copy",role)}>Copy</button>
           <button type="button" disabled={role.assignedCount>0||saving}
@@ -321,6 +322,29 @@ export function RolesPanel(){
         </li>)}</ul>}
       {historyCursor&&<button type="button" onClick={()=>void moreHistory()}>Load more history</button>}
     </section>}
+    {details&&<div className="drawer-backdrop" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="role-details-title"
+        className="role-drawer" ref={dialogRef}>
+        <header className="topbar">
+          <h2 id="role-details-title">{details.name}</h2>
+          <button type="button" onClick={()=>setDetails(null)}>Close</button>
+        </header>
+        <p>{details.protected?"Protected Foundation role":details.active?"Active custom role":"Retired role"}</p>
+        <p>Scope: Foundation</p>
+        {details.description&&<p>{details.description}</p>}
+        <p>{details.assignedCount} assigned accounts</p>
+        {details.protected?<p>Protected administrative authority. This role cannot be edited, copied or retired here.</p>:
+          groups.map(group=>{
+            const selected=group.actions.filter(action=>details.actionKeys.includes(action.key));
+            return selected.length?<section key={group.group} className="permission-group"
+              aria-label={group.group}>
+              <h3>{group.group}</h3>
+              <ul>{selected.map(action=><li key={action.key}>{action.businessLabel}</li>)}</ul>
+            </section>:null;
+          })}
+        {!details.protected&&!details.actionKeys.length&&<p>No assignable permissions are currently granted.</p>}
+      </section>
+    </div>}
     {pendingRetire&&<div className="drawer-backdrop" role="presentation">
       <section role="dialog" aria-modal="true" aria-labelledby="retire-role-title" className="role-drawer" ref={dialogRef}>
         <h2 id="retire-role-title">Retire {pendingRetire.name}?</h2>
