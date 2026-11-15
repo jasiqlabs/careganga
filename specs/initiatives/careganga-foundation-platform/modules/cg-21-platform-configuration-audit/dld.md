@@ -12,6 +12,18 @@ Own a cohesive typed domain/application module for **Platform/integration settin
 
 State/invariant: **Settings draft/active; integration disabled/verified; recovery requested/approved; No secrets in UI/log, ordinary staff restore or simulated provider success**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete security settings, audit and recovery contracts
+
+`platform_setting(id,key,value_class,effective_version,updated_by,status)` validates typed values and logs revision. Public Login/Join/Volunteer visibility toggles belong to CG-18 publication, not a second independent settings control table.
+
+`integration_connection(id,provider,purpose,scope,secret_reference,status,verified_at)` stores encrypted credential **references** via approved secret management, never raw provider key in database/UI/log. Configured != verified online; per-center merchant is not automatically Foundation merchant. Bounded connectivity verification cannot turn into continuous network polling.
+
+`audit_event(id,actor,resource_type,resource_ref,action,result,correlation,time,redacted_diff)` is append-only, indexed by authorized actor/scope/time, no OTP, password, bank token, medical document payload or unrestricted PII. CG-01 owns role audit facts but contributes to a unified protected audit view.
+
+`recovery_operation(id,operation_type,backup_reference,requested_by,approved_by,status,proof)` requires authorized privileged identity/MFA; restore is not available to routine staff. Actual backup/restore recovery drill, RPO/RTO and production credentials remain independent QA/operations proof, not screenshot-UI success.
+
+**QA:** unauthorized restore, two concurrent setting writes, secret appearing in API/log, false integration-ready state, foreign-scope audit export, failed backup/restore, dormant worker bandwidth and still-pending verification behavior.
+
 ## Typed API and coordination
 
 An authenticated `/api/platform-configuration-audit` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
