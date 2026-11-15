@@ -14,6 +14,18 @@ Own a cohesive typed domain/application module for **Versioned subsidy policy, e
 
 State/invariant: **Support requested/approved; patient due/paid/refunded; Foundation due/settled; Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete healthcare finance and merchant contracts
+
+**Versioned policy:** `assistance_policies(id,provider/center/service,kind,amount_or_percentage,cap,validity,version)` yields deterministic eligible quotes. Standard eligible consultation is **50% Foundation / 50% patient**. Exceptional 100% requires protected approval. Fixed/percentage/capped variants are allowlisted; no arbitrary business-rule engine.
+
+**Immutable charge:** `patient_charges(service_source,gross,policy_version,foundation_contribution,patient_payable,accepted_at)` enforces `gross=foundation_contribution+patient_payable` after approved rounding/caps and stores the accepted historic snapshot. New policy or provider fee never changes old booking/receipt.
+
+**Separate collection ownership:** `center_collections(center,merchant_ref,payment_ref,method,verified_amount,status)` is center-owned patient money. Authenticate callbacks **and verify merchant→center mapping**; wrong-center webhook denied. If real merchant unconfigured, online checkout unavailable; pay-at-center may leave a booked service DUE. Patient collection never credits Foundation CG-09 cash.
+
+**Foundation payable:** `foundation_liabilities(provider,service,approved_amount,due_period,status)` plus `provider_settlements(provider,month,approved_total,paid_total,adjustment,status)` reconcile completed eligible services and authorized dues. Accepted settlement posts Foundation liability/payment in CG-09 exactly once with unique source identity, respecting partial payments and corrections.
+
+**QA:** duplicate/late callbacks, wrong merchant/center, pending versus verified, full-support approval and cap rounding, pay-at-center outstanding, canceled/refunded case, concurrent partial settlement, repeated month close and downstream journal agreement. Do not claim source-complete without real CG-09 and center scope integration.
+
 ## Typed API and coordination
 
 An authenticated `/api/healthcare-assistance-settlements` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
