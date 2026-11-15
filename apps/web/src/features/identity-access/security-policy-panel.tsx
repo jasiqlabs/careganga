@@ -172,11 +172,15 @@ export function SecurityPolicyPanel(){
       const ack:unknown=await resp.json();
       if(!ack||typeof ack!=="object"||!("revision" in ack)||
         !Number.isInteger(ack.revision))throw Error("Unconfirmed result");
-      setEditing(false);setReview(false);setTotp("");requestKey.current="";
+      // Keep the exact request key until the effective revision is verified.
+      // A confirmed write followed by a failed read is still an unknown
+      // effective state; the operator must be able to check that same command.
+      setEditing(false);setReview(false);setTotp("");
       const verified=await read(Number(ack.revision));
+      if(!verified)setUncertain(true);
       setNotice(verified
         ?{kind:"success",message:"Security policy saved and verified. Existing staff sessions follow the updated limits."}
-        :{kind:"uncertain",message:"The server acknowledged the change, but the current policy could not be reverified. Refresh before another edit."});
+        :{kind:"uncertain",message:"The server acknowledged the change, but the effective policy could not be verified. Check the previous change before editing."});
     }catch{
       setUncertain(true);setNotice({kind:"uncertain",message:
         "The result may already have been saved. Refresh the effective policy before another attempt."});
