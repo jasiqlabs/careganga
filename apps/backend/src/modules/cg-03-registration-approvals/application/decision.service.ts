@@ -14,7 +14,8 @@ type CaseRow={id:string;realm_id:string;case_number:string;proposer_id:string;
 type StepRow={ordinal:number;capability_key:"roles.assign"|"approvals.review";
   protected_root_required:boolean};
 type DecisionRow={actor_id:string;request_digest:string;action:string;
-  accepted_case_revision:number};
+  accepted_case_revision:number;capability_key:"roles.assign"|"approvals.review";
+  protected_root_required:boolean};
 function inputRecord(value:unknown){
   if(!value||typeof value!=="object"||Array.isArray(value))
     throw new BadRequestException("Check your approval decision");
@@ -71,19 +72,23 @@ export class ApprovalDecisionService{
       if(row.proposer_id===actor.accountId)
         throw new ForbiddenException("You cannot approve your own request");
       const prior=await client.query<DecisionRow>(`
-        SELECT actor_id,request_digest,action,accepted_case_revision
-        FROM cg03_case_decision WHERE case_id=$1 AND request_key=$2 FOR SHARE
-      `,[row.id,body.requestKey]);
+        SELECT d.actor_id,d.request_digest,d.action,d.accepted_case_revision,
+          step.capability_key,step.protected_root_required
+        FROM cg03_case_decision d
+        JOIN cg03_process_step step ON step.process_id=$3
+          AND step.ordinal=d.step_ordinal
+        WHERE d.case_id=$1 AND d.request_key=$2
+        FOR SHARE OF d,step
+      `,[row.id,body.requestKey,row.process_id]);
       if(prior.rowCount){
         const previous=prior.rows[0];
         if(previous.actor_id!==actor.accountId||previous.request_digest!==digest)
           throw new ConflictException({code:"APPROVAL_REPLAY_CONFLICT"});
-        // Still check live step authority for a replay; no replay mutation.
-        try{await this.sessions.requireAction(bearer,"approvals.view");}
-        catch(error){
-          if(!(error instanceof ForbiddenException))throw error;
-          await this.sessions.requireAction(bearer,"roles.assign");
-        }
+        // Replay must check the original step authority, not just generic
+        // view access. A revoked reviewer may not confirm a protected decision.
+        await this.sessions.requireAction(bearer,previous.capability_key);
+        await this.owner.verifyReviewer(client,actor,previous.capability_key,
+          previous.protected_root_required);
         await client.query("COMMIT");active=false;
         return {status:"PREVIOUSLY_CONFIRMED",caseNumber:row.case_number,
           currentStatus:row.status,revision:row.revision};
