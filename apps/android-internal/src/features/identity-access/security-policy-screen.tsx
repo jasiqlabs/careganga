@@ -60,7 +60,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       setTotp("");setUnknown(false);setMessage("");requestKey.current="";
       return expectedRevision===undefined||payload.revision>=expectedRevision;
     }catch{
-      if(seq!==generation.current)return;
+      if(seq!==generation.current)return false;
       setCurrent(null);setValues(null);setEditing(false);
       setMessage("Protected policy could not be verified. Check your connection.");
       return false;
