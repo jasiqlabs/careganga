@@ -55,7 +55,7 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — Source-specific contract:** Public contact and center helpdesk requests share one scoped support source; Center A cannot view Center B's confidential ticket, and closing/reopening preserves assignment/response history.
 Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: None
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

@@ -54,7 +54,7 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — Source-specific contract:** Publish a media/gallery article with scheduled date, display order and visibility; an upload that is private or virus-scan pending is not offered as public media, and unpublishing invalidates public route.
 Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: US-001
 
 ### US-004 — Show approved directory/category cards, provider profiles, doctors, current…
 
@@ -71,7 +71,7 @@ QA cases:
 - **US-004-QA06:** Original CareGanga screenshot refs U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07 — Source-specific contract:** Create healthcare category/landing page editorial content before provider network is built, but render no fabricated center/doctor/percentage; when CG-14/17 sources are real, use their approved projection only, with actual price/status and source-owner tests.
 Verification: On actual implementation source-trace US-004-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-001
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

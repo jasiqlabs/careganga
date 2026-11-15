@@ -39,7 +39,7 @@ QA cases:
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves No secrets in UI/log, ordinary staff restore or simulated provider success, with one accepted source transaction and correct downstream totals.
 - **US-002-QA08 — Source-specific contract:** Ordinary staff tries backup restore from direct API and a Super Admin tries with missing MFA/required recovery authorization; both are blocked, while verified restoration preserves redacted audit and records independent recovery-test evidence as NOT_RUN until executed.
 Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+Dependencies: None
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
