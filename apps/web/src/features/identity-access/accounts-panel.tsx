@@ -29,7 +29,7 @@ async function change(path:string,method:string,payload:object):Promise<unknown>
   }
   try{return await response.json() as unknown;}catch{throw new Error("UNKNOWN");}
 }
-export function AccountsPanel(){
+export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const [actions,setActions]=useState<string[]>([]);
   const [roles,setRoles]=useState<RoleOption[]>([]);
@@ -64,6 +64,18 @@ export function AccountsPanel(){
     const seq=++generation.current;
     setLoading(true);
     try{
+      if(inviteOnly) {
+        // An inviter can choose a role without reading the confidential staff directory.
+        const access=await read<{actions:{key:string}[]}>("effective");
+        if(seq!==generation.current)return;
+        if(!access||!Array.isArray(access.actions)||
+           !access.actions.every(x=>x&&typeof x.key==="string"))
+          throw new Error("Invalid access response");
+        const keys=access.actions.map(x=>x.key);
+        if(!keys.includes("accounts.invite")||!keys.includes("roles.assign"))
+          throw new Error("Permission denied");
+        setList(null);setActions(keys);return;
+      }
       const params=new URLSearchParams({search,offset:String(skip),limit:"20",status});
       const [listResponse,access]=await Promise.all([
         read<CG01AccountList>("accounts?"+params.toString()),
@@ -79,7 +91,7 @@ export function AccountsPanel(){
       if(seq!==generation.current)return;
       purge(e instanceof Error?e.message:"Accounts unavailable");
     }finally{if(seq===generation.current)setLoading(false);}
-  },[purge]);
+  },[purge,inviteOnly]);
   useEffect(()=>{void load("",0,"all");},[load]);
   useEffect(()=>{
     const onFocus=()=>{if(document.visibilityState==="visible")void load(applied,offset,filter);};
@@ -110,6 +122,13 @@ export function AccountsPanel(){
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
+  useEffect(()=>{
+    if(inviteOnly&&canInvite&&editor===null&&!uncertain){
+      // Do not reopen after a successful invite; the user can choose Add staff again.
+      // Initial entry is explicit and never loads account records.
+      if(!requestKey.current)openInvite();
+    }
+  },[inviteOnly,canInvite,editor,uncertain]);
   function openAccount(row:CG01AccountView){
     ++roleRead.current;++historyRead.current;
     setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
@@ -190,6 +209,7 @@ export function AccountsPanel(){
       <div className="toolbar">{canInvite&&<button type="button" className="primary"
         onClick={openInvite}>Add staff</button>}</div>
     </header>
+    {!inviteOnly&&<>
     <form className="search-row" onSubmit={event=>{
       event.preventDefault();void load(query.trim(),0,filter);
     }}>
@@ -240,6 +260,7 @@ export function AccountsPanel(){
       <button type="button" disabled={loading||offset+20>=list.total}
         onClick={()=>void load(applied,offset+20,filter)}>Next</button>
     </div>}
+    </>}
     {(editor||pending)&&<div className="drawer-backdrop" role="presentation">
       <section role="dialog" aria-modal="true" aria-labelledby="account-drawer-title"
         className="role-drawer">
