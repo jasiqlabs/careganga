@@ -159,8 +159,19 @@ export class SecurityPolicyService {
       });
     }catch{throw new BadRequestException("The security policy is outside permitted limits");}
     const expectedRevision=Number(input.expectedRevision);
-    await this.rateLimitMfa(actor);
     const requestDigest=digest(values,expectedRevision);
+    // A previously committed identical command must remain replay-safe even if the
+    // original response was lost and the actor has reached the MFA-guess throttle.
+    // The row is checked again under the transaction lock below for concurrent first writes.
+    const prior=await this.db.query<{request_digest:string;result_revision:number}>(`
+      SELECT request_digest,result_revision FROM auth_security_policy_command
+      WHERE actor_account_id=$1 AND idempotency_key=$2`,[actor.accountId,input.idempotencyKey]);
+    if(prior.rowCount){
+      if(prior.rows[0].request_digest!==requestDigest)
+        throw conflict("POLICY_REPLAY_CONFLICT");
+      return {status:"REPLAY_CONFIRMED",revision:prior.rows[0].result_revision};
+    }
+    await this.rateLimitMfa(actor);
     const client=await this.db.connect();
     let transactionOpen=false;
     try{
