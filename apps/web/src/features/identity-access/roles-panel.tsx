@@ -48,6 +48,9 @@ export function RolesPanel(){
   const requestKey=useRef("");
   const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
   const dialogRef=useRef<HTMLElement|null>(null);
+  const savingRef=useRef(false);
+  useEffect(()=>{savingRef.current=saving;},[saving]);
+  const editorOpen=Boolean(editor),retireOpen=Boolean(pendingRetire);
 
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     const generation=++latestRead.current;
@@ -93,7 +96,7 @@ export function RolesPanel(){
 
   // Keyboard focus stays inside the current drawer and returns to its trigger.
   useEffect(()=>{
-    if(!editor&&!pendingRetire)return;
+    if(!editorOpen&&!retireOpen)return;
     const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
     const first=dialogRef.current?.querySelector<HTMLElement>("input:not([disabled]),button:not([disabled])");
     first?.focus();
@@ -101,7 +104,7 @@ export function RolesPanel(){
       const dialog=dialogRef.current;
       if(!dialog)return;
       if(event.key==="Escape"){
-        if(saving)return;
+        if(savingRef.current)return;
         event.preventDefault();setEditor(null);setPendingRetire(null);
         return;
       }
@@ -116,7 +119,7 @@ export function RolesPanel(){
     };
     document.addEventListener("keydown",keyDown);
     return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
-  },[editor,pendingRetire,saving]);
+  },[editorOpen,retireOpen]);
   async function findCopySources(searchText:string) {
     setCopyLoading(true);setCopyError("");
     try {
