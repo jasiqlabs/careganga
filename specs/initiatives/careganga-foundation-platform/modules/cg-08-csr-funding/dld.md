@@ -12,6 +12,16 @@ Own a cohesive typed domain/application module for **CSR partners, funding propo
 
 State/invariant: **Partner requested/approved/returned; amount proposed/committed/received/allocated; Pledge not money; funding allocation not utilization; no shadow ledger**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete CSR partnership and fund states
+
+`csr_partner(id,legal_name,contact,verification_state,approval_ref)` is the approved partner source; publication is separate from business verification. `funding_proposal(id,partner_ref,project_ref,purpose,requested_amount,status)` requires real CG-05 project and actual CG-03 approval; evidence includes agreements and reviewer history without copying documents out of CG-19.
+
+`funding_commitment(id,proposal_ref,source_type,committed_amount,due_by,status)`, `fund_receipt(id,commitment_ref,finance_posting_ref,verified_amount)` and `fund_allocation(id,project_ref,source_fund_ref,category,approved_amount,utilized_amount)` preserve **requested ≠ committed ≠ received ≠ allocated ≠ utilized**. CG-09 alone recognizes cash/bank and project budget balances.
+
+A Foundation/CSR split is versioned, sums must reconcile to approved amounts, and unreceived commitments cannot be represented as spendable cash. Corrections are linked reversals/adjustments, not silent replacement.
+
+**QA:** incomplete agreement, foreign CSR proposal, returned application, 70/30 split total, two sponsors for one project, pledge versus cash, duplicate bank receipt and public partner marketing without approval.
+
 ## Typed API and coordination
 
 An authenticated `/api/csr-funding` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
