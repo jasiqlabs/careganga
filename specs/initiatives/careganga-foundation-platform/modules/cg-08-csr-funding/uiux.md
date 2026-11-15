@@ -1,7 +1,7 @@
 # CG-08 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+**State:** REQUIRED · DESIGN_SOURCE_REVIEWED / 3 stories with source-mapped B02–B08 Admin Web. Original PNG/rendered pixel/video-microinteraction QA NOT_RUN; approval hash in `../../approvals.json`.
 
 ## Exact existing design and animation contract
 
