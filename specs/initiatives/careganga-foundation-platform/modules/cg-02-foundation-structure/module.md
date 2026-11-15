@@ -16,7 +16,7 @@ mobile_store_reason: Internal Android allows a scoped branch manager to resume t
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
-mobile_policy_checked_on: 2026-11-14
+mobile_policy_checked_on: 2026-11-15
 mobile_policy_sources: https://docs.expo.dev/versions/v58.0.0/ ; https://support.google.com/googleplay/android-developer/answer/11926878
 mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
