@@ -21,6 +21,10 @@ CG-04 owns only member tier versions, applications, issued membership and volunt
 
 The CG-04 member and volunteer owner records reference existing CG-02 ACTIVE branch and eligible CG-02 department via typed scoped owner projections, never CG-02's member/volunteer master. Member-branch association and volunteer branch/department preference or assignment are CG-04-owned historical/revisioned relations with one current permitted association by genuine business rule. Validate CG-01 actor/member/volunteer permission, CG-02 scope and current branch status before saving; preserve history on branch change or closure, revoke old visibility without giving an account a new CG-01 grant. CG-04 US-002/003 source QA traces these relations with **no CG-05/13/18 records**.
 
+## CG-04 source-owned member card and certificate integration (CG-19 original file owner)
+
+**CG-04 US-002** owns actual member identity/tier, active approval status, verified CG-09 paid/refunded state, eligible CG-02 branch, approved picture/expiry and which fields are permitted on a member ID card/certificate. Only after the real conditions hold, submit typed source revision/status/allow-listed display fields to **CG-19's shared versioned template and issued file owner**; CG-04 never stores a second PDF/object master. The original signed PDF, issuance key, checksum, revocation and safe QR verification belong to CG-19. Pending/rejected/refunded/inactive CG-04 members cannot trigger real issue; stale name/photo/expiry yields a new audited version, never mutate historical issued bytes. Source QA US-002-QA10 verifies independently with actual preceding CG-01/02/03/09/19 modules; no future unrelated owner.
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Configure a live tier with valid price/validity and receive one real paid or pending application. Only approved real CG-03 member outcomes issue active membership. For a different branch/member role deny private roster or file access; idempotent payment confirmation never issues two memberships. Volunteer skill applications remain separate from employed staff.
