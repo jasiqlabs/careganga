@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, BackHandler, KeyboardAvoidingView, Modal, Platform,
+  ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View
 } from "react-native";
 import * as Crypto from "expo-crypto";
@@ -113,6 +113,12 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         "You don't have permission for this change.":"Check the role details and try again.");
     }finally{setSaving(false);}
   }
+  function confirmRetire(role:Role){
+    if(!canEdit||role.protected||!role.active||role.assignedCount>0)return;
+    Alert.alert("Retire role?","This role cannot be selected again after retirement.",[
+      {text:"Cancel",style:"cancel"},{text:"Retire role",style:"destructive",onPress:()=>void retire(role)}
+    ]);
+  }
   async function retire(role:Role){
     if(!canEdit||role.protected||!role.active||role.assignedCount>0||saving)return;
     setSaving(true);setError("");setSuccess("");
@@ -186,7 +192,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         <Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>open("copy",role)}><Text>Copy</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={saving||role.assignedCount>0}
-          style={styles.button} onPress={()=>void retire(role)}><Text>Retire</Text></Pressable>
+          style={styles.button} onPress={()=>confirmRetire(role)}><Text>Retire</Text></Pressable>
       </View>}
     </View>)}
     {!busy&&total>30&&<View style={styles.line}>
