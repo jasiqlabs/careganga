@@ -58,7 +58,7 @@
 | §39 / pp34–35 | Allowance claim, purpose/amount/status/finance approval | CG-10/09/03 | **C**, not a second finance engine |
 | §40 / pp35–36 | Salary configuration, reserve, verification, batch, deduction and payslip | CG-11/10/09/03 | **C** as one payroll process, no unrelated seven engines |
 | §41 / pp36–37 | Notices, communications, SMS/email and message history | CG-19/18 | **C** |
-| §42 / pp37–38 | CMS dashboards, banners, team, projects, gallery, blog, contact/support | CG-18/19 | **R**: shared ticket/FAQ owner and controlled publication clarified |
+| §42 / pp37–38 | CMS dashboards, banners, team, projects, gallery, blog, contact/support | CG-18 public pages/publication; **CG-19 original contact/support/FAQ and validated file/notice sources** | **R**: CG-19 public Foundation contact works first; CG-18 embeds existing form, publicly publishes approved safe notices/media only. No second CMS contact/ticket/operational notice master |
 | §43 / pp38–40 | MIS, charts, custom/grouped/pivot reports, export and schedule | CG-20 | **C**, restricted exports/scheduling **NFR P0** |
 | §44 / pp40–41 | Settings, audit, integrations, backups and restore | **CG-21** operational settings/audit/recovery; **CG-01-BR11** password/session/MFA security-policy owner; **CG-18-BR09** public navigation | **R**: moved security policy and UI into CG-01; public Login/Member Join/Volunteer Join switches into CG-18; CG-21 holds only provider references, central audit read and protected recovery |
 | §45 / p41 | Public Android app audience and services | CG-BR-300 §7 | **C** current integrated public/member/volunteer/healthcare scope |
@@ -122,7 +122,7 @@
 | 42 / 51–52 | Part-paid/due, overdue aging and follow-up/refunds | CG-17 | **R** overdue follow-up explicit |
 | 43 / 52 | Center support paid/pending and provider settlement | CG-17/09 | **C**, merchant/fund flow **D-04** |
 | 44 / 52 | Center reports/export | CG-20 | **C** |
-| 45 / 52 | Center staff roles, website content, support tickets, FAQs and settings | CG-01/14/18/19/21 | **R** shared tickets/service requests/FAQ and content submission clarified |
+| 45 / 52 | Center staff roles, website content, support tickets, FAQs and settings | CG-01 current roles, **CG-14 real center identity/own-center support scope**, CG-18 public content, **CG-19 single ticket/reply/FAQ source**, CG-21 provider/system settings | **R**: CG-19 Foundation support is independent; CG-14 US-005 later integrates Center A/B access to existing CG-19 ticket, no center-specific duplicate source/table or false early test |
 | 46 / 52 | Center access logs, password/session rules, restricted recovery | **CG-01-BR11** password/session/MFA config/enforcement; **CG-21-BR04/06** protected recovery; CG-BR-600 | **R**: CG-01 independently implements/QA-tests root security policy and session/MFA controls; CG-21 only checks CG-01 privilege/MFA for real recovery, no duplicate policy or log ledger; restore authority D-25 |
 
 ## 5. Healthcare — central Foundation administration features 47–75
