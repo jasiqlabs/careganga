@@ -13,6 +13,16 @@ Own a cohesive typed domain/application module for **Test/package catalog, cente
 
 State/invariant: **Order created/collected/processing/report ready/released; No public lab checkout or release of private patient report to strangers**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete diagnostics, patient privacy and service information
+
+`diagnostic_test(id,code,name,category,sample_type,parameters,status)` unique approved code; `diagnostic_package(id,code,included_test_refs,fee,version,status)` has validated active test members; `center_service_price(center_ref,test_or_package,effective_period,price)` references actual CG-14 center and preserves versioned accepted quote.
+
+`lab_order(id,real_patient_ref,center_ref,ordered_test_refs,source,quoted_amount,status)` requires current actual CG-15 patient/care relationship. `sample(id,order_ref,collection_time,processor,status)` and `lab_report(id,order_ref,private_file_ref,professional_reviewer,release_time,version,status)` represent CREATED→COLLECTED→PROCESSING→READY→AUTHORIZED_RELEASED. An uploaded result does not automatically become patient-public.
+
+Private report access requires authenticated own-patient identity or assigned treating clinical user in that center, even on direct object/signed URL; document release/correction has new version and audit. Center Portal filters by actual center location. Non-bookable public lab/pharmacy/nursing/OT service cards remain information/contact only.
+
+**QA:** patient linked to wrong center, unauthorized report download, sample repeated, unapproved lab release, replaced report without version, stale package rate and public CTA accidentally creating checkout.
+
 ## Typed API and coordination
 
 An authenticated `/api/healthcare-diagnostics` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
