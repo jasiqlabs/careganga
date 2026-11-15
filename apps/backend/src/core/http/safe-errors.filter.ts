@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { randomUUID } from "node:crypto";
 import type { CareGangaRequest } from "../observability/request-correlation";
 
