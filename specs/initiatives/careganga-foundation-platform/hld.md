@@ -625,9 +625,13 @@ Verify a real backup restore in an isolated non-production environment before pr
 | FR-059–065, BR-006–008 | CG-17/09 + H-06/08 | N-02/N-04; center merchant segregation, refunds, Foundation liability |
 | FR-066–074, BR-011–016 | CG-18/19/20, publication projection and outbox | N-01/N-04/N-10/N-11; draft leak, fake public records, export access |
 | FR-075–080 | CG-21 / web + Android channels | N-01/N-06–12; truthful errors, performance/recovery, compatible clients |
-| **All UI-bearing CG-01–CG-21 modules** | **H-12**, shared token/component/motion baseline + per-module screenshot trace | **N-13**: exact verified CareGanga visual/motion parity and accessible channel adaptation; reference-image/video comparison required for visual PASS |
+| **FR-081–082** | CG-01 typed global flags + CG-14 approved center entitlement and CG-16 gated Lab order, evidence and public catalog | N-01/N-03/N-04/N-05; disabled-by-default, report privacy, current licensed center, no idle Lab workers |
+| **FR-083–084** | CG-22 approved medicine/partner price catalog + globally disabled batch/GRN/supplier/transfer/recall operations | N-01/N-02/N-04/N-09; pharmacy per-center stock, idempotent last unit, no CG-12/09 duplicates |
+| **FR-085–086** | CG-23 guarded nursing visits and CG-24 guarded OT room/team/resources under default-OFF deployment flags | N-01/N-03/N-05/N-09; clinical consent, profession/license, room/nurse double assignment prevented |
+| **FR-087** | CG-17 real approved service policy and original CG-09 Foundation-only balanced payment, optional CG-16/23/24 verified source adapter | N-02/N-04/N-05; no provider patient collection treated as Foundation revenue, screenshot commission formulas untrusted |
+| **All UI-bearing CG-01–CG-24 modules** | **H-12**, shared token/component/motion baseline + per-module screenshot trace | **N-13**: exact verified CareGanga visual/motion parity and accessible channel adaptation; reference-image/video comparison required for visual PASS |
 
-**No missing business owner:** Every FR-001–080 is allocated to the PRD's CG owner or a shared supporting capability. There is one shared NFR baseline; module Planning references only relevant IDs, instead of recreating it per channel.
+**No missing business owner:** Every FR-001–087 is allocated to the PRD's CG owner or a shared supporting capability. There is one shared NFR baseline; module Planning references only relevant IDs, instead of recreating it per channel.
 
 ## 12. Architecture risks, external dependencies and approval gates
 
@@ -649,7 +653,7 @@ Verify a real backup restore in an isolated non-production environment before pr
 
 ## 13. Review checklist and current evidence
 
-**Self-review basis:** CareGanga product PRD FR-001–080 and BR-001–017; 21 module-owner map; N-01–13; business-policy defaults D-01–25; pinned HLD skill/Engineering Standard. The architecture is designed as a proposal, not treated as an implemented system.
+**Self-review basis:** CareGanga product PRD FR-001–087 and BR-001–017 plus integrated healthcare CG-16-BR11–14/CG-22–24 new clauses; 24 module-owner map; N-01–13; business-policy defaults D-01–28; pinned HLD skill/Engineering Standard. The architecture is designed as a proposal, not treated as an implemented system.
 
 | Review area | Current HLD result | Evidence / remaining validation |
 | --- | --- | --- |
