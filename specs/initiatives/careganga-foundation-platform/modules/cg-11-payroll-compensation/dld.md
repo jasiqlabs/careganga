@@ -22,6 +22,12 @@ State/invariant: **Payroll draft/review/approved/payment pending/settled; No dup
 
 **QA:** competing draft runs same month, approval before calculation, stale employee compensation, leave revision after lock, blocked bank account, partial bank transfer, duplicate callback, private payslip and Foundation-only money posting.
 
+## Specific owner contracts and source-QA
+
+- **Pay data:** `salary_structure(id,effective_from,components,statutory_config_version)`, `employee_compensation(employee_ref,structure_ref,effective_dates,approved_adjustments)`, `payroll_run(id,period,revision,attendance_snapshot_hash,calculation_version,status)`, `payroll_line(run_ref,employee_ref,gross,deductions,arrears,net)` and `salary_payment_batch(run_ref,bank_instruction_ref,provider_ref,status)`. Define deterministic rounding and `net=gross-deductions+approved_adjustments`; unique approved period/run revision.
+- **Approval/payment:** only real eligible CG-10 employees/attendance, salary holds and statutory rules; calculate→review→approve before payment instruction. Pending bank transfer≠paid; accepted payout callback/CG-09 posting deduped per payment batch. CG-19 slip reads frozen approved run, not live mutable salary. Revision/correction preserves paid history.
+- **QA:** two runs same period, attendance edit after freeze, suspended employee, duplicated provider callback, partial transfer, bank mismatch, payroll authorization and private salary/payslip access.
+
 ## Typed API and coordination
 
 An authenticated `/api/payroll-compensation` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

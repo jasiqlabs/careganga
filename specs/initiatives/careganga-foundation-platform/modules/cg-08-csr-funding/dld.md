@@ -22,6 +22,12 @@ A Foundation/CSR split is versioned, sums must reconcile to approved amounts, an
 
 **QA:** incomplete agreement, foreign CSR proposal, returned application, 70/30 split total, two sponsors for one project, pledge versus cash, duplicate bank receipt and public partner marketing without approval.
 
+## Specific owner contracts and source-QA
+
+- **Contracts:** `csr_partner(id,organization,contact,approval_ref,status)`, `funding_proposal(id,partner_ref,project_ref,requested_amount,agreement_file_ref,status)`, `funding_commitment(proposal_ref,party,amount,effective_until,status)`, `funding_allocation(commitment_ref,project_ref,budget_category,amount,status)`. Store real CG-19 agreement and CG-05 project, not duplicate project/company masters.
+- **Accounting boundary:** proposed funding, approved commitment, CG-09-confirmed *received cash*, allocated budget, released and utilized are independent states; pledge cannot inflate available cash. CG-03 owns actual partner/proposal review; CG-09 owns fund/expense postings. Public partner marketing remains separate CG-18 publication.
+- **QA:** rejected partner, amount committed but unpaid, duplicate verified bank receipt, partner/Foundation split sums, allocation exceeding permitted available funding, revoked proposal, unauthorized partner export and over-budget use.
+
 ## Typed API and coordination
 
 An authenticated `/api/csr-funding` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

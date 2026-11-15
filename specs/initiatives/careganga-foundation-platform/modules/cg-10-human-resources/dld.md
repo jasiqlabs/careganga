@@ -24,6 +24,12 @@ State/invariant: **New/review/active/probation/hold/exit; leave pending/approved
 
 **QA:** duplicate employee ID, rejected activation, wrong-scope salary/bank export, overlapping leave, two attendance corrections, shift grace, transfer into unauthorized branch, exit with pending payroll and cross-channel staff permission revocation.
 
+## Specific owner contracts and source-QA
+
+- **Employment:** `employee(id,account_ref,employee_code,branch_ref,department_ref,designation,manager_ref,joining_at,status)` unique approved employee ID, optional verified CG-01 account relation, privacy-scoped compensation/bank references. `attendance(employee_ref,local_work_date,shift_version,status,source,revision)` with source/correction history; `leave_request` and balance require valid working-day/holiday/grace/week-off rules.
+- **Lifecycle:** CG-03 approval finalizes approved enrollment, transfer/promotion/exit; effective-dated postings retain prior branch/manager/designation and salary proposal, not rewrite history. CG-19 produces letters, memos, ID cards with document version/reissue. A terminated/transferred employee's old CG-01 scoped access is revoked; CG-11 owns payroll run and CG-09 expense/claim payment.
+- **QA:** duplicate applicant/employee ID, parallel attendance correction, employee absent vs approved leave, promotion effective-date conflict, transfer changes access, document reissue, manager's foreign-branch directory and salary visibility.
+
 ## Typed API and coordination
 
 An authenticated `/api/human-resources` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:

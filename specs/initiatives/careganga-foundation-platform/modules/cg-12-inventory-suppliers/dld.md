@@ -22,6 +22,12 @@ State/invariant: **Request draft/approved/rejected/fulfilled; receipt/issue/reve
 
 **QA:** parallel last-unit issue, replayed material fulfillment, stock transfer between real branches, wrong-branch options, adjusted negative stock, item unit mismatch, low-stock alert without idle scan and export matching movement history.
 
+## Specific owner contracts and source-QA
+
+- **Stock source:** `item(id,sku,unit,category,status)`, `supplier(id,name,contact,status)`, `stock_location(branch_ref,status)`, `stock_movement(id,item_ref,location_ref,kind,signed_quantity,source_owner,source_ref,revision)` UNIQUE per source operation, and `material_request(id,requester,location,status,revision)` with item lines and fulfillments. Finance/vendor ledgers remain CG-09.
+- **Atomic issue:** lock the (item,location) balance row or equivalent proven transaction while checking approved request remainder and available stock; concurrent last-unit issue cannot make stock negative. Partial fulfillment and reversal generate compensating movements. Low-stock notifications trigger on real movements or bounded schedules, not perpetual tenant-wide scanning.
+- **QA:** two last-item issues, duplicate approved material fulfillment, wrong location scope, mixed quantity units, cancelled request with issue already made, attempted negative adjustment and stock ledger/report reconciliation.
+
 ## Typed API and coordination
 
 An authenticated `/api/inventory-suppliers` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
