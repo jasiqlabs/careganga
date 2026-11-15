@@ -33,6 +33,7 @@ export function AccountsPanel(){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const [actions,setActions]=useState<string[]>([]);
   const [roles,setRoles]=useState<RoleOption[]>([]);
+  const [history,setHistory]=useState<Array<{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}>|null>(null);
   const [filter,setFilter]=useState("all");
   const [query,setQuery]=useState("");
   const [applied,setApplied]=useState("");
@@ -53,7 +54,7 @@ export function AccountsPanel(){
   const generation=useRef(0);
 
   const purge=useCallback((message:string)=>{
-    ++generation.current;setList(null);setRoles([]);setActions([]);setTarget(null);
+    ++generation.current;setList(null);setRoles([]);setActions([]);setHistory(null);setTarget(null);
     setPending(null);setEditor(null);setLoading(false);
     setNotice({kind:"error",text:message});
   },[]);
@@ -98,15 +99,29 @@ export function AccountsPanel(){
     }
   }
   function openInvite(){
-    setEditor("invite");setPending(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
+    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
   function openAccount(row:CG01AccountView){
-    setEditor("detail");setTarget(row);setPending(null);setRoleRef(row.roleRef??"");
+    setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
     setNotice(null);requestKey.current=crypto.randomUUID();
     if(canAssign)void roleSearch("");
   }
+  async function loadAccountHistory(accountRef:string){
+    if(!actions.includes("access.audit.view"))return;
+    try{
+      const result=await read<{events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}[]}>(
+        "audit?limit=30&targetRef="+encodeURIComponent(accountRef));
+      setHistory(result.events);
+    }catch(error){
+      setHistory(null);
+      if(error instanceof Error&&/session expired|permission denied/i.test(error.message))
+        purgeProtectedHistory(error.message);
+      else setNotice({kind:"error",text:"Access history could not be verified."});
+    }
+  }
+  function purgeProtectedHistory(message:string){purge(message);}
   async function submitInvite(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!canInvite||busy||uncertain||!roleRef)return;
     setBusy(true);setNotice(null);
@@ -251,6 +266,15 @@ export function AccountsPanel(){
           <p>Status: {target.status}</p>
           <p>Current role: {target.roleName??"Not assigned"}</p>
           <p>Foundation scope · Invitation: {target.deliveryStatus??"Not applicable"}</p>
+          {actions.includes("access.audit.view")&&<button type="button"
+            onClick={()=>void loadAccountHistory(target.accountRef)}>View access history</button>}
+          {history&&<section aria-label="Account access history">
+            <h3>Recent access history</h3>
+            {!history.length&&<p>No account access events found in the selected period.</p>}
+            {history.map(e=><p key={e.eventRef}>
+              {e.actionLabel} · {e.outcome} · {e.actorDisplay} · {new Date(e.occurredAt).toLocaleString()}
+            </p>)}
+          </section>}
           {target.roleProtected?<p>This protected administrator cannot be changed here.</p>:<>
             {target.status==="INVITED"&&canInvite&&<button type="button" onClick={()=>{
               requestKey.current=crypto.randomUUID();setPending({kind:"resend",target});
