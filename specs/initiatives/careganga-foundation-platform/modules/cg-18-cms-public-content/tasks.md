@@ -2,12 +2,12 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning / FOUR_CHANNEL_RE_REVIEW_REQUIRED after expanding four stories to **72 unique planned QA** (18 each), real PostgreSQL, NestJS/API, Admin Web, public Next.js, native Public Android, original UI, CG-03/19 integrations and security/NFR contracts. Prior exact-hash delegated design approval is stale until latest-source review and reapproval. Source-code/live QA NOT_RUN.
-**Development gate:** Latest-source DLD/UIUX/task review and current-hash delegated decision pending; current PRD/HLD require global current-hash reapproval; authenticated Harness resolver, independent CRITICAL DB/security review, actual SQL/migration/restore, verified predecessor implementation, code QA, real Web/native Android and original PNG/video pixel/motion verification NOT_RUN. All implementation stories remain BLOCKED and NOT_STARTED. No CI/GH Actions.
+**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design-only)** by JASIQ AI Design Review Agent (15 Nov 2026) after full source review/fix/re-review of four actual owner-independent vertical CG-18 stories, 72 unique QA (18 each), each with real PostgreSQL, backend/API, Admin Web, public Next.js, native Public Android, original UI, security/NFR and later-owner protections.
+**Development gate:** All four CG-18 current-source task definitions have delegated design approval only. PRD/HLD latest global review REQUIRED; authenticated Harness resolver, independent qualified CRITICAL DB/security review, actual migrations/backup/restore/EXPLAIN, predecessor implementation verification, code review, public/Admin Web and native Android device/runtime tests, source image/video pixel/motion QA and proposed NFR measurements NOT_RUN. Implementation remains BLOCKED/NOT_STARTED, no CI/GitHub Actions and no false code/test PASS.
 
-## Full-stack story specifications and manual QA — latest-source re-review pending
+## Delegated-approved full-stack story specifications and 72 manual QA cases — design only
 
-**Approval truth:** Current source is undergoing full-stack re-review; exact current-hash delegated decision still pending. No authenticated Harness, real DB, source-code, rendered app, screenshot or native device test PASS is claimed. Manual QA cases are planned and unexecuted.
+**Approval truth:** Current source-hash delegated design approval is recorded in approvals.json; no executed implementation/source QA, authenticated Harness, independent DB, actual Web/Android/API test, original screenshot pixel/motion, release or deployment PASS is claimed. Developer may execute the 72 planned cases only when real predecessor source and approved development gate are satisfied. Existing four story progress lines remain BLOCKED.
 
 ### US-001 — Publish original editorial Homepage/About/Hero/Team and CG-18 public navigation, without future project masters
 
