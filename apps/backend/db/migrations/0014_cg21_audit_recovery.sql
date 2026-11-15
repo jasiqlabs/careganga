@@ -44,9 +44,11 @@ CREATE INDEX ix_cg21_recovery_root_status
 -- authorization can progress the record beyond REQUESTED.
 CREATE FUNCTION cg21_recovery_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF NEW.status IN ('RUNNING','VERIFIED_SUCCEEDED') AND
-    current_setting('careganga.verified_recovery_operator',true) IS DISTINCT FROM 'allowed' THEN
-    RAISE EXCEPTION 'Recovery outcome requires separately verified operator';
+  -- A plain application/DB session cannot mark a restore as running or
+  -- successful. A later verified operations adapter must bring its own
+  -- separately reviewed migration/privileged execution path.
+  IF NEW.status IN ('RUNNING','VERIFIED_SUCCEEDED') THEN
+    RAISE EXCEPTION 'Recovery execution requires a verified operations adapter';
   END IF;
   IF TG_OP='UPDATE' AND (
     NEW.foundation_realm_id<>OLD.foundation_realm_id OR
