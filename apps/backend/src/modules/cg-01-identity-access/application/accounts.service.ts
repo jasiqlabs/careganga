@@ -37,6 +37,10 @@ export class AccountsService {
   }
   async list(bearer:string,query:{search?:string;status?:string;roleRef?:string;offset?:number;limit?:number}={}){
     const actor=await this.actor(bearer,"accounts.view");
+    if(query.search!==undefined&&typeof query.search!=="string"||
+       query.status!==undefined&&typeof query.status!=="string"||
+       query.roleRef!==undefined&&typeof query.roleRef!=="string")
+      throw new BadRequestException("Check the account search filters");
     const search=(query.search??"").trim().toLowerCase();
     const status=query.status??"all",roleRef=query.roleRef??"";
     const offset=query.offset??0,limit=query.limit??20;
