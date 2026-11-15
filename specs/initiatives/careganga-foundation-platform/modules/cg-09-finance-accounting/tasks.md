@@ -3,7 +3,7 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
-**Development gate:** Current **six user stories / 65 unique QA** have completed self-disclosed expert planning source review/fix/re-review and are **DELEGATED_APPROVED (design only)** by JASIQ AI Design Review Agent on 15 Nov 2026. Current PRD/HLD REVIEW_REQUIRED; authenticated Harness resolver, independent qualified CRITICAL database review, actual SQL/migration/restore, verified predecessor delivery, source-code QA, real Web/Android runtime, original screenshot/video pixel/motion QA NOT_RUN. Every story remains `BLOCKED | PLANNING_DRAFT_ONLY` with implementation NOT_STARTED; do not mark READY solely from this approval.
+**Development gate:** Current **six user stories / 68 unique QA** have completed self-disclosed expert planning source review/fix/re-review and are **DELEGATED_APPROVED (design only)** by JASIQ AI Design Review Agent on 15 Nov 2026. Current PRD/HLD REVIEW_REQUIRED; authenticated Harness resolver, independent qualified CRITICAL database review, actual SQL/migration/restore, verified predecessor delivery, source-code QA, real Web/Android runtime, original screenshot/video pixel/motion QA NOT_RUN. Every story remains `BLOCKED | PLANNING_DRAFT_ONLY` with implementation NOT_STARTED; do not mark READY solely from this approval.
 
 ## Delegated-approved task definitions — design only
 

@@ -1,7 +1,7 @@
 # CG-09 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
-**State:** REQUIRED · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for current CareGanga CG-09 owner UI/UX (15 Nov 2026), original A19/B01/B02/U33–U42 with each story owning only its real screen/interaction, branded responsive Web/native Android and real CG-03/CG-19/CG-09 states. U42 volunteer applicant form belongs to later CG-04 original eligibility presentation into CG-09 claim; no future-only controls. PRD/HLD REVIEW_REQUIRED, actual original rendered screenshot/video pixel/motion, device/runtime QA NOT_RUN; approval is design only.
+**State:** REQUIRED · **DELEGATED_APPROVED — design only** by JASIQ AI Design Review Agent for current CareGanga CG-09 owner UI/UX (15 Nov 2026), including optional actual supplier/receipt selectors in original Finance invoice/report only, original A19/B01/B02/U33–U42 with each story owning only its real screen/interaction, branded responsive Web/native Android and real CG-03/CG-19/CG-09 states. U42 volunteer applicant form belongs to later CG-04 original eligibility presentation into CG-09 claim; no future-only controls. PRD/HLD REVIEW_REQUIRED, actual original rendered screenshot/video pixel/motion, device/runtime QA NOT_RUN; approval is design only.
 
 ## Exact existing design and animation contract
 
