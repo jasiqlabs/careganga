@@ -59,7 +59,29 @@ Keep the **existing CareGanga** interaction language, not merely its colors. Reu
 
 **Evidence boundary:** The audit's U02–U10/B34 still images establish the screens/components and visible states, but **not** transition duration/easing, spring, overshoot or sequencing. An exact motion claim requires matching the original recorded walkthrough/video or otherwise authenticated original motion design, and comparison with a rendered flow. Before that: preserve the appearance and functional transitions, use restrained accessible native behavior where needed, mark timing `MOTION_REFERENCE_UNVERIFIED`, and **never invent a new brand animation**. Respect reduced-motion settings and performance (no animation-induced delayed/false action state).
 
-## 5. Source QA and fidelity acceptance
+## 5. Human-readable error and permission interaction contract
+
+The verified CareGanga palette, type hierarchy, icon/badge and original form/drawer motion apply equally to positive, denied, loading, pending, duplicate, stale and unexpected outcomes. A spinner or green toast **never** implies a persisted privilege change. Important confirmations remain visible in the role/account detail and access history, not only a disappearing toast.
+
+| Screen/state | User-facing text and accessible next action |
+| --- | --- |
+| Saved role/assigned access | “Role saved.” / “Access updated.” Show actual committed name, scope and change history |
+| Invite saved, delivery not verified | “Invitation created. Delivery is being checked.” Show pending label and permitted resend, not “Invitation sent” |
+| Unknown account or incorrect sign-in | “We couldn't sign you in. Check your details and try again.” Same text regardless of account existence |
+| MFA/recovery code expired | “That code has expired. Request a new code.” |
+| Protected role change before CG-03 exists | “This action requires authorized approval and isn't available yet.” No fake pending approval case; never silently grant |
+| Forbidden detail/action | “You don't have permission for this action. Contact your administrator.” Do not reveal protected account existence |
+| Duplicate role | “A role with this name already exists. Choose another name.” Field-level prompt near role name |
+| Stale assignment/role revision | “This was changed elsewhere. Refresh before saving again.” Preserve safe inputs |
+| Provider unavailable | “We couldn't send a code right now. Try again later.” Show status, no confirmation of delivery |
+| Network loss after write | “We couldn't confirm this change. Check its status before trying again.” Provide refresh rather than blind resubmit |
+| Unexpected failure | “Something went wrong. Please try again or contact support with this reference.” Only an opaque safe support reference |
+
+Shared user-language message catalog across public/center sign-in (where actually in use), Foundation Web and native Android; future module copy must inherit categories, never display HTTP/SQL/provider codes or exceptions. Account, role and scoped option selectors show actual names/context, not internal UUIDs or permission keys. On sign-out/revoked session, clear protected cached screens and display login. On screen readers, use persistent accessible field errors, focus, announcement and meaningful action labels.
+
+Technical diagnosis is separate: neither ordinary staff nor patients see developer logs or a general logging UI. An authorized support operator may resolve the optional support reference in restricted diagnostics; no PII, OTP, secret or raw provider payload appears in UI/toasts/notifications. No new CG-01 background-worker dashboard.
+
+## 6. Source QA and fidelity acceptance
 
 - Compare every CG-01 Web screen to **U02–U10/B34** and the Admin global shell: existing colors, typography hierarchy, spacing, card/table/badge treatment, right drawer, filters, action placement and navigation.
 - Compare selected real screens to the original ZIP at representative desktop and phone sizes. Record **visual differences and fix unintended theme drift**; accessibility/responsive adaptations are allowed only with documented reasons.
