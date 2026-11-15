@@ -35,7 +35,9 @@ export default async function AdminSecurityPolicy(){
     return <div className="shell">
       <FoundationAdminNav active="policy" displayName={person.displayName} roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")} canViewAccounts={keys.includes("accounts.view")}
-        canManageSecurityPolicy canViewSettings={keys.includes("platform.settings.view")}/>
+        canManageSecurityPolicy canViewSettings={keys.includes("platform.settings.view")}
+        canViewAudit={keys.includes("platform.audit.view")}
+        canViewRecovery={keys.includes("platform.recovery.view")}/>
       <main className="workspace"><SecurityPolicyPanel/></main>
     </div>;
   }catch(error){
