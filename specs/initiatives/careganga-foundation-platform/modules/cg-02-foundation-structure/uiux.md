@@ -1,7 +1,7 @@
 # CG-02 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, CG-01-level source review/fix/re-review against canonical PRD/HLD v1.1 (15 Nov 2026), CG-02 CRITICAL DLD and screenshot audit U18–U22. Current-hash design approval and authenticated Harness resolver NOT_RUN; rendered pixel and original video motion unverified.
+**State:** REQUIRED; latest source UIUX design content `DELEGATED_APPROVED` by JASIQ AI Design Review Agent with owner's confirmation (15 Nov 2026), after CG-01-level review/fix/re-review of PRD/HLD and audit U18–U22. Formal stage gate still BLOCKED by PRD/HLD REVIEW_REQUIRED and authenticated local Harness resolver NOT_RUN; pixel-rendered comparison and original video motion remain VISUAL_NOT_RUN/MOTION_REFERENCE_UNVERIFIED.
 
 ## Exact existing design and animation contract
 
