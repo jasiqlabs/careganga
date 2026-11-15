@@ -24,7 +24,26 @@
         "local_stage_resolver": "NOT_RUN"
       },
       "previous_approved_sha256": "e11bc936370ed24979523fcc5be5758e206fa62b69274bdaf64c16f59a7f0afc",
-      "reapproval_reason": "The current canonical draft was revised in place after the old delegated artifact hash: original CareGanga visual/motion fidelity, forward-owner delivery order, canonical DLD record ownership, genuine CG-01→CG-03 source, and 21 module story/QA corrections. Earlier approval evidence applies only to its prior immutable Git revision. A current exact-hash source review and authenticated Harness stage resolver are required before any new delegated approval."
+      "reapproval_reason": "15 November 2026: canonical v1.1 corrections were applied and source self-review/re-review completed against the live pinned Harness. Historical delegated approval is only for previous_approved_sha256. Current-hash delegated approval remains unrecorded because authenticated local Harness bootstrap/stage resolver is NOT_RUN; do not promote this status to APPROVED before the genuine gate.",
+      "current_artifact_sha256": "f593f2c9cd30da7fcb0fd9648e7b2cd93e68cae5fe74566b7e63f9fb9351ba36",
+      "current_source_review": {
+        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
+        "artifact_sha256": "f593f2c9cd30da7fcb0fd9648e7b2cd93e68cae5fe74566b7e63f9fb9351ba36",
+        "document_version": "1.1",
+        "method": "SELF_REVIEW_DISCLOSED",
+        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
+        "review_rounds": 2,
+        "open_critical_design_findings": 0,
+        "open_major_design_findings": 0,
+        "open_actionable_design_findings": 0,
+        "scope": "BR/FR source and policy consistency, 21 owner boundaries, branch approval revision, channel roles and version integrity",
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/prd.md",
+        "local_harness_bootstrap": "NOT_RUN",
+        "local_stage_resolver": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "runtime_qa": "NOT_RUN",
+        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED"
+      }
     },
     "hld": {
       "status": "REVIEW_REQUIRED",
@@ -51,7 +70,26 @@
         "current_artifact_review": "PENDING"
       },
       "previous_approved_sha256": "5f149d9c4eea4da788c4660d8fbe37a60acf7741bf72b15ac62ce758e6517154",
-      "reapproval_reason": "The current canonical draft was revised in place after the old delegated artifact hash: original CareGanga visual/motion fidelity, forward-owner delivery order, canonical DLD record ownership, genuine CG-01→CG-03 source, and 21 module story/QA corrections. Earlier approval evidence applies only to its prior immutable Git revision. A current exact-hash source review and authenticated Harness stage resolver are required before any new delegated approval."
+      "reapproval_reason": "15 November 2026: canonical v1.1 corrections were applied and source self-review/re-review completed against the live pinned Harness. Historical delegated approval is only for previous_approved_sha256. Current-hash delegated approval remains unrecorded because authenticated local Harness bootstrap/stage resolver is NOT_RUN; do not promote this status to APPROVED before the genuine gate.",
+      "current_artifact_sha256": "cb10ceba64680f819d293ea4c395423022b1d49e9e1899337fc925c402ab3429",
+      "current_source_review": {
+        "status": "SOURCE_REVIEW_COMPLETED_NOT_FORMAL_APPROVAL",
+        "artifact_sha256": "cb10ceba64680f819d293ea4c395423022b1d49e9e1899337fc925c402ab3429",
+        "document_version": "1.1",
+        "method": "SELF_REVIEW_DISCLOSED",
+        "reviewer": "ChatGPT GPT-6 (delegated design reviewer)",
+        "review_rounds": 2,
+        "open_critical_design_findings": 0,
+        "open_major_design_findings": 0,
+        "open_actionable_design_findings": 0,
+        "scope": "Current PRD architecture allocation, foundation order, revision-bound case/owner finalization, authentic CG-02 departments, DB and audit boundaries",
+        "evidence": "https://github.com/jasiqlabs/careganga/blob/648b9a5d8c0c0739ecdb35a1c58f9220f3f89959/specs/initiatives/careganga-foundation-platform/hld.md",
+        "local_harness_bootstrap": "NOT_RUN",
+        "local_stage_resolver": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "runtime_qa": "NOT_RUN",
+        "approval_gate": "BLOCKED_HARNESS_UNVERIFIED"
+      }
     }
   }
 }
