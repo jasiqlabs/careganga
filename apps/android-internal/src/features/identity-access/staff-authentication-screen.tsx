@@ -156,7 +156,8 @@ export function StaffAuthenticationScreen(){
   }
   if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
   if(activate) return <InvitationActivationScreen onExit={()=>setActivate(false)}/>;
-  if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}/>;
+  if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
+    inviteOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
@@ -168,7 +169,7 @@ export function StaffAuthenticationScreen(){
             <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
-            {roleActions.includes("accounts.view")&&<Pressable accessibilityRole="button"
+            {(roleActions.includes("accounts.view")||(roleActions.includes("accounts.invite")&&roleActions.includes("roles.assign")))&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setAccountsOpen(true)}>
               <Text style={styles.buttonText}>Users Management</Text>
             </Pressable>}
