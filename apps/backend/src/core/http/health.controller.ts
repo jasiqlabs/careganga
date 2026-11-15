@@ -14,6 +14,10 @@ export class HealthController {
         "SELECT to_regclass('public.account')::text AS reg"
       );
       if (!result.rows[0]?.reg) throw new Error("Migration missing");
+      const migrations = await this.db.query<{ filename: string }>(
+        "SELECT filename FROM schema_migration WHERE filename = $1", ["0003_cg01_realm_integrity.sql"]
+      );
+      if (!migrations.rowCount) throw new Error("CG-01 migrations incomplete");
       return { status: "ready" };
     } catch {
       throw new ServiceUnavailableException("Service is temporarily unavailable");

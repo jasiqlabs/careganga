@@ -42,7 +42,8 @@ export class SessionService implements IdentityAuthorization {
   async signIn(details: { email: string; password: string; totp: string; remoteAddress: string; deviceLabel: string }):
       Promise<{ sessionToken: string; expiresAt: string; displayName: string }> {
     const email = details.email.trim().toLowerCase();
-    await this.takeAttempt("ip", details.remoteAddress, 40);
+    // Do not globally lock out all users sharing one trusted Web BFF/proxy IP.
+    await this.takeAttempt("ip-email", details.remoteAddress + "|" + email, 20);
     await this.takeAttempt("email", email, 6);
     const lookup = await this.db.query<AccountCredential>(`
       SELECT a.id,a.realm_id,a.display_name,a.normalized_email,a.status,a.access_version,
