@@ -264,3 +264,9 @@ button:disabled { cursor:wait; opacity:.65; }
 .foundation-department-dialog .field textarea{width:100%;resize:vertical}
 @media(max-width:48rem){.foundation-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:27rem){.foundation-overview{grid-template-columns:1fr}}
+
+.role-workspace .search-row select{min-height:2.75rem;min-width:8rem;padding:.55rem .7rem;
+  border:1px solid var(--cg-border);border-radius:.4rem;background:var(--cg-surface);
+  color:var(--cg-text);font:inherit}
+@media(max-width:27rem){.role-workspace .search-row label{width:100%}
+  .role-workspace .search-row select{width:100%}}
