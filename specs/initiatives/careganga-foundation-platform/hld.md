@@ -8,7 +8,7 @@
 **Architecture baseline:** Current product PRD `prd.md` (including mandatory N-13 visual/motion fidelity) and source BR/NFR documents in `docs/business-requirements/`; final PRD approval hash requires revalidation after the current changes.  
 **Harness stage policy:** Original design reviews used earlier Harness revisions; **CareGanga now adopts the reviewed merged `jasiq-harness/main` commit `3713f13f2ea658a0cc42f8fbf98b4cc5b5b990fd` (PR #58)** as its new stage baseline. This HLD has been reconciled with its database, design-pattern, background-work, mobile-store, UI-quality and manual source-review guidance. **Local Harness checkout/stage resolver and independent specialist review remain NOT_RUN**; the GitHub source review and pin update are not resolver PASS.  
 **Prepared:** 14 November 2026  
-**Status:** **VISUAL-FIDELITY ARCHITECTURE ADDED / RE-REVIEW REQUIRED** against updated PRD N-13, Harness HLD and original CareGanga screenshot/video references. Earlier delegated HLD approval covered its prior file SHA only. Current hash-bound reapproval, local resolver and rendered visual comparison are NOT_RUN; no QA/release PASS is claimed.  
+**Status:** **DRAFT / RE-REVIEW REQUIRED** against updated PRD N-13, Harness HLD and original CareGanga screenshot/video references. Earlier delegated HLD approval covered its prior file SHA only. Current hash-bound reapproval, local resolver and rendered visual comparison are NOT_RUN; no QA/release PASS is claimed.  
 **Approval integrity:** The owner explicitly authorized agent delegation for design review in this conversation. The current `initiative.json` opts in to narrowly scoped `OWNER_DELEGATED_DESIGN` for PRD/HLD. An approval must be truthfully attributed to the actual delegate as `DELEGATED_APPROVED` with the current file SHA-256, review evidence and validated resolver gate, never falsely as human/client sign-off. No resolver PASS or human/client approval is claimed by this document; any delegated design decision must be separately recorded and hash-checked in initiative-local `approvals.json`. QA/UAT/release/merges require independent owner authorization.
 
 ## 1. Executive architecture decision
@@ -221,6 +221,8 @@ Foundation organization geography and internal branch hierarchies come from CG-0
 - CG-20 reads authorized domain contracts or restricted read models; a report writer/export/scheduled job must not bypass actor scope or replicate conflicting ledger totals.
 - CG-21 audit is appended during/alongside protected business transitions with correlation and redaction; no user-visible “success” without confirmed business state.
 
+
+**Canonical contract review:** An owner DLD must define one unambiguous table/record/command contract, not competing alias schemas; privacy and scope are checked on options, full reads, exports, files and mutations. A cross-owner finalization commits exactly once using the immutable source business event, even when an editable record revision changes. CG-02 owns one branch registration and one approved branch record, CG-03 owns only approval case/decision, CG-09 enforces balanced posting per immutable financial event, and CG-15 owns one doctor-wide time occupancy authority independent of center. Concrete migrations and DTOs stay in their owning DLDs. CG-01 retains a genuine protected access-change request source that CG-03 may later approve, while CG-01 remains useful independently.
 
 ### Delivery dependency order — independently useful modules (mandatory Planning gate)
 
@@ -565,7 +567,7 @@ Verify a real backup restore in an isolated non-production environment before pr
 
 ## 13. Review checklist and current evidence
 
-**Self-review basis:** CareGanga product PRD FR-001–080 and BR-001–017; 21 module-owner map; N-01–12; business-policy defaults D-01–25; pinned HLD skill/Engineering Standard. The architecture is designed as a proposal, not treated as an implemented system.
+**Self-review basis:** CareGanga product PRD FR-001–080 and BR-001–017; 21 module-owner map; N-01–13; business-policy defaults D-01–25; pinned HLD skill/Engineering Standard. The architecture is designed as a proposal, not treated as an implemented system.
 
 | Review area | Current HLD result | Evidence / remaining validation |
 | --- | --- | --- |
@@ -581,6 +583,7 @@ Verify a real backup restore in an isolated non-production environment before pr
 | Scalability, operations, backups and mobile release | Covered as **proposed** design | §9 targets unmeasured; operational vendors/scale pending |
 | Solution alternatives and maintainability | Covered | §10 H-01–H-10 |
 | Detailed APIs/DB schema/UI/task leakage | Intentionally excluded | Correctly left to Planning/UIUX/DLD |
+| Canonical DLD ownership and forward-owner module independence | Source-review updated | §5.3 dependency rule, CG-01 protected request, CG-02/03/09/15 contracts; full stage resolver/independent design review NOT_RUN |
 | **Independent specialist review** | **NOT_RUN** | No independent HLD reviewer invoked; self-review only |
 | **Pinned resolver + authenticated local clean Git check** | **NOT_RUN** | GitHub connector accessed source, but a pinned sibling Harness/product filesystem checkout is unavailable |
 | **Formal product design approval** | **Verify current artifact hash in `approvals.json`** | Owner-delegated design decisions are permitted by `initiative.json`, but the live approval applies only if the registry SHA-256 matches the exact HLD file. It does not equal independent specialist review, local resolver PASS or client sign-off |

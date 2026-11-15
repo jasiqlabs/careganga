@@ -20,6 +20,9 @@ The first technical bootstrap creates a protected Foundation-root administrative
 | Role grant | unique role FK + supported action key; allow-listed catalog only; sensitive/root grants not custom-copyable |
 | Account-role assignment | account FK, role FK, explicit current Foundation-root context, effective/revoked times, assigned by, revision; at most one active primary role assignment per account per Foundation-root context (future center contexts require separate validated assignments) |
 | Access audit | actor/target, action, safe before/after grant summary, timestamp, correlation reference, decision; append-only and privacy-redacted |
+| Protected access-change request | id, existing account FK, requester, proposed allow-listed role/action and Foundation-root scope, submitted revision, status (OPEN/CANCELLED/APPLIED/REJECTED), immutable source_event_key; creates no effective grant before CG-03 protected final approval |
+
+A permitted manager may record a real CG-01-owned protected assignment request before CG-03 exists; this is an auditable PENDING source record only, **not** a copied CG-03 approval case or an effective permission. The later CG-03 module verifies source_event_key and returns a single final outcome through CG-01's idempotent finalizer. Root/last-super-admin safeguards still apply, and unapproved sensitive requests never elevate the actor.
 
 CG-01 also owns **logical future scope grant interfaces**, not premature foreign-key tables to unavailable geography or center entities. When CG-02/CG-14 ship, their approved schema/relations and integration migrations introduce validated real scope links; the CG-01 API guard must verify those owner relationships through typed contracts before any non-root scope can become active. CG-10 employee data and CG-03 approval state remain owner records.
 

@@ -33,7 +33,7 @@ Foundation-root is a real single-Foundation administrative context, **not** a fa
 
 ## 2. Data owner and boundaries
 
-**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit.
+**CG-01 owns:** account/credential/session, verified contact, invitation, account status, protected and custom roles, stable capability catalog, role grants, account-role assignment, Foundation-root scope, effective access calculation, and access-change audit. It also owns a genuine pending protected access-change request referencing existing CG-01 accounts/roles; that request grants nothing before a later real CG-03 final decision.
 
 **CG-01 does not own:** HR employee profile/status (CG-10), geography/branch/department (CG-02), approval cases (CG-03), provider/center and doctor (CG-14), member/volunteer (CG-04), patient (CG-15), finance, files or communication delivery. The same verified login may link to future relationships only through the relevant owner, never by matching phone alone. Do not create fake master rows or a universal cross-module dropdown.
 
