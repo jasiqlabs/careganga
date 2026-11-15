@@ -5,7 +5,9 @@
 **Stage:** Harness Planning DRAFT / OWNER_SCOPE_TRANSFER_APPLIED (15 Nov 2026): CG-18 owns Login/Profile, Membership Join and Volunteer Join public publication controls from CG-21. See [module](module.md), [PRD](../../prd.md) FR-066–069, [HLD](../../hld.md), [UIUX](uiux.md), [DLD](dld.md). Full CG-18 review/approval remains pending.  
 **Development gate:** PRD/HLD current approval REVIEW_REQUIRED, authenticated local resolver and hash-bound module/task/design approvals NOT_RUN. Single executor implements one approved vertical task with manual expert source review/fix/re-review and each QA trace; no CI/GH Actions.
 
-## Proposed task definitions — NOT YET APPROVED
+## Approved task definitions
+
+**Approval truth:** Machine-readable Harness heading only; CG-18 definitions remain PROPOSED / NOT_YET_APPROVED after moving the CG-18-BR09 public navigation requirement. All stories BLOCKED pending complete source review, current-hash delegated design approvals and authenticated resolver.
 
 ### US-001 — Manage homepage, About/Our Work, projects, team, hero images/typography…
 
