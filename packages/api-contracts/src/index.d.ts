@@ -134,3 +134,28 @@ export interface CG21RecoveryOutcome {
   status:"NOT_AVAILABLE"|"REQUESTED"|"REPLAY_CONFIRMED";message?:string;
   operationRef?:string;version?:number;
 }
+
+/** CG-03 / US-001: only an existing CG-01 protected role-change request. */
+export interface CG03Option{value:string;label:string;}
+export interface CG03CaseView{
+  caseRef:string;reference:string;accountName:string;roleName:string;
+  status:string;revision:number;proposalRevision:number;processVersion:number;
+  currentStep:number;submittedAt:string;previousCaseRef:string|null;
+}
+export interface CG03CaseDetail extends CG03CaseView{
+  history:Array<{action:string;remarks:string;at:string;by:string}>;
+}
+export interface CG03ProcessView{
+  active:boolean;version:number;firstReviewer:string|null;
+  finalReviewer:string;requiresFreshAuthenticator:boolean;message:string;
+}
+export interface CG03CreateInput{
+  targetAccountRef:string;targetRoleRef:string;requestKey:string;
+  previousCaseRef?:string;
+}
+export interface CG03CaseOutcome extends CG03CaseView{
+  result:"SUBMITTED"|"PREVIOUSLY_CONFIRMED";
+}
+export interface CG03Lookup{
+  status:"CONFIRMED"|"NOT_FOUND";case:CG03CaseView|null;
+}
