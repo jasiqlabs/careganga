@@ -46,7 +46,7 @@ The first CG-01 NestJS backend bootstrap includes a typed readonly deployment ca
 
 ## Bootstrap repository contract — one-time part of CG-01
 
-The module starts only after the technical bootstrap described in **HLD §4.0 / CG-01 DLD §1A**, all implemented as part of **US-001** rather than a separate CG business module. Bootstrap gives the future teams a real runnable single-NestJS/backend/PostgreSQL migration workspace, one Next.js public/admin/center Web app, two independently packaged Expo Android apps, one pinned lockfile/config/startup contract, source-faithful design tokens, and safe shared API/error/logging primitives. Later CG-02–CG-21 modules extend these exact workspaces only with real owner functionality. No future module or empty placeholder is allowed to block CG-01 startup.
+The module starts only after the technical bootstrap described in **HLD §4.0 / CG-01 DLD §1A**, all implemented as part of **US-001** rather than a separate CG business module. Bootstrap gives the future teams a real runnable single-NestJS/backend/PostgreSQL migration workspace, one Next.js public/admin/center Web app, two independently packaged Expo Android apps, one pinned lockfile/config/startup contract, source-faithful design tokens, and safe shared API/error/logging primitives. Later CG-02–CG-24 modules extend these exact workspaces only with real owner functionality. No future module or empty placeholder is allowed to block CG-01 startup.
 
 ## 2. Data owner and boundaries
 
