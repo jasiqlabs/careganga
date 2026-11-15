@@ -24,7 +24,8 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner-specific regression:** Wrong actor/signed URL does not disclose patient, salary, agreement or bank files. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-001-QA08 — Source-specific contract:** Generate a front/back ID card or receipt for a real approved source record using versioned template, QR, issue/expiry and allowed fields; private salary/patient details must not appear via public QR or guessed download.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — real CG-03-case evidence integration:** With an existing delivered CG-03 no-file approval case, CG-19 separately adds a genuine case-linked permitted upload, persisted media validation/scan, source-version/checksum and temporary CG-01-scope/reviewer-authorized download/preview. Wrong/revoked actor, mismatched case source revision, missing scan, direct object key or expired signed link cannot disclose file. CG-03 owns any later reviewer decision or document_verification, not CG-19; existing CG-03 initial three stories must still work when CG-19 is absent.
+Verification: On actual implementation source-trace US-001-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Provide configured email/SMS/WhatsApp/push, broadcast notice…
