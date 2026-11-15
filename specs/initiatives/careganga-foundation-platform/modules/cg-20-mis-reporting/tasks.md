@@ -22,7 +22,8 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs U01, C44, C45, C46, C47, C49, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner-specific regression:** Aggregate must not expose cross-branch, patient, payroll or donor-restricted values. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-001-QA08 — Source-specific contract:** Open cross-module Foundation dashboard before payroll or healthcare financial sources are delivered; missing module tiles say not yet available instead of showing fictional zero totals, while existing allowed KPIs match their real owner.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — Actual CG-05 operational KPIs with real scope:** When CG-05 has genuine project/task/visit/activity states, CG-20 C44–C49 and Admin aggregated project tiles use only scoped source read facade/current CG-01+CG-02 grants; compare to original CG-05 US-005 A01/A02/A09/A10. Missing CG-05 shows honest no-source; no shadow project counts or GPS.
+Verification: On actual implementation source-trace US-001-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Use standard and custom/saved/grouped reports, filters, supported export…
@@ -40,7 +41,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs U01, C44, C45, C46, C47, C49, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07 — owner-specific regression:** Revoked recipient cannot receive older queued report, idle scheduler causes zero repeated scans. Confirm correct database/remote state, access scope and user response under repeat or conflict.
 - **US-002-QA08 — Source-specific contract:** Schedule a report for an authorized center manager then revoke center access before delivery; queued export revalidates recipient at send/download time, masks patient/salary data and cannot leak stale private spreadsheet.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — Project and visit report source/finance privacy:** Export permitted CG-05 project/task due/activity/visit status with original CG-09 budget/payment as separate verified source and consistent cutoff; filter wrong/old branch, private GPS/CG-19 photo/beneficiary data and stale project change denied. Original CG-05 operational report remains independent of CG-20.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress

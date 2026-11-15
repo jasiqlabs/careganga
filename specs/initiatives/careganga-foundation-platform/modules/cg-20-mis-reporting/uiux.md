@@ -20,6 +20,9 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+**Real CG-05 project reporting receives C44–C49 original report UI:** Actual Projects & Field Operations report filter includes genuine allowed CG-05 project/category/status/CG-02 branch/period, source-backed task overdue/visit approval and activity status. Finance columns come only from original CG-09, while internal A01/A02/A09/A10 reports remain in CG-05 without CG-20. Responsive CareGanga filter/export status and honest no-source/permission/unknown states; Public Android/Website never gets private MIS. Screenshots are indexed audit; original PNG/native/device/pixel/motion source comparison NOT_RUN.
+
+
 ## Task-first source screenshot and UX acceptance
 
 Preserve original Admin KPI row, dated filter/search panels, chart/table grouping and export actions. Card drilldown must reconcile to a real authorized owner source and show accurate no-data vs permission-denied vs load-failed states. Scheduled report form names real recipients, current scope, safe selected fields and due cadence, with confirmation only after actual job created.
