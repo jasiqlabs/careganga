@@ -10,7 +10,7 @@ The CareGanga requirements PDF directly requires secure authentication/session m
 
 The PDF does **not** specify numeric response-time, availability, recovery or load limits. The numeric targets below are therefore **professional starting proposals**, not claims made by the client. Ratify production volume, hosting/budget and SLAs before treating targets as contractual acceptance criteria. Do not use hypothetical numbers as excuse to drop crucial data integrity or security requirements.
 
-**Priority markers:** **P0** = mandatory to call a relevant workflow production-ready; **P1** = recommended launch service target to approve with client; **P2** = later improvement or policy-dependent. NFRs are shared requirements: PRDs **reference these IDs** and add only module-specific exceptions, rather than duplicating a separate NFR checklist in 21 documents.
+**Priority markers:** **P0** = mandatory to call a relevant workflow production-ready; **P1** = recommended launch service target to approve with client; **P2** = later improvement or policy-dependent. NFRs are shared requirements: PRDs **reference these IDs** and add only module-specific exceptions, rather than duplicating a separate NFR checklist across the 24 canonical business modules.
 
 ## 2. One-page acceptance scorecard
 
