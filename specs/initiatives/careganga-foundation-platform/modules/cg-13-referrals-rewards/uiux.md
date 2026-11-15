@@ -21,6 +21,9 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+**B14–B16 required future-owner UI:** CG-13 Reward Store and Add Reward Product shows source-backed points cost, category, availability and **real selected CG-12 stock only for physical products**. In digital product editor there is no required store selector. An approved real member's public/mobile redemption sees current eligible points and safe stock status, distinct Review Pending / Stock Held / Awaiting Fulfillment / Actually Issued / Reversed, with original CareGanga colors/cards and no invented warehouse quantity. CG-13 owns this original screenshot UI; B19 does not gain a reward catalog or a public warehouse screen. Actual screenshot/rendered pixel/device tests are NOT_RUN.
+
+
 ## Original-theme and task-specific interaction blueprint
 
 Preserve referral history, rank/point badges, reward catalog and redemption status. Member sees own available/earned/redeemed amounts and eligibility reasons, not raw referral IDs; staff sees fraud review and accurate issuer state. Tablet/phone use clear per-reward cards without duplicating money or showing virtual stock.

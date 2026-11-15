@@ -42,6 +42,13 @@ Detailed authoritative clauses:
 - **CG-13-BR07:** Points deducted and rewards issued must match completed qualifying/redemption transactions; fulfillment and stock movement must be traceable, including reversal/correction under defined rules.
 - **CG-13-BR08:** Provide referral/leaderboard/rank/points and redemption reports with privacy-aware visibility.
 
+## CG-13 receiving-owner physical reward from real CG-12 stock
+
+**Narrow implementation integration, NOT full CG-13 approval.** Original Admin screenshot B11–B16 reward ranks/points/product cards and redemption are **CG-13's** owner UI, not CG-12 B19 stock. **US-001** links physical reward product to actual permitted ACTIVE CG-12 item and true safe available/held quantity; CG-13 owns product/points price/category/image and cannot create another warehouse balance. Digital reward has no physical inventory requirement. **US-003** qualifies actual CG-04 member/volunteer, holds correct CG-13 points and original CG-12 stock using source-linked replay-safe reservation; after actual authorized approval/physical issue confirmation, it completes one CG-12 physical stock event and one accepted CG-13 redemption/points effect. **A hold is not delivery, and a displayed reward is not an issued item.** On cancellation, failure, rejected decision and reversal, release real CG-12 reservation and compensate CG-13 points with original linked immutable effects, no double issue or double refund.
+
+**Required channels:** Original B14–B16 Add Product grid/points/stock cards and secure redemption review in Foundation Admin; true member/volunteer public client/Android display when original CG-13 delivered, verified CG-01/04 eligibility, actual CG-03 case if required, CG-12 source-safe selector/hold/issue/return typed facade, scoped PostgreSQL unique source event and auditable PENDING/ISSUED/REVERSED statuses. B19 stock Distribution Log shows actual warehouse issue, not member private point history. CG-13 US-002 original referral points credit works without physical reward product. Full receiving story QA remains pending its own CG-13 expert review.
+
+
 ## Independently deliverable vertical flow
 
 **Concrete acceptance:** Attribute eligible referral once, credit points only after real verified completion, show correct balance and redeem one reward under simultaneous attempts; reject fraud/self-referral and restore stock/points on failed issue. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.

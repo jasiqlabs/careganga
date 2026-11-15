@@ -22,7 +22,9 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs B11, B12, B13, B14, B15, B16, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — business regression:** Inactive tier and retroactive configuration change must not silently rewrite earned points. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-001-QA08 — Source-specific workflow:** Configure overlapping rank thresholds or reward points cost while a redemption is pending; reject invalid rank configuration, preserve accepted redemption point price and show eligible rank history.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — Physical reward product real CG-12 item:** In B16 authorized Add Reward Product, PHYSICAL reward selects true CG-12 active item and real stock-safe option with points cost, without a second CG-13 quantity ledger or creating CG-12 stock from reward form. DIGITAL reward has no mandatory physical picker.
+- **US-001-QA10 — B14/B15 source removal and status:** When original CG-12 item/store goes inactive or unavailable, CG-13 physical product cannot display fulfillable stock from cached card; active digital products and real CG-13 point configuration continue.
+Verification: On actual implementation source-trace US-001-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Record attributed referral, qualify only after defined approved event…
@@ -58,7 +60,11 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs B11, B12, B13, B14, B15, B16, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07 — business regression:** Two simultaneous redemptions for the last eligible reward cannot both succeed. Verify persisted state after race/retry, scoped response and other-client/report consistency.
 - **US-003-QA08 — Source-specific workflow:** Two approved members request the last physical reward at the same time; only one CG-12 stock reservation and one points debit may complete, while canceled/failed fulfillment reverses the losing reservation safely.
-Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA09 — Two members one last physical reward:** With actual CG-04 eligible members and last real CG-12 piece, two CG-13 redemptions race. Exactly one accepted original CG-12 reservation and eligible points hold, losing member not debited and not Fulfilled; source event key/replay safe.
+- **US-003-QA10 — Actual original issue gates completion:** After true CG-03 approval where required, confirm exactly one CG-12 physical ISSUE linked to real redemption, then original CG-13 completed points debit and Issued status; pending stock hold never means delivered item.
+- **US-003-QA11 — Cancel/return/replay compensation:** Cancel/reject physical redemption or return original issue; CG-12 hold release/RETURN and CG-13 linked points restoration each occur once, even duplicate callbacks/unknown lost reply. No double stock issue/points credit.
+- **US-003-QA12 — Original B14–B16 Web/public native and privacy:** Admin product/fulfillment and allowed member/volunteer Web/Public Android display source-backed CG-12 physical availability and original CG-13 points. Wrong root, false stock reference, unauthorized reward actor and protected supplier metadata denied in CG-13+CG-12 typed API.
+Verification: On actual implementation source-trace US-003-QA01–QA12 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001, US-002
 
 ## Execution progress
