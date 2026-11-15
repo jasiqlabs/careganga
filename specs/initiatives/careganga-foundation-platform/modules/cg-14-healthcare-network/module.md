@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Provider/center and doctor professional profiles, many-center affiliation, fee/service catalog. **Real prerequisite owners:** CG-01, CG-03, actual CG-02 geography. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Provider/center and doctor professional profiles, many-center affiliation, fee/service catalog. **Delivery-critical, already-delivered owners:** CG-01 center account/permission, CG-02 real geography, CG-03 verified provider/doctor approvals and CG-19 protected evidence files. **Later owned integrations, never required to fake this module's first working path:** CG-15 adds genuine schedules and booking; CG-16 diagnostics adds actual tests; CG-17 subsidies and CG-18 public directory must bind approved source projections only. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Provider/doctor pending/approved/returned/suspended, publication separate. One doctor identity across centers; no fake verified badge or public private bank info. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -53,6 +53,10 @@ Detailed authoritative clauses:
 - **CG-14-BR18:** Only approved/published center and doctor records are searchable by the public; internal account status and public listing status remain controlled independently.
 - **CG-14-BR19:** Center staff can submit permitted center website content, service descriptions, images, FAQs, support requests and operating preferences, subject to Foundation review/publication and shared CG-18/19 ownership. The Center Portal cannot publish unverified clinical credentials or independently change Foundation assistance.
 - **CG-14-BR20:** Publish an understandable healthcare service directory covering the nine illustrated provider categories, while separately identifying each center's actual bookable consultation services, diagnostic/lab offerings and published enquiry-only services. Approved center profiles include service/facility tags, contact/map location, professionals, current price and applicable benefits where configured.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Verify/register center and doctor with real licenses and one-to-many center affiliation, publish only eligible practitioner details, suspend center access and deny unrelated medical/bank data; no future booking required to deliver directory. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

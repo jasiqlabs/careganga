@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Patients and consent, schedules, slot holds, booking, reception queue. **Real prerequisite owners:** CG-14 doctor-center, CG-01 patient, CG-19 slip; real CG-17 payment when available. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Patients and consent, schedules, slot holds, booking, reception queue. **Delivery-critical, already-delivered owners:** CG-14 verified doctor-center fee/association, CG-01 protected patient identity, CG-19 real appointment slip/QR. **Later owned integrations, never required to fake this module's first working path:** CG-17 adds verified online payment, subsidy and refund settlement and must QA existing booking; until then CG-15 transparently allows full-fee DUE/pay-at-center without false payment confirmation. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Slot free/held/booked/blocked; appointment confirmed/completed/cancelled/no-show. Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -61,6 +61,10 @@ Detailed authoritative clauses:
 - **CG-15-BR23:** Permit authorized cancellation/rescheduling/status adjustment consistent with center capacity and financial/refund policy, with reasons/history.
 - **CG-15-BR24:** Issue appointment confirmations/reminders and send/share permitted records via configured email/SMS/WhatsApp/push. Include **Add to Calendar** from confirmed appointment details with actual doctor/center/date/time; exported calendar details must follow patient visibility rules.
 - **CG-15-BR25:** Provide center-wise and Foundation-wide scoped booking lists, appointment summaries, patient history and reporting.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Create/verify a real patient, display same available doctor slots in center-first/date-first journeys, reserve one cross-center last slot atomically and show genuine confirmation/queue; do not double-book or expose another patient's records. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

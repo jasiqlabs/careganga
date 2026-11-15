@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Item/supplier catalog, stock movement ledger, material requests/fulfilment. **Real prerequisite owners:** CG-01, CG-02 actual storage and CG-03. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Item/supplier catalog, stock movement ledger, material requests/fulfilment. **Delivery-critical, already-delivered owners:** CG-01 secured actor/role, CG-02 actual store/branch geography and CG-03 approval case when required. **Later owned integrations, never required to fake this module's first working path:** CG-09 adds accounting cost/payments, CG-06 uses issue for aid, CG-13 uses physical reward fulfillment; later consumer implements true integration. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Request draft/approved/rejected/fulfilled; receipt/issue/reversal. Atomic stock, no duplicate issues or unauthorized negative balance. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -36,6 +36,10 @@ Detailed authoritative clauses:
 - **CG-12-BR04:** Submit material requests, review/approve/reject them and track request/fulfilment status.
 - **CG-12-BR05:** Record inventory distributions, low-stock alerts and stock reports.
 - **CG-12-BR06:** Link relevant stock consumption to projects/beneficiary distribution/reward fulfillment without maintaining duplicate counters.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Create real supplier/item, receive stock, request/reserve/issue/return and reject simultaneous competing last-quantity issues; every movement has real source, stock never goes negative or silently changes another branch. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

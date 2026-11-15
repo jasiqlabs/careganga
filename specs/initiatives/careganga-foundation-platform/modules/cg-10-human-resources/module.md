@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Employment/ID, attendance/leave, transfers/exits, performance, letters. **Real prerequisite owners:** CG-01, CG-02, CG-03, CG-19 and CG-09 claims. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Employment/ID, attendance/leave, transfers/exits, performance, letters. **Delivery-critical, already-delivered owners:** CG-01 staff login and scoped roles, CG-02 real branches/departments, CG-03 applicable HR approvals, CG-19 protected issued letters/files. **Later owned integrations, never required to fake this module's first working path:** CG-11 adds real salary calculation/payout, CG-09 handles authorized reimbursements; CG-05 projects and CG-20 reporting consume real staff data. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** New/review/active/probation/hold/exit; leave pending/approved/rejected. Employment not login; payroll/salary and bank data remain private/owned. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -48,6 +48,10 @@ Detailed authoritative clauses:
 - **CG-10-BR13:** Employee letter/memo records support draft, edit, preview, authorized approval, issuance/dispatch, acknowledgment or received-copy upload where applicable, reissue/history and PDF/print. Supported templates include appointment, offer, joining, experience, relieving and other approved official letters; the generator is shared under CG-19.
 - **CG-10-BR14:** Transfer, promotion and exit workflows preserve current/proposed role, branch, reporting manager, salary and effective dates. Exit review can track handover, HR/finance/assets clearance and final dues/settlement without silently marking salary or reimbursements as paid.
 - **CG-10-BR15:** Employee ID-card issuance, reissue, deactivation, print/download and authorized QR verification use shared document templates; authorized display fields and history derive from approved person/employment data, not a separate manual identity store.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Create real staff, record attendance/leave and transfer with versioned changes; maintain old/new branch scope correctly, deny unauthorized bank/salary access and issue real document proof without claiming a payout. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

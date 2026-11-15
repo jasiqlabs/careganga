@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Salary versions, deterministic payroll periods, approved payment batches. **Real prerequisite owners:** CG-10, CG-09, CG-03 and CG-19. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Salary versions, deterministic payroll periods, approved payment batches. **Delivery-critical, already-delivered owners:** CG-10 existing employee/attendance, CG-03 approval case, CG-09 real posting/payable and CG-19 secure payslip generation. **Later owned integrations, never required to fake this module's first working path:** No subsequent module is needed for payroll's primary calculation/payment path; CG-20 may only read redacted aggregate projections. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Payroll draft/review/approved/payment pending/settled. No duplicate period/source posting; payment initiation ≠ settled money. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -42,6 +42,10 @@ Detailed authoritative clauses:
 - **CG-11-BR09:** One controlled payroll configuration covers frequency/period, salary components, allowances, deductions, taxes and statutory settings where applicable, bank/payment instructions, overtime, late/leave adjustment, arrears, revisions, bonuses/holds, payslip templates and notifications; every configured rule must have defined eligibility/effective-date and effect on actual calculations.
 - **CG-11-BR10:** Payroll processing explicitly separates salary structure, draft run/attendance fetch, calculation and validation, review/adjustment, verification/approval, reserve/payment batch, released salary, payslip issue and history. A dashboard link or a re-generated payslip does not create a second salary obligation.
 - **CG-11-BR11:** Employee bank, compensation and salary adjustment requests are recorded as controlled changes to the existing employee/payroll relationship, with authorization and effective date. Sensitive bank and salary details remain restricted.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Freeze versioned pay rules, calculate net salary for one real period, get authentic approval, send one payment instruction and post once on verified result; same period retry cannot pay twice, while draft/approved/paid states stay distinct. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

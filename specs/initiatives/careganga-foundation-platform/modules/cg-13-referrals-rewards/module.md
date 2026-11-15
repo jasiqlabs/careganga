@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Verified referral attribution, point/rank ledger, reward catalog/redemption. **Real prerequisite owners:** CG-04, CG-12 for stock and CG-09 when value moves. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Verified referral attribution, point/rank ledger, reward catalog/redemption. **Delivery-critical, already-delivered owners:** CG-04 verified eligible member, CG-12 real stock for physical rewards and CG-09 real value movements where applicable. **Later owned integrations, never required to fake this module's first working path:** CG-20 can report verified reward performance; CG-18 may publish only approved reward descriptions. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Referral pending/qualified; redemption requested/approved/fulfilled/reversed. No unearned points or repeated redemption/stock issue. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -39,6 +39,10 @@ Detailed authoritative clauses:
 - **CG-13-BR06:** Let eligible users submit point-redemption requests, view status/history and have fulfillment processed by authorized staff.
 - **CG-13-BR07:** Points deducted and rewards issued must match completed qualifying/redemption transactions; fulfillment and stock movement must be traceable, including reversal/correction under defined rules.
 - **CG-13-BR08:** Provide referral/leaderboard/rank/points and redemption reports with privacy-aware visibility.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Attribute eligible referral once, credit points only after real verified completion, show correct balance and redeem one reward under simultaneous attempts; reject fraud/self-referral and restore stock/points on failed issue. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 

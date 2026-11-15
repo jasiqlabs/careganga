@@ -24,6 +24,12 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+## Original-theme and task-specific interaction blueprint
+
+Keep the original finance view (reference A19/B01-B02/U33-U42) with proper voucher/claim/invoice wizard, account/business-name selectors, dated debit/credit lines, explicit subtotal/tax/charges/total, review status and separate PAID versus APPROVED. Cash/Bank/Day/Trial Balance views remain source-ledger backed. On narrow screens preserve column meaning through stacked line items and sticky totals; never expose UUID or raw SQL error.
+
+**Mandatory cross-state visual acceptance:** Match the original indexed reference's verified colors, type rhythm, iconography, sidebar/header where applicable, controls, drawers, status labels, card/table density and observed motion using one shared bootstrap token source. For each relevant desktop, phone, tablet and native flow inspect primary action, filters, long text, loading, true empty, forbidden, invalid, stale/conflict, network-unknown, saved and final-confirmed state. Only original video or approved asset can prove motion duration/easing; reduced-motion must remain accessible. Source-level review cannot claim rendered fidelity: VISUAL_NOT_RUN until independent source-image/video-to-real-screen comparison.
+
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.

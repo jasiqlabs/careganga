@@ -20,7 +20,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ## Business owner and isolation
 
-**Owns:** Account chart, balanced journals, vouchers, claims/invoices, budgets and reconciliation. **Real prerequisite owners:** CG-01, CG-03 and CG-02 when scoped. CG-01 owns identity and access; CG-03 owns approval cases; CG-09 authoritative money, CG-19 shared document/message, CG-18 publication and CG-21 platform audit. Do not create shadow domain records or write directly to other owners' tables. Future modules must complete their own real integration and selectors when data exists; no fake master rows or false completed feature.
+**Owns:** Account chart, balanced journals, vouchers, claims/invoices, budgets and reconciliation. **Delivery-critical, already-delivered owners:** CG-01 permissions, CG-02 real branch scope, CG-03 actual review/approval case when applicable. **Later owned integrations, never required to fake this module's first working path:** CG-04/07/08/10/11/12/17 create their own source financial events later, calling CG-09 posting facade instead of creating ledgers. The first implemented workflow must use real source data and real authorized selectors; the later introducing owner supplies integration QA.
 
 **State and invariant:** Draft/review/approved/posted/paid/reversed. Balanced journal, one source posting, correct funds vs commitment, no fake payment. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
@@ -51,6 +51,10 @@ Detailed authoritative clauses:
 - **CG-09-BR15:** Provide finance search/filter/report/exports by branch, project, period, account, payment method, creator, approver, status and amount.
 - **CG-09-BR16:** Budgets and fund summaries expose **approved, committed, allocated, utilized, released, remaining and over-budget** amounts as distinct concepts with authorized definitions and linked accounting sources; show supporting period, branch/project, funder and category drill-down rather than reconciling manually duplicated dashboard totals.
 - **CG-09-BR17:** Guided manual ledger-entry screens may let an operator select debit or credit and account, but the accepted accounting transaction must be complete, balanced, approved where required, attributable to its source and traceable through general ledger, cash book, bank book, day book, project/CSR ledger and trial balance.
+
+## Independently deliverable vertical flow
+
+**Concrete acceptance:** Configure real accounts and post balanced debit/credit with one immutable source event key; concurrent duplicate payments, stale voucher, wrong-branch accounts and invalid journal lines cannot create extra cash or misleading totals. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
 
 ## UI/UX, NFR and Planning acceptance
 
