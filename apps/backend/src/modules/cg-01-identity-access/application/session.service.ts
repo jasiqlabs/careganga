@@ -166,8 +166,15 @@ export class SessionService implements IdentityAuthorization {
   }
   private async allowedActionsFor(actor: VerifiedFoundationActor): Promise<string[]> {
     // Reconfirm session and membership in the same guarded query: client roles never confer authority.
-    const result=await this.db.query<{is_protected:boolean;capability_key:string|null}>(`
-      SELECT r.is_protected,rg.capability_key
+    const result=await this.db.query<{
+      is_protected:boolean;capability_key:string|null;approved_sensitive:boolean
+    }>(`
+      SELECT r.is_protected,rg.capability_key,
+        EXISTS(SELECT 1 FROM cg01_approved_sensitive_assignment eff
+          WHERE eff.realm_id=a.realm_id AND eff.target_account_id=a.id
+            AND eff.target_role_id=r.id AND eff.approved_role_revision=r.revision
+            AND eff.resulting_access_version<=a.access_version
+        ) AS approved_sensitive
       FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
@@ -185,8 +192,12 @@ export class SessionService implements IdentityAuthorization {
     const implemented=capabilitiesInUse();
     // A protected Foundation root has ONLY the concrete implemented CG-01 actions.
     if(result.rows[0].is_protected)return implemented.map(c=>c.key);
-    return [...new Set(result.rows.map(r=>r.capability_key)
-      .filter((k):k is string=>Boolean(k)&&implementedCapability(k!)?.assignable===true))];
+    return [...new Set(result.rows
+      .filter(row=>row.capability_key&&(
+        implementedCapability(row.capability_key)?.assignable===true||
+        (row.capability_key==="roles.manage"&&row.approved_sensitive)
+      ))
+      .map(row=>row.capability_key as string))];
   }
   async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
