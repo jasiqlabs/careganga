@@ -130,7 +130,7 @@ export function StaffAuthenticationScreen(){
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={styles.brandBar}><View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={styles.brandLetter}>CG</Text></View><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
+        <View style={styles.brandBar}><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
         <Text accessibilityRole="header" style={styles.title}>Foundation staff access</Text>
         {state==="checking"?<ActivityIndicator accessibilityLabel="Verifying saved session"/>:actor?
           <View style={styles.formCard}>
