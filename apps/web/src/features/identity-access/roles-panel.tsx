@@ -475,6 +475,12 @@ export function RolesPanel(){
             </div>
             {copyError&&<p className="error" role="alert">{copyError}</p>}
           </div>}
+          <label className="field">Area level
+            <select aria-label="Role scope" value="foundation" disabled>
+              <option value="foundation">Foundation (organization-wide)</option>
+            </select>
+            <small>Further area options become available only when their owning module is delivered.</small>
+          </label>
           <fieldset className="role-color-fieldset">
             <legend>Colour</legend>
             <div className="role-color-options" role="radiogroup" aria-label="Role colour">
