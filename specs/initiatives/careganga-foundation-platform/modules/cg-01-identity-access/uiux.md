@@ -64,6 +64,14 @@ The full archive is the visual source; the [Admin audit §2.1, §8.1, §8.2, §1
 
 **Shared behavior:** Backend capabilities govern what users can see and do; clients do not issue forbidden background requests. Use the screenshot's existing interface wording and action positions when compatible with the PRD. For every API result show a truthful human-language success/pending/denied/duplicate/conflict/unavailable state—never raw UUID, permission code, SQL or exception.
 
+## CG-01 security-policy editor (transferred from CG-21)
+
+**Owner:** CG-01-BR11 / FR-001 / US-004. The existing Foundation Admin account/role shell (U02–U10/B34) owns the protected **Security Policy** navigation and editor, not the CG-21 general settings page. Preserve CareGanga brand tokens, active sidebar treatment, tab/section hierarchy, right-side detail/edit drawer, readable labels, button placement and accessible status feedback. The original screenshots do **not** verify a dedicated security-policy view; reuse the established Admin component vocabulary instead of claiming pixel-perfect original policy screen.
+
+For eligible current Foundation Super Admin only, show actual policy values and units: session maximum age, idle timeout, failed-attempt window and limit, with privileged MFA shown **required and not disableable**. Editing is a guarded task: read actual effective revision → change permitted fields → explicit confirmation + fresh CG-01 MFA → save once through CG-01 API → backend-confirmed new revision and safe audit. Conflict reload, revoked/MFA-expired, validation, unknown-write/result lookup and policy effect on existing sessions need truthful next-action messages. Prevent accidental loss of form edits on narrow Web; no technical IDs or raw session secrets.
+
+Internal Android implements native read/edit of the same authorized CG-01 policy, preserving brand semantic tokens, touch targets, Back/keyboard, reauthentication and visible policy effects, without a WebView. Public Android and Public Web **enforce** the updated session policy but have no Security Policy administration route. Non-root users never receive this sensitive form in navigation, and direct API/deep links remain backend-denied. This editor has **no CG-21, CG-02, CG-03 or future owner record requirement**; visual/device/motion QA remains NOT_RUN.
+
 ## 4. Responsive and native adaptation without theme drift
 
 **Admin Web:** Keep the desktop screenshot's navigation, header, KPI/list/filter/table/drawer hierarchy at desktop widths. On tablet, use the same components/tokens with controlled density and collapsing secondary panels. On narrow phones, preserve theme/icons/labels but collapse the sidebar into accessible navigation, convert overflowing tables into usable row details, and make drawers full-width when needed. Forms must remain usable at 360px and zoom/large type. **Do not replace the whole screen with unrelated decorative cards.**
