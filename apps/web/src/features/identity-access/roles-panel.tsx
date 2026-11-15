@@ -43,6 +43,7 @@ export function RolesPanel(){
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
   const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
+  const dialogRef=useRef<HTMLElement|null>(null);
 
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     const generation=++latestRead.current;
@@ -86,6 +87,32 @@ export function RolesPanel(){
     return()=>document.removeEventListener("keydown",shortcut);
   },[]);
 
+  // Keyboard focus stays inside the current drawer and returns to its trigger.
+  useEffect(()=>{
+    if(!editor&&!pendingRetire)return;
+    const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    const first=dialogRef.current?.querySelector<HTMLElement>("input:not([disabled]),button:not([disabled])");
+    first?.focus();
+    const keyDown=(event:KeyboardEvent)=>{
+      const dialog=dialogRef.current;
+      if(!dialog)return;
+      if(event.key==="Escape"){
+        if(saving)return;
+        event.preventDefault();setEditor(null);setPendingRetire(null);
+        return;
+      }
+      if(event.key!=="Tab")return;
+      const items=Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
+      )).filter(el=>el.getClientRects().length>0);
+      if(!items.length){event.preventDefault();return;}
+      const firstItem=items[0],lastItem=items[items.length-1];
+      if(event.shiftKey&&document.activeElement===firstItem){event.preventDefault();lastItem.focus();}
+      else if(!event.shiftKey&&document.activeElement===lastItem){event.preventDefault();firstItem.focus();}
+    };
+    document.addEventListener("keydown",keyDown);
+    return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
+  },[editor,pendingRetire,saving]);
   function open(mode:FormMode,source?:Role){
     if(!actions.includes("roles.manage"))return;
     if(source?.protected)return;
@@ -258,7 +285,7 @@ export function RolesPanel(){
       {historyCursor&&<button type="button" onClick={()=>void moreHistory()}>Load more history</button>}
     </section>}
     {pendingRetire&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="retire-role-title" className="role-drawer">
+      <section role="dialog" aria-modal="true" aria-labelledby="retire-role-title" className="role-drawer" ref={dialogRef}>
         <h2 id="retire-role-title">Retire {pendingRetire.name}?</h2>
         <p>The role will no longer be available for new assignments.</p>
         <p>Any existing assignments must be reassigned before retirement is permitted.</p>
@@ -270,7 +297,7 @@ export function RolesPanel(){
       </section>
     </div>}
     {editor&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="role-editor-title" className="role-drawer">
+      <section role="dialog" aria-modal="true" aria-labelledby="role-editor-title" className="role-drawer" ref={dialogRef}>
         <header className="topbar">
           <h2 id="role-editor-title">{editor.mode==="create"?"Create role":editor.mode==="edit"?"Edit role":"Copy role"}</h2>
           <button type="button" disabled={saving} onClick={()=>setEditor(null)} aria-label="Close role editor">Close</button>
