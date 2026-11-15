@@ -113,7 +113,11 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
       await json<{status:string}>(write.url,{
         method:write.method,headers:{"Content-Type":"application/json"},body:JSON.stringify(write.body)
       });
-      setPending(null);setNotice("Change confirmed.");await reload();
+      setPending(null);setNotice("Change confirmed.");
+      if(write.action==="AREA_CREATE"||write.action==="AREA_UPDATE")resetArea();
+      if(write.action==="DEPARTMENT_CREATE"||write.action==="DEPARTMENT_UPDATE")resetDepartment();
+      if(write.action==="PARTICIPANT_ADD"){setParticipantAccount("");setParticipantRole("");}
+      await reload();
     }catch(e){
       const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
       setError(e instanceof Error?e.message:"The result cannot be confirmed.");
