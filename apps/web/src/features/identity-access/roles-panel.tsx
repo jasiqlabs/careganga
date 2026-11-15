@@ -9,7 +9,11 @@ type Role={
 };
 type Capability={key:string;businessLabel:string;group:string;assignable:boolean;sensitive:boolean};
 type Group={group:string;actions:Capability[]};
-type RoleList={roles:Role[];total:number;offset:number;limit:number};
+type RoleSummary={
+  totalRoles:number;implementedActions:number;activeRoles:number;
+  inactiveRoles:number;customRoles:number;systemRoles:number
+};
+type RoleList={roles:Role[];total:number;offset:number;limit:number;summary:RoleSummary};
 type AuditEvent={occurredAt:string;actorDisplay:string;actionLabel:string;targetDisplay:string;outcome:string};
 type FormMode="create"|"edit"|"copy";
 type RoleStatus="all"|"active"|"retired";
@@ -33,6 +37,7 @@ export function RolesPanel(){
   const [tab,setTab]=useState<RoleStatus>("all");
   const [roleKind,setRoleKind]=useState<RoleKind>("all");
   const [total,setTotal]=useState(0);
+  const [summary,setSummary]=useState<RoleSummary|null>(null);
   const [offset,setOffset]=useState(0);
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState<Notice|null>(null);
@@ -64,7 +69,7 @@ export function RolesPanel(){
   const purgeProtected=useCallback((message:string)=>{
     // A denial from any restricted endpoint invalidates all protected view state.
     ++latestRead.current;++copyRead.current;++auditRead.current;
-    setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);
+    setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);setSummary(null);
     setSelectedRoleRef(null);
     setHistory(null);setHistoryCursor(null);setEditor(null);setPendingRetire(null);setDetails(null);
     setLoading(false);setCopyLoading(false);
@@ -84,7 +89,7 @@ export function RolesPanel(){
       if(generation!==latestRead.current)return;
       setRoles(list.roles);setGroups(catalog.groups);
       setSelectedRoleRef(previous=>list.roles.some(r=>r.roleRef===previous)?previous:list.roles[0]?.roleRef??null);
-      setActions(effective.actions.map(x=>x.key));setTotal(list.total);
+      setActions(effective.actions.map(x=>x.key));setTotal(list.total);setSummary(list.summary);
       setOffset(skip);
     }catch(e){
       if(generation!==latestRead.current)return;
@@ -298,10 +303,17 @@ export function RolesPanel(){
       <div><h1>Roles & permissions</h1><p>Foundation staff access</p></div>
       <div className="toolbar"><Link href="/admin">My account</Link><Link href="/">View site</Link></div>
     </header>
-    <section aria-label="Role summary" className="kpi-grid">
-      <div className="kpi"><small>Matching roles</small><strong>{total}</strong></div>
-      <div className="kpi"><small>Active on this page</small><strong>{roles.filter(r=>r.active).length}</strong></div>
-      <div className="kpi"><small>Protected roles</small><strong>{roles.filter(r=>r.protected).length}</strong></div>
+    <section aria-label="Foundation role statistics" className="kpi-grid">
+      {([
+        ["Total Roles",summary?.totalRoles],
+        ["Current Permission Actions",summary?.implementedActions],
+        ["Active Roles",summary?.activeRoles],
+        ["Inactive Roles",summary?.inactiveRoles],
+        ["Custom Roles",summary?.customRoles],
+        ["System Roles",summary?.systemRoles]
+      ] as const).map(([label,value])=><div className="kpi" key={label}>
+        <small>{label}</small><strong>{value??"—"}</strong>
+      </div>)}
     </section>
     <div className="toolbar">
       <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0,tab,roleKind);}}
