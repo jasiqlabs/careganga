@@ -7,6 +7,7 @@ export default function AdminLogin() {
       <h1 id="sign-in-title">Foundation staff sign in</h1>
       <p>Use your verified work account and authenticator.</p>
       <LoginForm/>
+      <p><Link href="/admin/recovery">Recover account</Link></p>
     </section>
   </main>;
 }
