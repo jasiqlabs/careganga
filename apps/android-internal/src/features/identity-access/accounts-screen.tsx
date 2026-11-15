@@ -1,5 +1,6 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useCallback,useEffect,useState } from "react";
-import { BackHandler,KeyboardAvoidingView,Platform,Pressable,SafeAreaView,ScrollView,
+import { BackHandler,KeyboardAvoidingView,Platform,Pressable,ScrollView,
   StyleSheet,Text,TextInput,View } from "react-native";
 import * as Crypto from "expo-crypto";
 import type { CG01AccountList,CG01AccountView } from "@careganga/api-contracts";
@@ -75,7 +76,8 @@ export function AccountsScreen({token,onExit,onExpired}:{
     }catch(e){
       if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))
         deny(e.message);
-      else{setList(null);setMessage("Staff accounts are temporarily unavailable.");}
+      else{setList(null);setRoles([]);setActions([]);setSelected(null);
+        setMessage("Staff accounts are temporarily unavailable. Protected information remains hidden.");}
     }finally{setBusy(false);}
   },[token,deny]);
   useEffect(()=>{void load();},[load]);
@@ -129,7 +131,9 @@ export function AccountsScreen({token,onExit,onExpired}:{
         }
         setMessage("Account change confirmed.");
       }
-      setPending(null);setScreen("list");setRequestKey("");await load(search,0,filter);
+      setPending(null);setScreen("list");setRequestKey("");
+      await load(search,0,filter);
+      setMessage("Change saved. The latest account state is shown above.");
     }catch(e){
       const reason=e instanceof Error?e.message:"UNAVAILABLE";
       if(reason==="SESSION_EXPIRED"||reason==="PERMISSION_DENIED")deny(reason);
