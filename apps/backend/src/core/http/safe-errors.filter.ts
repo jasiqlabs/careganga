@@ -28,7 +28,9 @@ export class SafeErrorsFilter implements ExceptionFilter {
       STALE_ACCOUNT:"This staff account changed. Refresh before saving.",
       ROLE_ALREADY_ASSIGNED:"That role is already assigned to the account.",
       ROLE_ALREADY_REVOKED:"The account's role was already removed.",
-      ACCOUNT_ALREADY_IN_STATUS:"The account already has that status."
+      ACCOUNT_ALREADY_IN_STATUS:"The account already has that status.",
+      POLICY_STALE:"Security policy changed elsewhere. Refresh before saving.",
+      POLICY_REPLAY_CONFLICT:"This policy request reference was already used. Refresh before retrying."
     };
     const payload=error instanceof HttpException?error.getResponse():null;
     const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
