@@ -318,6 +318,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
           </View>)}
           {!details.protected&&details.actionKeys.length===0&&<Text>No permissions granted.</Text>}
         </>}
+        {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>{setDetails(null);void loadHistory();}}>
+          <Text style={styles.buttonText}>Access history</Text>
+        </Pressable>}
         <Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>setDetails(null)}><Text style={styles.buttonText}>Back to roles</Text></Pressable>
       </ScrollView>
