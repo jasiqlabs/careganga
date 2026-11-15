@@ -214,19 +214,16 @@ export class PlatformSettingsService {
     // never log the digest input or echo reference values in any response.
     const payloadDigest=digest([provider,purpose,pointer,revision]);
     const actor=await this.authorize(bearer,"platform.integrations.manage");
-    const client=await this.db.connect();
-    // Unconfigured providers are allowed; no verification or provider call is claimed.
-    // Check a prior request before charging another MFA proof attempt.
-    const already=await client.query<CommandRow>(`
+    // Use a one-shot pool query for replay so failures cannot leak a borrowed
+    // connection. A fresh write obtains its own short transaction below.
+    const already=await this.db.query<CommandRow>(`
       SELECT request_digest,resource_ref,result_revision FROM platform_command
       WHERE actor_account_id=$1 AND action='INTEGRATION_REFERENCE' AND request_key=$2
     `,[actor.accountId,requestKey]);
     if(already.rowCount){
-      client.release();
       if(already.rows[0].request_digest!==payloadDigest)throw conflict("PLATFORM_REPLAY_CONFLICT");
       return {status:"REPLAY_CONFIRMED",revision:already.rows[0].result_revision};
     }
-    client.release();
     await this.sessions.limitFoundationRootProof(actor);
     const tx=await this.db.connect();
     let started=false;
