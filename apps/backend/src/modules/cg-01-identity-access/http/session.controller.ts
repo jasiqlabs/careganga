@@ -2,6 +2,8 @@ import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Re
 import type { Request } from "express";
 import { SessionService } from "../application/session.service";
 import { SessionGuard, type AuthenticatedRequest } from "./session.guard";
+import { randomUUID } from "node:crypto";
+import type { CareGangaRequest } from "../../../core/observability/request-correlation";
 
 type SignInBody = { email?: unknown; password?: unknown; totp?: unknown; deviceLabel?: unknown };
 
@@ -11,7 +13,7 @@ export class SessionController {
 
   @Post("login")
   @HttpCode(200)
-  async signIn(@Body() body: SignInBody, @Req() request: Request) {
+  async signIn(@Body() body: SignInBody, @Req() request: CareGangaRequest) {
     if (!body || typeof body.email !== "string" || body.email.length > 254
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
       || typeof body.password !== "string" || body.password.length < 1 || body.password.length > 1024
@@ -20,7 +22,8 @@ export class SessionController {
       throw new BadRequestException();
     return this.service.signIn({
       email:body.email,password:body.password,totp:body.totp,
-      remoteAddress:request.ip ?? "unknown", deviceLabel:typeof body.deviceLabel === "string" ? body.deviceLabel : "Unknown device"
+      remoteAddress:request.ip ?? "unknown", deviceLabel:typeof body.deviceLabel === "string" ? body.deviceLabel : "Unknown device",
+      correlationRef:request.cgRequestId??randomUUID()
     });
   }
 
