@@ -499,12 +499,7 @@ export function RolesPanel(){
             </div>
             {copyError&&<p className="error" role="alert">{copyError}</p>}
           </div>}
-          <label className="field">Area level
-            <select aria-label="Role scope" value="foundation" disabled>
-              <option value="foundation">Foundation (organization-wide)</option>
-            </select>
-            <small>Further area options become available only when their owning module is delivered.</small>
-          </label>
+          <p className="field">Applies to: <strong>Entire foundation</strong></p>
           <fieldset className="role-color-fieldset">
             <legend>Colour</legend>
             <div className="role-color-options" role="radiogroup" aria-label="Role colour">
@@ -521,15 +516,17 @@ export function RolesPanel(){
             </div>
           </fieldset>
           {editor.mode==="copy"&&<p>Only permitted role actions are copied. No people or special administrator rights are copied.</p>}
-          {groups.map(group=><fieldset key={group.group} className="permission-group">
-            <legend>{group.group}</legend>
-            {group.actions.map(cap=><label key={cap.key} className="permission-row">
-              <input type="checkbox" disabled={!cap.assignable||editor.mode==="copy"}
-                checked={cap.assignable&&selected.includes(cap.key)}
-                onChange={e=>setSelected(prev=>e.target.checked?[...prev,cap.key]:prev.filter(k=>k!==cap.key))}/>
-              <span>{cap.businessLabel}{!cap.assignable?" — Protected action":""}</span>
-            </label>)}
-          </fieldset>)}
+          {groups.filter(group=>group.actions.some(cap=>cap.assignable)).map(group=>
+            <fieldset key={group.group} className="permission-group">
+              <legend>{group.group}</legend>
+              {group.actions.filter(cap=>cap.assignable).map(cap=><label key={cap.key} className="permission-row">
+                <input type="checkbox" disabled={editor.mode==="copy"}
+                  checked={selected.includes(cap.key)}
+                  onChange={e=>setSelected(prev=>e.target.checked?[...prev,cap.key]:prev.filter(k=>k!==cap.key))}/>
+                <span>{cap.businessLabel}</span>
+              </label>)}
+            </fieldset>)}
+          <p>Administrator-only permissions are managed by the system.</p>
           <p>{selected.filter(k=>allAssignable.some(c=>c.key===k)).length} permitted actions selected</p>
           <div className="toolbar">
             <button type="button" disabled={saving} onClick={()=>setEditor(null)}>Cancel</button>
