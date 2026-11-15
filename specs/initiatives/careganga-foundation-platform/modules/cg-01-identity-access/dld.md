@@ -9,24 +9,29 @@ A cohesive NestJS CG-01 application/domain/persistence module supplies login, ac
 
 The first technical bootstrap creates a protected Foundation-root administrative context and an explicitly controlled initial Super Admin account/recovery process. This is **not** CG-02 geography: future branches and CG-14 centers remain unknown and default-denied. No preliminary fake HR, center, approval or branch row is permitted.
 
-## 2. Owned database model
+## 2. Canonical data model and database architecture
 
-| Record | Minimum fields and invariants |
+**Risk:** CRITICAL, because identity/role mutations control future confidential resources. One protected `access_realm` singleton defines the initial Foundation-root authorization context. It is **not** a CG-02 geography/branch/business-Foundation record. No future department/branch/center/employee/protected-approval case is seeded or required.
+
+| Owned record | Exact invariant and integrity contract |
 | --- | --- |
-| Account | id, verified contact/identity subject, display name, lifecycle state, session/access version, timestamps; verified unique subject/contact according to real auth policy |
-| Credential / challenge | account reference, provider subject or secure password hash, expiring single-use invite/recovery/verification challenge; no raw password, OTP, token or secret stored |
-| Session | hashed opaque session/refresh reference, account FK, expiry, revocation, device metadata, access version; bounded index on active sessions |
-| Role | id, Foundation-root realm, unique normalized name, description, optional UI color, protected/built-in flag, active/retired status, revision |
-| Role grant | unique role FK + supported action key; allow-listed catalog only; sensitive/root grants not custom-copyable |
-| Account-role assignment | account FK, role FK, explicit current Foundation-root context, effective/revoked times, assigned by, revision; at most one active primary role assignment per account per Foundation-root context (future center contexts require separate validated assignments) |
-| Access audit | actor/target, action, safe before/after grant summary, timestamp, correlation reference, decision; append-only and privacy-redacted |
-| Protected access-change request | id, existing account FK, requester, proposed allow-listed role/action and Foundation-root scope, submitted revision, status (OPEN/CANCELLED/APPLIED/REJECTED), immutable source_event_key; creates no effective grant before CG-03 protected final approval |
+| `access_realm` | Unique protected `FOUNDATION_ROOT` key; one bootstrap record, stable lock anchor for last-privileged-admin operations; no wildcard future branches |
+| `account` | Opaque PK, verified provider identity subject, normalized verified contact where policy allows, name, invited/active/suspended/deactivated, `access_version`, timestamps; unique verified subject and contact constraints where genuinely applicable |
+| `identity_credential` | FK account, provider reference or securely salted password verifier, version and change time; no raw password/OTP/token storage |
+| `auth_challenge` | FK to actual account/invitation, one-way hashed challenge, type, `expires_at`, `consumed_at`, attempts, request idempotency key; unique accepted active challenge behavior and one-time consume enforced transactionally |
+| `session` | FK account, unique hashed refresh/session secret, expiry, revoked time, account access_version snapshot, minimal device metadata; rotation and replay prevention |
+| `role` | PK, realm FK, unique normalized name per realm, description/color, built-in protected flag, active/retired, revision |
+| `role_grant` | role FK + allow-listed capability key, UNIQUE(role_id, capability_key); supported actions only, no wildcard or unauthorized inherited future grant |
+| `account_role` | account/role/realm FK, assigning actor, active/revoked timestamps, revision; UNIQUE **active** (account_id, role_id, realm_id). Multiple different assigned roles per account are allowed; a display-only primary label must not drive authorization |
+| `access_audit` | Append-only actor, target, action, realm, safe before/after summary, decision, UTC timestamp, correlation ID; audited privileged mutation commits atomically with grant and access_version |
 
-A permitted manager may record a real CG-01-owned protected assignment request before CG-03 exists; this is an auditable PENDING source record only, **not** a copied CG-03 approval case or an effective permission. The later CG-03 module verifies source_event_key and returns a single final outcome through CG-01's idempotent finalizer. Root/last-super-admin safeguards still apply, and unapproved sensitive requests never elevate the actor.
+**DB authority:** Every access decision is server-derived from active account + current session version + implemented action grant + verified **same real scope**. Multiple roles may contribute explicit allowed capabilities in the same valid context; a role must never silently grant protected actions or scopes belonging to another role, center, branch or patient. Do not trust a client-supplied realm/ID as proof. Row FK/CHECK/UNIQUE protect status, hierarchy and duplicate assignment; role-copy excludes root/sensitive grants and assigned people. Unknown future modules default-deny.
 
-CG-01 also owns **logical future scope grant interfaces**, not premature foreign-key tables to unavailable geography or center entities. When CG-02/CG-14 ship, their approved schema/relations and integration migrations introduce validated real scope links; the CG-01 API guard must verify those owner relationships through typed contracts before any non-root scope can become active. CG-10 employee data and CG-03 approval state remain owner records.
+**Last-root / concurrency:** Lock `access_realm` first in a short transaction for grant/assignment/suspension affecting a protected administrator, recheck last-active-root under lock, write change + affected account access_version + durable redacted access_audit, then commit or reject. Role updates use expected revision/compare-and-swap; challenge consumption, bootstrap and active assignment uniqueness have DB guards. No SELECT-then-INSERT race. A technical logging outage never changes already confirmed transaction status; unlike diagnostics, failure to persist mandatory business access_audit must abort the mutation.
 
-**DB correctness:** real PK/FK/UNIQUE/CHECK constraints, normalized-role uniqueness, indexed account/session/role/assignment paths, bounded pagination, transactionally protected last-Super-Admin checks, optimistic revision conflicts. All migrations are versioned; include forward repair/rollback and no unscoped ownership joins. No second auth database, generic permission rules table interpreted as arbitrary code, or cross-domain table writes.
+**Index and query plan:** Unique normalized verified subject/contact when appropriate, `role(realm_id, normalized_name)`, `role_grant(role_id, capability_key)`, partial active `account_role(account_id,role_id,realm_id)`, session account/revoked/expiry, challenge account/type/expiry, and bounded audit target/date. Authorized filtered account/role/selector pagination should use stable sort, capped page, minimal fields; add composite indexes only for verified filters/sort, not every column. Runtime query plans, actual row counts, N+1 and index write cost are `NOT_MEASURED`; EXPLAIN/realistic data review belongs to independent QA.
+
+**Migrations/recovery:** Keep ordered CG-01-only migrations and ORM schema synchronized; enforce one root bootstrap in a transaction and a protected recovery route without a static password. No speculative FK to CG-02/03/10/14. Validate upgrade and safe rollback/forward repair in disposable DB, older Android client compatibility, account/session revocation and restore permissions. Engine/ORM version, pooling (direct migration vs pooled app), RLS choice, PITR/backup entitlement and actual RTO/RPO are `UNVERIFIED`, not guessed; optional RLS must be tested with the real non-BYPASSRLS request role and pool connection reuse. A scoped column alone never proves isolation.
 
 ## 3. Capability and authorization contract
 
@@ -61,7 +66,7 @@ Define typed commands/queries and stable safe **outcome categories** (`SUCCESS`,
 
 - **Account:** invited → verified/active → suspended/reactivated or deactivated. Recovery challenge one-time/expiring; invitation re-send/retry cannot double-create account. No session for unverified/suspended account. **Privileged Foundation Admin authentication requires MFA; provider failure never bypasses its challenge.**
 - **Role:** built-in protected (ordinary edits forbidden) or active custom → revised → retired (only with safe assignment transition). Copy copies only allowed grant choices, not assigned users, protected root authority or scope.
-- **Assignment:** active only after direct permitted action; revoke/change increments effective-access revision and invalidates impacted sessions/cache. Where a future CG-03 approval is mandatory, the pending change grants **nothing** until actual approved finalization.
+- **Assignment:** active only after direct permitted action; revoke/change increments effective-access revision and invalidates impacted sessions/cache. Where a protected change requires CG-03 approval, direct action is blocked until CG-03 delivers a genuine request/review/finalization flow; CG-01 never exposes an uncompletable pending request.
 - **Concurrent edits:** normalized name uniqueness and revision guard prevent duplicate/lost write; assignment/grant update, audit and session-version change commit coherently. Last protected administrator cannot be removed, including racing requests.
 - **External invitation transport:** a narrow auth-verification provider adapter sends genuine verification/invite notices after committed state; missing credentials or timeout are pending/unavailable, never a fabricated send. Later CG-19 handles generalized messaging, not credential truth.
 - **Zero unnecessary background traffic:** no periodic scan of every account/tenant for role changes; use access-version checks on protected requests and bounded expiry cleanup, if required.
@@ -71,7 +76,7 @@ Define typed commands/queries and stable safe **outcome categories** (`SUCCESS`,
 | Later module | Contract needed before integration is enabled | Its end-to-end acceptance owner |
 | --- | --- | --- |
 | CG-02 | Valid active geography/branch/department owner, permitted scope option/search, relational scope check and invalidation | CG-02 Planning/QA |
-| CG-03 | Protected assignment request, reviewer routing, final authorization callback/reference and idempotent activation | CG-03 Planning/QA |
+| CG-03 | Creates its protected access-change case using an existing CG-01 account and role, completes reviewer routing, then calls CG-01's guarded idempotent apply-approved-decision command. No required approval request table or pending-only CG-01 feature | CG-03 Planning/QA |
 | CG-10 | Verified employee-to-account link, employment/status/designation/joining-date query and safe staff selector | CG-10 Planning/QA |
 | CG-14 | Valid active center/location/staff affiliation, center realm grants and negative clinical/cross-center checks | CG-14 Planning/QA |
 | Other owners | Domain capability registry declaration, own scoped resource lookup and `options` read model | Introducing module Planning/QA |
@@ -89,6 +94,50 @@ Each future module consumes **CG-01's completed identity policy contract**, rath
 - **Security/NFR:** OWASP/ASVS/API/MASVS applicable controls, secure credential storage/MFA for privileged use per selected auth policy, authorization across direct IDs and files, minimal logs, accessible states, privacy-safe selectors, bounded queries, safe migration and stale-version compatibility.
 - **Mobile baseline:** Expo SDK 58 / React Native 0.88 / React 19.3 / Android compile 37, target 36 (official Expo and Play references in module.md). Bootstrap pins and reviews exact compatible SDK/Gradle/NDK/native dependencies; no unverified binary/store PASS.
 
-## 8. Design acceptance and evidence
+## 8. Invitation, MFA and worker/bandwidth boundary
+
+**CG-01 does not create an always-on worker.** A real user invitation, sign-in MFA, credential recovery or explicit resend triggers an expiring credential/challenge and the configured provider adapter. Persist the required challenge/attempt status first; deliver after the short DB transaction, never hold a lock while calling network providers. A committed invite with provider timeout is `PENDING_DELIVERY` / delivery unknown, **not** a verified login or "invitation sent". Resend checks current eligible challenge, rate-limits attempts and uses stable request idempotency; no uncontrolled new OTP or duplicate account after uncertain provider response.
+
+**Idle/no-work invariant:** With zero due communications, many idle Foundations and multiple backend instances, CG-01 runs **zero repeated per-tenant scans and zero provider sends**. Access/version is checked on actual protected requests; challenge expiry is checked on use. Only if measured storage growth requires it, add infrequent bounded global cleanup for already expired rows with a supporting expiry index—not a fast unconditional cron over tenants. Do not add an import worker, Redis, queue, broker or CG-19 table to the first module. If later proven necessary, CG-19 introduces a due-only durable job/claim with finite backoff, lease/restart recovery and audited provider delivery.
+
+**Busy/restart cases:** Concurrent user-triggered resends, provider timeout-after-send, process restart after committed invitation and simultaneous admin invitations have one confirmed source state, finite external call/attempts and an actionable check-status/resend outcome. Keep provider error classes retryable/permanent, finite timeout, backoff only for approved retry mechanism, no synchronous infinite retry. Observe DB queries/rows, auth API requests, provider call count/bytes, idle wakeups and instance/tenant amplification; do not infer cloud egress billing from DB transaction count. All measured values remain `NOT_MEASURED` pending QA.
+
+## 9. Human messages, errors, observability and logging
+
+**Safe outcomes:** `SUCCESS`, `INVITED_PENDING`, `VERIFICATION_PENDING`, `VALIDATION`, `DUPLICATE`, `FORBIDDEN`, `CONFLICT`, `RATE_LIMITED`, `UNAVAILABLE`, `UNKNOWN_WRITE_STATUS`, `UNEXPECTED`. A small HTTP exception mapper converts domain outcome to proper transport semantics and safe payload; only controlled localized text is displayed in Foundation Web, Center/Public sign-in as applicable, and Internal/Public Android. Expected errors are deliberately handled; unexpected exceptions receive generic safe copy. No raw `error.message`, SQL constraint/stack/provider response, HTTP status numbers or UUID in user-facing UI, toast, notification or downloaded text.
+
+| Business situation | Approved example wording and action |
+| --- | --- |
+| Role/access saved | “Role saved.” / “Access updated.” Only after a confirmed transaction |
+| Invitation persisted; delivery unknown | “Invitation created. Delivery is being checked.” Show actual status and permitted resend |
+| Unknown account/wrong sign-in | “We couldn't sign you in. Check your details and try again.” Do not reveal whether account exists |
+| Code expired | “That code has expired. Request a new code.” |
+| Wrong privilege | “You don't have permission for this action. Contact your administrator.” |
+| Duplicate role | “A role with this name already exists. Choose another name.” |
+| Stale role/assignment | “This was changed elsewhere. Refresh before saving again.” Preserve user input |
+| Too many attempts | “Too many attempts. Try again later.” |
+| Provider unavailable | “We couldn't send a code right now. Try again later.” |
+| Network lost after write | “We couldn't confirm this change. Check its status before trying again.” No blind duplicate submission |
+| Unexpected | “Something went wrong. Please try again or contact support with this reference.” Opaque support reference only |
+
+**Request trace:** correlate Web/Android action → API → CG-01 policy → DB transaction → auth provider with a safe opaque request/correlation ID. Structured restricted diagnostics record UTC, severity, module, operation, environment, safe actor/realm reference, outcome/error class, trace ID, duration and bounded DB/provider counters. Unexpected stack/cause belongs only in restricted redacted diagnostics, not users' response bodies; never log passwords, OTPs, tokens, request bodies, full phones/emails, bank/clinical data, private file paths or high-cardinality user-labelled metrics. Normal failed logins should not create giant stack traces.
+
+**Distinct responsibilities:** (1) durable append-only `access_audit` is business-security truth, transactionally coupled to sensitive grant mutations; (2) technical logs/metrics diagnose failures and are retained/permissioned with bounded volume; (3) user communications contain safe outcome only. If telemetry fails after a committed role change, don't report operation failed or attempt another write. An authorized support operator may map a displayed opaque Support reference to restricted diagnostics; normal Foundation staff and center staff cannot browse infrastructure logs.
+
+**Measured operational signals:** auth failure/rate-limit trends, MFA provider failures, role edit conflicts, session revocations, suspicious scope-denials, HTTP latency, DB query/row volume, provider calls/bytes, idle background cycles, logging sink failures. Alert via existing hosting monitoring where materially justified; no new logging microservice. Actual thresholds, cloud bandwidth attribution and incident response testing are `NOT_MEASURED`.
+
+## 10. Minimal patterns and specialist review gates
+
+| Scenario | Selection and reason | Alternatives rejected | Verification |
+| --- | --- | --- | --- |
+| Scoped action and role access | Typed **Policy/Specification** helpers + guarded queries | UI-only visibility insecure; arbitrary policy DSL complex | BOLA/BFLA, selector and export negative QA |
+| Role change and session revocation | Simple service + existing DB **Unit of Work**, row revision, unique constraints | Saga/approval engine unnecessary for current direct grants | Last-root races, stale role, audit atomicity |
+| Auth/MFA provider calls | Thin **Adapter** with on-demand trigger and durable pending challenge status | Always-running per-tenant worker/broker unjustified | Timeout after commit, explicit retry, zero-work/no-provider |
+| Safe exception and logs | Typed outcomes + one restricted middleware/log boundary | Separate error service / raw exception text unsafe | Correlation/redaction and telemetry outage |
+| Sensitive future approvals | CG-03 introduces workflow after CG-01 exists; guarded source owner finalization | Current-module pending-only feature can't finish | CG-03 integration acceptance |
+
+No Strategy, inheritance Template Method, factory layer, global cache, event bus, microservice or generic repository framework is needed for fixed CG-01 operations. **CRITICAL database changes require independent qualified data review** in addition to this source design review; actual schema, startup/idle traffic, plans and restore remain untested.
+
+## 11. Design acceptance and evidence
 
 The three vertical CG-01 stories in [tasks.md](tasks.md) must each source-trace a real database/HTTP/UI interaction including positive, forbidden, duplicate/concurrent, stale-revoked, unavailable and relevant Web/Android outcomes. No future-owner FK or selector is part of current CG-01 completion. This design is ready **for review and Harness resolver**, not for automatic Development authorization. No code, source tests, device tests, app builds or screen previews were executed.
