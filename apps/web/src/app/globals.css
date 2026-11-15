@@ -249,3 +249,18 @@ button:disabled { cursor:wait; opacity:.65; }
   border-color:var(--cg-accent);
 }
 .role-workspace .notice {background:var(--cg-surface)}
+
+/* CG-02 original U21 overview and U22 right-side department editor.
+   Native modal supplies focus management; only shared CareGanga tokens are used. */
+.foundation-overview{padding:1rem 1rem 0;grid-template-columns:repeat(4,minmax(0,1fr))}
+.foundation-overview .kpi{min-height:6.25rem}
+.foundation-overview .kpi span{color:var(--cg-muted);font-size:.85rem}
+.foundation-department-dialog{position:fixed;inset:0 0 0 auto;margin:0;
+  max-height:100dvh;max-width:min(100%,34rem);border-radius:0;
+  border:0;border-inline-start:1px solid var(--cg-border)}
+.foundation-department-dialog:not([open]){display:none}
+.foundation-department-dialog::backdrop{background:rgba(9,17,35,.52)}
+.foundation-department-dialog .form{width:100%;padding-bottom:max(1.25rem,env(safe-area-inset-bottom))}
+.foundation-department-dialog .field textarea{width:100%;resize:vertical}
+@media(max-width:48rem){.foundation-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:27rem){.foundation-overview{grid-template-columns:1fr}}
