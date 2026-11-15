@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Healthcare source-specific boundary:** Configure 50% consultation support at an approved center with maximum cap; eligible fee quote respects cap and effective date, while an exceptional 100% grant remains PENDING until protected approval.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Display gross fee, actually approved/eligible Foundation support and patient…
@@ -35,7 +36,8 @@ QA cases:
 - **US-002-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-002-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-Verification: On actual implementation source-trace US-002-QA01–QA06 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA07 — Healthcare source-specific boundary:** At booking summary show gross ₹1,000 with an applicable approved 50% contribution of ₹500 and patient payable ₹500; a changed fee/policy after acceptance does not rewrite that historical split.
+Verification: On actual implementation source-trace US-002-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Provide online payment only through the verified healthcare center's own…
@@ -52,7 +54,8 @@ QA cases:
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA08 — Healthcare source-specific boundary:** Center has no verified own merchant credentials yet patient chooses online payment; checkout is unavailable and pay-at-center remains legitimate with DUE, not a silently used Foundation merchant key.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ### US-004 — Record authorized on-site payment, part-pay, overdue follow-up, receipts…
@@ -69,7 +72,8 @@ QA cases:
 - **US-004-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-004-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-004-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-004-QA08 — Healthcare source-specific boundary:** Center cashier records ₹300 of ₹500 payable in-person and later collects ₹200; partial/due/paid, receipt and overdue aging reconcile, and a duplicate cash-submit cannot collect twice.
+Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-003
 
 ### US-005 — Keep the center's patient collections, the Foundation's approved liability…
@@ -86,7 +90,8 @@ QA cases:
 - **US-005-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-005-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-005-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA08 — Healthcare source-specific boundary:** Monthly provider settlement combines approved Foundation obligations across several real appointments; one partial bank payment does not mark entire month settled, and returned/canceled services adjust dues audibly.
+Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-004
 
 ### US-006 — Reconcile verified patient receipts (center-owned), refunds and monthly…
@@ -103,7 +108,8 @@ QA cases:
 - **US-006-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-006-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-006-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-006-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-006-QA08 — Healthcare source-specific boundary:** Verify Center A patient ₹500 payment and separate Foundation ₹500 obligation: the center receipt does not debit or credit Foundation cash; only authorized Foundation disbursement posts exactly once into CG-09 with linked source.
+Verification: On actual implementation source-trace US-006-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-005
 
 ### US-007 — Publish only approved current rates
@@ -119,7 +125,8 @@ QA cases:
 - **US-007-QA04:** Invalid field, absent source, unavailable verified provider/source or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-007-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-Verification: On actual implementation source-trace US-007-QA01–QA06 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-007-QA07 — Healthcare source-specific boundary:** CMS tries to publish a mockup 40% lab or 20% medicine support badge without CG-17 approved policy; prohibit unsupported percentage, while standard eligible consultation benefit and approved exceptional full aid use actual policy source.
+Verification: On actual implementation source-trace US-007-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-006
 
 ## Execution progress

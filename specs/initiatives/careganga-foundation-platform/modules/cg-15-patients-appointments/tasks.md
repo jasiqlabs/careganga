@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Healthcare source-specific boundary:** Doctor works at Center A then submits an overlapping leave/blocked period at Center B; both center schedules share doctor occupancy, and a change cannot silently cancel confirmed historical bookings.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Support center-first or doctor/date/slot-first journey using one doctor-aware…
@@ -36,7 +37,8 @@ QA cases:
 - **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-002-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-002-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA08 — Healthcare source-specific boundary:** Two patients select the same doctor's 10:00 in-person slot at different centers via center-first and time-first flows; only one doctor-wide reservation may commit, and any multiple-center choice must be explicit before fee acceptance.
+Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Register or securely locate patient with verified mobile, appropriate profile…
@@ -53,7 +55,8 @@ QA cases:
 - **US-003-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-003-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-003-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA08 — Healthcare source-specific boundary:** Two registrants use the same mobile number with different identities; secure verification and duplicate-patient review prevents automatic confidential record merge, preserves consent version and one unique virtual patient ID per actual patient.
+Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ### US-004 — Capture patient, doctor, center, slot, consultation type and reason
@@ -70,7 +73,8 @@ QA cases:
 - **US-004-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-004-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-004-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-004-QA08 — Healthcare source-specific boundary:** Patient changes doctor/center/consultation mode at review screen while last slot is held; price/support snapshot must be recalculated for the chosen real center and booking confirmation cannot exceed capacity.
+Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-003
 
 ### US-005 — Issue authentic reference/Booking ID, download/print/share and guarded…
@@ -87,7 +91,8 @@ QA cases:
 - **US-005-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-005-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-005-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA08 — Healthcare source-specific boundary:** Generate the booking slip, human Booking ID, add-to-calendar and QR from one confirmed appointment; public QR reveals minimal valid booking status, not symptoms, clinical documents or identity accessible by guessing ID.
+Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-004
 
 ### US-006 — Manage reception check-in, queue/token…
@@ -103,7 +108,8 @@ QA cases:
 - **US-006-QA04:** Invalid field, absent source, unavailable real owner/provider or uncertain response → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-006-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-006-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-Verification: On actual implementation source-trace US-006-QA01–QA06 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-006-QA07 — Healthcare source-specific boundary:** Reception at Center A checks in a real appointment and issues queue token; Center B front desk cannot alter it, no-show/cancellation update timeline correctly and queues show genuine waiting/in-consultation counts.
+Verification: On actual implementation source-trace US-006-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-005
 
 ### US-007 — Reschedule/cancel when permitted
@@ -119,7 +125,8 @@ QA cases:
 - **US-007-QA04:** Invalid field, absent source, unavailable real owner/provider or uncertain response → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-007-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-Verification: On actual implementation source-trace US-007-QA01–QA06 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-007-QA07 — Healthcare source-specific boundary:** Patient reschedules after an online payment completes late for an expired hold; safely release/rebook capacity and reconcile any charge/refund rather than overbook or create a second paid appointment.
+Verification: On actual implementation source-trace US-007-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-006
 
 ### US-008 — See authorized own appointments, receipts, patient ID and permitted reports
@@ -136,7 +143,8 @@ QA cases:
 - **US-008-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-008-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-008-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-008-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-008-QA08 — Healthcare source-specific boundary:** Authenticated patient opens own appointments, documents and reports from Web/Android; another patient's identifier or unverified family-member claim must not grant access to prescriptions or clinical reports.
+Verification: On actual implementation source-trace US-008-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-007
 
 ## Execution progress
