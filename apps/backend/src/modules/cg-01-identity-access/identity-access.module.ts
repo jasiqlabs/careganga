@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { FoundationStructureIdentityFacade } from "./application/foundation-structure-identity.facade";
 import { SessionService } from "./application/session.service";
 import { SessionController } from "./http/session.controller";
 import { RecoveryController } from "./http/recovery.controller";
@@ -18,7 +19,7 @@ import { SecurityPolicyController } from "./http/security-policy.controller";
 
 @Module({
   controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController],
-  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService],
-  exports:[SessionService,AccessAuditReader,AccountsService]
+  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService],
+  exports:[SessionService,AccessAuditReader,AccountsService,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
