@@ -16,6 +16,8 @@ type Editing={mode:"create"|"edit"|"copy";source?:Role};
 type RoleStatus="all"|"active"|"retired";
 type RoleKind="all"|"system"|"custom";
 type Audit=CG01AuditEvent;
+type RoleSummary={totalRoles:number;implementedActions:number;activeRoles:number;
+  inactiveRoles:number;customRoles:number;systemRoles:number};
 const base="/api/access/";
 async function call(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<unknown>{
   let result:Response;
@@ -70,6 +72,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   const [historyCursor,setHistoryCursor]=useState<string|null>(null);
   const [offset,setOffset]=useState(0);
   const [total,setTotal]=useState(0);
+  const [summary,setSummary]=useState<RoleSummary|null>(null);
   const [uncertain,setUncertain]=useState(false);
   const canEdit=allowed.includes("roles.manage");
   const canAudit=allowed.includes("access.audit.view");
@@ -82,16 +85,16 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
         call(token,"capabilities"),
         call(token,"effective")
       ]);
-      const a=list as {roles:Role[];total:number};
+      const a=list as {roles:Role[];total:number;summary:RoleSummary};
       const c=cap as {groups:Group[]};
       const eff=effective as {actions:{key:string}[]};
       if(!Array.isArray(a.roles)||!Array.isArray(c.groups)||!Array.isArray(eff.actions))
         throw new Error("INVALID");
       setRoles(a.roles);setGroups(c.groups);setAllowed(eff.actions.map(x=>x.key));
-      setOffset(skip);setTotal(a.total);
+      setOffset(skip);setTotal(a.total);setSummary(a.summary);
     }catch(e){
       // Data cached on screen is not a source of current permission truth.
-      setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setHistoryCursor(null);
+      setRoles([]);setGroups([]);setAllowed([]);setHistory(null);setHistoryCursor(null);setSummary(null);
       setEditor(null);setDetails(null);
       if(e instanceof Error&&e.message==="SESSION_EXPIRED"){onExpired();return;}
       setError(e instanceof Error&&e.message==="PERMISSION_DENIED"?
@@ -229,7 +232,19 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
       <Text accessibilityRole="header" style={styles.title}>Roles & permissions</Text>
     </View>
     <Text>Foundation staff access</Text>
-    <Text>Roles: {total}</Text>
+    <View style={styles.kpiGrid} accessibilityLabel="Foundation role statistics">
+      {([
+        ["Total Roles",summary?.totalRoles],
+        ["Current Permission Actions",summary?.implementedActions],
+        ["Active Roles",summary?.activeRoles],
+        ["Inactive Roles",summary?.inactiveRoles],
+        ["Custom Roles",summary?.customRoles],
+        ["System Roles",summary?.systemRoles]
+      ] as const).map(([label,value])=><View key={label} style={styles.kpiCard}>
+        <Text style={styles.kpiLabel}>{label}</Text>
+        <Text style={styles.kpiValue}>{value??"—"}</Text>
+      </View>)}
+    </View>
     <View style={styles.line}>
       <TextInput accessibilityLabel="Search roles" placeholder="Search role name"
         style={styles.input} value={search} onChangeText={setSearch}/>
@@ -419,6 +434,11 @@ const styles=StyleSheet.create({
   title:{fontSize:24,fontWeight:"700",flexShrink:1,color:careGangaTheme.text},
   heading:{fontSize:18,fontWeight:"700",color:careGangaTheme.text},
   line:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:10},
+  kpiGrid:{flexDirection:"row",flexWrap:"wrap",gap:9},
+  kpiCard:{flexBasis:"47%",flexGrow:1,minWidth:130,backgroundColor:careGangaTheme.surface,
+    borderColor:careGangaTheme.border,borderWidth:1,borderRadius:8,padding:12,gap:6},
+  kpiLabel:{color:careGangaTheme.mutedText,fontSize:12,fontWeight:"600"},
+  kpiValue:{color:careGangaTheme.text,fontSize:21,fontWeight:"800"},
   input:{borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:6,minHeight:48,paddingHorizontal:12,flexGrow:1,color:careGangaTheme.text},
   button:{minHeight:48,minWidth:72,borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,borderRadius:6,paddingHorizontal:12,
     paddingVertical:12,alignItems:"center",justifyContent:"center"},
