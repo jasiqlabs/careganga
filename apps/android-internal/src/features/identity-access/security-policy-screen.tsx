@@ -211,7 +211,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
         </Pressable>
       </View>}
       <Pressable accessibilityRole="button" style={styles.button}
-        disabled={busy||loading} onPress={()=>void read()}>
+        disabled={busy||loading||unknown} onPress={()=>void read()}>
         <Text style={styles.buttonText}>Refresh effective policy</Text>
       </Pressable>
       {unknown&&<View style={styles.field}>
