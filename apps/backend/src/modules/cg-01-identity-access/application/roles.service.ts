@@ -114,7 +114,12 @@ export class RolesService {
     };
   }
   async options(bearer:string,search=""){
-    const actor=await this.sessions.requireAction(bearer,"roles.select");
+    let actor:VerifiedFoundationActor;
+    try{actor=await this.sessions.requireAction(bearer,"roles.select");}
+    catch(error){
+      if(!(error instanceof ForbiddenException))throw error;
+      actor=await this.sessions.requireAction(bearer,"accounts.invite");
+    }
     if(typeof search!=="string"||search.length>80)throw new BadRequestException();
     const rows=await this.db.query<{id:string;name:string}>(`
       SELECT id,name FROM role WHERE realm_id=$1 AND active=true AND is_protected=false

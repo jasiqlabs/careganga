@@ -9,10 +9,14 @@ import { RolesService } from "./application/roles.service";
 import { RolesController } from "./http/roles.controller";
 import { AccessAuditReader } from "./application/access-audit-reader";
 import { AuditController } from "./http/audit.controller";
+import { AccountsService } from "./application/accounts.service";
+import { AccountsController } from "./http/accounts.controller";
+import { InvitationEnrollmentService } from "./application/invitation-enrollment.service";
+import { InvitationController } from "./http/invitation.controller";
 
 @Module({
-  controllers:[SessionController,RecoveryController,RolesController,AuditController],
-  providers:[SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccessAuditReader],
-  exports:[SessionService,AccessAuditReader]
+  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController],
+  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader],
+  exports:[SessionService,AccessAuditReader,AccountsService]
 })
 export class IdentityAccessModule {}

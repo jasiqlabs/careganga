@@ -23,7 +23,12 @@ export class SafeErrorsFilter implements ExceptionFilter {
       STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
       ROLE_RETIRED:"This role was already retired.",
       ROLE_ASSIGNED:"Reassign accounts using this role before retiring it.",
-      REPLAY_CONFLICT:"This request reference has already been used. Refresh before retrying."
+      REPLAY_CONFLICT:"This request reference has already been used. Refresh before retrying.",
+      DUPLICATE_ACCOUNT_OR_ASSIGNMENT:"This account or assignment already exists.",
+      STALE_ACCOUNT:"This staff account changed. Refresh before saving.",
+      ROLE_ALREADY_ASSIGNED:"That role is already assigned to the account.",
+      ROLE_ALREADY_REVOKED:"The account's role was already removed.",
+      ACCOUNT_ALREADY_IN_STATUS:"The account already has that status."
     };
     const payload=error instanceof HttpException?error.getResponse():null;
     const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
