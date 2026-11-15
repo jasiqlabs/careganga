@@ -1,5 +1,7 @@
 # CG-01 — Identity, Accounts, Roles & Permissions
 
+**Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
+
 **Initiative:** careganga-foundation-platform  
 **Planning scope:** CG-01 only · GREENFIELD · 14 November 2026  
 **Source of truth:** [PRD](../../prd.md) FR-001–003, FR-080; BR-001/002/017 · [HLD](../../hld.md) §§4–5, 7–9 · [Foundation BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-01-BR01–10  
