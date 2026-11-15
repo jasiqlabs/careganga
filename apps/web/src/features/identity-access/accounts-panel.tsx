@@ -5,6 +5,18 @@ type RoleOption={value:string;label:string;context:string};
 type Notice={kind:"success"|"error"|"uncertain";text:string};
 type Pending={kind:"assign"|"revoke"|"status"|"resend";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
 type Editor="invite"|"detail"|null;
+/** The transport enums are never presented as product copy. */
+const accountStatusLabel=(status:string):string=>({
+  INVITED:"Invited",ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
+} as Record<string,string>)[status]??"Status unavailable";
+const deliveryLabel=(status:string|null):string=>status===null?"Not applicable":({
+  PENDING:"Waiting to send",CLAIMED:"Sending status not confirmed",
+  PROVIDER_ACCEPTED:"Accepted by email service",UNKNOWN:"Delivery not confirmed",
+  UNAVAILABLE:"Email service unavailable"
+} as Record<string,string>)[status]??"Delivery status unavailable";
+const auditOutcomeLabel=(outcome:string):string=>({
+  SUCCESS:"Completed",DENIED:"Not permitted",PENDING:"Awaiting confirmation"
+} as Record<string,string>)[outcome]??"Outcome unavailable";
 
 async function read<T>(path:string):Promise<T>{
   const response=await fetch("/api/access/"+path,{cache:"no-store",credentials:"same-origin"});
@@ -46,7 +58,6 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [pending,setPending]=useState<Pending|null>(null);
   const [fullName,setFullName]=useState("");
   const [email,setEmail]=useState("");
-  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [searchRole,setSearchRole]=useState("");
@@ -119,7 +130,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   }
   function openInvite(){
     ++roleRead.current;++historyRead.current;
-    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
+    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
@@ -158,7 +169,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     setBusy(true);setNotice(null);
     try{
       await change("invitations","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase(),
-        phone:phone.trim(),roleRef,requestKey:requestKey.current});
+        roleRef,requestKey:requestKey.current});
       setEditor(null);setNotice({kind:"success",text:
         "Invitation saved. Email delivery is not guaranteed; check the account's delivery status."});
       requestKey.current="";await load(applied,0,filter);
@@ -253,8 +264,8 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
           <tbody>{list.accounts.map(row=><tr key={row.accountRef}>
             <td><strong>{row.displayName}</strong><p>{row.email}</p></td>
             <td>{row.roleName??"Not assigned"}</td>
-            <td><span className={"account-status "+row.status.toLowerCase()}>{row.status[0]+row.status.slice(1).toLowerCase()}</span></td>
-            <td>{row.deliveryStatus??"Not applicable"}</td>
+            <td><span className={"account-status "+row.status.toLowerCase()}>{accountStatusLabel(row.status)}</span></td>
+            <td>{deliveryLabel(row.deliveryStatus)}</td>
             <td><button type="button" onClick={()=>openAccount(row)}>View details</button></td>
           </tr>)}</tbody>
         </table>
@@ -280,11 +291,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
           <label className="field">Work email<input required type="email" maxLength={254}
             value={email} onChange={event=>setEmail(event.target.value)}/></label>
-          <label className="field">Phone (optional, unverified)
-            <input type="tel" placeholder="+91..." value={phone} maxLength={16}
-              onChange={event=>setPhone(event.target.value)}/>
-          </label>
-          <p>Area level: Foundation (organization-wide)</p>
+          <p>Applies to: <strong>Entire foundation</strong></p>
           <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
             onChange={event=>setSearchRole(event.target.value)}/></label>
           <button type="button" onClick={()=>void roleSearch(searchRole)}>Find roles</button>
@@ -305,16 +312,16 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
         {editor==="detail"&&target&&!pending&&<div className="form">
           <h3>{target.displayName}</h3><p>{target.email}</p>
           {target.phone&&<p>Phone (unverified): {target.phone}</p>}
-          <p>Status: {target.status}</p>
+          <p>Status: {accountStatusLabel(target.status)}</p>
           <p>Current role: {target.roleName??"Not assigned"}</p>
-          <p>Foundation scope · Invitation: {target.deliveryStatus??"Not applicable"}</p>
+          <p>Entire foundation · Invitation: {deliveryLabel(target.deliveryStatus)}</p>
           {actions.includes("access.audit.view")&&<button type="button"
             onClick={()=>void loadAccountHistory(target.accountRef)}>View access history</button>}
           {history&&<section aria-label="Account access history">
             <h3>Recent access history</h3>
             {!history.length&&<p>No account access events found in the selected period.</p>}
             {history.map(e=><p key={e.eventRef}>
-              {e.actionLabel} · {e.outcome} · {e.actorDisplay} · {new Date(e.occurredAt).toLocaleString()}
+              {e.actionLabel} · {auditOutcomeLabel(e.outcome)} · {e.actorDisplay} · {new Date(e.occurredAt).toLocaleString()}
             </p>)}
           </section>}
           {target.roleProtected?<p>This protected administrator cannot be changed here.</p>:<>
@@ -353,7 +360,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
           <p>Confirm the {pending.kind==="assign"?"role assignment":
             pending.kind==="revoke"?"role revocation":pending.kind==="resend"?"invitation resend":"account status change"} for {pending.target.displayName}.</p>
           {pending.kind==="assign"&&<p>Selected role: {roles.find(r=>r.value===roleRef)?.label??"Please choose a role"}</p>}
-          {pending.kind==="status"&&<p>New status: {pending.status}</p>}
+          {pending.kind==="status"&&<p>New status: {accountStatusLabel(pending.status??"")}</p>}
           <p>This will invalidate previously issued sessions if access changes.</p>
           {notice&&<p role={notice.kind==="success"?"status":"alert"}
              className={"notice "+notice.kind}>{notice.text}</p>}
