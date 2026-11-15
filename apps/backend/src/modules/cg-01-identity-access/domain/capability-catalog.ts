@@ -27,7 +27,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"platform.audit.view",businessLabel:"View platform audit",group:"Platform audit",assignable:false,sensitive:true},
   {key:"platform.audit.export",businessLabel:"Export platform audit",group:"Platform audit",assignable:false,sensitive:true},
   {key:"platform.recovery.view",businessLabel:"View backup readiness",group:"Backup & recovery",assignable:false,sensitive:true},
-  {key:"platform.recovery.request",businessLabel:"Request protected recovery",group:"Backup & recovery",assignable:false,sensitive:true}
+  {key:"platform.recovery.request",businessLabel:"Request protected recovery",group:"Backup & recovery",assignable:false,sensitive:true},
+  {key:"platform.recovery.authorize",businessLabel:"Authorize protected recovery",group:"Backup & recovery",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
