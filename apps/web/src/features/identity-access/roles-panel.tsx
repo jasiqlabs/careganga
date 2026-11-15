@@ -37,6 +37,7 @@ export function RolesPanel(){
   const [description,setDescription]=useState("");
   const [saving,setSaving]=useState(false);
   const [history,setHistory]=useState<AuditEvent[]|null>(null);
+  const [historyCursor,setHistoryCursor]=useState<string|null>(null);
   const searchInput=useRef<HTMLInputElement>(null);
   const requestKey=useRef("");
 
@@ -138,10 +139,22 @@ export function RolesPanel(){
   async function audit(){
     setHistory(null);setNotice(null);
     try{
-      const result=await read<{events:AuditEvent[]}>("audit?limit=30");
-      setHistory(result.events);
+      const result=await read<{events:AuditEvent[];nextCursor:string|null}>("audit?limit=30");
+      setHistory(result.events);setHistoryCursor(result.nextCursor);
     }catch(error){
       setNotice({kind:"error",text:error instanceof Error?error.message:"History unavailable."});
+    }
+  }
+
+  async function moreHistory(){
+    if(!historyCursor)return;
+    try{
+      const result=await read<{events:AuditEvent[];nextCursor:string|null}>(
+        "audit?limit=30&cursor="+encodeURIComponent(historyCursor));
+      setHistory(old=>[...(old??[]),...result.events]);
+      setHistoryCursor(result.nextCursor);
+    }catch{
+      setNotice({kind:"error",text:"More security history could not be confirmed."});
     }
   }
 
@@ -203,6 +216,7 @@ export function RolesPanel(){
           <strong>{event.actionLabel}</strong> — {event.targetDisplay} ({event.outcome}).
           <small> {new Date(event.occurredAt).toLocaleString()} · {event.actorDisplay}</small>
         </li>)}</ul>}
+      {historyCursor&&<button type="button" onClick={()=>void moreHistory()}>Load more history</button>}
     </section>}
     {editor&&<div className="drawer-backdrop" role="presentation">
       <section role="dialog" aria-modal="true" aria-labelledby="role-editor-title" className="role-drawer">
