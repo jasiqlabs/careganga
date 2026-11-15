@@ -54,3 +54,12 @@
 - Report scope, branch, paths, review findings, corrections, evidence and unresolved decisions concisely. A document-only configuration setup must not claim that a mobile app, healthcare flow or deployed system works.
 
 **Agent-specific always-on rule:** [`.agents/rules/real-api-truthfulness.md`](.agents/rules/real-api-truthfulness.md) reinforces these standards but is **not a second approval process**.
+
+
+## 5. Draft revisions, approved versions and change control
+
+- **Before approval:** PRD, HLD, each module.md, conditional uiux.md/dld.md, and single tasks.md are living drafts at the SAME document version and SAME path. Refine in place; Git records iterations. No v2 folders, duplicate PRDs/HLDs, parallel QA trackers, copied modules or second initiatives for review fixes. Every changed hash needs renewed review. Draft READY is not formal stage approval or permission to execute.
+- **At first approval:** record explicit artifact version 1.0, exact SHA-256, Git revision, quality evidence and truthful owner-delegated approval where expressly authorized. Keep the original approved version recoverable from Git history and approvals.json; do not clone it into a new version directory. Client/UAT/release are separate approvals.
+- **After approval:** never silently overwrite an approved baseline. Assess changes against dependent FR/BR, API/schema, UI/UX and QA; increment the document version IN THE SAME canonical file (minor for compatible additions/clarifications, major for breaking scope/contract), set IN_REVIEW, retain prior approved hash/version/commit in approvals.json history and require new Harness review and exact-hash approval. Reapprove/version only dependent documents changed in substance. Progress after the single ## Execution progress marker does not version-bump immutable task definitions.
+- **Forward dependency gate:** apart from one minimal bootstrap plus CG-01 real foundation, later modules must work with their own data and already-delivered owner contracts. No future-only masters, fabricated option lists or placeholder success. Move essential owner prerequisites earlier or implement source-owner integration and real cross-module QA in the later supplying module; preserve original BR/PRD scope.
+- **Evidence:** This policy adds no new stage, artifact or tracker. GitHub-only review is not an authenticated local Harness resolver PASS; formal approvals and implementation remain gated.
