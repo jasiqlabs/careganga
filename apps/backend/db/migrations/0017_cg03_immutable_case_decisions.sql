@@ -17,7 +17,7 @@ CREATE TABLE cg03_case_decision (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(case_id,request_key),
   UNIQUE(case_id,expected_case_revision),
-  UNIQUE(id,realm_id),
+  UNIQUE(id,realm_id), UNIQUE(id,case_id,realm_id),
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(actor_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
