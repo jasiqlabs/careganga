@@ -50,6 +50,7 @@ export function PlatformAuditPanel(){
   const [exporting,setExporting]=useState(false);
   const [notice,setNotice]=useState<Feedback|null>(null);
   const generation=useRef(0),detailGeneration=useRef(0);
+  const detailDialog=useRef<HTMLElement|null>(null);
   const load=useCallback(async(cursor:string|null=null,nextPosition=0)=>{
     const request=++generation.current;
     ++detailGeneration.current;setDetail(null);setSelected(null);
@@ -86,6 +87,25 @@ export function PlatformAuditPanel(){
     setTokens([null]);void load(null,0);
     return()=>{++generation.current;++detailGeneration.current;};
   },[load]);
+  useEffect(()=>{
+    if(!selected)return;
+    const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    detailDialog.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==="Escape"){++detailGeneration.current;setDetail(null);setSelected(null);return;}
+      if(event.key!=="Tab")return;
+      const controls=Array.from(detailDialog.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),a[href]' )??[]).filter(el=>el.getClientRects().length>0);
+      if(!controls.length)return;
+      if(event.shiftKey&&document.activeElement===controls[0]){
+        event.preventDefault();controls[controls.length-1].focus();
+      }else if(!event.shiftKey&&document.activeElement===controls[controls.length-1]){
+        event.preventDefault();controls[0].focus();
+      }
+    };
+    document.addEventListener("keydown",onKey);
+    return()=>{document.removeEventListener("keydown",onKey);previous?.focus();};
+  },[selected]);
   function firstPage(){
     setTokens([null]);
     if(source!==applied.source||from!==applied.from||to!==applied.to)
@@ -206,7 +226,7 @@ export function PlatformAuditPanel(){
         page.coverage!=="COMPLETE"} onClick={nextPage}>Next page</button>
     </div>
     {selected&&<div className="drawer-backdrop" role="presentation">
-      <section className="role-drawer" role="dialog" aria-modal="true"
+      <section className="role-drawer" role="dialog" aria-modal="true" ref={detailDialog}
         aria-labelledby="audit-details-title">
         <header className="topbar"><div><h2 id="audit-details-title">Audit detail</h2>
           <p>Source-owned, protected event</p></div>
