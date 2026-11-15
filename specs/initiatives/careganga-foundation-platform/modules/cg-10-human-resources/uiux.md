@@ -30,6 +30,9 @@
 
 **Screen ownership check:** **B19 is Inventory (CG-12)**, not HR. B29 approval process belongs CG-03, B34 role authority belongs CG-01, B38 issued PDF/template/dispatch belongs CG-19, B43 compensation setup belongs CG-11. The original screenshot filenames are not proof of business module ownership. Optional CG-18 public Team C25/C26 remains CG-18 editorial with a CG-10 current safe source when both owners actually exist.
 
+**Source BR11 assigned work task integration:** The future native **My Assigned Tasks** belongs to **CG-05 US-002/003**, whose owner builds real project/task, current CG-10 employee selector and field-visit provenance. CG-10 independently provides current employment/account/branch scope only and implements genuine Internal Android attendance/leave/self-service; no fake task tile or role bypass before CG-05. Staff who transfer/exit lose task authority through current guarded CG-05 owner source, not by a CG-10 shadow task master.
+
+
 ## 3. US-001 — Employee enrollment, six-stage reference, real directory
 
 **Actual application wizard:** B27/B28 shows reference stage labels `Registration → State Verification → Zonal Head → HR Verification → Super Admin Approval → Employee Activated`; **display only those stages that exist in the actual versioned CG-03 EMPLOYEE_ENROLLMENT process.** Author may Save Draft; actual Submitted, Under Review, Returned for Correction, Rejected, Final Approved, PENDING_ACCESS and ACTIVE are distinct from an input-success toast.

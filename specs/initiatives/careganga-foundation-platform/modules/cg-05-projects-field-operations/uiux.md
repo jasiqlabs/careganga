@@ -28,6 +28,13 @@ The CG-05 project creation/edit and field-work views display actual authorized C
 After an approved CG-05 project exists, US-001 adds original C27–C30 CareGanga public project teaser presentation through CG-18 publication while actual name/date/category/location and verified CG-09 funding stay sourced only to CG-05/09. Before this, CG-18 homepage is usable with zero projects. Withdrawn/foreign/closed project or revised source date invalidates public Web/Public Android snapshot. US-002 adds original operational event date/source into CG-18 editorial Events/Updates; an editorial article does not equal a CG-05 event. No second CMS project/event master, invented participant/seats or payment. Preserve original brand and genuine empty/pending/revoked states; visual/device QA NOT_RUN.
 
 
+## Actual staff task UI introduced by CG-05, not CG-10
+
+**CG-05 US-002:** Original CareGanga Admin project/task views add legitimate CG-10 active employee selector limited by real CG-02 branch and CG-01 task-assign permission; use human name, role, branch and source status, not ID. Real Internal Android **My Assigned Tasks** screen lists current own assignments with project, deadline, status and allowed Update/Complete, respecting current employee branch/status. Provide native loading/true empty/offline-unsynced/permission lost/transfer/exit/conflict state, accessible Back/touch/focus and shared CareGanga tokens. Public Android is explicitly NOT_APPLICABLE. No CG-10 HR feature gains a second project/task master.
+
+**CG-05 US-003:** Assigned employee opens permitted task to add a genuine field visit and CG-19 evidence, optional GPS with transparent permission/denial, check-in/out server-verified source. Denied location/file, incomplete visit, revoked assignment and replay cannot produce VERIFIED visit status. No fake location marker or user ID visible. Original screenshot/video pixel/motion/native QA NOT_RUN.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Preserve reference A01-A06 project/field-visit KPI+filter+tabular layout, visit details with Overview, Route/Map, Report, Photos/Videos, Documents, Team, Beneficiaries, Approval and Log tabs where real data exists. The Add Field Visit dialog keeps captured geography/clock state and file-progress indicators; mobile operators get task-first check-in and evidence controls, not a miniature admin table.

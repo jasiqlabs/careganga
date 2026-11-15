@@ -90,6 +90,9 @@ All URLs are **target DLD routes**, not claims an app is already implemented. Us
 
 **Human results:** 200/201 only confirmed committed draft/effect; 202 means real pending CG-03 review or CG-19 issue (NOT active/granted/paid); 400/422 validation with named fields, 401 login, 403 current action/branch deny, 404 hidden record, 409 stale revision/duplicate conflicting payload/leave or effective interval clash, 429 abusive untrusted endpoints, 503 genuine owner/file/approval failure, unknown network write→GET accepted request state with same original idempotency token. Never raw DB UUID, role list, bank detail, SQL constraint, signed file link or stack trace in user UI; redact logs and correlate safely.
 
+**Employee work-task cross-owner native boundary:** CG-10's original BR11 explicitly requests employee self-service and assigned tasks in Internal Android. CG-10 US-001/002 implements **its own** employment/attendance/leave native workflows. **CG-05 US-002/003 later adds the actual project_task/assigned-work native read/update/check-in using a typed CG-10 active employee/CG-01 account/CG-02 branch eligibility projection, after real CG-05 project task exists**, and tests it in CG-05 QA. CG-10 has no project_task table or future CG-05 import; a My Tasks menu from CG-10 must not look functional until the real CG-05 owner route exists. Public Android remains private-HR/task free.
+
+
 ## 6. App Web/native/UI and release controls
 
 **Admin Next.js Web:** Original CareGanga blue-selected searchable Admin sidebar, dashboard B20, exact indexed B21–B48 source-owned filters/wizard, B27–B29 application case stage, B30–B31 directory, B32–B33 cards, B34 CG-01 Role Assignment link, B35–B40 CG-19 source-linked letters, B43 CG-11 later salary setup **not implemented by CG-10**, B44–B48 transfer/exit, B49–B51 claim presentation to CG-09 only. Responsive tablet/narrow widths preserve permissioned inputs and real statuses; no invented screenshot pixel values.
