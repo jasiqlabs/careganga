@@ -1,7 +1,7 @@
 # CG-03 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION (15 Nov 2026); current latest PRD/HLD, CG-01 real guarded grant owner, versioned process, frozen proposal/role revisions, reviewer MFA proof and no-future owner migration traced in source. `database_impact: CRITICAL`; current-hash delegated design approval NOT_RECORDED, authenticated Harness resolver, qualified independent DB/migration/restore and source code/runtime/device/visual QA NOT_RUN.
+**State:** REQUIRED / OWNER_DELEGATED_DESIGN_CONTENT_APPROVED (15 Nov 2026) by JASIQ AI Design Review Agent after owner conditional approval and source review/fix/re-review of real CG-01 grant owner, immutable process/source proposal, protected reviewer authority and source finalizer. `database_impact: CRITICAL`; PRD/HLD formal gate BLOCKED; authenticated Harness resolver, independent CRITICAL DB/migration/restore, source code/runtime/device/visual QA NOT_RUN.
 
 ## Data ownership and independent initial workflow
 
