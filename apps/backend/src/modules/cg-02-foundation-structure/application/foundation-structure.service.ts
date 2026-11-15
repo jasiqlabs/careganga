@@ -251,9 +251,10 @@ export class FoundationStructureService {
         return updated.rows[0];
       },true);
   }
-  async departments(bearer:string,search="",kind?:string){
+  async departments(bearer:string,search="",kind?:string,offset=0){
     const actor=await this.actor(bearer,"foundation.departments.view");
-    if(typeof search!=="string"||search.length>80||(kind!==undefined&&!["DEPARTMENT","COMMITTEE"].includes(kind)))
+    if(typeof search!=="string"||search.length>80||(kind!==undefined&&!["DEPARTMENT","COMMITTEE"].includes(kind))||
+       !Number.isInteger(offset)||offset<0||offset>50000)
       throw new BadRequestException("Check department filters");
     const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\$&");
     const r=await this.db.query<{
@@ -264,8 +265,8 @@ export class FoundationStructureService {
         geography_area_id,head_account_ref,opening_date::text
         FROM department WHERE root_realm_id=$1 AND ($2::text IS NULL OR kind=$2)
         AND ($3='' OR normalized_name LIKE $3 ESCAPE '\\')
-        ORDER BY name,id LIMIT 100`,
-      [actor.realmId,kind??null,term?"%"+term+"%":""]);
+        ORDER BY name,id LIMIT 100 OFFSET $4`,
+      [actor.realmId,kind??null,term?"%"+term+"%":"",offset]);
     // Read-only CG-01 name projection; no account table imports into the CG-02 owner.
     const count=await this.db.query<{total:string;active:string;inactive:string;committees:string}>(`
       SELECT count(*)::text AS total,
@@ -285,7 +286,7 @@ export class FoundationStructureService {
       geographyRef:d.geography_area_id,headAccountRef:d.head_account_ref,
       headDisplayName:d.head_account_ref?labels[d.head_account_ref]??null:null,
       openingDate:d.opening_date,scope:"Foundation"
-    })),limit:100,summary:{
+    })),limit:100,offset,nextOffset:r.rows.length===100?offset+100:null,summary:{
       total:Number(count.rows[0].total),active:Number(count.rows[0].active),
       inactive:Number(count.rows[0].inactive),committees:Number(count.rows[0].committees)
     }};
