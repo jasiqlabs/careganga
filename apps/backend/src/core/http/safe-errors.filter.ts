@@ -31,7 +31,9 @@ export class SafeErrorsFilter implements ExceptionFilter {
       ROLE_ALREADY_REVOKED:"The account's role was already removed.",
       ACCOUNT_ALREADY_IN_STATUS:"The account already has that status.",
       POLICY_STALE:"Security policy changed elsewhere. Refresh before saving.",
-      POLICY_REPLAY_CONFLICT:"This policy request reference was already used. Refresh before retrying."
+      POLICY_REPLAY_CONFLICT:"This policy request reference was already used. Refresh before retrying.",
+      PLATFORM_STALE:"Platform settings changed elsewhere. Refresh before saving.",
+      PLATFORM_REPLAY_CONFLICT:"This configuration request was previously used for another change."
     };
     const payload=error instanceof HttpException?error.getResponse():null;
     const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
