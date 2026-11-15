@@ -54,6 +54,15 @@ export function RolesPanel(){
   useEffect(()=>{savingRef.current=saving;},[saving]);
   const editorOpen=Boolean(editor),retireOpen=Boolean(pendingRetire),detailsOpen=Boolean(details);
 
+  const purgeProtected=useCallback((message:string)=>{
+    // A denial from any restricted endpoint invalidates all protected view state.
+    ++latestRead.current;
+    setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);
+    setHistory(null);setHistoryCursor(null);setEditor(null);setPendingRetire(null);setDetails(null);
+    setLoading(false);setCopyLoading(false);
+    setNotice({kind:"error",text:message});
+  },[]);
+
   const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all")=>{
     const generation=++latestRead.current;
     setLoading(true);setNotice(null);setDetails(null);
@@ -70,12 +79,9 @@ export function RolesPanel(){
       setOffset(skip);
     }catch(e){
       if(generation!==latestRead.current)return;
-      // Fail closed after revalidation failure: do not leave restricted role/audit content cached.
-      setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
-      setEditor(null);setPendingRetire(null);setDetails(null);
-      setNotice({kind:"error",text:e instanceof Error?e.message:"Information unavailable."});
+      purgeProtected(e instanceof Error?e.message:"Information unavailable.");
     }finally{if(generation===latestRead.current)setLoading(false);}
-  },[]);
+  },[purgeProtected]);
 
   useEffect(()=>{void load("",0);},[load]);
   // Revalidate on focus/resume without a background polling loop.
@@ -136,8 +142,10 @@ export function RolesPanel(){
       const params=new URLSearchParams({search:searchText,status:"active",limit:"50",offset:"0"});
       const response=await read<RoleList>("roles?"+params.toString());
       setCopyCandidates(response.roles.filter(r=>r.active&&!r.protected));
-    } catch {
-      setCopyCandidates([]);setCopyError("Eligible roles could not be loaded. Try searching again.");
+    } catch(error) {
+      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+        purgeProtected(error.message);
+      else {setCopyCandidates([]);setCopyError("Eligible roles could not be loaded. Try searching again.");}
     } finally {setCopyLoading(false);}
   }
   function selectCopySource(roleRef:string){
@@ -214,14 +222,12 @@ export function RolesPanel(){
       await load(appliedSearch,offset,tab);
       setNotice({kind:"success",text:"Role change saved."});
     }catch(error){
-      if(error instanceof Error&&(error.message.includes("session expired")||error.message.includes("permission"))){
-        // Permission loss invalidates all protected list and audit content.
-        setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
-        setEditor(null);setPendingRetire(null);setDetails(null);
-      }
-      if(error instanceof Error&&error.message==="UNCERTAIN"){
+      if(error instanceof Error&&/session expired|permission/i.test(error.message)){
+        purgeProtected(error.message);
+      }else if(error instanceof Error&&error.message==="UNCERTAIN"){
         setNotice({kind:"uncertain",text:"The result could not be confirmed. Refresh the list before submitting another change."});
-      }else setNotice({kind:"error",text:error instanceof Error?error.message:"Unable to save the role."});
+      }else if(!(error instanceof Error&&/session expired|permission/i.test(error.message)))
+        setNotice({kind:"error",text:error instanceof Error?error.message:"Unable to save the role."});
     }finally{setSaving(false);}
   }
   async function retire(role:Role){
@@ -235,7 +241,9 @@ export function RolesPanel(){
       setPendingRetire(null);
       setNotice({kind:"success",text:"Role retired."});
     }catch(error){
-      setNotice({kind:"error",text:error instanceof Error&&error.message==="UNCERTAIN"?
+      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+        purgeProtected(error.message);
+      else setNotice({kind:"error",text:error instanceof Error&&error.message==="UNCERTAIN"?
         "Could not confirm retirement. Refresh the list before retrying.":
         error instanceof Error?error.message:"Role could not be retired."});
     }finally{setSaving(false);}
@@ -246,7 +254,9 @@ export function RolesPanel(){
       const result=await read<{events:AuditEvent[];nextCursor:string|null}>("audit?limit=30");
       setHistory(result.events);setHistoryCursor(result.nextCursor);
     }catch(error){
-      setNotice({kind:"error",text:error instanceof Error?error.message:"History unavailable."});
+      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+        purgeProtected(error.message);
+      else setNotice({kind:"error",text:error instanceof Error?error.message:"History unavailable."});
     }
   }
 
@@ -257,8 +267,10 @@ export function RolesPanel(){
         "audit?limit=30&cursor="+encodeURIComponent(historyCursor));
       setHistory(old=>[...(old??[]),...result.events]);
       setHistoryCursor(result.nextCursor);
-    }catch{
-      setNotice({kind:"error",text:"More security history could not be confirmed."});
+    }catch(error){
+      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+        purgeProtected(error.message);
+      else setNotice({kind:"error",text:"More security history could not be confirmed."});
     }
   }
 
