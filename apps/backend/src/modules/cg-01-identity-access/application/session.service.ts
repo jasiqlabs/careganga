@@ -70,11 +70,15 @@ export class SessionService implements IdentityAuthorization {
       try {
         const locked = await client.query<AccountCredential>(`
           SELECT a.id,a.realm_id,a.display_name,a.status,a.access_version,c.password_hash,
-                 c.last_totp_counter
+                 c.totp_ciphertext,c.totp_nonce,c.totp_tag,c.last_totp_counter
           FROM account a JOIN identity_credential c ON c.account_id=a.id
           WHERE a.id=$1 FOR UPDATE OF a,c`, [row.id]);
         const current = locked.rows[0];
+        // Do not accept MFA verified against a credential secret rotated between read and lock.
         if (!current || current.status !== "ACTIVE" || current.password_hash !== row.password_hash
+            || !current.totp_ciphertext?.equals(row.totp_ciphertext)
+            || !current.totp_nonce?.equals(row.totp_nonce)
+            || !current.totp_tag?.equals(row.totp_tag)
             || matchedCounter <= Number(current.last_totp_counter))
           throw new UnauthorizedException(INVALID_LOGIN);
         const role = await client.query<{ name: string; is_protected: boolean }>(`
