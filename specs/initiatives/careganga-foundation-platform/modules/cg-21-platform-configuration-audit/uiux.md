@@ -9,6 +9,8 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
+**Reference evidence boundary:** C54 API/Integrations and C55 Backup/Restore are disabled placeholder captures, not evidence of working services. PRD/BR still require real secure configuration and recovery, with separate executed operations proof.
+
 ## Screen/flow map
 
 - **FR-075:** Super Admin manages platform — Configure Foundation/system settings, approved payment/messaging/map integrations and public visibility through the owning modules; sensitive credentials restricted. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.

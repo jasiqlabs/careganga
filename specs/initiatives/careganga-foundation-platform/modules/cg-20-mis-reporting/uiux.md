@@ -9,6 +9,8 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
+**Audit caution:** C48 Data Export is an inaccessible/Super Admin placeholder, not a working export example. FR-074 requires actual authorized export; implement from requirements and verify independently.
+
 ## Screen/flow map
 
 - **FR-073:** Manager examines business — Show scope-filtered dashboards and quick actions for Foundation, modules, centers, finance and operations from verified owner records. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.

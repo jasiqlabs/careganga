@@ -9,6 +9,8 @@ Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar
 
 Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
 
+**Screen ownership:** B49–B51 show allowance/reimbursement despite the B49 filename suggesting leave. CG-10 owns employee request context; CG-09 owns approval-linked expense/liability/payment and the correct finance outcomes.
+
 ## Screen/flow map
 
 - **FR-029:** HR enrolls employee — Capture employment, branch/department, reporting line, needed personal/identity/bank/qualification documents; follow configured verification until approved ID/access. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.

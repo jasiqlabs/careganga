@@ -90,7 +90,7 @@ QA cases:
 - **US-005-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-005-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Eligible consult 50% Foundation/50% patient, protected full exception; center cash is not Foundation cash, with one accepted source transaction and correct downstream totals.
-- **US-005-QA08 — Healthcare source-specific boundary:** Monthly provider settlement combines approved Foundation obligations across several real appointments; one partial bank payment does not mark entire month settled, and returned/canceled services adjust dues audibly.
+- **US-005-QA08 — Healthcare source-specific boundary:** Monthly provider settlement combines approved Foundation obligations across several real appointments; one partial bank payment does not mark entire month settled, and returned/canceled services adjust dues auditably.
 Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-004
 
