@@ -93,7 +93,7 @@ export class RolesService {
       SELECT id,name FROM role WHERE realm_id=$1 AND active=true AND is_protected=false
       AND ($2='' OR normalized_name LIKE $2)
       ORDER BY normalized_name,id LIMIT 30`,
-      [actor.realmId,search?("%"+search.trim().toLowerCase()+"%"):""]);
+      [actor.realmId,search?("%"+search.trim().toLowerCase().replace(/[\\%_]/g,"\\[actor.realmId,search?("%"+search.trim().toLowerCase()+"%"):""]);")+"%"):""]);
     return {options:rows.rows.map(r=>({value:r.id,label:r.name,context:"Foundation"}))};
   }
 
