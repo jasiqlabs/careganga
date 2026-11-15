@@ -27,7 +27,7 @@ QA cases:
 - **US-001-QA09 — concrete protected process and pinned version** Seed/enable one actual CG-01 protected-role-change route with eligible current reviewer capability, final distinct Super Admin+fresh MFA and no CG-02 geography. Edit/process revision creates immutable NEW version; existing case keeps old steps. No configuration hardcoded against unbuilt future role/area.
 - **US-001-QA10 — source revision and idempotent case** CG-03 canonicalizes requested custom-role intent and both genuine CG-01 account-access and role versions, freezes revision+digest. Replayed same source key/digest returns same case; differing digest or concurrent proposal with now-stale target version denies without new case; no CG-01 request table or CG-19 FK.
 Verification: On actual implementation source-trace US-001-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: None
+Dependencies: Within CG-03 none. **External hard predecessor:** delivered CG-01 bootstrap, actual Foundation-root account/role/custom `roles.manage` capability policy, current scope/authorization/MFA and typed owner read facade. CG-21 is earlier in the conservative rollout but **not a CG-03 data/API prerequisite**; no CG-19/02/04/10/14.
 
 ### US-002 — Review and decide real cases under current authorization
 
@@ -47,7 +47,7 @@ QA cases:
 - **US-002-QA09 — bulk decisions do not bypass permission** Attempt bounded multi-case action with one authorized and one foreign/revoked/self-owned case. Either atomic explicit rejection or independently authorized per-case result; never approve foreign row because same batch holds a permitted row. Counts and filters reflect only authorized real cases.
 - **US-002-QA10 — read/step permission race** At actual decision time re-evaluate current CG-01 reviewer privilege, role revision, root realm and MFA; race revoked role vs step approve, two current step actors and changed process config. One accepted step maximum, prior pinned process remains immutable, no direct source grant before finalization.
 Verification: On actual implementation source-trace US-002-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+Dependencies: **Within CG-03 US-001** (real process/case). External current delivered CG-01 root/reviewer accounts, roles/capabilities and authentic MFA; no CG-19 evidence or future applicant/area/center owner.
 
 ### US-003 — Finalize one genuine protected CG-01 grant effect
 
@@ -68,7 +68,7 @@ QA cases:
 - **US-003-QA10 — real CG-01 finalizer and version drift** At finalization, change either target account access revision or target custom-role revision after submission. CG-01 owner facade must detect drift and return OWNER_BLOCKED_SOURCE_CHANGED with **zero** new assignment/audit effect, even though prior CG-03 decision remains recorded. Forged approval, root-role and security-policy.manage grant are always rejected.
 - **US-003-QA11 — CRITICAL DB/idle/restore review** Review real unique process version/step, source key/digest, immutable decision, finalization case/decision/effect key, case scope indexes, short transactions and additive migration; race same review and source effect. With zero retry-due jobs across many instances, no fast per-user or per-case scans. EXPLAIN, independent specialist DB review, actual migrations/restore, devices and runtime remain NOT_RUN.
 Verification: On actual implementation source-trace US-003-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: **Within CG-03 US-002** (real final case decision). External CG-01 account/role and actual safeguarded owner finalizer, **added/reviewed as the CG-03-introducing integration** without modifying CG-01 source truth through CG-03 direct repositories. No CG-02/04/09/10/14/19 or optional provider prerequisite.
 
 ## Execution progress
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
