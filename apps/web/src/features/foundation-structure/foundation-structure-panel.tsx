@@ -125,7 +125,6 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   },[departmentEditorOpen]);
   const eligibleParents=useMemo(()=>areas.filter(x=>parentLevels[areaLevel]?.includes(x.level)&&x.status==="ACTIVE"&&x.areaRef!==areaRef),[areas,areaLevel,areaRef]);
   const selectedDept=departments.find(x=>x.departmentRef===focusedDept);
-  const label=(ref:string|null)=>ref?(officeholders.find(x=>x.value===ref)?.label??"Previously assigned account"):"None";
   const visibleAreas=areas.filter(x=>x.name.toLowerCase().includes(search.toLowerCase()));
   const visibleDepartments=departments.filter(x=>
     x.name.toLowerCase().includes(search.toLowerCase())&&
