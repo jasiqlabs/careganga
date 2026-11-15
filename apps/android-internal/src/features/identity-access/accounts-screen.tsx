@@ -179,7 +179,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       }
       setPending(null);setScreen(inviteOnly?"invite":"list");setRequestKey("");
       if(inviteOnly&&wasInvite){
-        setName("");setEmail("");setPhone("");setRoleRef("");
+        setName("");setEmail("");setRoleRef("");
         setRequestKey(Crypto.randomUUID());
       }
       const verified=await load(search,0,filter);
@@ -358,7 +358,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         {pending&&<View style={styles.group}>
           <Text style={styles.heading}>Confirm account change</Text>
           <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":pending.kind==="resend"?"Resend invitation":
-            "Change status to "+pending.status} for {row.displayName}?</Text>
+            "Change status to "+accountStatusLabel(pending.status??"")} for {row.displayName}?</Text>
           <Text style={styles.note}>A change to access invalidates existing sessions.</Text>
           <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
             disabled={busy||unknown} onPress={()=>void commit()}>
