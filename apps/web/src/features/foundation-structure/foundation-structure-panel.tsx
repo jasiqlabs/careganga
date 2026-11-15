@@ -77,6 +77,8 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const [audit,setAudit]=useState<{title:string;events:{action:string;version:number;recordedAt:string}[]}|null>(null);
   const [exportOffset,setExportOffset]=useState<Record<string,number>>({AREAS:0,DEPARTMENTS:0});
   const [search,setSearch]=useState("");
+  const [departmentKindFilter,setDepartmentKindFilter]=useState("ALL");
+  const [departmentStatusFilter,setDepartmentStatusFilter]=useState("ALL");
 
   const reload=useCallback(async()=>{
     setLoading(true);setError("");
@@ -124,7 +126,10 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
   const selectedDept=departments.find(x=>x.departmentRef===focusedDept);
   const label=(ref:string|null)=>ref?(officeholders.find(x=>x.value===ref)?.label??"Previously assigned account"):"None";
   const visibleAreas=areas.filter(x=>x.name.toLowerCase().includes(search.toLowerCase()));
-  const visibleDepartments=departments.filter(x=>x.name.toLowerCase().includes(search.toLowerCase()));
+  const visibleDepartments=departments.filter(x=>
+    x.name.toLowerCase().includes(search.toLowerCase())&&
+    (departmentKindFilter==="ALL"||x.kind===departmentKindFilter)&&
+    (departmentStatusFilter==="ALL"||(x.active?"ACTIVE":"INACTIVE")===departmentStatusFilter));
   async function send(write:Pending){
     setBusy(true);setNotice("");setError("");setPending(write);
     try{
@@ -357,8 +362,16 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         <div className="kpi"><span>Inactive</span><strong>{departmentSummary.inactive}</strong></div>
         <div className="kpi"><span>Committees</span><strong>{departmentSummary.committees}</strong></div>
       </div>}
-      <div className="search-row" style={{padding:"1rem"}}><label>Search loaded departments <input
-        value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name"/></label></div>
+      <div className="search-row" style={{padding:"1rem"}}>
+        <label>Search loaded departments <input
+          value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name"/></label>
+        <label>Type <select value={departmentKindFilter} onChange={e=>setDepartmentKindFilter(e.target.value)}>
+          <option value="ALL">All types</option><option value="DEPARTMENT">Departments</option>
+          <option value="COMMITTEE">Committees</option></select></label>
+        <label>Status <select value={departmentStatusFilter} onChange={e=>setDepartmentStatusFilter(e.target.value)}>
+          <option value="ALL">All statuses</option><option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option></select></label>
+      </div>
       <table className="role-table"><thead><tr><th>Name</th><th>Type</th><th>Head</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{visibleDepartments.map(x=><tr key={x.departmentRef}>
         <td>{x.name}</td><td>{x.kind.toLowerCase()}</td><td>{x.headDisplayName??(x.headAccountRef?"Previously assigned account":"Unassigned")}</td>
