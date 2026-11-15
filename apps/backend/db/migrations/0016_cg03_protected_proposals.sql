@@ -27,6 +27,18 @@ CREATE TABLE cg03_process_current (
   updated_at timestamptz NOT NULL DEFAULT now(),
   FOREIGN KEY(process_id,realm_id) REFERENCES cg03_process(id,realm_id) ON DELETE RESTRICT
 );
+CREATE TABLE cg03_process_command (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+  actor_id uuid NOT NULL,
+  request_key uuid NOT NULL,
+  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+  process_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(realm_id,actor_id,request_key),
+  FOREIGN KEY(actor_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(process_id,realm_id) REFERENCES cg03_process(id,realm_id) ON DELETE RESTRICT
+);
 CREATE TABLE cg03_case (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -36,6 +48,8 @@ CREATE TABLE cg03_case (
   proposer_id uuid NOT NULL,
   target_account_id uuid NOT NULL,
   target_role_id uuid NOT NULL,
+  account_name_snapshot text NOT NULL CHECK(length(account_name_snapshot) BETWEEN 2 AND 160),
+  role_name_snapshot text NOT NULL CHECK(length(role_name_snapshot) BETWEEN 2 AND 80),
   expected_access_version bigint NOT NULL CHECK(expected_access_version>0),
   expected_role_revision integer NOT NULL CHECK(expected_role_revision>0),
   proposal_revision integer NOT NULL CHECK(proposal_revision>0),
@@ -92,6 +106,8 @@ CREATE TRIGGER cg03_process_immutable BEFORE UPDATE OR DELETE ON cg03_process
  FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
 CREATE TRIGGER cg03_process_step_immutable BEFORE UPDATE OR DELETE ON cg03_process_step
  FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
+CREATE TRIGGER cg03_process_command_immutable BEFORE UPDATE OR DELETE ON cg03_process_command
+ FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
 CREATE TRIGGER cg03_case_event_immutable BEFORE UPDATE OR DELETE ON cg03_case_event
  FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
 CREATE FUNCTION cg03_case_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -103,6 +119,8 @@ BEGIN
      NEW.proposer_id IS DISTINCT FROM OLD.proposer_id OR
      NEW.target_account_id IS DISTINCT FROM OLD.target_account_id OR
      NEW.target_role_id IS DISTINCT FROM OLD.target_role_id OR
+     NEW.account_name_snapshot IS DISTINCT FROM OLD.account_name_snapshot OR
+     NEW.role_name_snapshot IS DISTINCT FROM OLD.role_name_snapshot OR
      NEW.expected_access_version IS DISTINCT FROM OLD.expected_access_version OR
      NEW.expected_role_revision IS DISTINCT FROM OLD.expected_role_revision OR
      NEW.proposal_revision IS DISTINCT FROM OLD.proposal_revision OR
