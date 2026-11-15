@@ -26,6 +26,10 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 **State and invariant:** Planned/active/hold/completed/cancelled. No fake GPS, duplicate CMS project or shadow financial/beneficiary source. Every list/search/option/detail/export/write must validate actor action plus real geography/branch/center/patient scope, with privacy and truthful end-user states.
 
+## CG-05 original ownership of project branch links — transferred CG-02-BR06 scope
+
+CG-02-BR06 project/branch affiliation is delivered **by CG-05 US-001**: one actual project references an authorized existing ACTIVE CG-02 branch (and real CG-02 geography), with scope-safe project list/detail/task options and effective history on movement. The branch is not an editable project master in CG-02. Project-related financial allocation uses CG-09 verified finance projection when available, never a second project budget ledger or a future beneficiary record.
+
 ## Complete PRD and BR mapping
 
 - **FR-012/A-05:** Project owner sets up work — Create/maintain projects, responsible staff, locations, dates, budgets, funding links, status and work progress; expose scoped project dashboards
