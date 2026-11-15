@@ -1,7 +1,7 @@
 # CG-01 — Detailed Design: Identity & Role-Based Access
 
 **Design authority:** [CG-01 module](module.md) · [PRD](../../prd.md) FR-001–003/080 · [HLD](../../hld.md) §§5.3–5.4, 7–9 · [CG-01 UI/UX](uiux.md)  
-**Decision:** REQUIRED for new security-critical schema, permissions and Android/Web access. **State:** rebuilt source-design draft; no migration, runtime or local Harness gate executed.
+**Decision:** REQUIRED for new security-critical schema, permissions and Android/Web access. **State:** owner-delegated SOURCE DESIGN APPROVED at current SHA (approval ledger); authenticated local Harness resolver, independent security/database review, real migration, runtime/device/pixel/motion QA NOT_RUN.
 
 ## 1. Implementation boundary
 
