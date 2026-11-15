@@ -220,3 +220,13 @@ button:disabled { cursor:wait; opacity:.65; }
 .role-drawer .form .field small{color:var(--cg-muted)}
 @media(max-width:48rem){.policy-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:27rem){.policy-grid{grid-template-columns:1fr}}
+
+/* CG-21 source-derived C09/C10/C52/C53 detail and audit-density vocabulary.
+ * Reuse the original shared CareGanga tokens; no invented animation. */
+.audit-detail{display:grid;grid-template-columns:minmax(7rem,1fr) minmax(0,2fr);
+  gap:.85rem 1rem;padding:1rem 0}
+.audit-detail dt{color:var(--cg-muted);font-size:.85rem}
+.audit-detail dd{margin:0;overflow-wrap:anywhere;font-weight:600}
+.audit-detail>dt,.audit-detail>dd{border-bottom:1px solid var(--cg-border);padding-bottom:.7rem}
+@media(max-width:32rem){.audit-detail{grid-template-columns:1fr;gap:.3rem}
+  .audit-detail dd{padding-bottom:.9rem}}
