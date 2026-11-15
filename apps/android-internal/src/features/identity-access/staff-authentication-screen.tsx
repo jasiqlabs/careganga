@@ -2,6 +2,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { useCallback, useEffect, useState } from "react";
 import { RolesScreen } from "./roles-screen";
+import { AccountsScreen } from "./accounts-screen";
+import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -43,11 +45,14 @@ export function StaffAuthenticationScreen(){
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
   const [message,setMessage]=useState("");
   const [recover,setRecover]=useState(false);
+  const [activate,setActivate]=useState(false);
+  const [accountsOpen,setAccountsOpen]=useState(false);
   const [rolesOpen,setRolesOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
+  const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -150,6 +155,8 @@ export function StaffAuthenticationScreen(){
     finally{setState("idle");}
   }
   if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
+  if(activate) return <InvitationActivationScreen onExit={()=>setActivate(false)}/>;
+  if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
@@ -161,6 +168,10 @@ export function StaffAuthenticationScreen(){
             <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
+            {roleActions.includes("accounts.view")&&<Pressable accessibilityRole="button"
+              style={styles.button} onPress={()=>setAccountsOpen(true)}>
+              <Text style={styles.buttonText}>Users Management</Text>
+            </Pressable>}
             {roleActions.includes("roles.view")&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setRolesOpen(true)}><Text style={styles.buttonText}>Roles & permissions</Text></Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
@@ -180,6 +191,9 @@ export function StaffAuthenticationScreen(){
             </Pressable>
             <Pressable accessibilityRole="button" onPress={()=>setRecover(true)} style={styles.button}>
               <Text style={styles.buttonText}>Recover account</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={()=>setActivate(true)} style={styles.button}>
+              <Text style={styles.buttonText}>Accept staff invitation</Text>
             </Pressable>
           </View>}
         {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
