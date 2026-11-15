@@ -44,23 +44,25 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   const requestKey=useRef("");
   const generation=useRef(0);
   const saving=useRef(false);
-  const read=useCallback(async()=>{
+  const read=useCallback(async(expectedRevision?:number):Promise<boolean>=>{
     const seq=++generation.current;setLoading(true);
     try{
       const result=await identityRequest("/api/identity/security-policy",{
         headers:{Authorization:"Bearer "+token}});
-      if(result.status===401){if(seq===generation.current)onExpired();return;}
-      if(result.status===403){if(seq===generation.current){setCurrent(null);onExit();}return;}
+      if(result.status===401){if(seq===generation.current)onExpired();return false;}
+      if(result.status===403){if(seq===generation.current){setCurrent(null);onExit();}return false;}
       if(!result.ok)throw Error("Current security policy unavailable");
       const payload:unknown=await result.json();
       if(!validPolicy(payload))throw Error("Policy response could not be verified");
-      if(seq!==generation.current)return;
+      if(seq!==generation.current)return false;
       setCurrent(payload);setValues(form(payload));setEditing(false);setReview(false);
       setTotp("");setUnknown(false);setMessage("");requestKey.current="";
+      return expectedRevision===undefined||payload.revision>=expectedRevision;
     }catch{
       if(seq!==generation.current)return;
       setCurrent(null);setValues(null);setEditing(false);
       setMessage("Protected policy could not be verified. Check your connection.");
+      return false;
     }finally{if(seq===generation.current)setLoading(false);}
   },[token,onExit,onExpired]);
   useEffect(()=>{void read();return()=>{++generation.current;};},[read]);
@@ -75,7 +77,8 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   useEffect(()=>{
     const sub=AppState.addEventListener("change",state=>{
       if(state==="active"&&!editing&&!unknown)void read();
-      else if(state!=="active")setCurrent(null);
+      else if(state!=="active"){setCurrent(null);setValues(null);setEditing(false);
+        setReview(false);setTotp("");}
     });
     return()=>sub.remove();
   },[read,editing,unknown]);
@@ -127,8 +130,9 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       const ack:unknown=await result.json();
       if(!ack||typeof ack!=="object"||!("revision" in ack)||
         !Number.isInteger(ack.revision))throw Error("Unconfirmed");
-      await read();
-      setMessage("Security policy saved and verified. Existing sessions follow these limits.");
+      const verified=await read(Number(ack.revision));
+      setMessage(verified?"Security policy saved and verified. Existing sessions follow these limits.":
+        "Save was acknowledged but the effective revision could not be checked. Refresh before editing.");
     }catch{
       setUnknown(true);
       setMessage("The outcome cannot be confirmed. Refresh the policy before trying again.");
