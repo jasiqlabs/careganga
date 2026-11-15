@@ -241,7 +241,10 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     {!!success&&<Text accessibilityRole="alert">{success}</Text>}
     {!busy&&!roles.length&&<Text>No matching roles are available.</Text>}
     {!busy&&roles.map(role=><View key={role.roleRef} style={styles.roleCard}>
-      <Text style={styles.heading}>{role.name}</Text>
+      <View style={styles.line}>
+        <View accessible={false} style={[styles.roleDot,{backgroundColor:roleColor(role.colorKey)}]}/>
+        <Text style={styles.heading}>{role.name}</Text>
+      </View>
       <Text>{role.protected?"Protected Foundation role":role.active?"Active":"Retired"}</Text>
       <Text>{role.assignedCount} assigned accounts</Text>
       <Text>{role.protected?"Protected authority":role.actionKeys.length+" allowed actions"}</Text>
@@ -287,7 +290,36 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
           <Text>Description</Text>
           <TextInput accessibilityLabel="Role description" style={styles.input}
             multiline value={description} maxLength={350} onChangeText={setDescription}/>
-          <Text>Color: CareGanga theme default.</Text>
+          {editor?.mode!=="edit"&&<View style={styles.group}>
+            <Text style={styles.fieldLabel}>Copy permissions from</Text>
+            <Pressable accessibilityRole="button" disabled={saving} style={styles.button}
+              onPress={()=>chooseCopySource()}><Text>Start with no permissions</Text></Pressable>
+            <TextInput accessibilityLabel="Find eligible roles to copy" value={copyQuery}
+              maxLength={80} style={styles.input} onChangeText={setCopyQuery}
+              placeholder="Search role name"/>
+            <Pressable accessibilityRole="button" disabled={copySearching||saving} style={styles.button}
+              onPress={()=>void findCopySources(copyQuery)}>
+              <Text>{copySearching?"Finding…":"Find roles"}</Text>
+            </Pressable>
+            {copyCandidates.map(role=><Pressable key={role.roleRef}
+              accessibilityRole="button" accessibilityLabel={"Copy permissions from "+role.name}
+              accessibilityState={{selected:editor?.mode==="copy"&&editor.source?.roleRef===role.roleRef}}
+              disabled={saving} style={styles.option} onPress={()=>chooseCopySource(role)}>
+              <Text>{role.name}{editor?.mode==="copy"&&editor.source?.roleRef===role.roleRef?" — selected":""}</Text>
+            </Pressable>)}
+          </View>}
+          <Text style={styles.fieldLabel}>Area level</Text>
+          <Text>Foundation (organization-wide)</Text>
+          <Text style={styles.fieldLabel}>Colour</Text>
+          <View style={styles.swatches}>
+            {roleColorOptions.map(option=><Pressable key={option.key}
+              accessibilityRole="radio" accessibilityLabel={option.name}
+              accessibilityState={{checked:colorKey===option.key,disabled:saving}}
+              disabled={saving} onPress={()=>setColorKey(option.key)}
+              style={[styles.swatchRing,colorKey===option.key&&styles.swatchSelected]}>
+              <View style={[styles.swatch,{backgroundColor:option.hex}]}/>
+            </Pressable>)}
+          </View>
           {editor?.mode==="copy"&&<Text>Only permitted actions are copied. People and protected rights are not copied.</Text>}
           {groups.map(g=><View key={g.group} style={styles.group}>
             <Text style={styles.heading}>{g.group}</Text>
