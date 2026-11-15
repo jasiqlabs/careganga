@@ -51,7 +51,7 @@ export class SessionService implements IdentityAuthorization {
       ON CONFLICT(key_digest) DO UPDATE SET
         attempt_count = CASE WHEN auth_login_attempt.window_started_at < now() - make_interval(secs=>$2)
           THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
-        window_started_at = CASE WHEN auth_login_attempt.window_started_at < now() - interval '15 minutes'
+        window_started_at = CASE WHEN auth_login_attempt.window_started_at < now() - make_interval(secs=>$2)
           THEN now() ELSE auth_login_attempt.window_started_at END
       RETURNING attempt_count`, [digest,windowSeconds]);
     if (result.rows[0].attempt_count > limit)
@@ -151,7 +151,7 @@ export class SessionService implements IdentityAuthorization {
       LIMIT 1`,[tokenDigest]);
     const actor=result.rows[0];
     if (!actor) throw new UnauthorizedException();
-    // Bounded DB write, but never extends the fixed 8-hour session maximum.
+    // Bounded last-seen write. A shorter policy is still evaluated on each protected read.
     await this.db.query(`UPDATE auth_session SET last_seen_at=now()
       WHERE id=$1 AND revoked_at IS NULL AND last_seen_at < now() - interval '60 seconds'`,[actor.id]);
     return {
