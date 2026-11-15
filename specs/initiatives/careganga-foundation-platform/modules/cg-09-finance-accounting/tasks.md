@@ -12,7 +12,7 @@ Requirements: FR-023, CG-09-BR01, CG-09-BR02, CG-09-BR03; PRD N-01/N-04/N-05/N-0
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-001-QA01:** Given an authorized actor and actual prerequisite records, Create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-001-QA01:** Given an authorized actor and actual prerequisite records, create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-001-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -30,7 +30,7 @@ Requirements: FR-024, CG-09-BR02, CG-09-BR04, CG-09-BR06, CG-09-BR07, CG-09-BR08
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Post balanced debits/credits once per immutable source event; correct paid vs approved state. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-002-QA01:** Given an authorized actor and actual prerequisite records, Post balanced debits/credits once per immutable source event; correct paid vs approved state. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-002-QA01:** Given an authorized actor and actual prerequisite records, post balanced debits/credits once per immutable source event; correct paid vs approved state. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-002-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -49,7 +49,7 @@ Requirements: FR-025, CG-09-BR09, CG-09-BR10; PRD N-01/N-04/N-05/N-09/N-11/N-12/
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Create reviewed reimbursement claim linked to one approved payable/voucher and actual payment evidence. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-003-QA01:** Given an authorized actor and actual prerequisite records, Create reviewed reimbursement claim linked to one approved payable/voucher and actual payment evidence. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-003-QA01:** Given an authorized actor and actual prerequisite records, create reviewed reimbursement claim linked to one approved payable/voucher and actual payment evidence. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-003-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-003-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-003-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -67,7 +67,7 @@ Requirements: FR-026, CG-09-BR11, CG-09-BR12; PRD N-01/N-04/N-05/N-09/N-11/N-12/
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Create validated itemized invoice/receipt, calculate tax/charges and preserve issue/payment history. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-004-QA01:** Given an authorized actor and actual prerequisite records, Create validated itemized invoice/receipt, calculate tax/charges and preserve issue/payment history. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-004-QA01:** Given an authorized actor and actual prerequisite records, create validated itemized invoice/receipt, calculate tax/charges and preserve issue/payment history. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-004-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-004-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-004-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -85,7 +85,7 @@ Requirements: FR-027, CG-09-BR13, CG-09-BR14, CG-09-BR15, CG-09-BR16; PRD N-01/N
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Approve one budget, distinguish committed/allocated/utilized/released and real balance. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-005-QA01:** Given an authorized actor and actual prerequisite records, Approve one budget, distinguish committed/allocated/utilized/released and real balance. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-005-QA01:** Given an authorized actor and actual prerequisite records, approve one budget, distinguish committed/allocated/utilized/released and real balance. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-005-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-005-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-005-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -103,7 +103,7 @@ Requirements: FR-028, CG-09-BR03, CG-09-BR05, CG-09-BR14, CG-09-BR15, CG-09-BR16
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
 Acceptance: Show scoped day book, cash/bank ledger, trial balance and reconciliation from posted lines. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-006-QA01:** Given an authorized actor and actual prerequisite records, Show scoped day book, cash/bank ledger, trial balance and reconciliation from posted lines. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
+- **US-006-QA01:** Given an authorized actor and actual prerequisite records, show scoped day book, cash/bank ledger, trial balance and reconciliation from posted lines. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-006-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
 - **US-006-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-006-QA04:** Invalid field, absent source, unavailable owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
