@@ -103,6 +103,6 @@
 **Source QA procedure:** For each identifier inspect current exact Admin/native/public action → approved current DTO → server actor/root/branch/owner role guard → real transaction and original owner facade → PostgreSQL state/source audit/response and authorized second consumer. Record a real file:function and SOURCE_VERIFIED / SOURCE_GAP / NOT_VERIFIABLE in this same task file during authorized Development. SQL, screen video/pixel, native device, provider, Play and measured performance are NOT_RUN until independent execution.
 
 ## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
-- US-002: BLOCKED | PLANNING_DRAFT_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
-- US-003: BLOCKED | PLANNING_DRAFT_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
+- US-001: BLOCKED | DELEGATED_DESIGN_APPROVED_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
+- US-002: BLOCKED | DELEGATED_DESIGN_APPROVED_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
+- US-003: BLOCKED | DELEGATED_DESIGN_APPROVED_ONLY; source implementation NOT_STARTED; code review/QA/SQL/Web/native/visual/Play NOT_RUN; formal stage gate BLOCKED.
