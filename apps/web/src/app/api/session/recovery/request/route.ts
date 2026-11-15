@@ -18,7 +18,14 @@ export async function POST(request:NextRequest) {
     if(!result.ok)
       return NextResponse.json({message:result.status===429?"Too many attempts. Try later.":result.status===400?"Details could not be confirmed.":"Recovery unavailable."},
         {status:result.status===429?429:result.status===400?400:503});
-    const response=NextResponse.json({message:"If this account is eligible, the recovery request is being processed. Delivery cannot be confirmed here."},{status:202});
+    const data:unknown=await result.json();
+    const supportReference=data&&typeof data==="object"&&"supportReference" in data
+      &&typeof data.supportReference==="string"&&/^CG-[A-Z0-9-]{8,25}$/.test(data.supportReference)
+      ? data.supportReference : undefined;
+    const response=NextResponse.json({
+      message:"If this account is eligible, the recovery request is being processed. Delivery cannot be confirmed here.",
+      supportReference
+    },{status:202});
     response.headers.set("Cache-Control","no-store");
     return response;
   }catch{
