@@ -24,6 +24,7 @@ async function read<T>(path:string):Promise<T>{
 }
 export function RolesPanel(){
   const [roles,setRoles]=useState<Role[]>([]);
+  const [selectedRoleRef,setSelectedRoleRef]=useState<string|null>(null);
   const [groups,setGroups]=useState<Group[]>([]);
   const [actions,setActions]=useState<string[]>([]);
   const [search,setSearch]=useState("");
@@ -62,6 +63,7 @@ export function RolesPanel(){
     // A denial from any restricted endpoint invalidates all protected view state.
     ++latestRead.current;++copyRead.current;++auditRead.current;
     setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);
+    setSelectedRoleRef(null);
     setHistory(null);setHistoryCursor(null);setEditor(null);setPendingRetire(null);setDetails(null);
     setLoading(false);setCopyLoading(false);
     setNotice({kind:"error",text:message});
@@ -79,6 +81,7 @@ export function RolesPanel(){
       ]);
       if(generation!==latestRead.current)return;
       setRoles(list.roles);setGroups(catalog.groups);
+      setSelectedRoleRef(previous=>list.roles.some(r=>r.roleRef===previous)?previous:list.roles[0]?.roleRef??null);
       setActions(effective.actions.map(x=>x.key));setTotal(list.total);
       setOffset(skip);
     }catch(e){
@@ -180,7 +183,7 @@ export function RolesPanel(){
   }
   const canManage=actions.includes("roles.manage");
   const canAudit=actions.includes("access.audit.view");
-  const shown=roles; // Filtering is authoritative server-side, before pagination.
+  const selectedRole=roles.find(role=>role.roleRef===selectedRoleRef)??null;
   const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable);
 
   async function mutate(path:string,method:"POST"|"PATCH",body:unknown){
@@ -316,23 +319,80 @@ export function RolesPanel(){
     </div>
     {notice&&<p className={notice.kind==="error"?"error":"notice"} role={notice.kind==="error"?"alert":"status"}>{notice.text}</p>}
     {loading?<p role="status">Loading verified roles…</p>:
-      !roles.length?<p>There are no matching roles available for this account.</p>:
-      <div className="role-table-wrap"><table className="role-table"><thead><tr>
-        <th scope="col">Role</th><th scope="col">Status</th><th scope="col">Assigned accounts</th>
-        <th scope="col">Permissions</th><th scope="col">Actions</th>
-      </tr></thead><tbody>{shown.map(role=><tr key={role.roleRef}>
-        <td><span className="role-name"><span className="role-dot" aria-hidden="true" style={{background:roleColor(role.colorKey)}}/><span><strong>{role.name}</strong><p>{role.description}</p></span></span></td>
-        <td>{role.protected?"Protected":role.active?"Active":"Retired"}</td>
-        <td>{role.assignedCount}</td>
-        <td>{role.protected?"Protected Foundation access":role.actionKeys.length+" allowed actions"}</td>
-        <td><div className="toolbar"><button type="button" onClick={()=>setDetails(role)}>Details</button>{canManage&&!role.protected&&role.active&&<>
-          <button type="button" onClick={()=>open("edit",role)}>Edit</button>
-          <button type="button" onClick={()=>open("copy",role)}>Copy</button>
-          <button type="button" disabled={role.assignedCount>0||saving}
-            title={role.assignedCount>0?"Reassign accounts before retiring":undefined}
-            onClick={()=>setPendingRetire(role)}>Retire</button>
-        </>}</div></td>
-      </tr>)}</tbody></table></div>
+      !roles.length?<div className="role-empty" role="status">
+        <strong>No matching roles</strong><p>Try another role name or status.</p>
+      </div>:
+      <div className="role-three-pane">
+        <section className="role-pane role-pane-list" aria-labelledby="roles-list-title">
+          <header className="role-pane-heading"><div>
+            <h2 id="roles-list-title">Roles list</h2><p>{total} matching roles</p>
+          </div></header>
+          <div className="role-list-options" aria-label="Foundation roles">
+            {roles.map(role=><button key={role.roleRef} type="button"
+              aria-current={selectedRoleRef===role.roleRef?"true":undefined}
+              className={"role-list-option"+(selectedRoleRef===role.roleRef?" is-active":"")}
+              onClick={()=>setSelectedRoleRef(role.roleRef)}>
+              <span className="role-dot role-dot-large" aria-hidden="true"
+                style={{backgroundColor:roleColor(role.colorKey)}}/>
+              <span className="role-list-option-text">
+                <strong>{role.name}</strong>
+                <span>{role.protected?"Protected":role.active?"Active":"Retired"} · {role.assignedCount} assigned</span>
+              </span>
+              <span className="role-list-chevron" aria-hidden="true">›</span>
+            </button>)}
+          </div>
+        </section>
+        <section className="role-pane role-pane-permissions" aria-labelledby="permissions-title">
+          <header className="role-pane-heading">
+            <div><h2 id="permissions-title">Permission Manager</h2>
+              <p>Current Foundation permissions</p></div>
+            <span className="role-permission-count">{selectedRole?.protected?"Protected":(selectedRole?.actionKeys.length??0)+" allowed"}</span>
+          </header>
+          {selectedRole&&<div className="role-permission-grid">
+            {selectedRole.protected?<p className="permission-note">
+              This is a protected Foundation role. Its authority is enforced by the identity service.
+              It cannot be edited, copied or retired here.
+            </p>:groups.length?groups.map(group=><details className="role-permission-details"
+                key={group.group} open>
+                <summary>{group.group}</summary>
+                <ul>{group.actions.map(action=><li key={action.key} className="role-permission-line">
+                  <span>{action.businessLabel}</span>
+                  <span className={"role-permission-status"+(selectedRole.actionKeys.includes(action.key)?" granted":"")}>
+                    {selectedRole.actionKeys.includes(action.key)?"Allowed":"Not granted"}
+                  </span>
+                </li>)}</ul>
+              </details>):<p>No assignable permissions are available.</p>}
+          </div>}
+        </section>
+        <aside className="role-pane role-pane-detail" aria-label="Selected role details">
+          <header className="role-pane-heading"><div>
+            <h2>Role Details</h2><p>Foundation access</p>
+          </div></header>
+          {selectedRole&&<div className="role-detail-content">
+            <span className="role-dot role-dot-avatar" aria-hidden="true"
+              style={{backgroundColor:roleColor(selectedRole.colorKey)}}/>
+            <h3>{selectedRole.name}</h3>
+            <p className="role-meta">{selectedRole.protected?"Protected system role":
+              selectedRole.active?"Active custom role":"Retired custom role"}</p>
+            {selectedRole.description&&<p>{selectedRole.description}</p>}
+            <dl>
+              <div><dt>Scope</dt><dd>Foundation</dd></div>
+              <div><dt>Assigned accounts</dt><dd>{selectedRole.assignedCount}</dd></div>
+              <div><dt>Allowed actions</dt><dd>{selectedRole.protected?"Protected":selectedRole.actionKeys.length}</dd></div>
+            </dl>
+            <div className="role-detail-actions">
+              <button type="button" onClick={()=>setDetails(selectedRole)}>View details</button>
+              {canManage&&!selectedRole.protected&&selectedRole.active&&<>
+                <button type="button" onClick={()=>open("edit",selectedRole)}>Edit role</button>
+                <button type="button" onClick={()=>open("copy",selectedRole)}>Copy role</button>
+                <button type="button" disabled={selectedRole.assignedCount>0||saving}
+                  onClick={()=>setPendingRetire(selectedRole)}>Retire role</button>
+              </>}
+              {canAudit&&<button type="button" onClick={()=>void audit()}>View role activity</button>}
+            </div>
+          </div>}
+        </aside>
+      </div>
     }
     {!loading&&total>30&&<div className="toolbar">
       <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30),tab)}>Previous</button>
