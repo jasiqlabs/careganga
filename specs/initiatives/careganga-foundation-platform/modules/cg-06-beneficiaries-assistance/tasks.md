@@ -8,9 +8,12 @@
 
 ### US-001 — Create, verify and privately search beneficiary, optionally link real projects
 
-**Outcome/acceptance:** A Foundation officer can register and find a real restricted beneficiary with correct status/consent, and optionally attach one or more genuine CG-05 projects. First profile requires only CG-01/02 and actual CG-03 case when review policy calls for it; neither CG-12 nor CG-09 nor CG-05 visit is needed.
+Outcome: A Foundation officer can register and find a real restricted beneficiary with correct status/consent, and optionally attach one or more genuine CG-05 projects. First profile requires only CG-01/02 and actual CG-03 case when review policy calls for it; neither CG-12 nor CG-09 nor CG-05 visit is needed.
 
-**True prior sources:** Current CG-01 Foundation actor, current CG-02 geography/branch; optional real CG-03 review/CG-05 project/CG-19 proof only where actual action uses it.
+Requirements: FR-015; CG-06-BR01/03/05; PRD A-06, N-01/N-04/N-05/N-09/N-13; HLD CG-06 source; A07/A08.
+Scope: CG-06 profile/verification/project-link owner with composite PostgreSQL root/branch, current CG-01/02 guarded NestJS/API; optional source-introduced genuine CG-03 verification, CG-05 projects and CG-19 proof. Responsive Foundation Admin Web + native Internal Android must implement equivalent authorized forms, list/filter/detail/verification/project-link/history and safe errors. Public Web/Public Android/Center Portal private beneficiary operations NOT_APPLICABLE (privacy); no CG-05 project, stock or finance needed for first profile.
+Acceptance: Successful real main outcome plus all US-001-QA01–QA20 source/DB/authorization/multi-platform/failure cases with no duplicate effects, no private leak, original A07/A08 native parity. Numeric NFR performance/visual/render/device QA remain NOT_RUN.
+**True cross-module source prerequisites:** Current CG-01 Foundation actor, current CG-02 geography/branch; optional real CG-03 review/CG-05 project/CG-19 proof only where actual action uses it.
 
 **Original DB+backend:** beneficiary, beneficiary_verification_event, beneficiary_project_link and original source revisions; CG-01/02 root/branch, typed CG-03 approval and optional original CG-05/19. **Typed API:** POST/GET/PATCH /api/v1/beneficiaries; POST :ref/submit-verification; GET verification-history; POST/DELETE project-links; current permitted options/search.
 
@@ -38,13 +41,17 @@
 - **US-001-QA19 — source scenario:** CG-06 SQL migration plan uses root and branch composite FKs, unique human-facing display ref, correct non-unique shared phone and profile CAS, indexes, restricted audit and backup/restore; actual SQL/EXPLAIN NOT_RUN.
 - **US-001-QA20 — source scenario:** Source trace must prove current CG-01/02/03/05/19 adapters, backend validation, real DB, Admin Web and Internal Android plus normal public denial; zero extra tenant poll, no code/runtime/device/manual visual PASS yet.
 
-**Acceptance gate:** 20 unique QA IDs US-001-QA01–QA20 must have explicit file:function/source outcome for backend/DB/Admin Web/Internal Android, all authorization and business owner paths; public safe path where applicable. Original A07/A08 and related A05/B19 visual-source comparison required; full image/web/device/live SQL/clinical/finance sandbox not executed.
+Verification: Source-trace US-001-QA01–QA20 by exact real backend/API/DB/UI source file:function, role/scope, owner transaction/refund/recovery, responsive Web and named native Android, safe public when applicable; record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE/NOT_APPLICABLE separately from SQL/browser/native/visual/Play NOT_RUN.
+Dependencies: None
 
 ### US-002 — Request, approve, deliver and correct source-backed aid with immutable history
 
-**Outcome/acceptance:** Staff selects true beneficiary and records assistance case, policy-required approval, quantity/amount and accountable officer; confirmed material issue or verified aid payment yields one or many bounded delivery events with partial/return/reversal history, never shadow stock/cash.
+Outcome: Staff selects true beneficiary and records assistance case, policy-required approval, quantity/amount and accountable officer; confirmed material issue or verified aid payment yields one or many bounded delivery events with partial/return/reversal history, never shadow stock/cash.
 
-**True prior sources:** US-001 genuine eligible beneficiary; real CG-12 issue owner for material path and real CG-09 payment owner for money path. No CG-20, CG-18 or future source required.
+Requirements: FR-016; CG-06-BR02–04/05; CG-05-BR11 for optional genuine A05 visit; PRD A-06, N-01/N-02/N-04/N-05/N-09/N-13; A07/A08 + A05/B19.
+Scope: CG-06 assistance_case/event PostgreSQL and NestJS original source event, current CG-01/02 staff + CG-03 approval where policy requires; material adapter to true CG-12 original issue/return, money adapter to true CG-09 verified aid payment/reversal, CG-19 proof and optional actual CG-05/07 context. Foundation Admin Web and native Internal Android have equal request/approval/partial/delivery/return/reversal/history+feedback; Public Web/Android/Center Portal private aid NOT_APPLICABLE. Only real CG-12/09 source confirms delivered, no new ledger.
+Acceptance: Successful real main outcome plus all US-002-QA01–QA20 source/DB/authorization/multi-platform/failure cases with no duplicate effects, no private leak, original A07/A08 native parity. Numeric NFR performance/visual/render/device QA remain NOT_RUN.
+**True cross-module source prerequisites:** US-001 genuine eligible beneficiary; real CG-12 issue owner for material path and real CG-09 payment owner for money path. No CG-20, CG-18 or future source required.
 
 **Original DB+backend:** assistance_case + append-only assistance_event and real CG-12 ISSUE/RETURN or CG-09 posted/verified-disbursed source link; actual CG-03 policy and optional CG-05 visit/CG-19 evidence. **Typed API:** POST /api/v1/assistance; POST /:ref/submit; POST /:ref/deliver-material|deliver-financial|return; GET /:ref/history.
 
@@ -72,13 +79,17 @@
 - **US-002-QA19 — source scenario:** Permitted repeat assistance to one person on two legitimate dates is recorded separately and appears in support history; do not confuse it with replay of same aid request, and no full profile is exposed to unrelated field staff.
 - **US-002-QA20 — source scenario:** Admin Web and Internal Android Request/Approve/Partial/Deliver/Return/Correct flows trace exact CG-06 → CG-12 or CG-09 source event, transaction locks, safe unknown outcome, indexed due-only reconciliation with zero tenant-wide scans; actual code/SQL/perf/native QA NOT_RUN.
 
-**Acceptance gate:** 20 unique QA IDs US-002-QA01–QA20 must have explicit file:function/source outcome for backend/DB/Admin Web/Internal Android, all authorization and business owner paths; public safe path where applicable. Original A07/A08 and related A05/B19 visual-source comparison required; full image/web/device/live SQL/clinical/finance sandbox not executed.
+Verification: Source-trace US-002-QA01–QA20 by exact real backend/API/DB/UI source file:function, role/scope, owner transaction/refund/recovery, responsive Web and named native Android, safe public when applicable; record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE/NOT_APPLICABLE separately from SQL/browser/native/visual/Play NOT_RUN.
+Dependencies: US-001
 
 ### US-003 — Show authorized history, source-consistent impact and safe reports
 
-**Outcome/acceptance:** A07/A08 source-based beneficiary/person counts, project association, verified delivered goods and money, private filters/history/export and separately permitted de-identified impact, without CG-20 report module or public case access.
+Outcome: A07/A08 source-based beneficiary/person counts, project association, verified delivered goods and money, private filters/history/export and separately permitted de-identified impact, without CG-20 report module or public case access.
 
-**True prior sources:** US-001 genuine profile; US-002 real events only for delivery-specific figures, CG-20 not needed. CG-18 required only to actually publish a public aggregate.
+Requirements: FR-015/016; CG-06-BR03–05; PRD A-06, N-01/N-04/N-05/N-06/N-09/N-13; original A07/A08; optional CG-05 A05 and CG-18 publication.
+Scope: CG-06 source-only scoped NestJS/PostgreSQL report, private index/cursor/export/audit and genuine CG-12 stock/CG-09 payment reconciliation; no CG-20 reporting dependency. Foundation Admin Web + native Internal Android equivalent permitted KPI/filter/history/export and response states; CG-05 A05 minimal context and CG-18 separately editorial-approved de-identified public Web+Public Android impact only when actually lawful. No native public beneficiary case, no Center Portal.
+Acceptance: Successful real main outcome plus all US-003-QA01–QA20 source/DB/authorization/multi-platform/failure cases with no duplicate effects, no private leak, original A07/A08 native parity. Numeric NFR performance/visual/render/device QA remain NOT_RUN.
+**True cross-module source prerequisites:** US-001 genuine profile; US-002 real events only for delivery-specific figures, CG-20 not needed. CG-18 required only to actually publish a public aggregate.
 
 **Original DB+backend:** read-only CG-06 beneficiary+assistance_event source, verified CG-12/09 projection, typed safe CG-05 A05 and CG-18 public aggregate adapters. **Typed API:** GET /api/v1/beneficiaries/summary|assistance-report|:ref/history|impact-source; POST /report-export, get original owner verification.
 
@@ -106,14 +117,10 @@
 - **US-003-QA19 — source scenario:** CG-06's own dashboard works with genuine beneficiary and aid source without CG-20 MIS installed; when CG-20 later ships, provide only authenticated aggregate `readBeneficiaryImpactForMIS`, not a duplicate reporting master.
 - **US-003-QA20 — source scenario:** Full source QA trace across original CG-01 scopes, CG-05/09/12 source, CG-18 CMS, CG-19 docs, Admin/native/public, audit/redacted logs and no zero-job worker traffic; actual SQL/security/device/visual/load tests NOT_RUN.
 
-**Acceptance gate:** 20 unique QA IDs US-003-QA01–QA20 must have explicit file:function/source outcome for backend/DB/Admin Web/Internal Android, all authorization and business owner paths; public safe path where applicable. Original A07/A08 and related A05/B19 visual-source comparison required; full image/web/device/live SQL/clinical/finance sandbox not executed.
+Verification: Source-trace US-003-QA01–QA20 by exact real backend/API/DB/UI source file:function, role/scope, owner transaction/refund/recovery, responsive Web and named native Android, safe public when applicable; record SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE/NOT_APPLICABLE separately from SQL/browser/native/visual/Play NOT_RUN.
+Dependencies: US-001; US-002 required only for delivered-aid figures (with zero aid show authentic empty/zero, not a fake success); no CG-20.
 
-## Execution progress — single authoritative task tracker
-
-| Story | Design | Implementation | Source trace | Actual SQL/browser/Android/native/pixel QA |
-| --- | --- | --- | --- | --- |
-| US-001 | 20 exact QA cases defined; delegated design review/approval-bound hash to be refreshed | NOT_STARTED | NOT_RUN; file:function evidence absent | NOT_RUN |
-| US-002 | 20 exact QA cases defined; delegated design review/approval-bound hash to be refreshed | NOT_STARTED | NOT_RUN; file:function evidence absent | NOT_RUN |
-| US-003 | 20 exact QA cases defined; delegated design review/approval-bound hash to be refreshed | NOT_STARTED | NOT_RUN; file:function evidence absent | NOT_RUN |
-
-**No completion inference:** CG-05/09/12 are earlier *planning modules*, not proof of actually installed/running source. These tasks remain implementation BLOCKED until relevant real modules and formal stage gates exist. The design can be delegated-approved without making QA PASS or beginning the next canonical CG module.
+## Execution progress
+- US-001: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
+- US-002: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001 and real CG-12/09 source NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/financial/visual NOT_RUN.
+- US-003: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001 real code NOT_VERIFIED, real CG-12/09 totals conditional, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/public/render NOT_RUN.
