@@ -58,7 +58,7 @@ QA cases:
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
 - **US-003-QA08 — Source-specific workflow:** Submit employee reimbursement with proof, route final CG-03 decision, create one payable/voucher, and reconcile bank payment once; a pending claim must not inflate expense totals twice.
 Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: US-001
 
 ### US-004 — Use staged invoice/receipt preparation, items, dates/amounts, attachments…
 
@@ -76,7 +76,7 @@ QA cases:
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
 - **US-004-QA08 — Source-specific workflow:** Create an invoice in stages, save draft with items then approve, issue PDF through CG-19 and record partial payment; receipt/print must show the approved snapshot, not a later edited total.
 Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-001
 
 ### US-005 — Create/approve budgets and reveal committed, allocated, utilized, released…
 
@@ -94,7 +94,7 @@ QA cases:
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
 - **US-005-QA08 — Source-specific workflow:** Allocate a budget with committed funding and utilized/released amounts; over-budget and available figures must remain distinct under two concurrent allocation requests.
 Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-004
+Dependencies: US-001
 
 ### US-006 — See scoped general ledger, cash/bank/day books, trial balance…
 
@@ -112,7 +112,7 @@ QA cases:
 - **US-006-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Balanced journal, one source posting, correct funds vs commitment, no fake payment, with one accepted source transaction and correct downstream totals.
 - **US-006-QA08 — Source-specific workflow:** Run general ledger/trial balance/cash-book/vendor and project scoped exports after reversal; reconciled total debit=credit, private branch data hidden and original/reversal journals both traceable.
 Verification: On actual implementation source-trace US-006-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-005
+Dependencies: US-002
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

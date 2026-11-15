@@ -40,7 +40,7 @@ QA cases:
 - **US-002-QA08 — Critical integrated scenario:** Payment provider sends the same signed success event twice after a donor's browser loses response. Expected: one accepted donation, one CG-09 posting, one receipt, donor history correct; failed/pending requests never appear in received campaign totals.
 - **US-002-QA09 — Source-specific workflow:** Gateway returns pending then delivers the same valid callback twice while a manual payment link is also retried; only one verified donation is recognized with correct donor and merchant source.
 Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-001
+Dependencies: None
 
 ### US-003 — Issue correct authorized receipt, donation history and donor self-service
 

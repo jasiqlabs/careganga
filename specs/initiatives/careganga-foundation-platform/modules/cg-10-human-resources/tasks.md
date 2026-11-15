@@ -58,7 +58,7 @@ QA cases:
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Employment not login; payroll/salary and bank data remain private/owned, with one accepted source transaction and correct downstream totals.
 - **US-003-QA08 — Source-specific workflow:** Transfer a supervisor between branches while promotion and resignation requests are pending; retain effective dates/old reporting history, revoke prior branch access and ensure salary changes are not applied without proper approval.
 Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: US-001
 
 ### US-004 — Prepare, review, sign/issue, dispatch, receive/reissue employee letters/memos…
 
@@ -76,7 +76,7 @@ QA cases:
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Employment not login; payroll/salary and bank data remain private/owned, with one accepted source transaction and correct downstream totals.
 - **US-004-QA08 — Source-specific workflow:** Generate official appointment letter, ID card and later reissue after name correction; CG-19 versions/signature and received-copy audit must remain linked, with no unauthorized private employee fields in PDF.
 Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-001
 
 ### US-005 — Submit and track allowance/claim from applicable Internal Android or Admin…
 
@@ -94,7 +94,7 @@ QA cases:
 - **US-005-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Employment not login; payroll/salary and bank data remain private/owned, with one accepted source transaction and correct downstream totals.
 - **US-005-QA08 — Source-specific workflow:** Internal Android employee requests travel allowance with evidence; pending approval does not produce money, CG-09 creates at most one payable after actual authorization and the employee sees correct status.
 Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-004
+Dependencies: US-001
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

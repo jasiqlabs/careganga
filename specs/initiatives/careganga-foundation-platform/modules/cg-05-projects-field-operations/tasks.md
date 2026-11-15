@@ -55,7 +55,7 @@ QA cases:
 - **US-003-QA07 — Module-critical regression:** Field worker refuses GPS access or loses connectivity during check-in/photo upload. Expected: the visit remains draft/pending/unverified with actual collected evidence and no invented route/time; later authorized sync/retry cannot create duplicate accepted visit or falsely complete approval.
 - **US-003-QA08 — Source-specific boundary:** Record a field visit with denied GPS permission and a failed photo upload; mobile may preserve a safe draft but must not show verified check-in/evidence or complete supervisor approval until actual supporting data exists.
 Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: US-001
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
