@@ -2,12 +2,12 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning / CURRENT_SOURCE_REVIEW_REQUIRED after CG-18 expert first-source/owner-transfer correction. Four original stories, PRD FR-066–069, original DLD/UIUX and receiving-owner integrations are under review. Full latest-hash delegated design approval pending.
-**Development gate:** PRD/HLD current-hash REVIEW_REQUIRED; authenticated Harness resolver, independent database/SQL/migration/restore, code-review, real Web/Public Android and original pixel/motion QA NOT_RUN. No CI/GitHub Actions. Implementation remains BLOCKED.
+**Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent (15 Nov 2026) for exactly four current CG-18 owner-independent stories with 48 unique source QA. This is planning design approval only; source-code/live QA and formal development gates remain blocked.
+**Development gate:** All four CG-18 stories have undergone expert planning source review/fix/re-review and are **DELEGATED_APPROVED (design only)**. Current PRD/HLD require global current-hash reapproval; authenticated Harness resolver, independent actual schema/SQL/migration/restore, verified implemented predecessors, source-code QA, Web/Public Android runtime and original PNG/video pixel/motion comparison NOT_RUN. Implementation stays BLOCKED, not READY. No CI/GH Actions.
 
-## Expert-reviewed task definitions — pending latest-source delegated decision
+## Delegated-approved source task definitions — design only
 
-**Approval truth:** Source corrections are not an authenticated Harness PASS or development authorization; exactly four CG-18 story definitions remain BLOCKED until current-hash delegated approval is recorded and all external gates are complete.
+**Approval truth:** Four exact current-hash CG-18 module/DLD/UIUX/task artifacts are delegated-approved by JASIQ AI Design Review Agent; no claim of authenticated Harness, executed DB/source test or actual screenshot/device appearance PASS. Manual developer QA scenarios are planned and unexecuted. Existing implementation tracker stories remain BLOCKED.
 
 ### US-001 — Publish original editorial Homepage/About/Hero/Team and CG-18 public navigation, without future project masters
 

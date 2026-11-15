@@ -1,7 +1,7 @@
 # CG-18 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/CURRENT_SOURCE_REVIEW_REQUIRED. Original Admin CMS/Impact/80G/gallery/article screenshot ownership mapped to independent CG-18 stories; real provider/appointment/benefit UI later introduced by actual CG-14/15/17 owner. Same effective published Web/Public Android source and original CareGanga theme required; rendered device/pixel/motion QA NOT_RUN.
+**State:** REQUIRED · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for current CG-18 original CareGanga UI/UX design (15 Nov 2026): C20–C38/C50 and U23–U30 assigned to real four stories, exact source brand and responsive Admin Web/public Web/Public Android flows; later operational source UI belongs to its real owner. Source screenshot index reviewed, rendered screenshot/video pixel/motion and actual native/device/API tests NOT_RUN; PRD/HLD/Harness global gates pending.
 
 ## Exact existing design and animation contract
 

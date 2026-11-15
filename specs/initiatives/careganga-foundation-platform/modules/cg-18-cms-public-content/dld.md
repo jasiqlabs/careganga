@@ -1,7 +1,7 @@
 # CG-18 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 · PRD N-13/HLD H-12.  
-**State:** REQUIRED / CURRENT_SOURCE_REVIEW_REQUIRED; CMS-only public content and first real publication, CG-03/19 owner-introducing integrations, valid root-scoped schema, original design, cross-channel cache safety, and future owner transfers reviewed. Independent DB/SQL/migration/restore, Harness resolver and real Web/Public Android/pixel/motion QA NOT_RUN.
+**State:** REQUIRED · **DELEGATED_APPROVED** by JASIQ AI Design Review Agent for exact current CG-18 DLD (15 Nov 2026) after source review/fix/re-review of one CMS-only publication/approval/media authority, root-guarded immutable revision/current public projection/transaction, source-backed 80G consent and no future-owner DB/route dependency. Schema review only; independently executed SQL/migration/restore, authenticated Harness resolver, runtime/API/source-code/visual QA NOT_RUN. PRD/HLD global reapproval pending, development blocked.
 
 ## Canonical source, authorization and data ownership
 
