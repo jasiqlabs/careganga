@@ -134,6 +134,121 @@ export class RecoveryService{
       throw error;
     }finally{client.release();}
   }
+  /** Records a separate root authorization only for an already verified backup.
+   *  This has NO provider execute/restore side effect and cannot mark success.
+   */
+  async authorizeRecovery(bearer:string,operationInput:unknown,body:unknown,
+      correlationRef:string){
+    const actor=await this.actor(bearer,"platform.recovery.authorize");
+    if(typeof operationInput!=="string"||!UUID.test(operationInput)||
+      !body||typeof body!=="object"||Array.isArray(body))
+      throw new BadRequestException("Check recovery authorization");
+    const p=body as Record<string,unknown>;
+    if(Object.keys(p).some(key=>!["requestKey","expectedVersion","totp"].includes(key))||
+       typeof p.requestKey!=="string"||!UUID.test(p.requestKey)||
+       !Number.isSafeInteger(p.expectedVersion)||Number(p.expectedVersion)<1||
+       typeof p.totp!=="string"||!/^[0-9]{6}$/.test(p.totp))
+      throw new BadRequestException("Enter a fresh authenticator proof and current recovery version");
+    const key=p.requestKey,revision=Number(p.expectedVersion);
+    const payloadDigest=createHash("sha256")
+      .update(JSON.stringify(["RECOVERY_AUTHORIZE",operationInput,revision])).digest("hex");
+    const original=await this.db.query<{
+      actor_account_id:string;recovery_operation_id:string;
+      request_digest:string;result_version:number
+    }>(`
+      SELECT actor_account_id,recovery_operation_id,request_digest,result_version
+      FROM recovery_authorization_command
+      WHERE foundation_realm_id=$1 AND request_key=$2
+    `,[actor.realmId,key]);
+    if(original.rowCount){
+      const prev=original.rows[0];
+      if(prev.actor_account_id!==actor.accountId||prev.recovery_operation_id!==operationInput||
+         prev.request_digest!==payloadDigest)
+        throw new ConflictException({code:"PLATFORM_REPLAY_CONFLICT"});
+      return {status:"REPLAY_CONFIRMED",version:prev.result_version};
+    }
+    const current=await this.db.query<{status:string;version:number;backup_reference:string}>(`
+      SELECT status,version,backup_reference FROM recovery_operation
+      WHERE foundation_realm_id=$1 AND id=$2
+    `,[actor.realmId,operationInput]);
+    if(!current.rowCount)throw new ForbiddenException("Recovery operation is unavailable");
+    if(current.rows[0].version!==revision||current.rows[0].status!=="REQUESTED")
+      throw new ConflictException({code:"PLATFORM_STALE"});
+    const backup=current.rows[0].backup_reference;
+    // A current real backup inspection is required again, never an old checkbox.
+    const evidence=await this.facility.inspectBackup(backup).catch(()=>null);
+    if(!evidence||evidence.backupReference!==backup||!evidence.facilityRef||
+      !Number.isFinite(Date.parse(evidence.verifiedAt))||
+      Date.now()-Date.parse(evidence.verifiedAt)>15*60*1000||
+      Date.parse(evidence.verifiedAt)>Date.now()+60000)
+      return {status:"NOT_AVAILABLE",message:
+        "Backup readiness could not be independently verified. No authorization was recorded."};
+    await this.sessions.limitFoundationRootProof(actor);
+    const client=await this.db.connect();let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      const root=await client.query(`
+        SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
+      `,[actor.realmId]);
+      if(!root.rowCount)throw new ForbiddenException("Root scope unavailable");
+      const replay=await client.query<{
+        actor_account_id:string;recovery_operation_id:string;
+        request_digest:string;result_version:number
+      }>(`
+        SELECT actor_account_id,recovery_operation_id,request_digest,result_version
+        FROM recovery_authorization_command
+        WHERE foundation_realm_id=$1 AND request_key=$2 FOR SHARE
+      `,[actor.realmId,key]);
+      if(replay.rowCount){
+        const prior=replay.rows[0];
+        if(prior.actor_account_id!==actor.accountId||
+           prior.recovery_operation_id!==operationInput||
+           prior.request_digest!==payloadDigest)
+          throw new ConflictException({code:"PLATFORM_REPLAY_CONFLICT"});
+        await client.query("COMMIT");open=false;
+        return {status:"REPLAY_CONFIRMED",version:prior.result_version};
+      }
+      await this.sessions.requireFreshFoundationRootProof(client,actor,String(p.totp));
+      const updated=await client.query<{version:number}>(`
+        UPDATE recovery_operation
+        SET status='PRIVILEGED_AUTHORIZED',authorized_by=$3,
+          version=version+1,updated_at=now()
+        WHERE foundation_realm_id=$1 AND id=$2 AND status='REQUESTED' AND version=$4
+        RETURNING version
+      `,[actor.realmId,operationInput,actor.accountId,revision]);
+      if(!updated.rowCount)throw new ConflictException({code:"PLATFORM_STALE"});
+      await client.query(`
+        INSERT INTO recovery_authorization_command(foundation_realm_id,
+          recovery_operation_id,actor_account_id,request_key,request_digest,result_version)
+        VALUES($1,$2,$3,$4,$5,$6)
+      `,[actor.realmId,operationInput,actor.accountId,key,payloadDigest,updated.rows[0].version]);
+      await client.query(`
+        INSERT INTO platform_operation_audit(foundation_realm_id,actor_account_id,
+          action_key,resource_ref,outcome,safe_context,correlation_ref)
+        VALUES($1,$2,'platform.recovery.authorize',$3,'SUCCESS',$4::jsonb,$5)
+      `,[actor.realmId,actor.accountId,operationInput,
+        JSON.stringify({status:"PRIVILEGED_AUTHORIZED",restorationStarted:false}),correlationRef]);
+      await client.query("COMMIT");open=false;
+      return {status:"PRIVILEGED_AUTHORIZED",version:updated.rows[0].version,
+        message:"Authorization recorded. Restoration has not started."};
+    }catch(error){
+      if(open){try{await client.query("ROLLBACK");}catch{}}
+      if(error&&typeof error==="object"&&"code" in error&&error.code==="23505")
+        throw new ConflictException({code:"PLATFORM_REPLAY_CONFLICT"});
+      throw error;
+    }finally{client.release();}
+  }
+  async lookupAuthorization(bearer:string,keyInput:unknown){
+    const actor=await this.actor(bearer,"platform.recovery.authorize");
+    if(typeof keyInput!=="string"||!UUID.test(keyInput))
+      throw new BadRequestException("Invalid recovery authorization");
+    const rows=await this.db.query<{result_version:number}>(`
+      SELECT result_version FROM recovery_authorization_command
+      WHERE foundation_realm_id=$1 AND actor_account_id=$2 AND request_key=$3
+    `,[actor.realmId,actor.accountId,keyInput]);
+    return rows.rowCount?{status:"CONFIRMED",version:rows.rows[0].result_version}:
+      {status:"NOT_FOUND",version:null};
+  }
   async lookup(bearer:string,requestKey:unknown){
     const actor=await this.actor(bearer,"platform.recovery.request");
     if(typeof requestKey!=="string"||!UUID.test(requestKey))
