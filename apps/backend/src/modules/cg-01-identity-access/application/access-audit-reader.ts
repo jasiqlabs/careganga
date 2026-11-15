@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "./session.service";
@@ -22,24 +22,28 @@ function cursorKey():Buffer{
   return b;
 }
 function seal(time:Date,id:string):string{
-  const payload=Buffer.from(JSON.stringify({at:time.toISOString(),id}),"utf8").toString("base64url");
-  const signature=createHmac("sha256",cursorKey()).update(payload).digest("base64url");
-  return payload+"."+signature;
+  const nonce=randomBytes(12);
+  const cipher=createCipheriv("aes-256-gcm",cursorKey(),nonce);
+  const data=Buffer.concat([
+    cipher.update(JSON.stringify({at:time.toISOString(),id}),"utf8"),
+    cipher.final()
+  ]);
+  return Buffer.concat([nonce,cipher.getAuthTag(),data]).toString("base64url");
 }
 function unseal(token:string):{at:Date;id:string}{
   if(typeof token!=="string"||token.length>300)throw new BadRequestException("Invalid page");
-  const [body,mac,...extra]=token.split(".");
-  if(extra.length||!body||!mac)throw new BadRequestException("Invalid page");
-  const received=Buffer.from(mac,"base64url");
-  const expected=createHmac("sha256",cursorKey()).update(body).digest();
-  if(received.length!==expected.length||!timingSafeEqual(received,expected))
-    throw new BadRequestException("Invalid page");
   try{
-    const decoded=JSON.parse(Buffer.from(body,"base64url").toString("utf8")) as {at:unknown;id:unknown};
+    const blob=Buffer.from(token,"base64url");
+    if(blob.length<29)throw new Error("Invalid cursor");
+    const decipher=createDecipheriv("aes-256-gcm",cursorKey(),blob.subarray(0,12));
+    decipher.setAuthTag(blob.subarray(12,28));
+    const json=Buffer.concat([decipher.update(blob.subarray(28)),decipher.final()])
+      .toString("utf8");
+    const decoded=JSON.parse(json) as {at:unknown;id:unknown};
     const at=new Date(String(decoded.at));
     if(!Number.isFinite(at.getTime())||
       typeof decoded.id!=="string"||!/^[0-9a-f-]{36}$/i.test(decoded.id))
-      throw new Error("bad cursor");
+      throw new Error("Invalid cursor");
     return {at,id:decoded.id};
   }catch{throw new BadRequestException("Invalid page");}
 }
