@@ -1,0 +1,29 @@
+# CG-07 — Detailed-Level Design
+
+**Source:** [PRD](../../prd.md) FR-017, FR-018, FR-019, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-07-BR01–CG-07-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A12, A13, A14, A15, A16 · PRD N-13/HLD H-12.  
+**State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
+
+## Domain and data contracts
+
+Own a cohesive typed domain/application module for **Campaigns, donor intent, payment verification, refund and receipt sources** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
+- **Campaigns:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+- **donor intent:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+- **payment verification:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+- **refund and receipt sources:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
+
+State/invariant: **Campaign draft/approved/published; payment initiated/pending/verified/failed/refunded; Pending money never receipt, provider replay never duplicate finance posting**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+
+## Typed API and coordination
+
+An authenticated `/api/campaigns-donations` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
+- **FR-017** — Campaign owner proposes fundraiser: Create six-step editable campaign with project/cause, team, target, dates and media; submit for review and separately authorize public publication. Validate current actor/real scope, source record/status, revision/idempotency key, and accept only a legitimate source-owner transition.
+- **FR-018** — Donor makes contribution: Support applicable general/campaign-linked gateway, authorized cash/bank/manual and payment-link paths, with separate pending/verified/failed/refunded states. Validate current actor/real scope, source record/status, revision/idempotency key, and accept only a legitimate source-owner transition.
+- **FR-019** — Donation completes/reverses: Issue correct authorized receipt, donation history and donor self-service; post/reverse money through shared finance once and report actual campaign progress. Validate current actor/real scope, source record/status, revision/idempotency key, and accept only a legitimate source-owner transition.
+
+Business outcome categories: `SUCCESS/SUBMITTED_PENDING/VALIDATION/DUPLICATE/FORBIDDEN/NOT_FOUND_OR_HIDDEN/CONFLICT/UNAVAILABLE/UNKNOWN_WRITE_STATUS`. External provider failure never becomes fake success. Use a DB transaction for state+audited result, optimistic revisions or narrowly scoped row locks for races and unique source idempotency. Cross-owner effects go through typed facades, not another module's repository. Approved HLD pattern (plain state guard, policy, adapter, facade) only where actual variation justifies it; reject universal DSL, speculative microservice or duplicated ledger. No unbounded idle polling or uncontrolled retries.
+
+## Channel, security and source QA
+
+Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: A12, A13, A14, A15, A16. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
+
+Enforce CG-01 action+resource scope at list, private detail, export, options, files and report read. Redact clinical, payroll, token, bank/PII fields in diagnostics. Verify affected Web/Android, actual DB state/rollback and links to CG-01, CG-03, CG-09, CG-19 and CG-18. For each planned QA case trace UI→typed API→authorization→domain transaction→storage/provider→other clients; source code and test execution do **not** exist yet. Owner-delegated approval is blocked on local Harness gate and current PRD/HLD reapproval.

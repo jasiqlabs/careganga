@@ -1,0 +1,29 @@
+# CG-15 — CareGanga UI/UX Design
+
+**Authority:** [PRD](../../prd.md) FR-047, FR-048, FR-049, FR-050, FR-051, FR-052, FR-053, FR-054, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-15-BR01–CG-15-BR25, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
+**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+
+## Exact existing design and animation contract
+
+Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: Healthcare BR/UI references; not Admin screenshot IDs. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
+
+Preserve original CareGanga Admin shell: blue selected navigation within branded searchable sidebar, current title/utility toolbar, KPI/status cards, filters/tabs/table, right-drawer form or source-evidenced wizard, icons, typography, semantic badges and feedback. Use **one** bootstrap theme/component/motion token source in product code. Public/center/Android use matching brand and semantic styling with platform-specific navigation and accessibility, not a new palette or a squeezed desktop copy. An original PNG can establish visible controls but not easing/timing; mark `MOTION_REFERENCE_UNVERIFIED` until original walkthrough is inspected.
+
+## Screen/flow map
+
+- **FR-047:** Doctor/center schedules availability — Configure doctor-center working days, time windows, capacity, consultation type, holidays, blocks and approved leave while preserving already confirmed bookings. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-048:** Patient chooses doctor/visit — Support center-first or doctor/date/slot-first journey using one doctor-aware center-specific schedule that prevents overlapping in-person appointments across centers; show the requested center and available slot before payment; when multiple centers match the same time, present an explicit center choice rather than silently selecting one. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-049:** New/existing patient identifies self — Register or securely locate patient with verified mobile, appropriate profile and consent, optional uploaded reports/identity; assign a unique patient ID without duplicates or unverified cross-linking. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-050:** Patient/staff confirms appointment — Capture patient, doctor, center, slot, consultation type and reason; show editable summary, payment choice and current booking status without exceeding center capacity or overlapping the same doctor's in-person appointments at different centers. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-051:** Booking is validly confirmed — Issue authentic reference/Booking ID, download/print/share and guarded QR/barcode verification and calendar export; protect identifiers and symptoms. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-052:** Center serves patient — Manage reception check-in, queue/token, waiting/consultation/completed/canceled/no-show state with authorized updates and patient/center appointment history. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-053:** Patient or authorized center changes booking — Reschedule/cancel when permitted; restore appropriate capacity, preserve history, update true due/refund and notify relevant parties. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+- **FR-054:** Patient opens account — See authorized own appointments, receipts, patient ID and permitted reports; patient and professionally uploaded report access are included; general dependent/family booking and electronic prescription authoring are not active initial-launch functions. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
+
+**Responsive:** original desktop hierarchy remains recognisable; tablet/phone adapt the sidebar, search/filter and long tables; drawers use full width on narrow Web when required.  
+**Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
+**Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
+
+## Visual QA
+
+In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
