@@ -22,6 +22,7 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs A01, A02, A03, A04, A05, A06, A09, A10, A11, U31, U32, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — Source-specific boundary:** Create a scoped project with a planned CG-09 budget but no verified expense; project list shows allocated versus utilized truth without independent amount edits, and CG-18 sees no public teaser until approved publication.
 Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — transferred branch owner QA:** With genuine active CG-02 branches, create and transfer one CG-05 project using allowed branch selector; owner records keep current branch and history, permissions scoped before/after transfer, foreign/closed branch and concurrent stale edit denied. CG-02 does not create a second project association/master and actual CG-09 budgets remain a read-only finance source.
 Dependencies: None
 
 ### US-002 — Create, assign and monitor tasks, events and activities with owners…
