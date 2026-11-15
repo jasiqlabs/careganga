@@ -1,10 +1,11 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
 import type { CareGangaRequest } from "../observability/request-correlation";
 
 @Catch()
 export class SafeErrorsFilter implements ExceptionFilter {
+  private readonly logger=new Logger(SafeErrorsFilter.name);
   catch(error: unknown, host: ArgumentsHost): void {
     const request = host.switchToHttp().getRequest<CareGangaRequest>();
     const response = host.switchToHttp().getResponse<Response>();
@@ -36,6 +37,18 @@ export class SafeErrorsFilter implements ExceptionFilter {
     const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
     const code=status===409&&typeof rawCode==="string"&&Object.hasOwn(safeCodes,rawCode)
       ?rawCode:null;
+    if(status>=500){
+      // Correlate unexpected failures without echoing request data, SQL parameters, paths,
+      // raw driver/provider messages, contact details, or private payloads into logs.
+      // Known 4xx outcomes are not logged here to avoid a high-volume denial log loop.
+      const kind=error instanceof Error&&/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(error.name)
+        ?error.name:"UnexpectedFailure";
+      const method=/^(GET|POST|PATCH|PUT|DELETE|HEAD|OPTIONS)$/.test(request.method)
+        ?request.method:"OTHER";
+      try{this.logger.error(JSON.stringify({
+        event:"cg01.http.unexpected_failure",requestId,status,method,failureType:kind
+      }));}catch{/* Logging failure must never change the response or transaction outcome. */}
+    }
     // No passwords, tokens, OTPs, raw contacts, SQL exceptions or provider payloads in response.
     response.status(status).json({status:"error",message:code?safeCodes[code]:message,
       ...(code?{code}:{}),requestId});
