@@ -39,6 +39,9 @@ export function PlatformAuditPanel(){
   const [source,setSource]=useState<Scope>("ALL");
   const [from,setFrom]=useState("");
   const [to,setTo]=useState("");
+  const [applied,setApplied]=useState<{source:Scope;from:string;to:string}>({
+    source:"ALL",from:"",to:""
+  });
   const [tokens,setTokens]=useState<Array<string|null>>([null]);
   const [position,setPosition]=useState(0);
   const [detail,setDetail]=useState<CG21AuditDetail|null>(null);
@@ -56,8 +59,8 @@ export function PlatformAuditPanel(){
       if(cursor){
         params.set("cursor",cursor);
       }else{
-        params.set("source",source);
-        const fromIso=dateRange(from,false),toIso=dateRange(to,true);
+        params.set("source",applied.source);
+        const fromIso=dateRange(applied.from,false),toIso=dateRange(applied.to,true);
         if(fromIso)params.set("from",fromIso);
         if(toIso)params.set("to",toIso);
         if(fromIso&&toIso&&fromIso>toIso)throw Error("Invalid date range");
@@ -78,9 +81,17 @@ export function PlatformAuditPanel(){
           "Choose a valid date range (up to 90 days).":
           "The requested audit history could not be verified. Try refreshing."});
     }finally{if(request===generation.current)setLoading(false);}
-  },[source,from,to]);
-  useEffect(()=>{void load();return()=>{++generation.current;++detailGeneration.current;};},[load]);
-  function firstPage(){setTokens([null]);void load(null,0);}
+  },[applied]);
+  useEffect(()=>{
+    setTokens([null]);void load(null,0);
+    return()=>{++generation.current;++detailGeneration.current;};
+  },[load]);
+  function firstPage(){
+    setTokens([null]);
+    if(source!==applied.source||from!==applied.from||to!==applied.to)
+      setApplied({source,from,to});
+    else void load(null,0);
+  }
   function nextPage(){
     if(!page?.nextCursor||loading||page.coverage!=="COMPLETE")return;
     const next=position+1,token=page.nextCursor;
