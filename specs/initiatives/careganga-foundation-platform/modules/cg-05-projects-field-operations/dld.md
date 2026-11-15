@@ -13,6 +13,16 @@ Own a cohesive typed domain/application module for **Projects, tasks, events/act
 
 State/invariant: **Planned/active/hold/completed/cancelled; No fake GPS, duplicate CMS project or shadow financial/beneficiary source**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete project, activity and field visit implementation
+
+`project(id,code,category,scope,status,priority,owner,due_dates,budget_source_ref,version)` has unique human business code and grounded real CG-02 area. Planned/projected budget is not the CG-09 accounting total; funds and utilization read from authorized finance contracts only. CG-18 owns which project teaser is published.
+
+`project_task(id,project_id,assignee_ref,priority,due_at,status,revision)` and `project_activity(id,project_id,category,scheduled_at,actual_at,status)` support authorized assignment, overdue and status transitions; assignee must be real allowed CG-10 employee or other approved relationship, not a fabricated contact.
+
+`field_visit(id,project_id,actor,check_in_at,check_out_at,latitude,longitude,location_source,status)` and `visit_evidence(visit_id,file_ref,type,recorded_at)` keep GPS precision/trust and private CG-19 media references. Offline or location-permission denial is an honest pending/unverified state, never invented GPS success. Historical check-in/out and supervisor review remain auditable.
+
+**QA:** forged project/employee ID, concurrent task reassignment, visit checkout before checkin, location permission denied, photo upload failure, inaccurate route evidence, public draft project leak and real budget source mismatch.
+
 ## Typed API and coordination
 
 An authenticated `/api/projects-field-operations` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
