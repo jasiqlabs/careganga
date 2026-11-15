@@ -1,7 +1,7 @@
 # CG-03 — Detailed-Level Design
 
 **Source:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT aligned to current PRD/HLD v1.1 (15 November 2026); current-hash delegated approval, authenticated Harness resolver, qualified CRITICAL DB review and code/runtime QA NOT_RUN.
+**State:** REQUIRED/DRAFT, SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION (15 Nov 2026); current latest PRD/HLD, CG-01 real guarded grant owner, versioned process, frozen proposal/role revisions, reviewer MFA proof and no-future owner migration traced in source. `database_impact: CRITICAL`; current-hash delegated design approval NOT_RECORDED, authenticated Harness resolver, qualified independent DB/migration/restore and source code/runtime/device/visual QA NOT_RUN.
 
 ## Data ownership and independent initial workflow
 
