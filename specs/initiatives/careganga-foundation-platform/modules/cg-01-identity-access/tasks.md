@@ -4,7 +4,7 @@
 
 **Module:** [CG-01](module.md) · **PRD:** [FR-001–003, FR-080](../../prd.md) · **HLD:** [Architecture](../../hld.md) · **Required designs:** [UI/UX](uiux.md), [DLD](dld.md).  
 **Delivery:** After one-time technical bootstrap, build one **real Foundation-root capability** at a time. No dependency on future CG-02/03/10/14. Business owner data, the same backend, Web and applicable native Android are included in each story; no layer-specific phase/backlog.  
-**Planning status:** REBUILT / SOURCE_REVIEW_PENDING. Hash-bound owner-delegated Planning approvals and authenticated local Harness resolver NOT_RUN; **do not begin Development until the gate is actually satisfied**.
+**Planning review status:** SOURCE_REVIEWED (prior expert review and completed enhancements, self-review disclosed). Formal current-hash approval by the owner-authorized JASIQ AI Design Review Agent has NOT been recorded; authenticated pinned Harness resolver NOT_RUN. **All stories remain BLOCKED; do not begin Development before the real approval and dependency gates pass.**
 
 ## Proposed task definitions — current revision NOT approved
 
