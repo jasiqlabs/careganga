@@ -186,7 +186,7 @@ export class SessionService implements IdentityAuthorization {
     // A protected Foundation root has ONLY the concrete implemented CG-01 actions.
     if(result.rows[0].is_protected)return implemented.map(c=>c.key);
     return [...new Set(result.rows.map(r=>r.capability_key)
-      .filter((k):k is string=>Boolean(k)&&Boolean(implementedCapability(k!))))];
+      .filter((k):k is string=>Boolean(k)&&implementedCapability(k!)?.assignable===true))];
   }
   async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
