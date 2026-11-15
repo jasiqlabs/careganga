@@ -3,20 +3,13 @@
 **Source:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Account chart, balanced journals, vouchers, claims/invoices, budgets and reconciliation** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Account chart:** source attributes/status from CG-09-BR01–CG-09-BR17; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **balanced journals:** source attributes/status from CG-09-BR01–CG-09-BR17; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **vouchers:** source attributes/status from CG-09-BR01–CG-09-BR17; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **claims/invoices:** source attributes/status from CG-09-BR01–CG-09-BR17; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **budgets and reconciliation:** source attributes/status from CG-09-BR01–CG-09-BR17; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Draft/review/approved/posted/paid/reversed; Balanced journal, one source posting, correct funds vs commitment, no fake payment**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-09 owns only account chart, balanced posting journal, vouchers/claims/invoices, financial budgets and real bank reconciliation. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete finance contracts (mandatory DLD refinement)
 
-**Schema:** `accounts(id,code,group,normal_balance,active,scope)` (unique normalized code); `journals(id,source_owner,source_ref,posting_kind,financial_year,status,posted_at,revision)` unique `(source_owner,source_ref,posting_kind,revision)`; `journal_lines(journal_id,account_id,debit,credit,branch_or_project_scope)`. Both debit and credit are nonnegative; each line has exactly one nonzero side. **Before POSTED, the same transaction must verify sum(debits)=sum(credits)** and all accounts active/in scope. Rejected/unbalanced journal has no posting and no misleading success.
+**Schema:** `accounts(id,code,group,normal_balance,active,scope)` (unique normalized code); `journals(id,source_owner,source_ref,posting_kind,financial_year,status,posted_at,revision)` unique immutable source-effect key `(source_owner, source_ref, posting_kind, source_event_key)`; mutable row revision is **not** an idempotency dimension; `journal_lines(journal_id,account_id,debit,credit,branch_or_project_scope)`. Both debit and credit are nonnegative; each line has exactly one nonzero side. **Before POSTED, the same transaction must verify sum(debits)=sum(credits)** and all accounts active/in scope. Rejected/unbalanced journal has no posting and no misleading success.
 
 **Voucher/claim/invoice:** versioned `voucher` + `voucher_lines` with quantity, rate, unit, charges/tax and calculated subtotal/total; `expense_claim` links its single authorized payable/voucher/journal/payment; `invoice` retains approval and issued/paid states separately. A claim cannot create a fresh expense on every workflow stage. A posted journal/receipt is immutable; reverse with a linked correction journal.
 
@@ -25,6 +18,14 @@ State/invariant: **Draft/review/approved/posted/paid/reversed; Balanced journal,
 **Transactions/review:** narrow row locks on source-idempotency and account/period where needed, append-only audit, source callback dedupe, branch/project scope in all queries, and approved financial-year controls. QA source trace includes simultaneous source replay, unbalanced debit/credit, approved-but-unpaid voucher, refund/reversal, duplicate payroll/donation posting, protected ledger export, broken selector and reporting reconciliation.
 
 **Pattern decision:** one double-entry posting service + typed owner posting facade + guarded status transitions. Reject per-module mini-ledgers, universal accounting-rule DSL, silently editable posted rows and independent mobile calculation.
+
+## Idempotent money event and version rules
+
+Draft journal revision may change during correction, but posting identity is the immutable external/source financial event. UNIQUE(source_owner,source_ref,posting_kind,source_event_key) must be enforced by DB; a retried callback with a different API revision still returns the first committed posting. Any reversal uses its own linked source_event_key and original_journal_ref, with immutable posted lines; never mutate a posted total. Financial year closure, entry date, approved budget scope, correct debit/credit sign and restricted account selectors are hard DB/domain checks.
+
+**Core tests:** Create balanced debit/credit lines; reject unbalanced, inactive-account and wrong-branch journals before POSTED. The same immutable source financial event (including gateway webhook or payroll payout) can post only once even if callback/query revision changes. Reversal/adjustment is a new explicitly authorized linked event, not editing posted rows. Validate pending approval separately from paid/settled and finance reports reconcile to journal lines.
+
+**Integrations:** Use verified CG-01/CG-02/CG-03 roles, scopes and decisions. Provide safe authorized account/options separately from general-ledger viewing; consumers may integrate only with real journal/posting facade.
 
 ## Typed API and coordination
 

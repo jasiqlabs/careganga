@@ -3,16 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-029, FR-030, FR-031, FR-032, FR-033, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–CG-10-BR15, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B30, B31, B32, B33, B34, B35, B36, B37, B38, B39, B40, B41, B42, B43, B44, B45, B46, B47, B48, B49, B50, B51 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Employment/ID, attendance/leave, transfers/exits, performance, letters** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Employment/ID:** source attributes/status from CG-10-BR01–CG-10-BR15; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **attendance/leave:** source attributes/status from CG-10-BR01–CG-10-BR15; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **transfers/exits:** source attributes/status from CG-10-BR01–CG-10-BR15; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **performance:** source attributes/status from CG-10-BR01–CG-10-BR15; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **letters:** source attributes/status from CG-10-BR01–CG-10-BR15; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **New/review/active/probation/hold/exit; leave pending/approved/rejected; Employment not login; payroll/salary and bank data remain private/owned**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-10 owns only employee employment record, attendance/leave, transfer/performance and HR source letters. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete employee lifecycle and protected HR data
 
@@ -24,11 +17,13 @@ State/invariant: **New/review/active/probation/hold/exit; leave pending/approved
 
 **QA:** duplicate employee ID, rejected activation, wrong-scope salary/bank export, overlapping leave, two attendance corrections, shift grace, transfer into unauthorized branch, exit with pending payroll and cross-channel staff permission revocation.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Employment:** `employee(id,account_ref,employee_code,branch_ref,department_ref,designation,manager_ref,joining_at,status)` unique approved employee ID, optional verified CG-01 account relation, privacy-scoped compensation/bank references. `attendance(employee_ref,local_work_date,shift_version,status,source,revision)` with source/correction history; `leave_request` and balance require valid working-day/holiday/grace/week-off rules.
-- **Lifecycle:** CG-03 approval finalizes approved enrollment, transfer/promotion/exit; effective-dated postings retain prior branch/manager/designation and salary proposal, not rewrite history. CG-19 produces letters, memos, ID cards with document version/reissue. A terminated/transferred employee's old CG-01 scoped access is revoked; CG-11 owns payroll run and CG-09 expense/claim payment.
-- **QA:** duplicate applicant/employee ID, parallel attendance correction, employee absent vs approved leave, promotion effective-date conflict, transfer changes access, document reissue, manager's foreign-branch directory and salary visibility.
+**Core tests:** Create employee with actual CG-01 identity and CG-02 branch, protect bank/salary and leave notes; transfer across branches preserves employment history while revoking old scope. Attendance/leave adjustments are versioned; staff cannot approve own sensitive change if policy forbids it; duplicate payroll inputs and invalid overlaps fail safely. Source letters use real CG-19 issued reference.
+
+**Current versus later sources:** CG-11 owns compensation calculation/payout; CG-09 owns cash reimbursement; CG-04 volunteer records remain separate. HR can function without the later payroll module; no salary-posting claim before CG-11.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

@@ -3,15 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-017, FR-018, FR-019, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-07-BR01–CG-07-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A12, A13, A14, A15, A16, A17, A18 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Campaigns, donor intent, payment verification, refund and receipt sources** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Campaigns:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **donor intent:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **payment verification:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **refund and receipt sources:** source attributes/status from CG-07-BR01–CG-07-BR09; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Campaign draft/approved/published; payment initiated/pending/verified/failed/refunded; Pending money never receipt, provider replay never duplicate finance posting**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-07 owns only campaign version, donation intent, verified provider event and donor entitlement reference. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete fundraising and payment verification
 
@@ -23,11 +17,13 @@ Only confirmed received money creates one CG-09 posting keyed by source event an
 
 **QA:** six-step draft recovery, unauthorized publication, missing merchant, two webhook deliveries, pending payment falsely shown received, refund race, campaign closed before late receipt, donor privacy in reports and receipt amount versus CG-09 balance.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Campaign:** `campaign(id,source_project_ref,goal,period,status,current_draft_step,approval_ref,publication_version)` keeps the six-stage draft separate from final review/public display. `donation(id,campaign_ref,donor_ref,amount,method,payment_ref,status)` distinguishes payment link/manual contribution, requested vs received.
-- **Verified money:** `payment_event(provider,merchant_ref,event_id,donation_ref,verified_status)` UNIQUE by provider+merchant+event; validate real webhook signature and merchant. Only verified receipt leads to one idempotent CG-09 entry and source-based CG-19 receipt; `donation_refund(parent_payment_ref,amount,status)` cannot exceed accepted amount. Duplicate callbacks, late after campaign close, lost-provider response and manual cash confirmation require accurate reconciliation.
-- **QA:** spoofed webhook, replayed gateway callback, parallel refund, donor privacy, cash recorded pending, receipt before posting, campaign progress net of refund and unauthorized public draft.
+**Core tests:** Create a draft multi-step campaign, publish only after applicable approval, accept real donor intent and show pending until verified provider confirmation. Gateway retries, duplicate webhooks, wrong merchant, mismatched amount, failed refunds and a private donor export cannot create extra CG-09 cash entries or misleading receipts.
+
+**Current versus later sources:** Donation collection relies on already-delivered CG-09 ledger and CG-19 receipt; CG-18 publishes only the approved campaign and safe impact fields. No placeholder donor totals or gateway success.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

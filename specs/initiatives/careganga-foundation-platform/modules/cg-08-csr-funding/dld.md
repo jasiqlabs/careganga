@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **CSR partners, funding proposals/agreements, commitments and allocations** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **CSR partners:** source attributes/status from CG-08-BR01–CG-08-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **funding proposals/agreements:** source attributes/status from CG-08-BR01–CG-08-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **commitments and allocations:** source attributes/status from CG-08-BR01–CG-08-BR08; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Partner requested/approved/returned; amount proposed/committed/received/allocated; Pledge not money; funding allocation not utilization; no shadow ledger**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-08 owns only CSR partner, vetted proposal, commitment and allocation authority. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete CSR partnership and fund states
 
@@ -22,11 +17,13 @@ A Foundation/CSR split is versioned, sums must reconcile to approved amounts, an
 
 **QA:** incomplete agreement, foreign CSR proposal, returned application, 70/30 split total, two sponsors for one project, pledge versus cash, duplicate bank receipt and public partner marketing without approval.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Contracts:** `csr_partner(id,organization,contact,approval_ref,status)`, `funding_proposal(id,partner_ref,project_ref,requested_amount,agreement_file_ref,status)`, `funding_commitment(proposal_ref,party,amount,effective_until,status)`, `funding_allocation(commitment_ref,project_ref,budget_category,amount,status)`. Store real CG-19 agreement and CG-05 project, not duplicate project/company masters.
-- **Accounting boundary:** proposed funding, approved commitment, CG-09-confirmed *received cash*, allocated budget, released and utilized are independent states; pledge cannot inflate available cash. CG-03 owns actual partner/proposal review; CG-09 owns fund/expense postings. Public partner marketing remains separate CG-18 publication.
-- **QA:** rejected partner, amount committed but unpaid, duplicate verified bank receipt, partner/Foundation split sums, allocation exceeding permitted available funding, revoked proposal, unauthorized partner export and over-budget use.
+**Core tests:** Create a verified CSR organization and proposal; compare promised, approved, received, allocated and utilized as distinct statuses. A pledge cannot raise cash balance, over-allocation is rejected under lock, revoking branch scope removes access, and an amount correction creates auditable adjustment without lost previous agreement.
+
+**Current versus later sources:** CG-05 supplies real project allocation targets; CG-09 supplies actual received funds and accounting; CG-19 supplies protected agreements. Public CSR attribution requires explicitly approved CG-18 projection.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

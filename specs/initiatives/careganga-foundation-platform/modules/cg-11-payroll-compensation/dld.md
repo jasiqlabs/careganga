@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-034, FR-035, FR-036, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-11-BR01–CG-11-BR11, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C01, C02, C03, C04, C05, C06, C07, C08, C09, C10 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Salary versions, deterministic payroll periods, approved payment batches** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Salary versions:** source attributes/status from CG-11-BR01–CG-11-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **deterministic payroll periods:** source attributes/status from CG-11-BR01–CG-11-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **approved payment batches:** source attributes/status from CG-11-BR01–CG-11-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Payroll draft/review/approved/payment pending/settled; No duplicate period/source posting; payment initiation ≠ settled money**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-11 owns only versioned salary rules, immutable pay-period calculation, approval and source payout instruction. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete salary calculation and one-time payout
 
@@ -22,11 +17,13 @@ State/invariant: **Payroll draft/review/approved/payment pending/settled; No dup
 
 **QA:** competing draft runs same month, approval before calculation, stale employee compensation, leave revision after lock, blocked bank account, partial bank transfer, duplicate callback, private payslip and Foundation-only money posting.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Pay data:** `salary_structure(id,effective_from,components,statutory_config_version)`, `employee_compensation(employee_ref,structure_ref,effective_dates,approved_adjustments)`, `payroll_run(id,period,revision,attendance_snapshot_hash,calculation_version,status)`, `payroll_line(run_ref,employee_ref,gross,deductions,arrears,net)` and `salary_payment_batch(run_ref,bank_instruction_ref,provider_ref,status)`. Define deterministic rounding and `net=gross-deductions+approved_adjustments`; unique approved period/run revision.
-- **Approval/payment:** only real eligible CG-10 employees/attendance, salary holds and statutory rules; calculate→review→approve before payment instruction. Pending bank transfer≠paid; accepted payout callback/CG-09 posting deduped per payment batch. CG-19 slip reads frozen approved run, not live mutable salary. Revision/correction preserves paid history.
-- **QA:** two runs same period, attendance edit after freeze, suspended employee, duplicated provider callback, partial transfer, bank mismatch, payroll authorization and private salary/payslip access.
+**Core tests:** Calculate a deterministic payroll preview for a real CG-10 employee and approved period: unpaid leave, arrears/deductions and rounding use a frozen rule/version. Re-running the same period before posting may revise draft; approved payout posts once to real CG-09, duplicate trigger cannot issue another payment. Payslip represents actual current pay/paid state and never claims bank transfer from an unverified instruction.
+
+**Current versus later sources:** CG-10 is the employee owner, CG-03 the actual approval owner, CG-09 the sole accounting owner, CG-19 the payslip generator. No separate payroll cash ledger.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

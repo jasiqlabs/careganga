@@ -3,12 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-015, FR-016, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-06-BR01–CG-06-BR05, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A07, A08 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Restricted beneficiary and project-linked assistance events** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Restricted beneficiary and project-linked assistance events:** source attributes/status from CG-06-BR01–CG-06-BR05; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Beneficiary new/verified; aid requested/approved/issued/reversed; Material and cash aid require genuine owner movement, no duplicate stock/expense**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-06 owns only restricted beneficiary identity and assistance source record. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete beneficiary confidentiality and aid distribution
 
@@ -20,11 +17,13 @@ Repeated aid to same beneficiary may be legitimate and must remain traceable; de
 
 **QA:** cross-area beneficiary lookup, duplicate request/retry, valid repeated help on two dates, item issue without available stock, finance paid vs initiated, partial delivery/reversal and public de-identification/consent.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Beneficiary:** `beneficiary(id,private_profile,geography_ref,consent_ref,status)`, `beneficiary_project(beneficiary_id,project_ref)` and `assistance_event(id,idempotency_key,beneficiary_ref,project_ref,kind,qty,approved_value,stock_movement_ref,financial_posting_ref,status)`. One beneficiary may have several independently audited aid events; source linkage must not be lost in reporting.
-- **Distribution:** only actual permitted CG-12 inventory issue or CG-09 authorized money expense can advance the matching aid event to issued. A failed linked effect stays pending/reconcilable; don't create fake inventory or independent fund balance. Public impact aggregates require CG-18 approved privacy-safe projection or legitimate publication consent.
-- **QA:** last-item race, duplicated payment/issue button, insufficient stock, unapproved aid, repeat legitimate aid, private beneficiary export, cross-region access and reversal reconciliation.
+**Core tests:** Register a beneficiary and log valid project-linked help; enforce privacy for search, profile, documents, export and public summary. If assistance consumes inventory or cash, require a real CG-12 stock or CG-09 expense effect and unique source link; two concurrent issues cannot double-decrement stock or double-pay. Reversal restores correct quantity/value and retains audit.
+
+**Current versus later sources:** Profile and non-financial eligibility can work before a stock/payment option is configured; hide cash/material fulfillment paths until their already delivered owner contracts are available. Never silently substitute fake inventory or money.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

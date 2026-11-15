@@ -3,14 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-037, FR-038, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-12-BR01–CG-12-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Admin global shell; no separate verified capture · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Item/supplier catalog, stock movement ledger, material requests/fulfilment** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Item/supplier catalog:** source attributes/status from CG-12-BR01–CG-12-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **stock movement ledger:** source attributes/status from CG-12-BR01–CG-12-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **material requests/fulfilment:** source attributes/status from CG-12-BR01–CG-12-BR06; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Request draft/approved/rejected/fulfilled; receipt/issue/reversal; Atomic stock, no duplicate issues or unauthorized negative balance**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-12 owns only supplier/item catalog, warehouse quantity movement and material request allocation. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete inventory ledger and source issue rules
 
@@ -22,11 +17,13 @@ State/invariant: **Request draft/approved/rejected/fulfilled; receipt/issue/reve
 
 **QA:** parallel last-unit issue, replayed material fulfillment, stock transfer between real branches, wrong-branch options, adjusted negative stock, item unit mismatch, low-stock alert without idle scan and export matching movement history.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Stock source:** `item(id,sku,unit,category,status)`, `supplier(id,name,contact,status)`, `stock_location(branch_ref,status)`, `stock_movement(id,item_ref,location_ref,kind,signed_quantity,source_owner,source_ref,revision)` UNIQUE per source operation, and `material_request(id,requester,location,status,revision)` with item lines and fulfillments. Finance/vendor ledgers remain CG-09.
-- **Atomic issue:** lock the (item,location) balance row or equivalent proven transaction while checking approved request remainder and available stock; concurrent last-unit issue cannot make stock negative. Partial fulfillment and reversal generate compensating movements. Low-stock notifications trigger on real movements or bounded schedules, not perpetual tenant-wide scanning.
-- **QA:** two last-item issues, duplicate approved material fulfillment, wrong location scope, mixed quantity units, cancelled request with issue already made, attempted negative adjustment and stock ledger/report reconciliation.
+**Core tests:** Receive genuine stock, then reserve/issue/transfer/return with a strictly balanced movement reference and bounded available quantity. Concurrent requests cannot consume the same remaining stock; rejected/returned approval holds no phantom stock. A failed inventory API write has known confirmed vs unknown-write status, with idempotent retry and scoped store/branch authorization.
+
+**Current versus later sources:** CG-09 owns monetary cost/payment and CG-06/13 consumes issued aid/rewards; stock must function first with CG-02 storage and real CG-03 approval cases, without waiting for future aid/reward consumers.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 

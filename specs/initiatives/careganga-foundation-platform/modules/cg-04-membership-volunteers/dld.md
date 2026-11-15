@@ -3,15 +3,9 @@
 **Source:** [PRD](../../prd.md) FR-009, FR-010, FR-011, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-04-BR01–CG-04-BR11, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B09, B10, U14, U15, U16, U17 · PRD N-13/HLD H-12.  
 **State:** REQUIRED/DRAFT; exact schema, local Harness resolver, independent critical DB review and code QA NOT_RUN.
 
-## Domain and data contracts
+## Canonical owner and record boundaries
 
-Own a cohesive typed domain/application module for **Member tiers/terms, fees, renewals, volunteer applications and skills** with one PostgreSQL business source. Proposed domain records derive from the original BR and must be frozen by exact migrations; each has UUID PK, verified owner/resource FK, status, change revision, created/updated time, appropriate unique business reference/source operation and indexed scope/status/date access. Explicitly model:
-- **Member tiers/terms:** source attributes/status from CG-04-BR01–CG-04-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **fees:** source attributes/status from CG-04-BR01–CG-04-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **renewals:** source attributes/status from CG-04-BR01–CG-04-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-- **volunteer applications and skills:** source attributes/status from CG-04-BR01–CG-04-BR11; actual owner-scoped foreign reference, UNIQUE/CHECK/NOT NULL as appropriate, optimistic version and privacy classification.
-
-State/invariant: **Draft/submitted/approved/rejected/active/expired/renewed; Approved fee and case precede member ID; rejected paid membership requires authorized refund**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
+CG-04 owns only member tier versions, applications, issued membership and volunteer profile. The following concrete record contracts are the **single canonical implementation model** for this module; legacy draft aliases are not extra tables. Real owner FKs, tenant/branch/center/patient scope, normalized uniqueness, valid states and creation/update revisions are enforced by migrations and guarded commands. No owner creates a future module's master record or copies another owner's sensitive data. Platform and integration errors use safe explicit categories, not a success-shaped default.
 
 ## Concrete membership and volunteer implementation
 
@@ -23,11 +17,13 @@ State/invariant: **Draft/submitted/approved/rejected/active/expired/renewed; App
 
 **QA:** expired tier, two simultaneous applications/renewals, denied member card before payment/approval, rejected-paid refund, volunteer without staff role, private identity upload, public status by verified applicant and membership/volunteer name option scope.
 
-## Specific owner contracts and source-QA
+## Cross-owner contracts and story-specific QA
 
-- **Membership:** `membership_tier(id,fee,duration,benefits,publish_state,version)`, `member_application(id,account_ref,tier_version,approval_ref,fee_state)`, `membership(id,member_code,approved_at,valid_until,status)` and immutable term/renewal history. Unique approved membership ID is *not* application reference. Snapshot tier/fee accepted on application; later price changes do not rewrite submitted fees.
-- **Volunteers:** `volunteer_application` holds verified personal/geographic profile, skills, availability, preferred real CG-02 department, source referral and attachments; approved volunteer relationship is not an employee or automatic staff account. Final CG-03 approval and CG-09 verified member fee are required before CG-19 prints active card/certificate. Rejected paid application requires authorized refund, not disappearing money.
-- **QA:** same applicant retries, failed/pending payment, tier renewal after expiry, approved volunteer vs unapproved staff access, refund, inactive tier not public, cross-area volunteer directory.
+**Core tests:** Configure a live tier with valid price/validity and receive one real paid or pending application. Only approved real CG-03 member outcomes issue active membership. For a different branch/member role deny private roster or file access; idempotent payment confirmation never issues two memberships. Volunteer skill applications remain separate from employed staff.
+
+**Current versus later sources:** CG-09 records real fee receipts; CG-18 publishes only approved tiers; CG-19 renders an issued card after the source becomes active. No fabricated sample member is necessary to configure tier or volunteer intake.
+
+**API/source acceptance:** Every create/change command takes permitted actor context, actual source business key, validated inputs, expected revision and scoped idempotency token when it has an irreversible effect; returns actual status/reference or VALIDATION, FORBIDDEN, CONFLICT, UNAVAILABLE or UNKNOWN_WRITE_STATUS. The options/search projection exposes readable permitted labels without granting unrestricted master lists. Follow real Web/native event -> typed route -> policy -> transaction/owner -> user feedback and other authorized consumer for each story QA ID.
 
 ## Typed API and coordination
 
