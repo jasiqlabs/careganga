@@ -135,7 +135,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     if(!source.active||source.protected)return;
     setEditor({mode:"copy",source});
     setColorKey(source.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
-    const keys=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
+    const keys=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable||a.key==="roles.manage").map(a=>a.key)));
     setSelected(source.actionKeys.filter(k=>keys.has(k)));
   }
   function open(mode:Editing["mode"],source?:Role){
@@ -145,7 +145,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     setDescription(source?.description??"");
     setColorKey(source?.colorKey&&roleColorOptions.some(c=>c.key===source.colorKey)?source.colorKey:"blue");
     setCopyQuery("");if(mode!=="edit")void findCopySources("");
-    const eligible=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable).map(a=>a.key)));
+    const eligible=new Set(groups.flatMap(g=>g.actions.filter(a=>a.assignable||a.key==="roles.manage").map(a=>a.key)));
     setSelected(source?.actionKeys.filter(k=>eligible.has(k))??[]);
     setRequestKey(Crypto.randomUUID());setError("");setSuccess("");setUncertain(false);
   }
@@ -401,7 +401,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
           {editor?.mode==="copy"&&<Text>Only permitted actions are copied. People and protected rights are not copied.</Text>}
           {groups.filter(g=>g.actions.some(c=>c.assignable)).map(g=><View key={g.group} style={styles.group}>
             <Text style={styles.heading}>{g.group}</Text>
-            {g.actions.filter(c=>c.assignable).map(c=><View key={c.key} style={styles.permission}>
+            {g.actions.filter(c=>c.assignable||c.key==="roles.manage").map(c=><View key={c.key} style={styles.permission}>
               <Text style={styles.permissionLabel}>{c.businessLabel}</Text>
               <Switch accessibilityLabel={c.businessLabel} disabled={saving||editor?.mode==="copy"}
                 value={selected.includes(c.key)}
