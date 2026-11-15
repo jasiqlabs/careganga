@@ -144,6 +144,11 @@ export function RolesPanel(){
       await load(appliedSearch,offset);
       setNotice({kind:"success",text:"Role change saved."});
     }catch(error){
+      if(error instanceof Error&&(error.message.includes("session expired")||error.message.includes("permission"))){
+        // Permission loss invalidates all protected list and audit content.
+        setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
+        setEditor(null);setPendingRetire(null);
+      }
       if(error instanceof Error&&error.message==="UNCERTAIN"){
         setNotice({kind:"uncertain",text:"The result could not be confirmed. Refresh the list before submitting another change."});
       }else setNotice({kind:"error",text:error instanceof Error?error.message:"Unable to save the role."});
