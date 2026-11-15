@@ -1,5 +1,4 @@
 import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
-import type { Request } from "express";
 import { SessionService } from "../application/session.service";
 import { SessionGuard, type AuthenticatedRequest } from "./session.guard";
 import { randomUUID } from "node:crypto";
@@ -41,6 +40,5 @@ export class SessionController {
     return { signedOut:true };
   }
 
-  // Recovery remains unavailable until a real, configured delivery provider exists.
-  // No fake "code sent" response, no publicly exposed one-time root bootstrap API.
+  // One-time root provisioning is deliberately an offline operator-only action.
 }
