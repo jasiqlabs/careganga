@@ -1,7 +1,7 @@
 # CG-03 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-006, FR-007, FR-008, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-03-BR01–CG-03-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U11, U12, U13, B29 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT, SOURCE_REVIEWED_FIXED_AWAITING_OWNER_CONFIRMATION (15 Nov 2026), after CareGanga U11–U13/B29 source-design review/fix/re-review, true CG-01 `roles.manage` process and genuine Web/Internal Android screens. Exact visual parity requires original assets and live rendering; device/motion remain VISUAL_NOT_RUN. Current CG-03 delegated approval NOT_RECORDED, authenticated Harness resolver and PRD/HLD approval gates pending.
+**State:** REQUIRED / OWNER_DELEGATED_DESIGN_CONTENT_APPROVED (15 Nov 2026), JASIQ AI Design Review Agent following owner conditional authorization and completed U11–U13/B29 design review/fix/re-review of genuine CG-01 `roles.manage` approval Web/Internal Android. Actual pixel/motion and device tests VISUAL_NOT_RUN. Current PRD/HLD reapproval and authenticated Harness resolver formal gates remain BLOCKED.
 
 ## Exact existing design and animation contract
 
