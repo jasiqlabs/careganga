@@ -23,6 +23,10 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 CG-04 membership/volunteer Web and applicable Android screens offer minimum-field CG-02-approved branch/department options only where the current CG-04 workflow permits them. Validate disabled/closed/foreign branch and revoked operator in the actual CG-04 form, show existing member or volunteer's current affiliation/history and safe correction. Do not place a membership/volunteer editor in CG-02 or imply assignment grants staff account privileges. No fabricated future owner data or new CareGanga theme.
 
+## CG-04-owned member ID card controls
+
+With a verified **active CG-04 member**, real source-backed B41/B42-style front/back preview may use CG-19's shared template component and actual permitted member identity, branch, photo, issue/expiry fields. Before approval/valid verified fee, hide or deny issuance rather than showing a fake ID, QR or PDF. Approved cards show real issue/expiry/revoke and role-limited download/print. Changing personal fields requires source reapproval/versioning and new CG-19 issue history, with no public QR disclosure of phone/emergency/private metadata. CG-19 owns the original generated file and template; CG-04 owns the member/source eligibility and invokes integration only after it exists.
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Tier setup follows the original membership table/form density with plan name, amount, validity, benefit and publication state. Public join shows clear tier comparison, one coherent application path, verification, actual payment pending/verified and application tracking; volunteer form shows skill/geography and actual review result, never staff payroll fields.
