@@ -70,3 +70,32 @@ export interface CG01SecurityPolicyOutcome {
   status:"SAVED"|"REPLAY_CONFIRMED";
   revision:number;
 }
+
+/** CG-21 / US-001 operational settings: only actual registered keys, not auth/CMS. */
+export interface CG21SettingView {
+  key:"audit.default_page_size";value:number;revision:number;updatedAt:string|null;
+}
+export interface CG21SettingRevision {
+  revision:number;value:number;changedAt:string;changedBy:string;
+}
+export interface CG21SettingChange {
+  key:"audit.default_page_size";value:number;expectedRevision:number;
+  requestKey:string;totp:string;
+}
+export interface CG21IntegrationView {
+  provider:string;purpose:string;revision:number;credentialRevision:number;
+  status:"CONFIGURED_NOT_VERIFIED"|"VERIFIED"|"FAILED"|"UNAVAILABLE";
+  lastCheckedAt:string|null;referencePresent:true;
+}
+export interface CG21IntegrationReferenceChange {
+  provider:string;purpose:string;secretReference:string;
+  expectedRevision:number;requestKey:string;totp:string;
+}
+export interface CG21CommandLookup {
+  status:"CONFIRMED"|"NOT_FOUND";revision:number|null;
+}
+export interface CG21IntegrationReadiness {
+  status:"NOT_CONFIGURED"|"UNAVAILABLE"|"VERIFIED"|"FAILED";
+  provider:string;purpose:string;verified:boolean;
+  credentialRevision?:number;message?:string;
+}
