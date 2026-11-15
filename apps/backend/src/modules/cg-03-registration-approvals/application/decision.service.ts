@@ -64,7 +64,11 @@ export class ApprovalDecisionService{
         if(previous.actor_id!==actor.accountId||previous.request_digest!==digest)
           throw new ConflictException({code:"APPROVAL_REPLAY_CONFLICT"});
         // Still check live step authority for a replay; no replay mutation.
-        await this.sessions.requireAction(bearer,"approvals.view");
+        try{await this.sessions.requireAction(bearer,"approvals.view");}
+        catch(error){
+          if(!(error instanceof ForbiddenException))throw error;
+          await this.sessions.requireAction(bearer,"roles.assign");
+        }
         await client.query("COMMIT");active=false;
         return {status:"PREVIOUSLY_CONFIRMED",caseNumber:row.case_number,
           currentStatus:row.status,revision:row.revision};
@@ -87,6 +91,8 @@ export class ApprovalDecisionService{
       if(expected.protected_root_required){
         if(!/^[0-9]{6}$/.test(body.totp))
           throw new BadRequestException("Final decision requires fresh authenticator proof");
+        // Failed proofs are rate-limited outside the current write rollback.
+        await this.sessions.limitFoundationRootProof(actor);
         // One-use CG-01 TOTP counter is updated in the same short transaction.
         await this.sessions.requireFreshFoundationRootProof(client,actor,body.totp);
       }
@@ -139,7 +145,11 @@ export class ApprovalDecisionService{
     `,[actor.realmId,caseInput,actor.accountId,keyInput]);
     if(!rows.rowCount)return {status:"NOT_FOUND",revision:null};
     // Only the current, active reviewer can confirm their own protected action.
-    await this.sessions.requireAction(bearer,"approvals.view");
+    try{await this.sessions.requireAction(bearer,"approvals.view");}
+    catch(error){
+      if(!(error instanceof ForbiddenException))throw error;
+      await this.sessions.requireAction(bearer,"roles.assign");
+    }
     return {status:"CONFIRMED",revision:rows.rows[0].accepted_case_revision,
       action:rows.rows[0].action};
   }
