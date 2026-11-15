@@ -20,13 +20,13 @@ const checkRevision=(value:unknown):number=>{
   return Number(value);
 };
 type AccountRow={
-  id:string;realm_id:string;display_name:string;normalized_email:string;status:string;
+  id:string;realm_id:string;display_name:string;normalized_email:string;contact_phone:string|null;status:string;
   revision:number;access_version:string;role_id:string|null;role_name:string|null;
   assigned_at:Date|null;delivery_status:string|null;is_protected:boolean|null;
 };
 type CommandResult={accountRef:string;revision:number;status:string;message:string};
 type AccountChange={requestKey:string;expectedRevision:number};
-type Invite={displayName:string;email:string;roleRef:string;requestKey:string};
+type Invite={displayName:string;email:string;phone?:string;roleRef:string;requestKey:string};
 @Injectable()
 export class AccountsService {
   constructor(@Inject(DATABASE) private readonly db:Pool,
@@ -51,10 +51,10 @@ export class AccountsService {
          WHERE xr.account_id=a.id AND xr.role_id=$4::uuid AND xr.revoked_at IS NULL))`;
     const params=[actor.realmId,term,status,roleRef];
     const records=await this.db.query<{
-      id:string;display_name:string;normalized_email:string;status:string;revision:number;
+      id:string;display_name:string;normalized_email:string;contact_phone:string|null;status:string;revision:number;
       role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;delivery_status:string|null;
     }>(String.raw`
-      SELECT a.id,a.display_name,a.normalized_email,a.status,a.revision,
+      SELECT a.id,a.display_name,a.normalized_email,a.contact_phone,a.status,a.revision,
         ar.role_id,r.name AS role_name,r.is_protected,ar.assigned_at,
         (SELECT c.delivery_status FROM auth_challenge c
           WHERE c.account_id=a.id AND c.kind='INVITATION'
@@ -79,7 +79,7 @@ export class AccountsService {
       FROM account WHERE realm_id=$1`,[actor.realmId]);
     const m=summary.rows[0];
     return {accounts:records.rows.map(r=>({
-      accountRef:r.id,displayName:r.display_name,email:r.normalized_email,
+      accountRef:r.id,displayName:r.display_name,email:r.normalized_email,phone:r.contact_phone,
       status:r.status,revision:Number(r.revision),
       roleRef:r.role_id,roleName:r.role_name,roleProtected:Boolean(r.is_protected),assignedAt:r.assigned_at?.toISOString()??null,
       deliveryStatus:r.delivery_status
@@ -120,7 +120,7 @@ export class AccountsService {
       throw new ForbiddenException("Access is no longer available");
   }
 
-  private async command(client:PoolClient,actor:VerifiedFoundationActor,action:"INVITE"|"ASSIGN"|"REVOKE"|"STATUS",
+  private async command(client:PoolClient,actor:VerifiedFoundationActor,action:"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
       requestKey:string,payload:unknown):Promise<{id:string|null;replay:CommandResult|null}>{
     const requestHash=digest(JSON.stringify(payload));
     const r=await client.query<{id:string}>(String.raw`
@@ -146,7 +146,7 @@ export class AccountsService {
         safe_context,correlation_ref) VALUES($1,$2,$3,$4,'SUCCESS',$5::jsonb,$6)`,
       [actor.realmId,actor.accountId,target,action,JSON.stringify({targetDisplay:displayName.slice(0,160)}),correlationRef]);
   }
-  private async perform(bearer:string,permission:string,action:"INVITE"|"ASSIGN"|"REVOKE"|"STATUS",
+  private async perform(bearer:string,permission:string,action:"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
     requestKey:string,payload:unknown,correlationRef:string,
     work:(client:PoolClient,actor:VerifiedFoundationActor)=>Promise<{
       accountRef:string;revision:number;status:string;displayName:string;inviteToken?:string;contact?:string;
@@ -218,17 +218,20 @@ export class AccountsService {
     const email=typeof input.email==="string"?input.email.trim().toLowerCase():"";
     if(displayName.length<2||displayName.length>160||email.length>254||!EMAIL.test(email))
       throw new BadRequestException("Check the staff name and work email");
+    const phone=input.phone===undefined||input.phone===""?null:input.phone.trim();
+    if(phone!==null&&!/^\+[1-9][0-9]{7,14}$/.test(phone))
+      throw new BadRequestException("Use international phone format such as +91...");
     const roleRef=checkRef(input.roleRef);
     // Explicit role selection is a separate authority from account creation.
     await this.actor(bearer,"roles.assign");
     return this.perform(bearer,"accounts.invite","INVITE",input.requestKey,
-      {displayName,email,roleRef},correlationRef,async(client,actor)=>{
+      {displayName,email,phone,roleRef},correlationRef,async(client,actor)=>{
       await this.authorize(client,actor,"roles.assign");
       await this.eligibleRole(client,roleRef,actor.realmId);
       const created=await client.query<{id:string;revision:number}>(String.raw`
-        INSERT INTO account(realm_id,display_name,normalized_email,status)
-        VALUES($1,$2,$3,'INVITED') RETURNING id,revision`,
-        [actor.realmId,displayName,email]);
+        INSERT INTO account(realm_id,display_name,normalized_email,contact_phone,status)
+        VALUES($1,$2,$3,$4,'INVITED') RETURNING id,revision`,
+        [actor.realmId,displayName,email,phone]);
       const id=created.rows[0].id;
       await client.query(String.raw`
         INSERT INTO account_role(account_id,role_id,realm_id,assigned_by)
@@ -242,6 +245,35 @@ export class AccountsService {
         status:"INVITED",displayName,inviteToken:token,contact:email};
     });
   }
+  async resend(bearer:string,targetRef:string,input:AccountChange,correlationRef:string){
+    const target=checkRef(targetRef),expected=checkRevision(input.expectedRevision);
+    return this.perform(bearer,"accounts.invite","RESEND",input.requestKey,
+      {target,expected},correlationRef,async(client,actor)=>{
+      const account=await this.lockTarget(client,actor,target);
+      if(account.revision!==expected)throw conflict("STALE_ACCOUNT");
+      if(account.status!=="INVITED"||!account.role_id)
+        throw new ForbiddenException("Only eligible pending invitations may be resent");
+      await this.eligibleRole(client,account.role_id,actor.realmId);
+      const count=await client.query<{n:string}>(`
+        SELECT count(*)::text AS n FROM auth_challenge WHERE account_id=$1
+          AND kind='INVITATION' AND created_at>now()-interval '24 hours'`,[target]);
+      if(Number(count.rows[0].n)>=3)throw new ForbiddenException("Invitation resend limit reached");
+      await client.query(`
+        UPDATE auth_challenge SET consumed_at=now()
+        WHERE account_id=$1 AND kind='INVITATION' AND consumed_at IS NULL`,[target]);
+      const token=randomBytes(32).toString("base64url");
+      await client.query(`
+        INSERT INTO auth_challenge(account_id,kind,digest,request_key,expires_at)
+        VALUES($1,'INVITATION',$2,$3,now()+interval '24 hours')`,
+        [target,digest(token),digest("resend:"+input.requestKey)]);
+      const rev=await client.query<{revision:number}>(`
+        UPDATE account SET revision=revision+1,updated_at=now()
+        WHERE id=$1 RETURNING revision`,[target]);
+      return {accountRef:target,revision:rev.rows[0].revision,status:"INVITED",
+        displayName:account.display_name,inviteToken:token,contact:account.normalized_email};
+    });
+  }
+
   private async lockTarget(client:PoolClient,actor:VerifiedFoundationActor,targetRef:string){
     const r=await client.query<AccountRow>(String.raw`
       SELECT a.*,ar.role_id,r.name AS role_name,r.is_protected,ar.assigned_at
