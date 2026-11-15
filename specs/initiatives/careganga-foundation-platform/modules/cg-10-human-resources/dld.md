@@ -21,6 +21,11 @@ CG-10 owns only employee employment record, attendance/leave, transfer/performan
 
 Store CG-10 employee/coordinator identity plus versioned current/history of CG-02 branch/department assignment within CG-10, using genuine CG-02 ACTIVE branch and same-branch department scoped projections; never create a CG-02 employee link master. On enrollment and transfer, validate CG-01 HR action/scope, active destination branch and related department, source version and old/new access; preserve history and prohibit cross-branch data leakage. A linked existing CG-01 login is not automatically elevated. Test US-001-QA10 and US-003-QA09 without CG-11 payroll payout or future modules.
 
+## Optional real HR-to-public biography link (CG-18 BR03/26 original owner integration)
+
+CG-18 US-001 can independently publish a consented editorial Foundation team/public biography card without any CG-10 employee record. Once CG-10 US-001 genuine verified employee exists, **CG-10 owns the optional employment relationship, current status, data minimization and consent/authorization for linking that real person** to a CG-18 public team biography. CG-18 alone owns editorial display text, image placement and public publish/unpublish approval; CG-10 alone owns employee identity, bank/salary/HR files and revocation of eligibility on departure. The CG-10 introducing owner must supply a typed minimal allow-listed public identity/status/consent proof, no private salary/address/bank/emergency fields, and update/withdraw linked public visibility if source consent or employment eligibility is revoked. No CG-18 employee master and no CG-10 CMS publication table. Optional source-link QA belongs to CG-10 US-001, not a CG-18 startup prerequisite. This limited receiving-owner addition does not approve CG-10.
+
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Create employee with actual CG-01 identity and CG-02 branch, protect bank/salary and leave notes; transfer across branches preserves employment history while revoking old scope. Attendance/leave adjustments are versioned; staff cannot approve own sensitive change if policy forbids it; duplicate payroll inputs and invalid overlaps fail safely. Source letters use real CG-19 issued reference.

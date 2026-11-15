@@ -27,6 +27,11 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 Enrollment and transfer in existing CareGanga HR Web/Internal Android views use genuine permitted CG-02 branch+department options, with active/current and effective-dated previous affiliation. Closed or foreign destination yields safe form error, stale assignment a clear conflict; no separate CG-02 employee editor or fabricated staff option, and an account-role grant cannot be inferred from HR branch selection. Follow original HR visual tokens, drawer and native focus/error treatment; visual/device QA remains NOT_RUN.
 
+## Original C25–C26 public team cards from genuine optional employee source
+
+CG-10 US-001 provides *optional* approved current employee consent and display-safe name/designation/public portrait to CG-18's C25/C26 existing public team biography placement, with independently approved CG-18 editorial ordering/publication and original CareGanga styling. No private HR/contact/bank, identity document, salary or personnel assignment exposed; revoked consent or inactive source removes the real public link. CG-18 independently shows approved editorial Foundation team cards before employee source exists. This is not a second HR employee editor in CMS. Runtime/pixel QA NOT_RUN.
+
+
 ## Original-theme and task-specific interaction blueprint
 
 Preserve staff directory, employee right-drawer onboarding, attendance/leave calendar/statuses, transfer review, performance and letter/memo preview. Group employment and permissions separately from payroll; an employee never sees another staff member's bank fields. Native Internal Android prioritizes own attendance/leave/claim workflows with clear date selector, keyboard/back and offline error.

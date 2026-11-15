@@ -55,6 +55,11 @@ Detailed authoritative clauses:
 - **CG-10-BR14:** Transfer, promotion and exit workflows preserve current/proposed role, branch, reporting manager, salary and effective dates. Exit review can track handover, HR/finance/assets clearance and final dues/settlement without silently marking salary or reimbursements as paid.
 - **CG-10-BR15:** Employee ID-card issuance, reissue, deactivation, print/download and authorized QR verification use shared document templates; authorized display fields and history derive from approved person/employment data, not a separate manual identity store.
 
+## Optional real HR-to-public biography link (CG-18 BR03/26 original owner integration)
+
+CG-18 US-001 can independently publish a consented editorial Foundation team/public biography card without any CG-10 employee record. Once CG-10 US-001 genuine verified employee exists, **CG-10 owns the optional employment relationship, current status, data minimization and consent/authorization for linking that real person** to a CG-18 public team biography. CG-18 alone owns editorial display text, image placement and public publish/unpublish approval; CG-10 alone owns employee identity, bank/salary/HR files and revocation of eligibility on departure. The CG-10 introducing owner must supply a typed minimal allow-listed public identity/status/consent proof, no private salary/address/bank/emergency fields, and update/withdraw linked public visibility if source consent or employment eligibility is revoked. No CG-18 employee master and no CG-10 CMS publication table. Optional source-link QA belongs to CG-10 US-001, not a CG-18 startup prerequisite. This limited receiving-owner addition does not approve CG-10.
+
+
 ## Independently deliverable vertical flow
 
 **Concrete acceptance:** Create real staff, record attendance/leave and transfer with versioned changes; maintain old/new branch scope correctly, deny unauthorized bank/salary access and issue real document proof without claiming a payout. Only current/prerequisite owner data may be used to mark story QA complete. Future integrations remain explicit pending dependencies and must be tested by the later owning module when available.
