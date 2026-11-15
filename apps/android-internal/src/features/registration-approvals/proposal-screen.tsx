@@ -50,6 +50,12 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
   const [detail,setDetail]=useState<CG03CaseDetail|null>(null);
+  const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
+  const [decisionRemarks,setDecisionRemarks]=useState("");
+  const [decisionTotp,setDecisionTotp]=useState("");
+  const [decisionConfirmed,setDecisionConfirmed]=useState(false);
+  const [decisionUnknown,setDecisionUnknown]=useState(false);
+  const [decisionKey,setDecisionKey]=useState("");
   const [pendingKind,setPendingKind]=useState<"CASE"|"PROCESS">("CASE");
 
   const load=useCallback(async()=>{
@@ -74,14 +80,14 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(busy)return true;
-      if(unknown)return true;
+      if(unknown||decisionUnknown)return true;
       if(detail){setDetail(null);return true;}
       if(form){setForm(false);return true;}
       if(routeForm){setRouteForm(false);return true;}
       onExit();return true;
     });
     return()=>sub.remove();
-  },[busy,unknown,detail,form,routeForm,onExit]);
+  },[busy,unknown,decisionUnknown,detail,form,routeForm,onExit]);
   async function search(kind:"account"|"role",text:string){
     if(text.length>70)return;
     try{
@@ -151,12 +157,59 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
     finally{setBusy(false);}
   }
   async function see(entry:CG03CaseView){
-    setBusy(true);setDetail(null);
+    setBusy(true);setDetail(null);setDecisionAction(null);setDecisionTotp("");
+    setDecisionConfirmed(false);
     try{
       const result=await api<CG03CaseDetail>(token,"cases/"+entry.caseRef);
-      if(!Array.isArray(result.history))throw Error();
+      if(!Array.isArray(result.history)||!Array.isArray(result.allowedDecisions))throw Error();
       setDetail(result);
     }catch{setMessage("The application details could not be verified.");}
+    finally{setBusy(false);}
+  }
+  function selectDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
+    if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
+    setDecisionAction(action);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionConfirmed(false);setDecisionKey(Crypto.randomUUID());setMessage("");
+  }
+  async function commitDecision(){
+    if(!detail||!decisionAction||busy||decisionUnknown)return;
+    if(detail.requiresFreshAuthenticator&&!/^[0-9]{6}$/.test(decisionTotp)){
+      setMessage("Enter a fresh authenticator code for the final decision.");return;
+    }
+    if(!decisionConfirmed){setDecisionConfirmed(true);return;}
+    setBusy(true);setMessage("");
+    try{
+      const result=await api<{status:string;revision:number}>(token,
+        "cases/"+detail.caseRef+"/decisions","POST",{
+          action:decisionAction,remarks:decisionRemarks.trim(),totp:decisionTotp,
+          expectedRevision:detail.revision,requestKey:decisionKey
+        });
+      if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
+      const item=detail;setDecisionAction(null);setDecisionConfirmed(false);
+      setDecisionKey("");setDecisionTotp("");
+      setMessage("Review decision recorded. Account access is confirmed separately.");
+      await load();await see(item);
+    }catch(error){
+      if(error instanceof Error&&error.message==="UNKNOWN")setDecisionUnknown(true);
+      if(error instanceof Error&&error.message==="SESSION_EXPIRED")onExpired();
+      else setMessage(error instanceof Error&&error.message==="CONFLICT"?
+        "This case changed. Refresh before recording a decision.":
+        "Decision result could not be verified. Check its original request.");
+    }finally{setBusy(false);}
+  }
+  async function lookupDecision(){
+    if(!detail||!decisionUnknown||!decisionKey||busy)return;
+    setBusy(true);
+    try{
+      const result=await api<{status:string;revision:number|null}>(token,
+        "cases/"+detail.caseRef+"/decisions/requests/"+decisionKey);
+      if(result.status==="CONFIRMED"&&Number.isInteger(result.revision)){
+        const item=detail;setDecisionUnknown(false);setDecisionKey("");
+        setDecisionAction(null);setDecisionConfirmed(false);
+        setMessage("Original review decision confirmed. No duplicate action was sent.");
+        await load();await see(item);
+      }else setMessage("No confirmed decision is visible. Ask Foundation support before retrying.");
+    }catch{setMessage("Previous decision status could not be verified.");}
     finally{setBusy(false);}
   }
   async function version(){
@@ -283,6 +336,50 @@ export function ProposalScreen({token,canConfigure,canPropose,onExit,onExpired}:
         <Text>{friendly(detail.status)}</Text>
         <Text>Proposal version {detail.proposalRevision};
           process version {detail.processVersion}</Text>
+        {decisionUnknown&&<View style={styles.card}>
+          <Text accessibilityRole="alert">A previous decision may have been saved.
+            Do not repeat it until verified.</Text>
+          <Pressable accessibilityRole="button" style={styles.button}
+            disabled={busy} onPress={()=>void lookupDecision()}>
+            <Text>Check previous decision</Text></Pressable>
+        </View>}
+        {!decisionUnknown&&detail.allowedDecisions.length>0&&<View style={styles.card}>
+          <Text style={styles.heading}>Permitted reviewer actions</Text>
+          <View style={styles.row}>
+            {detail.allowedDecisions.map(action=><Pressable accessibilityRole="button"
+              accessibilityState={{selected:decisionAction===action}}
+              style={[styles.button,decisionAction===action&&styles.chosen]}
+              key={action} disabled={busy} onPress={()=>selectDecision(action)}>
+              <Text>{action==="APPROVE"?"Approve":action==="RETURN"?"Send back":
+                action==="REJECT"?"Reject":"Forward"}</Text>
+            </Pressable>)}
+          </View>
+          {decisionAction&&<>
+            <Text style={styles.heading}>Reviewer remarks</Text>
+            <TextInput accessibilityLabel="Reviewer remarks" style={styles.input}
+              multiline maxLength={500} value={decisionRemarks}
+              onChangeText={value=>{setDecisionRemarks(value);setDecisionConfirmed(false);}}/>
+            {detail.requiresFreshAuthenticator&&<>
+              <Text style={styles.heading}>Fresh authenticator code</Text>
+              <TextInput accessibilityLabel="Fresh reviewer authenticator code"
+                keyboardType="number-pad" maxLength={6} style={styles.input}
+                value={decisionTotp} onChangeText={v=>{
+                  setDecisionTotp(v.replace(/[^0-9]/g,""));setDecisionConfirmed(false);}}/>
+            </>}
+            {decisionConfirmed&&<Text>
+              Confirm {decisionAction.toLowerCase()} for {detail.reference}.
+              The decision becomes permanent.</Text>}
+            <View style={styles.row}>
+              <Pressable accessibilityRole="button" style={styles.button}
+                disabled={busy} onPress={()=>setDecisionAction(null)}>
+                <Text>Cancel</Text></Pressable>
+              <Pressable accessibilityRole="button" style={styles.primary}
+                disabled={busy} onPress={()=>void commitDecision()}>
+                <Text style={styles.primaryText}>{decisionConfirmed?
+                  "Confirm decision":"Review decision"}</Text></Pressable>
+            </View>
+          </>}
+        </View>}
         <Text style={styles.heading}>Approval timeline</Text>
         {detail.history.map((item,i)=><View key={i} style={styles.item}>
           <Text>{item.action} · {item.by}</Text>
