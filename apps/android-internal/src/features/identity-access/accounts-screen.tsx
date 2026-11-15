@@ -59,6 +59,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const [pending,setPending]=useState<Pending|null>(null);
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
+  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [roleQuery,setRoleQuery]=useState("");
   const [requestKey,setRequestKey]=useState("");
@@ -139,7 +140,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   }
   function beginInvite(){
     ++optionsGeneration.current;++historyGeneration.current;
-    setName("");setEmail("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
+    setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   useEffect(()=>{
@@ -159,7 +160,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       if(screen==="invite"){
         if(!roleRef)throw new Error("SELECT_ROLE");
         await call(token,"invitations","POST",{displayName:name.trim(),email:email.trim().toLowerCase(),
-          roleRef,requestKey});
+          phone:phone.trim()||undefined,roleRef,requestKey});
         setMessage("Invitation saved. Email delivery is not guaranteed; check account status.");
       }else if(pending){
         const root="accounts/"+pending.row.accountRef;
@@ -179,7 +180,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       }
       setPending(null);setScreen(inviteOnly?"invite":"list");setRequestKey("");
       if(inviteOnly&&wasInvite){
-        setName("");setEmail("");setRoleRef("");
+        setName("");setEmail("");setPhone("");setRoleRef("");
         setRequestKey(Crypto.randomUUID());
       }
       const verified=await load(search,0,filter);
@@ -281,6 +282,11 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         <Text style={styles.label}>Work email</Text>
         <TextInput accessibilityLabel="Work email" style={styles.input} maxLength={254}
           autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail}/>
+        <Text style={styles.label}>Phone (optional, unverified)</Text>
+        <TextInput accessibilityLabel="Phone, optional, international format" style={styles.input}
+          keyboardType="phone-pad" autoCapitalize="none" maxLength={16}
+          placeholder="+919876543210" value={phone} onChangeText={setPhone}/>
+        <Text style={styles.note}>Use international format, for example +919876543210.</Text>
         <Text style={styles.note}>Applies to: Entire foundation</Text>
         <Text style={styles.label}>Find eligible roles</Text>
         <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
@@ -294,7 +300,8 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         </Pressable>)}
         <Text style={styles.note}>The invited person chooses their own password and authenticator.</Text>
         <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-          disabled={!name.trim()||!email.includes("@")||!roleRef||busy||unknown}
+          disabled={!name.trim()||!email.includes("@")||!roleRef||busy||unknown||
+             (phone.trim().length>0&&!/^[+][1-9][0-9]{7,14}$/.test(phone.trim()))}
           onPress={()=>void commit()}><Text style={styles.primaryText}>{busy?"Saving…":"Create invitation"}</Text></Pressable>
       </View>}
       {screen==="detail"&&row&&<View style={styles.card}>
@@ -369,9 +376,13 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         </View>}
       </View>}
       {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
-      {unknown&&<Pressable accessibilityRole="button" style={styles.button} onPress={()=>{
-        setUnknown(false);setPending(null);setScreen(inviteOnly?"invite":"list");void load(search,0,filter);
-      }}><Text>Refresh status before trying again</Text></Pressable>}
+      {unknown&&(inviteOnly?
+        <Text accessibilityRole="alert" style={styles.notice}>
+          The invitation may already exist. Contact Foundation support to verify it before starting a new invitation.
+        </Text>:
+        <Pressable accessibilityRole="button" style={styles.button} onPress={()=>{
+          setUnknown(false);setPending(null);setScreen("list");void load(search,0,filter);
+        }}><Text>Refresh account status before trying again</Text></Pressable>)}
     </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
