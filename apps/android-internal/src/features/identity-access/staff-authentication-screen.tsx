@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RecoveryScreen } from "./recovery-screen";
 import { identityRequest } from "./http-client";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
 
@@ -42,6 +42,27 @@ export function StaffAuthenticationScreen(){
     })();
     return()=>{active=false;};
   },[]);
+
+  // Event-driven authorization check on resume, without background polling.
+  useEffect(()=>{
+    if(!token)return;
+    let active=true;
+    const subscription=AppState.addEventListener("change",state=>{
+      if(state!=="active")return;
+      setActor(null);
+      void (async()=>{
+        try{
+          const fresh=await sessionView(token);
+          if(!active)return;
+          if(!fresh){await SecureStore.deleteItemAsync(STORE_KEY);setToken(null);setActor(null);}
+          else setActor(fresh);
+        }catch{
+          if(active){setActor(null);setMessage("Access cannot be verified. Protected information remains hidden.");}
+        }
+      })();
+    });
+    return()=>{active=false;subscription.remove();};
+  },[token]);
   async function signIn(){
     if(state==="busy")return;
     setState("busy");setMessage("");
