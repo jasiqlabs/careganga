@@ -22,7 +22,9 @@ QA cases:
 - **US-001-QA06:** Original CareGanga screenshot refs A12, A13, A14, A15, A16, A17, A18, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07 — owner regression:** Pending campaign cannot appear on public page after stale cache refresh. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-001-QA08 — Source-specific workflow:** Resume the six-step campaign at media/team stage, submit with an invalid period and missing approval; display validation, then approved publish state separately, never expose a draft donor CTA.
-Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA09 — Real CG-05 project selection in campaign wizard:** Using actual CG-05 US-001 approved/active project, original A13–A15 Project & Category step selects permitted same-root project/branch in true CG-07 campaign; source missing leaves genuine general campaign usable. No duplicated project master, and CG-09 money not collected by campaign draft.
+- **US-001-QA10 — Optional CG-05 event association and revocation:** With genuine CG-05 US-003 event, link authorized safe event to original campaign, reject foreign/closed/stale event and withdraw invalid public CTA after cancel. No inferred event registration, tickets, payment or exposed A05 visit/beneficiary data.
+Verification: On actual implementation source-trace US-001-QA01–QA10 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Support applicable general/campaign-linked gateway, authorized…

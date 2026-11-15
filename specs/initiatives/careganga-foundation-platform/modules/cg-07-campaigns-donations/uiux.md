@@ -21,6 +21,9 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** Native Android keeps matching theme, back/keyboard/touch/accessibility and never uses a WebView as a substitute.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+**Original A13–A15 campaign wizard, receiving CG-05 project/event:** During real Project & Category and Team & Assignment steps, a permitted organizer sees only approved eligible real CG-05 project/event label, current branch/area/status, and optional link rather than invented placeholder. Campaign preview only uses approved source-safe details and CG-19 consented media; Save Draft and Submit for Verification retain original CG-07/CG-03 case; separate CG-18 publish, no automatic ticketing or donation confirmation. If CG-05 source absent, general campaign wizard remains usable without an assumed project. Native/public campaign pages never expose precise visit GPS or beneficiary identity.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Match campaign create/edit wizard, target/date, team, beneficiary cause, media and approval history in the original admin density. Public donation page clearly separates campaign progress from verified money, pending gateway status and a safely retrievable receipt; never display fabricated donor count, confirmed amount or empty placeholders as success.

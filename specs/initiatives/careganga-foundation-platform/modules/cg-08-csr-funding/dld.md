@@ -17,6 +17,13 @@ A Foundation/CSR split is versioned, sums must reconcile to approved amounts, an
 
 **QA:** incomplete agreement, foreign CSR proposal, returned application, 70/30 split total, two sponsors for one project, pledge versus cash, duplicate bank receipt and public partner marketing without approval.
 
+## CG-08 receiving-owner actual CG-05 project and original CG-09 financial allocation (narrow)
+
+**Receiving-owner correction, NOT full CG-08 approval.** Original CG-08 partner/proposal/commitment and agreement remain CG-08; original CG-09 alone owns verified received cash, approved finance allocation, utilization/release and posted journal. When real CG-05 US-001 project exists, **CG-08 US-002** links only eligible same-root/branch project for funding proposal/allocation; project cannot be created by CSR form and CG-05 planned estimate is not an approved financial allocation. CG-08 saved proposal/pledge is not cash. Upon actual CG-03 reviewed agreement and CG-09 verified effect, CG-08 reflects source status with original refs. Multiple sponsors and 70/30 split over same project must respect original CG-09 total-budget constraints, replay-safe one event key. Inactive/closed/transferred CG-05 project or wrong CG-01 grant denies new allocation; previously approved historical donation/source stays audit-accurate. **CG-08 US-003** source-derived project partner funding summary reads current CG-05 safe label and original CG-09 money, no shadow project budget. Original Admin B03–B08 is CSR, CG-05 A01/U31 is project owner; don't clone operational screen.
+
+**Typed same-root relation:** CG-08 funding_proposal.project_ref is actual current CG-05 project typed source with permission and immutable version; original CG-09 budget_event/journal is the only financial effect. CG-08 original fund_allocation is source association/proposed evidence, **not** another independently maintained utilized_amount total; allocated/utilized in CSR reports are derived only from accepted CG-09 finance events. Source association requires CG-05 current project allowed at proposal/finance effect; external CG-08 agreement CG-19 proof remains protected and case decision original CG-03. No duplicate project or finance-ledger FK required on first partner application without project.
+
+
 ## Cross-owner contracts and story-specific QA
 
 **Core tests:** Create a verified CSR organization and proposal; compare promised, approved, received, allocated and utilized as distinct statuses. A pledge cannot raise cash balance, over-allocation is rejected under lock, revoking branch scope removes access, and an amount correction creates auditable adjustment without lost previous agreement.

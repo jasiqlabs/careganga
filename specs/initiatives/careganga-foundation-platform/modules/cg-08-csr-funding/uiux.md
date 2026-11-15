@@ -19,6 +19,9 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 **Native:** No newly owned Android page (NOT_APPLICABLE).  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
+**CSR B03–B08 original UI with CG-05 project source:** In Funding Proposal and Fund Allocation source steps, show current permitted actual CG-05 project selector with genuine status/category/branch and no invented future project or person. Original CSR source labels Requested/Committed/Received/Allocated/Utilized/Released must reflect CG-08 original proposal plus CG-09 verified events, never CG-05 planned estimate as bank cash. B07 reports read real current project label/finance source; CG-05 project Admin A01 stays separate and Public Android only approved partner/project/editorial fields, not private agreements/bank source.
+
+
 ## Reference-faithful screen hierarchy and interaction tests
 
 Preserve CSR partner directory, proposal/commitment detail, approved amount and document-preview workflow. Break the screen into partner identity, agreement, approved allocation and actual payment history; financial status chips cannot equate pledged with bank-received. Responsive tables preserve amount/date labels and stage actions.

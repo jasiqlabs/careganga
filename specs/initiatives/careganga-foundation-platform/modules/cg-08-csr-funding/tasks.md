@@ -41,7 +41,9 @@ QA cases:
 - **US-002-QA07 — owner regression:** Two reviewers cannot over-allocate the same approved pledge. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-002-QA08 — Critical integrated scenario:** An approved CSR partner commits funding but bank receipt is not verified, while manager attempts to allocate it as received cash. Expected: proposal and commitment can be shown, Finance cash remains unchanged, allocations cannot exceed actually available approved funding and labels distinguish pledged/received/utilized.
 - **US-002-QA09 — Source-specific workflow:** Foundation and CSR each commit a split amount, but only CSR money is bank-received; allocation choices cannot treat unreceived Foundation pledge as spendable bank funds.
-Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA10 — Real CG-05 project in CSR original source:** With actual eligible CG-05 active same-root project and genuine CG-08 approved proposal/CG-09 original finance budget, link project to CSR funding and safely allocate authorized amount through CG-09 only. Reject closed/transferred/foreign project, duplicate replay and split over budget; draft pledge is not bank money.
+- **US-002-QA11 — No independent project money master:** For 70/30 approved CSR project split, original CG-09 budget_event/journal is sole utilized/available financial authority; compare CSR proposal/receipt/allocations and CG-05 read-only budget panel to true posted finance sources. No duplicate CG-08 utilization balance.
+Verification: On actual implementation source-trace US-002-QA01–QA11 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Report approved, pending, committed, received and utilized contributions…
