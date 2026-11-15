@@ -10,9 +10,9 @@
 Outcome: Create/maintain projects, responsible staff, locations, dates, budgets, funding links, status and work progress; expose scoped project dashboards.
 Requirements: FR-012, CG-05-BR01, CG-05-BR02, CG-05-BR03, CG-05-BR08; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-05 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. No fake GPS, duplicate CMS project or shadow financial/beneficiary source.
+Acceptance: Create real branch-scoped project, task ownership, dates and related funding reference; statuses reflect actual approval. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-001-QA01:** Given a permitted **Project owner sets up work** and valid existing source records, perform: **Create/maintain projects, responsible staff, locations, dates, budgets, funding links, status and work progress; expose scoped project dashboards**. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-001-QA01:** Given an authorized actor and actual prerequisite records, Create real branch-scoped project, task ownership, dates and related funding reference; statuses reflect actual approval. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-001-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -27,9 +27,9 @@ Dependencies: None
 Outcome: Create, assign and monitor tasks, events and activities with owners, priorities, deadlines, progress, evidence and only approved public display.
 Requirements: FR-013, CG-05-BR04, CG-05-BR05, CG-05-BR09, CG-05-BR10; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-05 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. No fake GPS, duplicate CMS project or shadow financial/beneficiary source.
+Acceptance: Assign task/event to real permitted operator and track completion evidence with correct project status. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-002-QA01:** Given a permitted **Coordinator assigns work** and valid existing source records, perform: **Create, assign and monitor tasks, events and activities with owners, priorities, deadlines, progress, evidence and only approved public display**. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-002-QA01:** Given an authorized actor and actual prerequisite records, Assign task/event to real permitted operator and track completion evidence with correct project status. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-002-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -44,9 +44,9 @@ Dependencies: US-001
 Outcome: Record geotag/GPS/location, check-in/out, photos/video, notes, documents, team and beneficiary references; supervisor sees review/history and linked expense requests.
 Requirements: FR-014, CG-05-BR06, CG-05-BR07, CG-05-BR11; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-05 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. No fake GPS, duplicate CMS project or shadow financial/beneficiary source.
+Acceptance: Capture field visit with authentic GPS, check-in/out, photo/evidence and review history; no invented route. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-003-QA01:** Given a permitted **Field worker visits project** and valid existing source records, perform: **Record geotag/GPS/location, check-in/out, photos/video, notes, documents, team and beneficiary references; supervisor sees review/history and linked expense requests**. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-003-QA01:** Given an authorized actor and actual prerequisite records, Capture field visit with authentic GPS, check-in/out, photo/evidence and review history; no invented route. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-003-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-003-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-003-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -58,6 +58,6 @@ Verification: On actual implementation source-trace US-003-QA01–QA08 UI→requ
 Dependencies: US-001
 
 ## Execution progress
-- US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-002: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-003: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

@@ -10,9 +10,9 @@
 Outcome: Configure tier price, validity, benefits/appearance and publication; maintain member roster, expiry, renewal history, status and protected information changes.
 Requirements: FR-010, CG-04-BR02, CG-04-BR04, CG-04-BR06; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-04 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. Approved fee and case precede member ID; rejected paid membership requires authorized refund.
+Acceptance: Create and version tier price/validity/benefits with approval-only publication and genuine scoped picker. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-001-QA01:** Given a permitted **Admin manages membership** and valid existing source records, perform: **Configure tier price, validity, benefits/appearance and publication; maintain member roster, expiry, renewal history, status and protected information changes**. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-001-QA01:** Given an authorized actor and actual prerequisite records, Create and version tier price/validity/benefits with approval-only publication and genuine scoped picker. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-001-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-001-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-001-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -27,9 +27,9 @@ Dependencies: None
 Outcome: Select configured public membership tier, provide contact/address/referral/documents, pay applicable fee, track review, and receive member ID/certificate/card **only after required conditions**.
 Requirements: FR-009, CG-04-BR01, CG-04-BR02, CG-04-BR03, CG-04-BR04, CG-04-BR05; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-04 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. Approved fee and case precede member ID; rejected paid membership requires authorized refund.
+Acceptance: Register verified applicant and track real payment/approval state; only active approved member receives real card. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-002-QA01:** Given a permitted **Person applies as member** and valid existing source records, perform: **Select configured public membership tier, provide contact/address/referral/documents, pay applicable fee, track review, and receive member ID/certificate/card **only after required conditions****. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-002-QA01:** Given an authorized actor and actual prerequisite records, Register verified applicant and track real payment/approval state; only active approved member receives real card. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-002-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-002-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-002-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -45,9 +45,9 @@ Dependencies: US-001
 Outcome: Apply with personal/geographic profile, skills, experience, preferred department, schedule, referral and identity evidence; receive verified status and authorized assignments.
 Requirements: FR-011, CG-04-BR07, CG-04-BR08, CG-04-BR09, CG-04-BR10, CG-04-BR11; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-04 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Valid authorized operation and source status, negative access, input validation, duplicate/concurrency protection, accurate cross-channel reporting and original theme fidelity. Approved fee and case precede member ID; rejected paid membership requires authorized refund.
+Acceptance: Submit volunteer skill/area availability, preserve review and restrict private assignments. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
-- **US-003-QA01:** Given a permitted **Person volunteers** and valid existing source records, perform: **Apply with personal/geographic profile, skills, experience, preferred department, schedule, referral and identity evidence; receive verified status and authorized assignments**. Expected: the Web/native screen displays the actual confirmed or pending result; backend validates the active action and resource scope; database commits one correct owner transition with audit.
+- **US-003-QA01:** Given an authorized actor and actual prerequisite records, Submit volunteer skill/area availability, preserve review and restrict private assignments. Verify actual Web/Android (when applicable) confirmation/pending state, backend guard, one committed owner record and audit without invented future data.
 - **US-003-QA02:** A revoked, unprivileged or out-of-scope actor uses a deep link, direct API, related selector or export → backend denies, UI shows a safe next action, no private data or mutation escapes.
 - **US-003-QA03:** Two concurrent submissions or a replay/lost response → scoped row revision and unique source prevent duplicate effect, show accurate conflict/refresh.
 - **US-003-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
@@ -58,6 +58,6 @@ Verification: On actual implementation source-trace US-003-QA01–QA07 UI→requ
 Dependencies: None
 
 ## Execution progress
-- US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-002: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-003: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
