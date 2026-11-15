@@ -1,7 +1,7 @@
 # CG-17 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md) CG-17-BR01–CG-17-BR20, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) Healthcare BR/UI references; not Admin screenshot IDs · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+**State:** REQUIRED / current-source expert design reviewed for owner-delegated SHA-bound approval. Original H16/H17 business UI audit references checked, but independent full-resolution H16/H17 image and exact rendered Web/native pixel/motion comparison NOT_RUN; no implemented UI implied.
 
 ## Original healthcare contribution & settlement H16/H17, optional ERP isolation
 
@@ -35,6 +35,20 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 CG-17 US-007 introduces current verified benefit source projection into approved CG-18 healthcare editorial placement and CG-14/15 actual provider/booking pages, showing only an authorized up-to percentage/fixed contribution/cap and eligibility disclaimer. CG-18 initial public hero/category page never shows mockup numeric subsidy. If a real plan changes, expires or does not apply to selected doctor/service/center, remove or correct the previous public badge in Web/Public Android rather than persisting copied content. Never imply verified discount/paid status from mere display; detail and booking remain current CG-17 calculations. Original CareGanga brand and true loading/denied/stale/expiry states apply; runtime/device/pixel QA NOT_RUN.
 
+
+## Channel-specific original CareGanga interaction contract
+
+| Channel | User-completable CG-17 flow | Actual state and restriction |
+| --- | --- | --- |
+| Foundation Admin Web | Blue-active branded Admin shell and H16/H17-style contributions, versioned support policy, exceptional approved help, center-period settlement, reconciliation, restricted finance audit | Show separate gross center service, patient received, Foundation approved due, Foundation paid and unsettled balance; payout and exceptional subsidy require fresh privileged permission/MFA and real verified source |
+| Healthcare Center Portal Web | Verified merchant readiness, own-patient due/partial/on-site cashier collection, own receipts/overdue, returned/refunded and Foundation settlement view | Merchant not verified disables online only; center A cannot view center B; patient cash is not Foundation income; cash receipt evidence distinct from gateway confirmation |
+| Public Next.js website | Authorized patient sees accepted provider fee, eligible effective Foundation share, own balance, pay-at-center or genuine merchant checkout, own receipt/state | Display explicit booked vs paid/due; unknown callback remains Pending; no public patient-specific eligibility leakage, stale quote or unsupported guaranteed discount |
+| Public native Android | Same real patient-safe price breakdown, consent/acceptance, own booking/payment/receipt status through native touch/keyboard/Back | Original brand semantic color/type/status adapted to native, no embedded Admin or fake paid after browser redirect; revoked session clears private values |
+| Native Internal Android | Only authorized Foundation field/support verification/own assigned follow-up actions actually implemented; relevant read-only financial status with action-specific permission | No desktop-style compressed ledger and no invented separate Center Android; current root+center+patient purpose, secure cache clearing, proper offline/unknown confirmation |
+
+**Truthful journey states:** Initial quote → accepted immutable fee/policy snapshot → confirmed booking plus separate patient DUE → completed eligible service plus separately approved Foundation DUE → center collects independently (partial/due/verified) → actual Foundation authorized settlement (partial/settled/reversed). Payment gateway or pay-at-center is optional; **Foundation liability does not wait for center patient collection**. A booking alone is not a completed eligible service. Invalid merchant, canceled visit, source price change, stale approval, out-of-order webhook, disputed refund or unknown CG-09 post show explicit pending/blocked actions, not a green success toast.
+
+**Business detail and privacy:** Use the original H16 contribution and H17 center-wise finance filter/table/summary layout and CareGanga Admin badges. Display real original service kind, center, claim month, policy/cap, amount paid and time; never sample totals or a guessed partner commission. Keep center merchant secret, protected bank destination, full patient identity and eligibility notes off public and unrelated Center screens. Original H16/H17 screenshots have not been reopened at full resolution in this review; repository audit is the available source for their verified controls. Exact color/motion requires rendering and source asset comparison, not inference.
 
 ## Task-first source screenshot and UX acceptance
 
