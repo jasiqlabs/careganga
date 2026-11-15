@@ -268,6 +268,8 @@ Foundation organization geography and internal branch hierarchies come from CG-0
 
 ### Delivery dependency order — independently useful modules (mandatory Planning gate)
 
+**Implementation navigation:** The [single canonical 21-module development order](DEVELOPMENT_ORDER.md) is the developer's numbered, linked work queue, with real owner prerequisites and complete-story exit conditions. It is an execution guide derived from this HLD, not a second PRD/task tracker or substitute for current hash-bound approval and Harness resolver. Every module plan links back to it; keep that same file updated if dependency order changes after review.
+
 The following is a **logical prerequisite order, not one mandatory sequential release train**. Independently ready modules may progress in parallel. A one-time technical bootstrap plus CG-01 establish real shared primitives; each later module's own acceptance must use **real completed** contracts, not records belonging to future modules.
 
 | Dependency band | Business modules and delivery boundary |
