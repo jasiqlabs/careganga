@@ -421,3 +421,42 @@ From original **U05** unmodified screenshot (sampled as screen pixels, not origi
 ### 13.3 Mandatory every-module use
 
 For every CG module: (1) inspect actual matching A/B/C/U images and this audit's module ownership table; (2) map only genuine delivered functions/screens; (3) use the shared source-verified CareGanga Web token/component system; (4) implement native counterparts for the corresponding business journey, not desktop screenshots compressed into phone layouts; (5) source-review navigation, hierarchy, labels, control types, feedback, permissions, responsive behavior, color/surface use and placeholders; (6) record reference IDs and genuine `VISUAL_NOT_RUN` until pixel/motion/device checks execute. If binary evidence is unavailable to a developer, request the compact pack; **never silently replace the original palette**. This is a standing project instruction, **not another QA tracker, module, release authorization or fabricated approval**.
+
+## 13. Additional partner-healthcare visual references — supplied 15 November 2026
+
+**Evidence category:** User-uploaded additional CareGanga Admin Panel JPG screenshots shared after the 167-image original ZIP audit. These images are a **separate evidence group**; the original 167-file ZIP count and A/B/C/U labels remain unchanged. H01–H24 below index visibly recognizable screen subjects, not OCR certifications, full click-path execution, file-based pixel comparison or proof of authenticated backend functionality. The uploaded client-call MP3 has not yielded a reliable transcript; no spoken requirement is attributed to it.
+
+| Visual reference | Shown Admin screen | Source-visible capability | Owning business plan / activation |
+| --- | --- | --- | --- |
+| **H01** | Healthcare Super Admin Dashboard | Foundation central network KPI, bookings, contributions, approvals, partner performance | CG-14/17/20; figures illustrative |
+| **H02** | Partner Center Management | provider filter/table, status chips, center capability and bulk actions | CG-14 |
+| **H03** | Center Registration & Verification | document verification, case history, decision actions | CG-14 with CG-03/19 |
+| **H04** | Application Details — Partner Center | center license/location/infrastructure, protected evidence, approval timeline | CG-14 with CG-03/19 |
+| **H05** | Center Service Management | center service assignment, enablement and effective policy | CG-14 center capability grants |
+| **H06** | Doctor Registration & Verification | single professional profile, license and center association | CG-14 |
+| **H07** | Doctor Schedule & Availability Control | one doctor multiple centers, weekly slot/leave/holiday rules | CG-15 |
+| **H08** | Diagnostic & Lab Management | verified partner labs, center-specific test availability | CG-14/16 |
+| **H09** | Lab Test Master & Pricing | test/sample type, effective center fee and discount | CG-16 catalog available ERP OFF |
+| **H10** | Sample Collection & Report Management | test booking, sample custody, approved private report | CG-16 Lab ERP OFF default |
+| **H11** | Pharmacy & Medicine Management | medicine stock, batch/expiry/low stock/transfer | CG-22 Pharmacy ERP OFF default |
+| **H12** | Medicine Pricing & Discount Management | MRP/price/discount and mapped-center effective history | CG-22 catalog; price not proof of stock |
+| **H13** | Nursing Service Management | nurse assignment, visit frequency/plan/progress | CG-23 Nursing ERP OFF default |
+| **H14** | OT & Procedure Management | room/surgeon/team/resource schedule and pre-/post-op | CG-24 OT ERP OFF default |
+| **H15** | Patient & Booking Management | patient virtual ID, doctor vs other services and health record tabs | CG-15 consultation core; other services only when enabled |
+| **H16** | Foundation Contribution Management | patient/CSR/discount source categories and patient-payable split | CG-17/07/08; money owner must be verified |
+| **H17** | Center-wise Settlement & Payment Management | service gross, contribution, partner payable and transfer status | CG-17/09; screenshot formula not authoritative |
+| **H18** | Finance & Accounts Management | Foundation vouchers, income/expense/budget/ledger report | CG-09; partner collections not Foundation income by default |
+| **H19** | Approval & Workflow Management | source-case approval and reviewer history | CG-03 |
+| **H20** | User, Staff & Role Management | role-scope assignment, doctor/nurse references | CG-01/10/14/23, no identity duplication |
+| **H21** | Reports & MIS Dashboard | aggregate service/center/fund metrics and exports | CG-20 read only genuine owner sources |
+| **H22** | Notifications & Communication Management | source-bound SMS/email/WhatsApp/in-app delivery | CG-19 with CG-21 configured provider |
+| **H23** | Security, API & System Settings | role guard, integration readiness, security policies | CG-01/21 according to actual owner |
+| **H24** | Audit Logs, Backup & Monitoring | restricted audit/restore and system visibility | CG-01/21, screenshot uptime/example values not live proof |
+
+### 13.1 Mandatory visual continuity
+
+- Preserve original CareGanga dark navy sidebar, bright blue selected state, white/very pale blue cards, KPI color coding, compact filters/tables, split record detail panels, five-stage progress bars, workflow decisions and clear human business labels. Exact HEX/fonts/spacing/motion values require original asset and live rendered comparison and must **not** be invented solely from these JPGs.
+- Public website and native Public Android are **not** copies of the Super Admin sidebar. Center Portal shows only own-center permitted forms; core portal remains available when advanced ERP flags OFF. Hide disabled ERP menus, detail widgets, create actions, notifications, exports and counts; backend must also deny them.
+- Distinguish **base price**, **partner quoted price**, **authorized patient payable**, **approved Foundation contribution**, **partner-collected money**, **Foundation liability** and **verified Foundation settlement**. The UI shows example figures, but does not validate who gets the money or payment processing.
+- Lab/Pharmacy/Nursing/OT screenshots contain full operational controls, not mere menu labels; these form optional built-to-enable source design requirements in CG-16/22/23/24 after the owner's instruction. The screenshot alone cannot establish external clinical provider credentials, signed patient consent, merchant eligibility or executed results.
+- For each visible screen, future UI/UX and story QA must reference H IDs, original CG-01 design tokens and a real backend/role/center/flag state. Run separate original asset comparison, responsive Web/native Android testing, API security and data migrations later; until then visual/runtime/clinical QA = NOT_RUN.
