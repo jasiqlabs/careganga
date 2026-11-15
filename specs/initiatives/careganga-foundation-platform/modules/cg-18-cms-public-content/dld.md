@@ -27,6 +27,12 @@ A public-safe **allowlist projection** reads real approved CG-05 projects, CG-14
 
 **QA / NFR:** Validate independent Login toggle with real CG-01 authentication and no CG-21/04 business records, hidden/unpublished/private navigation in Web/Public Android, no CTA to missing member/volunteer route, permission denial, stale/old cached revision, optimistic conflicts, source-safe 404/forbidden route guard, proper Admin C50-like styling and native accessibility. No CG-18 native Admin editor; Public Android is a required consuming surface, and actual device/visual/runtime QA remain NOT_RUN.
 
+## CG-18 presentation-only contact, notices and media (CG-19 source)
+
+- **Public contact** belongs to **CG-19 support_case**: CG-18 US-003 publishes its own verified Contact page and embeds/links CG-19's already working validated public form/receipt endpoint; submission, private contact, assignment, replies and response history are stored and authorized **only by CG-19**. No CMS `contact_message` table/CRM inbox, no rewritten receipt/security logic. Frontend unavailable state is truthful if real CG-19 endpoint cannot be reached.
+- **Notices:** Original notice content, audience, send schedule, outbox and provider delivery are **CG-19**. CG-18 owns only optional separate approved *public website publication* of an authorized allow-listed CG-19 notice projection with independent publication state/revision; a CG-19 notice sent to internal roles is not automatically public. CMS must never edit original CG-19 notification recipients or delivery status.
+- **Media:** Secure file bytes, validation/scan and private status are **CG-19 file** source. CG-18 owns its gallery/page placement, visible metadata and public publish decision, only after a real CG-19 VALIDATED object is intentionally eligible. No duplicate file bytes, fake upload, accidental private signed URL leak or future business master. QA in CG-18 US-003 verifies contact/notice/media presentation only; original CG-19 privacy/DB/provider tests remain CG-19's own.
+
 ## Real source integration and module-specific QA
 
 **Critical acceptance:** An editor creates a genuine static page/campaign description and publishes approved content with correct preview/version/schedule. Non-public branch, donor identity, patient, clinical result or unpublished doctor must never leak through search, SEO, cache, public API, stale preview or a mobile deep link. Revocation/unpublish invalidates public projection and cache.
