@@ -54,7 +54,7 @@ export class ApprovalFinalizationService{
       if(old.state==="CONFIRMED")result="CONFIRMED";
       else{
         const done=await this.owner.applyApprovedAccessChange(effectKey,item.claim_token);
-        result=done.state;
+        result=done.state==="UNVERIFIED"?"UNKNOWN":done.state;
       }
     }catch{/* Keep exact original key for reconciliation. Never assert success. */}
     // A crash or claim timeout between CG-01 commit and this final update
