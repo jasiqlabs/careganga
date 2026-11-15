@@ -126,9 +126,13 @@ export class RolesService {
     }
     if(typeof search!=="string"||search.length>80)throw new BadRequestException();
     const rows=await this.db.query<{id:string;name:string}>(`
-      SELECT id,name FROM role WHERE realm_id=$1 AND active=true AND is_protected=false
-      AND ($2='' OR normalized_name LIKE $2)
-      ORDER BY normalized_name,id LIMIT 30`,
+      SELECT r.id,r.name FROM role r WHERE r.realm_id=$1 AND r.active=true AND r.is_protected=false
+      AND NOT EXISTS(
+        SELECT 1 FROM role_grant g WHERE g.role_id=r.id
+          AND g.capability_key IN ('roles.manage','identity.security-policy.manage')
+      )
+      AND ($2='' OR r.normalized_name LIKE $2)
+      ORDER BY r.normalized_name,r.id LIMIT 30`,
       [actor.realmId,search?("%"+search.trim().toLowerCase().replace(/[\\%_]/g,"\\$&")+"%"):""]);
     return {options:rows.rows.map(r=>({value:r.id,label:r.name,context:"Foundation"}))};
   }
