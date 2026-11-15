@@ -294,6 +294,9 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
           </select></label>
           <p>No temporary password is emailed. The invited person sets up their own password and authenticator.</p>
+          {notice&&<p role={notice.kind==="success"?"status":"alert"}
+             className={"notice "+notice.kind}>{notice.text}</p>}
+          {uncertain&&<p role="alert">The result may already be saved. Check with Foundation support before retrying this invitation.</p>}
           <div className="toolbar"><button type="button" onClick={()=>setEditor(null)}>Cancel</button>
             <button type="submit" className="primary" disabled={busy||uncertain||!roleRef}>
               {busy?"Saving…":"Create invitation"}
@@ -352,6 +355,9 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
           {pending.kind==="assign"&&<p>Selected role: {roles.find(r=>r.value===roleRef)?.label??"Please choose a role"}</p>}
           {pending.kind==="status"&&<p>New status: {pending.status}</p>}
           <p>This will invalidate previously issued sessions if access changes.</p>
+          {notice&&<p role={notice.kind==="success"?"status":"alert"}
+             className={"notice "+notice.kind}>{notice.text}</p>}
+          {uncertain&&<p role="alert">This request may have been saved. Refresh account status before submitting another change.</p>}
           <div className="toolbar"><button type="button" disabled={busy} onClick={()=>setPending(null)}>Back</button>
             <button type="button" className="primary" disabled={busy||uncertain}
               onClick={()=>void submitChange()}>{busy?"Saving…":"Confirm change"}</button>
