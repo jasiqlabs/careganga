@@ -1,5 +1,5 @@
 import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { encryptTotpSecret, decryptTotpSecret, hashPassword, matchedTotpCounter } from "../domain/secret-crypto";
@@ -32,18 +32,25 @@ export class InvitationEnrollmentService {
     return {email:email.trim().toLowerCase(),digest:digest(token)};
   }
   private async limit(kind:string,d:string,remoteAddress:string){
-    // Hash unpredictable invitation token rather than a raw contact.
-    const key=digest(kind+":"+d+":"+remoteAddress);
-    const x=await this.db.query<{attempt_count:number}>(String.raw`
+    // One fixed network bucket also bounds random-token spraying and throttle-row growth.
+    // HMAC hides the client IP and supplied token; never store either value in this table.
+    const secret=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
+    if(secret.length!==32)throw new Error("Identity protection key unavailable");
+    const keyed=(data:string)=>createHmac("sha256",secret).update(data).digest("hex");
+    const networkKey=keyed("cg01:invitation:network:"+kind+":"+remoteAddress);
+    const tokenKey=keyed("cg01:invitation:token:"+kind+":"+d+":"+remoteAddress);
+    const x=await this.db.query<{key_digest:string;attempt_count:number}>(String.raw`
       INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
-      VALUES($1,now(),1)
+      VALUES($1,now(),1),($2,now(),1)
       ON CONFLICT(key_digest) DO UPDATE SET
         attempt_count=CASE WHEN auth_login_attempt.window_started_at<now()-interval '15 minutes'
           THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
         window_started_at=CASE WHEN auth_login_attempt.window_started_at<now()-interval '15 minutes'
           THEN now() ELSE auth_login_attempt.window_started_at END
-      RETURNING attempt_count`,[key]);
-    if(x.rows[0].attempt_count>10)throw new HttpException("Retry limited",HttpStatus.TOO_MANY_REQUESTS);
+      RETURNING key_digest,attempt_count`,[networkKey,tokenKey]);
+    const requests=new Map(x.rows.map(row=>[row.key_digest,row.attempt_count]));
+    if((requests.get(networkKey)??0)>120||(requests.get(tokenKey)??0)>10)
+      throw new HttpException("Retry limited",HttpStatus.TOO_MANY_REQUESTS);
   }
   async begin(body:{email:unknown;token:unknown},remoteAddress:string){
     const parsed=this.parse(body?.email,body?.token);
