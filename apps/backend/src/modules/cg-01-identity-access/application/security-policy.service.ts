@@ -1,5 +1,5 @@
 import { BadRequestException,ConflictException,ForbiddenException,HttpException,HttpStatus,Inject,Injectable,UnauthorizedException } from "@nestjs/common";
-import { createHmac,randomUUID } from "node:crypto";
+import {createHmac} from "node:crypto";
 import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "./session.service";
@@ -14,13 +14,8 @@ type PolicyRow={
   updated_at:Date;
 };
 type ProofRow={
-  account_id:string;password_hash:string;last_totp_counter:string;
+  account_id:string;last_totp_counter:string;
   totp_ciphertext:Buffer|null;totp_nonce:Buffer|null;totp_tag:Buffer|null;
-};
-type UpdateBody={
-  maxSessionAgeSeconds:number;idleTimeoutSeconds:number;
-  failedAttemptWindowSeconds:number;maxFailedAttempts:number;rootMfaRequired:true;
-  expectedRevision:number;idempotencyKey:string;totp:string;
 };
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function conflict(code:string):ConflictException{
@@ -78,7 +73,7 @@ export class SecurityPolicyService {
   private async lockCurrent(client:PoolClient,actor:VerifiedFoundationActor):
       Promise<ProofRow>{
     const result=await client.query<ProofRow>(`
-      SELECT a.id AS account_id,c.password_hash,c.last_totp_counter,
+      SELECT a.id AS account_id,c.last_totp_counter,
         c.totp_ciphertext,c.totp_nonce,c.totp_tag
       FROM account a
       JOIN access_realm realm ON realm.id=a.realm_id AND realm.realm_key='FOUNDATION_ROOT'
