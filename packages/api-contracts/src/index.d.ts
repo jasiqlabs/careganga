@@ -44,3 +44,29 @@ export interface CG01AccountAssignment {
 export interface CG01AccountStatusChange {
   status:"ACTIVE"|"SUSPENDED"|"DEACTIVATED";expectedRevision:number;requestKey:string
 }
+
+/** US-004 CG-01-only protected Foundation-root security policy. */
+export interface CG01SecurityPolicy {
+  maxSessionAgeSeconds:number;
+  idleTimeoutSeconds:number;
+  failedAttemptWindowSeconds:number;
+  maxFailedAttempts:number;
+  rootMfaRequired:true;
+  revision:number;
+  updatedAt:string|null;
+}
+export interface CG01SecurityPolicyUpdate {
+  maxSessionAgeSeconds:number;
+  idleTimeoutSeconds:number;
+  failedAttemptWindowSeconds:number;
+  maxFailedAttempts:number;
+  rootMfaRequired:true;
+  expectedRevision:number;
+  idempotencyKey:string;
+  /** One fresh six-digit one-use CG-01 authenticator proof, never stored in audit. */
+  totp:string;
+}
+export interface CG01SecurityPolicyOutcome {
+  status:"SAVED"|"REPLAY_CONFIRMED";
+  revision:number;
+}
