@@ -1,5 +1,6 @@
 import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
-import { createHash, createHmac, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import { Pool } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
@@ -44,22 +45,7 @@ export class SessionService implements IdentityAuthorization {
       maxFailedAttempts:v.max_failed_attempts};
   }
   private async takeAttempt(kind: string, value: string, limit: number,windowSeconds:number): Promise<void> {
-    // On demand, infrequently delete only an indexed, bounded batch of old
-    // throttle entries. Failed cleanup must never relax the current request's
-    // authorization or introduce a background polling worker.
-    if(kind==="network" && randomInt(32)===0){
-      try{
-        await this.db.query(`
-          WITH expired AS (
-            SELECT key_digest FROM auth_login_attempt
-            WHERE window_started_at < now()-interval '24 hours'
-            ORDER BY window_started_at,key_digest
-            LIMIT 1000 FOR UPDATE SKIP LOCKED
-          )
-          DELETE FROM auth_login_attempt t USING expired
-          WHERE t.key_digest=expired.key_digest`);
-      }catch{/* Strict per-request limits remain mandatory even if housekeeping fails. */}
-    }
+    if(kind==="network")await maybePruneAuthThrottle(this.db);
     const digest = this.throttleKey(kind, value);
     const result = await this.db.query<{ attempt_count: number }>(`
       INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
