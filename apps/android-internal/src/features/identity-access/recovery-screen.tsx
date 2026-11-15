@@ -1,5 +1,6 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRef,useState } from "react";
-import { KeyboardAvoidingView,Platform,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,TextInput,View } from "react-native";
+import { KeyboardAvoidingView,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View } from "react-native";
 import * as Crypto from "expo-crypto";
 import { identityRequest } from "./http-client";
 
