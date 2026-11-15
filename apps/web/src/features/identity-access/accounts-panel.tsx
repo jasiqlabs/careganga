@@ -52,9 +52,11 @@ export function AccountsPanel(){
   const [searchRole,setSearchRole]=useState("");
   const requestKey=useRef("");
   const generation=useRef(0);
+  const roleRead=useRef(0);
+  const historyRead=useRef(0);
 
   const purge=useCallback((message:string)=>{
-    ++generation.current;setList(null);setRoles([]);setActions([]);setHistory(null);setTarget(null);
+    ++generation.current;++roleRead.current;++historyRead.current;setList(null);setRoles([]);setActions([]);setHistory(null);setTarget(null);
     setPending(null);setEditor(null);setLoading(false);
     setNotice({kind:"error",text:message});
   },[]);
@@ -88,33 +90,43 @@ export function AccountsPanel(){
   const canAssign=actions.includes("roles.assign");
   const canStatus=actions.includes("accounts.status.manage");
   async function roleSearch(value:string){
+    const generationBefore=generation.current,request=++roleRead.current;
     try{
       const params=new URLSearchParams({search:value});
       const result=await read<{options:RoleOption[]}>("roles/options?"+params.toString());
+      if(request!==roleRead.current||generationBefore!==generation.current)return;
+      if(!Array.isArray(result.options))throw new Error("Invalid role response");
       setRoles(result.options.filter(x=>x.context==="Foundation"));
     }catch(e){
+      if(request!==roleRead.current||generationBefore!==generation.current)return;
       setRoles([]);
       if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
       else setNotice({kind:"error",text:"Eligible roles are temporarily unavailable."});
     }
   }
   function openInvite(){
+    ++roleRead.current;++historyRead.current;
     setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
   function openAccount(row:CG01AccountView){
+    ++roleRead.current;++historyRead.current;
     setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
     setNotice(null);requestKey.current=crypto.randomUUID();
     if(canAssign)void roleSearch("");
   }
   async function loadAccountHistory(accountRef:string){
     if(!actions.includes("access.audit.view"))return;
+    const generationBefore=generation.current,request=++historyRead.current;
     try{
       const result=await read<{events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}[]}>(
         "audit?limit=30&targetRef="+encodeURIComponent(accountRef));
+      if(request!==historyRead.current||generationBefore!==generation.current)return;
+      if(!Array.isArray(result.events))throw new Error("Invalid history response");
       setHistory(result.events);
     }catch(error){
+      if(request!==historyRead.current||generationBefore!==generation.current)return;
       setHistory(null);
       if(error instanceof Error&&/session expired|permission denied/i.test(error.message))
         purgeProtectedHistory(error.message);
