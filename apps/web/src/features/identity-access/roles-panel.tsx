@@ -55,11 +55,22 @@ export function RolesPanel(){
       setActions(effective.actions.map(x=>x.key));setTotal(list.total);
       setOffset(skip);
     }catch(e){
-      setRoles([]);setActions([]);setNotice({kind:"error",text:e instanceof Error?e.message:"Information unavailable."});
+      // Fail closed after revalidation failure: do not leave restricted role/audit content cached.
+      setRoles([]);setGroups([]);setActions([]);setHistory(null);setHistoryCursor(null);
+      setEditor(null);setPendingRetire(null);
+      setNotice({kind:"error",text:e instanceof Error?e.message:"Information unavailable."});
     }finally{setLoading(false);}
   },[]);
 
   useEffect(()=>{void load("",0);},[load]);
+  // Revalidate on focus/resume without a background polling loop.
+  useEffect(()=>{
+    const onFocus=()=>{if(document.visibilityState==="visible")void load(appliedSearch,offset);};
+    window.addEventListener("focus",onFocus);
+    document.addEventListener("visibilitychange",onFocus);
+    return()=>{window.removeEventListener("focus",onFocus);
+      document.removeEventListener("visibilitychange",onFocus);};
+  },[load,appliedSearch,offset]);
   useEffect(()=>{
     const shortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
@@ -87,10 +98,16 @@ export function RolesPanel(){
   const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable);
 
   async function mutate(path:string,method:"POST"|"PATCH",body:unknown){
-    const result=await fetch("/api/access/"+path,{
-      method,headers:{"Content-Type":"application/json"},credentials:"same-origin",
-      body:JSON.stringify(body)
-    });
+    let result:Response;
+    try {
+      result=await fetch("/api/access/"+path,{
+        method,headers:{"Content-Type":"application/json"},credentials:"same-origin",
+        body:JSON.stringify(body)
+      });
+    } catch {
+      // A dropped connection after commit is not a rejected write.
+      throw new Error("UNCERTAIN");
+    }
     if(!result.ok){
       if(result.status===503)throw new Error("UNCERTAIN");
       if(result.status===409){
