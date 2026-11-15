@@ -25,12 +25,14 @@ async function currentRoleActions(token:string):Promise<string[]>{
     headers:{Authorization:"Bearer "+token}
   });
   if(response.status===401)throw new Error("SESSION_EXPIRED");
-  if(!response.ok)return [];
+  if(!response.ok)throw new Error("Permissions cannot be verified right now.");
   const data:unknown=await response.json();
   if(!data||typeof data!=="object"||!("actions" in data)||
-     !Array.isArray(data.actions))return [];
-  return data.actions.filter((a:unknown):a is {key:string}=>Boolean(a)&&typeof a==="object"
-    &&"key" in a&&typeof a.key==="string").map((a:{key:string})=>a.key);
+     !Array.isArray(data.actions)||
+     !data.actions.every((a:unknown)=>Boolean(a)&&typeof a==="object"&&
+       "key" in a&&typeof a.key==="string"))
+    throw new Error("Permissions cannot be verified right now.");
+  return data.actions.map((a:{key:string})=>a.key);
 }
 export function StaffAuthenticationScreen(){
   const [email,setEmail]=useState("");
@@ -94,6 +96,7 @@ export function StaffAuthenticationScreen(){
     if(state==="busy")return;
     setState("busy");setMessage("");
     const request:CG01SignInRequest={email,password,totp,deviceLabel:"Internal Android"};
+    let issuedToken:string|null=null;
     try{
       const response=await identityRequest("/api/identity/login",{
         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
@@ -103,14 +106,29 @@ export function StaffAuthenticationScreen(){
         return;
       }
       const data:CG01SessionCreated=await response.json();
-      if(typeof data.sessionToken!=="string"||typeof data.expiresAt!=="string")throw new Error("Sign-in confirmation is unavailable.");
-      const verified=await sessionView(data.sessionToken);
+      if(typeof data.sessionToken!=="string"||typeof data.expiresAt!=="string"||
+        !Number.isFinite(new Date(data.expiresAt).getTime())||
+        new Date(data.expiresAt).getTime()<=Date.now())throw new Error("Sign-in confirmation is unavailable.");
+      issuedToken=data.sessionToken;
+      const verified=await sessionView(issuedToken);
       if(!verified)throw new Error("The new session could not be confirmed.");
-      await SecureStore.setItemAsync(STORE_KEY,data.sessionToken);
-      const actions=await currentRoleActions(data.sessionToken);
-      setRoleActions(actions);setToken(data.sessionToken);setActor(verified);setPassword("");setTotp("");
-    }catch{setMessage("Could not confirm sign-in. Check your connection and try again.");}
-    finally{setState("idle");}
+      // Don't persist or show a session until BOTH identity and effective access
+      // are verified, so offline/invalid permission reads cannot look like success.
+      const actions=await currentRoleActions(issuedToken);
+      await SecureStore.setItemAsync(STORE_KEY,issuedToken);
+      setRoleActions(actions);setToken(issuedToken);setActor(verified);setPassword("");setTotp("");
+    }catch{
+      setRoleActions([]);setActor(null);setToken(null);
+      // If a session was issued but later bootstrap steps failed, avoid leaving a
+      // needless server-side session alive. This is best effort, not a claimed logout.
+      if(issuedToken){
+        try{await identityRequest("/api/identity/logout",{
+          method:"POST",headers:{Authorization:"Bearer "+issuedToken}
+        });}catch{/* eventual server expiry still applies */}
+        try{await SecureStore.deleteItemAsync(STORE_KEY);}catch{/* no sign-in displayed */}
+      }
+      setMessage("Could not confirm sign-in. Check your connection and try again.");
+    }finally{setState("idle");}
   }
   async function signOut(){
     if(state==="busy"||!token)return;
@@ -120,8 +138,14 @@ export function StaffAuthenticationScreen(){
         method:"POST",headers:{Authorization:"Bearer "+token}
       });
       if(!response.ok)throw new Error("Server revocation not confirmed");
-      await SecureStore.deleteItemAsync(STORE_KEY);
+      // Backend revocation is authoritative. The UI must not continue showing an
+      // authenticated actor if on-device deletion fails afterward.
       setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);
+      try{
+        await SecureStore.deleteItemAsync(STORE_KEY);
+      }catch{
+        setMessage("Signed out. Local session cleanup could not be confirmed and will be retried.");
+      }
     }catch{setMessage("Sign-out could not be confirmed. Please retry.");}
     finally{setState("idle");}
   }
