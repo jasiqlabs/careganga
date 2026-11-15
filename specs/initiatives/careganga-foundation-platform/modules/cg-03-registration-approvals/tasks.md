@@ -19,7 +19,8 @@ QA cases:
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs U11, U12, U13, B29, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-001-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Only owning module applies one business effect after genuine final approval, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA08 — Source-specific boundary:** Submit a real CG-01 protected-access request through the current verified account/role contract; receive an actual case reference and frozen reviewer route, not fabricated branch/member/provider records.
+Verification: On actual implementation source-trace US-001-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Approve, reject, return for correction or forward
@@ -36,7 +37,8 @@ QA cases:
 - **US-002-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-002-QA06:** Original CareGanga screenshot refs U11, U12, U13, B29, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Only owning module applies one business effect after genuine final approval, with one accepted source transaction and correct downstream totals.
-Verification: On actual implementation source-trace US-002-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA08 — Source-specific boundary:** Open U12/U13 document verification as a reviewer without permission to view linked CG-19 attachment; allow case summary but block file, deny approval until mandatory document checks/reviewer steps pass.
+Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ### US-003 — Produce exactly one owner-domain effect (member/employee/provider/branch…
@@ -54,7 +56,8 @@ QA cases:
 - **US-003-QA06:** Original CareGanga screenshot refs U11, U12, U13, B29, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Only owning module applies one business effect after genuine final approval, with one accepted source transaction and correct downstream totals.
 - **US-003-QA08 — Module-critical regression:** Two final approvers or a retried owner callback attempt to finalize the same application during an owner-service outage. Expected: one approved CG-03 decision, source owner applies exactly one authorized activation/entitlement/posting (or visibly remains pending), no duplicate member/branch/provider ID or payment.
-Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-003-QA09 — Source-specific boundary:** Replay a FINAL_APPROVED decision after its source-owner finalizer times out; case retains truthful pending-finalization status, re-query uses the same finalization key, and no role/branch/member business effect is created twice.
+Verification: On actual implementation source-trace US-003-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-002
 
 ## Execution progress

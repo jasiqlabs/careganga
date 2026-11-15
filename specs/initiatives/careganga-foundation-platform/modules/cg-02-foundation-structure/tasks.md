@@ -18,7 +18,8 @@ QA cases:
 - **US-001-QA04:** Invalid field, absent source, unavailable required owner/provider or uncertain network result → distinct field error/empty/pending/unavailable UI, no invented success, safe retry.
 - **US-001-QA05:** Authorized second channel/report/related owner sees same real state; restricted read remains denied, absent future integration honestly unavailable.
 - **US-001-QA06:** Original CareGanga screenshot refs U18, U19, U20, U21, U22, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
-Verification: On actual implementation source-trace US-001-QA01–QA06 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-001-QA07 — Source-specific boundary:** Create a department with a parent in a different branch or a cyclic parent chain; the source validates an active same-branch hierarchy, rejects the new parent and leaves existing department/staff relations intact.
+Verification: On actual implementation source-trace US-001-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: None
 
 ### US-002 — Complete seven-stage draft/review/submit registration with contacts…
@@ -36,7 +37,8 @@ QA cases:
 - **US-002-QA06:** Original CareGanga screenshot refs U18, U19, U20, U21, U22, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-002-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Only finally approved branches activate or receive code; geography never invented, with one accepted source transaction and correct downstream totals.
 - **US-002-QA08 — Module-critical regression:** An authorized branch manager completes seven registration steps, saves/resumes drafts, submits missing document and then receives a valid CG-03 final decision. Expected: incomplete submission remains draft/returned, no premature active branch/code; approved one gets one unique code, Web shows correct status and DB retains stage/reviewer history.
-Verification: On actual implementation source-trace US-002-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-002-QA09 — Source-specific boundary:** Save the seven-stage branch registration after step 3 with missing legal agreements, reopen it at step 4, submit and receive approval; show complete status and issue unique branch code only after CG-03 final decision, never on draft/submission.
+Verification: On actual implementation source-trace US-002-QA01–QA09 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
 ## Execution progress
