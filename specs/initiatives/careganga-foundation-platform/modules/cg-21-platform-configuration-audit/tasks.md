@@ -2,12 +2,12 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage:** Harness Planning draft, re-reviewed against PRD/HLD v1.1, CG-01 design benchmark and Harness ec7c0b81; current [module](module.md), [UIUX](uiux.md), [DLD](dld.md). CG-21 owner-confirmed delegated approval NOT_RECORDED.
-**Development gate:** CG-21 source review/fix/re-review completed for owner confirmation (15 Nov 2026), but current PRD/HLD approvals REVIEW_REQUIRED, real CG-01 predecessor NOT_DELIVERED, authenticated Harness resolver and current-hash module/UIUX/DLD/tasks approval and independent CRITICAL DB review NOT_RUN. Stories BLOCKED; no runtime/visual/device QA or CI claimed.
+**Stage:** Harness Planning owner-delegated design content APPROVED (15 Nov 2026), by **JASIQ AI Design Review Agent** following explicit owner confirmation, for latest [module](module.md), [UIUX](uiux.md), [DLD](dld.md), 2 story definitions and 16 QA cases; latest PRD/HLD and Harness ec7c0b81. Formal stage/resolver still BLOCKED.
+**Development gate:** CG-21 design content has current-owner delegated approval, but **not** formal development authority: current PRD/HLD approvals REVIEW_REQUIRED, real CG-01 predecessor NOT_DELIVERED, authenticated Harness resolver, independent CRITICAL DB review and runtime/visual/device QA NOT_RUN. Both stories remain BLOCKED, and no CI or code execution is claimed.
 
 ## Approved task definitions
 
-**Approval truth:** Two stories and 16 QA cases have been source-reviewed, but CG-21 owner confirmation and formal stage approval are still pending. Each initial story uses only real CG-01 predecessor data and CG-21 source records. Optional unconfigured providers are represented truthfully as unavailable, without blocking ordinary settings/audit. Neither missing future business-module data nor mock provider results are acceptable. Keep existing BLOCKED progress unchanged.
+**Approval truth:** The owner explicitly confirmed `DELEGATED_APPROVED` for this exact CG-21 design content and 2 stories/16 preserved QA cases; the named design delegate is JASIQ AI Design Review Agent, not a human signatory. Formal local stage checks and current PRD/HLD prerequisite approvals are still pending and do not permit `READY`. Each story only uses genuinely delivered CG-01 and CG-21 records; optional providers report truthful unavailable states; keep BLOCKED execution unchanged.
 
 ### US-001 — Manage versioned platform settings and verified integrations
 
