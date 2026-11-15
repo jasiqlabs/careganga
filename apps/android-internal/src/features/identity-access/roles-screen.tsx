@@ -228,7 +228,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
   return <SafeAreaView style={styles.page}><ScrollView
     keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
     <View style={styles.line}>
-      <Pressable onPress={onExit} accessibilityRole="button" style={styles.button}><Text>Back</Text></Pressable>
+      <Pressable onPress={onExit} accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>My account</Text></Pressable>
       <Text accessibilityRole="header" style={styles.title}>Roles & permissions</Text>
     </View>
     <Text>Foundation staff access</Text>
