@@ -75,7 +75,7 @@ QA cases:
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves No public lab checkout or release of private patient report to strangers, with one accepted source transaction and correct downstream totals.
 - **US-004-QA08 — Healthcare source-specific boundary:** Public center card for lab/medicine/nursing displays verified service, applicable contact and any approved information-only benefit; unsupported online checkout or fabricated price is not clickable.
 Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-001
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

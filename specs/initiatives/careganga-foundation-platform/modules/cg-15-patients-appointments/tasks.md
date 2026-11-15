@@ -57,7 +57,7 @@ QA cases:
 - **US-003-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
 - **US-003-QA08 — Healthcare source-specific boundary:** Two registrants use the same mobile number with different identities; secure verification and duplicate-patient review prevents automatic confidential record merge, preserves consent version and one unique virtual patient ID per actual patient.
 Verification: On actual implementation source-trace US-003-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-002
+Dependencies: None
 
 ### US-004 — Capture patient, doctor, center, slot, consultation type and reason
 
@@ -75,7 +75,7 @@ QA cases:
 - **US-004-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
 - **US-004-QA08 — Healthcare source-specific boundary:** Patient changes doctor/center/consultation mode at review screen while last slot is held; price/support snapshot must be recalculated for the chosen real center and booking confirmation cannot exceed capacity.
 Verification: On actual implementation source-trace US-004-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-003
+Dependencies: US-002, US-003
 
 ### US-005 — Issue authentic reference/Booking ID, download/print/share and guarded…
 
@@ -127,7 +127,7 @@ QA cases:
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-007-QA07 — Healthcare source-specific boundary:** Patient reschedules after an online payment completes late for an expired hold; safely release/rebook capacity and reconcile any charge/refund rather than overbook or create a second paid appointment.
 Verification: On actual implementation source-trace US-007-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-006
+Dependencies: US-004
 
 ### US-008 — See authorized own appointments, receipts, patient ID and permitted reports
 
@@ -145,7 +145,7 @@ QA cases:
 - **US-008-QA07:** Race/replay/rollback of sensitive money/stock/booking/approval/report state preserves Doctor-wide overlap and center overcapacity prevented across clients; no fictitious subsidy, with one accepted source transaction and correct downstream totals.
 - **US-008-QA08 — Healthcare source-specific boundary:** Authenticated patient opens own appointments, documents and reports from Web/Android; another patient's identifier or unverified family-member claim must not grant access to prescriptions or clinical reports.
 Verification: On actual implementation source-trace US-008-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-007
+Dependencies: US-003, US-005
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.

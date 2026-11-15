@@ -127,7 +127,7 @@ QA cases:
 - **US-007-QA06:** Original CareGanga screenshot refs Healthcare BR/UI references; not Admin screenshot IDs, consistent existing palette, form/drawer/tab/table/motion tokens and responsive/native accessible states; exact rendered PNG/video comparison NOT_RUN.
 - **US-007-QA07 — Healthcare source-specific boundary:** CMS tries to publish a mockup 40% lab or 20% medicine support badge without CG-17 approved policy; prohibit unsupported percentage, while standard eligible consultation benefit and approved exceptional full aid use actual policy source.
 Verification: On actual implementation source-trace US-007-QA01–QA07 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
-Dependencies: US-006
+Dependencies: US-001
 
 ## Execution progress
 - US-001: READY | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
