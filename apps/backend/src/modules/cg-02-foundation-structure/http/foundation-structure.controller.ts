@@ -36,10 +36,12 @@ export class FoundationStructureController {
     return this.service.exportPage(bearer,kind,offset?Number(offset):0);
   }
   @Get("departments")
-  departments(@Headers("authorization") bearer:string,@Query("search") search?:string,@Query("kind") kind?:string){
-    if(search!==undefined&&typeof search!=="string"||kind!==undefined&&typeof kind!=="string")
+  departments(@Headers("authorization") bearer:string,@Query("search") search?:string,
+    @Query("kind") kind?:string,@Query("offset") offset?:string){
+    if(search!==undefined&&typeof search!=="string"||kind!==undefined&&typeof kind!=="string"||
+      offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
       throw new BadRequestException("Check department filters");
-    return this.service.departments(bearer,search??"",kind);
+    return this.service.departments(bearer,search??"",kind,offset?Number(offset):0);
   }
   @Post("departments")
   createDepartment(@Headers("authorization") bearer:string,@Body() body:unknown){
