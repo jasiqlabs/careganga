@@ -113,8 +113,11 @@ export class AccountsService {
         AND a.access_version=s.account_access_version AND a.realm_id=$3
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.active
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.expires_at>now()
-        AND s.last_seen_at>now()-interval '30 minutes' AND s.mfa_verified_at IS NOT NULL
+        AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
+        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
+        AND s.mfa_verified_at IS NOT NULL
       FOR SHARE OF s,a,ar,r`,[actor.activeSessionId,actor.accountId,actor.realmId,permission]);
     if(!current.rowCount||(!current.rows[0].protected_role&&!current.rows[0].has_grant))
       throw new ForbiddenException("Access is no longer available");
