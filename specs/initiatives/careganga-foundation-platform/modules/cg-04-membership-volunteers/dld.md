@@ -13,6 +13,16 @@ Own a cohesive typed domain/application module for **Member tiers/terms, fees, r
 
 State/invariant: **Draft/submitted/approved/rejected/active/expired/renewed; Approved fee and case precede member ID; rejected paid membership requires authorized refund**. Do not invent future FK rows. Additive safe migrations and controlled rollback/forward repair; correct locking/uniqueness for money, slots, stock, approvals and privileged state where applicable.
 
+## Concrete membership and volunteer implementation
+
+`membership_tier(id,name,fee,validity,benefits,order,publish_state,version)` exposes only active published choices to public applicants; prices and term lengths are captured in the application snapshot. `membership_application(id,account_ref,tier_ref,source_payment_ref,approval_ref,status)` stores application reference, document requirements and personal/area information without duplicate login record. Approved `member(id,member_no,person_ref,term_start/end,status)` has unique generated number only after CG-03 final approval plus CG-09 actual verified fee, not mere payment initiated state.
+
+`membership_term(member_id,tier_version,starts,expires,renewed_from)` preserves renewal/expiry and prior benefits; rejected paid applications require an authorized full joining-fee refund tracked back through CG-09; one gateway replay cannot create two memberships/cards. CG-19 card/certificate/letter renders from approved source state.
+
+`volunteer(id,account_or_applicant_ref,skills,availability,preferred_department,status)` retains configurable choices and relevant identity proof under restricted access. Approval and CG-05 field assignments are separate; verified volunteer does not automatically get CG-01 operational role.
+
+**QA:** expired tier, two simultaneous applications/renewals, denied member card before payment/approval, rejected-paid refund, volunteer without staff role, private identity upload, public status by verified applicant and membership/volunteer name option scope.
+
 ## Typed API and coordination
 
 An authenticated `/api/membership-volunteers` owner facade exposes business commands, filtered read-only queries, and minimal `options/search` projections for permitted selectors. Public reads require approved publication allowlist. Each PRD command contract:
