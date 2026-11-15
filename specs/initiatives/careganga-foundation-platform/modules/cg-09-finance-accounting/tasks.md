@@ -9,10 +9,10 @@
 
 ### US-001 — Configure chart of accounts/groups, financial year, branch/project…
 
-Outcome: Configure chart of accounts/groups, financial year, branch/project allocation, cash/bank accounts, opening balances and controlled statuses.
+Outcome: Configure chart of accounts/groups, financial year, **actual Foundation/CG-02 branch allocation** (and project allocation only after a real CG-05 project exists), cash/bank accounts, opening balances and controlled statuses. CG-09 finance/account master works with zero CG-05 project records.
 Requirements: FR-023, CG-09-BR01, CG-09-BR02, CG-09-BR03; PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13.
 Scope: CG-09 owns the full responsive Web/eligible native Android/backend/API/DB workflow. Implement all required BR fields, real references and domain rules, not mock future owners.
-Acceptance: Create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
+Acceptance: Create valid chart/year/bank/cash accounts with genuine CG-02 branch scope, opening balance integrity and no CG-05 project prerequisite; a project field is not a required selector until real CG-05 delivers its owner/association.  Reject invalid/foreign scope, stale edits, retries and provider uncertainty with truthful persisted result and user-facing state; original CareGanga appearance is mandatory.
 QA cases:
 - **US-001-QA01:** Given an authorized actor and actual prerequisite records, create valid chart/year/bank/cash accounts with real branch/project scope and opening balance integrity. Verify actual applicable Web/Android state, backend guard, correctly committed domain operation and audit without invented future data.
 - **US-001-QA02:** Revoked, unauthorized or cross-scope actor opens a deep link, direct API, selector or export → server rejects without leaking protected data or mutating state; UI displays a safe denial.
