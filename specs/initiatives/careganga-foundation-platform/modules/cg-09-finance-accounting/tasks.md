@@ -96,6 +96,7 @@ QA cases:
 - **US-005-QA07 — owner regression:** Two concurrent allocations exceeding available funds cannot both commit. Assert relevant DB constraint/rollback, scoped API error, unchanged other-client state and correct user notice.
 - **US-005-QA08 — Source-specific workflow:** Allocate a budget with committed funding and utilized/released amounts; over-budget and available figures must remain distinct under two concurrent allocation requests.
 Verification: On actual implementation source-trace US-005-QA01–QA08 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
+- **US-005-QA09 — transferred branch owner QA:** With a genuine ACTIVE CG-02 branch and CG-09 chart/year, create/approve one branch-only budget when CG-05 does not yet exist. CG-09 owns allocation, released/committed/utilized/remaining balances and historical source effects; duplicate callback and wrong/closed branch are denied. CG-02 stores no budget master or finance ledger. The later CG-05 owner introduces any project-budget linkage when real project exists.
 Dependencies: US-001
 
 ### US-006 — See scoped general ledger, cash/bank/day books, trial balance…
