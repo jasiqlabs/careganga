@@ -3,6 +3,7 @@ import { useRef,useState } from "react";
 import { KeyboardAvoidingView,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View } from "react-native";
 import * as Crypto from "expo-crypto";
 import { identityRequest } from "./http-client";
+import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 
 export function RecoveryScreen({onExit}:{onExit:()=>void}){
   const [step,setStep]=useState<"request"|"confirm">("request");
@@ -50,26 +51,26 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
   return <SafeAreaView style={styles.page}><KeyboardAvoidingView style={styles.page}
      behavior={Platform.OS==="ios"?"padding":undefined}><ScrollView
      keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-    <Text accessibilityRole="header" style={styles.title}>Recover staff access</Text>
-    <Text>Work email</Text><TextInput accessibilityLabel="Work email" autoComplete="email"
+    <Text accessibilityRole="header" style={styles.title}>Recover Foundation staff access</Text>
+    <Text style={styles.label}>Work email</Text><TextInput accessibilityLabel="Work email" autoComplete="email"
       keyboardType="email-address" autoCapitalize="none" value={email}
       editable={!complete} onChangeText={setEmail} style={styles.input}/>
     {step==="confirm"&&!complete&&<View style={styles.group}>
-      <Text>Recovery code received by email</Text>
+      <Text style={styles.label}>Recovery code received by email</Text>
       <TextInput accessibilityLabel="Recovery code" autoCapitalize="none" value={code}
         onChangeText={setCode} style={styles.input}/>
-      <Text>Authenticator code</Text>
+      <Text style={styles.label}>Authenticator code</Text>
       <TextInput accessibilityLabel="Authenticator code" keyboardType="number-pad" maxLength={6}
         value={totp} onChangeText={v=>setTotp(v.replace(/\D/g,""))} style={styles.input}/>
-      <Text>New password (14 or more characters)</Text>
+      <Text style={styles.label}>New password (14 or more characters)</Text>
       <TextInput accessibilityLabel="New password" secureTextEntry autoComplete="new-password"
         value={password} onChangeText={setPassword} style={styles.input}/>
     </View>}
     {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
     {!complete&&!unknown&&<Pressable accessibilityRole="button" disabled={busy||!email||
       (step==="confirm"&&(code.length<40||totp.length!==6||password.length<14))}
-      onPress={()=>void submit()} style={styles.button}>
-      <Text>{busy?"Checking…":step==="request"?"Request recovery":"Confirm recovery"}</Text>
+      onPress={()=>void submit()} style={[styles.button,styles.primaryButton]}>
+      <Text style={styles.primaryButtonText}>{busy?"Checking…":step==="request"?"Request recovery":"Confirm recovery"}</Text>
     </Pressable>}
     {unknown&&<Text>Try signing in with the new password or contact support before another reset.</Text>}
     <Pressable accessibilityRole="button" style={styles.button} onPress={onExit}>
@@ -78,9 +79,14 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
   </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1},content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center"},
-  title:{fontSize:24,fontWeight:"700"},group:{gap:8},
-  input:{minHeight:48,borderWidth:1,borderRadius:7,paddingHorizontal:12},
-  button:{minHeight:48,borderWidth:1,borderRadius:7,alignItems:"center",justifyContent:"center",padding:12},
-  message:{borderWidth:1,padding:12}
+  page:{flex:1,backgroundColor:careGangaTheme.background},
+  content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
+  title:{fontSize:25,fontWeight:"700",color:careGangaTheme.text},
+  group:{gap:8},
+  label:{fontWeight:"600",color:careGangaTheme.text},
+  input:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,paddingHorizontal:12,backgroundColor:careGangaTheme.surface,color:careGangaTheme.text},
+  button:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,alignItems:"center",justifyContent:"center",padding:12},
+  primaryButton:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
+  primaryButtonText:{color:careGangaTheme.primaryText,fontWeight:"700"},
+  message:{borderWidth:1,borderColor:careGangaTheme.border,padding:12,color:careGangaTheme.text,backgroundColor:careGangaTheme.surface}
 });

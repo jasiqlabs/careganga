@@ -1,4 +1,5 @@
 import { SafeAreaView } from "react-native-safe-area-context";
+import { careGangaTheme } from "../../../../packages/design-tokens/src/index";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 export default function PublicHome() {
   return <SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.content}>
@@ -9,8 +10,8 @@ export default function PublicHome() {
   </ScrollView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1},
-  content:{padding:24,gap:12,minHeight:"100%"},
-  title:{fontSize:24,fontWeight:"700"},
+  page:{flex:1,backgroundColor:careGangaTheme.background},
+  content:{padding:24,gap:12,minHeight:"100%",width:"100%",maxWidth:720,alignSelf:"center"},
+  title:{fontSize:25,fontWeight:"700",color:careGangaTheme.sidebar},
   gap:{height:12}
 });

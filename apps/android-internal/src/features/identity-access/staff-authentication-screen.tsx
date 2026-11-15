@@ -1,4 +1,5 @@
 import { SafeAreaView } from "react-native-safe-area-context";
+import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { useCallback, useEffect, useState } from "react";
 import { RolesScreen } from "./roles-screen";
 import { RecoveryScreen } from "./recovery-screen";
@@ -129,32 +130,32 @@ export function StaffAuthenticationScreen(){
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <Text style={styles.brand}>CareGanga Foundation</Text>
-        <Text accessibilityRole="header" style={styles.title}>Internal staff access</Text>
+        <View style={styles.brandBar}><View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text style={styles.brandLetter}>CG</Text></View><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
+        <Text accessibilityRole="header" style={styles.title}>Foundation staff access</Text>
         {state==="checking"?<ActivityIndicator accessibilityLabel="Verifying saved session"/>:actor?
-          <View style={styles.form}>
-            <Text accessibilityRole="header">Signed in: {actor.displayName}</Text>
+          <View style={styles.formCard}>
+            <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
             {roleActions.includes("roles.view")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setRolesOpen(true)}><Text>Roles & permissions</Text></Pressable>}
+              style={styles.button} onPress={()=>setRolesOpen(true)}><Text style={styles.buttonText}>Roles & permissions</Text></Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
-              <Text>Sign out</Text>
+              <Text style={styles.buttonText}>Sign out</Text>
             </Pressable>
           </View>:
-          <View style={styles.form}>
-            <Text>Use your work account and current authenticator code.</Text>
-            <Text>Work email</Text>
+          <View style={styles.formCard}>
+            <Text style={styles.helper}>Use your work account and current authenticator code.</Text>
+            <Text style={styles.label}>Work email</Text>
             <TextInput accessibilityLabel="Work email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/>
-            <Text>Password</Text>
+            <Text style={styles.label}>Password</Text>
             <TextInput accessibilityLabel="Password" secureTextEntry autoComplete="current-password" value={password} onChangeText={setPassword} style={styles.input}/>
-            <Text>Authenticator code</Text>
+            <Text style={styles.label}>Authenticator code</Text>
             <TextInput accessibilityLabel="Authenticator code" inputMode="numeric" maxLength={6} value={totp} onChangeText={x=>setTotp(x.replace(/\D/g,""))} style={styles.input}/>
-            <Pressable accessibilityRole="button" disabled={state==="busy"||!email||!password||totp.length!==6} onPress={()=>void signIn()} style={styles.button}>
-              <Text>{state==="busy"?"Verifying…":"Sign in"}</Text>
+            <Pressable accessibilityRole="button" disabled={state==="busy"||!email||!password||totp.length!==6} onPress={()=>void signIn()} style={[styles.button,styles.primaryButton]}>
+              <Text style={styles.primaryButtonText}>{state==="busy"?"Verifying…":"Sign in"}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={()=>setRecover(true)} style={styles.button}>
-              <Text>Recover account</Text>
+              <Text style={styles.buttonText}>Recover account</Text>
             </Pressable>
           </View>}
         {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
@@ -163,9 +164,22 @@ export function StaffAuthenticationScreen(){
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1},content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center"},
-  brand:{fontWeight:"700",fontSize:18},title:{fontSize:26,fontWeight:"700",marginBottom:12},
-  form:{gap:12},input:{minHeight:48,borderWidth:1,borderRadius:7,paddingHorizontal:12},
-  button:{minHeight:48,borderWidth:1,borderRadius:7,justifyContent:"center",alignItems:"center",padding:12},
-  message:{marginTop:10,padding:10,borderWidth:1}
+  page:{flex:1,backgroundColor:careGangaTheme.background},
+  content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
+  brandBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:8},
+  brandMark:{width:46,height:46,borderRadius:23,backgroundColor:careGangaTheme.sidebar,alignItems:"center",justifyContent:"center"},
+  brandLetter:{color:careGangaTheme.sidebarText,fontWeight:"800",fontSize:16},
+  brand:{fontWeight:"800",fontSize:18,letterSpacing:.8,color:careGangaTheme.sidebar},
+  brandSub:{fontWeight:"700",fontSize:10,letterSpacing:2,color:careGangaTheme.mutedText},
+  title:{fontSize:25,fontWeight:"700",marginBottom:8,color:careGangaTheme.text},
+  formCard:{gap:12,padding:20,backgroundColor:careGangaTheme.surface,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:12},
+  cardTitle:{fontSize:18,fontWeight:"700",color:careGangaTheme.text},
+  helper:{fontSize:14,color:careGangaTheme.mutedText},
+  label:{fontWeight:"600",color:careGangaTheme.text},
+  input:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,paddingHorizontal:12,backgroundColor:careGangaTheme.surface,color:careGangaTheme.text},
+  button:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,justifyContent:"center",alignItems:"center",padding:12},
+  buttonText:{fontWeight:"600",color:careGangaTheme.text},
+  primaryButton:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
+  primaryButtonText:{color:careGangaTheme.primaryText,fontWeight:"700"},
+  message:{marginTop:10,padding:10,borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,color:careGangaTheme.error}
 });
