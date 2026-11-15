@@ -24,7 +24,7 @@ export class RecoveryService {
     if(key.length!==32)throw new Error("Recovery key unavailable");
     return createHmac("sha256",key).update("recovery:"+email+":"+requestKey).digest("hex");
   }
-  private async throttle(email:string,remoteAddress:string):Promise<void>{
+  private async throttle(email:string,remoteAddress:string,maxAttempts=5):Promise<void>{
     // Recovering a specific address cannot bypass login rate limits.
     const key=this.idempotency(email,"throttle:"+remoteAddress);
     const result=await this.db.query<{attempt_count:number}>(`
@@ -36,7 +36,7 @@ export class RecoveryService {
         window_started_at=CASE WHEN auth_login_attempt.window_started_at<now()-interval '1 hour'
           THEN now() ELSE auth_login_attempt.window_started_at END
       RETURNING attempt_count`,[key]);
-    if(result.rows[0].attempt_count>5)
+    if(result.rows[0].attempt_count>maxAttempts)
       throw new HttpException("Too many requests",HttpStatus.TOO_MANY_REQUESTS);
   }
   async requestRecovery(emailInput:string,requestKey:string,remoteAddress:string):
@@ -44,6 +44,8 @@ export class RecoveryService {
     const email=emailInput.trim().toLowerCase();
     if(!this.delivery.isConfigured())
       return {message:"Account recovery delivery is currently unavailable. Contact Foundation support.",status:"UNAVAILABLE",supportReference:"CG-UNAVAILABLE"};
+    // Check the network bucket first, before creating arbitrary email keys.
+    await this.throttle("network-recovery-request",remoteAddress,120);
     await this.throttle(email,remoteAddress);
     const key=this.idempotency(email,requestKey);
     const actor=await this.db.query<{id:string}>(`
@@ -95,6 +97,8 @@ export class RecoveryService {
       Promise<{ status:"PASSWORD_RESET"; message:string }> {
     const tokenDigest=digest(body.token);
     const email=body.email.trim().toLowerCase();
+    // Bound random-contact token spraying before allocating per-email counters.
+    await this.throttle("network-recovery-confirm",remoteAddress,200);
     // Bound costly scrypt work before inspecting even fabricated tokens.
     const key=this.idempotency(email,"confirm:"+remoteAddress);
     const attempts=await this.db.query<{attempt_count:number}>(`
