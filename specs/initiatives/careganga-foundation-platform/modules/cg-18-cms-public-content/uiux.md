@@ -1,7 +1,7 @@
 # CG-18 — CareGanga UI/UX Design
 
 **Authority:** [PRD](../../prd.md) FR-066, FR-067, FR-068, FR-069, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/03-CMS-CHANNELS-BR.md) CG-18-BR01–CG-18-BR28, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U23, U24, U25, U26, U27, U28, U29, U30, C20, C21, C22, C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 · PRD N-13/HLD H-12.  
-**State:** REQUIRED/DRAFT; screenshot pixel and original video transitions unverified.
+**State:** REQUIRED/CURRENT_SOURCE_REVIEW_REQUIRED. Original Admin CMS/Impact/80G/gallery/article screenshot ownership mapped to independent CG-18 stories; real provider/appointment/benefit UI later introduced by actual CG-14/15/17 owner. Same effective published Web/Public Android source and original CareGanga theme required; rendered device/pixel/motion QA NOT_RUN.
 
 ## Exact existing design and animation contract
 
@@ -17,7 +17,7 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 - **FR-069:** Healthcare content is published — Show approved directory/category cards, provider profiles, doctors, current price/facility/benefit messaging; don't allow CMS to overwrite provider verification, scheduling or contribution ownership. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 
 **Responsive:** original desktop hierarchy remains recognisable; tablet/phone adapt the sidebar, search/filter and long tables; drawers use full width on narrow Web when required.  
-**Native:** No newly owned Android page (NOT_APPLICABLE).  
+**Native:** No Android CMS Admin editor, but CG-18 owns Public Android consumer for genuinely approved editorial Homepage/Impact/80G/gallery/articles/neutral Healthcare Assistance landing and published Login/Join navigation. Use accessible native touch/Back/keyboard and original brand tokens; no compressed desktop Admin view.  
 **Feedback:** distinct confirmed success, submission pending, validation, verified empty, denied/expired, duplicate/race, provider outage, unknown-write state and retry. Never raw UUID/API/error.message, invented money or sensitive files in unsafe picker.
 
 ## CG-18-owned public navigation controls (C50 evidence transferred from CG-21)
@@ -33,6 +33,18 @@ This module owns **responsive Admin CMS editor + public Web + public Android nav
 CG-18 may show a genuinely published Contact page with the **actual CG-19 contact form**, validated submit, safe opaque receipt/unknown-result feedback and appropriate privacy notice. Do not show a CG-18 private contact inbox, duplicate responder controls, contact table or unsupported chat component: the original C39–C43 Foundation contact/helpdesk UI belongs to CG-19. Site cannot falsely promise a delivered email if CG-19 only confirmed DB intake.
 
 A CG-19 operational Notice is only eligible for CMS public display after genuine source permission and a **separate CG-18 publication**. Show original CareGanga headline/status hierarchy, preview, publish/unpublish, expired/withdrawn state and real public visibility revision, not a notification-send button or recipient list. CG-19 safely validated media asset can be placed/published by CMS with original preview; private/scan-pending file must not enter public gallery. Runtime/pixel QA not run.
+
+## Original source screenshot-to-story and public app acceptance
+
+**US-001 original Admin CMS:** C20–C21 dashboard real pages/media/status, C22–C24 Hero Banners list/editor Basic/Images/Button/Preview with order, approved desktop/mobile image, heading/typography, overlay, two safe CTAs, publication and preview. C25–C26 team cards show only editorially approved public biography/recognition, with consent, optional genuine CG-10/04 source link later and no private employee file. C27–C30 project teaser presentation is CG-18, but genuine operational project/date/budget will be introduced by CG-05 US-001; before then show zero genuine project source, not a made-up operational record. C50 provides toggle appearance: Login/Member Join/Volunteer Join are CG-18-owned approved visibility, not CG-21 settings. Public Web and Android show real CG-01 Login; do not link missing CG-04 joining forms.
+
+**US-002 Impact and transparency:** U23–U29 supply ten independently editable groups: hero, pillars, stat cards, growth year/value, geographic reach/map pins, category distribution, focus areas, consented stories, updates and CTA. Retain repeaters, Add Pillar/Add Stat/Add Story controls, list/order/source date/verified-versus-editorial provenance. U30 80G page shows approved hero, badge, PAN, legal/approval number, validity/issue date, original CG-19 protected proof, donation CTA and preview; expired/unverified certification cannot be described as a valid current deduction. No fake CG-05/07/20 totals.
+
+**US-003 gallery/media/contact:** C31–C33 gallery category/cards/Add Photo; C34–C36 Media/Resources Photo/Video/Publications and one original CG-19-owned validated bytes source; C37–C38 blog/articles with actual category/status/empty state. CG-18 owns editorial appearance/order/publication only. Contact uses one genuine CG-19 public case/form/opaque receipt and privacy notice; notices/FAQ display only after actual approved source and independent CMS public publication. No second inbox, original notice, operational CG-05 event master, provider sender or unsupported seat booking.
+
+**US-004 Healthcare editorial only:** Real Healthcare Assistance hero, neutral categories, approved public text and safe informational CTA/empty state **before CG-14/15/17 exist**. No public center/doctor/search card, fee/benefit percentage or actionable appointment button without that later actual owner. CG-14 US-004/005 later delivers provider cards and center content; CG-15 real booking destination, CG-17 source-backed support amounts. Public Android shows authentic neutral editorial page from CG-18's one public revision.
+
+**Mandatory shared visual/behavior:** Original brand blue sidebar selection, title, icons, spacing, labels, dense cards/tables/drawers, editorial preview, page controls and source-supported animation. Public Web/native share brand tokens and current effective revision, not identical desktop layout. Show loading, actual empty, draft, submitted, returned, approved, scheduled, published, withdrawn, scan pending, expired 80G, forbidden, stale update, unknown publish and safe retry. Sanitize text and safe CTA; do not expose internal IDs or private CG-19 file links. Original stills do not prove motion timing; video/device/pixel QA NOT_RUN.
 
 ## Task-first source screenshot and UX acceptance
 
