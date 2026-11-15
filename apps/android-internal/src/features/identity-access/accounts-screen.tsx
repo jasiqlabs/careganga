@@ -8,7 +8,7 @@ import { careGangaTheme } from "../../../../../packages/design-tokens/src/index"
 import { identityRequest } from "./http-client";
 
 type Option={value:string;label:string;context:string};
-type Pending={kind:"assign"|"revoke"|"status";row:CG01AccountView;status?:string};
+type Pending={kind:"assign"|"revoke"|"status"|"resend";row:CG01AccountView;status?:string};
 async function call(token:string,path:string,method="GET",body?:object):Promise<unknown>{
   let response:Response;
   try{
@@ -44,6 +44,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
   const [pending,setPending]=useState<Pending|null>(null);
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
+  const [phone,setPhone]=useState("");
   const [roleRef,setRoleRef]=useState("");
   const [roleQuery,setRoleQuery]=useState("");
   const [requestKey,setRequestKey]=useState("");
@@ -101,7 +102,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
     }
   }
   function beginInvite(){
-    setName("");setEmail("");setRoleRef("");setRoleQuery("");setRoles([]);setUnknown(false);
+    setName("");setEmail("");setPhone("");setRoleRef("");setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   function beginDetail(row:CG01AccountView){
@@ -116,13 +117,16 @@ export function AccountsScreen({token,onExit,onExpired}:{
       if(screen==="invite"){
         if(!roleRef)throw new Error("SELECT_ROLE");
         await call(token,"invitations","POST",{displayName:name.trim(),email:email.trim().toLowerCase(),
-          roleRef,requestKey});
+          phone:phone.trim(),roleRef,requestKey});
         setMessage("Invitation saved. Email delivery is not guaranteed; check account status.");
       }else if(pending){
         const root="accounts/"+pending.row.accountRef;
         if(pending.kind==="assign"){
           if(!roleRef)throw new Error("SELECT_ROLE");
           await call(token,root+"/role","PUT",{roleRef,expectedRevision:pending.row.revision,requestKey});
+        }else if(pending.kind==="resend"){
+          await call(token,root+"/invitation/resend","POST",{
+            expectedRevision:pending.row.revision,requestKey});
         }else if(pending.kind==="revoke"){
           await call(token,root+"/role","DELETE",{expectedRevision:pending.row.revision,requestKey});
         }else{
@@ -224,6 +228,9 @@ export function AccountsScreen({token,onExit,onExpired}:{
         <Text style={styles.label}>Work email</Text>
         <TextInput accessibilityLabel="Work email" style={styles.input} maxLength={254}
           autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail}/>
+        <Text style={styles.label}>Phone (optional, unverified)</Text>
+        <TextInput accessibilityLabel="Phone optional" style={styles.input} keyboardType="phone-pad"
+          placeholder="+91..." maxLength={16} value={phone} onChangeText={setPhone}/>
         <Text>Area level: Foundation (organization-wide)</Text>
         <Text style={styles.label}>Find eligible roles</Text>
         <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
@@ -243,11 +250,16 @@ export function AccountsScreen({token,onExit,onExpired}:{
       {screen==="detail"&&row&&<View style={styles.card}>
         <Text style={styles.heading}>{row.displayName}</Text>
         <Text>{row.email}</Text>
+        {row.phone&&<Text>Phone (unverified): {row.phone}</Text>}
         <Text>Account status: {row.status}</Text>
         <Text>Current role: {row.roleName??"Not assigned"}</Text>
         <Text>Scope: Foundation</Text>
         <Text>Invitation delivery: {row.deliveryStatus??"Not applicable"}</Text>
         {row.roleProtected?<Text>Protected administrator. This account cannot be changed here.</Text>:<>
+          {row.status==="INVITED"&&canInvite&&!pending&&<Pressable accessibilityRole="button"
+            style={styles.button} onPress={()=>{
+              setRequestKey(Crypto.randomUUID());setPending({kind:"resend",row});
+            }}><Text>Resend invitation</Text></Pressable>}
           {canAssign&&!pending&&<>
             <Text style={styles.label}>Search eligible roles</Text>
             <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
@@ -285,7 +297,7 @@ export function AccountsScreen({token,onExit,onExpired}:{
         </>}
         {pending&&<View style={styles.group}>
           <Text style={styles.heading}>Confirm account change</Text>
-          <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":
+          <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":pending.kind==="resend"?"Resend invitation":
             "Change status to "+pending.status} for {row.displayName}?</Text>
           <Text style={styles.note}>A change to access invalidates existing sessions.</Text>
           <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
