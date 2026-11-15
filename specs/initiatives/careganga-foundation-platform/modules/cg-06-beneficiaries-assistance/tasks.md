@@ -121,6 +121,6 @@ Verification: Source-trace US-003-QA01–QA20 by exact real backend/API/DB/UI so
 Dependencies: US-001
 
 ## Execution progress
-- US-001: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
-- US-002: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001 and real CG-12/09 source NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/financial/visual NOT_RUN.
-- US-003: BLOCKED | planning=DESIGN_REVIEWED_HASH_APPROVAL_REQUIRED; prerequisite US-001 real code NOT_VERIFIED, real CG-12/09 totals conditional, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/public/render NOT_RUN.
+- US-001: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
+- US-002: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 and real CG-12/09 source NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/financial/visual NOT_RUN.
+- US-003: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 real code NOT_VERIFIED, real CG-12/09 totals conditional, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/public/render NOT_RUN.
