@@ -17,6 +17,10 @@ Provider/doctor verification via CG-03 returns actual approved/rejected/returned
 
 **QA:** doctor in two real centers, center suspended/revoked, unverifiable doctor registration, overlapping fee versions, forged location lookup, wrong-center staff update, public unpublished center, fees changing after confirmed booking and CG-01 center-options minimum fields.
 
+## CG-14-introduced center support — CG-19 original case owner
+
+In CG-14 US-005, reuse delivered real CG-14 center/account active affiliation and CG-01 center-scoped current role/grant to expose a minimal `getCurrentCenterSupportScope(actor)` facade consumed by **CG-19's existing support_case API**. CG-19 stores the original ticket, private sender, assignment/reply/history and keeps authoritative state transitions; CG-14 never writes its rows or clones support tables. Introduce the **smallest reviewed CG-19 source schema extension only if required** to store a true verified `center_ref`/FK after CG-14's actual center table exists, with backfill and safe authorization. Every Center A/B list, detail, attachment, status, reply, export, notification and guessed ID validates current center affiliation (including suspended account and cross-center data). A center public website FAQ may be a CG-18 published projection but has no source support-case ownership. Source QA in CG-14 US-005-QA08, no CG-14/CG-19 support dependency for CG-14 US-001–US-004.
+
 ## Real source integration and module-specific QA
 
 **Critical acceptance:** Register center, verify license/business evidence, associate one doctor with two genuinely approved centers and publish only permitted fields. A doctor suspended at one center remains represented accurately at the other; center operators cannot read unrelated professional files/bank data or edit global doctor identity. Canceled/rejected center is never searchable. Fee change is versioned for future bookings, not retroactive CG-15 price rewrite.
