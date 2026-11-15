@@ -186,7 +186,7 @@ export function SecurityPolicyPanel(){
     <header className="topbar"><div><h1>Security Policy</h1>
       <p>Foundation Super Admin · Authentication and session security</p></div>
       <div className="toolbar">
-        <button type="button" disabled={loading||busy} onClick={()=>void read()}>Refresh</button>
+        <button type="button" disabled={loading||busy||uncertain} onClick={()=>void read()}>Refresh</button>
         {policy&&!editing&&<button type="button" className="primary" onClick={start}>Edit policy</button>}
       </div>
     </header>
