@@ -80,7 +80,7 @@ The permission catalog uses clear business labels in clients and stable internal
 
 ### Harness completeness — product-wide NFRs applied to CG-01
 
-**Database (CRITICAL):** accurate account/session/role/grant/multiple-role-assignment keys and UNIQUE/FK/CHECK constraints, protected last Super Admin, scoped read/search/options/export, versioned migrations and rollback/recovery. DLD owns exact schema, transaction locks and index choices. No technical Foundation-root row may substitute for CG-02 geography or branch.
+**Database (CRITICAL):** accurate account/session/role/grant/one-active-role-per-context keys and UNIQUE/FK/CHECK constraints, protected last Super Admin, scoped read/search/options/export, versioned migrations and rollback/recovery. DLD owns exact schema, transaction locks and index choices. No technical Foundation-root row may substitute for CG-02 geography or branch.
 
 **Idle cost/workers:** MFA, invitations and recovery run only from genuine actions using bounded provider attempts and honest delivery status; zero due work must not cause tenant-wide polling, repeated DB scans or provider sends. No mandatory import worker, Redis or new queue. Request/DB/provider usage and costs are `NOT_MEASURED` until tested.
 
