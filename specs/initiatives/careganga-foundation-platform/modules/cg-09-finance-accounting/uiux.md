@@ -28,6 +28,13 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 Budget screens use **real CG-02 ACTIVE branch** minimum-field selectors and source-backed CG-09 allocation/utilization history. A real branch-only budget succeeds with zero CG-05 projects; project linkage is offered only after a genuine CG-05 project owner delivers it. Wrong/closed branch denies on client and backend, without CG-02 budget editor or invented finance data. Maintain original CareGanga finance form/table patterns.
 
+## Receiving CG-12 supplier UI only within existing CG-09 finance screens
+
+**US-004 U39/U40 original invoice wizard:** When real CG-12 supplier exists, authorized operator may select genuine supplier via safe minimal search to populate a **transaction-specific** counterparty snapshot and verified original CG-12 receipt source evidence, while still entering CG-09 amount/tax/due and waiting for its real approval/payment. Original non-supplier Foundation invoice form remains fully functional. Do not paste CG-12 B19 stock dashboard or supplier edit screen into CG-09 finance. The vendor does not become PAID from a receipt; no supplier bank contact exposed from a dropdown.
+
+**US-006 finance reports:** Actual CG-09 vendor/payables/payment/ledger search may filter current authorized supplier/source receipt with genuine original financial status/amount, no shadow inventory quantity, zero/failure state truthful. Responsive original CareGanga invoice/report UI and privileged Internal Android read use same source, no public vendor ledger; original PNG/video/device/p95 NOT_RUN.
+
+
 ## Six story-specific original Web/native screen contracts
 
 - **US-001:** Original U36 chart/accounts and U35 real finance summary: true Foundation/real CG-02 ACTIVE-branch chart, fiscal years, restricted named account/bank pickers and balanced opening transaction using US-001's minimal double-entry posting engine. No employee, project, provider or donor selector until source exists; show one real empty chart and human validation/conflict, no fictional totals.
