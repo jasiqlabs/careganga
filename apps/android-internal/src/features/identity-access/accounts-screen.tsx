@@ -102,11 +102,11 @@ export function AccountsScreen({token,onExit,onExpired}:{
     }
   }
   function beginInvite(){
-    setName("");setEmail("");setPhone("");setRoleRef("");setRoleQuery("");setRoles([]);setUnknown(false);
+    setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   function beginDetail(row:CG01AccountView){
-    setSelected(row);setRoleRef(row.roleRef??"");setRoleQuery("");setRoles([]);setUnknown(false);
+    setSelected(row);setRoleRef(row.roleRef??"");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("detail");setRequestKey(Crypto.randomUUID());
     if(canAssign)void searchRoles();
   }
@@ -148,9 +148,10 @@ export function AccountsScreen({token,onExit,onExpired}:{
       else setMessage("The requested account change could not be confirmed.");
     }finally{setBusy(false);}
   }
-  async function showAudit(){
+  async function showAudit(targetRef?:string){
     try{
-      const result=await call(token,"audit?limit=20") as {
+      const params=new URLSearchParams({limit:"20",...(targetRef?{targetRef}:{})});
+      const result=await call(token,"audit?"+params.toString()) as {
         events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string}[]
       };
       setHistory(Array.isArray(result.events)?result.events:[]);
@@ -255,6 +256,16 @@ export function AccountsScreen({token,onExit,onExpired}:{
         <Text>Current role: {row.roleName??"Not assigned"}</Text>
         <Text>Scope: Foundation</Text>
         <Text>Invitation delivery: {row.deliveryStatus??"Not applicable"}</Text>
+        {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>void showAudit(row.accountRef)}><Text>View account access history</Text></Pressable>}
+        {history&&<View style={styles.group}>
+          <Text style={styles.heading}>Recent account access</Text>
+          {history.map(event=><View style={styles.option} key={event.eventRef}>
+            <Text>{event.actionLabel} · {event.outcome}</Text>
+            <Text style={styles.note}>{event.occurredAt}</Text>
+          </View>)}
+          {!history.length&&<Text>No account access events found.</Text>}
+        </View>}
         {row.roleProtected?<Text>Protected administrator. This account cannot be changed here.</Text>:<>
           {row.status==="INVITED"&&canInvite&&!pending&&<Pressable accessibilityRole="button"
             style={styles.button} onPress={()=>{
