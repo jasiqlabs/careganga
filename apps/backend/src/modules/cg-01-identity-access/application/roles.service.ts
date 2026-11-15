@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { createHash, randomUUID } from "node:crypto";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "./session.service";
@@ -122,9 +122,9 @@ export class RolesService {
     const old=await client.query<{role_id:string;result_revision:number;request_digest:string}>(`
       SELECT role_id,result_revision,request_digest FROM role_command WHERE actor_account_id=$1
       AND action=$2 AND request_key=$3 FOR SHARE`,[actor.accountId,action,requestKey]);
-    if(!old.rowCount||!old.rows[0].role_id)throw new ConflictException("Previous request is still being confirmed");
+    if(!old.rowCount||!old.rows[0].role_id)throw new ConflictException({code:"REPLAY_CONFLICT"});
     if(old.rows[0].request_digest!==requestDigest)
-      throw new ConflictException("This request reference was already used for a different change.");
+      throw new ConflictException({code:"REPLAY_CONFLICT"});
     // Replays do not execute the command or re-send audit entries.
     return {id:null,replay:{roleRef:old.rows[0].role_id,revision:old.rows[0].result_revision,message:"Previously confirmed."}};
   }
@@ -178,7 +178,7 @@ export class RolesService {
     }catch(e){
       try{await client.query("ROLLBACK");}catch{ /* avoid masking original failure */ }
       if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
-        throw new ConflictException("A role with this name already exists.");
+        throw new ConflictException({code:"DUPLICATE_ROLE"});
       throw e;
     }finally{client.release();}
   }
@@ -220,8 +220,8 @@ export class RolesService {
       const found=await client.query<Row>("SELECT * FROM role WHERE id=$1 AND realm_id=$2 FOR UPDATE",[roleRef,actor.realmId]);
       if(!found.rowCount)throw new NotFoundException();
       if(found.rows[0].is_protected)throw new ForbiddenException();
-      if(!found.rows[0].active)throw new ConflictException("Role has been retired.");
-      if(found.rows[0].revision!==expected)throw new ConflictException("Role was changed elsewhere.");
+      if(!found.rows[0].active)throw new ConflictException({code:"ROLE_RETIRED"});
+      if(found.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const saved=await client.query<{revision:number}>(`
         UPDATE role SET name=$3,normalized_name=$4,description=$5,color_key=$6,revision=revision+1
         WHERE id=$1 AND realm_id=$2 RETURNING revision`,
@@ -238,9 +238,9 @@ export class RolesService {
       const found=await client.query<Row>("SELECT * FROM role WHERE id=$1 AND realm_id=$2 FOR UPDATE",[roleRef,actor.realmId]);
       if(!found.rowCount)throw new NotFoundException();
       if(found.rows[0].is_protected)throw new ForbiddenException();
-      if(!found.rows[0].active||found.rows[0].revision!==expected)throw new ConflictException("Refresh this role before retiring.");
+      if(!found.rows[0].active||found.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const assigned=await client.query("SELECT 1 FROM account_role WHERE role_id=$1 AND revoked_at IS NULL LIMIT 1",[roleRef]);
-      if(assigned.rowCount)throw new ConflictException("Reassign the accounts using this role before retiring it.");
+      if(assigned.rowCount)throw new ConflictException({code:"ROLE_ASSIGNED"});
       const saved=await client.query<{revision:number}>(`
         UPDATE role SET active=false,revision=revision+1 WHERE id=$1 RETURNING revision`,[roleRef]);
       return {roleRef,revision:saved.rows[0].revision,name:found.rows[0].name};
