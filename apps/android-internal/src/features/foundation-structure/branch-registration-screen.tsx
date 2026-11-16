@@ -6,6 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {BranchNativeUploader} from "./branch-native-uploader";
+import {BranchNativeEvidenceHistory} from "./branch-native-evidence-history";
 
 type Draft={recordRef:string;branchName:string;branchType:string;version:number;
   status:string;currentStep:number;updatedAt:string};
@@ -232,6 +233,9 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             accessibilityRole="button" accessibilityState={{disabled:i+1>selected.currentStep+1}}
             disabled={i+1>selected.currentStep+1||busy} onPress={()=>setStep(i+1)}>
             <Text style={styles.stepText}>{i+1}. {title}</Text></Pressable>)}</View>
+          <BranchNativeEvidenceHistory key={selected.recordRef}
+            registrationRef={selected.recordRef} token={token}
+            canManage={canManage} onExpired={onExpired}/>
           <Text style={styles.heading}>Step {step}: {titles[step-1]}</Text>
           {step===1&&<>
             {input("Branch name",name,setName)}
