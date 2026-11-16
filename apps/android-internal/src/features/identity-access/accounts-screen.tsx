@@ -60,6 +60,8 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
   const [phone,setPhone]=useState("");
+  const [newPassword,setNewPassword]=useState("");
+  const [showNewPassword,setShowNewPassword]=useState(false);
   const [roleRef,setRoleRef]=useState("");
   const [roleQuery,setRoleQuery]=useState("");
   const [requestKey,setRequestKey]=useState("");
@@ -140,7 +142,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   }
   function beginInvite(){
     ++optionsGeneration.current;++historyGeneration.current;
-    setName("");setEmail("");setPhone("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
+    setName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
     setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   useEffect(()=>{
@@ -159,9 +161,9 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
     try{
       if(screen==="invite"){
         if(!roleRef)throw new Error("SELECT_ROLE");
-        await call(token,"invitations","POST",{displayName:name.trim(),email:email.trim().toLowerCase(),
-          phone:phone.trim()||undefined,roleRef,requestKey});
-        setMessage("Invitation saved. Email delivery is not guaranteed; check account status.");
+        await call(token,"accounts","POST",{displayName:name.trim(),email:email.trim().toLowerCase()||undefined,
+          mobile:phone.trim(),password:newPassword,roleRef,requestKey});
+        setMessage("Staff account created and active.");
       }else if(pending){
         const root="accounts/"+pending.row.accountRef;
         if(pending.kind==="assign"){
@@ -185,7 +187,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       }
       const verified=await load(search,0,filter);
       if(verified)setMessage(wasInvite?
-        "Invitation saved. Email delivery is not guaranteed; check account status.":
+        "Staff account created and active.":
         "Change saved. The latest account state is shown above.");
     }catch(e){
       const reason=e instanceof Error?e.message:"UNAVAILABLE";
@@ -256,7 +258,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         {list?.accounts.map(account=><Pressable key={account.accountRef}
           accessibilityRole="button" style={styles.card} onPress={()=>beginDetail(account)}>
           <Text style={styles.heading}>{account.displayName}</Text>
-          <Text>{account.email}</Text>
+          <Text>{account.email??account.phone??"Mobile login"}</Text>
           <Text>{account.roleName??"No role assigned"} · {accountStatusLabel(account.status)}</Text>
           <Text style={styles.note}>View account details</Text>
         </Pressable>)}
@@ -283,14 +285,21 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         <Text style={styles.label}>Full name</Text>
         <TextInput accessibilityLabel="Full name" style={styles.input} maxLength={160}
           value={name} onChangeText={setName}/>
-        <Text style={styles.label}>Work email</Text>
-        <TextInput accessibilityLabel="Work email" style={styles.input} maxLength={254}
-          autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail}/>
-        <Text style={styles.label}>Phone (optional, unverified)</Text>
-        <TextInput accessibilityLabel="Phone, optional, international format" style={styles.input}
-          keyboardType="phone-pad" autoCapitalize="none" maxLength={16}
-          placeholder="+919876543210" value={phone} onChangeText={setPhone}/>
-        <Text style={styles.note}>Use international format, for example +919876543210.</Text>
+        <Text style={styles.label}>Mobile number (username)</Text>
+        <TextInput accessibilityLabel="Mobile number" style={styles.input}
+          keyboardType="number-pad" maxLength={10} placeholder="10-digit mobile number"
+          value={phone} onChangeText={x=>setPhone(x.replace(/[^0-9]/g,"").slice(0,10))}/>
+        <Text style={styles.label}>Email (optional)</Text>
+        <TextInput accessibilityLabel="Email (optional)" style={styles.input}
+          maxLength={254} autoCapitalize="none" keyboardType="email-address"
+          value={email} onChangeText={setEmail}/>
+        <Text style={styles.label}>Initial password</Text>
+        <TextInput accessibilityLabel="Initial password" style={styles.input}
+          secureTextEntry={!showNewPassword} autoComplete="new-password"
+          value={newPassword} onChangeText={setNewPassword} maxLength={1024}/>
+        <Pressable accessibilityRole="button" style={styles.button}
+          onPress={()=>setShowNewPassword(x=>!x)}>
+          <Text>{showNewPassword?"Hide":"Show"} password</Text></Pressable>
         <Text style={styles.note}>Applies to: Entire foundation</Text>
         <Text style={styles.label}>Find eligible roles</Text>
         <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
@@ -302,15 +311,14 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
           accessibilityState={{checked:roleRef===role.value}} onPress={()=>setRoleRef(role.value)}>
           <Text>{role.label}{roleRef===role.value?" — selected":""}</Text>
         </Pressable>)}
-        <Text style={styles.note}>The invited person chooses their own password and authenticator.</Text>
+        <Text style={styles.note}>The user can sign in immediately. No OTP or authenticator is required.</Text>
         <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-          disabled={!name.trim()||!email.includes("@")||!roleRef||busy||unknown||
-             (phone.trim().length>0&&!/^[+][1-9][0-9]{7,14}$/.test(phone.trim()))}
-          onPress={()=>void commit()}><Text style={styles.primaryText}>{busy?"Saving…":"Create invitation"}</Text></Pressable>
+          disabled={!name.trim()||!roleRef||busy||unknown||phone.length!==10||newPassword.length<8}
+          onPress={()=>void commit()}><Text style={styles.primaryText}>{busy?"Saving…":"Create Staff Account"}</Text></Pressable>
       </View>}
       {screen==="detail"&&row&&<View style={styles.card}>
         <Text style={styles.heading}>{row.displayName}</Text>
-        <Text>{row.email}</Text>
+        <Text>{row.email??row.phone??"Mobile login"}</Text>
         {row.phone&&<Text>Phone (unverified): {row.phone}</Text>}
         <Text>Account status: {accountStatusLabel(row.status)}</Text>
         <Text>Current role: {row.roleName??"Not assigned"}</Text>
