@@ -20,9 +20,9 @@ type IntegrationRow={
   secret_reference:string;verification_status:string;last_checked_at:Date|null;last_checked_credential_revision:number|null;
 };
 type CommandRow={request_digest:string;resource_ref:string;result_revision:number};
-type SaveSetting={key:unknown;value:unknown;expectedRevision:unknown;requestKey:unknown;totp:unknown};
+type SaveSetting={key:unknown;value:unknown;expectedRevision:unknown;requestKey:unknown;currentPassword:unknown};
 type Configure={provider:unknown;purpose:unknown;secretReference:unknown;
-  expectedRevision:unknown;requestKey:unknown;totp:unknown};
+  expectedRevision:unknown;requestKey:unknown;currentPassword:unknown};
 function uuid(v:unknown):string{
   if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException("Check request reference");
   return v;
@@ -117,14 +117,14 @@ export class PlatformSettingsService {
       limit:Number(limitInput),offset:Number(offsetInput)};
   }
   async saveSetting(bearer:string,body:unknown,correlationRef:string){
-    const input=strictBody(body,["key","value","expectedRevision","requestKey","totp"]) as SaveSetting;
+    const input=strictBody(body,["key","value","expectedRevision","requestKey","currentPassword"]) as SaveSetting;
     if(input.key!==KEY||!Number.isInteger(input.value)||Number(input.value)<10||Number(input.value)>100
-      ||typeof input.totp!=="string"||!/^[0-9]{6}$/.test(input.totp))
+      ||typeof input.currentPassword!=="string"||(input.currentPassword.length<8||Buffer.byteLength(input.currentPassword,"utf8")>1024))
       throw new BadRequestException("Choose a page size between 10 and 100");
     const value=Number(input.value),revision=expected(input.expectedRevision),requestKey=uuid(input.requestKey);
     const payloadDigest=digest([KEY,value,revision]);
     const actor=await this.authorize(bearer,"platform.settings.manage");
-    // A replay is read-only and must not consume a fresh MFA code.
+    // A replay is read-only and must not consume a current password confirmation.
     const replay=await this.db.query<CommandRow>(`
       SELECT request_digest,resource_ref,result_revision FROM platform_command
       WHERE actor_account_id=$1 AND action='SETTING_SAVE' AND request_key=$2
@@ -144,7 +144,7 @@ export class PlatformSettingsService {
         await client.query("COMMIT");started=false;
         return {status:"REPLAY_CONFIRMED",key:KEY,revision:previous.result_revision};
       }
-      await this.sessions.requireFreshFoundationRootProof(client,actor,String(input.totp));
+      await this.sessions.requireFreshFoundationRootProof(client,actor,String(input.currentPassword));
       const state=await client.query<SettingRow>(`
         SELECT id,typed_value,revision,updated_at FROM platform_setting
         WHERE foundation_realm_id=$1 AND setting_key=$2 FOR UPDATE
@@ -203,11 +203,11 @@ export class PlatformSettingsService {
   }
   async configureConnection(bearer:string,body:unknown,correlationRef:string){
     const input=strictBody(body,["provider","purpose","secretReference",
-      "expectedRevision","requestKey","totp"]) as Configure;
+      "expectedRevision","requestKey","currentPassword"]) as Configure;
     const provider=textKey(input.provider),purpose=textKey(input.purpose);
     if(typeof input.secretReference!=="string"||input.secretReference.length>240||
-       !SECRET_REF.test(input.secretReference)||typeof input.totp!=="string"||
-       !/^[0-9]{6}$/.test(input.totp))
+       !SECRET_REF.test(input.secretReference)||typeof input.currentPassword!=="string"||
+       (input.currentPassword.length<8||Buffer.byteLength(input.currentPassword,"utf8")>1024))
       throw new BadRequestException("Provide a secured reference, not a credential");
     const revision=expected(input.expectedRevision),requestKey=uuid(input.requestKey);
     const pointer=input.secretReference;
@@ -236,7 +236,7 @@ export class PlatformSettingsService {
         await tx.query("COMMIT");started=false;
         return {status:"REPLAY_CONFIRMED",revision:replay.result_revision};
       }
-      await this.sessions.requireFreshFoundationRootProof(tx,actor,String(input.totp));
+      await this.sessions.requireFreshFoundationRootProof(tx,actor,String(input.currentPassword));
       const previous=await tx.query<IntegrationRow>(`
         SELECT id,provider,purpose,revision,credential_revision,verification_status,
           last_checked_at,last_checked_credential_revision
