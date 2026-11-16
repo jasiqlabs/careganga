@@ -2,6 +2,8 @@ import {BadRequestException,ConflictException,Injectable} from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {BranchLifecycleService} from "../../cg-02-foundation-structure/application/branch-lifecycle.service";
+import {BranchOperationsService} from "../../cg-02-foundation-structure/application/branch-operations.service";
+import {ActiveBranchEvidenceService} from "./active-branch-evidence.service";
 import {BranchApprovalService} from "../../cg-03-registration-approvals/application/branch-approval.service";
 import {BranchPrivateEvidenceService} from "./branch-private-evidence.service";
 import type {BranchVerifiedFile} from "./branch-private-evidence.service";
@@ -35,7 +37,9 @@ export class BranchWorkflowService{
   private readonly sources:BranchSourceFacade,
   private readonly lifecycle:BranchLifecycleService,
   private readonly approvals:BranchApprovalService,
-  private readonly evidence:BranchPrivateEvidenceService){}
+  private readonly evidence:BranchPrivateEvidenceService,
+  private readonly operations:BranchOperationsService,
+  private readonly activeEvidence:ActiveBranchEvidenceService){}
  async submit(bearer:string,registrationRef:string,payload:unknown){
    const input=object(payload),reg=id(registrationRef),key=id(input.requestKey);
    const version=Number(input.expectedVersion);
@@ -90,6 +94,25 @@ export class BranchWorkflowService{
      return {...registration,approval:null,
        message:"The approval decision is temporarily unavailable. No unverified decision is shown."};
    }
+ }
+ /** Typed CG-19 owner verifies any replacement object before CG-02 changes
+  * the currently approved operating branch; no provider/network under locks.
+  */
+ async updateOperating(bearer:string,branchRef:string,payload:unknown){
+   const input=object(payload),ref=id(branchRef);
+   const current=await this.operations.detail(bearer,ref);
+   const expected=Number(input.expectedVersion);
+   if(!Number.isSafeInteger(expected)||expected<1||expected!==current.version)
+     throw new ConflictException("The current branch changed. Refresh before saving.");
+   const supplied=input.evidenceFiles;
+   if(supplied===undefined)return this.operations.update(bearer,ref,input);
+   if(!Array.isArray(supplied)||supplied.length>12||
+     supplied.some(x=>typeof x!=="string"||!UUID.test(x))||
+     new Set(supplied).size!==supplied.length)
+     throw new BadRequestException("Choose current verified private branch files");
+   const verified=await this.activeEvidence.prevalidate(bearer,ref,expected,supplied);
+   return this.operations.update(bearer,ref,input,verified,
+     (client,actor)=>this.activeEvidence.guardProof(client,actor,ref,expected,verified));
  }
  async cases(bearer:string){return this.approvals.listCases(bearer);}
  async caseDetail(bearer:string,caseRef:string){
