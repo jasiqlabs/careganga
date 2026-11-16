@@ -1,5 +1,8 @@
 # CG-01 — Detailed Design: Identity & Role-Based Access
 
+**Greenfield delivery directive (owner, 16 November 2026):** CareGanga has not been delivered to the client and has no functioning legacy deployment or users to migrate. **Backward compatibility (BWC), preserving unshipped TOTP/invitation contracts, and supporting legacy login are not requirements.** Implement one coherent clean-initial-database authentication solution, simplify/drop obsolete code and seed only genuine initial roles. Test on a new disposable PostgreSQL database; never imply existing data migrations, production runtime or completed QA. Security and permission enforcement remain mandatory.
+
+
 **Design authority:** [CG-01 module](module.md) · [PRD](../../prd.md) FR-001–003/080 · [HLD](../../hld.md) §§5.3–5.4, 7–9 · [CG-01 UI/UX](uiux.md)  
 **Decision:** REQUIRED for new security-critical schema, permissions and Android/Web access. **State:** owner-delegated SOURCE DESIGN APPROVED at current SHA (approval ledger); authenticated local Harness resolver, independent security/database review, real migration, runtime/device/pixel/motion QA NOT_RUN.
 
