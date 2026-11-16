@@ -53,7 +53,7 @@ export default async function FoundationSettings(){
         canViewCommunications={keys.includes("communications.notifications.view")||
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
-        />
+        canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace"><PlatformSettingsPanel/></main>
     </div>;
   }catch(error){
