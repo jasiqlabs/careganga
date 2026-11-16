@@ -9,7 +9,7 @@ type BranchTypeSummary={name:string;total:number};
 type BranchDetail=Branch&{openingDate:string|null;geographyRef:string;postalAddress:string;
  pinCode:string|null;latitude:number|null;longitude:number|null;officialPhone:string;officialEmail:string;
  managerRef:string;managerName:string|null;evidenceVersions:{fileRef:string;revision:number;classification:string}[]};
-type Department={departmentRef:string;name:string;kind:string;description:string;active:boolean;
+type Department={departmentRef:string;name:string;kind:string;description:string;openingDate:string|null;active:boolean;
  version:number;geographyRef:string|null;parentRef:string|null;headAccountRef:string|null;headDisplayName:string|null};
 type Link={linkRef:string;departmentRef:string;name:string;kind:string;endedAt:string|null;linkedAt:string};
 type Participant={participationRef:string;displayName:string|null;officeRole:string;activeUntil:string|null;accountRef:string};
@@ -53,9 +53,11 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    [manager,setManager]=useState("");
  const [editDepartment,setEditDepartment]=useState<Department|null>(null),
    [deptName,setDeptName]=useState(""),[deptKind,setDeptKind]=useState("DEPARTMENT"),
-   [deptDesc,setDeptDesc]=useState(""),[deptGeo,setDeptGeo]=useState(""),
+   [deptDesc,setDeptDesc]=useState(""),[deptOpeningDate,setDeptOpeningDate]=useState(""),
+   [deptGeo,setDeptGeo]=useState(""),
    [deptParent,setDeptParent]=useState(""),[deptHead,setDeptHead]=useState(""),
    [deptActive,setDeptActive]=useState(true);
+ const [departmentDrawerOpen,setDepartmentDrawerOpen]=useState(false);
  const [participantAccount,setParticipantAccount]=useState(""),[participantRole,setParticipantRole]=useState("");
  const [foundationLink,setFoundationLink]=useState("");
  const [replacementFiles,setReplacementFiles]=useState<string[]>([]);
@@ -132,6 +134,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
      await req(route,method,body);
      setOperationKey("");setStagedOperation(null);
      setMessage("Foundation change saved and source-audited.");
+     setDepartmentDrawerOpen(false);
      setReplacementFiles([]);
      await refresh();
    }catch(e){
@@ -154,7 +157,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  }
  function resetDepartment(d?:Department){
    setEditDepartment(d??null);setDeptName(d?.name??"");setDeptKind(d?.kind??"DEPARTMENT");
-   setDeptDesc(d?.description??"");setDeptGeo(d?.geographyRef??"");
+   setDeptDesc(d?.description??"");setDeptOpeningDate(d?.openingDate??"");
+   setDeptGeo(d?.geographyRef??"");setDepartmentDrawerOpen(true);
    setDeptParent(d?.parentRef??"");setDeptHead(d?.headAccountRef??"");
    setDeptActive(d?.active??true);
  }
@@ -332,7 +336,21 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
              }}>Load more departments</button>}
            {canManage&&selected.status==="ACTIVE"&&<button type="button" disabled={busy||unknown}
              onClick={()=>resetDepartment()}>New branch department / committee</button>}
-           {canManage&&selected.status==="ACTIVE"&&<div className="form">
+           {canManage&&selected.status==="ACTIVE"&&departmentDrawerOpen&&
+             <div className="foundation-department-overlay" role="presentation"
+               onClick={()=>{if(!busy)setDepartmentDrawerOpen(false);}}>
+               <section role="dialog" aria-modal="true"
+                 aria-labelledby="branch-department-drawer-heading"
+                 className="foundation-department-sheet" onClick={e=>e.stopPropagation()}>
+               <header className="toolbar"><div>
+                 <h3 id="branch-department-drawer-heading">
+                   {editDepartment?"Edit Department / Committee":"Add New Department"}
+                 </h3>
+                 <p>Branch / Location: {selected.branchName}</p></div>
+                 <button type="button" disabled={busy}
+                   aria-label="Close department editor"
+                   onClick={()=>setDepartmentDrawerOpen(false)}>Close</button></header>
+               <div className="form">
              <h4>{editDepartment?"Edit branch department":"Create branch department"}</h4>
              <label className="field">Name<input maxLength={100} value={deptName}
                onChange={e=>setDeptName(e.target.value)}/></label>
@@ -341,6 +359,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                  <option value="DEPARTMENT">Department</option><option value="COMMITTEE">Committee</option></select></label>
              <label className="field">Description<textarea maxLength={800} value={deptDesc}
                onChange={e=>setDeptDesc(e.target.value)}/></label>
+             <label className="field">Opening date<input type="date" value={deptOpeningDate}
+               onChange={e=>setDeptOpeningDate(e.target.value)}/></label>
              <label className="field">Area<select value={deptGeo} onChange={e=>setDeptGeo(e.target.value)}>
                  <option value="">Branch-wide</option>
                  {areas.map(a=><option key={a.areaRef} value={a.areaRef}>{a.name}</option>)}
@@ -358,11 +378,14 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
              <button type="button" className="primary" disabled={busy||unknown||deptName.trim().length<2}
                onClick={()=>void mutate(editDepartment?"PATCH":"POST",
                  baseRef+"/departments"+(editDepartment?"/"+editDepartment.departmentRef:""),
-                 {name:deptName,kind:deptKind,description:deptDesc,geographyRef:deptGeo||null,
-                   parentRef:deptParent||null,headAccountRef:deptHead||null,active:deptActive,
+                 {name:deptName,kind:deptKind,description:deptDesc,openingDate:deptOpeningDate||null,
+                   geographyRef:deptGeo||null,parentRef:deptParent||null,
+                   headAccountRef:deptHead||null,active:deptActive,
                    ...(editDepartment?{expectedVersion:editDepartment.version}:{})})}>
                {editDepartment?"Save department":"Create department"}</button>
-           </div>}
+             <button type="button" disabled={busy}
+               onClick={()=>setDepartmentDrawerOpen(false)}>Cancel</button>
+           </div></section></div>}
            {focusedDept&&<section><h4>Committee officeholders</h4>
              {participants.map(p=><div className="toolbar" key={p.participationRef}>
                <span>{p.displayName??"Historical account"} · {p.officeRole}</span>
