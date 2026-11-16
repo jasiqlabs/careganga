@@ -13,6 +13,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
   private timer:ReturnType<typeof setInterval>|null=null;
   private busy=false;
   private stopped=false;
+  private rootRef:string|null=null;
   constructor(
     @Inject(DATABASE)private readonly db:Pool,
     private readonly source:NotificationService,
@@ -36,6 +37,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       `);
       // Recovery covers a crash between original CG-03 COMMIT and NOTIFY
       // consumer handling. Monotonic DB cursor is the actual checkpoint.
+      this.rootRef=roots.rows[0]?.id??null;
       for(const root of roots.rows)void this.wake(root.id);
       this.timer=setInterval(()=>{void this.periodic();},60000);
       this.timer.unref?.();
@@ -55,7 +57,17 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
   private async periodic(){
     if(this.busy||this.stopped)return;
     this.busy=true;
-    try{await this.delivery.tick();}
+    try{
+      // One bounded durable source check per minute recovers a lost LISTEN
+      // hint or more than 1000 events after a long outage.
+      if(this.rootRef){
+        for(let batch=0;batch<4&&!this.stopped;batch++){
+          const progress=await this.source.captureCommittedDecisions(this.rootRef);
+          if(!progress.more)break;
+        }
+      }
+      await this.delivery.tick();
+    }
     catch{/* Fail closed: no fabricated delivered state or hidden queue success. */}
     finally{this.busy=false;}
   }
