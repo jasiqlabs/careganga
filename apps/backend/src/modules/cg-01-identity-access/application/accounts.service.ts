@@ -122,7 +122,7 @@ export class AccountsService {
       WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
-        AND s.mfa_verified_at IS NOT NULL
+        AND s.password_authenticated_at IS NOT NULL
       FOR SHARE OF s,a,ar,r`,[actor.activeSessionId,actor.accountId,actor.realmId,permission]);
     if(!current.rowCount||(!current.rows[0].protected_role&&!current.rows[0].has_grant))
       throw new ForbiddenException("Access is no longer available");
