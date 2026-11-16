@@ -83,13 +83,28 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
       throw new BadRequestException("Invalid private PDF");
     // Even server-created PDFs must pass malware scanning before issuance.
     await this.scanner.scan(request.bytes);
-    const saved=await this.saveNewPdf(request.objectKey,request.bytes);
-    const proof=await this.loadVersion(request.objectKey,saved.objectVersion,
+    let objectVersion:string;
+    try{
+      const saved=await this.saveNewPdf(request.objectKey,request.bytes);
+      objectVersion=saved.objectVersion;
+    }catch{
+      // A create-only write can commit but lose its reply. Reconcile the
+      // *original key* by reading actual private bytes; do not issue a second
+      // object or assume an ambiguous provider response was successful.
+      const existing=await this.loadLatest(request.objectKey,request.bytes.length)
+        .catch(()=>null);
+      if(!existing||existing.mime!=="application/pdf"||
+        existing.bytes.length!==request.bytes.length||
+        digest(existing.bytes)!==request.sha256)
+        throw new ServiceUnavailableException("Original private PDF is unconfirmed");
+      objectVersion=existing.objectVersion;
+    }
+    const proof=await this.loadVersion(request.objectKey,objectVersion,
       request.bytes.length);
     if(proof.mime!=="application/pdf"||
       proof.bytes.length!==request.bytes.length||
       digest(proof.bytes)!==request.sha256)
       throw new ServiceUnavailableException("The generated PDF was not verified");
-    return {objectVersion:saved.objectVersion,sha256:request.sha256};
+    return {objectVersion,sha256:request.sha256};
   }
 }
