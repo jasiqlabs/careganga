@@ -84,6 +84,41 @@ export class BranchSourceFacade{
       row.requested_by!==actor.accountId&&row.manager_account_ref!==actor.accountId)
      throw new ForbiddenException("This branch registration is not available to your role");
  }
+ /** Only an ACTIVE, currently scoped CG-02 operating branch can receive
+  * private replacement evidence. Never confer root privileges to its manager.
+  */
+ async activeBranch(bearer:string,branchRef:unknown,expectedVersion?:number,write=true){
+   const actor=await this.sessions.requireAction(bearer,
+     write?"foundation.branches.manage":"foundation.branches.view");
+   const reference=ensureId(branchRef);
+   const rows=await this.db.query<{id:string;version:number;status:string;
+      manager_account_ref:string;name:string}>(`
+     SELECT id,version,status,manager_account_ref,name FROM branch
+     WHERE id=$1 AND root_realm_id=$2
+   `,[reference,actor.realmId]);
+   const row=rows.rows[0];
+   if(!row||row.status!=="ACTIVE"||
+     (expectedVersion!==undefined&&row.version!==expectedVersion))
+     throw new ConflictException("The operating branch changed or is unavailable");
+   if(row.manager_account_ref!==actor.accountId){
+     await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   }
+   return {branchRef:row.id,version:row.version,root:actor.realmId,name:row.name};
+ }
+ async guardActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
+   branchRef:string,expectedVersion:number,write=true){
+   await this.identity.assertCurrent(client,actor,
+     write?"foundation.branches.manage":"foundation.branches.view");
+   const rows=await client.query<{version:number;status:string;manager_account_ref:string}>(`
+     SELECT version,status,manager_account_ref FROM branch
+     WHERE id=$1 AND root_realm_id=$2 FOR SHARE
+   `,[ensureId(branchRef),actor.realmId]);
+   const row=rows.rows[0];
+   if(!row||row.status!=="ACTIVE"||row.version!==expectedVersion)
+     throw new ConflictException("The current branch evidence source changed");
+   if(row.manager_account_ref!==actor.accountId)
+     await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
+ }
  async submission(bearer:string,registrationRef:unknown,revisionInput:unknown,
      digestInput:unknown):Promise<FrozenBranchSubmission>{
    const ref=ensureId(registrationRef),revision=Number(revisionInput);
