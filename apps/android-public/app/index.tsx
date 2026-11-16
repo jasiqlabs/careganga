@@ -44,7 +44,6 @@ export default function PublicHome(){
   const [person,setPerson]=useState<string|null>(null);
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
-  const [totp,setTotp]=useState("");
   const [busy,setBusy]=useState(false),[checking,setChecking]=useState(true);
   const [message,setMessage]=useState("");
   const [noticeOpen,setNoticeOpen]=useState(false);
@@ -88,13 +87,13 @@ export default function PublicHome(){
     return()=>{active=false;sub.remove()};
   },[token,revoke]);
   async function signIn(){
-    if(busy||!email||!password||!/^[0-9]{6}$/.test(totp))return;
+    if(busy||!email.trim()||!password)return;
     setBusy(true);setMessage("");
     let issued:string|null=null;
     try{
       const response=await nativeRequest("","/api/identity/login",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email,password,totp,deviceLabel:"Public Android own notices"})
+        body:JSON.stringify({identifier:email.trim(),password,deviceLabel:"Public Android own notices"})
       });
       if(!response.ok)throw Error("DENIED");
       const result:unknown=await response.json();
@@ -107,7 +106,7 @@ export default function PublicHome(){
       if(!name)throw Error("DENIED");
       await SecureStore.setItemAsync(KEY,issued);
       setPerson(name);setToken(issued);
-      setPassword("");setTotp("");setNoticeOpen(true);
+      setPassword("");setNoticeOpen(true);
     }catch{
       if(issued){
         try{await withToken(issued,"/api/identity/logout",{method:"POST"});}catch{}
@@ -168,21 +167,17 @@ export default function PublicHome(){
               <Text style={styles.heading}>My private notices</Text>
               <Text>This optional view is for a current authorized CareGanga
                 account, not a public notification directory.</Text>
-              <Text style={styles.label}>Account email</Text>
-              <TextInput accessibilityLabel="Account email"
+              <Text style={styles.label}>Mobile number or email</Text>
+              <TextInput accessibilityLabel="Mobile number or email"
                 value={email} onChangeText={setEmail}
-                keyboardType="email-address" autoCapitalize="none"
-                autoComplete="email" style={styles.input}/>
+                keyboardType="default" autoCapitalize="none"
+                autoComplete="username" style={styles.input}/>
               <Text style={styles.label}>Password</Text>
               <TextInput accessibilityLabel="Password"
                 secureTextEntry value={password} onChangeText={setPassword}
                 autoComplete="current-password" style={styles.input}/>
-              <Text style={styles.label}>Authenticator code</Text>
-              <TextInput accessibilityLabel="Authenticator code"
-                value={totp} onChangeText={x=>setTotp(x.replace(/\D/g,""))}
-                maxLength={6} keyboardType="number-pad" style={styles.input}/>
               <Pressable accessibilityRole="button" style={styles.primary}
-                disabled={busy||!email||!password||totp.length!==6}
+                disabled={busy||!email.trim()||!password}
                 onPress={()=>void signIn()}>
                 <Text style={styles.primaryText}>
                   {busy?"Verifying…":"Sign in to my notices"}</Text>
