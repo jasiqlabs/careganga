@@ -12,8 +12,6 @@ import { AccessAuditReader } from "./application/access-audit-reader";
 import { AuditController } from "./http/audit.controller";
 import { AccountsService } from "./application/accounts.service";
 import { AccountsController } from "./http/accounts.controller";
-import { InvitationEnrollmentService } from "./application/invitation-enrollment.service";
-import { InvitationController } from "./http/invitation.controller";
 import { SecurityPolicyService } from "./application/security-policy.service";
 import { SecurityPolicyController } from "./http/security-policy.controller";
 import { ProtectedAccessOwnerService } from "./application/protected-access-owner.service";
@@ -22,8 +20,8 @@ import { MobileVerificationService } from "./application/mobile-verification.ser
 import { MobileVerificationController } from "./http/mobile-verification.controller";
 
 @Module({
-  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
-  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
+  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
+  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
   exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
