@@ -45,6 +45,11 @@ export class BranchWorkflowService{
    const version=Number(input.expectedVersion);
    if(!Number.isSafeInteger(version)||version<1)
      throw new BadRequestException("Refresh the draft before submitting");
+   // A real CG-03 process is a prerequisite, not an effect that a branch
+   // manager may silently configure while submitting.
+   const route=await this.approvals.processStatus(bearer);
+   if(!route.configured)return {status:"REVIEW_ROUTE_UNAVAILABLE",
+     message:"A Super Admin must enable branch approval before the application can be submitted."};
    const source=await this.sources.draft(bearer,reg,version,false);
    const stages=source.stages;
    const refs=[
@@ -114,6 +119,8 @@ export class BranchWorkflowService{
    return this.operations.update(bearer,ref,input,verified,
      (client,actor)=>this.activeEvidence.guardProof(client,actor,ref,expected,verified));
  }
+ async processStatus(bearer:string){return this.approvals.processStatus(bear);}
+ async initializeProcess(bearer:string){return this.approvals.initializeProcess(bear);}
  async cases(bearer:string){return this.approvals.listCases(bearer);}
  async caseDetail(bearer:string,caseRef:string){
    return this.approvals.detail(bearer,id(caseRef));
