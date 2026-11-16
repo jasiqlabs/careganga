@@ -69,7 +69,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
     const controller=new AbortController();
-    void fetch("/api/access/accounts/options?search=",{
+    void fetch("/api/support/agents?search=",{
       signal:controller.signal,cache:"no-store",credentials:"same-origin"})
       .then(r=>r.ok?r.json():Promise.reject())
       .then((data:unknown)=>{
