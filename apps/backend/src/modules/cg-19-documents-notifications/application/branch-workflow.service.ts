@@ -107,6 +107,17 @@ export class BranchWorkflowService{
  /** Typed CG-19 owner verifies any replacement object before CG-02 changes
   * the currently approved operating branch; no provider/network under locks.
   */
+ async changeOperatingStatus(bearer:string,branchRef:string,payload:unknown){
+   const input=object(payload),ref=id(branchRef);
+   const detail=await this.operations.detail(bearer,ref);
+   const requested=String(input.status??"");
+   if(requested==="ACTIVE"){
+     const versions=detail.evidenceVersions;
+     return this.operations.changeStatus(bearer,ref,input,
+       (client,actor)=>this.activeEvidence.guardOperatingEvidence(client,actor,versions));
+   }
+   return this.operations.changeStatus(bearer,ref,input);
+ }
  async updateOperating(bearer:string,branchRef:string,payload:unknown){
    const input=object(payload),ref=id(branchRef);
    const current=await this.operations.detail(bearer,ref);
