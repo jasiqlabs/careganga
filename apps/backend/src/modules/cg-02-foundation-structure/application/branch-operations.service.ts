@@ -457,6 +457,14 @@ export class BranchOperationsService{
          throw new ConflictException("The department changed. Refresh before saving.");
        await this.compatibleArea(client,actor.realmId,branch.geography_area_id,area);
        await this.departmentParent(client,actor.realmId,branch.id,parent,previous.id);
+       if(!active&&previous.active){
+         const children=await client.query(`
+           SELECT 1 FROM department WHERE root_realm_id=$1 AND branch_id=$2
+             AND parent_department_id=$3 AND active=true LIMIT 1
+         `,[actor.realmId,branch.id,previous.id]);
+         if(children.rowCount)
+           throw new ConflictException("Move active subdepartments before deactivating this department");
+       }
        if(head)await this.identity.eligibleOfficeholder(client,actor,head);
        const result=await client.query<{version:number}>(`
          UPDATE department SET name=$3,normalized_name=$4,description=$5,
