@@ -44,7 +44,7 @@ type RegistrationRow={id:string;root_realm_id:string;requested_by:string;
 type SubmissionRow={id:string;root_realm_id:string;registration_id:string;
  submitted_revision:number;source_submission_key:string;immutable_payload:Record<string,Record<string,unknown>>;
  immutable_payload_digest:string;verified_file_versions:BranchFileVersion[];
- approval_case_ref:string|null;status:string;submitted_by:string};
+ approval_case_ref:string|null;status:string;submitted_by:string;submitted_at:Date};
 type BranchRow={id:string;root_realm_id:string;registration_id:string;approved_submission_id:string;
  name:string;branch_code:string;status:string;version:number;manager_account_ref:string;
  geography_area_id:string;updated_at:Date;normalized_name:string;branch_type:string;
@@ -107,7 +107,28 @@ export class BranchLifecycleService{
    requestKey:string,fileVersions:readonly BranchFileVersion[],proof:ReadProof):Promise<SubmissionSource>{
    const actor=await this.authorized(bearer,"foundation.branches.manage");
    const reg=id(registrationRef),version=integer(versionInput),key=id(requestKey);
-   const source=await this.source.draft(bearer,reg,version,true);
+   // Replays may arrive after the original draft has been frozen.
+   // Verify the original digest and same scoped actor before enforcing editability.
+   const prior=await this.db.query<{request_digest:string;result_ref:string|null}>(`
+     SELECT request_digest,result_ref FROM branch_operation_command
+     WHERE root_realm_id=$1 AND actor_ref=$2 AND action='SUBMIT' AND request_key=$3
+   `,[actor.realmId,actor.accountId,key]);
+   if(prior.rows[0]){
+     const submission=await this.db.query<SubmissionRow>(`
+       SELECT * FROM branch_registration_submission
+       WHERE id=$1 AND root_realm_id=$2 AND registration_id=$3
+     `,[prior.rows[0].result_ref,actor.realmId,reg]);
+     const saved=submission.rows[0];
+     if(!saved||saved.submitted_revision!==version||
+       JSON.stringify(saved.verified_file_versions)!==JSON.stringify(fileVersions)||
+       prior.rows[0].request_digest!==hash([reg,version,saved.immutable_payload_digest,fileVersions]))
+       throw new ConflictException("The original submission key has a different source");
+     await this.source.draft(bearer,reg,undefined,false);
+     return {registrationRef:reg,submissionRef:saved.id,
+       submissionRevision:saved.submitted_revision,digest:saved.immutable_payload_digest,
+       sourceKey:saved.source_submission_key,status:saved.status};
+   }
+   await this.source.draft(bearer,reg,version,true);
    const existing=await this.db.query<RegistrationRow>(`
      SELECT * FROM branch_registration WHERE id=$1 AND root_realm_id=$2
    `,[reg,actor.realmId]);
@@ -384,7 +405,7 @@ export class BranchLifecycleService{
    return {registrationRef:draft.registrationRef,status:draft.status,
      currentRevision:draft.revision,
      submissions:rows.rows.map(s=>({submissionRef:s.id,revision:s.submitted_revision,
-       status:s.status,caseRef:s.approval_case_ref,submittedAt:s.id})),
+       status:s.status,caseRef:s.approval_case_ref,submittedAt:s.submitted_at.toISOString()})),
      branch:approved.rows[0]?{branchRef:approved.rows[0].id,
        branchCode:approved.rows[0].branch_code,status:approved.rows[0].status}:null};
  }
