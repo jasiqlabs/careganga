@@ -130,12 +130,13 @@ export class NoticeService{
      `,[actor.realmId,requestKey,hash,actor.accountId,title,content,a.priority,
        a.purpose,rawChannels,type,target,audienceDigest,audience.length,
        start,expiry,href]);
-     for(const id of audience){
-       await client.query(`
-         INSERT INTO cg19_notice_recipient(realm_id,notice_id,recipient_id)
-         VALUES($1,$2,$3)
-       `,[actor.realmId,created.rows[0].id,id]);
-     }
+     // Bounded one-statement audience snapshot, never one DB round trip
+     // per recipient or later expansion based on mutable roles.
+     await client.query(`
+       INSERT INTO cg19_notice_recipient(realm_id,notice_id,recipient_id)
+       SELECT $1,$2,recipient_id
+       FROM unnest($3::uuid[]) AS recipient_id
+     `,[actor.realmId,created.rows[0].id,audience]);
      await client.query(`
        INSERT INTO cg19_communication_event(realm_id,actor_id,notice_id,kind,metadata)
        VALUES($1,$2,$3,'NOTICE_DRAFT',$4::jsonb)
@@ -205,28 +206,43 @@ export class NoticeService{
          throw new ConflictException("Frozen audience is unavailable");
        for(const channel of n.channels){
          const template=await this.template(client,actor.realmId,channel,n,actor.accountId);
-         for(const member of members.rows){
-           const person=await this.recipients.get(client,actor.realmId,member.recipient_id);
-           if(!person?.active)continue;
-           if(channel!=="IN_APP"){
-             if(channel==="EMAIL"&&!person.emailVerified)continue;
-             if(channel==="SMS"&&!person.mobileVerified)continue;
-             if(!await this.notifications.hasConsent(client,actor.realmId,
-               person.accountRef,channel,n.purpose))continue;
-           }
-           const notification=await client.query<{id:string}>(`
+         // This INSERT resolves only the FROZEN target snapshot. A current
+         // CG-01 ACTIVE/verified contact and exact purpose opt-in are required
+         // for each external channel. One SQL statement per channel.
+         await client.query(`
+           WITH inserted AS (
              INSERT INTO cg19_notification(
                realm_id,source_kind,source_key,notice_id,recipient_id,
-               template_id,template_version,channel,subject_snapshot,body_snapshot,
-               purpose,state,due_at,expires_at)
-             VALUES($1,'NOTICE',$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-               CASE WHEN $6='IN_APP' THEN NULL ELSE COALESCE($11,now()) END,$12)
-             ON CONFLICT DO NOTHING RETURNING id
-           `,[actor.realmId,n.id,person.accountRef,template.id,
-             template.version,channel,template.subject,template.body,
-             n.purpose,channel==="IN_APP"?"IN_APP":"QUEUED",
-             n.scheduled_at,n.expires_at]);
-         }
+               template_id,template_version,channel,subject_snapshot,
+               body_snapshot,purpose,state,due_at,expires_at)
+             SELECT $1,'NOTICE',$2,$2,r.recipient_id,$3,$4,$5,$6,$7,$8,
+               CASE WHEN $5='IN_APP' THEN 'IN_APP' ELSE 'QUEUED' END,
+               CASE WHEN $5='IN_APP' THEN NULL
+                    ELSE COALESCE($9::timestamptz,now()) END,$10
+             FROM cg19_notice_recipient r
+             JOIN account current
+               ON current.id=r.recipient_id AND current.realm_id=r.realm_id
+               AND current.status='ACTIVE'
+             LEFT JOIN cg19_channel_preference consent
+               ON consent.realm_id=r.realm_id AND
+                  consent.account_id=r.recipient_id AND
+                  consent.channel=$5 AND consent.purpose=$8 AND consent.opted_in
+             WHERE r.realm_id=$1 AND r.notice_id=$2
+               AND ($5='IN_APP' OR
+                 ($5='EMAIL' AND current.email_verified_at IS NOT NULL
+                   AND consent.account_id IS NOT NULL) OR
+                 ($5='SMS' AND current.contact_phone_verified_at IS NOT NULL
+                   AND current.contact_phone IS NOT NULL
+                   AND consent.account_id IS NOT NULL))
+             ON CONFLICT DO NOTHING
+             RETURNING id
+           )
+           INSERT INTO cg19_communication_event(
+             realm_id,notification_id,kind)
+           SELECT $1,id,'SOURCE_CAPTURED' FROM inserted
+         `,[actor.realmId,n.id,template.id,template.version,channel,
+           template.subject,template.body,n.purpose,
+           n.scheduled_at,n.expires_at]);
        }
      }else{
        await client.query(`
