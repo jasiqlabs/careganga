@@ -11,7 +11,7 @@ function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
   if(secret.length===0)return req.socket?.remoteAddress??req.ip??"unresolved";
   if(secret.length!==32||typeof client!=="string"||typeof ts!=="string"||
     typeof signature!=="string"||!/^[0-9a-fA-F:.]{3,45}$/.test(client)||
-    !/^\\d{13}$/.test(ts)||Math.abs(Date.now()-Number(ts))>60000||
+    !/^\d{13}$/.test(ts)||Math.abs(Date.now()-Number(ts))>60000||
     !/^[a-f0-9]{64}$/i.test(signature))
     throw new ForbiddenException("Trusted support proxy unavailable");
   const expected=createHmac("sha256",secret)
