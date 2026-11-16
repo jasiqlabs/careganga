@@ -299,6 +299,10 @@ export class BranchApprovalService{
        INSERT INTO cg03_branch_owner_effect(case_id,realm_id,final_decision_id)
        VALUES($1,$2,$3)
      `,[row.id,actor.realmId,decision.rows[0].id]);
+     // Same after-commit hint used by original role approvals. CG19's
+     // immutable decision cursor remains authoritative for recovery; NOTIFY
+     // itself never grants access or declares a delivery successful.
+     await client.query("SELECT pg_notify('cg19_decision_committed',$1)",[actor.realmId]);
      await client.query("COMMIT");tx=false;
      return {status,caseRef:row.id,revision:updated.rows[0].revision};
    }catch(e){
