@@ -200,8 +200,10 @@ export class PrivateEvidenceService{
     const exact=verified.state==="CLEAN_VERIFIED"&&
       verified.sha256===row.expected_sha256&&
       verified.mime===row.mime&&verified.sizeBytes===Number(row.size_bytes)&&
+      typeof verified.objectVersion==="string"&&
       verified.objectVersion.length>=1&&verified.objectVersion.length<=160&&
-      verified.scanProofRef.length>0&&
+      typeof verified.scanProofRef==="string"&&
+      verified.scanProofRef.length>=8&&verified.scanProofRef.length<=160&&
       Number.isFinite(scanAt)&&scanAt<=Date.now()+60000&&
       Date.now()-scanAt<15*60*1000;
     const client=await this.db.connect();let transaction=true;
@@ -225,12 +227,13 @@ export class PrivateEvidenceService{
             INSERT INTO cg19_stored_file(
               realm_id,upload_intent_id,case_id,proposal_revision,
               original_mime,verified_sha256,verified_size_bytes,object_key,
-              object_version,scan_status,created_by)
-            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CLEAN_VERIFIED',$10)
+              object_version,scan_status,scan_proof_ref,scanned_at,created_by)
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CLEAN_VERIFIED',$10,$11,$12)
             ON CONFLICT(upload_intent_id) DO NOTHING
           `,[actor.realmId,row.id,row.case_id,row.proposal_revision,row.mime,
             row.expected_sha256,row.size_bytes,row.object_key,
-            verified.objectVersion,actor.accountId]);
+            verified.objectVersion,verified.scanProofRef,new Date(verified.verifiedAt),
+            actor.accountId]);
         }
         await client.query(`
           INSERT INTO cg19_document_event(
@@ -266,6 +269,14 @@ export class PrivateEvidenceService{
     });
     if(!Buffer.isBuffer(bytes)||bytes.length!==Number(file.verified_size_bytes))
       throw new ServiceUnavailableException("Private file verification failed");
+    // The actor or original file might have been revoked during the storage
+    // operation. Return nothing unless both remain authorized at handoff.
+    await this.scope(bearer,"documents.files.view",file.case_id,file.proposal_revision);
+    const current=await this.db.query<{id:string}>(`
+      SELECT id FROM cg19_stored_file
+      WHERE id=$1 AND realm_id=$2 AND revoked_at IS NULL
+    `,[file.id,actor.realmId]);
+    if(!current.rowCount)throw new NotFoundException("Private file unavailable");
     return {data:bytes,mime:file.original_mime};
   }
 }
