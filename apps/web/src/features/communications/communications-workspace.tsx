@@ -60,6 +60,7 @@ export function CommunicationsWorkspace({
   const [review,setReview]=useState<{id:string;action:"APPROVE"|"CANCEL";
     revision:number}|null>(null);
   const [pendingKey,setPendingKey]=useState("");
+  const [reviewKey,setReviewKey]=useState("");
   const [unknown,setUnknown]=useState(false);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [alert,setAlert]=useState<Alert|null>(null);
@@ -149,20 +150,40 @@ export function CommunicationsWorkspace({
       setAlert({kind:"error",message:"Enter a fresh 6-digit authenticator code."});return;
     }
     setBusy(true);setAlert(null);
+    const requestKey=reviewKey||crypto.randomUUID();
+    setReviewKey(requestKey);
     try{
       const result=await req<{status:string;revision:number}>(
         "notices/"+encodeURIComponent(review.id)+"/decision","POST",{
           action:review.action,expectedRevision:review.revision,
-          requestKey:crypto.randomUUID(),totp
+          requestKey,totp
         });
       if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
-      setReview(null);setTotp("");
+      setReview(null);setReviewKey("");setTotp("");
       setAlert({kind:"success",message:"Notice status confirmed: "+result.status});
       await reload();
     }catch(e){
       if(e instanceof Error&&e.message==="UNKNOWN")setUnknown(true);
       setAlert({kind:"error",message:explain(e)});
     }finally{setBusy(false);}
+  }
+  async function checkOriginalDecision(){
+    if(!review||!reviewKey||busy)return;
+    setBusy(true);setAlert(null);
+    try{
+      const state=await req<{status:string;action:string|null;revision:number|null}>(
+        "notices/"+encodeURIComponent(review.id)+"/requests/"+
+        encodeURIComponent(reviewKey));
+      if(state.status!=="CONFIRMED"||!Number.isInteger(state.revision)){
+        setAlert({kind:"error",message:
+          "The original approval is not confirmed. Keep the request key; contact Foundation operations."});
+        return;
+      }
+      setUnknown(false);setReview(null);setReviewKey("");setTotp("");
+      setAlert({kind:"success",message:"Original notice command confirmed: "+state.action});
+      await reload();
+    }catch(e){setAlert({kind:"error",message:explain(e)})}
+    finally{setBusy(false);}
   }
   async function counts(id:string){
     setDeliveryRef(id);setDelivery(null);
@@ -340,6 +361,14 @@ export function CommunicationsWorkspace({
                 {" "}{c.count}</p>):<p>No channel attempts recorded.</p>}
           </div>}
           {review&&<div className="permission-group">
+            {unknown&&reviewKey&&<div role="alert">
+              <p>Previous notice approval result uncertain. Do not repeat as
+                a new request. Check the original command first.</p>
+              <button type="button" disabled={busy}
+                onClick={()=>void checkOriginalDecision()}>
+                Check original notice command
+              </button>
+            </div>}
             <strong>{review.action==="APPROVE"?
               "Confirm activation of frozen notice":"Confirm notice cancellation"}</strong>
             <p>The request must use a fresh Foundation Super Admin authenticator.</p>
@@ -348,7 +377,10 @@ export function CommunicationsWorkspace({
                 onChange={e=>setTotp(e.target.value.replace(/[^0-9]/g,""))}/></label>
             <button type="button" disabled={busy||unknown}
               onClick={()=>void decide()}>Confirm {review.action.toLowerCase()}</button>
-            <button type="button" disabled={busy} onClick={()=>setReview(null)}>Cancel</button>
+            <button type="button" disabled={busy||unknown}
+              onClick={()=>{setReview(null);setReviewKey("");setTotp("");}}>
+              Cancel
+            </button>
           </div>}
         </div>
       </section>
