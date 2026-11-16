@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 
 type FoundationAdminNavProps={
   active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches";
@@ -24,6 +24,18 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
   canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
+  const searchRef=useRef<HTMLInputElement>(null);
+  // Unlike the old admin screenshot's unverified people search, this
+  // actually searches only delivered and currently-permitted navigation.
+  useEffect(()=>{
+    const onKey=(event:KeyboardEvent)=>{
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+        event.preventDefault();searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[]);
   const [foundationAccess,setFoundationAccess]=useState(canViewFoundation);
   const [branchAccess,setBranchAccess]=useState(canViewBranches);
   // One authenticated current-rights refresh per navigation mount. No polling or client-only authority.
@@ -65,11 +77,19 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(canViewCommunications?[{key:"communications" as const,label:"Notices & Notifications",href:"/admin/communications"}]:[]),
     ...(canViewSupport?[{key:"support" as const,label:"Contact Messages & Help",href:"/admin/support"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
-  return <nav className="sidebar" aria-label="Foundation navigation">
+  const titles:Record<FoundationAdminNavProps["active"],string>={
+    account:"Foundation Dashboard",roles:"Roles & Permissions",
+    accounts:"Users Management",policy:"Security Policy",settings:"General Settings",
+    audit:"Audit Logs",recovery:"Backup & Restore",
+    approvals:"Registration & Approval",documents:"Private Case Documents",
+    communications:"Notices & Notifications",support:"Help & Support",
+    foundation:"Departments / Committees",branches:"Branches / Locations"
+  };
+  return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
     <div className="sidebar-filter">
       <label htmlFor="foundation-menu-filter">Search menu</label>
-      <input id="foundation-menu-filter" type="search" value={query}
+      <input ref={searchRef} id="foundation-menu-filter" type="search" value={query}
         onChange={event=>setQuery(event.target.value)}
         placeholder="Search menu..." autoComplete="off"/>
     </div>
@@ -86,5 +106,33 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
       <strong>{displayName}</strong>
       <span>{roleName} · Foundation</span>
     </div>
-  </nav>;
+  </nav>
+    <header className="admin-topbar">
+      <div className="admin-topbar-title">
+        <h1>{titles[active]}</h1>
+        <p>Foundation Control Panel</p>
+      </div>
+      <div className="admin-topbar-tools">
+        <label htmlFor="admin-topbar-module-search" className="admin-topbar-search">
+          <span>Search available modules</span>
+          <input id="admin-topbar-module-search" type="search"
+            aria-label="Search permitted admin modules" value={query}
+            onChange={event=>setQuery(event.target.value)} placeholder="Search permitted modules..."
+            autoComplete="off"/>
+            <kbd aria-hidden="true">Ctrl K</kbd>
+        </label>
+        {canViewCommunications&&<Link className="admin-topbar-link"
+          href="/admin/communications">Notifications</Link>}
+        <Link className="admin-topbar-link" href="/">View Site</Link>
+        <Link className="admin-topbar-link" href="/contact">Help</Link>
+        <Link className="admin-topbar-identity" href="/admin"
+          aria-label="My Foundation account">
+          <span className="admin-topbar-avatar" aria-hidden="true">
+            {displayName.trim().slice(0,1).toUpperCase()||"F"}
+          </span>
+          <span><strong>{displayName}</strong><small>{roleName}</small></span>
+        </Link>
+      </div>
+    </header>
+  </>;
 }
