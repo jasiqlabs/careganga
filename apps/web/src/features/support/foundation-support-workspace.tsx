@@ -7,7 +7,7 @@ type CaseDetail=CaseItem&{message:string;replies:Array<{replyRef:string;
   authorAccountRef:string;body:string;createdAt:string}>;
   history:Array<{kind:string;at:string}>};
 type Counts={total:number;open:number;replied:number;closed:number;
-  unread:number;archived:number};
+  unread:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
 type Option={value:string;label:string};
 async function request<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",
@@ -161,10 +161,15 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     </div></header>
     {alert&&<p role="status" className="notice">{alert}</p>}
     {tab==="CASES"&&mayView&&<>
-      {counts&&<div className="kpi-grid" aria-label="Current support counts">
-        {(["total","unread","replied","closed","archived"] as const).map(k=>
-          <div className="kpi" key={k}><span>{k.toUpperCase()}</span>
-            <strong>{counts[k]}</strong></div>)}
+      {counts&&<div className="kpi-grid" aria-label="Actual Contact Messages counts">
+        {([
+          {key:"total",label:"Total Inquiries",hint:"All received"},
+          {key:"unread",label:"Unread Inquiries",hint:"Awaiting your review"},
+          {key:"closed",label:"Resolved Messages",hint:"Cases closed by the Foundation"},
+          {key:"received_today",label:"Received Today",hint:"Based on server date"}
+        ] as const).map(({key,label,hint})=>
+          <div className="kpi" key={key}><span>{label}</span>
+            <strong>{counts[key]}</strong><small>{hint}</small></div>)}
       </div>}
       <div className="search-row">
         <label htmlFor="support-filter">Status</label>
@@ -184,7 +189,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <td><strong>{x.name}</strong><p>{x.contact}</p></td>
           <td>{x.subject}{x.unread&&!x.archived&&<strong> · Unread</strong>}
             {x.archived&&<span> · Archived</span>}</td>
-          <td>{x.status}</td>
+          <td>{x.status==="CLOSED"?"RESOLVED":x.status}</td>
           <td>{new Date(x.createdAt).toLocaleString()}</td>
           <td><button type="button" disabled={busy}
             onClick={()=>void detail(x.caseRef)}>Open</button></td>
@@ -210,7 +215,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <div className="topbar"><h2>{selected.subject}</h2>
             <button type="button" onClick={()=>setSelected(null)}>Close panel</button></div>
           <p><strong>{selected.name}</strong> · {selected.contact}</p>
-          <p>Status: {selected.status} · Revision {selected.revision}</p>
+          <p>Status: {selected.status==="CLOSED"?"RESOLVED":selected.status} · Revision {selected.revision}</p>
           <p style={{whiteSpace:"pre-wrap"}}>{selected.message}</p>
           <h3>Private reply history</h3>
           {selected.replies.length===0&&<p>No operator replies yet.</p>}
