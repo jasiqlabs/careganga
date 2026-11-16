@@ -53,6 +53,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   const [selected,setSelected]=useState<Detail|null>(null);
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [agents,setAgents]=useState<Option[]>([]),[assignee,setAssignee]=useState("");
+  const [agentSearch,setAgentSearch]=useState("");
+  const [appliedAgentSearch,setAppliedAgentSearch]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]),[editing,setEditing]=useState<Faq|null>(null);
   const [question,setQuestion]=useState(""),[answer,setAnswer]=useState("");
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false);
@@ -78,14 +80,14 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
     let live=true;
-    void identityRequest("/api/support/agents?search=",{
+    void identityRequest("/api/support/agents?search="+encodeURIComponent(appliedAgentSearch),{
       headers:{Authorization:"Bearer "+token}})
       .then(r=>r.ok?r.json():Promise.reject()).then((r:unknown)=>{
         if(live&&r&&typeof r==="object"&&"options" in r&&Array.isArray(r.options))
           setAgents((r.options as Option[]).slice(0,30));
       }).catch(()=>{if(live)setAgents([])});
     return()=>{live=false};
-  },[mayManage,mayChooseAccounts,token]);
+  },[mayManage,mayChooseAccounts,token,appliedAgentSearch]);
   useEffect(()=>{
     const back=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(selected){setSelected(null);return true}
@@ -211,7 +213,15 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         {mayManage&&<View style={s.card}>
           <Text style={s.heading}>Assignment and status</Text>
           {mayChooseAccounts?<>
-            <Text>Assigned account: {selected.assignedAccountRef??"Unassigned"}</Text>
+            <Text>Assigned operator: {selected.assignedAccountRef?
+              agents.find(a=>a.value===selected.assignedAccountRef)?.label??
+                "Assigned (not in current search results)":"Unassigned"}</Text>
+            <TextInput style={s.input} accessibilityLabel="Find eligible support operator"
+              placeholder="Search permitted staff by name" maxLength={70}
+              value={agentSearch} onChangeText={setAgentSearch}/>
+            <Pressable style={s.button} accessibilityRole="button"
+              onPress={()=>setAppliedAgentSearch(agentSearch.trim())}>
+              <Text>Find operators</Text></Pressable>
             {agents.map(agent=><Pressable key={agent.value} style={s.item}
               accessibilityRole="button" accessibilityState={{selected:assignee===agent.value}}
               onPress={()=>setAssignee(agent.value)}><Text>{agent.label}</Text></Pressable>)}
