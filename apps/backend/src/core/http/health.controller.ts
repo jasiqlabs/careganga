@@ -37,7 +37,9 @@ export class HealthController {
         "0018_cg01_protected_approval_effect.sql",
         "0019_cg03_owner_finalization.sql",
         "0020_cg03_process_version_integrity.sql",
-        "0021_cg19_protected_case_files.sql"
+        "0021_cg19_protected_case_files.sql",
+        "0022_cg01_verified_mobile_contact.sql",
+        "0023_cg19_notifications_notices.sql"
       ] as const;
       const migrations = await this.db.query<{ filename: string }>(
         "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])", [required]
