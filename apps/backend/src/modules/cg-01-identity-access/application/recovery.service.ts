@@ -62,19 +62,41 @@ export class RecoveryService {
     if(!recipient||!this.delivery.isOtpChannelConfigured(channel))
       return {message:GENERIC,status:"PROCESSED"};
     const requestDigest=this.proof("recovery-request",identifier,requestKey);
-    const recent=await this.db.query<{id:string}>(`
-      SELECT id FROM auth_challenge
-      WHERE account_id=$1 AND kind='RECOVERY'
-        AND created_at>now()-interval '60 seconds' LIMIT 1`,[account.id]);
-    if(recent.rowCount)return {message:GENERIC,status:"PROCESSED"};
     const id=randomUUID(),code=String(randomInt(0,1_000_000)).padStart(6,"0");
     const digest=this.proof("recovery-otp",account.id,id,code);
-    const saved=await this.db.query<{id:string}>(`
-      INSERT INTO auth_challenge(id,account_id,kind,digest,request_key,expires_at,delivery_channel)
-      VALUES($1,$2,'RECOVERY',$3,$4,now()+interval '10 minutes',$5)
-      ON CONFLICT(request_key) DO NOTHING RETURNING id`,
-      [id,account.id,digest,requestDigest,channel]);
-    if(!saved.rowCount)return {message:GENERIC,status:"PROCESSED"};
+    // Serialize recovery challenges per account. Two concurrent resends must not
+    // both send distinct codes and invalidate the one the user enters.
+    const client=await this.db.connect();
+    let shouldDeliver=false;
+    try{
+      await client.query("BEGIN");
+      try{
+        const active=await client.query<{id:string,status:string;recovery_contact_changed_at:Date|null}>(`
+          SELECT id,status,recovery_contact_changed_at FROM account WHERE id=$1 FOR UPDATE`,
+          [account.id]);
+        if(!active.rowCount||active.rows[0].status!=="ACTIVE"||
+          (active.rows[0].recovery_contact_changed_at &&
+            active.rows[0].recovery_contact_changed_at.getTime()>Date.now()-24*60*60*1000)){
+          await client.query("COMMIT");
+          return {message:GENERIC,status:"PROCESSED"};
+        }
+        const recent=await client.query<{id:string}>(`
+          SELECT id FROM auth_challenge WHERE account_id=$1 AND kind='RECOVERY'
+            AND created_at>now()-interval '60 seconds' LIMIT 1`,[account.id]);
+        if(recent.rowCount){
+          await client.query("COMMIT");
+          return {message:GENERIC,status:"PROCESSED"};
+        }
+        const saved=await client.query<{id:string}>(`
+          INSERT INTO auth_challenge(id,account_id,kind,digest,request_key,expires_at,delivery_channel)
+          VALUES($1,$2,'RECOVERY',$3,$4,now()+interval '10 minutes',$5)
+          ON CONFLICT(request_key) DO NOTHING RETURNING id`,
+          [id,account.id,digest,requestDigest,channel]);
+        shouldDeliver=Boolean(saved.rowCount);
+        await client.query("COMMIT");
+      }catch(e){await client.query("ROLLBACK");throw e;}
+    }finally{client.release();}
+    if(!shouldDeliver)return {message:GENERIC,status:"PROCESSED"};
     // One-shot send claim; never silently retry an unknown provider result with the same code.
     const claimed=await this.db.query<{id:string}>(`
       UPDATE auth_challenge SET delivery_status='CLAIMED',delivery_attempts=1
