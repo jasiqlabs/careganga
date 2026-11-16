@@ -20,19 +20,19 @@ function inputRecord(value:unknown){
   if(!value||typeof value!=="object"||Array.isArray(value))
     throw new BadRequestException("Check your approval decision");
   const body=value as Record<string,unknown>;
-  if(Object.keys(body).some(k=>!["action","remarks","expectedRevision","requestKey","totp"].includes(k)))
+  if(Object.keys(body).some(k=>!["action","remarks","expectedRevision","requestKey","currentPassword"].includes(k)))
     throw new BadRequestException("Unsupported approval action");
   if(!["APPROVE","RETURN","REJECT","FORWARD"].includes(String(body.action))||
     !Number.isSafeInteger(body.expectedRevision)||Number(body.expectedRevision)<1||
     typeof body.requestKey!=="string"||!UUID.test(body.requestKey)||
     typeof body.remarks!=="string"||body.remarks.length>500||
-    typeof body.totp!=="string"||body.totp.length>6)
+    typeof body.currentPassword!=="string"||Buffer.byteLength(body.currentPassword,"utf8")>1024)
     throw new BadRequestException("Check decision, current revision and remarks");
   if(/[\u0000-\u001f\u007f]/.test(body.remarks))
     throw new BadRequestException("Remove unsupported characters from remarks");
   return {action:body.action as "APPROVE"|"RETURN"|"REJECT"|"FORWARD",
     remarks:body.remarks.trim(),expectedRevision:Number(body.expectedRevision),
-    requestKey:body.requestKey,totp:body.totp};
+    requestKey:body.requestKey,currentPassword:body.currentPassword};
 }
 @Injectable()
 export class ApprovalDecisionService{
@@ -109,12 +109,12 @@ export class ApprovalDecisionService{
       await this.owner.verifyReviewer(client,actor,expected.capability_key,
         expected.protected_root_required);
       if(expected.protected_root_required){
-        if(!/^[0-9]{6}$/.test(body.totp))
-          throw new BadRequestException("Final decision requires fresh authenticator proof");
+        if(body.currentPassword.length<8||Buffer.byteLength(body.currentPassword,"utf8")>1024)
+          throw new BadRequestException("Final decision requires current password confirmation");
         // Failed proofs are rate-limited outside the current write rollback.
         await this.sessions.limitFoundationRootProof(actor);
-        // One-use CG-01 TOTP counter is updated in the same short transaction.
-        await this.sessions.requireFreshFoundationRootProof(client,actor,body.totp);
+        // CG-01 verifies the current root password in the same short transaction.
+        await this.sessions.requireFreshFoundationRootProof(client,actor,body.currentPassword);
       }
       const state=body.action==="RETURN"?"RETURNED":
         body.action==="REJECT"?"REJECTED":
@@ -130,7 +130,7 @@ export class ApprovalDecisionService{
       const decision=await client.query<{id:string}>(`
         INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,
           expected_case_revision,accepted_case_revision,request_key,request_digest,
-          safe_remarks,fresh_mfa_verified_at)
+          safe_remarks,fresh_password_verified_at)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
           CASE WHEN $11::boolean THEN now() ELSE NULL END) RETURNING id
       `,[actor.realmId,row.id,actor.accountId,body.action,row.current_step,
