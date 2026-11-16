@@ -36,7 +36,7 @@ export default async function FoundationCommunicationsPage(){
       approve=keys.includes("communications.notices.approve"),
       process=keys.includes("communications.delivery.process"),
       delivery=keys.includes("communications.delivery.view");
-    if(!read&&!manage&&!delivery)
+    if(!read&&!manage&&!delivery&&!approve&&!process)
       return <main className="page main"><h1>Access denied</h1>
         <p>Notices are restricted to your current Foundation role.</p>
         <Link href="/admin">My account</Link></main>;
@@ -52,7 +52,8 @@ export default async function FoundationCommunicationsPage(){
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
         canViewDocuments={keys.includes("documents.files.view")&&
           keys.includes("documents.files.manage")}
-        canViewCommunicationscanViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
+        canViewCommunications={read||manage||delivery||approve||process}
+        canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace">
         <CommunicationsWorkspace mayManage={manage} mayApprove={approve}
           mayProcess={process} mayRead={read} mayViewDelivery={delivery}
