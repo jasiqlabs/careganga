@@ -263,7 +263,7 @@ export class FoundationStructureService {
       head_account_ref:string|null;opening_date:string|null;
     }>(`SELECT id,kind,name,description,active,version,parent_department_id,
         geography_area_id,head_account_ref,opening_date::text
-        FROM department WHERE root_realm_id=$1 AND ($2::text IS NULL OR kind=$2)
+        FROM department WHERE root_realm_id=$1 AND scope_kind='FOUNDATION' AND ($2::text IS NULL OR kind=$2)
         AND ($3='' OR normalized_name LIKE $3 ESCAPE '\\')
         ORDER BY name,id LIMIT 100 OFFSET $4`,
       [actor.realmId,kind??null,term?"%"+term+"%":"",offset]);
@@ -273,7 +273,7 @@ export class FoundationStructureService {
         count(*) FILTER (WHERE active)::text AS active,
         count(*) FILTER (WHERE NOT active)::text AS inactive,
         count(*) FILTER (WHERE kind='COMMITTEE')::text AS committees
-      FROM department WHERE root_realm_id=$1`,[actor.realmId]);
+      FROM department WHERE root_realm_id=$1 AND scope_kind='FOUNDATION'`,[actor.realmId]);
     const labelClient=await this.db.connect();
     let labels:Record<string,string>;
     try{
@@ -300,7 +300,7 @@ export class FoundationStructureService {
     }
     if(parentRef){
       const parent=await client.query(`SELECT 1 FROM department WHERE id=$1
-        AND root_realm_id=$2 AND active=true FOR SHARE`,[parentRef,actor.realmId]);
+        AND root_realm_id=$2 AND scope_kind='FOUNDATION' AND active=true FOR SHARE`,[parentRef,actor.realmId]);
       if(!parent.rowCount)throw new BadRequestException("Choose an active Foundation department");
       if(excludeRef){
         const found=await client.query(`
@@ -347,7 +347,7 @@ export class FoundationStructureService {
     return this.perform(bearer,"foundation.departments.manage","DEPARTMENT_UPDATE",input.requestKey,x,"DEPARTMENT",
       async(client,actor)=>{
         const old=await client.query<{version:number;head_account_ref:string|null}>(`
-          SELECT version,head_account_ref FROM department WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
+          SELECT version,head_account_ref FROM department WHERE id=$1 AND root_realm_id=$2 AND scope_kind='FOUNDATION' FOR UPDATE`,
           [departmentRef,actor.realmId]);
         if(!old.rowCount)throw new NotFoundException("Department is unavailable");
         if(old.rows[0].version!==x.expectedVersion)throw new ConflictException("Department was changed. Refresh.");
@@ -356,7 +356,7 @@ export class FoundationStructureService {
         await this.departmentSources(client,actor,x.geographyRef,x.parentRef,x.headRef,departmentRef);
         if(!x.active){
           const active=await client.query(`SELECT 1 FROM department
-            WHERE root_realm_id=$1 AND parent_department_id=$2 AND active LIMIT 1`,
+            WHERE root_realm_id=$1 AND scope_kind='FOUNDATION' AND parent_department_id=$2 AND active LIMIT 1`,
             [actor.realmId,departmentRef]);
           if(active.rowCount)throw new ConflictException("This department has active subdepartments");
         }
@@ -386,7 +386,7 @@ export class FoundationStructureService {
     return this.perform(bearer,"foundation.departments.assign","PARTICIPANT_ADD",input.requestKey,x,"PARTICIPANT",
       async(client,actor)=>{
         const dep=await client.query(`SELECT 1 FROM department WHERE root_realm_id=$1
-          AND id=$2 AND active FOR SHARE`,[actor.realmId,departmentRef]);
+          AND id=$2 AND scope_kind='FOUNDATION' AND active FOR SHARE`,[actor.realmId,departmentRef]);
         if(!dep.rowCount)throw new NotFoundException("This department is unavailable");
         await this.identity.eligibleOfficeholder(client,actor,x.accountRef);
         const row=await client.query<{id:string}>(`
@@ -399,7 +399,7 @@ export class FoundationStructureService {
   async participants(bearer:string,departmentRef:string){
     id(departmentRef);
     const actor=await this.actor(bearer,"foundation.departments.view");
-    const exists=await this.db.query(`SELECT 1 FROM department WHERE root_realm_id=$1 AND id=$2`,
+    const exists=await this.db.query(`SELECT 1 FROM department WHERE root_realm_id=$1 AND id=$2 AND scope_kind='FOUNDATION'`,
       [actor.realmId,departmentRef]);
     if(!exists.rowCount)throw new NotFoundException("Department unavailable");
     const rows=await this.db.query<{id:string;account_ref:string;office_role:string;active_from:Date;active_until:Date|null}>(`
@@ -424,7 +424,7 @@ export class FoundationStructureService {
       {departmentRef,participationRef},"PARTICIPANT",
       async(client,actor)=>{
         const dep=await client.query(`SELECT 1 FROM department
-          WHERE id=$1 AND root_realm_id=$2 FOR SHARE`,[departmentRef,actor.realmId]);
+          WHERE id=$1 AND root_realm_id=$2 AND scope_kind='FOUNDATION' FOR SHARE`,[departmentRef,actor.realmId]);
         if(!dep.rowCount)throw new NotFoundException("Department is unavailable");
         const done=await client.query<{id:string}>(`
           UPDATE department_participation SET active_until=now()
@@ -496,7 +496,7 @@ export class FoundationStructureService {
         SELECT d.name,d.kind,parent.name AS parent_name,d.active FROM department d
         LEFT JOIN department parent ON parent.id=d.parent_department_id
           AND parent.root_realm_id=d.root_realm_id
-        WHERE d.root_realm_id=$1 ORDER BY d.name,d.id LIMIT 250 OFFSET $2`,
+        WHERE d.root_realm_id=$1 AND d.scope_kind='FOUNDATION' ORDER BY d.name,d.id LIMIT 250 OFFSET $2`,
         [actor.realmId,offset]);
       heading=["Name","Type","Parent","Status"];
       rows=result.rows.map(x=>[x.name,x.kind,x.parent_name??"Foundation",x.active?"Active":"Inactive"]);
