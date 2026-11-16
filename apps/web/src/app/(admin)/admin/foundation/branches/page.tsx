@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {BranchDraftPanel} from "../../../../../features/foundation-structure/branch-draft-panel";
+import {OperatingBranchesPanel} from "../../../../../features/foundation-structure/operating-branches-panel";
 export const dynamic="force-dynamic";
 export default async function BranchRegistrationPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -44,7 +45,9 @@ export default async function BranchRegistrationPage(){
         canViewFoundation={keys.some(x=>["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(x))}
         canViewBranches/>
       <main className="workspace"><BranchDraftPanel canManage={keys.includes("foundation.branches.manage")}
-        canReview={keys.includes("approvals.review")&&keys.includes("foundation.branches.admin")}/></main>
+        canReview={keys.includes("approvals.review")&&keys.includes("foundation.branches.admin")}/>
+        <OperatingBranchesPanel canManage={keys.includes("foundation.branches.manage")}
+          canAdmin={keys.includes("foundation.branches.admin")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
