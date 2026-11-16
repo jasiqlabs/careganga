@@ -51,7 +51,6 @@ async function currentRoleActions(token:string):Promise<string[]>{
 export function StaffAuthenticationScreen(){
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
-  const [totp,setTotp]=useState("");
   const [token,setToken]=useState<string|null>(null);
   const [actor,setActor]=useState<CG01SessionView|null>(null);
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
@@ -121,14 +120,14 @@ export function StaffAuthenticationScreen(){
   async function signIn(){
     if(state==="busy")return;
     setState("busy");setMessage("");
-    const request:CG01SignInRequest={email,password,totp,deviceLabel:"Internal Android"};
+    const request:CG01SignInRequest={identifier:email.trim(),password,deviceLabel:"Internal Android"};
     let issuedToken:string|null=null;
     try{
       const response=await identityRequest("/api/identity/login",{
         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
       });
       if(!response.ok){
-        setMessage(response.status===429?"Too many attempts. Please try later.":response.status===401?"Account or verification code could not be confirmed.":"Sign-in unavailable. Please try again.");
+        setMessage(response.status===429?"Too many attempts. Please try later.":response.status===401?"Mobile number/email or password is incorrect.":"Sign-in unavailable. Please try again.");
         return;
       }
       const data:CG01SessionCreated=await response.json();
@@ -142,7 +141,7 @@ export function StaffAuthenticationScreen(){
       // are verified, so offline/invalid permission reads cannot look like success.
       const actions=await currentRoleActions(issuedToken);
       await SecureStore.setItemAsync(STORE_KEY,issuedToken);
-      setRoleActions(actions);setToken(issuedToken);setActor(verified);setPassword("");setTotp("");
+      setRoleActions(actions);setToken(issuedToken);setActor(verified);setPassword("");
     }catch{
       setRoleActions([]);setActor(null);setToken(null);
       // If a session was issued but later bootstrap steps failed, avoid leaving a
@@ -290,21 +289,16 @@ export function StaffAuthenticationScreen(){
             </Pressable>
           </View>:
           <View style={styles.formCard}>
-            <Text style={styles.helper}>Use your work account and current authenticator code.</Text>
-            <Text style={styles.label}>Work email</Text>
-            <TextInput accessibilityLabel="Work email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input}/>
+            <Text style={styles.helper}>Sign in with your registered mobile number or email.</Text>
+            <Text style={styles.label}>Mobile number or email</Text>
+            <TextInput accessibilityLabel="Mobile number or email" autoCapitalize="none" autoComplete="username" keyboardType="default" value={email} onChangeText={setEmail} style={styles.input}/>
             <Text style={styles.label}>Password</Text>
             <TextInput accessibilityLabel="Password" secureTextEntry autoComplete="current-password" value={password} onChangeText={setPassword} style={styles.input}/>
-            <Text style={styles.label}>Authenticator code</Text>
-            <TextInput accessibilityLabel="Authenticator code" inputMode="numeric" maxLength={6} value={totp} onChangeText={x=>setTotp(x.replace(/\D/g,""))} style={styles.input}/>
-            <Pressable accessibilityRole="button" disabled={state==="busy"||!email||!password||totp.length!==6} onPress={()=>void signIn()} style={[styles.button,styles.primaryButton]}>
+            <Pressable accessibilityRole="button" disabled={state==="busy"||!email.trim()||!password} onPress={()=>void signIn()} style={[styles.button,styles.primaryButton]}>
               <Text style={styles.primaryButtonText}>{state==="busy"?"Verifying…":"Sign in"}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={()=>setRecover(true)} style={styles.button}>
               <Text style={styles.buttonText}>Recover account</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={()=>setActivate(true)} style={styles.button}>
-              <Text style={styles.buttonText}>Accept staff invitation</Text>
             </Pressable>
           </View>}
         {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
