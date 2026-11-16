@@ -8,7 +8,7 @@ import {identityRequest} from "./http-client";
 
 type Policy={maxSessionAgeSeconds:number;idleTimeoutSeconds:number;
   failedAttemptWindowSeconds:number;maxFailedAttempts:number;
-  rootMfaRequired:true;revision:number;updatedAt:string|null};
+  rootPasswordReauthRequired:true;revision:number;updatedAt:string|null};
 type Form={maximum:string;idle:string;window:string;attempts:string};
 const fields:{key:keyof Form;name:string;hint:string;min:number;max:number}[]=[
   {key:"maximum",name:"Maximum session age",hint:"Minutes · 15–480",min:15,max:480},
@@ -25,7 +25,7 @@ function validPolicy(x:unknown):x is Policy{
   const p=x as Record<string,unknown>;
   const max=p.maxSessionAgeSeconds,idle=p.idleTimeoutSeconds;
   const window=p.failedAttemptWindowSeconds,attempts=p.maxFailedAttempts;
-  return p.rootMfaRequired===true&&Number.isSafeInteger(p.revision)&&
+  return p.rootPasswordReauthRequired===true&&Number.isSafeInteger(p.revision)&&
     Number(p.revision)>=0&&
     typeof max==="number"&&Number.isInteger(max)&&max>=900&&max<=28800&&max%60===0&&
     typeof idle==="number"&&Number.isInteger(idle)&&idle>=300&&idle<=3600&&idle%60===0&&idle<=max&&
@@ -40,7 +40,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   const [values,setValues]=useState<Form|null>(null);
   const [editing,setEditing]=useState(false);
   const [review,setReview]=useState(false);
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [busy,setBusy]=useState(false);
   const [checkingOutcome,setCheckingOutcome]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -62,7 +62,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       if(seq!==generation.current)return false;
       const matched=expectedRevision===undefined||payload.revision>=expectedRevision;
       setCurrent(payload);setValues(form(payload));setEditing(false);setReview(false);
-      setTotp("");
+      setCurrentPassword("");
       // Preserve the exact request reference until the saved revision is confirmed.
       if(matched){setUnknown(false);setMessage("");requestKey.current="";}
       else{setUnknown(true);setMessage(
@@ -79,7 +79,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   useEffect(()=>{
     const back=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(saving.current)return true;
-      if(editing){setEditing(false);setReview(false);setTotp("");return true;}
+      if(editing){setEditing(false);setReview(false);setCurrentPassword("");return true;}
       onExit();return true;
     });
     return()=>back.remove();
@@ -88,7 +88,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
     const sub=AppState.addEventListener("change",state=>{
       if(state==="active"&&!editing&&!unknown)void read();
       else if(state!=="active"){setCurrent(null);setValues(null);setEditing(false);
-        setReview(false);setTotp("");}
+        setReview(false);setCurrentPassword("");}
     });
     return()=>sub.remove();
   },[read,editing,unknown]);
@@ -117,7 +117,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   function begin(){
     if(!current)return;
     requestKey.current=Crypto.randomUUID();setValues(form(current));setEditing(true);
-    setReview(false);setTotp("");setUnknown(false);setMessage("");
+    setReview(false);setCurrentPassword("");setUnknown(false);setMessage("");
   }
   function change(key:keyof Form,text:string){
     setValues(old=>old?{...old,[key]:text.replace(/[^0-9]/g,"")}:old);
@@ -134,13 +134,13 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       setMessage("Check permitted limits. Idle timeout cannot exceed session age.");return;
     }
     if(!review){setReview(true);setMessage("");return;}
-    if(!/^[0-9]{6}$/.test(totp)){setMessage("Enter a fresh six-digit authenticator code.");return;}
+    if(currentPassword.length<8||currentPassword.length>1024){setMessage("Enter a current password.");return;}
     saving.current=true;setBusy(true);setMessage("");
     const body={maxSessionAgeSeconds:Number(values.maximum)*60,
       idleTimeoutSeconds:Number(values.idle)*60,
       failedAttemptWindowSeconds:Number(values.window)*60,
-      maxFailedAttempts:Number(values.attempts),rootMfaRequired:true,
-      expectedRevision:current.revision,idempotencyKey:requestKey.current,totp};
+      maxFailedAttempts:Number(values.attempts),rootPasswordReauthRequired:true,
+      expectedRevision:current.revision,idempotencyKey:requestKey.current,currentPassword};
     try{
       const result=await identityRequest("/api/identity/security-policy",{
         method:"PATCH",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
@@ -152,11 +152,11 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       if(result.status===409){setReview(false);
         setMessage("The policy changed elsewhere. Keep these values and refresh before saving.");return;}
       if(result.status===429){setReview(false);
-        setMessage("Too many authenticator attempts. Try again later.");return;}
+        setMessage("Too many password confirmation attempts. Try again later.");return;}
       if(!result.ok){
         if(result.status>=500){setUnknown(true);
           setMessage("The change may be saved. Refresh the effective policy before attempting another change.");}
-        else {setReview(false);setMessage("Policy was not accepted. Review limits and enter a fresh code.");}
+        else {setReview(false);setMessage("Policy was not accepted. Review limits and enter a current password.");}
         return;
       }
       const ack:unknown=await result.json();
@@ -189,7 +189,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
             <Text style={styles.helper}>{f.name}</Text>
             <Text style={styles.value}>{form(current)[f.key]} {f.key==="attempts"?"attempts":"minutes"}</Text>
           </View>)}
-          <Text style={styles.value}>Super Admin MFA: Required</Text>
+          <Text style={styles.value}>Super Admin password confirmation: Required</Text>
           <Text style={styles.helper}>This requirement cannot be disabled.</Text>
           <Text style={styles.helper}>Last updated: {current.updatedAt?
             new Date(current.updatedAt).toLocaleString():"Secure Foundation defaults"}</Text>
@@ -204,15 +204,15 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
             style={styles.input}/>
           <Text style={styles.helper}>{f.hint}</Text>
         </View>)}
-        <Text style={styles.label}>Super Admin MFA: Required (not editable)</Text>
-        <Text style={styles.label}>Fresh authenticator code</Text>
-        <TextInput accessibilityLabel="Fresh authenticator code" value={totp}
-          onChangeText={t=>{setTotp(t.replace(/[^0-9]/g,""));setReview(false);}}
-          keyboardType="number-pad" maxLength={6} style={styles.input}/>
+        <Text style={styles.label}>Super Admin password confirmation: Required (not editable)</Text>
+        <Text style={styles.label}>Current password</Text>
+        <TextInput accessibilityLabel="Current password" value={currentPassword}
+          onChangeText={t=>{setCurrentPassword(t);setReview(false);}}
+          secureTextEntry autoComplete="current-password" maxLength={1024} style={styles.input}/>
         {review&&<View style={styles.field}><Text style={styles.label}>Confirm policy change</Text>
           <Text>Shorter limits may immediately expire existing staff sessions. This update is audited.</Text>
         </View>}
-        <Pressable accessibilityRole="button" disabled={busy||unknown||totp.length!==6}
+        <Pressable accessibilityRole="button" disabled={busy||unknown||currentPassword.length<8}
           style={[styles.button,styles.primary]} onPress={()=>void save()}>
           <Text style={styles.primaryText}>{busy?"Saving…":review?"Confirm and save":"Review change"}</Text>
         </Pressable>
