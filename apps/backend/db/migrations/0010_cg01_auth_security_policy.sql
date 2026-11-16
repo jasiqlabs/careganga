@@ -10,7 +10,7 @@ CREATE TABLE auth_security_policy (
   failed_attempt_window_seconds integer NOT NULL
     CHECK (failed_attempt_window_seconds BETWEEN 300 AND 3600),
   max_failed_attempts integer NOT NULL CHECK (max_failed_attempts BETWEEN 3 AND 10),
-  root_mfa_required boolean NOT NULL DEFAULT TRUE CHECK (root_mfa_required IS TRUE),
+  root_password_reauth_required boolean NOT NULL DEFAULT TRUE CHECK (root_password_reauth_required IS TRUE),
   updated_by uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
