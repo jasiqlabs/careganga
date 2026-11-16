@@ -43,7 +43,8 @@ export default async function BranchRegistrationPage(){
         canViewDocuments={keys.includes("documents.files.view")}
         canViewFoundation={keys.some(x=>["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(x))}
         canViewBranches/>
-      <main className="workspace"><BranchDraftPanel canManage={keys.includes("foundation.branches.manage")}/></main>
+      <main className="workspace"><BranchDraftPanel canManage={keys.includes("foundation.branches.manage")}
+        canReview={keys.includes("approvals.review")&&keys.includes("foundation.branches.admin")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
