@@ -380,14 +380,24 @@ export class BranchLifecycleService{
        str(first.officialPhone,80),str(first.officialEmail,180),
        managerRef,JSON.stringify(snapshot.verified_file_versions),actor.accountId]);
      const branchRef=result.rows[0].id;
+     const activeProfile={
+       branchName:name,branchType:str(first.branchType,80),
+       openingDate:typeof first.openingDate==="string"?first.openingDate:null,
+       geographyRef:areaRef,postalAddress:str(loc.postalAddress,700),
+       pinCode:typeof loc.pinCode==="string"?loc.pinCode:"",
+       latitude:typeof loc.latitude==="number"?loc.latitude:null,
+       longitude:typeof loc.longitude==="number"?loc.longitude:null,
+       officialPhone:str(first.officialPhone,80),
+       officialEmail:str(first.officialEmail,180),managerRef
+     };
      await client.query(`
        INSERT INTO branch_profile_revision(
          branch_id,root_realm_id,branch_version,mutation_key,changed_by,
          before_payload,after_payload,evidence_versions,approved_submission_id
        ) VALUES($1,$2,1,$3,$4,'{}'::jsonb,$5::jsonb,$6::jsonb,$7)
      `,[branchRef,actor.realmId,effect,actor.accountId,
-       JSON.stringify(snapshot.immutable_payload),JSON.stringify(snapshot.verified_file_versions),
-       snapshot.id]);
+       JSON.stringify({}),JSON.stringify(activeProfile),
+       JSON.stringify(snapshot.verified_file_versions),snapshot.id]);
      if(departments.length)await client.query(`
        INSERT INTO branch_department_link(root_realm_id,branch_id,foundation_department_id,linked_by)
        SELECT $1,$2,id,$4 FROM department
