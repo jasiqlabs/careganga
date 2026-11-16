@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {BadRequestException,Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
 import {BranchWorkflowService} from "../application/branch-workflow.service";
 
 @Controller("api/foundation-structure/branch-workflow")
@@ -27,8 +27,10 @@ export class BranchWorkflowController{
    return this.workflow.initializeProcess(bearer);
  }
  @Get("cases")
- cases(@Headers("authorization")bearer:string){
-   return this.workflow.cases(bearer);
+ cases(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
+   if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+     throw new BadRequestException("Check approval page");
+   return this.workflow.cases(bearer,offset?Number(offset):0);
  }
  @Get("cases/:caseRef")
  detail(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
