@@ -76,7 +76,7 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"|"PATCH")
         status===403?"Only an authorized Foundation administrator can access this setting.":
         status===409?"The setting changed elsewhere. Refresh before saving.":
         status===429?"Too many security checks. Try again later.":
-        status===400?"Check the allowed values and authenticator code.":
+        status===400?"Check the allowed values and confirm with your current password.":
         status===404?"This configuration is not available.":
         "The result could not be confirmed. Check before retrying.",status,code);
     }
