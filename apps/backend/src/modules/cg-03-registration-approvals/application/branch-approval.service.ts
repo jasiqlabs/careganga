@@ -75,7 +75,7 @@ export class BranchApprovalService{
    const key=reference(requestKey);
    if(source.requestedBy!==actor.accountId&&source.managerRef!==actor.accountId){
      // Only a protected root may submit someone else's authorized registration.
-     const actor=await this.sessions.requireAction(bearer,"foundation.branches.admin");
+     await this.sessions.requireAction(bearer,"foundation.branches.admin");
    }
    if(!["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW"].includes(source.status))
      throw new ConflictException("This registration cannot be submitted again");
@@ -258,7 +258,7 @@ export class BranchApprovalService{
    }finally{client.release();}
  }
  async proof(bearer:string,caseRef:string,registrationRef:string,revision:number,digest:string){
-   await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.admin");
    const found=await this.db.query<{case_id:string;effect_key:string}>(`
      SELECT e.case_id,e.effect_key FROM cg03_branch_owner_effect e
        JOIN cg03_case c ON c.id=e.case_id AND c.realm_id=e.realm_id
@@ -338,16 +338,24 @@ export class BranchApprovalService{
       expected==="PENDING_OWNER"?"APPROVE":expected==="RETURNED"?"RETURN":"REJECT"]);
    if(!rows.rows[0])throw new ConflictException("The branch decision could not be confirmed");
  }
- async markCompleted(caseRef:string,effectKey:string){
+ async markCompleted(bearer:string,caseRef:string,effectKey:string){
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.admin");
    const client=await this.db.connect();let tx=false;
    try{
      await client.query("BEGIN");tx=true;
+     await this.owner.verifyReviewer(client,actor,"approvals.review",true);
      const caseRow=await client.query<{realm_id:string;status:string;proposer_id:string}>(`
        SELECT c.realm_id,c.status,c.proposer_id FROM cg03_case c
        JOIN cg03_branch_owner_effect e ON e.case_id=c.id
-       WHERE c.id=$1 AND e.effect_key=$2 FOR UPDATE OF c,e
-     `,[reference(caseRef),reference(effectKey)]);
+       WHERE c.id=$1 AND e.effect_key=$2 AND c.realm_id=$3 AND c.case_kind='BRANCH_REGISTRATION'
+       FOR UPDATE OF c,e
+     `,[reference(caseRef),reference(effectKey),actor.realmId]);
      if(!caseRow.rows[0])throw new ConflictException("Approved branch source unavailable");
+     if(caseRow.rows[0].status==="OWNER_COMPLETED"){
+       await client.query("COMMIT");tx=false;return;
+     }
+     if(caseRow.rows[0].status!=="PENDING_OWNER")
+       throw new ConflictException("The original approval state has changed");
      await client.query(`
        UPDATE cg03_branch_owner_effect SET status='OWNER_COMPLETED',completed_at=COALESCE(completed_at,now())
        WHERE case_id=$1 AND effect_key=$2
@@ -356,6 +364,11 @@ export class BranchApprovalService{
        UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,updated_at=now()
        WHERE id=$1 AND status='PENDING_OWNER'
      `,[caseRef]);
+     await client.query(`
+       INSERT INTO cg03_case_event(
+         realm_id,case_id,actor_id,action,step_ordinal,correlation_ref)
+       VALUES($1,$2,$3,'OWNER_COMPLETED',1,$4)
+     `,[actor.realmId,caseRef,actor.accountId,randomUUID()]);
      await client.query("COMMIT");tx=false;
    }catch(e){if(tx)try{await client.query("ROLLBACK");}catch{};throw e;}
    finally{client.release();}
