@@ -35,6 +35,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  const [selected,setSelected]=useState<BranchDetail|null>(null);
  const [history,setHistory]=useState<History[]>([]);
  const [departments,setDepartments]=useState<Department[]>([]),[links,setLinks]=useState<Link[]>([]);
+ const [nextDepartmentOffset,setNextDepartmentOffset]=useState<number|null>(null);
  const [participants,setParticipants]=useState<Participant[]>([]),[focusedDept,setFocusedDept]=useState("");
  const [managers,setManagers]=useState<Option[]>([]),[areas,setAreas]=useState<Area[]>([]);
  const [foundationDepartments,setFoundationDepartments]=useState<Option[]>([]);
@@ -90,11 +91,12 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  }
  async function loadAssociations(ref:string){
    const [depts,linked,revision]=await Promise.all([
-     req<{departments:Department[]}>("/operating-branches/"+ref+"/departments"),
+     req<{departments:Department[];nextOffset:number|null}>("/operating-branches/"+ref+"/departments?offset=0"),
      req<{links:Link[]}>("/operating-branches/"+ref+"/department-links"),
      req<{history:History[]}>("/operating-branches/"+ref+"/revisions")
    ]);
-   setDepartments(depts.departments);setLinks(linked.links);setHistory(revision.history);
+   setDepartments(depts.departments);setNextDepartmentOffset(depts.nextOffset);
+   setLinks(linked.links);setHistory(revision.history);
  }
  async function open(ref:string){
    setBusy(true);setError("");setMessage("");setFocusedDept("");
@@ -268,6 +270,20 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                  void loadParticipants(selected.branchRef,d.departmentRef);}} disabled={busy}>
                  <strong>{d.name}</strong><span>{label(d.kind)} · {d.active?"Active":"Inactive"}</span></button>
              </li>)}</ul>}
+           {nextDepartmentOffset!==null&&<button type="button" disabled={busy}
+             onClick={()=>{
+               const offset=nextDepartmentOffset;
+               setBusy(true);
+               void req<{departments:Department[];nextOffset:number|null}>(
+                 baseRef+"/departments?offset="+offset)
+                 .then(result=>{
+                   setDepartments(old=>[...old.filter(x=>!result.departments.some(y=>
+                     y.departmentRef===x.departmentRef)),...result.departments]);
+                   setNextDepartmentOffset(result.nextOffset);
+                 })
+                 .catch(()=>setError("More branch departments cannot be verified."))
+                 .finally(()=>setBusy(false));
+             }}>Load more departments</button>}
            {canManage&&selected.status==="ACTIVE"&&<button type="button" disabled={busy||unknown}
              onClick={()=>resetDepartment()}>New branch department / committee</button>}
            {canManage&&selected.status==="ACTIVE"&&<div className="form">
