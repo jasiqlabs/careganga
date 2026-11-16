@@ -338,6 +338,7 @@ export class BranchPrivateEvidenceService{
        WHERE id=$1 AND realm_id=$2 AND owner_kind='CG02_DRAFT' FOR UPDATE
      `,[fileRef,actor.realmId]);
      await this.source.guardHistoricalRegistration(client,actor,row.rows[0].registration_id,true);
+     await this.source.guardNotCurrentActiveEvidence(client,actor,fileRef);
      if(!locked.rows[0]||locked.rows[0].revision!==expected)
        throw new ConflictException("The private file changed");
      if(!locked.rows[0].revoked_at){
