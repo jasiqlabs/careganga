@@ -183,6 +183,22 @@ export class PrivateLetterService{
         SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
       `,[actor.realmId]);
       if(!root.rowCount)throw new ForbiddenException("Foundation scope is unavailable");
+      // Replay is evaluated against the ORIGINAL template snapshot, not the
+      // currently active version, which may have changed after the first reply.
+      const existing=await client.query<Letter>(`
+        SELECT * FROM cg19_generated_document
+        WHERE realm_id=$1 AND issued_by=$2 AND issue_key=$3 FOR UPDATE
+      `,[actor.realmId,actor.accountId,data.requestKey]);
+      if(existing.rowCount){
+        const prior=existing.rows[0];
+        const previousDigest=sha(["LETTER_ISSUE",data.caseRef,
+          source.proposalRevision,prior.template_id,prior.template_version]);
+        if(prior.request_digest!==previousDigest)
+          throw new ConflictException("This letter request belongs to different content");
+        row=prior;
+        await client.query("COMMIT");open=false;
+        return {...publicStatus(row),result:"PREVIOUSLY_CONFIRMED"};
+      }
       const current=await client.query<Template>(`
         SELECT id,version,title,body,content_sha256,status
         FROM cg19_document_template
@@ -194,17 +210,6 @@ export class PrivateLetterService{
       const template=current.rows[0];
       const requestDigest=sha(["LETTER_ISSUE",data.caseRef,source.proposalRevision,
         template.id,template.version]);
-      const existing=await client.query<Letter>(`
-        SELECT * FROM cg19_generated_document
-        WHERE realm_id=$1 AND issued_by=$2 AND issue_key=$3 FOR UPDATE
-      `,[actor.realmId,actor.accountId,data.requestKey]);
-      if(existing.rowCount){
-        if(existing.rows[0].request_digest!==requestDigest)
-          throw new ConflictException("This letter request belongs to different content");
-        row=existing.rows[0];
-        await client.query("COMMIT");open=false;
-        return {...publicStatus(row),result:"PREVIOUSLY_CONFIRMED"};
-      }
       await this.sessions.requireFreshFoundationRootProof(client,actor,data.totp);
       const active=await client.query(`
         SELECT 1 FROM cg19_generated_document
