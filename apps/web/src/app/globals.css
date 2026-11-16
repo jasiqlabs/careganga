@@ -418,11 +418,14 @@ button:disabled { cursor:wait; opacity:.65; }
 /* CG02 U22 BRANCH DEPARTMENT DRAWER */
 .foundation-department-overlay{position:fixed;inset:0;z-index:15;
   background:rgba(9,17,35,.52);display:flex;justify-content:flex-end}
-.foundation-department-sheet{height:100dvh;overflow-y:auto;overscroll-behavior:contain;
+.foundation-department-sheet{position:fixed;inset:0 0 0 auto;margin:0;
+  height:100dvh;max-height:100dvh;overflow-y:auto;overscroll-behavior:contain;
   width:min(100%,34rem);max-width:100vw;background:var(--cg-surface);
   border-inline-start:1px solid var(--cg-border);
   padding:1.25rem 1.4rem max(1.25rem,env(safe-area-inset-bottom));
   box-shadow:-1rem 0 2rem rgba(10,31,68,.09);display:grid;align-content:start;gap:1rem}
+.foundation-department-sheet:not([open]){display:none}
+.foundation-department-sheet::backdrop{background:rgba(9,17,35,.52)}
 .foundation-department-sheet>.toolbar{justify-content:space-between;
   padding-bottom:.8rem;border-bottom:1px solid var(--cg-border)}
 .foundation-department-sheet>.toolbar h3{margin:0;font-size:1.15rem}
