@@ -68,6 +68,8 @@ CREATE TABLE cg19_document_template (
   template_kind text NOT NULL CHECK(template_kind='PRIVATE_APPROVED_ACCESS_LETTER'),
   version integer NOT NULL CHECK(version>0),
   content_sha256 char(64) NOT NULL CHECK(content_sha256 ~ '^[0-9a-f]{64}$'),
+  title text NOT NULL CHECK(length(title) BETWEEN 10 AND 100),
+  body text NOT NULL CHECK(length(body) BETWEEN 20 AND 1200),
   approved_by uuid NOT NULL,
   status text NOT NULL CHECK(status IN('APPROVED','WITHDRAWN')),
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -84,11 +86,17 @@ CREATE TABLE cg19_generated_document (
   proposal_revision integer NOT NULL CHECK(proposal_revision>0),
   template_id uuid NOT NULL,
   template_version integer NOT NULL CHECK(template_version>0),
+  issue_revision integer NOT NULL CHECK(issue_revision>0),
+  source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),
+  source_sha256 char(64) NOT NULL CHECK(source_sha256 ~ '^[0-9a-f]{64}$'),
   issue_key uuid NOT NULL,
   request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
   issued_by uuid NOT NULL,
   state text NOT NULL DEFAULT 'PENDING' CHECK(state IN(
     'PENDING','VERIFYING','ISSUED','UNKNOWN','FAILED','REVOKED')),
+  claim_token uuid,
+  claim_expires_at timestamptz,
+  attempt_count integer NOT NULL DEFAULT 0 CHECK(attempt_count BETWEEN 0 AND 5),
   object_key text UNIQUE CHECK(object_key IS NULL OR length(object_key) BETWEEN 24 AND 255),
   object_version text CHECK(object_version IS NULL OR length(object_version) BETWEEN 1 AND 160),
   content_sha256 char(64) CHECK(content_sha256 IS NULL OR content_sha256 ~ '^[0-9a-f]{64}$'),
@@ -96,6 +104,8 @@ CREATE TABLE cg19_generated_document (
   issued_at timestamptz,
   revoked_at timestamptz,
   UNIQUE(realm_id,case_id,proposal_revision,template_id,template_version,issue_key),
+  UNIQUE(realm_id,issued_by,issue_key),
+  UNIQUE(realm_id,case_id,proposal_revision,issue_revision),
   UNIQUE(id,realm_id),
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(template_id,realm_id,template_version)
@@ -108,6 +118,12 @@ CREATE TABLE cg19_generated_document (
 );
 CREATE INDEX ix_cg19_document_case
   ON cg19_generated_document(realm_id,case_id,created_at DESC,id DESC);
+CREATE UNIQUE INDEX ux_cg19_one_active_access_letter
+  ON cg19_generated_document(realm_id,case_id,proposal_revision)
+  WHERE state IN('PENDING','VERIFYING','UNKNOWN','ISSUED');
+CREATE INDEX ix_cg19_doc_reclaim
+  ON cg19_generated_document(state,claim_expires_at,id)
+  WHERE state IN('PENDING','VERIFYING','UNKNOWN');
 
 CREATE TABLE cg19_document_event (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,6 +207,9 @@ BEGIN
      NEW.template_id IS DISTINCT FROM OLD.template_id OR
      NEW.template_version IS DISTINCT FROM OLD.template_version OR
      NEW.issue_key IS DISTINCT FROM OLD.issue_key OR
+     NEW.issue_revision IS DISTINCT FROM OLD.issue_revision OR
+     NEW.source_snapshot IS DISTINCT FROM OLD.source_snapshot OR
+     NEW.source_sha256 IS DISTINCT FROM OLD.source_sha256 OR
      NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
      NEW.issued_by IS DISTINCT FROM OLD.issued_by OR
      NEW.object_key IS DISTINCT FROM OLD.object_key AND OLD.object_key IS NOT NULL OR
@@ -206,6 +225,8 @@ CREATE FUNCTION cg19_template_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR
      NEW.template_kind IS DISTINCT FROM OLD.template_kind OR
+     NEW.title IS DISTINCT FROM OLD.title OR
+     NEW.body IS DISTINCT FROM OLD.body OR
      NEW.version IS DISTINCT FROM OLD.version OR
      NEW.content_sha256 IS DISTINCT FROM OLD.content_sha256 OR
      NEW.approved_by IS DISTINCT FROM OLD.approved_by THEN
@@ -215,3 +236,34 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg19_template_identity_guard
   BEFORE UPDATE ON cg19_document_template FOR EACH ROW EXECUTE FUNCTION cg19_template_frozen();
+
+CREATE TABLE cg19_template_command (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+  actor_id uuid NOT NULL,
+  request_key uuid NOT NULL,
+  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+  template_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(realm_id,actor_id,request_key),
+  FOREIGN KEY(template_id,realm_id)
+    REFERENCES cg19_document_template(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(actor_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TABLE cg19_template_event (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+  template_id uuid NOT NULL,
+  actor_id uuid NOT NULL,
+  action text NOT NULL CHECK(action IN('APPROVED','WITHDRAWN')),
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY(template_id,realm_id)
+    REFERENCES cg19_document_template(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(actor_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TRIGGER cg19_template_command_immutable
+  BEFORE UPDATE OR DELETE ON cg19_template_command FOR EACH ROW
+  EXECUTE FUNCTION cg19_document_event_immutable();
+CREATE TRIGGER cg19_template_event_immutable
+  BEFORE UPDATE OR DELETE ON cg19_template_event FOR EACH ROW
+  EXECUTE FUNCTION cg19_document_event_immutable();
