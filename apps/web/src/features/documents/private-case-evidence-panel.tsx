@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG03CaseView,CG19UploadStart,CG19UploadStatus} from "@careganga/api-contracts";
+import {PrivateLetterPanel} from "./private-letter-panel";
 
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Notice={kind:"error"|"info"|"success";text:string};
@@ -42,7 +43,7 @@ function label(status:string){
     EXPIRED_OR_REJECTED:"Upload expired or rejected"
   } as Record<string,string>)[status]??"Unverified private file";
 }
-export function PrivateCaseEvidencePanel(){
+export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIssue?:boolean;canRevoke?:boolean}){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [selected,setSelected]=useState("");
   const [file,setFile]=useState<File|null>(null);
@@ -218,15 +219,15 @@ export function PrivateCaseEvidencePanel(){
         </div>
       </div>
     </section>
-    <section className="role-pane"><div className="role-pane-heading">
+    {selectedCase&&canIssue&&
+      <PrivateLetterPanel key={selectedCase.caseRef}
+        caseRef={selectedCase.caseRef} sourceRevision={selectedCase.proposalRevision}
+        canIssue={canIssue} canRevoke={canRevoke}/>}
+    {!selectedCase&&<section className="role-pane"><div className="role-pane-heading">
       <h2>Approved access letters</h2></div>
       <div className="role-detail-content">
-        <p>A private confirmation letter can be issued only after the actual
-          approved CG-01 role change is verified and its document template
-          and secured PDF storage are available.</p>
-        <p role="status">Letter issuance is not available in this source checkpoint.
-          No pending application or uploaded file is presented as an issued PDF.</p>
+        <p>Choose an authorized application to see its verified private letters.</p>
       </div>
-    </section>
+    </section>}
   </section>;
 }
