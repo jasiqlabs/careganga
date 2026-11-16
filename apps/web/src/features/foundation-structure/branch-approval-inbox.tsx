@@ -5,7 +5,11 @@ type Case={
  submissionRevision:number;status:string;revision:number;submittedAt:string
 };
 type Detail={caseRef:string;reference:string;registrationRef:string;
- submissionRevision:number;status:string;revision:number;
+ submissionRevision:number;status:string;revision:number;submittedBranchName:string;
+ reviewSummary:{branchType:string;openingDate:string|null;postalAddress:string;pinCode:string;
+   officialPhone:string;officialEmail:string;selectedFoundationDepartments:number;
+   managerDisplayName:string|null};
+ evidence:{fileRef:string;revision:number;classification:string}[];
  canDecide:boolean;history:{action:string;remarks:string;at:string}[]};
 const api="/api/foundation/branch-workflow";
 async function request<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
@@ -131,6 +135,26 @@ export function BranchApprovalInbox(){
        </button></li>)}</ul>}
    {selected&&<div className="form">
      <h3>{selected.reference} · {selected.status.replaceAll("_"," ")}</h3>
+     <h4>{selected.submittedBranchName}</h4>
+     <p className="notice">This view is pinned to the submitted application revision,
+       even if the applicant later corrects the draft.</p>
+     <dl className="audit-detail">
+       <dt>Type</dt><dd>{selected.reviewSummary.branchType||"Not specified"}</dd>
+       <dt>Opening date</dt><dd>{selected.reviewSummary.openingDate||"Not specified"}</dd>
+       <dt>Manager</dt><dd>{selected.reviewSummary.managerDisplayName||"Historical account"}</dd>
+       <dt>Address</dt><dd>{selected.reviewSummary.postalAddress||"Not specified"}</dd>
+       <dt>PIN</dt><dd>{selected.reviewSummary.pinCode||"Not specified"}</dd>
+       <dt>Official phone</dt><dd>{selected.reviewSummary.officialPhone||"Not specified"}</dd>
+       <dt>Official email</dt><dd>{selected.reviewSummary.officialEmail||"Not specified"}</dd>
+       <dt>Selected Foundation departments</dt><dd>{selected.reviewSummary.selectedFoundationDepartments}</dd>
+     </dl>
+     <h4>Submitted private evidence versions</h4>
+     {selected.evidence.length===0?<p>No verified submitted documents.</p>:
+       <ul>{selected.evidence.map(f=><li key={f.fileRef}>
+         {f.classification.toLowerCase().replaceAll("_"," ")} ·
+         <a href={"/api/documents/branch-evidence/files/"+
+             encodeURIComponent(f.fileRef)+"/download"}>Download verified original</a>
+       </li>)}</ul>}
      <ol>{selected.history.map((h,i)=><li key={i}>{h.action.replaceAll("_"," ")}
        {h.remarks?": "+h.remarks:""} · {new Date(h.at).toLocaleDateString()}</li>)}</ol>
      {selected.canDecide&&<>
