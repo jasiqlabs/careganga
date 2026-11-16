@@ -10,17 +10,12 @@ import { identityRequest } from "./http-client";
 type Option={value:string;label:string;context:string};
 /** Display business words, never the wire status code. */
 const accountStatusLabel=(status:string):string=>({
-  INVITED:"Invited",ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
+  ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
 } as Record<string,string>)[status]??"Status unavailable";
-const deliveryLabel=(status:string|null):string=>status===null?"Not applicable":({
-  PENDING:"Waiting to send",CLAIMED:"Sending status not confirmed",
-  PROVIDER_ACCEPTED:"Accepted by email service",UNKNOWN:"Delivery not confirmed",
-  UNAVAILABLE:"Email service unavailable"
-} as Record<string,string>)[status]??"Delivery status unavailable";
 const auditOutcomeLabel=(outcome:string):string=>({
   Confirmed:"Completed",Denied:"Not permitted",Pending:"Awaiting confirmation"
 } as Record<string,string>)[outcome]??"Outcome unavailable";
-type Pending={kind:"assign"|"revoke"|"status"|"resend";row:CG01AccountView;status?:string};
+type Pending={kind:"assign"|"revoke"|"status";row:CG01AccountView;status?:string};
 async function call(token:string,path:string,method="GET",body?:object):Promise<unknown>{
   let response:Response;
   try{
@@ -39,8 +34,8 @@ async function call(token:string,path:string,method="GET",body?:object):Promise<
   try{return await response.json() as unknown;}
   catch{throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");}
 }
-export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
-  token:string;onExit:()=>void;onExpired:()=>void;inviteOnly?:boolean
+export function AccountsScreen({token,onExit,onExpired,createOnly=false}:{
+  token:string;onExit:()=>void;onExpired:()=>void;createOnly?:boolean
 }){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const listGeneration=useRef(0);
@@ -54,7 +49,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [unknown,setUnknown]=useState(false);
-  const [screen,setScreen]=useState<"list"|"invite"|"detail">(inviteOnly?"invite":"list");
+  const [screen,setScreen]=useState<"list"|"create"|"detail">(createOnly?"create":"list");
   const [selected,setSelected]=useState<CG01AccountView|null>(null);
   const [pending,setPending]=useState<Pending|null>(null);
   const [name,setName]=useState("");
@@ -66,7 +61,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const [roleQuery,setRoleQuery]=useState("");
   const [requestKey,setRequestKey]=useState("");
   const [history,setHistory]=useState<Array<{eventRef:string;occurredAt:string;actionLabel:string;outcome:string}>|null>(null);
-  const canInvite=actions.includes("accounts.invite")&&actions.includes("roles.assign");
+  const canCreate=actions.includes("accounts.create")&&actions.includes("roles.assign");
   const canAssign=actions.includes("roles.assign");
   const canStatus=actions.includes("accounts.status.manage");
   const canAudit=actions.includes("access.audit.view");
@@ -81,14 +76,14 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
     const generation=++listGeneration.current;
     setBusy(true);setMessage("");
     try{
-      if(inviteOnly){
+      if(createOnly){
         // Use only the effective permission contract; never query the private staff list.
         const access=await call(token,"effective") as {actions?:{key:string}[]};
         if(generation!==listGeneration.current)return false;
         if(!access||!Array.isArray(access.actions)||
           !access.actions.every(a=>a&&typeof a.key==="string"))throw new Error("UNAVAILABLE");
         const keys=access.actions.map(a=>a.key);
-        if(!keys.includes("accounts.invite")||!keys.includes("roles.assign"))
+        if(!keys.includes("accounts.create")||!keys.includes("roles.assign"))
           throw new Error("PERMISSION_DENIED");
         setList(null);setActions(keys);return true;
       }
@@ -114,17 +109,17 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       else deny("UNAVAILABLE");
       return false;
     }finally{if(generation===listGeneration.current)setBusy(false);}
-  },[token,deny,inviteOnly]);
+  },[token,deny,createOnly]);
   useEffect(()=>{void load();},[load]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(pending){setPending(null);return true;}
-      if(inviteOnly){onExit();return true;}
+      if(createOnly){onExit();return true;}
       if(screen!=="list"){setScreen("list");return true;}
       onExit();return true;
     });
     return()=>sub.remove();
-  },[pending,screen,onExit,inviteOnly]);
+  },[pending,screen,onExit,createOnly]);
   async function searchRoles(q=""){
     const generation=++optionsGeneration.current;
     setRoleQuery(q);
@@ -140,14 +135,14 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       else setMessage("Eligible roles are unavailable. Try again later.");
     }
   }
-  function beginInvite(){
+  function beginCreate(){
     ++optionsGeneration.current;++historyGeneration.current;
     setName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
-    setPending(null);setScreen("invite");setRequestKey(Crypto.randomUUID());void searchRoles();
+    setPending(null);setScreen("create");setRequestKey(Crypto.randomUUID());void searchRoles();
   }
   useEffect(()=>{
-    if(inviteOnly)beginInvite();
-  },[inviteOnly]);
+    if(createOnly)beginCreate();
+  },[createOnly]);
   function beginDetail(row:CG01AccountView){
     ++optionsGeneration.current;++historyGeneration.current;
     setSelected(row);setRoleRef(row.roleRef??"");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
@@ -156,10 +151,10 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   }
   async function commit(){
     if(busy||unknown)return;
-    const wasInvite=screen==="invite";
+    const wasCreate=screen==="create";
     setBusy(true);setMessage("");
     try{
-      if(screen==="invite"){
+      if(screen==="create"){
         if(!roleRef)throw new Error("SELECT_ROLE");
         await call(token,"accounts","POST",{displayName:name.trim(),email:email.trim().toLowerCase()||undefined,
           mobile:phone.trim(),password:newPassword,roleRef,requestKey});
@@ -169,9 +164,6 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         if(pending.kind==="assign"){
           if(!roleRef)throw new Error("SELECT_ROLE");
           await call(token,root+"/role","PUT",{roleRef,expectedRevision:pending.row.revision,requestKey});
-        }else if(pending.kind==="resend"){
-          await call(token,root+"/invitation/resend","POST",{
-            expectedRevision:pending.row.revision,requestKey});
         }else if(pending.kind==="revoke"){
           await call(token,root+"/role","DELETE",{expectedRevision:pending.row.revision,requestKey});
         }else{
@@ -180,21 +172,21 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         }
         setMessage("Account change confirmed.");
       }
-      setPending(null);setScreen(inviteOnly?"invite":"list");setRequestKey("");
-      if(inviteOnly&&wasInvite){
-        setName("");setEmail("");setPhone("");setRoleRef("");
+      setPending(null);setScreen(createOnly?"create":"list");setRequestKey("");
+      if(createOnly&&wasCreate){
+         setName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
         setRequestKey(Crypto.randomUUID());
       }
       const verified=await load(search,0,filter);
-      if(verified)setMessage(wasInvite?
+      if(verified)setMessage(wasCreate?
         "Staff account created and active.":
         "Change saved. The latest account state is shown above.");
     }catch(e){
       const reason=e instanceof Error?e.message:"UNAVAILABLE";
       if(reason==="SESSION_EXPIRED"||reason==="PERMISSION_DENIED")deny(reason);
       else if(reason==="UNKNOWN"){
-        setUnknown(true);setMessage(inviteOnly&&wasInvite?
-          "The invitation result is uncertain. Contact Foundation support to verify it before another attempt.":
+        setUnknown(true);setMessage(createOnly&&wasCreate?
+          "The account creation result is uncertain. Refresh or contact support before retrying.":
           "The result could not be confirmed. Refresh the account status before retrying.");
       }else if(reason==="CONFLICT")setMessage("The account changed elsewhere. Refresh before saving.");
       else if(reason==="SELECT_ROLE")setMessage("Choose an eligible role.");
@@ -220,40 +212,40 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
   const row=selected;
   const s=list?.summary;
   const numbers=[
-    ["Total Accounts",s?.total],["Active",s?.active],["Invited",s?.invited],
+    ["Total Accounts",s?.total],["Active",s?.active],["Created",s?.created],
     ["Suspended",s?.suspended],["Deactivated",s?.deactivated],["Assigned Roles",s?.assigned]
   ] as const;
   return <SafeAreaView style={styles.page}><KeyboardAvoidingView style={styles.page}
     behavior={Platform.OS==="ios"?"padding":undefined}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <View style={styles.line}><Pressable accessibilityRole="button" style={styles.button}
-        onPress={()=>{if(pending)setPending(null);else if(inviteOnly)onExit();else if(screen!=="list")setScreen("list");else onExit();}}>
-        <Text style={styles.buttonText}>{inviteOnly?"My account":screen==="list"?"My account":"Back"}</Text>
+        onPress={()=>{if(pending)setPending(null);else if(createOnly)onExit();else if(screen!=="list")setScreen("list");else onExit();}}>
+        <Text style={styles.buttonText}>{createOnly?"My account":screen==="list"?"My account":"Back"}</Text>
       </Pressable><Text accessibilityRole="header" style={styles.title}>Users Management</Text></View>
-      {screen==="list"&&!inviteOnly&&<>
+      {screen==="list"&&!createOnly&&<>
         <Text>Foundation staff and current access</Text>
         {busy&&<Text accessibilityRole="text" accessibilityLiveRegion="polite"
-          style={styles.note}>Refreshing verified staff accounts…</Text>}
+          style={styles.note}>Refreshing staff accounts…</Text>}
         <View style={styles.stats}>{numbers.map(([label,value])=><View key={label} style={styles.stat}>
           <Text style={styles.statLabel}>{label}</Text>
           <Text style={styles.statValue}>{value??"—"}</Text>
         </View>)}</View>
-        <TextInput style={styles.input} accessibilityLabel="Search staff by name or email"
-          value={search} onChangeText={setSearch} placeholder="Search name or email"/>
+        <TextInput style={styles.input} accessibilityLabel="Search staff by name, mobile or email"
+          value={search} onChangeText={setSearch} placeholder="Search name, mobile or email"/>
         <Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>void load(search,0,filter)}><Text style={styles.buttonText}>Search</Text></Pressable>
-        <View style={styles.line}>{(["all","ACTIVE","INVITED","SUSPENDED","DEACTIVATED"] as const).map(status=>
+        <View style={styles.line}>{(["all","ACTIVE","SUSPENDED","DEACTIVATED"] as const).map(status=>
           <Pressable key={status} accessibilityRole="button"
             accessibilityState={{selected:filter===status}}
             style={[styles.smallButton,filter===status&&styles.activeButton]}
             onPress={()=>void load(search,0,status)}>
             <Text style={filter===status?styles.activeText:styles.buttonText}>
               {status==="all"?"All":status==="DEACTIVATED"?"Deactivated":
-                status==="SUSPENDED"?"Suspended":status==="INVITED"?"Invited":"Active"}
+                status==="SUSPENDED"?"Suspended":status===?"Created":"Active"}
             </Text>
           </Pressable>)}</View>
-        {canInvite&&<Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-          onPress={beginInvite}><Text style={styles.primaryText}>Add staff</Text></Pressable>}
+        {canCreate&&<Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
+          onPress={beginCreate}><Text style={styles.primaryText}>Add staff</Text></Pressable>}
         {list&&!list.accounts.length&&<Text>No matching staff accounts.</Text>}
         {list?.accounts.map(account=><Pressable key={account.accountRef}
           accessibilityRole="button" style={styles.card} onPress={()=>beginDetail(account)}>
@@ -280,7 +272,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
           {!history.length&&<Text>No accessible security history.</Text>}
         </View>}
       </>}
-      {screen==="invite"&&<View style={styles.card}>
+      {screen==="create"&&<View style={styles.card}>
         <Text style={styles.heading}>Add New Staff Account</Text>
         <Text style={styles.label}>Full name</Text>
         <TextInput accessibilityLabel="Full name" style={styles.input} maxLength={160}
@@ -311,7 +303,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
           accessibilityState={{checked:roleRef===role.value}} onPress={()=>setRoleRef(role.value)}>
           <Text>{role.label}{roleRef===role.value?" — selected":""}</Text>
         </Pressable>)}
-        <Text style={styles.note}>The user can sign in immediately. No OTP or authenticator is required.</Text>
+        <Text style={styles.note}>The user can sign in immediately. Account is active immediately.</Text>
         <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
           disabled={!name.trim()||!roleRef||busy||unknown||phone.length!==10||newPassword.length<8}
           onPress={()=>void commit()}><Text style={styles.primaryText}>{busy?"Saving…":"Create Staff Account"}</Text></Pressable>
@@ -319,11 +311,10 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
       {screen==="detail"&&row&&<View style={styles.card}>
         <Text style={styles.heading}>{row.displayName}</Text>
         <Text>{row.email??row.phone??"Mobile login"}</Text>
-        {row.phone&&<Text>Phone (unverified): {row.phone}</Text>}
+        {row.phone&&<Text>Mobile: {row.phone}</Text>}
         <Text>Account status: {accountStatusLabel(row.status)}</Text>
         <Text>Current role: {row.roleName??"Not assigned"}</Text>
         <Text>Applies to: Entire foundation</Text>
-        <Text>Invitation delivery: {deliveryLabel(row.deliveryStatus)}</Text>
         {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>void showAudit(row.accountRef)}><Text>View account access history</Text></Pressable>}
         {history&&<View style={styles.group}>
@@ -335,10 +326,6 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
           {!history.length&&<Text>No account access events found.</Text>}
         </View>}
         {row.roleProtected?<Text>Protected administrator. This account cannot be changed here.</Text>:<>
-          {row.status==="INVITED"&&canInvite&&!pending&&<Pressable accessibilityRole="button"
-            style={styles.button} onPress={()=>{
-              setRequestKey(Crypto.randomUUID());setPending({kind:"resend",row});
-            }}><Text>Resend invitation</Text></Pressable>}
           {canAssign&&!pending&&<>
             <Text style={styles.label}>Search eligible roles</Text>
             <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
@@ -361,7 +348,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
               <Text>Revoke current role</Text>
             </Pressable>}
           </>}
-          {canStatus&&row.status!=="INVITED"&&row.status!=="DEACTIVATED"&&!pending&&
+          {canStatus&&row.status!==&&row.status!=="DEACTIVATED"&&!pending&&
             <View style={styles.group}>
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"status",row,
@@ -376,7 +363,7 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         </>}
         {pending&&<View style={styles.group}>
           <Text style={styles.heading}>Confirm account change</Text>
-          <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":pending.kind==="resend"?"Resend invitation":
+          <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":
             "Change status to "+accountStatusLabel(pending.status??"")} for {row.displayName}?</Text>
           <Text style={styles.note}>A change to access invalidates existing sessions.</Text>
           <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
@@ -388,9 +375,9 @@ export function AccountsScreen({token,onExit,onExpired,inviteOnly=false}:{
         </View>}
       </View>}
       {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
-      {unknown&&(inviteOnly?
+      {unknown&&(createOnly?
         <Text accessibilityRole="alert" style={styles.notice}>
-          The invitation may already exist. Contact Foundation support to verify it before starting a new invitation.
+          The account may already exist. Refresh the account directory before retrying.
         </Text>:
         <Pressable accessibilityRole="button" style={styles.button} onPress={()=>{
           setUnknown(false);setPending(null);setScreen("list");void load(search,0,filter);
