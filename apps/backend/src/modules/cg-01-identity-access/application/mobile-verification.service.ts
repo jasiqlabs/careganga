@@ -22,6 +22,15 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export class MobileVerificationService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService){}
+  private available(){
+    const sid=process.env.CG01_VERIFY_TWILIO_ACCOUNT_SID?.trim()??"";
+    const token=process.env.CG01_VERIFY_TWILIO_AUTH_TOKEN?.trim()??"";
+    const verify=process.env.CG01_VERIFY_TWILIO_SERVICE_SID?.trim()??"";
+    const hmac=process.env.CG01_MOBILE_PROOF_HMAC_KEY??"";
+    return process.env.CG01_PHONE_VERIFICATION_ENABLED==="1"&&
+      /^AC[a-f0-9]{32}$/i.test(sid)&&token.length>=20&&
+      /^VA[a-f0-9]{32}$/i.test(verify)&&hmac.length>=32;
+  }
   private config(){
     const sid=process.env.CG01_VERIFY_TWILIO_ACCOUNT_SID?.trim()??"";
     const token=process.env.CG01_VERIFY_TWILIO_AUTH_TOKEN?.trim()??"";
@@ -54,8 +63,7 @@ export class MobileVerificationService{
     return {hasNumber:!!row.contact_phone,verified,
       maskedContact:row.contact_phone?"••••"+row.contact_phone.slice(-4):null,
       verifiedAt:row.contact_phone_verified_at?.toISOString()??null,
-      channel:"SMS",providerConfigured:
-        process.env.CG01_PHONE_VERIFICATION_ENABLED==="1"};
+      channel:"SMS",providerConfigured:this.available()};
   }
   private async provider(path:string,body:URLSearchParams){
     const cfg=this.config();
@@ -106,7 +114,13 @@ export class MobileVerificationService{
         return {status:"PREVIOUS_REQUEST_PENDING",
           message:"Check your original code before requesting another"};
       }
-      if(prev&&prev.attempts>=5&&now-prev.requested_at.getTime()<86400_000)
+      const daily=await client.query<{count:string}>(`
+        SELECT count(*)::text AS count FROM cg01_mobile_verification_event
+        WHERE realm_id=$1 AND account_id=$2 AND action='REQUESTED'
+          AND occurred_at>now()-interval '24 hours'
+      `,[actor.realmId,actor.accountId]);
+      if(Number(daily.rows[0]?.count??0)>=8||
+        (prev&&prev.attempts>=5&&now-prev.requested_at.getTime()<86400_000))
         throw new HttpException("Too many mobile proof attempts",429);
       const fingerprint=this.fingerprint(person.contact_phone,cfg.hmac);
       await client.query(`
