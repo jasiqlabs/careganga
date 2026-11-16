@@ -148,7 +148,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
         initiated.uploadHeaders["Content-Type"]!==picked.mime)throw Error("UNCERTAIN");
       const task=nativeFile.createUploadTask(initiated.uploadUrl,{
         httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,mimeType:picked.mime,
-        headers:{"Content-Type":picked.mime},
+        headers:initiated.uploadHeaders,
         sessionType:"foreground"
       });
       const uploaded=await task.uploadAsync();
