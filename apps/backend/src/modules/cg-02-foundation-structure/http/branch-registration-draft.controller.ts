@@ -7,6 +7,14 @@ import {BranchRegistrationDraftService} from "../application/branch-registration
 @Controller("api/foundation-structure/branches")
 export class BranchRegistrationDraftController{
   constructor(private readonly drafts:BranchRegistrationDraftService){}
+  @Get("managers/options")
+  managers(@Headers("authorization")bearer:string,@Query("search")search?:string){
+    return this.drafts.managerOptions(bearer,search??"");
+  }
+  @Get("department-options")
+  departments(@Headers("authorization")bearer:string){
+    return this.drafts.departmentOptions(bearer);
+  }
   @Get("drafts")
   list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
     if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
