@@ -14,7 +14,7 @@ export type CommittedDecisionEvent=Readonly<{
 @Injectable()
 export class CommittedDecisionSource{
   constructor(@Inject(DATABASE)private readonly db:Pool){}
-  async after(client:PoolClient,realm:string,at:Date,id:string,limit=25):
+  async after(client:PoolClient,realm:string,at:string,id:string,limit=25):
     Promise<CommittedDecisionEvent[]>{
     const result=await client.query<{
       id:string;realm_id:string;case_id:string;proposer_id:string;
