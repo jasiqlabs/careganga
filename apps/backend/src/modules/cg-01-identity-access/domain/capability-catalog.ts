@@ -27,6 +27,10 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"foundation.departments.view",businessLabel:"View departments and committees",group:"Foundation structure",assignable:true,sensitive:false},
   {key:"foundation.departments.manage",businessLabel:"Manage departments and committees",group:"Foundation structure",assignable:true,sensitive:true},
   {key:"foundation.departments.assign",businessLabel:"Assign Foundation officeholders",group:"Foundation structure",assignable:true,sensitive:true},
+  // CG-02 US-002 branch drafts: current actor scope is always checked by CG-02.
+  {key:"foundation.branches.view",businessLabel:"View permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:false},
+  {key:"foundation.branches.manage",businessLabel:"Create and edit permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.branches.admin",businessLabel:"Administrate all Foundation branch drafts",group:"Foundation structure",assignable:false,sensitive:true},
   // CG-21 is owner-installed; these capabilities are never user-assignable without a later approved process.
   {key:"platform.settings.view",businessLabel:"View platform settings",group:"Platform settings",assignable:false,sensitive:true},
   {key:"platform.settings.manage",businessLabel:"Manage platform settings",group:"Platform settings",assignable:false,sensitive:true},
