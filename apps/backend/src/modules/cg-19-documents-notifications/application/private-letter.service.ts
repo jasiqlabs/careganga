@@ -74,13 +74,13 @@ export class PrivateLetterService{
       status:row.status}:{configured:false,version:0,status:"NOT_CONFIGURED"};
   }
   async approveTemplate(bearer:string,raw:unknown){
-    const input=fields(raw,["title","body","expectedVersion","requestKey","totp"]);
+    const input=fields(raw,["title","body","expectedVersion","requestKey","currentPassword"]);
     const title=safeTemplate(input.title,10,100);
     const body=safeTemplate(input.body,20,1200);
     if(!Number.isSafeInteger(input.expectedVersion)||Number(input.expectedVersion)<0||
-      !isUuid(input.requestKey)||typeof input.totp!=="string"||
-      !/^[0-9]{6}$/.test(input.totp))
-      throw new BadRequestException("Check letter template revision and authenticator");
+      !isUuid(input.requestKey)||typeof input.currentPassword!=="string"||
+      (input.currentPassword.length<8||Buffer.byteLength(input.currentPassword,"utf8")>1024))
+      throw new BadRequestException("Check letter template revision and current password");
     const expected=Number(input.expectedVersion),key=input.requestKey;
     const actor=await this.actor(bearer);
     const digest=sha(["TEMPLATE_APPROVE",title,body,expected]);
@@ -104,7 +104,7 @@ export class PrivateLetterService{
         await client.query("COMMIT");open=false;
         return {status:"REPLAY_CONFIRMED",version:replay.rows[0].version};
       }
-      await this.sessions.requireFreshFoundationRootProof(client,actor,input.totp);
+      await this.sessions.requireFreshFoundationRootProof(client,actor,input.currentPassword);
       const prev=await client.query<Template>(`
         SELECT id,version,title,body,content_sha256,status
         FROM cg19_document_template
@@ -166,10 +166,10 @@ export class PrivateLetterService{
     return {letters:rows.rows.map(publicStatus),caseNumber:source.caseNumber};
   }
   async issue(bearer:string,raw:unknown){
-    const data=fields(raw,["caseRef","sourceRevision","requestKey","totp"]);
+    const data=fields(raw,["caseRef","sourceRevision","requestKey","currentPassword"]);
     if(!isUuid(data.caseRef)||!isUuid(data.requestKey)||
       !Number.isSafeInteger(data.sourceRevision)||Number(data.sourceRevision)<1||
-      typeof data.totp!=="string"||!/^[0-9]{6}$/.test(data.totp))
+      typeof data.currentPassword!=="string"||(data.currentPassword.length<8||Buffer.byteLength(data.currentPassword,"utf8")>1024))
       throw new BadRequestException("Check the private letter request");
     const actor=await this.actor(bearer);
     const source=await this.authorizedCase(bearer,data.caseRef,Number(data.sourceRevision));
@@ -210,7 +210,7 @@ export class PrivateLetterService{
       const template=current.rows[0];
       const requestDigest=sha(["LETTER_ISSUE",data.caseRef,source.proposalRevision,
         template.id,template.version]);
-      await this.sessions.requireFreshFoundationRootProof(client,actor,data.totp);
+      await this.sessions.requireFreshFoundationRootProof(client,actor,data.currentPassword);
       const active=await client.query(`
         SELECT 1 FROM cg19_generated_document
         WHERE realm_id=$1 AND case_id=$2 AND proposal_revision=$3
@@ -355,9 +355,9 @@ export class PrivateLetterService{
     }
   }
   async revoke(bearer:string,ref:string,raw:unknown){
-    const body=fields(raw,["totp"]);
-    if(!isUuid(ref)||typeof body.totp!=="string"||
-      !/^[0-9]{6}$/.test(body.totp))
+    const body=fields(raw,["currentPassword"]);
+    if(!isUuid(ref)||typeof body.currentPassword!=="string"||
+      (body.currentPassword.length<8||Buffer.byteLength(body.currentPassword,"utf8")>1024))
       throw new BadRequestException("Check letter revocation");
     const actor=await this.actor(bearer,"documents.letters.revoke");
     await this.sessions.limitFoundationRootProof(actor);
@@ -381,7 +381,7 @@ export class PrivateLetterService{
       }
       if(row.state!=="ISSUED")throw new ConflictException(
         "Only a confirmed issued letter can be revoked");
-      await this.sessions.requireFreshFoundationRootProof(client,actor,body.totp);
+      await this.sessions.requireFreshFoundationRootProof(client,actor,body.currentPassword);
       const updated=await client.query<Letter>(`
         UPDATE cg19_generated_document SET state='REVOKED',revoked_at=now()
         WHERE id=$1 AND realm_id=$2 AND state='ISSUED' RETURNING *
