@@ -174,7 +174,24 @@ export class BranchApprovalService{
  async decide(bearer:string,caseRef:string,input:unknown){
    const body=decisionInput(input);
    const actor=await this.sessions.requireAction(bearer,"approvals.review");
-   // Keep the CG-01 single-use fresh-MFA lock before the CG-03 case row lock.
+   // Safe same-actor replay is resolved before consuming another one-use MFA proof.
+   // Current root permission remains mandatory even on a previous request.
+   const replayDigest=sha([body.action,body.remarks,body.expectedRevision]);
+   const oldDecision=await this.db.query<{actor_id:string;request_digest:string;
+       accepted_case_revision:number}>(`
+     SELECT d.actor_id,d.request_digest,d.accepted_case_revision
+     FROM cg03_case_decision d JOIN cg03_case c ON c.id=d.case_id AND c.realm_id=d.realm_id
+     WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='BRANCH_REGISTRATION'
+       AND d.request_key=$3
+   `,[reference(caseRef),actor.realmId,body.requestKey]);
+   if(oldDecision.rows[0]){
+     if(oldDecision.rows[0].actor_id!==actor.accountId||
+       oldDecision.rows[0].request_digest!==replayDigest)
+       throw new ConflictException("A different decision already uses this request");
+     return {status:"PREVIOUSLY_CONFIRMED",caseRef,
+       revision:oldDecision.rows[0].accepted_case_revision};
+   }
+   // Keep CG-01 single-use fresh-MFA lock before CG-03 case row lock.
    await this.sessions.limitFoundationRootProof(actor);
    const client=await this.db.connect();let tx=false;
    try{
