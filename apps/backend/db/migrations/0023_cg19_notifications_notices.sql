@@ -39,6 +39,9 @@ CREATE TABLE cg19_notice (
   body text NOT NULL CHECK(length(body) BETWEEN 10 AND 480),
   priority text NOT NULL CHECK(priority IN ('NORMAL','IMPORTANT')),
   purpose text NOT NULL CHECK(purpose IN ('TRANSACTIONAL','PROMOTIONAL')),
+  channels text[] NOT NULL CHECK(array_length(channels,1) BETWEEN 1 AND 3
+    AND channels <@ ARRAY['IN_APP','EMAIL','SMS']::text[]
+    AND 'IN_APP'=ANY(channels)),
   audience_kind text NOT NULL CHECK(audience_kind IN ('ALL_ACTIVE','ROLE','INDIVIDUAL')),
   audience_ref uuid,
   audience_digest char(64) NOT NULL CHECK(audience_digest ~ '^[a-f0-9]{64}$'),
@@ -214,6 +217,7 @@ BEGIN
     NEW.title IS DISTINCT FROM OLD.title OR NEW.body IS DISTINCT FROM OLD.body OR
     NEW.priority IS DISTINCT FROM OLD.priority OR
     NEW.purpose IS DISTINCT FROM OLD.purpose OR
+    NEW.channels IS DISTINCT FROM OLD.channels OR
     NEW.audience_kind IS DISTINCT FROM OLD.audience_kind OR
     NEW.audience_ref IS DISTINCT FROM OLD.audience_ref OR
     NEW.audience_digest IS DISTINCT FROM OLD.audience_digest OR
