@@ -36,46 +36,62 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     window.addEventListener("keydown",onKey);
     return()=>window.removeEventListener("keydown",onKey);
   },[]);
-  const [foundationAccess,setFoundationAccess]=useState(canViewFoundation);
-  const [branchAccess,setBranchAccess]=useState(canViewBranches);
-  // One authenticated current-rights refresh per navigation mount. No polling or client-only authority.
+  const [currentActions,setCurrentActions]=useState<Set<string>|null>(null);
+  // Every protected menu is revalidated from the same current CG-01
+  // effective-access source. A failed refresh hides all restricted links.
   useEffect(()=>{
     let live=true;
     void fetch("/api/access/effective",{cache:"no-store"})
       .then(async response=>{
         if(!response.ok)throw new Error("Access unavailable");
         return response.json() as Promise<unknown>;
-      })
-      .then(result=>{
+      }).then(result=>{
         if(!live)return;
-        const allowed=Boolean(result&&typeof result==="object"&&"actions" in result
-          &&Array.isArray(result.actions)&&result.actions.some((x:unknown)=>
-            Boolean(x)&&typeof x==="object"&&"key" in x&&
-              ["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(String(x.key))));
-        setFoundationAccess(allowed);
-        const canBranches=Boolean(result&&typeof result==="object"&&"actions" in result&&
-          Array.isArray(result.actions)&&result.actions.some((x:unknown)=>
-            Boolean(x)&&typeof x==="object"&&"key" in x&&String(x.key)==="foundation.branches.view"));
-        setBranchAccess(canBranches);
-      })
-      .catch(()=>{if(live){setFoundationAccess(false);setBranchAccess(false);}});
+        if(!result||typeof result!=="object"||!("actions" in result)||
+           !Array.isArray(result.actions))throw new Error("Access incomplete");
+        setCurrentActions(new Set(result.actions.flatMap((item:unknown)=>
+          item&&typeof item==="object"&&"key" in item&&
+          typeof item.key==="string"?[item.key]:[])));
+      }).catch(()=>{if(live)setCurrentActions(new Set());});
     return()=>{live=false;};
   },[]);
+  const allowed=(key:string,initial:boolean)=>currentActions?
+    currentActions.has(key):initial;
+  const foundationAccess=currentActions?
+    ["foundation.profile.view","foundation.geography.view","foundation.departments.view"]
+      .some(key=>currentActions.has(key)):canViewFoundation;
+  const branchAccess=allowed("foundation.branches.view",canViewBranches);
+  const accountsAccess=allowed("accounts.view",canViewAccounts);
+  const rolesAccess=allowed("roles.view",canViewRoles);
+  const policyAccess=allowed("identity.security-policy.manage",canManageSecurityPolicy);
+  const settingsAccess=allowed("platform.settings.view",canViewSettings);
+  const auditAccess=allowed("platform.audit.view",canViewAudit);
+  const recoveryAccess=allowed("platform.recovery.view",canViewRecovery);
+  const approvalAccess=currentActions?
+    ["approvals.view","approvals.propose"].some(key=>currentActions.has(key)):canViewApprovals;
+  const documentAccess=currentActions?
+    ["documents.files.view","documents.files.manage"].some(key=>currentActions.has(key))&&approvalAccess:
+    canViewDocuments;
+  const communicationAccess=currentActions?
+    ["communications.notifications.view","communications.notices.manage",
+      "communications.delivery.view"].some(key=>currentActions.has(key)):canViewCommunications;
+  const supportAccess=currentActions?
+    ["support.cases.view","support.faq.manage"].some(key=>currentActions.has(key)):canViewSupport;
 
   const links=[
     {key:"account" as const,label:"My account",href:"/admin"},
-    ...(canViewAccounts?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
-    ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
+    ...(accountsAccess?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
+    ...(rolesAccess?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
     ...(foundationAccess?[{key:"foundation" as const,label:"Foundation Structure",href:"/admin/foundation"}]:[]),
     ...(branchAccess?[{key:"branches" as const,label:"Branches & registration",href:"/admin/foundation/branches"}]:[]),
-    ...(canManageSecurityPolicy?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
-    ...(canViewSettings?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
-    ...(canViewAudit?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
-    ...(canViewRecovery?[{key:"recovery" as const,label:"Backup & Restore",href:"/admin/backup-recovery"}]:[]),
-    ...(canViewApprovals?[{key:"approvals" as const,label:"Registration & Approval",href:"/admin/approvals"}]:[]),
-    ...(canViewDocuments?[{key:"documents" as const,label:"Private Case Documents",href:"/admin/documents"}]:[]),
-    ...(canViewCommunications?[{key:"communications" as const,label:"Notices & Notifications",href:"/admin/communications"}]:[]),
-    ...(canViewSupport?[{key:"support" as const,label:"Contact Messages & Help",href:"/admin/support"}]:[])
+    ...(policyAccess?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
+    ...(settingsAccess?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
+    ...(auditAccess?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
+    ...(recoveryAccess?[{key:"recovery" as const,label:"Backup & Restore",href:"/admin/backup-recovery"}]:[]),
+    ...(approvalAccess?[{key:"approvals" as const,label:"Registration & Approval",href:"/admin/approvals"}]:[]),
+    ...(documentAccess?[{key:"documents" as const,label:"Private Case Documents",href:"/admin/documents"}]:[]),
+    ...(communicationAccess?[{key:"communications" as const,label:"Notices & Notifications",href:"/admin/communications"}]:[]),
+    ...(supportAccess?[{key:"support" as const,label:"Contact Messages & Help",href:"/admin/support"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
   const titles:Record<FoundationAdminNavProps["active"],string>={
     account:"Foundation Dashboard",roles:"Roles & Permissions",
@@ -93,14 +109,24 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
         onChange={event=>setQuery(event.target.value)}
         placeholder="Search menu..." autoComplete="off"/>
     </div>
-    <p className="sidebar-section">FOUNDATION ACCESS</p>
     <div className="sidebar-links">
-      {links.map(item=><Link key={item.key} href={item.href}
-        aria-current={active===item.key?"page":undefined}
-        className={"sidebar-link"+(active===item.key?" selected":"")}>
-        {item.label}
-      </Link>)}
-      {links.length===0&&<p className="sidebar-empty">No matching menu item.</p>}
+      {([
+        {name:"DASHBOARD",keys:["account"]},
+        {name:"USER & ACCESS MANAGEMENT",keys:["accounts","roles","approvals","policy"]},
+        {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation"]},
+        {name:"PLATFORM & COMMUNICATIONS",
+          keys:["documents","communications","support","settings","audit","recovery"]}
+      ] as const).map(group=>{
+        const permitted=links.filter(item=>(group.keys as readonly string[]).includes(item.key));
+        return permitted.length?<div key={group.name} className="sidebar-group">
+          <p className="sidebar-section">{group.name}</p>
+          {permitted.map(item=><Link key={item.key} href={item.href}
+            aria-current={active===item.key?"page":undefined}
+            className={"sidebar-link"+(active===item.key?" selected":"")}>
+            {item.label}</Link>)}
+        </div>:null;
+      })}
+      {links.length===0&&<p className="sidebar-empty">No matching permitted menu item.</p>}
     </div>
     <div className="sidebar-user">
       <strong>{displayName}</strong>
@@ -121,7 +147,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
             autoComplete="off"/>
             <kbd aria-hidden="true">Ctrl K</kbd>
         </label>
-        {canViewCommunications&&<Link className="admin-topbar-link"
+        {communicationAccess&&<Link className="admin-topbar-link"
           href="/admin/communications">Notifications</Link>}
         <Link className="admin-topbar-link" href="/">View Site</Link>
         <Link className="admin-topbar-link" href="/contact">Help</Link>
