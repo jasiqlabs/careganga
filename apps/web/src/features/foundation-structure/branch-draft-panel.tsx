@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useState} from "react";
 import Link from "next/link";
 import {BranchEvidenceUploader} from "./branch-evidence-uploader";
+import {BranchApprovalInbox} from "./branch-approval-inbox";
 
 type Draft={recordRef:string;branchName:string;branchType:string;status:string;
   currentStep:number;version:number;updatedAt:string};
@@ -9,6 +10,10 @@ type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:strin
 type Option={value:string;label:string;kind?:string};
 type Area={areaRef:string;name:string;level:string;status:string};
 type Pending={action:"BRANCH_DRAFT_CREATE"|"BRANCH_DRAFT_SAVE";requestKey:string};
+type RegistrationStatus={status:string;branch:{branchCode:string;status:string}|null;
+  submissions:{revision:number;status:string;caseRef:string|null}[];
+  approval:{reference:string;status:string;revision:number;
+    history:{action:string;remarks:string;at:string}[]}|null;message?:string};
 const steps=[
   "Branch details","Location & address","Registration documents",
   "Agreement & photos","Branch manager","Foundation departments","Review draft"
@@ -30,7 +35,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
 const fresh=()=>crypto.randomUUID();
 function string(value:unknown){return typeof value==="string"?value:"";}
 function ids(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==="string"):[];}
-export function BranchDraftPanel({canManage}:{canManage:boolean}){
+export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canReview:boolean}){
   const [drafts,setDrafts]=useState<Draft[]>([]);
   const [nextOffset,setNextOffset]=useState<number|null>(null);
   const [selected,setSelected]=useState<Detail|null>(null);
@@ -46,6 +51,8 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
   const [documentPhotos,setDocumentPhotos]=useState<string[]>([]);
   const [submissionNotice,setSubmissionNotice]=useState("");
   const [submissionBusy,setSubmissionBusy]=useState(false);
+  const [submitKey,setSubmitKey]=useState("");
+  const [registrationStatus,setRegistrationStatus]=useState<RegistrationStatus|null>(null);
   const [areaRef,setAreaRef]=useState("");
   const [address,setAddress]=useState("");
   const [pin,setPin]=useState("");
@@ -101,10 +108,18 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
     setManager(string(s5.managerRef));setDepartments(ids(s6.departmentRefs));
     setAck(s7.reviewAcknowledged===true);
   }
+  async function loadStatus(ref:string){
+    const state=await api<RegistrationStatus>(
+      "/branch-workflow/registrations/"+encodeURIComponent(ref)+"/status");
+    setRegistrationStatus(state);
+  }
   async function open(ref:string){
     setError("");setMessage("");setBusy(true);
-    try{hydrate(await api<Detail>("/branches/drafts/"+encodeURIComponent(ref)));}
-    catch(e){setSelected(null);setError(e instanceof Error?e.message:"Draft cannot be verified.");}
+    try{
+      hydrate(await api<Detail>("/branches/drafts/"+encodeURIComponent(ref)));
+      await loadStatus(ref);
+    }
+    catch(e){setSelected(null);setRegistrationStatus(null);setError(e instanceof Error?e.message:"Draft cannot be verified.");}
     finally{setBusy(false);}
   }
   function currentStage():Record<string,unknown>{
@@ -154,6 +169,22 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
     }
     finally{setBusy(false);}
   }
+  async function submit(){
+    if(!selected||!canManage||submissionBusy||pending)return;
+    const key=submitKey||fresh();setSubmitKey(key);
+    setSubmissionBusy(true);setError("");setSubmissionNotice("");
+    try{
+      const outcome=await api<{status:string;message?:string}>(
+        "/branch-workflow/registrations/"+encodeURIComponent(selected.recordRef)+"/submit",
+        "POST",{requestKey:key,expectedVersion:selected.version});
+      setSubmissionNotice(outcome.message??"The original submission state needs confirmation.");
+      if(outcome.status!=="SUBMISSION_UNCONFIRMED")setSubmitKey("");
+      await loadStatus(selected.recordRef);
+      await load();
+    }catch(e){setError(e instanceof Error?e.message:"Submission is unconfirmed.");
+      // Preserve the exact original key across retry or unknown commit.
+    }finally{setSubmissionBusy(false);}
+  }
   async function confirmPending(){
     if(!pending)return;
     setBusy(true);setError("");
@@ -169,14 +200,13 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
     }catch{setError("The original save cannot be checked. Try checking this same request again.");}
     finally{setBusy(false);}
   }
-  const missingEvidence=(selected?.stages?.["3"] as Record<string,unknown>|undefined)?.evidenceStatus
-    !=="CLEAN_VERIFIED";
+  const hasAttachedEvidence=registrationFiles.length>0&&agreementFiles.length>0;
   return <section className="role-workspace branch-workspace">
     <header className="topbar"><div><h1>Branches & registration</h1>
-      <p>Source-backed seven-stage drafts. U18–U20 Foundation administration.</p></div>
+      <p>Seven-stage Foundation registration, protected evidence and Super Admin decisions.</p></div>
       <Link href="/admin/foundation">Foundation overview</Link>
     </header>
-    <div className="toolbar"><span className="account-status">Drafts only — approval not active</span>
+    <div className="toolbar"><span className="account-status">Genuine verified approvals required for activation</span>
       {canManage&&<button type="button" className="primary" disabled={busy||!!pending}
         onClick={()=>{setSelected(null);setCreateOpen(true);setError("");setMessage("");}}>New branch draft</button>}
     </div>
@@ -279,18 +309,26 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
               {departmentOptions.length===0&&<p>No active Foundation departments verified.</p>}
             </fieldset>}
             {step===7&&<>
-              <p>Review the saved branch details. Submit and Super Admin approval will be enabled
-                only when genuine CG19 evidence and CG03 branch-process integration are connected.</p>
+              <p>Review all seven saved stages and your genuine private evidence.
+                Submission creates a frozen record and a distinct Super Admin approval case.
+                The branch becomes active only after the approved owner transition is verified.</p>
               <label className="field"><input type="checkbox" checked={ack}
                 onChange={e=>setAck(e.target.checked)}/> I have reviewed the draft</label>
-              {missingEvidence&&<p className="notice">Required document evidence is not verified.</p>}
+              {!hasAttachedEvidence&&<p className="notice">Registration proof and signed agreement
+                must be uploaded, confirmed clean and saved in their original stages.</p>}
             </>}
             <div className="toolbar">
               <button type="button" disabled={step<=1||busy} onClick={()=>setStep(x=>x-1)}>Previous</button>
               <button type="button" disabled={step>=7||step>=selected.currentStep+1||busy}
                 onClick={()=>setStep(x=>x+1)}>Next step</button>
               {canManage&&<button type="button" className="primary"
-                disabled={busy||!!pending} onClick={()=>void save()}>Save draft</button>}
+                disabled={busy||!!pending||submissionBusy} onClick={()=>void save()}>Save draft</button>}
+              {step===7&&canManage&&["DRAFT","RETURNED"].includes(selected.status)&&
+                <button type="button" className="primary" disabled={busy||!!pending||submissionBusy||
+                  selected.stages?.["7"]?.reviewAcknowledged!==true||!hasAttachedEvidence}
+                  onClick={()=>void submit()}>Submit for Super Admin approval</button>}
+              {submitKey&&<button type="button" disabled={submissionBusy||busy}
+                onClick={()=>void submit()}>Retry/check original submission</button>}
             </div>
           </div>}
           {!createOpen&&!selected&&<div className="role-empty">Select a permitted branch draft,
@@ -298,13 +336,27 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
         </div>
         <aside className="role-pane"><h2>Registration status</h2>
           <p>Seven stages: branch, location, documents, agreement, manager, departments and review.</p>
+          {!!submissionNotice&&<p className="notice" role="status">{submissionNotice}</p>}
           <dl className="audit-detail">
-            <dt>Source</dt><dd>CG02 Foundation structure</dd>
-            <dt>Evidence</dt><dd>Not verified until CG19 integration</dd>
-            <dt>Approval</dt><dd>No CG03 branch decision yet</dd>
-            <dt>Activation</dt><dd>No branch code issued</dd>
+            <dt>Registration</dt><dd>{registrationStatus?.status.replaceAll("_"," ")??"Select a draft"}</dd>
+            <dt>Evidence</dt><dd>Original private files verified at submission and activation</dd>
+            <dt>Approval</dt><dd>{registrationStatus?.approval?
+              registrationStatus.approval.reference+" · "+
+                registrationStatus.approval.status.replaceAll("_"," "):
+              "Not yet confirmed"}</dd>
+            <dt>Activation</dt><dd>{registrationStatus?.branch?
+              registrationStatus.branch.branchCode+" · "+
+              registrationStatus.branch.status.replaceAll("_"," "):"No branch code issued"}</dd>
           </dl>
+          {selected&&<button type="button" disabled={busy||submissionBusy}
+            onClick={()=>void loadStatus(selected.recordRef).catch(
+              ()=>setError("The real registration status is currently unavailable."))}>
+            Refresh original status</button>}
+          {registrationStatus?.approval&&<ol>{registrationStatus.approval.history.map((event,i)=>
+            <li key={i}>{event.action.replaceAll("_"," ")}
+              {event.remarks?": "+event.remarks:""}</li>)}</ol>}
         </aside>
       </div>}
+    {canReview&&<BranchApprovalInbox/>}
   </section>;
 }
