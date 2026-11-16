@@ -137,6 +137,8 @@ CREATE FUNCTION cg19_support_immutable_evidence() RETURNS trigger
 BEGIN
  RAISE EXCEPTION 'Original support evidence is immutable';
 END; $$;
+CREATE TRIGGER cg19_support_search_immutable BEFORE UPDATE OR DELETE ON cg19_support_search_token
+ FOR EACH ROW EXECUTE FUNCTION cg19_support_immutable_evidence();
 CREATE TRIGGER cg19_support_reply_immutable BEFORE UPDATE OR DELETE ON cg19_support_reply
  FOR EACH ROW EXECUTE FUNCTION cg19_support_immutable_evidence();
 CREATE TRIGGER cg19_support_event_immutable BEFORE UPDATE OR DELETE ON cg19_support_event
