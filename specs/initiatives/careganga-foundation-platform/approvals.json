@@ -5,13 +5,13 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "prd.md",
-      "current_artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+      "current_artifact_sha256": "01977c5aeccdfcc420bf9d64819f6991793ccee762d4529d9180c167891e8f2c",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+      "sha256": "01977c5aeccdfcc420bf9d64819f6991793ccee762d4529d9180c167891e8f2c",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -29,7 +29,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4"
+        "artifact_sha256": "01977c5aeccdfcc420bf9d64819f6991793ccee762d4529d9180c167891e8f2c"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -46,7 +46,24 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4"
+        "artifact_sha256": "01977c5aeccdfcc420bf9d64819f6991793ccee762d4529d9180c167891e8f2c"
+      },
+      "previous_artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+        "current_sha256": "01977c5aeccdfcc420bf9d64819f6991793ccee762d4529d9180c167891e8f2c"
       }
     },
     "hld": {
@@ -533,13 +550,13 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/module.md",
-      "current_artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+      "current_artifact_sha256": "b83e144703561f0badc6bb396f821cfd6144d14da52555e8efa8773ef346b429",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+      "sha256": "b83e144703561f0badc6bb396f821cfd6144d14da52555e8efa8773ef346b429",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -557,7 +574,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410"
+        "artifact_sha256": "b83e144703561f0badc6bb396f821cfd6144d14da52555e8efa8773ef346b429"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -574,20 +591,37 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410"
+        "artifact_sha256": "b83e144703561f0badc6bb396f821cfd6144d14da52555e8efa8773ef346b429"
+      },
+      "previous_artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+        "current_sha256": "b83e144703561f0badc6bb396f821cfd6144d14da52555e8efa8773ef346b429"
       }
     },
     "uiux/cg-19-documents-notifications": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/uiux.md",
-      "current_artifact_sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40",
+      "current_artifact_sha256": "3a111c49ed29546043ef6f9541d101330c8415d1587ce0663e7ccb70b31f4333",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40",
+      "sha256": "3a111c49ed29546043ef6f9541d101330c8415d1587ce0663e7ccb70b31f4333",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -605,7 +639,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40"
+        "artifact_sha256": "3a111c49ed29546043ef6f9541d101330c8415d1587ce0663e7ccb70b31f4333"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -622,20 +656,37 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40"
+        "artifact_sha256": "3a111c49ed29546043ef6f9541d101330c8415d1587ce0663e7ccb70b31f4333"
+      },
+      "previous_artifact_sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "46812b46f987e55655bad9a618079fdbadbac3a61f486d70ef55d263ebb60e40",
+        "current_sha256": "3a111c49ed29546043ef6f9541d101330c8415d1587ce0663e7ccb70b31f4333"
       }
     },
     "dld/cg-19-documents-notifications": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/dld.md",
-      "current_artifact_sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850",
+      "current_artifact_sha256": "f41b3c8137169ac55757692c3db6909cf36396aa2fcba2f03bc947880e762dcd",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850",
+      "sha256": "f41b3c8137169ac55757692c3db6909cf36396aa2fcba2f03bc947880e762dcd",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -653,7 +704,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850"
+        "artifact_sha256": "f41b3c8137169ac55757692c3db6909cf36396aa2fcba2f03bc947880e762dcd"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -670,7 +721,24 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850"
+        "artifact_sha256": "f41b3c8137169ac55757692c3db6909cf36396aa2fcba2f03bc947880e762dcd"
+      },
+      "previous_artifact_sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "f396099e77939b176ad62179132cb23a7925c3cbd8b0fd11ca5f81f9fe964850",
+        "current_sha256": "f41b3c8137169ac55757692c3db6909cf36396aa2fcba2f03bc947880e762dcd"
       }
     },
     "tasks/cg-02-foundation-structure": {
@@ -3056,14 +3124,14 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner 2026-11-15 specifically authorized next canonical module CG07 expert review",
-      "sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
-      "current_artifact_sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
+      "sha256": "9036ff8b4ec54bb13a3f7c46708b3e331699f1014b2d0ad84507ed46a5f68ceb",
+      "current_artifact_sha256": "9036ff8b4ec54bb13a3f7c46708b3e331699f1014b2d0ad84507ed46a5f68ceb",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T11:39:13.209Z",
+      "approved_at": "2026-11-16",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-07-campaigns-donations/module.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
+        "artifact_sha256": "9036ff8b4ec54bb13a3f7c46708b3e331699f1014b2d0ad84507ed46a5f68ceb",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3086,7 +3154,7 @@
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
+        "artifact_sha256": "9036ff8b4ec54bb13a3f7c46708b3e331699f1014b2d0ad84507ed46a5f68ceb",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3108,21 +3176,38 @@
         "actual_signed_provider_qa": "NOT_RUN"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_artifact_sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "9eebde0069954cd7d71d4c464263cf8e6df8292f076488dc6fda666f4d1477ae",
+        "current_sha256": "9036ff8b4ec54bb13a3f7c46708b3e331699f1014b2d0ad84507ed46a5f68ceb"
+      }
     },
     "dld/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/dld.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner 2026-11-15 specifically authorized next canonical module CG07 expert review",
-      "sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
-      "current_artifact_sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
+      "sha256": "8d1e616fb64a8c4e653a24560ede65eda3deea9af1253f26d7322ccd0e9fd12a",
+      "current_artifact_sha256": "8d1e616fb64a8c4e653a24560ede65eda3deea9af1253f26d7322ccd0e9fd12a",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T11:39:13.209Z",
+      "approved_at": "2026-11-16",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-07-campaigns-donations/dld.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
+        "artifact_sha256": "8d1e616fb64a8c4e653a24560ede65eda3deea9af1253f26d7322ccd0e9fd12a",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3145,7 +3230,7 @@
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
+        "artifact_sha256": "8d1e616fb64a8c4e653a24560ede65eda3deea9af1253f26d7322ccd0e9fd12a",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3167,21 +3252,38 @@
         "actual_signed_provider_qa": "NOT_RUN"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_artifact_sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "9547fc038f96355cae11faf55b3f848e5d852584464e23a82c30d2bb5efb8f7b",
+        "current_sha256": "8d1e616fb64a8c4e653a24560ede65eda3deea9af1253f26d7322ccd0e9fd12a"
+      }
     },
     "uiux/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/uiux.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner 2026-11-15 specifically authorized next canonical module CG07 expert review",
-      "sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
-      "current_artifact_sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
+      "sha256": "7cce18f3115940009afc63a5af629edc390dd50a5851a258922597dbe2524ee8",
+      "current_artifact_sha256": "7cce18f3115940009afc63a5af629edc390dd50a5851a258922597dbe2524ee8",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T11:39:13.209Z",
+      "approved_at": "2026-11-16",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-07-campaigns-donations/uiux.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
+        "artifact_sha256": "7cce18f3115940009afc63a5af629edc390dd50a5851a258922597dbe2524ee8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3204,7 +3306,7 @@
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
+        "artifact_sha256": "7cce18f3115940009afc63a5af629edc390dd50a5851a258922597dbe2524ee8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3226,21 +3328,38 @@
         "actual_signed_provider_qa": "NOT_RUN"
       },
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
-      "development_authority": "NOT_READY"
+      "development_authority": "NOT_READY",
+      "previous_artifact_sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "96ec01fca1d50bb27eaee92aa1261b716c3ae00c6fe2bfac2d9fcf91ba31338d",
+        "current_sha256": "7cce18f3115940009afc63a5af629edc390dd50a5851a258922597dbe2524ee8"
+      }
     },
     "tasks/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/tasks.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner 2026-11-15 specifically authorized next canonical module CG07 expert review",
-      "sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
-      "current_artifact_sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
+      "sha256": "980029a7532aa243ec850df31b65a009f93da763a7f0962cd82caf66873bb5d8",
+      "current_artifact_sha256": "980029a7532aa243ec850df31b65a009f93da763a7f0962cd82caf66873bb5d8",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T11:39:13.209Z",
+      "approved_at": "2026-11-16",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-07-campaigns-donations/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
+        "artifact_sha256": "980029a7532aa243ec850df31b65a009f93da763a7f0962cd82caf66873bb5d8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3263,7 +3382,7 @@
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
+        "artifact_sha256": "980029a7532aa243ec850df31b65a009f93da763a7f0962cd82caf66873bb5d8",
         "method": "SELF_DISCLOSED_EXPERT_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
         "reviewer": "JASIQ AI Design Review Agent",
         "review_kind": "FULL_CG07_FR017_019_CRITICAL_FINANCE_WEB_NATIVE_ORIGINAL_ADMIN_A12_A18",
@@ -3287,7 +3406,24 @@
       "formal_stage_gate": "BLOCKED_PRD_HLD_HARNESS_PREDECESSORS_INDEPENDENT_CRITICAL_DB_SQL_CODE_RUNTIME_NOT_RUN",
       "development_authority": "NOT_READY",
       "qa_cases": 60,
-      "stories": 3
+      "stories": 3,
+      "previous_artifact_sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "96c5e83a7460b93c50ca56421dbd491efdba85e6d2f2e46ba6b09924b62776ce",
+        "current_sha256": "980029a7532aa243ec850df31b65a009f93da763a7f0962cd82caf66873bb5d8"
+      }
     },
     "planning/cg-08-csr-funding": {
       "artifact": "modules/cg-08-csr-funding/module.md",
@@ -6016,13 +6152,13 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/tasks.md",
-      "current_artifact_sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781",
+      "current_artifact_sha256": "0d7cec4ad5f6d882ec15240d742d7eafe0335d072a9c89eec513b256be2486cb",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781",
+      "sha256": "0d7cec4ad5f6d882ec15240d742d7eafe0335d072a9c89eec513b256be2486cb",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -6040,7 +6176,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781"
+        "artifact_sha256": "0d7cec4ad5f6d882ec15240d742d7eafe0335d072a9c89eec513b256be2486cb"
       },
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -6057,7 +6193,24 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781"
+        "artifact_sha256": "0d7cec4ad5f6d882ec15240d742d7eafe0335d072a9c89eec513b256be2486cb"
+      },
+      "previous_artifact_sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781",
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "9e7bb0eaa3bffabd4dd27def563aa6cfca0bbc51e15da60e906c50726d37f781",
+        "current_sha256": "0d7cec4ad5f6d882ec15240d742d7eafe0335d072a9c89eec513b256be2486cb"
       }
     },
     "br/master": {
@@ -6094,15 +6247,15 @@
       "approval_mode": "OWNER_DELEGATED_BR_BUSINESS_DESIGN_BASELINE",
       "artifact": "docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md",
       "artifact_kind": "NORMATIVE_FOUNDATION_BR",
-      "sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
-      "current_artifact_sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+      "sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c",
+      "current_artifact_sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "delegation_source": "Owner explicit 15 Nov 2026 request to verify PRD/HLD/BR delegated approval and approve missing BR, with merge into main authorized",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+        "artifact_sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c",
         "scope": "Targeted CG-01 greenfield identity dependency consistency review; all 24 canonical module DLD, module, UI/UX and QA task specs plus BR/NFR checked. SHA correction reconciles previously stale bytes; clinical/financial/source/runtime gates remain separate.",
         "method": "SELF_DISCLOSED_REPOSITORY_SOURCE_REVIEW_NOT_INDEPENDENT",
         "auth_contract": "CG-01 one mobile/email+password account/session; protected one-time root setup; Admin creates users; current password for protected actions; email/SMS OTP for recovery; patient contact verification and center affiliations are separate business proofs.",
@@ -6131,11 +6284,11 @@
         "independent_specialist_review": "NOT_RUN",
         "NFR_and_visual_runtime": "NOT_RUN"
       },
-      "previous_artifact_sha256": "88fcabf89964cf6d064514d296a8740e6a950059937da196a003a3e5530797b8",
+      "previous_artifact_sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
       "review_evidence": "CURRENT_SOURCE_HASH_AND_TARGETED_AUTH_CROSS_MODULE_CONSISTENCY_REVIEW",
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
-        "artifact_sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+        "artifact_sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c",
         "scope": "Targeted CG-01 greenfield identity dependency consistency review; all 24 canonical module DLD, module, UI/UX and QA task specs plus BR/NFR checked. SHA correction reconciles previously stale bytes; clinical/financial/source/runtime gates remain separate.",
         "method": "SELF_DISCLOSED_REPOSITORY_SOURCE_REVIEW_NOT_INDEPENDENT",
         "auth_contract": "CG-01 one mobile/email+password account/session; protected one-time root setup; Admin creates users; current password for protected actions; email/SMS OTP for recovery; patient contact verification and center affiliations are separate business proofs.",
@@ -6146,6 +6299,22 @@
         "actual_provider_QA": "NOT_RUN",
         "authenticated_harness_resolver": "NOT_RUN",
         "release": "NOT_APPROVED"
+      },
+      "latest_addendum_review": {
+        "kind": "DONATION_RECEIPT_AND_CERTIFICATE_CLIENT_VISUAL_EVIDENCE",
+        "method": "SOURCE_PDF_VISUAL_AND_PAGE_STRUCTURE_REVIEW_PLUS_GITHUB_ARTIFACT_REHASH",
+        "status": "OWNER_DELEGATED_DESIGN_REFERENCE_REVIEW_ONLY",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "reviewed_at": "2026-11-16",
+        "original_uploaded_pdfs_committed": false,
+        "reason": "Original receipt includes donor contact/payment identifiers; SHA inventory and sanitized review kept as current Git reference",
+        "verified_client_legal_data": false,
+        "independent_specialist_review": "NOT_RUN",
+        "authenticated_harness_resolver": "NOT_RUN",
+        "actual_pdf_print_browser_mobile_QA": "NOT_RUN",
+        "client_formal_signoff": "NOT_GIVEN",
+        "previous_sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+        "current_sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c"
       }
     },
     "br/integrated-healthcare": {
@@ -6465,7 +6634,7 @@
       "approval_mode": "OWNER_DELEGATED_BR_BUSINESS_DESIGN_BASELINE",
       "artifact": "docs/business-requirements/",
       "artifact_kind": "BR_PACKAGE_SHA256_MANIFEST",
-      "sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "sha256": "27cf669ac3d4ac3652dc3b481a7d7a3716e48b22919dfab57dd066aced4b6d7d",
       "manifest_hash_method": "SHA256 of ordered UTF8 path, newline, file SHA256 lines and trailing newline (8 files)",
       "artifacts": [
         {
@@ -6475,7 +6644,7 @@
         },
         {
           "path": "docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md",
-          "sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+          "sha256": "91034efdd0fa0033c9bc27b8acacce48b653ba79d114ffe7926d7371e00db38c",
           "kind": "NORMATIVE_FOUNDATION_BR"
         },
         {
@@ -6527,13 +6696,13 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+        "artifact_sha256": "27cf669ac3d4ac3652dc3b481a7d7a3716e48b22919dfab57dd066aced4b6d7d",
         "additional_manifest_reconciliation": "Two further previously stale BR documents rehashed against exact current source and manifest rebuilt"
       },
       "client_approval": "NOT_GIVEN",
       "formal_stage_gate": "INTERNAL_DESIGN_ONLY_CLIENT_FORMAL_SIGNOFF_AND_INDEPENDENT_RUNTIME_AND_HARNESS_RESOLVER_NOT_RUN",
-      "previous_package_sha256": "e8b3af0692438a8db8f17d6c8bfe35cc916276317fd49d9b248950f5cd3889f1",
-      "current_artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "previous_package_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "current_artifact_sha256": "27cf669ac3d4ac3652dc3b481a7d7a3716e48b22919dfab57dd066aced4b6d7d",
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
@@ -6549,7 +6718,7 @@
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
-        "artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+        "artifact_sha256": "27cf669ac3d4ac3652dc3b481a7d7a3716e48b22919dfab57dd066aced4b6d7d",
         "additional_manifest_reconciliation": "Two further previously stale BR documents rehashed against exact current source and manifest rebuilt"
       },
       "previous_quality_review": {
@@ -6565,7 +6734,16 @@
         "independent_specialist_review": "NOT_RUN",
         "NFR_and_visual_runtime": "NOT_RUN"
       },
-      "review_evidence": "REHASHED_8_BR_DOCUMENT_MANIFEST_CURRENT_SOURCE"
+      "review_evidence": "REHASHED_8_BR_DOCUMENT_MANIFEST_CURRENT_SOURCE",
+      "latest_addendum_review": {
+        "kind": "FOUNDATION_DONATION_PDF_BR_PACKAGE_REFERENCE",
+        "reference": "docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md",
+        "source_review_only": true,
+        "client_formal_signoff": "NOT_GIVEN",
+        "independent_runtime_and_pixel_QA": "NOT_RUN",
+        "previous_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+        "current_sha256": "27cf669ac3d4ac3652dc3b481a7d7a3716e48b22919dfab57dd066aced4b6d7d"
+      }
     }
   }
 }
