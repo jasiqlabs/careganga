@@ -15,13 +15,10 @@ const labels:Readonly<Record<string,string>>={
   "identity.role.edit":"Role updated",
   "identity.role.copy":"Role copied",
   "identity.role.retire":"Role retired",
-  "identity.account.invite":"Staff invited",
-  "identity.account.resend":"Invitation renewed",
   "identity.account.assign":"Staff role assigned",
   "identity.account.assign_approved":"Protected staff role approved and assigned",
   "identity.account.revoke":"Staff role revoked",
   "identity.account.status":"Account status changed",
-  "identity.invitation.accept":"Invitation activated",
   "identity.security-policy.update":"Security policy updated"
 };
 function cursorKey():Buffer{
