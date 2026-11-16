@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
-import {File,UploadType} from "expo-file-system";
+import {File,Paths,UploadType} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import type {
   CG03CaseView,CG19UploadStart,CG19UploadStatus
@@ -169,6 +169,35 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
       if(e instanceof Error&&e.message==="EXPIRED")onExpired();
     }finally{setBusy(false);}
   }
+  async function previewVerified(){
+    if(!result||!("fileRef" in result)||!result.fileRef||
+      !("cleanVerified" in result)||!result.cleanVerified||busy)return;
+    setBusy(true);setMessage("");
+    let temporary:File|null=null;
+    try{
+      const response=await identityRequest(
+        "/api/documents/files/"+encodeURIComponent(result.fileRef)+"/download",{
+          method:"GET",headers:{Authorization:"Bearer "+token}
+        });
+      if(response.status===401){onExpired();return;}
+      if(!response.ok)throw Error(response.status===403?"DENIED":"OFFLINE");
+      const mime=response.headers.get("content-type")??"";
+      if(!MIME.has(mime))throw Error("OFFLINE");
+      const size=Number(response.headers.get("content-length")??"0");
+      if(!Number.isSafeInteger(size)||size<1||size>10*1024*1024)
+        throw Error("OFFLINE");
+      const bytes=new Uint8Array(await response.arrayBuffer());
+      if(bytes.length!==size||bytes.length>10*1024*1024)
+        throw Error("OFFLINE");
+      const suffix=mime==="application/pdf"?".pdf":
+        mime==="image/jpeg"?".jpg":mime==="image/png"?".png":".webp";
+      temporary=new File(Paths.cache,"careganga-private-"+Crypto.randomUUID()+suffix);
+      temporary.create();
+      await temporary.write(bytes);
+      await temporary.preview({title:"Private case evidence"});
+    }catch(e){setMessage(explain(e))}
+    finally{try{temporary?.delete();}catch{}setBusy(false);}
+  }
   const verified=result&&"cleanVerified" in result&&result.cleanVerified;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined}
@@ -230,8 +259,15 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
               <Text>Refresh verification status</Text>
             </Pressable>
           </View>}
-          {!!verified&&<Text style={styles.muted}>Verified private evidence is recorded.
-            A direct public download or identity QR is never provided.</Text>}
+          {!!verified&&<View style={styles.card}>
+            <Text style={styles.muted}>Verified private evidence is recorded.
+              Files open only through an authorized app-private preview.</Text>
+            {"fileRef" in result&&result.fileRef&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                disabled={busy} onPress={()=>void previewVerified()}>
+                <Text>Preview verified private file</Text>
+              </Pressable>}
+          </View>}
         </View>}
         <View style={styles.card}>
           <Text style={styles.heading}>Approved-access letters</Text>
