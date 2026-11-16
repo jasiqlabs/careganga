@@ -19,6 +19,20 @@
 
 **Source-integration is not a deployment or a runtime PASS.** The owner explicitly allows a foundation F0–F5 feature branch to merge into `main` after independent manual source review, fix/re-review, actual prerequisite source integration, and all applicable inline story QA **source** traces—even though the one-time local `npm ci`, server/Web/Android build, PostgreSQL migration execution and provider/device QA have not happened. Record `SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED` rather than `SOURCE_COMPLETE`/`TESTED`, preserve the exact PR/head SHA and honest test statuses in the owning canonical `tasks.md`; source-critical defects or missing source contracts still block merge. This is a narrow CareGanga F0–F5 exception, not a production/release waiver.
 
+### Foundation source-integration checkpoint — 16 November 2026
+
+**Current canonical GitHub state:** CG-02 / F5 is **`SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED`** and **`MERGED_TO_MAIN`**. The product owner authorized the source-only merge; GitHub confirmed [PR #8](https://github.com/jasiqlabs/careganga/pull/8) merged on 16 November 2026 at merge commit [`515e7fa915fcb8e476ae96c43ab551754064a9f8`](https://github.com/jasiqlabs/careganga/commit/515e7fa915fcb8e476ae96c43ab551754064a9f8). The original feature branch `feature/careganga-cg02-foundation-structure-dev-20261115` remains historical. **Do not start another CG-02 implementation branch merely because older historical task rows still say `IN_PROGRESS` or `NOT_MERGED`.** Read the newer current-state row in [CG-02 tasks](modules/cg-02-foundation-structure/tasks.md).
+
+| Foundation stage | Integrated source in `main` | Remaining qualification |
+| --- | --- | --- |
+| F0–F1 · CG-01 | **SOURCE_IN_MAIN** — original identity, access, security policy and repository bootstrap | Consolidated installation/build, PostgreSQL, auth/security and Web/Android runtime QA |
+| F2 · CG-21 | **SOURCE_IN_MAIN** — platform settings, audit and guarded recovery | Consolidated settings/audit and real recovery-facility QA |
+| F3 · CG-03 | **SOURCE_IN_MAIN** — protected role approval and CG-02 branch approval adapter | Fresh MFA, decision races, owner reconciliation and independent DB/security tests |
+| F4 · CG-19 | **SOURCE_IN_MAIN** — private files, notifications and support plus CG-02 file adapters | Real scanner/storage, communications provider/worker and end-to-end QA |
+| **F5 · CG-02** | **SOURCE_MERGED_TO_MAIN**, US-001 and US-002 source implemented, reviewed and integrated by PR #8 | **25 inline QA definitions, 0 runtime PASS**; U18–U22 rendered match, migration/restore/concurrency, Web/Android device tests |
+
+**Foundation milestone:** All F0–F5 source code is now assembled in `main`, but **the one-time consolidated local Foundation integration QA gate is still OPEN / NOT_RUN**. This is not JASIQ Harness formal `SOURCE_COMPLETE`/`TESTED`, production release approval, or license to start P1–P7. A local developer should use the latest `main` and record real PASS/FAIL evidence in each existing module `tasks.md`; avoid creating a duplicate QA tracker. The exact CG-02 local handoff is [LOCAL_VALIDATION_HANDOFF.md](modules/cg-02-foundation-structure/LOCAL_VALIDATION_HANDOFF.md).
+
 **After F5 CG-02 source is merged:** One local developer checks out the assembled foundation from `main`, installs dependencies reproducibly, builds backend/Web/Public Android/Internal Android, runs isolated PostgreSQL 17 migrations (and previous-hash recovery if needed), executes integrated permissions/security and source-bound per-story QA, checks true private storage/provider integrations if configured, fixes bugs and rechecks, and documents real results. Independent qualified CRITICAL DB/security review and runtime/device/release gates remain mandatory before deploying. Start parallel P1–P7 lanes **only after this consolidated local foundation integration gate has passed**. No CI/GitHub Actions.
 
 ## One-time technical bootstrap
