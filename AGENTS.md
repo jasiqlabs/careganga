@@ -3,7 +3,7 @@
 **Product ID:** `careganga`  
 **Product repository:** `jasiqlabs/careganga`  
 **Central Harness:** `jasiqlabs/jasiq-harness` (private, **not copied** into this repository)  
-**Current project status:** Requirements and planning; do not assume an application stack, implemented features, API endpoints or existing deployments.
+**Current project status (16 November 2026):** F0–F5 **Foundation implementation source is assembled and merged into `main`**, including CG-02 US-001 and US-002 (GitHub PR #8, merge `515e7fa915fcb8e476ae96c43ab551754064a9f8`). Other business modules remain design-planned until separately implemented. **No production deployment, tested runtime functionality or formally cleared database/security/device QA is implied.** Before any new coding or parallel wave, read the actual current `main`, [canonical development order](specs/initiatives/careganga-foundation-platform/DEVELOPMENT_ORDER.md) and module-specific `tasks.md`; the one-time post-F5 local Foundation QA gate must pass before parallel P1–P7 starts.
 
 ## Mandatory CareGanga original UI/UX visual baseline — EVERY module
 
