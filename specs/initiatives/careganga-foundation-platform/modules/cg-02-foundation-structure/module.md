@@ -2,8 +2,6 @@
 
 ## 16 Nov 2026 simple-auth cross-owner change — source-review required
 
-**CG-01 greenfield credential integration (16 Nov 2026, feature-only):** branch and Foundation views authenticate with mobile/email + password; no TOTP. The CG-03 protected branch reviewer must re-enter the correct current password, and separation of duties, branch-case version pins, source/owner finalization and scope checks remain unchanged. CG-02 does not own login, reset OTP, account-role creation or registration. Existing 25 CG-02 QA cases need updated credential assumptions and source/runtime re-tracing. Not merged and not runtime-tested.
-
 **Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
 
 
