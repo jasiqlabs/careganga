@@ -379,7 +379,8 @@ export class BranchApprovalService{
      SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2
        AND case_kind='BRANCH_REGISTRATION' AND branch_source_ref=$3
        AND branch_source_revision=$4 AND branch_source_digest=$5
-       AND status IN('SUBMITTED','IN_REVIEW') FOR SHARE
+       AND status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED',
+         'PENDING_OWNER','OWNER_COMPLETED') FOR SHARE
    `,[reference(caseRef),actor.realmId,reference(registrationRef),revision,digest]);
    if(!rows.rows[0]||rows.rows[0].proposer_id!==actor.accountId)
      throw new ConflictException("The source-approved branch application is unavailable");
