@@ -305,11 +305,11 @@ export class ActiveBranchEvidenceService{
    `,[uuid(fileRef),actor.realmId]);
    const row=current.rows[0];
    if(!row)throw new NotFoundException("Private branch file unavailable");
-   await this.scope(bearer,row.branch_id,undefined,true);
+   const currentBranch=await this.scope(bearer,row.branch_id,undefined,true);
    const client=await this.db.connect();let tx=false;
    try{
      await client.query("BEGIN");tx=true;
-     await this.source.guardActiveBranch(client,actor,row.branch_id,row.branch_version,true);
+     await this.source.guardActiveBranch(client,actor,row.branch_id,currentBranch.branch.version,true);
      const locked=await client.query<{revision:number;revoked_at:Date|null}>(`
        SELECT revision,revoked_at FROM cg19_stored_file WHERE id=$1 AND realm_id=$2
          AND owner_kind='CG02_BRANCH' FOR UPDATE
