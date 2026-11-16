@@ -75,7 +75,7 @@ export class BranchApprovalService{
    const key=reference(requestKey);
    if(source.requestedBy!==actor.accountId&&source.managerRef!==actor.accountId){
      // Only a protected root may submit someone else's authorized registration.
-     await this.sessions.requireAction(bearer,"foundation.branches.admin");
+     const actor=await this.sessions.requireAction(bearer,"foundation.branches.admin");
    }
    if(!["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW"].includes(source.status))
      throw new ConflictException("This registration cannot be submitted again");
@@ -237,13 +237,13 @@ export class BranchApprovalService{
      SELECT e.case_id,e.effect_key FROM cg03_branch_owner_effect e
        JOIN cg03_case c ON c.id=e.case_id AND c.realm_id=e.realm_id
        JOIN cg03_case_decision d ON d.id=e.final_decision_id
-       WHERE e.case_id=$1 AND e.realm_id=(
+       WHERE e.case_id=$1 AND e.realm_id=$5 AND e.realm_id=(
           SELECT realm_id FROM cg03_case WHERE id=$1 AND case_kind='BRANCH_REGISTRATION')
          AND c.branch_source_ref=$2 AND c.branch_source_revision=$3
          AND c.branch_source_digest=$4 AND c.status IN('PENDING_OWNER','OWNER_COMPLETED')
          AND d.action='APPROVE' AND d.fresh_mfa_verified_at IS NOT NULL
      LIMIT 1
-   `,[reference(caseRef),reference(registrationRef),revision,digest]);
+   `,[reference(caseRef),reference(registrationRef),revision,digest,actor.realmId]);
    if(!found.rows[0])throw new ConflictException("A genuine final branch decision is required");
    return {caseRef,registrationRef,revision,digest,effectKey:found.rows[0].effect_key};
  }
