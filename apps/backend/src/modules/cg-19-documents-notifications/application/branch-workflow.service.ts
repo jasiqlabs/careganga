@@ -69,17 +69,21 @@ export class BranchWorkflowService{
    try{
      const approval=await this.approvals.createOrGetCase(bearer,reg,
        frozen.submissionRevision,frozen.digest,frozen.sourceKey);
+     // Always attach the original immutable case, even if a reviewer has
+     // already decided while the first cross-owner response was lost.
+     await this.lifecycle.acceptCase(bearer,reg,
+       frozen.submissionRevision,frozen.digest,approval.caseRef,
+       (client,actor)=>this.approvals.guardOriginalCase(client,actor,reg,
+         frozen.submissionRevision,frozen.digest,approval.caseRef));
      if(["SUBMITTED","IN_REVIEW"].includes(approval.status)){
-       const attached=await this.lifecycle.acceptCase(bearer,reg,
-         frozen.submissionRevision,frozen.digest,approval.caseRef,
-         (client,actor)=>this.approvals.guardOriginalCase(client,actor,reg,
-           frozen.submissionRevision,frozen.digest,approval.caseRef));
-       return {status:attached.status,reference:approval.reference,caseRef:approval.caseRef,
+       return {status:"SUBMITTED",reference:approval.reference,caseRef:approval.caseRef,
          submissionRevision:frozen.submissionRevision,
-         message:"Branch application submitted for genuine Super Admin review."};
+         message:"The original branch application is confirmed for Super Admin review."};
      }
-     return {status:approval.status,reference:approval.reference,caseRef:approval.caseRef,
-       message:"This original application has already moved beyond submission."};
+     return {status:"DECISION_RECORDED_SOURCE_SYNC_PENDING",
+       reference:approval.reference,caseRef:approval.caseRef,
+       submissionRevision:frozen.submissionRevision,
+       message:"The original approval case was recovered. Its prior decision must now be reconciled by an authorized Super Admin."};
    }catch{
      // CG-02 snapshot was committed, CG-03 may have committed too.
      // Truthfully preserve UNKNOWN until the original source key is reconciled.
