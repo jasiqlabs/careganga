@@ -13,7 +13,7 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
 const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
 type CaseRow={id:string;realm_id:string;request_key:string;request_digest:string;
-  caller_digest:string;receipt_digest:string;request_encrypted:Buffer;
+  caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
   status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
   latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null};
 type FaqRow={id:string;question:string;answer:string;state:string;revision:number;
@@ -116,9 +116,9 @@ export class SupportService{
       "AND s.expires_at>now() AND s.mfa_verified_at IS NOT NULL "+
       "AND s.issued_at>now()-make_interval(secs=>COALESCE(p.max_session_age_seconds,28800)) "+
       "AND s.last_seen_at>now()-make_interval(secs=>COALESCE(p.idle_timeout_seconds,1800)) "+
-      "AND (role.is_protected OR EXISTS(SELECT 1 FROM role_grant g "+
-      "WHERE g.role_id=role.id AND g.capability_key=$4)) "+
-      "FOR SHARE OF s,account,ar,role",[a.activeSessionId,a.realmId,a.accountId,capability]);
+      "AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g "+
+      "WHERE g.role_id=r.id AND g.capability_key=$4)) "+
+      "FOR SHARE OF s,account,ar,r",[a.activeSessionId,a.realmId,a.accountId,capability]);
     if(!status.rowCount)throw new ForbiddenException("Foundation permission changed");
   }
   private async event(client:PoolClient,realm:string,caseId:string,
@@ -146,6 +146,9 @@ export class SupportService{
       const receipt=createHmac("sha256",scopedKey("receipt"))
         .update(realm+":"+caller+":"+requestKey).digest("base64url");
       const receiptDigest=sha(receipt);
+      // Serialize identical anonymous request keys before lookup and insert.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))",
+        [realm,requestKey]);
       const old=await client.query<CaseRow>(
         "SELECT * FROM cg19_support_case WHERE realm_id=$1 "+
         "AND source_channel='FOUNDATION_PUBLIC' AND request_key=$2 FOR UPDATE",
@@ -154,8 +157,7 @@ export class SupportService{
         if(old.rows[0].request_digest!==digest||old.rows[0].caller_digest!==caller)
           throw new ConflictException("The original request key was already used");
         await client.query("COMMIT");begun=false;
-        return {receipt,expiresAt:old.rows[0].created_at
-          ?new Date(old.rows[0].created_at.getTime()+30*86400000).toISOString():null,
+        return {receipt,expiresAt:old.rows[0].receipt_expires_at.toISOString(),
           status:publicState(old.rows[0].status),result:"PREVIOUSLY_CONFIRMED"};
       }
       const created=await client.query<{id:string;receipt_expires_at:Date}>(
@@ -232,7 +234,7 @@ export class SupportService{
       "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND id=$2",[a.realmId,ref]);
     if(!found.rowCount)throw new NotFoundException("Case unavailable");
     const row=found.rows[0],request=open(row.request_encrypted);
-    const [replies,history]=await Promise.all([
+    const [replies,history,reading]=await Promise.all([
       this.db.query<{id:string;author_account_id:string;body_encrypted:Buffer;
         created_at:Date}>(
         "SELECT id,author_account_id,body_encrypted,created_at "+
@@ -241,9 +243,16 @@ export class SupportService{
       this.db.query<{kind:string;occurred_at:Date}>(
         "SELECT kind,occurred_at FROM cg19_support_event "+
         "WHERE realm_id=$1 AND case_id=$2 ORDER BY occurred_at,id LIMIT 100",
-        [a.realmId,ref])
+        [a.realmId,ref]),
+      this.db.query<{last_seen_inbound_at:Date|null;archived_at:Date|null}>(
+        "SELECT last_seen_inbound_at,archived_at FROM cg19_support_read_state "+
+        "WHERE realm_id=$1 AND case_id=$2 AND operator_account_id=$3",
+        [a.realmId,ref,a.accountId])
     ]);
+    const seen=reading.rows[0];
     return {caseRef:row.id,...request,status:row.status,
+      unread:!seen?.last_seen_inbound_at||seen.last_seen_inbound_at<row.latest_inbound_at,
+      archived:!!seen?.archived_at,
       revision:row.revision,assignedAccountRef:row.assigned_account_id,
       createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),
       replies:replies.rows.map(reply=>({
@@ -290,8 +299,24 @@ export class SupportService{
         await client.query("COMMIT");begun=false;
         return {status:"CONFIRMED",revision:c.revision};
       }
-      if(c.revision!==expected)
+      if(c.revision!==expected){
+        // The same immutable reply may already have committed before a lost HTTP
+        // response. Reconcile it before returning an optimistic-lock conflict.
+        if(action==="REPLY"){
+          const key=uuid(x.requestKey),body=clean(x.body,2,2400);
+          const prior=await client.query<{body_digest:string}>(
+            "SELECT body_digest FROM cg19_support_reply WHERE realm_id=$1 "+
+            "AND case_id=$2 AND author_account_id=$3 AND request_key=$4",
+            [a.realmId,id,a.accountId,key]);
+          if(prior.rowCount){
+            if(prior.rows[0].body_digest!==sha(body))
+              throw new ConflictException("Original reply key has different content");
+            await client.query("COMMIT");begun=false;
+            return {status:"PREVIOUSLY_CONFIRMED",revision:c.revision};
+          }
+        }
         throw new ConflictException("This support case changed. Refresh before retrying.");
+      }
       if(action==="ASSIGN"){
         const target=x.assignedAccountRef===null?null:uuid(x.assignedAccountRef);
         if(target){
