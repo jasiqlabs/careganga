@@ -76,12 +76,12 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
   const [ownerBusy,setOwnerBusy]=useState(false);
   const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
   const [decisionRemarks,setDecisionRemarks]=useState("");
-  const [decisionTotp,setDecisionTotp]=useState("");
+  const [decisionPassword,setDecisionPassword]=useState("");
   const [decisionReview,setDecisionReview]=useState(false);
   const [decisionUnknown,setDecisionUnknown]=useState(false);
   const decisionKey=useRef("");
   const [firstReviewer,setFirstReviewer]=useState<"NONE"|"ACCESS_MANAGER">("NONE");
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [unknown,setUnknown]=useState(false);
   const [pendingKind,setPendingKind]=useState<"CASE"|"PROCESS">("CASE");
   const key=useRef(""),generation=useRef(0),detailSeq=useRef(0);
@@ -174,7 +174,7 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
   async function viewCase(entry:CG03CaseView){
     const seq=++detailSeq.current;setDetailBusy(true);setDetail(null);
     setOwnerOutcome(null);
-    setDecisionAction(null);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionAction(null);setDecisionRemarks("");setDecisionPassword("");
     setDecisionReview(false);
     try{
       const data=await api<CG03CaseDetail>(
@@ -201,15 +201,15 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
   }
   function chooseDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
     if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
-    setDecisionAction(action);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionAction(action);setDecisionRemarks("");setDecisionPassword("");
     setDecisionReview(false);decisionKey.current=crypto.randomUUID();setMessage(null);
   }
   async function commitDecision(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!detail||!decisionAction||!detail.allowedDecisions.includes(decisionAction)||
       decisionUnknown||busy)return;
-    if(detail.requiresFreshAuthenticator&&!/^[0-9]{6}$/.test(decisionTotp)){
-      setMessage({kind:"error",message:"A fresh authenticator code is required for the final decision."});
+    if(detail.requiresCurrentPassword&&(decisionPassword.length<8||decisionPassword.length>1024)){
+      setMessage({kind:"error",message:"A current password is required for the final decision."});
       return;
     }
     if(!decisionReview){setDecisionReview(true);return;}
@@ -218,11 +218,11 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
       const result=await api<{status:string;revision:number}>(
         "cases/"+encodeURIComponent(detail.caseRef)+"/decisions","POST",{
           action:decisionAction,remarks:decisionRemarks.trim(),expectedRevision:detail.revision,
-          requestKey:decisionKey.current,totp:decisionTotp
+          requestKey:decisionKey.current,currentPassword:decisionPassword
         });
       if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
       const selected=detail;
-      setDecisionAction(null);setDecisionReview(false);setDecisionTotp("");
+      setDecisionAction(null);setDecisionReview(false);setDecisionPassword("");
       decisionKey.current="";
       setMessage({kind:"success",message:humanStatus(result.status)+
         ". This records a review decision; access changes are verified separately."});
@@ -268,17 +268,17 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
   }
   async function saveProcess(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(busy||unknown)return;
-    if(!/^[0-9]{6}$/.test(totp)){
-      setMessage({kind:"error",message:"Enter a fresh six-digit authenticator code."});return;
+    if((currentPassword.length<8||currentPassword.length>1024)){
+      setMessage({kind:"error",message:"Enter a current password."});return;
     }
     if(!key.current)key.current=crypto.randomUUID();
     setPendingKind("PROCESS");setBusy(true);
     try{
       await api<{version:number}>("process/versions","POST",{
         firstReviewerCapability:firstReviewer==="NONE"?null:"roles.assign",
-        requestKey:key.current,totp
+        requestKey:key.current,currentPassword
       });
-      setEditingProcess(false);setTotp("");key.current="";
+      setEditingProcess(false);setCurrentPassword("");key.current="";
       setMessage({kind:"success",message:
         "The new review process version is active. Earlier applications keep their original route."});
       await refresh();
@@ -315,10 +315,10 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
     </div>
     <section className="role-pane">
       <div className="role-pane-heading"><div><h2>Approval process</h2>
-        <p>Final review requires a different Foundation Super Admin and fresh MFA</p></div>
+        <p>Final review requires a different Foundation Super Admin and current password confirmation</p></div>
         {mayConfigure&&<button type="button" disabled={busy||unknown}
           onClick={()=>{setEditingProcess(true);key.current=crypto.randomUUID();
-            setTotp("");setFirstReviewer(process?.firstReviewer?"ACCESS_MANAGER":"NONE");}}>
+            setCurrentPassword("");setFirstReviewer(process?.firstReviewer?"ACCESS_MANAGER":"NONE");}}>
             Version process</button>}</div>
       <div className="role-detail-content">
         {process?<p>{process.active?
@@ -403,10 +403,10 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
               <option value="ACCESS_MANAGER">Access manager, then Super Admin</option>
             </select></label>
           <p>Existing applications keep their pinned reviewer steps.</p>
-          <label className="field">Fresh authenticator code
-            <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-              autoComplete="one-time-code" value={totp}
-              onChange={e=>setTotp(e.target.value.replace(/[^0-9]/g,""))}/></label>
+          <label className="field">Current password
+            <input required type="password" minLength={8} maxLength={1024}
+              autoComplete="current-password" value={currentPassword}
+              onChange={e=>setCurrentPassword(e.target.value)}/></label>
           <div className="toolbar"><button type="button" disabled={busy||unknown}
             onClick={()=>setEditingProcess(false)}>Cancel</button>
             <button type="submit" className="primary" disabled={busy||unknown}>
@@ -468,11 +468,11 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
                 <textarea maxLength={500} value={decisionRemarks}
                   onChange={e=>{setDecisionRemarks(e.target.value);setDecisionReview(false);}}
                   placeholder="Explain the decision and next step"/></label>
-              {detail.requiresFreshAuthenticator&&<label className="field">
-                Fresh authenticator code
-                <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-                  autoComplete="one-time-code" value={decisionTotp}
-                  onChange={e=>{setDecisionTotp(e.target.value.replace(/[^0-9]/g,""));
+              {detail.requiresCurrentPassword&&<label className="field">
+                Current password
+                <input required type="password" minLength={8} maxLength={1024}
+                  autoComplete="current-password" value={decisionPassword}
+                  onChange={e=>{setDecisionPassword(e.target.value);
                     setDecisionReview(false);}}/>
               </label>}
               {decisionReview&&<p role="status">Confirm your {decisionAction.toLowerCase()}
