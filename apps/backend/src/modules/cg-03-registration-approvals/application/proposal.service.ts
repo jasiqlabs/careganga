@@ -222,7 +222,7 @@ export class ApprovalProposalService{
       if(!root.rowCount)throw new ForbiddenException("Foundation realm unavailable");
       await this.owner.verifyProposer(client,actor);
       const old=await client.query<CaseRow>(`
-        SELECT * FROM cg03_case WHERE realm_id=$1 AND proposer_id=$2 AND request_key=$3
+        SELECT * FROM cg03_case WHERE case_kind='CG01_ROLE' AND realm_id=$1 AND proposer_id=$2 AND request_key=$3
       `,[actor.realmId,actor.accountId,requestKey]);
       if(old.rowCount){
         if(old.rows[0].request_digest!==requestDigest)
@@ -282,7 +282,7 @@ export class ApprovalProposalService{
       !Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Check case filters");
     const rows=await this.db.query<CaseRow>(`
-      SELECT c.* FROM cg03_case c WHERE c.realm_id=$1
+      SELECT c.* FROM cg03_case c WHERE c.case_kind='CG01_ROLE' AND c.realm_id=$1
         AND ($2::boolean OR c.proposer_id=$3 OR ($6::boolean AND
           (EXISTS(SELECT 1 FROM cg03_process_step step
             WHERE step.process_id=c.process_id AND step.ordinal=c.current_step
