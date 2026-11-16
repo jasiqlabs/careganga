@@ -1,12 +1,5 @@
 # CG-19 — User Stories & Manual QA
 
-## 16 Nov 2026 simple-auth cross-owner change — source-review required
-
-CG-19 notices, letter template/issue/revoke and private support access now consume password-authenticated CG-01 sessions; protected operations require actual current-password confirmation rather than TOTP. CG-19 transport does not own Forgot Password OTP challenge, although normal notices retain their own recipient eligibility and privacy rules. QA: authorized notice/letter actions, password wrong/replay, signed-in/suspended session, public-guest exclusion, SMS/email transport and recipient privacy.
-
-**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
-
-
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026) by **JASIQ AI Design Review Agent**, after latest [module](module.md), [PRD](../../prd.md) FR-070–072, [HLD](../../hld.md), [UIUX](uiux.md), [DLD](dld.md) source review/fix/re-review. All **3 independently testable stories/42 unique inline QA cases** are approved as DESIGN only; no implementation/live/device tests claimed.  
@@ -125,7 +118,7 @@ Dependencies: Within CG-19 **none** for plain text/public Foundation ticket core
 
 ### 2026-11-16 latest source extensions — follow the same gates
 
-- **US-002 Internal Android:** `foundation-notice-admin-screen.tsx` is connected to role-gated staff navigation; it authors frozen current-CG01 audience drafts, handles original-request unknown/reconciliation, fresh-MFA approval/cancel, source-only recovery and channel-specific status without claiming provider delivery. Own-notification readers on Internal/Public Android remain separate. **Device/visual/TOTP/provider QA NOT_RUN**.
+- **US-002 Internal Android:** `foundation-notice-admin-screen.tsx` is connected to role-gated staff navigation; it authors frozen current-CG01 audience drafts, handles original-request unknown/reconciliation, fresh current-password confirmation approval/cancel, source-only recovery and channel-specific status without claiming provider delivery. Own-notification readers on Internal/Public Android remain separate. **Device/visual/current-password proof/provider QA NOT_RUN**.
 - **US-003 channel parity:** Public Android uses `EXPO_PUBLIC_CONTACT_WEB_ORIGIN` to enter the same Next public-contact gateway; no server secret in mobile. Public Web and Public Android share CG19 intake, hashed private receipt, status lookup and approved FAQ. Internal Android support uses current CG01 source/role permissions for queue, replies, close/reopen, archive, operator-specific reads and FAQ; it does not create a center/CG14 master. **Device QA NOT_RUN**.
 - **Private search and correct eligible options:** `cg19_support_search_token` stores only keyed HMAC contact/name/subject word/prefix digests, indexed/immutable; `SupportService.cases` evaluates a bounded all-cases search from `POST /api/support/cases/search` with search-bound keyset cursors, no raw contact in query URLs. `CommunicationRecipientSource.supportAgentOptions/isSupportAgent` owns support-operator eligibility. Current Web/native selectors show eligible CG01 operators only, and direct backend assignment enforces `accounts.select` and support view eligibility. **SQL search/race/EXPLAIN NOT_RUN**.
 - **Production ingress:** Anonymous mobile and browser contact enter Next Web which signs the trusted visitor address to backend when configured. In production both endpoints fail closed without a 32-byte `CG19_GUEST_PROXY_KEY` and trusted ingress-controlled `CG19_TRUSTED_CLIENT_IP_HEADER`. Edge proxy must strip any incoming spoofed header, set verified client IP, protect backend network, and set `EXPO_PUBLIC_CONTACT_WEB_ORIGIN` (HTTPS) on public Android. Validate with two real client IPs, spoof attempts and 429; **NOT_RUN**.
