@@ -55,14 +55,11 @@ export class AccountsService {
     const params=[actor.realmId,term,status,roleRef||null];
     const records=await this.db.query<{
       id:string;display_name:string;normalized_email:string|null;contact_phone:string|null;status:string;revision:number;
-      role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;delivery_status:string|null;
+      role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;
     }>(String.raw`
       SELECT a.id,a.display_name,a.normalized_email,a.contact_phone,a.status,a.revision,
-        ar.role_id,r.name AS role_name,r.is_protected,ar.assigned_at,
-        (SELECT c.delivery_status FROM auth_challenge c
-          WHERE c.account_id=a.id AND c.kind='INVITATION'
-          ORDER BY c.created_at DESC,c.id DESC LIMIT 1) AS delivery_status
-      FROM account a
+        ar.role_id,r.name AS role_name,r.is_protected,ar.assigned_at
+       FROM account a
       LEFT JOIN LATERAL(
         SELECT role_id,assigned_at FROM account_role
         WHERE account_id=a.id AND realm_id=a.realm_id AND revoked_at IS NULL
@@ -75,7 +72,6 @@ export class AccountsService {
     const summary=await this.db.query<{total:string;active:string;suspended:string;deactivated:string;assigned:string}>(String.raw`
       SELECT count(*)::text total,
        count(*) FILTER(WHERE status='ACTIVE')::text active,
-       count(*) FILTER(WHERE status='INVITED')::text invited,
        count(*) FILTER(WHERE status='SUSPENDED')::text suspended,
        count(*) FILTER(WHERE status='DEACTIVATED')::text deactivated,
        (SELECT count(*)::text FROM account_role ar WHERE ar.realm_id=$1 AND ar.revoked_at IS NULL) assigned
@@ -84,8 +80,7 @@ export class AccountsService {
     return {accounts:records.rows.map(r=>({
       accountRef:r.id,displayName:r.display_name,email:r.normalized_email,phone:r.contact_phone,
       status:r.status,revision:Number(r.revision),
-      roleRef:r.role_id,roleName:r.role_name,roleProtected:Boolean(r.is_protected),assignedAt:r.assigned_at?.toISOString()??null,
-      deliveryStatus:null
+      roleRef:r.role_id,roleName:r.role_name,roleProtected:Boolean(r.is_protected),assignedAt:r.assigned_at?.toISOString()??null
     })),total:Number(count.rows[0].n),offset,limit,summary:{
       total:Number(m.total),active:Number(m.active),
       suspended:Number(m.suspended),deactivated:Number(m.deactivated),assigned:Number(m.assigned)
