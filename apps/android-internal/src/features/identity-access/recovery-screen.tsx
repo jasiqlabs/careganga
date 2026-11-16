@@ -53,7 +53,7 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
         <Text style={styles.label}>Registered mobile number or email</Text>
         <TextInput accessibilityLabel="Registered mobile number or email"
           autoComplete="username" autoCapitalize="none" value={identifier}
-          editable={!complete&&step==="request"} onChangeText={setIdentifier} style={styles.input}/>
+          editable={!complete&&step==="request"} onChangeText={x=>{setIdentifier(x);setChannel(x.includes("@")?"email":"sms");}} style={styles.input}/>
         {step==="request"&&<View style={styles.group}>
           <Text style={styles.label}>Receive OTP via</Text>
           <View style={{flexDirection:"row",gap:12}}>
@@ -85,6 +85,12 @@ export function RecoveryScreen({onExit}:{onExit:()=>void}){
             step==="request"?"Send reset OTP":"Reset password"}</Text>
         </Pressable>}
         {unknown&&<Text>Check whether your password changed before retrying. Contact support if needed.</Text>}
+        {step==="confirm"&&!complete&&<Pressable accessibilityRole="button"
+          style={styles.button} disabled={busy}
+          onPress={()=>{setStep("request");setCode("");setNewPassword("");
+            key.current="";setMessage("Request a new OTP after the resend cooldown.");}}>
+          <Text>Request another OTP</Text>
+        </Pressable>}
         <Pressable accessibilityRole="button" style={styles.button} onPress={onExit}>
           <Text>Return to sign in</Text>
         </Pressable>
