@@ -258,6 +258,16 @@ export class NoticeService{
    }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
    finally{client.release();}
  }
+ async lookupDraft(bearer:string,requestKey:unknown){
+   const actor=await this.sessions.requireAction(bearer,"communications.notices.manage");
+   const key=ref(requestKey);
+   const q=await this.db.query<NoticeRow>(`
+     SELECT * FROM cg19_notice
+     WHERE realm_id=$1 AND author_id=$2 AND request_key=$3
+   `,[actor.realmId,actor.accountId,key]);
+   return q.rowCount?{status:"CONFIRMED",notice:view(q.rows[0])}:
+     {status:"NOT_FOUND",notice:null};
+ }
  async list(bearer:string,limitInput:unknown=20){
    const actor=await this.sessions.requireAction(bearer,"communications.notices.manage");
    const limit=Number(limitInput);
