@@ -1,5 +1,12 @@
 # CG-02 — User Stories & Manual QA
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+CG-02 seven-stage branch case decisions and post-approval links use CG-01 password-only sessions; CG-03 branch approvals require actual protected current-password confirmation in place of the old authenticator. No change to CG-02 Foundation/branch source of truth, its prior seven stages, separate approver, owner effects or documents. QA: approved/rejected branch, wrong password, 2-actor review, direct API bypass, stale scope, source revision and unchanged existing branches.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
