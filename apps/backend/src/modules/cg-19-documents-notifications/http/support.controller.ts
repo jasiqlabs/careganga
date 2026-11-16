@@ -1,19 +1,42 @@
-import {Body,Controller,Get,Headers,Param,Patch,Post,Query,Req} from "@nestjs/common";
+import {Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req} from "@nestjs/common";
+import {createHmac,timingSafeEqual} from "node:crypto";
 import {SupportService} from "../application/support.service";
 
 type GuestRequest={socket?:{remoteAddress?:string};ip?:string};
-const peer=(req:GuestRequest)=>req.socket?.remoteAddress??req.ip??"unresolved";
+function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
+  route:"contact"|"status"){
+  const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
+  // Direct/local development uses socket IP. In production the explicit
+  // trusted reverse-proxy proof prevents all visitors sharing one web IP bucket.
+  if(secret.length===0)return req.socket?.remoteAddress??req.ip??"unresolved";
+  if(secret.length!==32||typeof client!=="string"||typeof ts!=="string"||
+    typeof signature!=="string"||!/^[0-9a-fA-F:.]{3,45}$/.test(client)||
+    !/^\\d{13}$/.test(ts)||Math.abs(Date.now()-Number(ts))>60000||
+    !/^[a-f0-9]{64}$/i.test(signature))
+    throw new ForbiddenException("Trusted support proxy unavailable");
+  const expected=createHmac("sha256",secret)
+    .update(route+":"+ts+":"+client).digest();
+  if(!timingSafeEqual(expected,Buffer.from(signature,"hex")))
+    throw new ForbiddenException("Trusted support proxy unavailable");
+  return client;
+}
 
 @Controller("api/support")
 export class SupportController{
   constructor(private readonly support:SupportService){}
   @Post("public/contact")
-  contact(@Req()req:GuestRequest,@Body()body:unknown){
-    return this.support.contact(peer(req),body);
+  contact(@Req()req:GuestRequest,@Body()body:unknown,
+    @Headers("x-cg19-proxy-client")ip?:string,
+    @Headers("x-cg19-proxy-ts")ts?:string,
+    @Headers("x-cg19-proxy-proof")proof?:string){
+    return this.support.contact(peer(req,ip,ts,proof,"contact"),body);
   }
   @Post("receipt/status")
-  receipt(@Req()req:GuestRequest,@Body()body:unknown){
-    return this.support.receipt(peer(req),body);
+  receipt(@Req()req:GuestRequest,@Body()body:unknown,
+    @Headers("x-cg19-proxy-client")ip?:string,
+    @Headers("x-cg19-proxy-ts")ts?:string,
+    @Headers("x-cg19-proxy-proof")proof?:string){
+    return this.support.receipt(peer(req,ip,ts,proof,"status"),body);
   }
   @Get("public/faqs")
   publicFaqs(){return this.support.publicFaqs();}
