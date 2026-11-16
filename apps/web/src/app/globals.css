@@ -440,16 +440,16 @@ button:disabled { cursor:wait; opacity:.65; }
 /* CG-01: original CareGanga Admin login reference — scoped and responsive. */
 .cg-login-page{min-height:100vh;background:radial-gradient(ellipse at 70% 12%,#163b66 0%,#0a2348 42%,#07162c 100%);
  color:#fff;padding:clamp(1rem,3vw,2.5rem);display:flex;flex-direction:column;align-items:center}
-.cg-login-brand{display:flex;align-items:center;gap:.8rem;justify-content:center;margin:clamp(1rem,3vw,2.2rem) auto 1.5rem}
+.cg-login-brand{display:flex;align-items:center;gap:.75rem;justify-content:center;margin:clamp(1rem,3vw,2.2rem) auto 1.5rem;max-width:25rem;padding:.8rem 1.2rem;background:#fff;color:#102548;border-radius:1.3rem;box-shadow:0 7px 30px #07192e66}
 .cg-login-brand img{background:#fff;border-radius:.7rem;padding:.35rem;object-fit:contain;box-shadow:0 6px 20px #06152744}
 .cg-login-brand>div{display:grid;gap:.05rem}
-.cg-login-brand strong{font-size:clamp(1rem,2.4vw,1.4rem);letter-spacing:.07em}
-.cg-login-brand span{color:#bdd0e9;font-size:.82rem;letter-spacing:.08em}
+.cg-login-brand strong{font-size:clamp(1.3rem,3vw,1.7rem);font-weight:800;letter-spacing:-.025em;color:#19325d}
+.cg-login-brand span{color:#213960;font-size:.68rem;letter-spacing:.16em}
 .cg-login-card{background:#fff;color:#17263e;border-radius:1.15rem;padding:clamp(1.35rem,4.2vw,2.5rem);
  width:min(100%,30rem);box-shadow:0 16px 55px #020b1b5c;text-align:center}
 .cg-login-card h1{font-size:clamp(1.5rem,3.3vw,1.95rem);margin:.7rem 0 .45rem;line-height:1.2}
 .cg-login-card>p{color:#687487;font-size:.91rem;margin:0 0 1.5rem}
-.cg-login-lock{width:3.2rem;height:3.2rem;border:1px solid #dce8fb;background:#edf4ff;
+.cg-login-lock{width:3.45rem;height:3.45rem;border:2px solid #132b53;background:#fff;
  border-radius:1rem;color:#2054ba;display:grid;place-items:center;margin:0 auto;font-size:1.7rem}
 .cg-login-form{display:grid;gap:.6rem;text-align:left}
 .cg-login-form>label{font-size:.73rem;font-weight:750;letter-spacing:.08em;color:#465971}
