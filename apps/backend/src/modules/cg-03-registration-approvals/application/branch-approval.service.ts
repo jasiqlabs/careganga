@@ -46,6 +46,9 @@ export class BranchApprovalService{
   private readonly sessions:SessionService,private readonly owner:ProtectedAccessOwnerService,
   private readonly branches:BranchSourceFacade){}
  private async currentBranchProcess(client:PoolClient,actor:VerifiedFoundationActor){
+   // Only a currently authorized Foundation root may initialize an approval
+   // process; ordinary branch managers never create reviewer policy.
+   await this.owner.verifyReviewer(client,actor,"approvals.process.manage",true);
    const current=await client.query<{id:string;version:number}>(`
      SELECT p.id,p.version FROM cg03_branch_process_current c
        JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id
@@ -67,6 +70,38 @@ export class BranchApprovalService{
      INSERT INTO cg03_branch_process_current(realm_id,process_id) VALUES($1,$2)
    `,[actor.realmId,created.rows[0].id]);
    return created.rows[0];
+ }
+ async processStatus(bearer:string){
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
+   const current=await this.db.query<{version:number}>(`
+     SELECT p.version FROM cg03_branch_process_current c
+     JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id
+     WHERE c.realm_id=$1 AND p.process_kind='BRANCH_REGISTRATION'
+     LIMIT 1
+   `,[actor.realmId]);
+   return {configured:!!current.rows[0],status:current.rows[0]?"AVAILABLE":"NOT_CONFIGURED"};
+ }
+ async initializeProcess(bearer:string){
+   const actor=await this.sessions.requireAction(bearer,"approvals.process.manage");
+   await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   const client=await this.db.connect();let tx=false;
+   try{
+     await client.query("BEGIN");tx=true;
+     const root=await client.query(`
+       SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
+     `,[actor.realmId]);
+     if(!root.rowCount)throw new ForbiddenException("Foundation root is unavailable");
+     const available=await client.query<{id:string;version:number}>(`
+       SELECT p.id,p.version FROM cg03_branch_process_current c
+       JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id
+       WHERE c.realm_id=$1 AND p.process_kind='BRANCH_REGISTRATION'
+     `,[actor.realmId]);
+     const process=available.rows[0];
+     if(!process)throw new ConflictException("Super Admin branch approval process is not configured");
+     await client.query("COMMIT");tx=false;
+     return {status:"AVAILABLE",configured:true,version:process.version};
+   }catch(e){if(tx)try{await client.query("ROLLBACK");}catch{};throw e;}
+   finally{client.release();}
  }
  async createOrGetCase(bearer:string,registrationRef:string,revision:number,digest:string,
    requestKey:string){
