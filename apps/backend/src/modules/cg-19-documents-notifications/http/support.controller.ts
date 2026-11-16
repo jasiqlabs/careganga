@@ -42,8 +42,9 @@ export class SupportController{
   publicFaqs(){return this.support.publicFaqs();}
   @Get("cases")
   cases(@Headers("authorization")token:string,
-    @Query("limit")limit?:string,@Query("filter")filter?:string){
-    return this.support.cases(token,limit??30,filter??"ALL");
+    @Query("limit")limit?:string,@Query("filter")filter?:string,
+    @Query("cursor")cursor?:string){
+    return this.support.cases(token,limit??30,filter??"ALL",cursor);
   }
   @Get("cases/:caseRef")
   detail(@Headers("authorization")token:string,
