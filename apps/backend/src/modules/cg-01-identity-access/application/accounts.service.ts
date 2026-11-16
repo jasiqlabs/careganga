@@ -128,7 +128,7 @@ export class AccountsService {
       throw new ForbiddenException("Access is no longer available");
   }
 
-  private async command(client:PoolClient,actor:VerifiedFoundationActor,action:"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
+  private async command(client:PoolClient,actor:VerifiedFoundationActor,action:"CREATE"|"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
       requestKey:string,payload:unknown):Promise<{id:string|null;replay:CommandResult|null}>{
     const requestHash=digest(JSON.stringify(payload));
     const r=await client.query<{id:string}>(String.raw`
@@ -154,7 +154,7 @@ export class AccountsService {
         safe_context,correlation_ref) VALUES($1,$2,$3,$4,'SUCCESS',$5::jsonb,$6)`,
       [actor.realmId,actor.accountId,target,action,JSON.stringify({targetDisplay:displayName.slice(0,160)}),correlationRef]);
   }
-  private async perform(bearer:string,permission:string,action:"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
+  private async perform(bearer:string,permission:string,action:"CREATE"|"INVITE"|"RESEND"|"ASSIGN"|"REVOKE"|"STATUS",
     requestKey:string,payload:unknown,correlationRef:string,
     work:(client:PoolClient,actor:VerifiedFoundationActor)=>Promise<{
       accountRef:string;revision:number;status:string;displayName:string;inviteToken?:string;contact?:string;challengeRef?:string;
@@ -241,7 +241,7 @@ export class AccountsService {
     if(key.length!==32)throw new Error("Protected identity key unavailable");
     const passwordProof=createHmac("sha256",key).update(input.password,"utf8").digest("hex");
     const passwordHash=await hashPassword(input.password);
-    return this.perform(bearer,"accounts.invite","INVITE",input.requestKey,
+    return this.perform(bearer,"accounts.invite","CREATE",input.requestKey,
       {displayName,mobile,email,roleRef,passwordProof},correlationRef,async(client,actor)=>{
         await this.authorize(client,actor,"roles.assign");
         await this.eligibleRole(client,roleRef,actor.realmId);
