@@ -148,11 +148,11 @@ export class NoticeService{
  }
  async decide(bearer:string,rawRef:unknown,payload:unknown){
    const id=ref(rawRef),command=record(payload,
-     ["action","expectedRevision","requestKey","totp"]);
+     ["action","expectedRevision","requestKey","currentPassword"]);
    if(!["APPROVE","CANCEL"].includes(String(command.action))||
      !Number.isSafeInteger(command.expectedRevision)||
      Number(command.expectedRevision)<1||
-     typeof command.totp!=="string"||!/^[0-9]{6}$/.test(command.totp))
+     typeof command.currentPassword!=="string"||(command.currentPassword.length<8||Buffer.byteLength(command.currentPassword,"utf8")>1024))
       throw new BadRequestException("Check notice approval");
    const key=ref(command.requestKey);
    const actor=await this.sessions.requireAction(bearer,"communications.notices.approve");
@@ -190,7 +190,7 @@ export class NoticeService{
      if(command.action==="CANCEL"&&
        ["CANCELLED","EXPIRED"].includes(n.state))
        throw new ConflictException("Notice is already inactive");
-     await this.sessions.requireFreshFoundationRootProof(client,actor,command.totp);
+     await this.sessions.requireFreshFoundationRootProof(client,actor,command.currentPassword);
      let state="CANCELLED";
      if(command.action==="APPROVE"){
        state=n.scheduled_at&&n.scheduled_at.getTime()>Date.now()?
