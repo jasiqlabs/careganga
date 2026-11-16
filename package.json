@@ -14,7 +14,8 @@
     "dev:web": "npm run dev -w apps/web",
     "start:android-public": "npm run start -w apps/android-public",
     "start:android-internal": "npm run start -w apps/android-internal",
-    "db:migrate": "npm run db:migrate -w apps/backend"
+    "db:migrate": "npm run db:migrate -w apps/backend",
+    "verify:auth-source": "node scripts/verify-greenfield-auth.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
