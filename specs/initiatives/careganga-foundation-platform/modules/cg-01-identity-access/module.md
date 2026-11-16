@@ -1,5 +1,8 @@
 # CG-01 — Identity, Accounts, Roles & Permissions
 
+**Greenfield delivery directive (owner, 16 November 2026):** CareGanga has not been delivered to the client and has no functioning legacy deployment or users to migrate. **Backward compatibility (BWC), preserving unshipped TOTP/invitation contracts, and supporting legacy login are not requirements.** Implement one coherent clean-initial-database authentication solution, simplify/drop obsolete code and seed only genuine initial roles. Test on a new disposable PostgreSQL database; never imply existing data migrations, production runtime or completed QA. Security and permission enforcement remain mandatory.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Initiative:** careganga-foundation-platform  
