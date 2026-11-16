@@ -32,7 +32,11 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"approvals.view",businessLabel:"View permitted approvals",group:"Applications & approvals",assignable:true,sensitive:false},
   {key:"approvals.propose",businessLabel:"Submit protected access request",group:"Applications & approvals",assignable:true,sensitive:true},
   {key:"approvals.review",businessLabel:"Review final protected access decision",group:"Applications & approvals",assignable:false,sensitive:true},
-  {key:"approvals.process.manage",businessLabel:"Manage approval process",group:"Applications & approvals",assignable:false,sensitive:true}
+  {key:"approvals.process.manage",businessLabel:"Manage approval process",group:"Applications & approvals",assignable:false,sensitive:true},
+  {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
+  {key:"documents.files.manage",businessLabel:"Upload protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
+  {key:"documents.letters.issue",businessLabel:"Issue private access confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
+  {key:"documents.letters.revoke",businessLabel:"Revoke private confirmation letters",group:"Documents & files",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
