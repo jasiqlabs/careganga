@@ -296,8 +296,15 @@ export class BranchRegistrationDraftService{
       [reg,actor.realmId,admin,actor.accountId]);
     if(!result.rows[0])throw new NotFoundException("Branch registration unavailable");
     const row=result.rows[0];
+    const labelClient=await this.db.connect();
+    let managerName:string|null=null;
+    try{
+      const labels=await this.identity.accountLabels(labelClient,actor,
+        row.manager_account_ref?[row.manager_account_ref]:[]);
+      managerName=row.manager_account_ref?labels[row.manager_account_ref]??null:null;
+    }finally{labelClient.release();}
     return {...this.summary(row),stages:row.profile_payload,
-      managerRef:row.manager_account_ref,geographyRef:row.geography_area_id};
+      managerRef:row.manager_account_ref,managerName,geographyRef:row.geography_area_id};
   }
   async lookup(bearer:string,actionInput:unknown,keyInput:unknown){
     const actor=await this.actor(bearer,"foundation.branches.view");
