@@ -182,3 +182,23 @@ export interface CG03OwnerOutcome{
 export interface CG03OwnerRetry{
   status:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED";
 }
+
+/** CG-19 / US-001: actual private CG-03 case evidence. References are transport
+ * identifiers and must never be displayed in user-facing form controls. */
+export type CG19FileState=
+  "INITIATED"|"UPLOAD_READY"|"VERIFYING"|"VALIDATED"|"REJECTED"|
+  "UNKNOWN"|"EXPIRED"|"STORAGE_UNAVAILABLE"|"VERIFICATION_UNAVAILABLE"|
+  "EXPIRED_OR_REJECTED";
+export interface CG19UploadRequest {
+  caseRef:string;sourceRevision:number;requestKey:string;
+  mime:"application/pdf"|"image/jpeg"|"image/png"|"image/webp";
+  sizeBytes:number;sha256:string;
+}
+export interface CG19UploadStart {
+  uploadRef:string;status:CG19FileState;message:string;
+  uploadUrl?:string;expiresAt?:string;
+}
+export interface CG19UploadStatus {
+  uploadRef:string;status:CG19FileState;fileRef:string|null;
+  cleanVerified:boolean;message?:string;
+}
