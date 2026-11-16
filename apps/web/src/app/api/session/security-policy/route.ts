@@ -39,7 +39,7 @@ async function proxy(request:NextRequest,method:"GET"|"PATCH"){
         status===403?"This action is restricted to the Foundation Super Admin.":
         status===409?"The policy changed elsewhere. Refresh before saving.":
         status===429?"Too many attempts. Try again later.":
-        status===400?"Check permitted policy limits and enter a fresh authenticator code.":
+        status===400?"Check the policy limits and confirm with your current password.":
         "The change outcome could not be confirmed. Check before retrying.",
         ...(code?{code}:{})},{status,headers:{"Cache-Control":"no-store"}});
     }
