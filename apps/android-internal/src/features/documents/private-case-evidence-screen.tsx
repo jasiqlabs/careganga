@@ -354,7 +354,7 @@ const styles=StyleSheet.create({
     borderRadius:12,padding:15,gap:12},
   option:{padding:12,borderWidth:1,borderRadius:8,borderColor:theme.border,
     minHeight:54,gap:3},
-  chosen:{borderColor:theme.selectedNavigation,backgroundColor:"#EEF4FF"},
+  chosen:{borderColor:theme.selectedNavigation,backgroundColor:theme.surface},
   button:{paddingHorizontal:14,paddingVertical:12,borderColor:theme.border,
     borderWidth:1,borderRadius:8,minHeight:48,justifyContent:"center"},
   primary:{paddingHorizontal:14,paddingVertical:12,backgroundColor:theme.primary,
