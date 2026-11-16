@@ -7,6 +7,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import {careGangaTheme as theme} from "../../../packages/design-tokens/src/index";
 import {RecipientNotifications} from "../../../packages/native-communications/src/recipient-notifications";
+import {FoundationContactScreen} from "../src/features/support/foundation-contact-screen";
 
 const KEY="cg_public_own_notice_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -47,6 +48,7 @@ export default function PublicHome(){
   const [busy,setBusy]=useState(false),[checking,setChecking]=useState(true);
   const [message,setMessage]=useState("");
   const [noticeOpen,setNoticeOpen]=useState(false);
+  const [contactOpen,setContactOpen]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
     void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
@@ -124,6 +126,7 @@ export default function PublicHome(){
     }catch{setMessage("Sign-out not confirmed. Retry before using another account.");}
     finally{setBusy(false);}
   }
+  if(contactOpen)return <FoundationContactScreen onExit={()=>setContactOpen(false)}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
@@ -138,6 +141,15 @@ export default function PublicHome(){
             <Text accessibilityRole="header" style={styles.title}>CareGanga Foundation</Text>
           </View>
           <Text>Foundation operations and healthcare assistance.</Text>
+          <View style={styles.card}>
+            <Text style={styles.heading}>Contact & Help</Text>
+            <Text>Send a private Foundation request without signing in,
+              then check its receipt status.</Text>
+            <Pressable accessibilityRole="button" style={styles.button}
+              onPress={()=>setContactOpen(true)}>
+              <Text>Contact CareGanga Foundation</Text>
+            </Pressable>
+          </View>
           {!!message&&<Text accessibilityRole="alert" style={styles.alert}>{message}</Text>}
           {checking?<ActivityIndicator accessibilityLabel="Verifying access"/>:
             token&&person?<View style={styles.card}>
@@ -176,8 +188,8 @@ export default function PublicHome(){
                   {busy?"Verifying…":"Sign in to my notices"}</Text>
               </Pressable>
             </View>}
-          <Text style={styles.muted}>Public contact and support are separate
-            from private Foundation administration.</Text>
+          <Text style={styles.muted}>Public contact does not require a staff account
+            and never exposes a private support case to unauthenticated visitors.</Text>
         </ScrollView>}
     </KeyboardAvoidingView>
   </SafeAreaView>;
