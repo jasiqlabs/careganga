@@ -10,6 +10,7 @@ import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
 import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
 import { NotificationsScreen } from "../communications/notifications-screen";
+import { FoundationNoticeAdminScreen } from "../communications/foundation-notice-admin-screen";
 import { FoundationSupportScreen } from "../support/foundation-support-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -64,12 +65,13 @@ export function StaffAuthenticationScreen(){
   const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [supportOpen,setSupportOpen]=useState(false);
+  const [noticeAdminOpen,setNoticeAdminOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -162,7 +164,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -196,6 +198,17 @@ export function StaffAuthenticationScreen(){
       <RecipientNotifications token={token} makeRequest={communicationRequest}
         onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
     </SafeAreaView>;
+  if(noticeAdminOpen&&token&&actor&&
+    (roleActions.includes("communications.notices.manage")||
+      roleActions.includes("communications.delivery.process")))
+    return <FoundationNoticeAdminScreen token={token}
+      mayManage={roleActions.includes("communications.notices.manage")}
+      mayApprove={roleActions.includes("communications.notices.approve")}
+      mayProcess={roleActions.includes("communications.delivery.process")}
+      mayViewDelivery={roleActions.includes("communications.delivery.view")}
+      maySelectAccounts={roleActions.includes("accounts.select")}
+      maySelectRoles={roleActions.includes("roles.select")}
+      onExit={()=>setNoticeAdminOpen(false)} onExpired={expireSession}/>;
   if(supportOpen&&token&&actor&&
     (roleActions.includes("support.cases.view")||
       roleActions.includes("support.faq.manage")))
@@ -249,6 +262,12 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>setCommunicationsOpen(true)}>
                 <Text style={styles.buttonText}>My Foundation notices</Text>
+              </Pressable>}
+            {(roleActions.includes("communications.notices.manage")||
+              roleActions.includes("communications.delivery.process"))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setNoticeAdminOpen(true)}>
+                <Text style={styles.buttonText}>Manage Foundation notices</Text>
               </Pressable>}
             {(roleActions.includes("support.cases.view")||
               roleActions.includes("support.faq.manage"))&&
