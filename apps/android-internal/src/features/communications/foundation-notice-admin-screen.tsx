@@ -305,7 +305,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
       </View>}
       {review&&mayApprove&&<View style={s.card}>
         <Text style={s.heading}>Confirm {review.action.toLowerCase()} notice</Text>
-        <Text>Selected notice revision: {review.revision}. Current root MFA required.</Text>
+        <Text>Selected notice revision: {review.revision}. Current Super Admin password confirmation required.</Text>
         <TextInput value={currentPassword} onChangeText={x=>setCurrentPassword(x)}
           accessibilityLabel="Current password" secureTextEntry autoComplete="current-password"
           style={s.input} keyboardType="number-pad" secureTextEntry maxLength={1024}/>
