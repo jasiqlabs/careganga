@@ -73,3 +73,8 @@ This module must complete actual create/read/update/review and permissioned Web/
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: A12, A13, A14, A15, A16, A17, A18. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with **60** explicit per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+
+## Existing donor receipt + certificate reference (16 Nov 2026)
+
+Follow [the two original CareGanga PDFs — review and discrepancies](../../../../../docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md) for **CG-07 US-003**. One verified CG-09-posted donation supports two **different** CG-19-issued templates: paid donation receipt and distinct donor appreciation certificate (not a tax receipt). Do not add a parallel finance/document master, assume 80G or copy sample one-year certificate validity. Source visual/print QA is NOT_RUN.

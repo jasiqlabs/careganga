@@ -69,3 +69,8 @@ Detailed authoritative clauses:
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+
+## Future original CG-07 donation document evidence (16 Nov 2026)
+
+[Existing one-page CareGanga receipt and two-page donor-certificate PDF review](../../../../../docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md) specifies two downstream brand templates; certificate must render without its source blank page. CG-19 remains the single source-linked versioned PDF issuer/reissuer/revoker; **CG-07 US-003** introduces the authentic donation adapter only when that module ships; CG-09 owns money. Certificate acknowledgement is separate from 80G/tax proof. Initial independent CG-19 CG-01/03 source scope stays unchanged.

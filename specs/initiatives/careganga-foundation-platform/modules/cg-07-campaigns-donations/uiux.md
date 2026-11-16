@@ -65,3 +65,8 @@ Match campaign create/edit wizard, target/date, team, beneficiary cause, media a
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+
+## Client donation PDF layout authority — CG-07 US-003 (16 Nov 2026)
+
+Compare [supplied branded receipt/certificate sample review](../../../../../docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md) with eventual actual outputs. **Receipt:** one A4 landscape, magenta outline, logo/blue-green masthead, amount-in-words ribbon, left donor/right payment sections, legal strip, signatory and website QR. **Certificate:** different ornate navy/green/gold border and ribbon, donor name and amount, cause symbols, certificate metadata and approved dual signatory/seal; **do not generate source's extra blank second page**. Offer Preview/Download/Print only on real posted and issued source, with truthful pending/error/refund states, long-text wrapping and small-screen PDF preview. Don't hardcode unverified legal/domain/validity statements. Source pixel and print QA NOT_RUN.

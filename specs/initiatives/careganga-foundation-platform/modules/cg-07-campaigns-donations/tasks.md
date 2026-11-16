@@ -104,3 +104,8 @@ Dependencies: US-002 actual CG-09 confirmed posting and original CG-19 issued re
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+
+### Existing receipt/certificate acceptance supplement — CG-07 US-003
+
+Extend the existing **US-003-QA01–QA20** traces, without changing the 60-case count, against [the actual client document review](../../../../../docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md): one original posted donation; separate CG-19 receipt and recognition-certificate outputs; two immutable public-facing references; source money and amount-in-words; permitted donor-only PDF retrieval; correct one-page landscape A4 visual layouts; long Unicode donor name/₹; configured Foundation legal/domain/signatures and non-tax 80G meaning; issuer pending/retry; duplicate requests; refunds/corrections; empty certificate-page prevention. Compare exact original PDFs during pixel/print/device QA, which is NOT_RUN.

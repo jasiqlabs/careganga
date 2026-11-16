@@ -129,6 +129,7 @@ Each requirement is stated as a desired **business capability**, not as a dedica
 - **CG-07-BR02:** Accept general and campaign-linked online donations through configured payment provider, recording donor, amount, transaction reference and payment status.
 - **CG-07-BR03:** Allow authorized manual donation entries, payment links, verification and correction/refund actions within configured provider/payment rules.
 - **CG-07-BR04:** Produce authorized receipts and donor transaction history and expose donor-facing receipts through appropriate self-service.
+- **Client output evidence (16 Nov 2026; CG-07-BR04/CG-19-BR01):** Preserve the Foundation's **separate donation receipt and donor recognition certificate** using real verified CG-09 donation, authorized CG-07 donor retrieval and two versioned CG-19 templates. Certificate is not an 80G/tax receipt; sample domain, validity, signatories and legal numbers require client confirmation. Follow [the uploaded PDF review](../research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md).
 - **CG-07-BR05:** Link successful payments to financial accounting records exactly once, with refund/correction linkage; do not equate a pending gateway request to received funds.
 - **CG-07-BR06:** Show approved public campaign details, goals/progress and donation CTAs; keep private donor/payment data restricted.
 - **CG-07-BR07:** Provide donation lists, filters, dashboards, campaign progress, summaries and exports.

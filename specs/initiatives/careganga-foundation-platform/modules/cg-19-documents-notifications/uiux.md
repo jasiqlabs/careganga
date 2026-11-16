@@ -54,3 +54,8 @@ Use original Admin document/media right-drawer/modal, upload progress, preview, 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+
+## Donation receipt & donor certificate — downstream visual reference (16 Nov 2026)
+
+[Two existing client PDF layouts and discrepancy register](../../../../../docs/research/CAREGANGA-DONATION-RECEIPT-CERTIFICATE-REFERENCE-20261116.md). Receipt uses white/pink bordered A4 landscape, organization logo/header, amount strip, donor/payment columns, legal strip, official signatory and website QR. Donor certificate uses a separate fully branded blue/green/gold A4 landscape with ornate border, ribbon, mission icons, large donor name/amount, metadata and approved dual signatories. **Never reproduce blank second certificate page.** Preview/Download/Print must be authentic CG-07/09/19 source states, not simulated screens; legal/domain/signer/validity copy comes from verified Foundation configuration. Actual Web/mobile/print pixel QA not executed.
