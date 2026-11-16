@@ -44,6 +44,9 @@ export class SupportController{
   }
   @Get("public/faqs")
   publicFaqs(){return this.support.publicFaqs();}
+  @Get("agents")
+  agents(@Headers("authorization")token:string,
+    @Query("search")search?:string){return this.support.agents(token,search??"")}
   @Get("cases")
   cases(@Headers("authorization")token:string,
     @Query("limit")limit?:string,@Query("filter")filter?:string,
