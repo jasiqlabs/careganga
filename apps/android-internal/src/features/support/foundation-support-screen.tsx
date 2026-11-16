@@ -46,6 +46,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   mayChooseAccounts,onExit,onExpired}:Props){
   const [tab,setTab]=useState<"CASES"|"FAQ">(mayView?"CASES":"FAQ");
   const [filter,setFilter]=useState("ALL"),[cursor,setCursor]=useState<string|null>(null);
+  const [search,setSearch]=useState(""),[appliedSearch,setAppliedSearch]=useState("");
   const [previous,setPrevious]=useState<string[]>([]);
   const [next,setNext]=useState<string|null>(null);
   const [cases,setCases]=useState<CaseView[]>([]),[counts,setCounts]=useState<Counts|null>(null);
@@ -61,8 +62,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     try{
       const [result,faqResult]=await Promise.all([
         mayView?api<{items:CaseView[];counts:Counts;nextCursor:string|null}>(
-          token,"cases?limit=30&filter="+filter+
-          (cursor?"&cursor="+encodeURIComponent(cursor):"")):
+          token,"cases/search","POST",
+          {limit:30,filter,cursor,search:appliedSearch}):
           Promise.resolve({items:[],counts:null,nextCursor:null}),
         mayFaq?api<{faqs:Faq[]}>(token,"faqs"):Promise.resolve({faqs:[]})
       ]);
@@ -72,7 +73,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       setMessage(friendly(error));
       if(error instanceof Error&&error.message==="EXPIRED")onExpired();
     }finally{setLoading(false)}
-  },[token,filter,cursor,mayView,mayFaq,onExpired]);
+  },[token,filter,cursor,appliedSearch,mayView,mayFaq,onExpired]);
   useEffect(()=>{void load()},[load]);
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
@@ -166,6 +167,14 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   function chooseFilter(value:string){
     setFilter(value);setCursor(null);setPrevious([]);setNext(null);
   }
+  function applySearch(){
+    if(search.trim().length>0&&search.trim().length<3){
+      setMessage("Enter at least three characters to search the Foundation queue.");
+      return;
+    }
+    setAppliedSearch(search.trim());setCursor(null);setPrevious([]);setNext(null);
+    setMessage("");
+  }
   return <SafeAreaView style={s.page}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
@@ -241,6 +250,22 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
                 accessibilityState={{selected:filter===v}} onPress={()=>chooseFilter(v)}>
                 <Text>{v}</Text></Pressable>)}
           </View></View>
+        <View style={s.card}>
+          <Text style={s.heading}>Search all permitted messages</Text>
+          <TextInput accessibilityLabel="Search all support cases" style={s.input}
+            value={search} onChangeText={setSearch} maxLength={100}
+            placeholder="Name, contact or subject (3+ characters)"/>
+          <View style={s.row}>
+            <Pressable style={s.button} accessibilityRole="button"
+              disabled={busy} onPress={applySearch}><Text>Search</Text></Pressable>
+            {appliedSearch!==""&&<Pressable style={s.button}
+              onPress={()=>{setSearch("");setAppliedSearch("");
+                setCursor(null);setPrevious([]);setNext(null)}}>
+              <Text>Clear search</Text></Pressable>}
+          </View>
+          <Text style={s.muted}>Search is performed server-side using private
+            terms, not device-only filtering.</Text>
+        </View>
         {cases.length===0&&!loading&&<Text>No messages match this page.</Text>}
         {cases.map(item=><Pressable key={item.caseRef} style={s.card}
           accessibilityRole="button" disabled={busy} onPress={()=>void show(item.caseRef)}>
