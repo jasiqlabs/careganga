@@ -236,8 +236,15 @@ export class BranchOperationsService{
      FROM branch_profile_revision WHERE root_realm_id=$1 AND branch_id=$2
      ORDER BY branch_version DESC LIMIT 30 OFFSET $3
    `,[actor.realmId,id(branchRef),offset]);
+   const labelHistory=(payload:Record<string,unknown>)=>({
+     branchName:typeof payload.branchName==="string"?payload.branchName:null,
+     status:typeof payload.status==="string"?payload.status:null,
+     branchType:typeof payload.branchType==="string"?payload.branchType:null,
+     openingDate:typeof payload.openingDate==="string"?payload.openingDate:null
+   });
    return {history:rows.rows.map(x=>({version:x.branch_version,
-     changedAt:x.changed_at.toISOString(),before:x.before_payload,after:x.after_payload})),
+     changedAt:x.changed_at.toISOString(),before:labelHistory(x.before_payload),
+     after:labelHistory(x.after_payload)})),
      nextOffset:rows.rows.length===30?offset+30:null};
  }
  async update(bearer:string,branchRef:string,input:unknown,
@@ -254,6 +261,8 @@ export class BranchOperationsService{
    const manager=id(x.managerRef);
    const opening=date(x.openingDate);
    const lat=coordinate(x.latitude,-90,90),long=coordinate(x.longitude,-180,180);
+   if("evidenceFiles" in x&&(!proof||!verifiedFiles))
+     throw new ForbiddenException("Private evidence must be verified by the secure document service");
    if(verifiedFiles&&(!proof||!Array.isArray(verifiedFiles)))
      throw new ConflictException("Verified private file proof is required");
    return this.perform(bearer,"foundation.branches.manage","UPDATE_BRANCH",branchRef,x,
@@ -263,8 +272,21 @@ export class BranchOperationsService{
          throw new ConflictException("The branch profile changed. Refresh first.");
        await this.geography(client,actor.realmId,location);
        await this.identity.eligibleOfficeholder(client,actor,manager);
-       const evidence=verifiedFiles??branch.evidence_versions;
-       const before=JSON.stringify(branch);
+       // Versioned, verified replacements never silently remove unrelated
+       // originals; exactly each replaced file category changes.
+       const replacing=new Set((verifiedFiles??[]).map(x=>x.classification));
+       const evidence=verifiedFiles?
+         [...branch.evidence_versions.filter(x=>!replacing.has(x.classification)),
+           ...verifiedFiles]:branch.evidence_versions;
+       const kinds=evidence.map(x=>x.classification);
+       if(!kinds.includes("REGISTRATION_PROOF")||!kinds.includes("AGREEMENT"))
+         throw new ConflictException("The operating branch must retain verified required evidence");
+       const before=JSON.stringify({branchName:branch.name,branchType:branch.branch_type,
+         status:branch.status,openingDate:branch.opening_date,
+         geographyRef:branch.geography_area_id,postalAddress:branch.postal_address,
+         pinCode:branch.pin_code,latitude:branch.latitude,longitude:branch.longitude,
+         officialPhone:branch.official_phone,officialEmail:branch.official_email,
+         managerRef:branch.manager_account_ref});
        const updated=await client.query<{version:number}>(`
          UPDATE branch SET name=$3,normalized_name=$4,branch_type=$5,opening_date=$6,
            geography_area_id=$7,postal_address=$8,pin_code=$9,latitude=$10,longitude=$11,
