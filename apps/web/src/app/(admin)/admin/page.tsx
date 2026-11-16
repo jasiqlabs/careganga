@@ -18,6 +18,8 @@ export default async function AdminHome() {
   let canViewRecovery=false;
   let canViewApprovals=false;
   let canViewDocuments=false;
+  let canViewCommunications=false;
+  let canViewSupport=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -41,6 +43,13 @@ export default async function AdminHome() {
           canViewDocuments=Array.isArray(effective.actions)&&
             ["documents.files.view","documents.files.manage"].every(key=>
               effective.actions!.some(x=>x.key===key))&&canViewApprovals;
+          canViewSupport=Array.isArray(effective.actions)&&effective.actions.some(x=>
+            x.key==="support.cases.view"||x.key==="support.faq.manage");
+          canViewCommunications=Array.isArray(effective.actions)&&
+            effective.actions.some(x=>[
+              "communications.notifications.view","communications.notices.manage",
+              "communications.delivery.view"
+            ].includes(x.key??""));
         }
         const data:unknown=await response.json();
         if(data&&typeof data==="object"&&"displayName" in data&&"roleName" in data&&"scope" in data
@@ -55,7 +64,7 @@ export default async function AdminHome() {
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
-      canViewDocuments={canViewDocuments}/>
+      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
     </main>

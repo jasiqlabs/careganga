@@ -36,7 +36,16 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.files.manage",businessLabel:"Upload protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.letters.issue",businessLabel:"Issue private access confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
-  {key:"documents.letters.revoke",businessLabel:"Revoke private confirmation letters",group:"Documents & files",assignable:false,sensitive:true}
+  {key:"documents.letters.revoke",businessLabel:"Revoke private confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
+  {key:"communications.notifications.view",businessLabel:"Read own Foundation notices",group:"Notices & communications",assignable:true,sensitive:false},
+  {key:"communications.notices.manage",businessLabel:"Draft Foundation notices",group:"Notices & communications",assignable:true,sensitive:true},
+  {key:"communications.notices.approve",businessLabel:"Approve and send Foundation notices",group:"Notices & communications",assignable:false,sensitive:true},
+  {key:"communications.delivery.process",businessLabel:"Process protected delivery queue",group:"Notices & communications",assignable:false,sensitive:true},
+  {key:"communications.delivery.view",businessLabel:"View redacted delivery status",group:"Notices & communications",assignable:true,sensitive:true},
+  {key:"support.cases.view",businessLabel:"View Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.cases.manage",businessLabel:"Assign and manage Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.cases.reply",businessLabel:"Reply to Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.faq.manage",businessLabel:"Manage Foundation help questions",group:"Helpdesk & support",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

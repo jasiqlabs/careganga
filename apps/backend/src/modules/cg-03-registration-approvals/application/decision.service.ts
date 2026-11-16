@@ -157,6 +157,12 @@ export class ApprovalDecisionService{
             correlation_ref) VALUES($1,$2,$3,'PENDING_OWNER',$4,$5)
         `,[actor.realmId,row.id,actor.accountId,row.current_step,correlationRef]);
       }
+      // CG-03 owns the original immutable decision. PostgreSQL NOTIFY is
+      // delivered only upon commit; CG-19's bounded replay cursor recovers
+      // missed notifications after process restarts (hint is not evidence).
+      await client.query("SELECT pg_notify('cg19_decision_committed',$1)",[
+        actor.realmId
+      ]);
       await client.query("COMMIT");active=false;
       return {status:state,caseNumber:row.case_number,revision:saved.rows[0].revision,
         decisionRecorded:true,sourceEffect:state==="PENDING_OWNER"?"PENDING_OWNER":"NOT_APPLICABLE",

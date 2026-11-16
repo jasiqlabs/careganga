@@ -45,7 +45,11 @@ export default async function ProtectedPlatformPage(){
         canViewAudit={keys.includes("platform.audit.view")}
         canViewRecovery={keys.includes("platform.recovery.view")}
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
-        canViewDocuments={keys.includes("documents.files.view")&&keys.includes("documents.files.manage")&&(keys.includes("approvals.view")||keys.includes("approvals.propose"))}/>
+        canViewDocuments={keys.includes("documents.files.view")&&keys.includes("documents.files.manage")&&(keys.includes("approvals.view")||keys.includes("approvals.propose"))}
+        canViewCommunications={keys.includes("communications.notifications.view")||
+          keys.includes("communications.notices.manage")||
+          keys.includes("communications.delivery.view")}
+        canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace"><PlatformAuditPanel/></main>
     </div>;
   }catch(error){

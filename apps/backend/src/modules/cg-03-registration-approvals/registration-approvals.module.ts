@@ -7,10 +7,11 @@ import {ApprovalDecisionService} from "./application/decision.service";
 import {ApprovalFinalizationService} from "./application/finalization.service";
 import {ApprovalFinalizationController} from "./http/finalization.controller";
 import {ApprovalDocumentSource} from "./application/approval-document-source.service";
+import {CommittedDecisionSource} from "./application/committed-decision-source.service";
 @Module({
   imports:[IdentityAccessModule],
-  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource],
+  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource],
   controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController],
-  exports:[ApprovalProposalService,ApprovalDocumentSource]
+  exports:[ApprovalProposalService,ApprovalDocumentSource,CommittedDecisionSource]
 })
 export class RegistrationApprovalsModule {}
