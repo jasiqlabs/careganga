@@ -234,7 +234,7 @@ export class BranchOperationsService{
    `,[actor.realmId,admin,actor.accountId,offset]);
    const cell=(value:string|null)=>{
      const safe=String(value??"");
-     const formula=/^[=+@\\-\t\r]/.test(safe)?"'"+safe:safe;
+     const formula=/^[=+@-]/.test(safe)||[9,13].includes(safe.charCodeAt(0))?"'"+safe:safe;
      return '"'+formula.replace(/"/g,'""')+'"';
    };
    const heading=["Branch","Code","Type","Status","Manager","Location","Official phone","Official email"];
