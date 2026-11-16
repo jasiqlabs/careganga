@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { createTransport } from "nodemailer";
 
-/** Credential-only, user-triggered SMTP delivery. Never batch-scan identities or log secret material. */
+/** Credential-reset OTP delivery (SMTP or SMS only); no invites or routine-login OTP. Never log secrets. */
 @Injectable()
 export class RecoveryDelivery {
   isConfigured(): boolean {
@@ -11,21 +11,6 @@ export class RecoveryDelivery {
       process.env.AUTH_SMTP_PASSWORD &&
       process.env.AUTH_EMAIL_FROM
     );
-  }
-  /** Only a committed user-triggered invite is sent; no scheduled scans or broad messaging ledger. */
-  async submitInvitation(to:string, token:string):Promise<"PROVIDER_ACCEPTED"|"UNKNOWN"|"UNAVAILABLE">{
-    return this.send(to,"CareGanga Foundation staff invitation",
-      "You have been invited to use the CareGanga Foundation internal staff portal.\n"+
-      "Open the legitimate CareGanga app or website yourself and use the invitation flow.\n"+
-      "Invitation code: "+token+"\n\nThis invitation expires in 24 hours.\n"+
-      "Only share the code with the account owner. Contact Foundation support if unexpected.");
-  }
-  async submit(to: string, token: string): Promise<"PROVIDER_ACCEPTED" | "UNKNOWN" | "UNAVAILABLE"> {
-    return this.send(to,"CareGanga Foundation account recovery",
-      "A recovery request was made for your CareGanga account.\n" +
-      "Enter the recovery code in your original CareGanga app together with your authenticator code.\n\n"+
-      "Recovery code: "+token+"\n\nExpires in 15 minutes.\n"+
-      "If you did not request this, do not share this code.\n");
   }
   isOtpChannelConfigured(channel:"email"|"sms"):boolean {
     if(channel==="email")return this.isConfigured();
