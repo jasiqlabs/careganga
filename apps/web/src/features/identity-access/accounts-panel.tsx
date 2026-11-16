@@ -59,6 +59,8 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [fullName,setFullName]=useState("");
   const [email,setEmail]=useState("");
   const [phone,setPhone]=useState("");
+  const [newPassword,setNewPassword]=useState("");
+  const [showNewPassword,setShowNewPassword]=useState(false);
   const [roleRef,setRoleRef]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [searchRole,setSearchRole]=useState("");
@@ -131,7 +133,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   }
   function openInvite(){
     ++roleRead.current;++historyRead.current;
-    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setRoleRef("");
+    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
@@ -169,17 +171,16 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     event.preventDefault();if(!canInvite||busy||uncertain||!roleRef)return;
     setBusy(true);setNotice(null);
     try{
-      await change("invitations","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase(),
-        phone:phone.trim()||undefined,roleRef,requestKey:requestKey.current});
-      setEditor(null);setNotice({kind:"success",text:
-        "Invitation saved. Email delivery is not guaranteed; check the account's delivery status."});
+      await change("accounts","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase()||undefined,
+        mobile:phone.trim(),password:newPassword,roleRef,requestKey:requestKey.current});
+      setEditor(null);setNewPassword("");setNotice({kind:"success",text:"Staff account created and active."});
       requestKey.current="";await load(applied,0,filter);
     }catch(e){
       if(e instanceof Error&&e.message==="UNKNOWN")setUncertain(true);
       if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
       else setNotice({kind:e instanceof Error&&e.message==="UNKNOWN"?"uncertain":"error",
-        text:e instanceof Error&&e.message==="UNKNOWN"?"The invitation result is unknown. Refresh before another attempt.":
-          e instanceof Error?e.message:"Invitation could not be confirmed."});
+        text:e instanceof Error&&e.message==="UNKNOWN"?"Account creation is unconfirmed. Refresh before another attempt.":
+          e instanceof Error?e.message:"Staff account creation could not be confirmed."});
     }finally{setBusy(false);}
   }
   async function submitChange(){
@@ -288,13 +289,22 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
         {editor==="invite"&&<form className="form" onSubmit={event=>void submitInvite(event)}>
           <label className="field">Full name<input required maxLength={160}
             value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
-          <label className="field">Work email<input required type="email" maxLength={254}
-            value={email} onChange={event=>setEmail(event.target.value)}/></label>
-          <label className="field">Phone (optional, unverified)<input type="tel" inputMode="tel"
-            maxLength={16} pattern="[+][1-9][0-9]{7,14}"
-            title="Use international format, for example +919876543210"
-            placeholder="+919876543210" value={phone}
-            onChange={event=>setPhone(event.target.value)}/></label>
+          <label className="field">Mobile number (username)
+            <input required type="tel" inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10}
+              value={phone} placeholder="10-digit mobile number"
+              onChange={event=>setPhone(event.target.value.replace(/[^0-9]/g,"").slice(0,10))}/>
+          </label>
+          <label className="field">Email (optional)
+            <input type="email" maxLength={254} value={email}
+              onChange={event=>setEmail(event.target.value)}/>
+          </label>
+          <label className="field">Initial password
+            <input required minLength={8} maxLength={1024} type={showNewPassword?"text":"password"}
+              autoComplete="new-password" value={newPassword}
+              onChange={event=>setNewPassword(event.target.value)}/>
+            <button type="button" onClick={()=>setShowNewPassword(v=>!v)}>
+              {showNewPassword?"Hide":"Show"} password</button>
+          </label>
           <p>Applies to: <strong>Entire foundation</strong></p>
           <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
             onChange={event=>setSearchRole(event.target.value)}/></label>
@@ -304,13 +314,13 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             <option value="">Choose a role explicitly</option>
             {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
           </select></label>
-          <p>No temporary password is emailed. The invited person sets up their own password and authenticator.</p>
+          <p>The user can sign in immediately. No email invitation or authenticator is required.</p>
           {notice&&<p role={notice.kind==="success"?"status":"alert"}
              className={"notice "+notice.kind}>{notice.text}</p>}
-          {uncertain&&<p role="alert">The result may already be saved. Check with Foundation support before retrying this invitation.</p>}
+          {uncertain&&<p role="alert">The account may already have been created. Refresh the directory before retrying.</p>}
           <div className="toolbar"><button type="button" onClick={()=>setEditor(null)}>Cancel</button>
-            <button type="submit" className="primary" disabled={busy||uncertain||!roleRef}>
-              {busy?"Saving…":"Create invitation"}
+            <button type="submit" className="primary" disabled={busy||uncertain||!roleRef||phone.length!==10||newPassword.length<8}>
+              {busy?"Saving…":"Create Staff Account"}
             </button></div>
         </form>}
         {editor==="detail"&&target&&!pending&&<div className="form">
