@@ -5,7 +5,7 @@ export type VerifiedFoundationActor = Readonly<{
   displayName: string;
   roleName: string;
   activeSessionId: string;
-  mfaVerifiedAt: Date;
+  passwordAuthenticatedAt: Date;
 }>;
 export interface IdentityAuthorization {
   verifySession(bearer: string): Promise<VerifiedFoundationActor>;
