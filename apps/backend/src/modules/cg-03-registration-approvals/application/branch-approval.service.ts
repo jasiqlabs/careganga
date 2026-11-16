@@ -116,6 +116,7 @@ export class BranchApprovalService{
        SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
      `,[actor.realmId]);
      if(!root.rowCount)throw new ForbiddenException("Foundation scope unavailable");
+     await this.branches.guardSubmittedSource(client,actor,registrationRef,revision,digest);
      await this.owner.requireDistinctFinalReviewer(client,actor.realmId,actor.accountId);
      const prior=await client.query<CaseRow>(`
        SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
