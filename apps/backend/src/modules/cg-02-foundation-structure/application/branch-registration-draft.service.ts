@@ -1,5 +1,5 @@
 import {
-  BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException
+  BadRequestException,ConflictException,Inject,Injectable,NotFoundException
 } from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
