@@ -98,6 +98,25 @@ export class DeliveryService{
         claimed_until=NULL,claim_token=NULL,updated_at=now()
       WHERE id IN (SELECT id FROM old)
     `);
+    // If the network outcome was lost while CLAIMED, a later worker must
+    // never start a new provider attempt. Keep the original attempt identity
+    // for a signed callback/manual provider-side reconciliation.
+    await this.db.query(`
+      WITH expired_claims AS (
+        SELECT n.id FROM cg19_notification n
+        JOIN cg19_delivery_attempt attempt ON attempt.notification_id=n.id
+          AND attempt.attempt_no=n.attempt_count
+          AND attempt.result='CLAIMED'
+        WHERE n.channel IN('EMAIL','SMS') AND n.claimed_until<now()
+          AND n.state IN('QUEUED','PROVIDER_UNAVAILABLE','RETRY_DUE')
+        ORDER BY n.claimed_until,n.id LIMIT 25
+        FOR UPDATE OF n SKIP LOCKED
+      )
+      UPDATE cg19_notification n SET
+        state='UNKNOWN_PROVIDER',due_at=NULL,claim_token=NULL,
+        claimed_until=NULL,updated_at=now()
+      WHERE n.id IN(SELECT id FROM expired_claims)
+    `);
     let claimed=0;
     for(let i=0;i<10;i++){
       const row=await this.claimOne();if(!row)break;
