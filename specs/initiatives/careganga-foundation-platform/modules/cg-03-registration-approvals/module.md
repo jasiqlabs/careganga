@@ -43,6 +43,10 @@ Detailed authoritative clauses:
 - **CG-03-BR08:** Make rejected/returned requests actionable to eligible submitters without converting an unapproved record to active status.
 - **CG-03-BR09:** CG-03 records the final approval/effect claim and confirmed owner outcome, never edits a future account/branch/member/finance master. Initial genuine effect is one guarded **CG-01 owner** custom-role assignment plus original CG-01 audit; future owner effects are implemented/tested by the introducing source modules.
 
+### 2026-11-16 identity assurance contract change (owner-directed, requires review)
+
+CG-03 preserves separate proposer/reviewer, immutable version-pinned decision, current CG-01 role and Foundation authority, idempotent owner finalization and current session checks. **The old `totp` and `fresh_mfa_verified_at` predicate is superseded** by a CG-01-provided fresh **current-password reauthentication** proof tied to the acting account/session/privileged decision and consumed exactly once. No always-on authenticator for Super Admin or any other role. Never populate MFA columns with fake proof timestamps; forward-only schema/contract changes and Web/Internal Android decision UX must be re-reviewed and QA-tested before merge. CG-03 owns approval outcomes, CG-01 owns proof. No other approval workflows are simplified away.
+
 ## First-release independent acceptance and forward owners
 
 - **CG-03 US-001** seeds/configures the genuine **CG-01 protected grant-change** approval route for assignment of a **non-root custom role containing `roles.manage`** to an existing eligible CG-01 account. It uses actual CG-01 current account/role versions and a distinct CG-01 protected Super Admin final reviewer with fresh MFA, records a CG-03-owned proposed intent (never a CG-01 pending-request table) and freezes one canonical digest/revision and readable case reference. There is no preliminary CG-01 pending application, no document provider, no future business owner.
