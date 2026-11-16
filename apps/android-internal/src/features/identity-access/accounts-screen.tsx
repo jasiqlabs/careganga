@@ -212,7 +212,7 @@ export function AccountsScreen({token,onExit,onExpired,createOnly=false}:{
   const row=selected;
   const s=list?.summary;
   const numbers=[
-    ["Total Accounts",s?.total],["Active",s?.active],["Created",s?.created],
+    ["Total Accounts",s?.total],["Active",s?.active],
     ["Suspended",s?.suspended],["Deactivated",s?.deactivated],["Assigned Roles",s?.assigned]
   ] as const;
   return <SafeAreaView style={styles.page}><KeyboardAvoidingView style={styles.page}
