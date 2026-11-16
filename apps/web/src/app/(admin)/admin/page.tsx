@@ -34,7 +34,10 @@ export default async function AdminHome() {
         if(permissions.ok){
           const effective=await permissions.json() as {actions?:{key?:string}[]};
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
-          canViewAccounts=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="accounts.view");
+          canViewAccounts=Array.isArray(effective.actions)&&
+            (effective.actions.some(x=>x.key==="accounts.view")||
+              (effective.actions.some(x=>x.key==="accounts.create")&&
+                effective.actions.some(x=>x.key==="roles.assign")));
           canManageSecurityPolicy=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="identity.security-policy.manage");
           canViewSettings=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.settings.view");
           canViewAudit=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="platform.audit.view");
