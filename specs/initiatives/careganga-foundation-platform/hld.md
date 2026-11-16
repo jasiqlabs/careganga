@@ -1,5 +1,8 @@
 # CareGanga Foundation — Integrated Platform High-Level Design (HLD)
 
+**Greenfield delivery directive (owner, 16 November 2026):** CareGanga has not been delivered to the client and has no functioning legacy deployment or users to migrate. **Backward compatibility (BWC), preserving unshipped TOTP/invitation contracts, and supporting legacy login are not requirements.** Implement one coherent clean-initial-database authentication solution, simplify/drop obsolete code and seed only genuine initial roles. Test on a new disposable PostgreSQL database; never imply existing data migrations, production runtime or completed QA. Security and permission enforcement remain mandatory.
+
+
 **Document version:** 1.3 — narrowly reconciled final 24-module architecture/approval metadata after CG-24 expert source review, retained in the **same canonical HLD**, with prior 1.2/1.0 decisions and SHA history preserved in initiative `approvals.json`. The current file is eligible for current-hash **owner-delegated design-content** approval; formal local resolver, implementation and independent QA remain separate.  
 **Initiative:** `careganga-foundation-platform`  
 **Product / repository:** CareGanga Foundation · `jasiqlabs/careganga`  
