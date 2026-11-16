@@ -13,6 +13,11 @@ export class BranchWorkflowController{
  status(@Headers("authorization")bearer:string,@Param("registrationRef")ref:string){
    return this.workflow.status(bearer,ref);
  }
+ @Post("operating-branches/:branchRef/status")
+ changeOperatingStatus(@Headers("authorization")bearer:string,
+   @Param("branchRef")ref:string,@Body()body:unknown){
+   return this.workflow.changeOperatingStatus(bearer,ref,body);
+ }
  @Post("operating-branches/:branchRef/update")
  updateOperating(@Headers("authorization")bearer:string,
    @Param("branchRef")ref:string,@Body()body:unknown){
