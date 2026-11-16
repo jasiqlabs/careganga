@@ -97,7 +97,7 @@ export class BranchSourceFacade{
      WHERE id=$1 AND root_realm_id=$2
    `,[reference,actor.realmId]);
    const row=rows.rows[0];
-   if(!row||row.status!=="ACTIVE"||
+   if(!row||(write&&row.status!=="ACTIVE")||
      (expectedVersion!==undefined&&row.version!==expectedVersion))
      throw new ConflictException("The operating branch changed or is unavailable");
    if(row.manager_account_ref!==actor.accountId){
@@ -114,7 +114,7 @@ export class BranchSourceFacade{
      WHERE id=$1 AND root_realm_id=$2 FOR SHARE
    `,[ensureId(branchRef),actor.realmId]);
    const row=rows.rows[0];
-   if(!row||row.status!=="ACTIVE"||row.version!==expectedVersion)
+   if(!row||(write&&row.status!=="ACTIVE")||row.version!==expectedVersion)
      throw new ConflictException("The current branch evidence source changed");
    if(row.manager_account_ref!==actor.accountId)
      await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
