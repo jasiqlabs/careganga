@@ -48,7 +48,11 @@ export default async function AdminRoles(){
         canViewApprovals={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
         canViewDocuments={["documents.files.view","documents.files.manage"].every(key=>
           effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key===key))&&
-          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}/>
+          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
+        canViewCommunications={effective.actions.some((a:unknown)=>
+          Boolean(a)&&typeof a==="object"&&"key" in a&&
+          ["communications.notifications.view","communications.notices.manage",
+            "communications.delivery.view"].includes(String(a.key)))}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){
