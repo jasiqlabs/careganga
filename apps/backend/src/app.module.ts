@@ -4,6 +4,7 @@ import { HealthController } from "./core/http/health.controller";
 import { IdentityAccessModule } from "./modules/cg-01-identity-access/identity-access.module";
 import { PlatformConfigurationModule } from "./modules/cg-21-platform-configuration-audit/platform-configuration.module";
 import { RegistrationApprovalsModule } from "./modules/cg-03-registration-approvals/registration-approvals.module";
+import { DocumentsNotificationsModule } from "./modules/cg-19-documents-notifications/documents-notifications.module";
 
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule], controllers: [HealthController] })
 export class AppModule {}
