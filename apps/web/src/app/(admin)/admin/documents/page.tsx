@@ -55,7 +55,9 @@ export default async function PrivateDocumentsPage(){
         canViewRecovery={keys.includes("platform.recovery.view")}
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
         canViewDocuments/>
-      <main className="workspace"><PrivateCaseEvidencePanel/></main>
+      <main className="workspace"><PrivateCaseEvidencePanel
+        canIssue={keys.includes("documents.letters.issue")}
+        canRevoke={keys.includes("documents.letters.revoke")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
