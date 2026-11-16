@@ -98,6 +98,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    return()=>{live=false;};
  },[canManage]);
  function hydrate(branch:BranchDetail){
+   setDepartmentDrawerOpen(false);
    setSelected(branch);setName(branch.branchName);setBranchType(branch.branchType);
    setOpeningDate(branch.openingDate??"");setGeographyRef(branch.geographyRef);
    setAddress(branch.postalAddress);setPin(branch.pinCode??"");
@@ -331,7 +332,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
            <h3>Branch departments and committees</h3>
            {departments.length===0?<p>No branch-scoped departments.</p>:
              <ul className="branch-draft-list">{departments.map(d=><li key={d.departmentRef}>
-               {canManage?<button type="button" onClick={()=>{resetDepartment(d);
+               {canManage&&selected.status==="ACTIVE"?<button type="button" onClick={()=>{resetDepartment(d);
                  void loadParticipants(selected.branchRef,d.departmentRef);}} disabled={busy}>
                  <strong>{d.name}</strong><span>{label(d.kind)} · {d.active?"Active":"Inactive"}</span>
                </button>:<div className="branch-department-readonly">
