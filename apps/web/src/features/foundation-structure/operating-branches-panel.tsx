@@ -223,6 +223,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
              <label className="field">Branch manager<select value={manager}
                onChange={e=>setManager(e.target.value)}>
                <option value="">Choose eligible Foundation account</option>
+               {manager&&selected.managerName&&!managers.some(x=>x.value===manager)&&
+                 <option value={manager}>{selected.managerName}</option>}
                {managers.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
              </select></label>
              {canManage&&<section className="form">
