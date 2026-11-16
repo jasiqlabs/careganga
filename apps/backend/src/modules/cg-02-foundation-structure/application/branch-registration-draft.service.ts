@@ -201,7 +201,7 @@ export class BranchRegistrationDraftService{
         throw new BadRequestException("Complete earlier registration steps first");
       if(step===2&&stage.geographyRef){
         const valid=await client.query("SELECT id FROM geography_area WHERE id=$1 AND root_realm_id=$2 "+
-          "AND status='ACTIVE' FOR SHARE",[stage.geographyRef,actor.realmId]);
+          "AND status='ACTIVE' AND level='BLOCK' FOR SHARE",[stage.geographyRef,actor.realmId]);
         if(!valid.rowCount)throw new BadRequestException("Choose an active Foundation area");
       }
       if(step===5&&stage.managerRef)
@@ -234,6 +234,32 @@ export class BranchRegistrationDraftService{
         status:row.status,message:"Branch registration draft updated."};
     }catch(e){if(tx)try{await client.query("ROLLBACK");}catch{};return this.error(e);}
     finally{client.release();}
+  }
+  /** CG-01 provides the only real manager selector; it does not expose a full account directory. */
+  async managerOptions(bearer:string,search=""){
+    const actor=await this.actor(bearer,"foundation.branches.manage");
+    if(typeof search!=="string"||search.length>80)
+      throw new BadRequestException("Check manager search");
+    const client=await this.db.connect();let tx=false;
+    try{
+      await client.query("BEGIN");tx=true;
+      await this.identity.assertCurrent(client,actor,"foundation.branches.manage");
+      const options=await this.identity.eligibleOfficeholderOptions(client,actor,search.trim());
+      await client.query("COMMIT");tx=false;
+      return {options};
+    }finally{
+      if(tx)try{await client.query("ROLLBACK");}catch{}
+      client.release();
+    }
+  }
+  /** CG-02 returns only its active FOUNDATION-wide department projection. */
+  async departmentOptions(bearer:string){
+    const actor=await this.actor(bearer,"foundation.branches.manage");
+    const rows=await this.db.query<{id:string;name:string;kind:string}>(
+      "SELECT id,name,kind FROM department WHERE root_realm_id=$1 "+
+      "AND scope_kind='FOUNDATION' AND active=true ORDER BY name,id LIMIT 80",
+      [actor.realmId]);
+    return {options:rows.rows.map(x=>({value:x.id,label:x.name,kind:x.kind}))};
   }
   async list(bearer:string,offset=0){
     const actor=await this.actor(bearer,"foundation.branches.view");
