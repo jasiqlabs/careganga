@@ -39,6 +39,7 @@ export class DeliveryService{
         AND secret_reference=$4 AND verification_status='VERIFIED'
         AND credential_revision=last_checked_credential_revision
         AND last_result_class='CHECK_ACCEPTED'
+        AND last_checked_at>now()-interval '24 hours'
     `,[realm,provider,purpose,secret]);
     return !!verified.rowCount;
   }
@@ -68,21 +69,40 @@ export class DeliveryService{
     return rows.rows[0]??null;
   }
   private async markSuppressed(row:DeliveryRow,why:"SUPPRESSED"|"EXPIRED"){
-    await this.db.query(`
-      UPDATE cg19_notification SET state=$3,due_at=NULL,
-        claimed_until=NULL,claim_token=NULL,updated_at=now()
-      WHERE id=$1 AND realm_id=$2 AND claim_token=$4
-    `,[row.id,row.realm_id,why,row.claim_token]);
+    const client=await this.db.connect();let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      const applied=await client.query(`
+        UPDATE cg19_notification SET state=$3,due_at=NULL,
+          claimed_until=NULL,claim_token=NULL,updated_at=now()
+        WHERE id=$1 AND realm_id=$2 AND claim_token=$4 RETURNING id
+      `,[row.id,row.realm_id,why,row.claim_token]);
+      if(applied.rowCount)await client.query(`
+        INSERT INTO cg19_communication_event(realm_id,notification_id,kind)
+        VALUES($1,$2,'SUPPRESSED')
+      `,[row.realm_id,row.id]);
+      await client.query("COMMIT");open=false;
+    }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
+    finally{client.release();}
   }
   private async releaseUnavailable(row:DeliveryRow){
     // No provider call was attempted. Do not charge this as a retry.
-    await this.db.query(`
-      UPDATE cg19_notification
-      SET state='PROVIDER_UNAVAILABLE',attempt_count=attempt_count-1,
-        claim_token=NULL,claimed_until=NULL,
-        due_at=NULL,updated_at=now()
-      WHERE id=$1 AND realm_id=$2 AND claim_token=$3
-    `,[row.id,row.realm_id,row.claim_token]);
+    const client=await this.db.connect();let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      const applied=await client.query(`
+        UPDATE cg19_notification
+        SET state='PROVIDER_UNAVAILABLE',attempt_count=attempt_count-1,
+          claim_token=NULL,claimed_until=NULL,due_at=NULL,updated_at=now()
+        WHERE id=$1 AND realm_id=$2 AND claim_token=$3 RETURNING id
+      `,[row.id,row.realm_id,row.claim_token]);
+      if(applied.rowCount)await client.query(`
+        INSERT INTO cg19_communication_event(realm_id,notification_id,kind)
+        VALUES($1,$2,'PROVIDER_UNAVAILABLE')
+      `,[row.realm_id,row.id]);
+      await client.query("COMMIT");open=false;
+    }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
+    finally{client.release();}
   }
   async tick():Promise<{activated:number;expired:number;claimed:number}>{
     // Requeue only when a channel becomes genuinely configured; with zero
@@ -99,6 +119,7 @@ export class DeliveryService{
             AND ic.verification_status='VERIFIED'
             AND ic.credential_revision=ic.last_checked_credential_revision
             AND ic.last_result_class='CHECK_ACCEPTED'
+            AND ic.last_checked_at>now()-interval '24 hours'
             AND ic.secret_reference=$4
           WHERE n.state='PROVIDER_UNAVAILABLE' AND n.channel=$1
             AND n.expires_at>now()
