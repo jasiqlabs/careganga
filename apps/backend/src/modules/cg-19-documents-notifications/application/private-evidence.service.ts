@@ -21,7 +21,7 @@ type IntentRow={
 };
 type StoredFileRow={
   id:string;case_id:string;proposal_revision:number;
-  original_mime:string;verified_size_bytes:string;object_key:string;
+  original_mime:string;verified_size_bytes:string;verified_sha256:string;object_key:string;
   object_version:string;revoked_at:Date|null
 };
 type NewUpload={
@@ -264,7 +264,7 @@ export class PrivateEvidenceService{
     const actor=await this.sessions.requireAction(bearer,"documents.files.view");
     const rows=await this.db.query<StoredFileRow>(`
       SELECT f.id,f.case_id,f.proposal_revision,f.original_mime,
-        f.verified_size_bytes,f.object_key,f.object_version,f.revoked_at
+        f.verified_size_bytes,f.verified_sha256,f.object_key,f.object_version,f.revoked_at
       FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id
         AND i.realm_id=f.realm_id
       WHERE f.id=$1 AND f.realm_id=$2 AND f.scan_status='CLEAN_VERIFIED'
@@ -277,7 +277,8 @@ export class PrivateEvidenceService{
       objectKey:file.object_key,objectVersion:file.object_version,
       maxBytes:Math.min(Number(file.verified_size_bytes),MAX_SIZE)
     });
-    if(!Buffer.isBuffer(bytes)||bytes.length!==Number(file.verified_size_bytes))
+    if(!Buffer.isBuffer(bytes)||bytes.length!==Number(file.verified_size_bytes)||
+       createHash("sha256").update(bytes).digest("hex")!==file.verified_sha256)
       throw new ServiceUnavailableException("Private file verification failed");
     // The actor or original file might have been revoked during the storage
     // operation. Return nothing unless both remain authorized at handoff.
