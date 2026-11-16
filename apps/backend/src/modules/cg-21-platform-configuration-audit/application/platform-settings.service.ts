@@ -6,6 +6,7 @@ import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "../../cg-01-identity-access/application/session.service";
 import type { VerifiedFoundationActor } from "../../cg-01-identity-access/public-api";
+import {checkCommunicationReadiness} from "../infrastructure/communication-readiness";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROVIDER=/^[a-z][a-z0-9_-]{1,62}$/;
@@ -16,7 +17,7 @@ const conflict=(code:string)=>new ConflictException({code});
 type SettingRow={id:string;typed_value:number;revision:number;updated_at:Date};
 type IntegrationRow={
   id:string;provider:string;purpose:string;revision:number;credential_revision:number;
-  verification_status:string;last_checked_at:Date|null;last_checked_credential_revision:number|null;
+  secret_reference:string;verification_status:string;last_checked_at:Date|null;last_checked_credential_revision:number|null;
 };
 type CommandRow={request_digest:string;resource_ref:string;result_revision:number};
 type SaveSetting={key:unknown;value:unknown;expectedRevision:unknown;requestKey:unknown;totp:unknown};
@@ -280,27 +281,49 @@ export class PlatformSettingsService {
     const actor=await this.authorize(bearer,"platform.integrations.manage");
     const provider=textKey(providerInput),purpose=textKey(purposeInput);
     const saved=await this.db.query<IntegrationRow>(`
-      SELECT id,provider,purpose,revision,credential_revision,verification_status,
-        last_checked_at,last_checked_credential_revision
+      SELECT id,provider,purpose,revision,credential_revision,secret_reference,
+        verification_status,last_checked_at,last_checked_credential_revision
       FROM integration_connection WHERE foundation_realm_id=$1
         AND scope_kind='FOUNDATION' AND provider=$2 AND purpose=$3
     `,[actor.realmId,provider,purpose]);
-    if(!saved.rowCount)return {status:"NOT_CONFIGURED",provider,purpose,verified:false};
-    // Record the *requested* attempt and honest unavailable outcome, not a
-    // fabricated external provider check. No secret pointer is in this audit.
-    await this.db.query(`
-      INSERT INTO platform_operation_audit(foundation_realm_id,actor_account_id,
-        action_key,resource_ref,outcome,safe_context,correlation_ref)
-      VALUES($1,$2,'platform.integration.check',$3,'UNAVAILABLE',$4::jsonb,$5)
-    `,[actor.realmId,actor.accountId,saved.rows[0].id,
-      JSON.stringify({provider,purpose,reason:"ADAPTER_NOT_CONFIGURED"}),
-      // Genuine server-side correlation for an explicit user-triggered request only.
-      randomUUID()]);
-    // No approved provider adapter exists in CG-21 US-001. Never fabricate
-    // provider acceptance, mutate the verified flag or call a phantom service.
-    return {status:"UNAVAILABLE",provider,purpose,verified:false,
-      credentialRevision:saved.rows[0].credential_revision,
-      message:"No approved verification adapter is configured for this integration."};
+    const item=saved.rows[0];
+    if(!item)return {status:"NOT_CONFIGURED",provider,purpose,verified:false};
+    // This is a real, bounded provider-side read, not a fabricated test send.
+    // A successful sender/service lookup proves readiness, not a delivery.
+    const proof=await checkCommunicationReadiness(
+      provider,purpose,item.secret_reference);
+    const status=proof.result==="CHECK_ACCEPTED"?"VERIFIED":
+      proof.result==="CHECK_FAILED"?"FAILED":"UNAVAILABLE";
+    const client=await this.db.connect();let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      const updated=await client.query(`
+        UPDATE integration_connection SET verification_status=$5,
+          last_checked_at=now(),last_checked_credential_revision=$4,
+          last_result_class=$6,updated_at=now()
+        WHERE id=$1 AND foundation_realm_id=$2
+          AND credential_revision=$4 AND secret_reference=$3
+        RETURNING id
+      `,[item.id,actor.realmId,item.secret_reference,
+        item.credential_revision,status,proof.result]);
+      if(!updated.rowCount)throw conflict("STALE_INTEGRATION_CONFIGURATION");
+      await client.query(`
+        INSERT INTO platform_operation_audit(foundation_realm_id,
+          actor_account_id,action_key,resource_ref,outcome,safe_context,
+          correlation_ref)
+        VALUES($1,$2,'platform.integration.check',$3,$4,$5::jsonb,$6)
+      `,[actor.realmId,actor.accountId,item.id,
+        status==="VERIFIED"?"SUCCESS":"UNAVAILABLE",
+        JSON.stringify({provider,purpose,reason:proof.reason}),
+        randomUUID()]);
+      await client.query("COMMIT");open=false;
+    }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
+    finally{client.release();}
+    return {status,provider,purpose,verified:status==="VERIFIED",
+      credentialRevision:item.credential_revision,
+      message:status==="VERIFIED"?
+        "The sending identity or provider service was confirmed. No message was sent.":
+        "The configured channel could not be verified. No sending permission was granted."};
   }
   async lookup(bearer:string,actionInput:unknown,requestKeyInput:unknown){
     const action=actionInput==="SETTING_SAVE"?"SETTING_SAVE":

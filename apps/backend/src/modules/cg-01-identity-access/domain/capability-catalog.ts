@@ -19,18 +19,6 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"access.audit.view",businessLabel:"View access history",group:"Security & audit",assignable:true,sensitive:true},
   {key:"identity.security-policy.view",businessLabel:"View security policy",group:"Security & audit",assignable:false,sensitive:true},
   {key:"identity.security-policy.manage",businessLabel:"Manage security policy",group:"Security & audit",assignable:false,sensitive:true},
-  // CG-02 US-001 Foundation-only authority; no branch/CG-03/CG-19 permission appears yet.
-  {key:"foundation.profile.view",businessLabel:"View Foundation profile",group:"Foundation structure",assignable:true,sensitive:false},
-  {key:"foundation.profile.manage",businessLabel:"Manage Foundation profile",group:"Foundation structure",assignable:true,sensitive:true},
-  {key:"foundation.geography.view",businessLabel:"View Foundation geography",group:"Foundation structure",assignable:true,sensitive:false},
-  {key:"foundation.geography.manage",businessLabel:"Manage Foundation geography",group:"Foundation structure",assignable:true,sensitive:true},
-  {key:"foundation.departments.view",businessLabel:"View departments and committees",group:"Foundation structure",assignable:true,sensitive:false},
-  {key:"foundation.departments.manage",businessLabel:"Manage departments and committees",group:"Foundation structure",assignable:true,sensitive:true},
-  {key:"foundation.departments.assign",businessLabel:"Assign Foundation officeholders",group:"Foundation structure",assignable:true,sensitive:true},
-  // CG-02 US-002 branch drafts: current actor scope is always checked by CG-02.
-  {key:"foundation.branches.view",businessLabel:"View permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:false},
-  {key:"foundation.branches.manage",businessLabel:"Create and edit permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:true},
-  {key:"foundation.branches.admin",businessLabel:"Administrate all Foundation branch drafts",group:"Foundation structure",assignable:false,sensitive:true},
   // CG-21 is owner-installed; these capabilities are never user-assignable without a later approved process.
   {key:"platform.settings.view",businessLabel:"View platform settings",group:"Platform settings",assignable:false,sensitive:true},
   {key:"platform.settings.manage",businessLabel:"Manage platform settings",group:"Platform settings",assignable:false,sensitive:true},
@@ -45,10 +33,30 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"approvals.propose",businessLabel:"Submit protected access request",group:"Applications & approvals",assignable:true,sensitive:true},
   {key:"approvals.review",businessLabel:"Review final protected access decision",group:"Applications & approvals",assignable:false,sensitive:true},
   {key:"approvals.process.manage",businessLabel:"Manage approval process",group:"Applications & approvals",assignable:false,sensitive:true},
+  // CG-02 owned Foundation and approved branch permissions.
+  {key:"foundation.profile.view",businessLabel:"View Foundation profile",group:"Foundation structure",assignable:true,sensitive:false},
+  {key:"foundation.profile.manage",businessLabel:"Manage Foundation profile",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.geography.view",businessLabel:"View Foundation geography",group:"Foundation structure",assignable:true,sensitive:false},
+  {key:"foundation.geography.manage",businessLabel:"Manage Foundation geography",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.departments.view",businessLabel:"View departments and committees",group:"Foundation structure",assignable:true,sensitive:false},
+  {key:"foundation.departments.manage",businessLabel:"Manage departments and committees",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.departments.assign",businessLabel:"Assign Foundation officeholders",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.branches.view",businessLabel:"View permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:false},
+  {key:"foundation.branches.manage",businessLabel:"Create and edit permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:true},
+  {key:"foundation.branches.admin",businessLabel:"Administrate all Foundation branch drafts",group:"Foundation structure",assignable:false,sensitive:true},
   {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.files.manage",businessLabel:"Upload protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.letters.issue",businessLabel:"Issue private access confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
-  {key:"documents.letters.revoke",businessLabel:"Revoke private confirmation letters",group:"Documents & files",assignable:false,sensitive:true}
+  {key:"documents.letters.revoke",businessLabel:"Revoke private confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
+  {key:"communications.notifications.view",businessLabel:"Read own Foundation notices",group:"Notices & communications",assignable:true,sensitive:false},
+  {key:"communications.notices.manage",businessLabel:"Draft Foundation notices",group:"Notices & communications",assignable:true,sensitive:true},
+  {key:"communications.notices.approve",businessLabel:"Approve and send Foundation notices",group:"Notices & communications",assignable:false,sensitive:true},
+  {key:"communications.delivery.process",businessLabel:"Process protected delivery queue",group:"Notices & communications",assignable:false,sensitive:true},
+  {key:"communications.delivery.view",businessLabel:"View redacted delivery status",group:"Notices & communications",assignable:true,sensitive:true},
+  {key:"support.cases.view",businessLabel:"View Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.cases.manage",businessLabel:"Assign and manage Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.cases.reply",businessLabel:"Reply to Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"support.faq.manage",businessLabel:"Manage Foundation help questions",group:"Helpdesk & support",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

@@ -54,7 +54,10 @@ export default async function PrivateDocumentsPage(){
         canViewAudit={keys.includes("platform.audit.view")}
         canViewRecovery={keys.includes("platform.recovery.view")}
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
-        canViewDocuments/>
+        canViewDocuments canViewCommunications={keys.includes("communications.notifications.view")||
+          keys.includes("communications.notices.manage")||
+          keys.includes("communications.delivery.view")}
+        canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace"><PrivateCaseEvidencePanel
         canIssue={keys.includes("documents.letters.issue")}
         canRevoke={keys.includes("documents.letters.revoke")}/></main>

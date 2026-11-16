@@ -14,17 +14,29 @@ import {makePrivateStorageProvider} from "./infrastructure/private-storage-provi
 import {PrivateEvidenceController} from "./http/private-evidence.controller";
 import {PrivateLetterController} from "./http/private-letter.controller";
 import {PrivateLetterService} from "./application/private-letter.service";
+import {NotificationService} from "./application/notification.service";
+import {NoticeService} from "./application/notice.service";
+import {DeliveryService} from "./application/delivery.service";
+import {CommunicationProviders} from "./infrastructure/channel-providers";
+import {CommunicationWorker} from "./infrastructure/communication-worker";
+import {SupportService} from "./application/support.service";
+import {SupportController} from "./http/support.controller";
+import {CommunicationsController,CommunicationProviderWebhookController} from
+  "./http/communications.controller";
 
-/** CG-19 owns private media/documents/communications/helpdesk. Only US-001
- * source-backed private evidence is registered until the later stories.
+/** CG-19 owns private media/documents, US-002 communications and US-003
+ * Foundation-only contact/helpdesk. No speculative center/CMS source.
  * Firebase or AWS S3 is selected explicitly per client deployment.
  * Missing secured credentials or a real ClamAV scanner stays unavailable.
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule],
-  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController],
+  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,
+    CommunicationsController,CommunicationProviderWebhookController,SupportController],
   providers:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,
+    NotificationService,NoticeService,DeliveryService,
+    CommunicationProviders,CommunicationWorker,SupportService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,ActiveBranchEvidenceService]
+  exports:[PrivateEvidenceService,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService]
 })
 export class DocumentsNotificationsModule{}

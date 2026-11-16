@@ -7,7 +7,8 @@ import { correlateRequest } from "./core/observability/request-correlation";
 
 async function bootstrap(): Promise<void> {
   const cfg = readConfig();
-  const app = await NestFactory.create(AppModule, { bodyParser: true });
+  // Signature verification must see exact SendGrid webhook bytes.
+  const app = await NestFactory.create(AppModule, { bodyParser: true, rawBody: true });
   app.enableShutdownHooks();
   app.use(correlateRequest);
   app.useGlobalFilters(new SafeErrorsFilter());

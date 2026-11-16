@@ -1,5 +1,5 @@
-import { Module } from "@nestjs/common";
 import { FoundationStructureIdentityFacade } from "./application/foundation-structure-identity.facade";
+import { Module } from "@nestjs/common";
 import { SessionService } from "./application/session.service";
 import { SessionController } from "./http/session.controller";
 import { RecoveryController } from "./http/recovery.controller";
@@ -17,10 +17,13 @@ import { InvitationController } from "./http/invitation.controller";
 import { SecurityPolicyService } from "./application/security-policy.service";
 import { SecurityPolicyController } from "./http/security-policy.controller";
 import { ProtectedAccessOwnerService } from "./application/protected-access-owner.service";
+import { CommunicationRecipientSource } from "./application/communication-recipient-source.service";
+import { MobileVerificationService } from "./application/mobile-verification.service";
+import { MobileVerificationController } from "./http/mobile-verification.controller";
 
 @Module({
-  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController],
-  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService],
-  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,FoundationStructureIdentityFacade]
+  controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
+  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
+  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
