@@ -10,16 +10,19 @@ CREATE INDEX ix_cg01_verified_mobile_recipient
 -- A contact number changed by any future CG-01 owner flow must lose proof.
 CREATE FUNCTION cg01_phone_proof_reset() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF NEW.contact_phone IS DISTINCT FROM OLD.contact_phone THEN
+  IF NEW.normalized_mobile IS DISTINCT FROM OLD.normalized_mobile
+    OR NEW.normalized_email IS DISTINCT FROM OLD.normalized_email
+    OR NEW.contact_phone IS DISTINCT FROM OLD.contact_phone THEN
+    NEW.recovery_contact_changed_at=now();
     NEW.contact_phone_verified_at=NULL;
   END IF;
   RETURN NEW;
 END; $$;
 CREATE TRIGGER cg01_phone_proof_reset_before_contact_change
-  BEFORE UPDATE OF contact_phone ON account
+  BEFORE UPDATE OF contact_phone,normalized_mobile,normalized_email ON account
   FOR EACH ROW EXECUTE FUNCTION cg01_phone_proof_reset();
 
--- Only CG-01 owns recipient contact verification and MFA/OTP.
+-- Recipient contact ownership evidence is separate from account creation/login and is used for restricted notices.
 -- SMS credentials and provider attempts never enter CG-19 notifications.
 CREATE TABLE cg01_mobile_verification (
   account_id uuid PRIMARY KEY,
