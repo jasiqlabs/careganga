@@ -43,7 +43,7 @@ export function RecoveryForm(){
   return <form className="form" onSubmit={submit}>
     <label className="field">Registered mobile number or email
       <input required maxLength={254} autoComplete="username" value={identifier}
-        onChange={e=>setIdentifier(e.target.value)} disabled={done||step==="confirm"}/>
+        onChange={e=>{setIdentifier(e.target.value);setChannel(e.target.value.includes("@")?"email":"sms");}} disabled={done||step==="confirm"}/>
     </label>
     {step==="request"&&<label className="field">Receive reset OTP by
       <select value={channel} onChange={e=>setChannel(e.target.value as "email"|"sms")}>
@@ -67,6 +67,11 @@ export function RecoveryForm(){
     {!done&&<button type="submit" className="primary"
       disabled={busy||uncertain||(step==="confirm"&&(otp.length!==6||newPassword.length<8))}>
       {busy?"Checking…":step==="request"?"Send reset OTP":"Reset password"}
+    </button>}
+    {step==="confirm"&&!done&&<button type="button" disabled={busy}
+      onClick={()=>{setStep("request");setOtp("");setNewPassword("");
+        requestKey.current="";setMessage("You can request another OTP after the resend cooldown.");}}>
+      Request another OTP
     </button>}
     <Link href="/admin/login">Return to sign in</Link>
   </form>;
