@@ -46,6 +46,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   const [alert,setAlert]=useState("");
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [assignee,setAssignee]=useState("");
+  const [agentSearch,setAgentSearch]=useState("");
   const [agents,setAgents]=useState<Option[]>([]);
   const [faqs,setFaqs]=useState<Faq[]>([]);
   const [question,setQuestion]=useState(""),[answer,setAnswer]=useState("");
@@ -69,7 +70,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
     const controller=new AbortController();
-    void fetch("/api/support/agents?search=",{
+    void fetch("/api/support/agents?search="+encodeURIComponent(agentSearch.trim()),{
       signal:controller.signal,cache:"no-store",credentials:"same-origin"})
       .then(r=>r.ok?r.json():Promise.reject())
       .then((data:unknown)=>{
@@ -78,7 +79,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           setAgents((data.options as Option[]).slice(0,30));
       }).catch(()=>{});
     return()=>controller.abort();
-  },[mayManage,mayChooseAccounts]);
+  },[mayManage,mayChooseAccounts,agentSearch]);
   async function detail(ref:string){
     setBusy(true);setAlert("");
     try{
@@ -240,11 +241,17 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
             {h.kind.replaceAll("_"," ")} · {new Date(h.at).toLocaleString()}</li>)}</ul>
           {mayManage&&<div className="permission-group">
             <label htmlFor="support-assign">Assigned operator</label>
-            {mayChooseAccounts?<select id="support-assign" value={assignee}
+            {mayChooseAccounts?<><label htmlFor="support-agent-search">Find eligible support operator</label>
+              <input id="support-agent-search" type="search" maxLength={70}
+                value={agentSearch} onChange={e=>setAgentSearch(e.target.value)}
+                placeholder="Search eligible names"/>
+              <select id="support-assign" value={assignee}
               onChange={e=>setAssignee(e.target.value)}>
               <option value="">Unassigned</option>
+              {assignee&&!agents.some(a=>a.value===assignee)&&
+                <option value={assignee}>Current assigned operator (not in search results)</option>}
               {agents.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
-            </select>:<p>Account selector unavailable for this role.</p>}
+            </select></>:<p>Account selector unavailable for this role.</p>}
             <button type="button" disabled={busy||!mayChooseAccounts}
               onClick={()=>void act("ASSIGN")}>Save assignment</button>
             <div className="toolbar">
