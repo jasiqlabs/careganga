@@ -1,5 +1,5 @@
--- Forward-only CG-01 simple credentials. Preserves all historical migration hashes.
--- Existing email-only accounts remain identifiable; operators must add a unique mobile.
+-- Greenfield CG-01 simple credentials. Run against a clean disposable database before client delivery.
+-- No production accounts exist; new credential creation requires mobile.
 ALTER TABLE account ADD COLUMN normalized_mobile text;
 ALTER TABLE account ALTER COLUMN normalized_email DROP NOT NULL;
 ALTER TABLE account ADD CONSTRAINT ck_cg01_normalized_mobile
@@ -31,4 +31,4 @@ ALTER TABLE auth_challenge ADD COLUMN delivery_status text
   CHECK(delivery_status IS NULL OR delivery_status IN ('PENDING','ACCEPTED','UNAVAILABLE','UNKNOWN'));
 ALTER TABLE auth_challenge ADD COLUMN delivery_channel text
   CHECK(delivery_channel IS NULL OR delivery_channel IN ('email','sms'));
--- Do not backfill mfa/password proof for older sessions; force a clean fresh login.
+-- New password-based login may not claim authenticator assurance.
