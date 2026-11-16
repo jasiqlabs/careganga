@@ -251,11 +251,16 @@ export class BranchLifecycleService{
      const row=source.rows[0];
      if(!row||row.approval_case_ref&&row.approval_case_ref!==caseId)
        throw new ConflictException("The original approved source changed");
-     if(!["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW"].includes(row.status))
-       throw new ConflictException("This submission cannot accept a new review");
+     if(!["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW","RETURNED",
+       "REJECTED","FINAL_APPROVED_PENDING_ACTIVATION","ACTIVE"].includes(row.status))
+       throw new ConflictException("The original submission state is unavailable");
+     // Recover only the original case reference. Do not reset a previously
+     // recorded CG-02 decision or overwrite an already-active submission.
      await client.query(`
        UPDATE branch_registration_submission SET
-         approval_case_ref=$2,status='SUBMITTED',updated_at=now()
+         approval_case_ref=$2,
+         status=CASE WHEN status='SUBMISSION_UNCONFIRMED' THEN 'SUBMITTED' ELSE status END,
+         updated_at=now()
        WHERE id=$1 AND approval_case_ref IS NULL
      `,[row.id,caseId]);
      await client.query(`
