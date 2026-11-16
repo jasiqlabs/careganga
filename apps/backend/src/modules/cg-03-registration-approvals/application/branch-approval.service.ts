@@ -116,7 +116,6 @@ export class BranchApprovalService{
        SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
      `,[actor.realmId]);
      if(!root.rowCount)throw new ForbiddenException("Foundation scope unavailable");
-     await this.branches.guardSubmittedSource(client,actor,registrationRef,revision,digest);
      await this.owner.requireDistinctFinalReviewer(client,actor.realmId,actor.accountId);
      const prior=await client.query<CaseRow>(`
        SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
@@ -131,6 +130,10 @@ export class BranchApprovalService{
        return {caseRef:prior.rows[0].id,reference:prior.rows[0].case_number,
          status:prior.rows[0].status,revision:prior.rows[0].revision};
      }
+     // Only a genuinely NEW CG-03 case requires the currently submitted
+     // editable source. Existing immutable cases must remain recoverable
+     // after RETURN/REJECT/APPROVE, without recreating a decision.
+     await this.branches.guardSubmittedSource(client,actor,registrationRef,revision,digest);
      const predecessor=await client.query<{id:string;status:string;branch_source_revision:number}>(`
      SELECT id,status,branch_source_revision FROM cg03_case
      WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
