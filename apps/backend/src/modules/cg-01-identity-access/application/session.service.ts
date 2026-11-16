@@ -202,7 +202,7 @@ export class SessionService implements IdentityAuthorization {
     return actor;
   }
   /** Fresh current-password confirmation, in the protected owner's commit transaction.
-   * This does not claim a second authenticator factor. Caller also enforces
+   * Password proof does not replace caller action, role and resource checks. Caller also enforces
    * separated approval, scoped roles, idempotency and current versions.
    */
   async requireFreshFoundationRootProof(
