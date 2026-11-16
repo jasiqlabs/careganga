@@ -9,7 +9,7 @@ import {CommunicationRecipientSource} from "../../cg-01-identity-access/applicat
 import {CommunicationProviders} from "../infrastructure/channel-providers";
 import {NotificationService} from "./notification.service";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type DeliveryRow={
   id:string;realm_id:string;source_kind:string;recipient_id:string;notice_id:string|null;
   channel:"EMAIL"|"SMS";purpose:"TRANSACTIONAL"|"PROMOTIONAL";
