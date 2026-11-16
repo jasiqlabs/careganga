@@ -49,7 +49,7 @@ export default async function ProtectedPlatformPage(){
         canViewCommunications={keys.includes("communications.notifications.view")||
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
-        />
+        canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace"><PlatformAuditPanel/></main>
     </div>;
   }catch(error){
