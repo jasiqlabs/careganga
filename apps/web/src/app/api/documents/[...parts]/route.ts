@@ -75,7 +75,7 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
   if(method==="POST"&&
     ((parts[0]==="active-branch-files"&&((parts.length===2&&parts[1]==="intents")||
       (parts.length===4&&parts[1]==="files"&&parts[3]==="revoke")))||
-    ((parts[0]==="branch-evidence"&&((parts.length===2&&parts[1]==="intents")||
+    (parts[0]==="branch-evidence"&&((parts.length===2&&parts[1]==="intents")||
       (parts.length===4&&parts[1]==="files"&&parts[3]==="revoke")))||
       (parts.length===2&&["initiate","issue"].includes(parts[1]))||
       (parts.length===3&&parts[1]==="template"&&parts[2]==="approve")||

@@ -41,4 +41,20 @@ export class SessionController {
   }
 
   // One-time root provisioning is deliberately an offline operator-only action.
+
+  @Post("change-password")
+  @UseGuards(SessionGuard)
+  @HttpCode(200)
+  async changePassword(@Body() body: { currentPassword?: unknown; newPassword?: unknown; totp?: unknown }, @Req() req: AuthenticatedRequest) {
+    if (!body || typeof body.currentPassword !== "string" || !body.currentPassword
+      || typeof body.newPassword !== "string" || body.newPassword.length < 14 || Buffer.byteLength(body.newPassword, "utf8") > 1024
+      || (body.totp !== undefined && (typeof body.totp !== "string" || !/^\d{6}$/.test(body.totp))))
+      throw new BadRequestException("Check the current password, new password and authenticator code");
+    return this.service.changePassword(req.cgActor!, {
+      currentPassword: body.currentPassword,
+      newPassword: body.newPassword,
+      totp: typeof body.totp === "string" ? body.totp : undefined
+    }, req.cgRequestId ?? randomUUID());
+  }
+
 }

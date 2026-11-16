@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 /** CG-01 US-001 (FR-081): safe deployment switches, not partner/center entitlements.
  * No ERP owner module, database table, worker or route exists in this bootstrap.
  * Even a deliberate "true" request is NOT_AVAILABLE until its owning module
@@ -64,9 +67,29 @@ export type AppConfig = Readonly<{
 // A single immutable process snapshot is shared by Nest bootstrap and DB factory.
 // Later env changes (including runtime tampering with ERP switches) cannot grant
 // an additional capability or alter the running process's validated settings.
+function loadEnvIfPresent(): void {
+  const candidates = [
+    ".env",
+    "../.env",
+    join(process.cwd(), ".env"),
+    join(process.cwd(), "apps/backend/.env"),
+    join(__dirname, "../../../.env"),
+    join(__dirname, "../../../../.env"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        process.loadEnvFile?.(p);
+        break;
+      }
+    } catch {}
+  }
+}
+
 let processConfig: AppConfig | null = null;
 export function readConfig(): AppConfig {
   if (processConfig) return processConfig;
+  loadEnvIfPresent();
   const databaseUrl = process.env.DATABASE_URL;
   const webOrigin = process.env.WEB_ORIGIN;
   const port = Number(process.env.PORT ?? 4000);

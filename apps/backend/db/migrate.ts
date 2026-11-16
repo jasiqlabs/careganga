@@ -1,11 +1,32 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 
+function loadEnvIfPresent(): void {
+  const candidates = [
+    ".env",
+    "../.env",
+    join(process.cwd(), ".env"),
+    join(process.cwd(), "apps/backend/.env"),
+    join(__dirname, "../.env"),
+    join(__dirname, "../../.env"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        process.loadEnvFile?.(p);
+        break;
+      }
+    } catch {}
+  }
+}
+
 async function migrate(): Promise<void> {
-  const url = process.env.DATABASE_MIGRATION_URL;
-  if (!url) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
+  loadEnvIfPresent();
+  const url = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_MIGRATION_URL or DATABASE_URL is required; use a direct database connection");
   const pool = new Pool({ connectionString: url, max: 1, application_name: "careganga-migrations" });
   const client = await pool.connect();
   try {
@@ -36,6 +57,7 @@ async function migrate(): Promise<void> {
           if (prior.rows[0].sha256 !== digest) throw new Error("Applied migration changed: " + name);
           continue;
         }
+        console.log("Applying: " + name);
         await client.query("BEGIN");
         try {
           await client.query(sql);
@@ -54,7 +76,7 @@ async function migrate(): Promise<void> {
     await pool.end();
   }
 }
-void migrate().catch(() => {
+void migrate().catch((err) => { console.error(err);
   process.stderr.write("CareGanga migration failed; no partial changes from failing migration committed.\n");
   process.exitCode = 1;
 });

@@ -26,7 +26,7 @@ export default async function FoundationStructurePage(){
       !rights||typeof rights!=="object"||!("actions" in rights)||!Array.isArray(rights.actions))
       throw new Error("Unverified Foundation access");
     const actions=(rights.actions as unknown[])
-      .filter((x):x is {key:string}=>Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string")
+      .filter((x):x is {key:string}=>Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&typeof (x as {key:unknown}).key==="string")
       .map(x=>x.key);
     const canView=actions.some(key=>["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(key));
     if(!canView)return <main className="page main"><h1>Foundation access not permitted</h1>

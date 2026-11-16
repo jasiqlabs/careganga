@@ -6,6 +6,7 @@ import { SecurityPolicyScreen } from "./security-policy-screen";
 import { AccountsScreen } from "./accounts-screen";
 import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
+import { ChangePasswordScreen } from "./change-password-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
 import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
@@ -43,8 +44,8 @@ async function currentRoleActions(token:string):Promise<string[]>{
   const data:unknown=await response.json();
   if(!data||typeof data!=="object"||!("actions" in data)||
      !Array.isArray(data.actions)||
-     !data.actions.every((a:unknown)=>Boolean(a)&&typeof a==="object"&&
-       "key" in a&&typeof a.key==="string"))
+     !data.actions.every((a:any)=>a&&typeof a.key==="string"))
+
     throw new Error("Permissions cannot be verified right now.");
   return data.actions.map((a:{key:string})=>a.key);
 }
@@ -58,6 +59,7 @@ export function StaffAuthenticationScreen(){
   const [message,setMessage]=useState("");
   const [recover,setRecover]=useState(false);
   const [activate,setActivate]=useState(false);
+  const [changePasswordOpen,setChangePasswordOpen]=useState(false);
   const [accountsOpen,setAccountsOpen]=useState(false);
   const [rolesOpen,setRolesOpen]=useState(false);
   const [policyOpen,setPolicyOpen]=useState(false);
@@ -177,12 +179,13 @@ export function StaffAuthenticationScreen(){
   }
   if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
   if(activate) return <InvitationActivationScreen onExit={()=>setActivate(false)}/>;
+  if(changePasswordOpen&&token&&actor) return <ChangePasswordScreen token={token} onExit={()=>setChangePasswordOpen(false)} onExpired={expireSession}/>;
   if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
     inviteOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
     return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
-      canPropose={roleActions.includes("approvals.propose")}
+      canPropose={roleActions.includes("approvals.propose")} canReview={roleActions.includes("approvals.review")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
   if(notificationsOpen&&token&&actor&&
     roleActions.includes("communications.notifications.view"))
@@ -237,6 +240,7 @@ export function StaffAuthenticationScreen(){
             <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
+            <Pressable accessibilityRole="button" style={styles.button} onPress={()=>setChangePasswordOpen(true)}><Text style={styles.buttonText}>Change password</Text></Pressable>
             {(roleActions.includes("accounts.view")||(roleActions.includes("accounts.invite")&&roleActions.includes("roles.assign")))&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setAccountsOpen(true)}>
               <Text style={styles.buttonText}>Users Management</Text>

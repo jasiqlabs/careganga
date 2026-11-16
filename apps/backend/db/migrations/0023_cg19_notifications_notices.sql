@@ -196,7 +196,7 @@ CREATE TRIGGER cg19_comm_event_immutable BEFORE UPDATE OR DELETE ON cg19_communi
  FOR EACH ROW EXECUTE FUNCTION cg19_immutable_comm_event();
 CREATE TRIGGER cg19_delivery_receipt_immutable BEFORE UPDATE OR DELETE ON cg19_delivery_receipt
  FOR EACH ROW EXECUTE FUNCTION cg19_immutable_comm_event();
-CREATE FUNCTION cg19_template_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION cg19_message_template_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR
    NEW.kind IS DISTINCT FROM OLD.kind OR
@@ -211,7 +211,7 @@ BEGIN
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg19_message_template_frozen BEFORE UPDATE ON cg19_message_template
- FOR EACH ROW EXECUTE FUNCTION cg19_template_frozen();
+ FOR EACH ROW EXECUTE FUNCTION cg19_message_template_frozen();
 CREATE FUNCTION cg19_notice_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { ChangePasswordForm } from "../../../features/identity-access/change-password-form";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
@@ -66,7 +67,7 @@ export default async function AdminHome() {
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
       canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
+    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/><hr style={{margin:"24px 0",borderColor:"var(--border)"}}/><ChangePasswordForm/></section>
     </main>
   </div>;
 }
