@@ -13,6 +13,8 @@ function allowed(parts:string[],method:"GET"|"POST"){
     parts[2]==="approve")return method==="POST";
   if(parts.length===3&&parts[0]==="letters"&&parts[1]==="case"&&
     UUID.test(parts[2]))return method==="GET";
+  if(parts.length===3&&parts[0]==="letters"&&parts[1]==="requests"&&
+    UUID.test(parts[2]))return method==="GET";
   if(parts.length===2&&parts[0]==="letters"&&parts[1]==="issue")
     return method==="POST";
   if(parts.length===3&&parts[0]==="letters"&&UUID.test(parts[1])&&
