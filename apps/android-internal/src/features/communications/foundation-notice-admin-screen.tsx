@@ -53,7 +53,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   const [scheduledAt,setScheduledAt]=useState(""),[expiresAt,setExpiresAt]=useState("");
   const [targetHref,setTargetHref]=useState("");
   const [draftKey,setDraftKey]=useState(""),[draftUnknown,setDraftUnknown]=useState(false);
-  const [review,setReview]=useState<Review|null>(null),[totp,setTotp]=useState("");
+  const [review,setReview]=useState<Review|null>(null),[currentPassword,setCurrentPassword]=useState("");
   const [reviewKey,setReviewKey]=useState(""),[reviewUnknown,setReviewUnknown]=useState(false);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false);
   const [notice,setNotice]=useState("");
@@ -141,17 +141,17 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   }
   async function decide(){
     if(!review||busy||!mayApprove||reviewUnknown)return;
-    if(!/^\d{6}$/.test(totp)){setNotice("Enter a fresh six-digit authenticator code.");return;}
+    if((currentPassword.length<8||currentPassword.length>1024)){setNotice("Enter a current password.");return;}
     setBusy(true);setNotice("");
     const requestKey=reviewKey||Crypto.randomUUID();setReviewKey(requestKey);
     try{
       const out=await api<{status:string;revision:number}>(token,
         "notices/"+review.ref+"/decision","POST",{
           action:review.action,expectedRevision:review.revision,
-          requestKey,totp
+          requestKey,currentPassword
         });
       if(!Number.isInteger(out.revision))throw Error("UNKNOWN");
-      setReview(null);setReviewKey("");setReviewUnknown(false);setTotp("");
+      setReview(null);setReviewKey("");setReviewUnknown(false);setCurrentPassword("");
       setNotice("Original Foundation notice state confirmed: "+out.status);
       await load();
     }catch(e){
@@ -167,7 +167,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
       const res=await api<{status:string;revision:number|null;action:string|null}>(token,
         "notices/"+review.ref+"/requests/"+reviewKey);
       if(res.status==="CONFIRMED"&&Number.isInteger(res.revision)){
-        setReview(null);setReviewKey("");setReviewUnknown(false);setTotp("");
+        setReview(null);setReviewKey("");setReviewUnknown(false);setCurrentPassword("");
         setNotice("Original notice action confirmed: "+res.action);
         await load();
       }else setNotice("No confirmed action located. Keep the original key for Foundation operations.");
@@ -289,11 +289,11 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
               {n.state==="DRAFT"&&<Pressable style={s.button}
                 disabled={busy||reviewUnknown} onPress={()=>{
                   setReview({ref:n.noticeRef,revision:n.revision,action:"APPROVE"});
-                  setReviewKey("");setTotp("");
+                  setReviewKey("");setCurrentPassword("");
                 }}><Text>Review approval</Text></Pressable>}
               <Pressable style={s.button} disabled={busy||reviewUnknown}
                 onPress={()=>{setReview({ref:n.noticeRef,revision:n.revision,action:"CANCEL"});
-                  setReviewKey("");setTotp("")}}>
+                  setReviewKey("");setCurrentPassword("")}}>
                 <Text>Review cancellation</Text></Pressable>
             </View>}
           {mayViewDelivery&&<Pressable style={s.button} disabled={busy}
@@ -306,16 +306,16 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
       {review&&mayApprove&&<View style={s.card}>
         <Text style={s.heading}>Confirm {review.action.toLowerCase()} notice</Text>
         <Text>Selected notice revision: {review.revision}. Current root MFA required.</Text>
-        <TextInput value={totp} onChangeText={x=>setTotp(x.replace(/\D/g,""))}
-          accessibilityLabel="Six-digit authenticator code"
-          style={s.input} keyboardType="number-pad" secureTextEntry maxLength={6}/>
-        <Pressable style={s.button} disabled={busy||reviewUnknown||totp.length!==6}
+        <TextInput value={currentPassword} onChangeText={x=>setCurrentPassword(x)}
+          accessibilityLabel="Current password" secureTextEntry autoComplete="current-password"
+          style={s.input} keyboardType="number-pad" secureTextEntry maxLength={1024}/>
+        <Pressable style={s.button} disabled={busy||reviewUnknown||currentPassword.length<8}
           onPress={()=>void decide()}><Text>Confirm {review.action.toLowerCase()}</Text></Pressable>
         {reviewKey&&<Pressable style={s.button} disabled={busy}
           onPress={()=>void lookupDecision()}>
           <Text>Check original approval/cancellation</Text></Pressable>}
         <Pressable style={s.button} disabled={busy||reviewUnknown}
-          onPress={()=>{setReview(null);setReviewKey("");setTotp("")}}>
+          onPress={()=>{setReview(null);setReviewKey("");setCurrentPassword("")}}>
           <Text>Cancel review panel</Text></Pressable>
       </View>}
     </ScrollView>
