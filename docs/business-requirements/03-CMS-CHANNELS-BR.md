@@ -2,7 +2,7 @@
 
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
 **Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
-**Coverage:** CG-18 CMS/publication; presentation and permissions of CG-01–21 across all intended interfaces.
+**Coverage:** CG-18 CMS/publication; presentation and permissions of canonical CG-01–CG-24 across the five approved interfaces, with optional healthcare ERP functions disabled by default and subject to the original owning-module permissions.
 
 ## 1. Core operating principle
 

@@ -47,7 +47,9 @@ export default async function FoundationSettings(){
         canViewAccounts={keys.includes("accounts.view")}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings canViewAudit={keys.includes("platform.audit.view")}
-        canViewRecovery={keys.includes("platform.recovery.view")}/>
+        canViewRecovery={keys.includes("platform.recovery.view")}
+        canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
+        canViewDocuments={keys.includes("documents.files.view")&&keys.includes("documents.files.manage")&&(keys.includes("approvals.view")||keys.includes("approvals.propose"))}/>
       <main className="workspace"><PlatformSettingsPanel/></main>
     </div>;
   }catch(error){

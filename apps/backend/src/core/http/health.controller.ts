@@ -32,6 +32,12 @@ export class HealthController {
         "0013_cg21_platform_configuration.sql",
         "0014_cg21_audit_recovery.sql",
         "0015_cg21_recovery_authorization.sql",
+        "0016_cg03_protected_proposals.sql",
+        "0017_cg03_immutable_case_decisions.sql",
+        "0018_cg01_protected_approval_effect.sql",
+        "0019_cg03_owner_finalization.sql",
+        "0020_cg03_process_version_integrity.sql",
+        "0021_cg19_protected_case_files.sql",
         "0201_cg02_foundation_structure.sql"
       ] as const;
       const migrations = await this.db.query<{ filename: string }>(

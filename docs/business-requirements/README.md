@@ -1,14 +1,14 @@
 # CareGanga Foundation — Business Requirements
 
-**Status:** Single consolidated BR baseline · Internally reviewed · Delegated business defaults adopted; formal sign-off tracked separately  
+**Status:** Single consolidated BR baseline · Source reviewed · SHA-bound owner-delegated internal business-design approval tracked in initiative `approvals.json`; independent client/business and required clinical/commercial sign-off remain separate  
 **Product:** One Foundation operations and Integrated Healthcare Assistance platform  
-**Branch:** `feature/careganga-master-business-requirements-20261114`
+**Canonical repository location:** `docs/business-requirements/` (authoritative across branches; integrated into `main` only after the user-authorized merge)
 
 ## Read these documents in order
 
 | Document | Purpose | Type |
 | --- | --- | --- |
-| **[00 — Master BR](00-MASTER-BUSINESS-REQUIREMENTS.md)** | Business objectives, 21 module owners, shared boundaries, users, end-to-end processes and PRD dependency order | **Business requirement** |
+| **[00 — Master BR](00-MASTER-BUSINESS-REQUIREMENTS.md)** | Business objectives, 24 module owners, shared boundaries, users, end-to-end processes and PRD dependency order | **Business requirement** |
 | **[01 — Foundation & Operations BR](01-FOUNDATION-OPERATIONS-BR.md)** | Organization, accounts, approvals, members, volunteers, projects, beneficiaries, funding, finance, HR/payroll, inventory, referrals, communications and reporting | **Business requirement** |
 | **[02 — Integrated Healthcare BR](02-INTEGRATED-HEALTHCARE-BR.md)** | Provider centers, professionals, patients, center-specific availability, appointments, diagnostics, Foundation assistance, payments and settlements | **Business requirement** |
 | **[03 — CMS & Application Channels BR](03-CMS-CHANNELS-BR.md)** | Foundation Admin controls, public CMS, healthcare-center portal, public website, Public Android and Internal Android | **Business requirement** |
@@ -33,8 +33,8 @@
 
 ## PRD handoff
 
-Create PRDs for CG-01–CG-21 in the dependency order identified in the Master BR. For each use case, cite the source PDF/screenshot reference, CG-BR ID, actors/permissions, owner data, validation/configuration, Admin/public/Android/center applicability, state transitions, financial/document/reporting effects, relevant NFR IDs and manual QA scenarios.
+Use the **single canonical product PRD and HLD** plus module-owned planning, UI/UX, DLD and QA artifacts for **CG-01–CG-24** in the real-dependency order recorded in `DEVELOPMENT_ORDER.md`. The BR package remains one original business-requirements baseline, not 24 competing BRs. For each use case, cite the source PDF/screenshot reference, CG-BR ID, actors/permissions, owner data, validation/configuration, Admin/public/Android/center applicability, state transitions, financial/document/reporting effects, relevant NFR IDs and manual QA scenarios.
 
 Keep module PRDs clean: **refer to the single source BR and shared NFR baseline** rather than copying the whole specification into every PRD. Do not add a new business module for each Admin menu item or static mockup.
 
-**Business decisions:** All 24 earlier questions have safe delegated defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Verified merchant accounts, clinical consent and statutory evidence remain go-live prerequisites, not unanswered product questions; formal Harness stage approval remains separate.
+**Business decisions:** All 27 currently numbered policy decisions (D-01–D-23, D-25–D-28; D-24 unissued) have safe delegated planning defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). Verified merchant accounts, clinical consent and statutory evidence remain go-live prerequisites, not unanswered product questions; formal Harness stage approval remains separate.

@@ -2,7 +2,7 @@
 
 **Document ID:** CG-BR-000  
 **Baseline:** Single consolidated BR for modular PRDs  
-**Status:** Internally reviewed; delegated business defaults adopted; formal human approval separately required  
+**Status:** Consolidated source-reviewed BR baseline; SHA-bound internal owner-delegated business-design approval is recorded in `specs/initiatives/careganga-foundation-platform/approvals.json`. **Independent client/business sign-off remains required** before treating unverified commercial, medical, legal or numerical targets as contractual/operational approval  
 **Prepared by:** JASIQ Labs
 
 ## 1. Purpose and document hierarchy
@@ -226,7 +226,7 @@ This BR package is ready for client review when:
 
 ## 13. Adopted business policies and launch safeguards
 
-All 24 previously open questions have recorded defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). These cover service scope, appointment selection, verified 50% consultation assistance, center collection and monthly Foundation support, delegated versus protected approvals, linked identity/privacy, source-backed mobile functions and accurate CMS/publication.
+All 27 currently recorded business decisions have delegated planning defaults in [CG-BR-900](04-TRACEABILITY-DECISIONS.md). These cover service scope, appointment selection, verified 50% consultation assistance, center collection and monthly Foundation support, delegated versus protected approvals, linked identity/privacy, source-backed mobile functions and accurate CMS/publication.
 
 **Readiness is different from scope approval:** Do not enable real payment, clinical document access or statutory claims until verified merchant accounts, legitimate professional credentials/consent and authentic tax/legal data are in place. Performance and recovery numerical goals remain proposed until realistic hosting and workload are validated. The full PDF/healthcare/Admin screenshot coverage and P0 NFRs remain required.
 

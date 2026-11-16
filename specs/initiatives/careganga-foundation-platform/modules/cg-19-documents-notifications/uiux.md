@@ -25,6 +25,12 @@ CG-19 alone renders the **message authoring, permitted recipient/audience select
 
 A permitted sender chooses an actual CG-01/03 recipient/source event and supported channel, sees required template/priority/expiry and exact permissioned counts, confirms **Queue/Send**, then views honest QUEUED, PROVIDER_UNAVAILABLE, SENT_TO_PROVIDER, DELIVERED_IF_CONFIRMED, FAILED or EXPIRED status. Missing optional provider configuration must not falsely show delivered or remove queued evidence. Show bounded retry and recipient revocation outcomes without private contacts, provider keys, fabricated audience counts or raw IDs. Apply the existing CareGanga tokens, responsive Admin Web and eligible native permitted notification readers; source/rendered visual QA remains NOT_RUN.
 
+### Required SMS and Email authoring, consent and feedback (CG-19 US-002)
+
+Foundation Admin's actual C15–C18 **Send Notification** form must expose independent **Email** and **SMS** choices (and only genuinely configured other channels) to a permitted sender. Show approved channel template/subject for email, short template preview plus segment/length warning for SMS, safe verified recipient count/consent eligibility and a confirmation before queue. Do not show a fabricated send button success, raw recipient phone/email in broad audience preview, unsupported paid campaign, or technical provider code. A channel configured as unavailable may show clear 'Email delivery unavailable' or 'SMS delivery unavailable' for an authorized operator, rather than appear sendable; users may still use in-app notification where permitted.
+
+Per-channel source states show **Queued → Submitted to provider → Delivered if provider confirms / Failed / Not delivered / Suppressed / Unknown** with bounded retry/reconciliation and accessible filter/detail. A generic 'Sent' toast may only indicate server queue acceptance when labelled 'Queued', never that SMS or email reached someone. The same current recipient sees only their own permitted notification status in Public/Internal Android where a real signed-in account exists; authenticated Foundation Admin Web sees authorized sender history. Provider credentials/readiness live in CG-21; CG-19 displays true status but never edits provider secrets. Native delivery and visual/live SMS-email evidence remain NOT_RUN.
+
 ## Screen entry and original-reference fidelity
 
 | Source reference | Actual first module screen and status owner | Not shown until later real source |

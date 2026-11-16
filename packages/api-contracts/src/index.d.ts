@@ -134,3 +134,71 @@ export interface CG21RecoveryOutcome {
   status:"NOT_AVAILABLE"|"REQUESTED"|"REPLAY_CONFIRMED";message?:string;
   operationRef?:string;version?:number;
 }
+
+/** CG-03 / US-001: only an existing CG-01 protected role-change request. */
+export interface CG03Option{value:string;label:string;}
+export interface CG03CaseView{
+  caseRef:string;reference:string;accountName:string;roleName:string;
+  status:string;revision:number;proposalRevision:number;processVersion:number;
+  currentStep:number;sourceAccountAccessRevision:string;sourceRoleRevision:number;
+  submittedAt:string;previousCaseRef:string|null;
+}
+export interface CG03CaseDetail extends CG03CaseView{
+  allowedDecisions:Array<"APPROVE"|"RETURN"|"REJECT"|"FORWARD">;
+  requiresFreshAuthenticator:boolean;
+  history:Array<{action:string;remarks:string;at:string;by:string}>;
+}
+export interface CG03DecisionInput {
+  action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD";
+  remarks:string;expectedRevision:number;requestKey:string;totp:string;
+}
+export interface CG03DecisionResult {
+  status:string;caseNumber:string;revision:number;
+  decisionRecorded?:boolean;sourceEffect?:string;
+}
+export interface CG03DecisionLookup {
+  status:"CONFIRMED"|"NOT_FOUND";revision:number|null;action?:string;
+}
+export interface CG03ProcessView{
+  active:boolean;version:number;firstReviewer:string|null;
+  finalReviewer:string;requiresFreshAuthenticator:boolean;message:string;
+}
+export interface CG03CreateInput{
+  targetAccountRef:string;targetRoleRef:string;requestKey:string;
+  previousCaseRef?:string;
+}
+export interface CG03CaseOutcome extends CG03CaseView{
+  result:"SUBMITTED"|"PREVIOUSLY_CONFIRMED";
+}
+export interface CG03Lookup{
+  status:"CONFIRMED"|"NOT_FOUND";case:CG03CaseView|null;
+}
+
+/** CG-03 / US-003: approval decision and actual CG-01 role effect are separate. */
+export interface CG03OwnerOutcome{
+  status:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED";
+  attempts:number;canRetry:boolean;
+}
+export interface CG03OwnerRetry{
+  status:"PENDING_OWNER"|"OWNER_COMPLETED"|"OWNER_BLOCKED";
+}
+
+/** CG-19 / US-001: actual private CG-03 case evidence. References are transport
+ * identifiers and must never be displayed in user-facing form controls. */
+export type CG19FileState=
+  "INITIATED"|"UPLOAD_READY"|"VERIFYING"|"VALIDATED"|"REJECTED"|
+  "UNKNOWN"|"EXPIRED"|"STORAGE_UNAVAILABLE"|"VERIFICATION_UNAVAILABLE"|
+  "EXPIRED_OR_REJECTED";
+export interface CG19UploadRequest {
+  caseRef:string;sourceRevision:number;requestKey:string;
+  mime:"application/pdf"|"image/jpeg"|"image/png"|"image/webp";
+  sizeBytes:number;sha256:string;
+}
+export interface CG19UploadStart {
+  uploadRef:string;status:CG19FileState;message:string;
+  uploadUrl?:string;uploadHeaders?:Record<string,string>;expiresAt?:string;
+}
+export interface CG19UploadStatus {
+  uploadRef:string;status:CG19FileState;fileRef:string|null;
+  cleanVerified:boolean;message?:string;
+}

@@ -37,8 +37,17 @@ function parseChange(input:Change):{name:string;normalized:string;description:st
   const colorKey=input.colorKey??null;
   if(colorKey!==null && (typeof colorKey!=="string"||!colorKeys.has(colorKey)))throw new BadRequestException();
   if(typeof input.requestKey!=="string"||!UUID.test(input.requestKey))throw new BadRequestException();
+  // Definition is restricted to currently protected root by authorizeWrite().
+  // roles.manage may be defined on a custom role, but CG-01 direct assignment
+  // remains forbidden and only the later approved CG-03 finalizer may grant it.
   let keys:string[];
-  try{keys=assignableKeys(input.actionKeys);}catch{throw new BadRequestException("Invalid permission selection");}
+  try{
+    if(!Array.isArray(input.actionKeys)||new Set(input.actionKeys).size!==input.actionKeys.length)
+      throw new Error("INVALID_CAPABILITIES");
+    const hasSensitive=input.actionKeys.includes("roles.manage");
+    keys=assignableKeys(input.actionKeys.filter((key:unknown)=>key!=="roles.manage"));
+    if(hasSensitive)keys=[...keys,"roles.manage"].sort();
+  }catch{throw new BadRequestException("Invalid permission selection");}
   return {name,normalized,description,colorKey,keys,requestKey:input.requestKey};
 }
 function revision(value:unknown):number{
@@ -141,10 +150,16 @@ export class RolesService {
     return {options:rows.rows.map(r=>({value:r.id,label:r.name,context:"Foundation"}))};
   }
 
-  private async authorizeWrite(client:PoolClient,actor:VerifiedFoundationActor):Promise<void>{
+  private async authorizeWrite(client:PoolClient,actor:VerifiedFoundationActor):Promise<boolean>{
     // Lock actual session/account/assignment/role so security changes cannot race through a write.
-    const q=await client.query<{is_protected:boolean}>(`
-      SELECT r.is_protected FROM auth_session s
+    const q=await client.query<{is_protected:boolean;approved_sensitive:boolean}>(`
+      SELECT r.is_protected,
+        EXISTS(SELECT 1 FROM cg01_approved_sensitive_assignment eff
+          WHERE eff.target_account_id=a.id AND eff.realm_id=a.realm_id
+            AND eff.target_role_id=r.id AND eff.approved_role_revision=r.revision
+            AND eff.resulting_access_version<=a.access_version
+        ) AS approved_sensitive
+      FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
@@ -156,8 +171,11 @@ export class RolesService {
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
         AND s.mfa_verified_at IS NOT NULL
       FOR SHARE OF s,a,ar,r`,[actor.activeSessionId,actor.accountId,actor.realmId]);
-    // Non-root grant of roles.manage requires a genuine CG-03 approval/finalizer.
-    if(!q.rowCount||!q.rows[0].is_protected)throw new ForbiddenException();
+    // Root may edit the sensitive definition; approved non-root staff may
+    // manage ordinary roles only. Neither can bypass CG-03 sensitive assignment.
+    if(!q.rowCount||(!q.rows[0].is_protected&&!q.rows[0].approved_sensitive))
+      throw new ForbiddenException();
+    return q.rows[0].is_protected;
   }
   private async startCommand(client:PoolClient,actor:VerifiedFoundationActor,action:string,
     requestKey:string,requestDigest:string):Promise<{id:string|null;replay:Outcome|null}>{
@@ -205,19 +223,19 @@ export class RolesService {
   }
   private async perform(bearer:string,action:"CREATE"|"EDIT"|"COPY"|"RETIRE",
     requestKey:string,commandData:unknown,
-    work:(client:PoolClient,actor:VerifiedFoundationActor)=>Promise<{roleRef:string;revision:number;name:string}>,
+    work:(client:PoolClient,actor:VerifiedFoundationActor,root:boolean)=>Promise<{roleRef:string;revision:number;name:string}>,
     correlationRef:string):Promise<Outcome>{
     const actor=await this.sessions.requireAction(bearer,"roles.manage");
     const client=await this.db.connect();
     try{
       await client.query("BEGIN");
-      await this.authorizeWrite(client,actor);
+      const root=await this.authorizeWrite(client,actor);
       const command=await this.startCommand(client,actor,action,requestKey,hash(JSON.stringify(commandData)));
       if(command.replay){
         await client.query("COMMIT");
         return command.replay;
       }
-      const result=await work(client,actor);
+      const result=await work(client,actor,root);
       await this.audit(client,actor,"identity.role."+action.toLowerCase(),result.name,correlationRef);
       await this.finishCommand(client,command.id!,result.roleRef,result.revision);
       await client.query("COMMIT");
@@ -231,7 +249,8 @@ export class RolesService {
   }
   async create(bearer:string,input:Change,correlationRef:string):Promise<Outcome>{
     const x=parseChange(input);
-    return this.perform(bearer,"CREATE",x.requestKey,x,async(client,actor)=>{
+    return this.perform(bearer,"CREATE",x.requestKey,x,async(client,actor,root)=>{
+      if(!root&&x.keys.includes("roles.manage"))throw new ForbiddenException();
       const result=await client.query<{id:string;revision:number}>(`
         INSERT INTO role(realm_id,name,normalized_name,description,color_key)
         VALUES($1,$2,$3,$4,$5) RETURNING id,revision`,
@@ -243,7 +262,8 @@ export class RolesService {
   async copy(bearer:string,sourceRef:string,input:Change,correlationRef:string):Promise<Outcome>{
     parseRef(sourceRef);
     const x=parseChange(input),expected=revision(input.expectedRevision);
-    return this.perform(bearer,"COPY",x.requestKey,{...x,sourceRef,expected},async(client,actor)=>{
+    return this.perform(bearer,"COPY",x.requestKey,{...x,sourceRef,expected},async(client,actor,root)=>{
+      if(!root&&x.keys.includes("roles.manage"))throw new ForbiddenException();
       const source=await client.query<Row>(`
         SELECT * FROM role WHERE id=$1 AND realm_id=$2 AND active=true FOR SHARE`,[sourceRef,actor.realmId]);
       if(!source.rowCount)throw new NotFoundException();
@@ -251,8 +271,11 @@ export class RolesService {
       if(source.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const original=await client.query<{capability_key:string}>(`
         SELECT capability_key FROM role_grant WHERE role_id=$1`,[sourceRef]);
-      const safeKeys=original.rows.map(r=>r.capability_key)
-        .filter(k=>capabilitiesInUse().some(c=>c.key===k&&c.assignable));
+      if(!root&&original.rows.some(entry=>entry.capability_key==="roles.manage"))
+        throw new ForbiddenException("Protected role definitions require Foundation root");
+      // Copy the permissions explicitly selected in the review form.
+      // Protected managers may include roles.manage; non-root editors are denied.
+      const safeKeys=x.keys;
       const result=await client.query<{id:string;revision:number}>(`
         INSERT INTO role(realm_id,name,normalized_name,description,color_key)
         VALUES($1,$2,$3,$4,$5) RETURNING id,revision`,
@@ -264,11 +287,16 @@ export class RolesService {
   async edit(bearer:string,roleRef:string,input:Change,correlationRef:string):Promise<Outcome>{
     parseRef(roleRef);
     const x=parseChange(input),expected=revision(input.expectedRevision);
-    return this.perform(bearer,"EDIT",x.requestKey,{...x,roleRef,expected},async(client,actor)=>{
+    return this.perform(bearer,"EDIT",x.requestKey,{...x,roleRef,expected},async(client,actor,root)=>{
+      if(!root&&x.keys.includes("roles.manage"))throw new ForbiddenException();
       const found=await client.query<Row>("SELECT * FROM role WHERE id=$1 AND realm_id=$2 FOR UPDATE",[roleRef,actor.realmId]);
       if(!found.rowCount)throw new NotFoundException();
       if(found.rows[0].is_protected)throw new ForbiddenException();
       if(!found.rows[0].active)throw new ConflictException({code:"ROLE_RETIRED"});
+      if(!root){
+        const sensitive=await client.query("SELECT 1 FROM role_grant WHERE role_id=$1 AND capability_key='roles.manage'",[roleRef]);
+        if(sensitive.rowCount)throw new ForbiddenException("Protected role definitions require Foundation root");
+      }
       if(found.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const saved=await client.query<{revision:number}>(`
         UPDATE role SET name=$3,normalized_name=$4,description=$5,color_key=$6,revision=revision+1
@@ -282,10 +310,14 @@ export class RolesService {
   async retire(bearer:string,roleRef:string,expectedRevision:number,requestKey:string,correlationRef:string):Promise<Outcome>{
     parseRef(roleRef);parseRef(requestKey);
     const expected=revision(expectedRevision);
-    return this.perform(bearer,"RETIRE",requestKey,{roleRef,expected},async(client,actor)=>{
+    return this.perform(bearer,"RETIRE",requestKey,{roleRef,expected},async(client,actor,root)=>{
       const found=await client.query<Row>("SELECT * FROM role WHERE id=$1 AND realm_id=$2 FOR UPDATE",[roleRef,actor.realmId]);
       if(!found.rowCount)throw new NotFoundException();
       if(found.rows[0].is_protected)throw new ForbiddenException();
+      if(!root){
+        const sensitive=await client.query("SELECT 1 FROM role_grant WHERE role_id=$1 AND capability_key='roles.manage'",[roleRef]);
+        if(sensitive.rowCount)throw new ForbiddenException("Protected role definitions require Foundation root");
+      }
       if(!found.rows[0].active||found.rows[0].revision!==expected)throw new ConflictException({code:"STALE_ROLE"});
       const assigned=await client.query("SELECT 1 FROM account_role WHERE role_id=$1 AND revoked_at IS NULL LIMIT 1",[roleRef]);
       if(assigned.rowCount)throw new ConflictException({code:"ROLE_ASSIGNED"});
