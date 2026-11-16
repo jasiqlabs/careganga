@@ -262,7 +262,7 @@ export class SupportService{
     const searchProof=sha((searchDigests??[]).join(","));
     let afterTimestamp:string|null=null,afterId:string|null=null;
     if(pageCursor!==null&&pageCursor!==undefined&&pageCursor!==""){
-      if(typeof pageCursor!=="string"||pageCursor.length>220||
+      if(typeof pageCursor!=="string"||pageCursor.length>400||
         !/^[A-Za-z0-9_-]+$/.test(pageCursor))
         throw new BadRequestException("Refresh the message page");
       try{
@@ -283,7 +283,7 @@ export class SupportService{
       "rs.last_seen_inbound_at,rs.archived_at FROM cg19_support_case c "+
       "LEFT JOIN cg19_support_read_state rs ON rs.case_id=c.id "+
       "AND rs.realm_id=c.realm_id AND rs.operator_account_id=$2 "+
-      "WHERE c.realm_id=$1 AND ($3='ALL' OR "+
+      "WHERE c.realm_id=$1 AND (($3='ALL' AND rs.archived_at IS NULL) OR "+
       "($3='ARCHIVED' AND rs.archived_at IS NOT NULL) OR "+
       "($3='UNREAD' AND (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) OR "+
