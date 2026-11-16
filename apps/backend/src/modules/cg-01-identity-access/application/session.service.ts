@@ -3,19 +3,18 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
-import { decryptTotpSecret, hashPassword, matchedTotpCounter, verifyPassword } from "../domain/secret-crypto";
+import { hashPassword, verifyPassword } from "../domain/secret-crypto";
 import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-api";
 import { capabilitiesInUse, implementedCapability } from "../domain/capability-catalog";
 import { DEFAULT_SECURITY_POLICY } from "../domain/security-policy";
 
-const INVALID_LOGIN = "The account details or verification code could not be confirmed.";
+const INVALID_LOGIN = "Mobile number, email or password could not be confirmed.";
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 type AccountCredential = {
-  id: string; realm_id: string; display_name: string; normalized_email: string;
-  password_hash: string; totp_ciphertext: Buffer | null; totp_nonce: Buffer | null;
-  totp_tag: Buffer | null; last_totp_counter: string; status: string; access_version: string;
-};
+  id:string;realm_id:string;display_name:string;normalized_mobile:string|null;
+  password_hash:string;status:string;access_version:string;credential_version:number;
+}
 
 @Injectable()
 export class SessionService implements IdentityAuthorization {
@@ -60,75 +59,61 @@ export class SessionService implements IdentityAuthorization {
       throw new HttpException("Retry limit reached", HttpStatus.TOO_MANY_REQUESTS);
   }
 
-  async signIn(details: { email: string; password: string; totp: string; remoteAddress: string; deviceLabel: string; correlationRef: string }):
-      Promise<{ sessionToken: string; expiresAt: string; displayName: string }> {
-    const email = details.email.trim().toLowerCase();
+  async signIn(details:{identifier:string;password:string;remoteAddress:string;
+    deviceLabel:string;correlationRef:string}):Promise<{sessionToken:string;expiresAt:string;displayName:string}>{
+    const identifier=details.identifier.trim().toLowerCase();
     const rules=await this.loginRules();
-    // Limit distinct-email spraying before allocating a new per-contact bucket.
-    // A generous source-address budget avoids routine shared-network lockout.
     await this.takeAttempt("network",details.remoteAddress,300,900);
-    await this.takeAttempt("ip-email",details.remoteAddress+"|"+email,
+    await this.takeAttempt("ip-identifier",details.remoteAddress+"|"+identifier,
       Math.min(30,rules.maxFailedAttempts*3),rules.failedAttemptWindowSeconds);
-    await this.takeAttempt("email",email,rules.maxFailedAttempts,rules.failedAttemptWindowSeconds);
-    const lookup = await this.db.query<AccountCredential>(`
-      SELECT a.id,a.realm_id,a.display_name,a.normalized_email,a.status,a.access_version,
-             c.password_hash,c.totp_ciphertext,c.totp_nonce,c.totp_tag,c.last_totp_counter
-      FROM account a JOIN identity_credential c ON c.account_id = a.id
-      WHERE a.normalized_email=$1 AND a.email_verified_at IS NOT NULL LIMIT 1`, [email]);
-    const row = lookup.rows[0];
-    // Match scrypt work for unknown contacts without disclosing account existence.
-    const passwordOk = row ? await verifyPassword(details.password,row.password_hash)
-      : Boolean(await hashPassword(details.password.padEnd(14,"_"))) && false;
-    if (!row || !passwordOk || row.status !== "ACTIVE" || !row.totp_ciphertext
-        || !row.totp_nonce || !row.totp_tag) throw new UnauthorizedException(INVALID_LOGIN);
-
-    const secret = decryptTotpSecret(row.totp_ciphertext,row.totp_nonce,row.totp_tag);
-    const matchedCounter = matchedTotpCounter(secret,details.totp);
-    secret.fill(0);
-    if (matchedCounter === null) throw new UnauthorizedException(INVALID_LOGIN);
-
-    const raw = randomBytes(32).toString("base64url");
-    const digest = sha256(raw);
-    const client = await this.db.connect();
-    try {
+    await this.takeAttempt("identifier",identifier,rules.maxFailedAttempts,rules.failedAttemptWindowSeconds);
+    const lookup=await this.db.query<AccountCredential>(`
+      SELECT a.id,a.realm_id,a.display_name,a.normalized_mobile,a.status,a.access_version,
+        c.password_hash,c.credential_version
+      FROM account a JOIN identity_credential c ON c.account_id=a.id
+      WHERE a.normalized_mobile=$1 OR a.normalized_email=$1 LIMIT 1`,[identifier]);
+    const row=lookup.rows[0];
+    const passwordOk=row?await verifyPassword(details.password,row.password_hash):
+      Boolean(await hashPassword(details.password.padEnd(8,"_"))) && false;
+    if(!row||!passwordOk||row.status!=="ACTIVE")
+      throw new UnauthorizedException(INVALID_LOGIN);
+    const raw=randomBytes(32).toString("base64url"),digest=sha256(raw);
+    const client=await this.db.connect();
+    try{
       await client.query("BEGIN");
-      try {
-        const locked = await client.query<AccountCredential>(`
-          SELECT a.id,a.realm_id,a.display_name,a.status,a.access_version,c.password_hash,
-                 c.totp_ciphertext,c.totp_nonce,c.totp_tag,c.last_totp_counter
+      try{
+        const current=await client.query<AccountCredential>(`
+          SELECT a.id,a.realm_id,a.display_name,a.normalized_mobile,a.status,a.access_version,
+            c.password_hash,c.credential_version
           FROM account a JOIN identity_credential c ON c.account_id=a.id
-          WHERE a.id=$1 FOR UPDATE OF a,c`, [row.id]);
-        const current = locked.rows[0];
-        // Do not accept MFA verified against a credential secret rotated between read and lock.
-        if (!current || current.status !== "ACTIVE" || current.password_hash !== row.password_hash
-            || !current.totp_ciphertext?.equals(row.totp_ciphertext)
-            || !current.totp_nonce?.equals(row.totp_nonce)
-            || !current.totp_tag?.equals(row.totp_tag)
-            || matchedCounter <= Number(current.last_totp_counter))
+          WHERE a.id=$1 FOR UPDATE OF a,c`,[row.id]);
+        const locked=current.rows[0];
+        if(!locked||locked.status!=="ACTIVE"||locked.password_hash!==row.password_hash
+          ||locked.credential_version!==row.credential_version)
           throw new UnauthorizedException(INVALID_LOGIN);
-        const role = await client.query<{ name: string; is_protected: boolean }>(`
-          SELECT r.name,r.is_protected FROM account_role ar
-          JOIN role r ON r.id=ar.role_id
+        const role=await client.query<{name:string}>(`
+          SELECT r.name FROM account_role ar JOIN role r ON r.id=ar.role_id
           WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL AND r.active=true
-          LIMIT 1`, [row.id,row.realm_id]);
-        if (!role.rowCount)
-          throw new UnauthorizedException(INVALID_LOGIN);
-        const session = await client.query<{ expires_at: Date }>(`
-          INSERT INTO auth_session(account_id,token_digest,account_access_version,expires_at,mfa_verified_at,device_label)
-          VALUES($1,$2,$3,now()+make_interval(secs=>$5),now(),$4) RETURNING expires_at`,
-          [row.id,digest,current.access_version,details.deviceLabel,rules.maxSessionAgeSeconds]);
-        await client.query("UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1",
-          [row.id, matchedCounter]);
+          LIMIT 1`,[row.id,row.realm_id]);
+        if(!role.rowCount)throw new UnauthorizedException(INVALID_LOGIN);
+        const session=await client.query<{expires_at:Date}>(`
+          INSERT INTO auth_session(account_id,token_digest,account_access_version,expires_at,
+            password_authenticated_at,device_label)
+          VALUES($1,$2,$3,now()+make_interval(secs=>$5),now(),$4)
+          RETURNING expires_at`,
+          [row.id,digest,locked.access_version,details.deviceLabel,rules.maxSessionAgeSeconds]);
         await client.query(`
-          INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,action_key,outcome,correlation_ref)
-          VALUES($1,$2,$2,'identity.session.login','SUCCESS',$3)`,[row.realm_id,row.id,details.correlationRef]);
-        // The throttle cleanup is part of the transaction. Never report a failed sign-in
-        // after the session and mandatory audit have already committed.
-        await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[this.throttleKey("email",email)]);
+          INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,
+            action_key,outcome,correlation_ref)
+          VALUES($1,$2,$2,'identity.session.login','SUCCESS',$3)`,
+          [row.realm_id,row.id,details.correlationRef]);
+        await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",
+          [this.throttleKey("identifier",identifier)]);
         await client.query("COMMIT");
-        return {sessionToken:raw,expiresAt:session.rows[0].expires_at.toISOString(),displayName:row.display_name};
-      } catch(e) { await client.query("ROLLBACK"); throw e; }
-    } finally { client.release(); }
+        return {sessionToken:raw,expiresAt:session.rows[0].expires_at.toISOString(),
+          displayName:row.display_name};
+      }catch(e){await client.query("ROLLBACK");throw e;}
+    }finally{client.release();}
   }
 
   private digestFromBearer(value: string): string {
@@ -139,16 +124,16 @@ export class SessionService implements IdentityAuthorization {
   async verifySession(bearer: string): Promise<VerifiedFoundationActor> {
     const tokenDigest=this.digestFromBearer(bearer);
     const result=await this.db.query<{
-      id:string;account_id:string;realm_id:string;display_name:string;role_name:string;mfa_verified_at:Date;
+      id:string;account_id:string;realm_id:string;display_name:string;role_name:string;password_authenticated_at:Date;
     }>(`
-      SELECT s.id,s.account_id,a.realm_id,a.display_name,r.name AS role_name,s.mfa_verified_at
+      SELECT s.id,s.account_id,a.realm_id,a.display_name,r.name AS role_name,s.password_authenticated_at
       FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
       LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.active=true
-      WHERE s.token_digest=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+      WHERE s.token_digest=$1 AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
         AND s.expires_at > now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
@@ -161,7 +146,7 @@ export class SessionService implements IdentityAuthorization {
     return {
       accountId:actor.account_id,realmId:actor.realm_id,
       displayName:actor.display_name,roleName:actor.role_name,
-      activeSessionId:actor.id,mfaVerifiedAt:actor.mfa_verified_at
+      activeSessionId:actor.id,passwordAuthenticatedAt:actor.password_authenticated_at
     };
   }
   private async allowedActionsFor(actor: VerifiedFoundationActor): Promise<string[]> {
@@ -186,7 +171,7 @@ export class SessionService implements IdentityAuthorization {
         AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
-        AND s.mfa_verified_at IS NOT NULL AND a.realm_id=$3`,
+        AND s.password_authenticated_at IS NOT NULL AND a.realm_id=$3`,
       [actor.activeSessionId,actor.accountId,actor.realmId]);
     if (!result.rowCount)throw new UnauthorizedException();
     const implemented=capabilitiesInUse();
@@ -216,20 +201,18 @@ export class SessionService implements IdentityAuthorization {
       throw new ForbiddenException();
     return actor;
   }
-  /** Root-only, one-use CG-01 MFA proof for privileged owners such as CG-21.
-   *  Caller holds a transaction and owns any resulting business/audit write.
-   *  No owner module gets raw credential keys, role tables or bypass authority.
+  /** Fresh current-password confirmation, in the protected owner's commit transaction.
+   * This does not claim a second authenticator factor. Caller also enforces
+   * separated approval, scoped roles, idempotency and current versions.
    */
   async requireFreshFoundationRootProof(
-    client:PoolClient,actor:VerifiedFoundationActor,totp:string
+    client:PoolClient,actor:VerifiedFoundationActor,currentPassword:string
   ):Promise<void>{
-    if(!/^[0-9]{6}$/.test(totp))throw new ForbiddenException("Fresh authenticator proof required");
-    const current=await client.query<{
-      account_id:string;last_totp_counter:string;totp_ciphertext:Buffer|null;
-      totp_nonce:Buffer|null;totp_tag:Buffer|null;
-    }>(`
-      SELECT a.id AS account_id,c.last_totp_counter,c.totp_ciphertext,
-        c.totp_nonce,c.totp_tag
+    if(typeof currentPassword!=="string"||currentPassword.length<8
+      ||Buffer.byteLength(currentPassword,"utf8")>1024)
+      throw new ForbiddenException("Enter the current password to confirm");
+    const current=await client.query<{password_hash:string}>(`
+      SELECT c.password_hash
       FROM auth_session s
       JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
         AND a.access_version=s.account_access_version
@@ -240,27 +223,17 @@ export class SessionService implements IdentityAuthorization {
       JOIN identity_credential c ON c.account_id=a.id
       LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
       WHERE s.id=$1 AND s.account_id=$2 AND a.realm_id=$3
-        AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+        AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
         AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
       FOR UPDATE OF s,a,ar,r,c
     `,[actor.activeSessionId,actor.accountId,actor.realmId]);
-    const row=current.rows[0];
-    if(!row||!row.totp_ciphertext||!row.totp_nonce||!row.totp_tag)
-      throw new ForbiddenException("Current root access could not be verified");
-    const raw=decryptTotpSecret(row.totp_ciphertext,row.totp_nonce,row.totp_tag);
-    const counter=matchedTotpCounter(raw,totp);
-    raw.fill(0);
-    if(counter===null||counter<=Number(row.last_totp_counter))
-      throw new ForbiddenException("Use a fresh authenticator code");
-    await client.query(
-      "UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1",
-      [row.account_id,counter]
-    );
+    if(!current.rowCount||!await verifyPassword(currentPassword,current.rows[0].password_hash))
+      throw new ForbiddenException("Current password could not be confirmed");
   }
 
-  /** Throttle fresh privileged MFA attempts outside the caller's write transaction,
+  /** Throttle fresh privileged password attempts outside the caller's write transaction,
    * so failed proofs cannot roll back their own failed-attempt counter. */
   async limitFoundationRootProof(actor:VerifiedFoundationActor):Promise<void>{
     const rules=await this.loginRules();
@@ -276,7 +249,7 @@ export class SessionService implements IdentityAuthorization {
       RETURNING attempt_count
     `,[digest,rules.failedAttemptWindowSeconds]);
     if(count.rows[0].attempt_count>rules.maxFailedAttempts)
-      throw new HttpException("Fresh proof retry limit",HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException("Password confirmation retry limit",HttpStatus.TOO_MANY_REQUESTS);
   }
 
   async signOut(bearer: string): Promise<void> {
