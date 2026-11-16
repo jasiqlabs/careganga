@@ -11,8 +11,8 @@ export class BranchOperationsController{
   }
   @Get()
   list(@Headers("authorization")bearer:string,@Query("offset")offset?:string,
-    @Query("status")status?:string){
-    return this.operations.list(bearer,this.offset(offset),status);
+    @Query("status")status?:string,@Query("search")search?:string){
+    return this.operations.list(bearer,this.offset(offset),status,search??"");
   }
   @Get("export")
   exportPage(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
