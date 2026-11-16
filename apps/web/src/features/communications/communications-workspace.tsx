@@ -300,7 +300,7 @@ export function CommunicationsWorkspace({
         <h2>Draft new notice</h2></div>
         <div className="role-detail-content">
           <p>A draft freezes its real CG-01 audience. Only a protected
-            approver with fresh MFA can activate or schedule it.</p>
+            authorized approver who confirms their current password can activate or schedule it.</p>
           <label className="field">Notice title
             <input value={title} maxLength={120} disabled={busy||unknown}
               onChange={e=>setTitle(e.target.value)}/>
