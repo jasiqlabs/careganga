@@ -144,6 +144,24 @@ export class BranchWorkflowService{
      message:state==="RETURNED"?"Branch registration returned for correction.":
        "Branch application rejected; no branch was activated."};
  }
+ /** Reconcile a previously committed CG-03 decision when the CG-02 status
+  * write/response was lost. Never create or approve another decision.
+  */
+ async reconcile(bearer:string,caseRef:string){
+   await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   const source=await this.approvals.sourceCase(bearer,id(caseRef));
+   if(!["RETURNED","REJECTED","PENDING_OWNER","OWNER_COMPLETED"].includes(source.status))
+     throw new ConflictException("There is no completed branch decision to reconcile");
+   if(source.status==="OWNER_COMPLETED"){
+     return this.lifecycle.status(bearer,source.registrationRef);
+   }
+   await this.lifecycle.syncDecision(bearer,source.registrationRef,caseRef,
+     source.status as "RETURNED"|"REJECTED"|"PENDING_OWNER",
+     (client,actor)=>this.approvals.guardOutcome(client,actor,caseRef,
+       source.status as "RETURNED"|"REJECTED"|"PENDING_OWNER"));
+   if(source.status==="PENDING_OWNER")return this.finalize(bearer,caseRef);
+   return {status:source.status,message:"The original branch decision has been synchronized."};
+ }
  async finalize(bearer:string,caseRef:string){
    await this.sessions.requireAction(bearer,"foundation.branches.admin");
    const source=await this.approvals.sourceCase(bearer,id(caseRef));
