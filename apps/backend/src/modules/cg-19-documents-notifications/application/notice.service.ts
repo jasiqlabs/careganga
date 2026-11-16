@@ -52,17 +52,17 @@ export class NoticeService{
    private readonly notifications:NotificationService){}
  private async template(client:PoolClient,realm:string,
    channel:Channel,notice:NoticeRow,actor:string){
-   const result=await client.query<{id:string;version:number}>(`
+   const result=await client.query<{id:string;version:number;subject:string;body:string}>(`
     SELECT id,version FROM cg19_message_template
     WHERE realm_id=$1 AND kind='NOTICE' AND channel=$2
     ORDER BY version DESC LIMIT 1
    `,[realm,channel]);
    const version=(result.rows[0]?.version??0)+1;
-   const entry=await client.query<{id:string;version:number}>(`
+   const entry=await client.query<{id:string;version:number;subject:string;body:string}>(`
     INSERT INTO cg19_message_template(
       realm_id,kind,channel,version,subject,body,status,origin,approved_by)
     VALUES($1,'NOTICE',$2,$3,$4,$5,'APPROVED','HUMAN',$6)
-    RETURNING id,version
+    RETURNING id,version,subject,body
    `,[realm,channel,version,notice.title,notice.body,actor]);
    return entry.rows[0];
  }

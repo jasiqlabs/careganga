@@ -303,7 +303,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
               Files open only through an authorized app-private preview.</Text>
             {result&&"fileRef" in result&&result.fileRef&&
               <Pressable accessibilityRole="button" style={styles.button}
-                disabled={busy} onPress={()=>void previewVerified(result.fileRef)}> 
+                disabled={busy} onPress={()=>void previewVerified(result.fileRef as string)}> 
                 <Text>Preview verified private file</Text>
               </Pressable>}
           </View>}
