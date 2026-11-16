@@ -9,6 +9,7 @@ function permitted(parts:string[],method:Method){
   if(parts.join("/")==="public/contact"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="receipt/status"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="public/faqs"&&method==="GET")return "PUBLIC";
+  if(parts.length===1&&parts[0]==="agents"&&method==="GET")return "STAFF";
   if(parts.length===1&&parts[0]==="cases"&&method==="GET")return "STAFF";
   if(parts.length===2&&parts[0]==="cases"&&parts[1]==="search"&&
     method==="POST")return "STAFF";
