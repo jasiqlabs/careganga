@@ -47,9 +47,6 @@ CREATE TABLE branch_registration_command (
   CHECK ((result_ref IS NULL AND result_version IS NULL) OR
          (result_ref IS NOT NULL AND result_version IS NOT NULL))
 );
-CREATE INDEX ix_cg02_branch_command_original
-  ON branch_registration_command(root_realm_id,actor_ref,action,request_key);
-
 CREATE TABLE branch_registration_revision (
   registration_id uuid NOT NULL,
   root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
