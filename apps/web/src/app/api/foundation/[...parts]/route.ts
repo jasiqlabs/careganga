@@ -6,6 +6,8 @@ const actions=new Set(["PROFILE_SAVE","AREA_CREATE","AREA_UPDATE","DEPARTMENT_CR
   "DEPARTMENT_UPDATE","PARTICIPANT_ADD","PARTICIPANT_END"]);
 function allowed(parts:string[],method:string){
   if(parts[0]==="branches"){
+    if(parts.length===3&&parts[1]==="managers"&&parts[2]==="options")return method==="GET";
+    if(parts.length===2&&parts[1]==="department-options")return method==="GET";
     if(parts.length===2&&parts[1]==="drafts")return method==="GET"||method==="POST";
     if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET"||method==="PATCH";
     if(parts.length===4&&parts[1]==="changes"&&
