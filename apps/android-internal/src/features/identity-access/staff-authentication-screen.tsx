@@ -174,6 +174,7 @@ export function StaffAuthenticationScreen(){
     roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")&&
     (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
     return <PrivateCaseEvidenceScreen token={token}
+      canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
