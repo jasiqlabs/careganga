@@ -467,7 +467,14 @@ export class SupportService{
         [a.realmId,id,expected+1,state,question,answer,a.accountId]);
       await client.query("COMMIT");begun=false;
       return {faqRef:id,revision:expected+1,status:state};
-    }catch(e){if(begun)try{await client.query("ROLLBACK");}catch{};throw e;}
+    }catch(e){
+      if(begun)try{await client.query("ROLLBACK");}catch{}
+      // Published questions are unique per Foundation, including concurrent
+      // revisions. Reject a second active question as a safe CAS conflict.
+      if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+        throw new ConflictException("This published help question already exists");
+      throw e;
+    }
     finally{client.release();}
   }
 }
