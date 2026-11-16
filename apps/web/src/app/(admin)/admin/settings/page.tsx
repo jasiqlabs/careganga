@@ -44,7 +44,8 @@ export default async function FoundationSettings(){
     return <div className="shell">
       <FoundationAdminNav active="settings" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
-        canViewAccounts={keys.includes("accounts.view")}
+        canViewAccounts={keys.includes("accounts.view")||
+          (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings canViewAudit={keys.includes("platform.audit.view")}
         canViewRecovery={keys.includes("platform.recovery.view")}

@@ -39,7 +39,8 @@ export default async function ProtectedPlatformPage(){
     return <div className="shell">
       <FoundationAdminNav active="recovery" displayName={person.displayName}
         roleName={person.roleName} canViewRoles={keys.includes("roles.view")}
-        canViewAccounts={keys.includes("accounts.view")}
+        canViewAccounts={keys.includes("accounts.view")||
+          (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings={keys.includes("platform.settings.view")}
         canViewAudit={keys.includes("platform.audit.view")}

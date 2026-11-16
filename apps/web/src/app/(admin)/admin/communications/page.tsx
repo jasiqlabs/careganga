@@ -44,7 +44,8 @@ export default async function FoundationCommunicationsPage(){
       <FoundationAdminNav active="communications"
         displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={keys.includes("roles.view")}
-        canViewAccounts={keys.includes("accounts.view")}
+        canViewAccounts={keys.includes("accounts.view")||
+          (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings={keys.includes("platform.settings.view")}
         canViewAudit={keys.includes("platform.audit.view")}

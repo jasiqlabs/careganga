@@ -37,7 +37,10 @@ export default async function AdminRoles(){
     if(!allowed)return <main className="page main"><h1>Access denied</h1>
       <p>Your current account does not have permission to view roles.</p>
       <Link href="/admin">Return to my account</Link></main>;
-    const canViewAccounts=effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="accounts.view");
+    const hasAccountAction=(key:string)=>effective.actions.some((a:unknown)=>
+      Boolean(a)&&typeof a==="object"&&"key" in a&&a.key===key);
+    const canViewAccounts=hasAccountAction("accounts.view")||
+      (hasAccountAction("accounts.create")&&hasAccountAction("roles.assign"));
     return <div className="shell">
       <FoundationAdminNav active="roles" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}

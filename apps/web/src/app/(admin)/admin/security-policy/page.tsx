@@ -34,7 +34,8 @@ export default async function AdminSecurityPolicy(){
       return <main className="page main"><h1>Access denied</h1><Link href="/admin">My account</Link></main>;
     return <div className="shell">
       <FoundationAdminNav active="policy" displayName={person.displayName} roleName={person.roleName}
-        canViewRoles={keys.includes("roles.view")} canViewAccounts={keys.includes("accounts.view")}
+        canViewRoles={keys.includes("roles.view")} canViewAccounts={keys.includes("accounts.view")||
+          (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy canViewSettings={keys.includes("platform.settings.view")}
         canViewAudit={keys.includes("platform.audit.view")}
         canViewRecovery={keys.includes("platform.recovery.view")}
