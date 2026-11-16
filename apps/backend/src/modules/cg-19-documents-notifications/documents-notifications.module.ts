@@ -5,6 +5,8 @@ import {PrivateEvidenceService} from "./application/private-evidence.service";
 import {PrivateObjectStorage} from "./infrastructure/private-object-storage";
 import {makePrivateStorageProvider} from "./infrastructure/private-storage-provider.factory";
 import {PrivateEvidenceController} from "./http/private-evidence.controller";
+import {PrivateLetterController} from "./http/private-letter.controller";
+import {PrivateLetterService} from "./application/private-letter.service";
 
 /** CG-19 owns private media/documents/communications/helpdesk. Only US-001
  * source-backed private evidence is registered until the later stories.
@@ -13,9 +15,9 @@ import {PrivateEvidenceController} from "./http/private-evidence.controller";
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule],
-  controllers:[PrivateEvidenceController],
-  providers:[PrivateEvidenceService,
+  controllers:[PrivateEvidenceController,PrivateLetterController],
+  providers:[PrivateEvidenceService,PrivateLetterService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService]
+  exports:[PrivateEvidenceService,PrivateLetterService]
 })
 export class DocumentsNotificationsModule{}
