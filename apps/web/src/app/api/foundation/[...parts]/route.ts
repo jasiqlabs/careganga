@@ -7,6 +7,7 @@ const actions=new Set(["PROFILE_SAVE","AREA_CREATE","AREA_UPDATE","DEPARTMENT_CR
 function allowed(parts:string[],method:string){
   if(parts[0]==="operating-branches"){
     if(parts.length===1)return method==="GET";
+    if(parts.length===2&&parts[1]==="export")return method==="GET";
     if(parts.length<2||!UUID.test(parts[1]))return false;
     if(parts.length===2)return method==="GET"||method==="PATCH";
     if(parts.length===3&&["status"].includes(parts[2]))return method==="PATCH";
