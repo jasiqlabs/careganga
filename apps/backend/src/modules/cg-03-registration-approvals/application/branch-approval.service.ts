@@ -116,7 +116,6 @@ export class BranchApprovalService{
        SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE
      `,[actor.realmId]);
      if(!root.rowCount)throw new ForbiddenException("Foundation scope unavailable");
-     await this.owner.requireDistinctFinalReviewer(client,actor.realmId,actor.accountId);
      const prior=await client.query<CaseRow>(`
        SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
          AND branch_source_ref=$2 AND branch_source_revision=$3 FOR SHARE
@@ -130,6 +129,10 @@ export class BranchApprovalService{
        return {caseRef:prior.rows[0].id,reference:prior.rows[0].case_number,
          status:prior.rows[0].status,revision:prior.rows[0].revision};
      }
+     // Old committed cases remain recoverable even if reviewer staff has
+     // changed since the original decision. Distinct-reviewer availability
+     // applies only when a new approval is actually being created.
+     await this.owner.requireDistinctFinalReviewer(client,actor.realmId,actor.accountId);
      // Only a genuinely NEW CG-03 case requires the currently submitted
      // editable source. Existing immutable cases must remain recoverable
      // after RETURN/REJECT/APPROVE, without recreating a decision.
