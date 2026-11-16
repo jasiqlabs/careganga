@@ -52,6 +52,7 @@ CREATE TABLE cg19_stored_file (
   created_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz,
+  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
   UNIQUE(id,realm_id),
   FOREIGN KEY(upload_intent_id,realm_id,case_id,proposal_revision)
     REFERENCES cg19_upload_intent(id,realm_id,case_id,proposal_revision) ON DELETE RESTRICT,
