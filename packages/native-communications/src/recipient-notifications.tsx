@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
   ActivityIndicator,Pressable,ScrollView,StyleSheet,Switch,
-  Text,View
+  Text,TextInput,View
 } from "react-native";
 import {careGangaTheme as theme} from "../../design-tokens/src/index";
 
@@ -10,11 +10,23 @@ type Inbox={notificationRef:string;title:string;body:string;
 type Preference={channel:"EMAIL"|"SMS";purpose:"TRANSACTIONAL"|"PROMOTIONAL";
   opted_in:boolean;revision:number};
 type Prefs={available:{email:boolean;sms:boolean};preferences:Preference[]};
+type PhoneProof={hasNumber:boolean;verified:boolean;maskedContact:string|null;
+  verifiedAt:string|null;providerConfigured:boolean};
 type Props={
   token:string;onExpired:()=>void;onExit?:()=>void;
   makeRequest:(token:string,path:string,options?:RequestInit)=>Promise<Response>
 };
 const channelName={EMAIL:"Email",SMS:"SMS"} as const;
+async function nativePhone<T>(client:Props["makeRequest"],
+  token:string,path:string,options:RequestInit={}):Promise<T>{
+  let response:Response;
+  try{response=await client(token,"/api/identity/mobile/"+path,options);}
+  catch{throw Error("UNKNOWN")}
+  if(response.status===401)throw Error("EXPIRED");
+  if(response.status===403)throw Error("FORBIDDEN");
+  if(!response.ok)throw Error("UNKNOWN");
+  try{return await response.json() as T;}catch{throw Error("UNKNOWN")}
+}
 function errorMessage(error:unknown){
   if(error instanceof Error&&error.message==="EXPIRED")
     return "Session expired. Please sign in again.";
@@ -40,6 +52,8 @@ export function RecipientNotifications({
 }:Props){
   const [notices,setNotices]=useState<Inbox[]>([]);
   const [prefs,setPrefs]=useState<Prefs|null>(null);
+  const [phoneProof,setPhoneProof]=useState<PhoneProof|null>(null);
+  const [phoneCode,setPhoneCode]=useState("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
   const [error,setError]=useState(""),[success,setSuccess]=useState("");
   const generation=useRef(0);
@@ -47,9 +61,10 @@ export function RecipientNotifications({
     const at=++generation.current;
     setLoading(true);setError("");
     try{
-      const [messages,settings]=await Promise.all([
+      const [messages,settings,currentPhone]=await Promise.all([
         json<{items:Inbox[]}>(makeRequest,token,"inbox?limit=30"),
-        json<Prefs>(makeRequest,token,"preferences")
+        json<Prefs>(makeRequest,token,"preferences"),
+        nativePhone<PhoneProof>(makeRequest,token,"status")
       ]);
       if(!Array.isArray(messages.items)||messages.items.length>30||
         messages.items.some(x=>typeof x.notificationRef!=="string"||
@@ -57,9 +72,11 @@ export function RecipientNotifications({
         !settings||!Array.isArray(settings.preferences))throw Error("UNKNOWN");
       if(at!==generation.current)return;
       setNotices(messages.items);setPrefs(settings);
+      setPhoneProof(currentPhone);
     }catch(e){
       if(at!==generation.current)return;
-      setNotices([]);setPrefs(null);setError(errorMessage(e));
+      setNotices([]);setPrefs(null);setPhoneProof(null);
+      setError(errorMessage(e));
       if(e instanceof Error&&e.message==="EXPIRED")onExpired();
     }finally{if(at===generation.current)setLoading(false);}
   },[token,onExpired,makeRequest]);
@@ -96,6 +113,33 @@ export function RecipientNotifications({
       if(e instanceof Error&&e.message==="EXPIRED")onExpired();
     }finally{setBusy(false);}
   }
+  async function startPhone(){
+    if(busy||!phoneProof?.hasNumber)return;
+    setBusy(true);setError("");setSuccess("");
+    try{
+      const out=await nativePhone<{status:string}>(makeRequest,token,
+        "verify/start",{method:"POST"});
+      setSuccess(out.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
+        "Code requested to the recorded mobile. Arrival is not guaranteed.":
+        "Original code request: "+out.status.replace(/_/g," "));
+    }catch(e){setError(errorMessage(e))}
+    finally{setBusy(false);}
+  }
+  async function verifyPhone(){
+    if(busy||!/^\d{4,10}$/.test(phoneCode))return;
+    setBusy(true);setError("");setSuccess("");
+    try{
+      const out=await nativePhone<{status:string}>(makeRequest,token,
+        "verify/confirm",{method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({code:phoneCode})});
+      if(out.status==="VERIFIED"){
+        setPhoneCode("");setSuccess("Recorded mobile verified by CG-01.");
+        await reload();
+      }else setError("Mobile proof not confirmed: "+out.status.replace(/_/g," "));
+    }catch(e){setError(errorMessage(e))}
+    finally{setBusy(false);}
+  }
   return <ScrollView keyboardShouldPersistTaps="handled"
     contentContainerStyle={styles.content}>
     <View style={styles.row}>
@@ -127,6 +171,30 @@ export function RecipientNotifications({
             </Pressable>}
           </View>)}
       </View>
+      {phoneProof&&<View style={styles.card}>
+        <Text style={styles.heading}>CG-01 mobile verification</Text>
+        <Text>{phoneProof.verified?
+          "Verified contact "+phoneProof.maskedContact:
+          phoneProof.hasNumber?
+            "Recorded but unverified mobile "+phoneProof.maskedContact:
+            "No mobile number is recorded in your Foundation account"}</Text>
+        {!phoneProof.verified&&phoneProof.hasNumber&&<>
+          <Pressable accessibilityRole="button" style={styles.button}
+            disabled={busy||!phoneProof.providerConfigured}
+            onPress={()=>void startPhone()}>
+            <Text>Request mobile verification SMS</Text>
+          </Pressable>
+          <TextInput accessibilityLabel="Mobile verification code"
+            value={phoneCode} onChangeText={value=>setPhoneCode(
+              value.replace(/[^0-9]/g,""))}
+            keyboardType="number-pad" maxLength={10} style={styles.input}/>
+          <Pressable accessibilityRole="button" style={styles.button}
+            disabled={busy||phoneCode.length<4}
+            onPress={()=>void verifyPhone()}>
+            <Text>Verify recorded contact</Text>
+          </Pressable>
+        </>}
+      </View>}
       {prefs&&<View style={styles.card}>
         <Text style={styles.heading}>My contact preferences</Text>
         <Text style={styles.sub}>Email or SMS is never sent without a verified
@@ -167,6 +235,8 @@ const styles=StyleSheet.create({
   card:{backgroundColor:theme.surface,borderRadius:12,borderWidth:1,
     borderColor:theme.border,padding:15,gap:12},
   item:{borderBottomWidth:1,borderBottomColor:theme.border,paddingVertical:10,gap:10},
+  input:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,
+    minHeight:48,color:theme.text},
   button:{paddingHorizontal:14,paddingVertical:12,minHeight:48,alignItems:"center",
     justifyContent:"center",borderWidth:1,borderColor:theme.border,borderRadius:8}
 });
