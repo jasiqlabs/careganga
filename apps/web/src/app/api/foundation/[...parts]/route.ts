@@ -23,6 +23,8 @@ function allowed(parts:string[],method:string){
     return false;
   }
   if(parts[0]==="branch-workflow"){
+    if(parts.length===4&&parts[1]==="operating-branches"&&UUID.test(parts[2])&&
+      parts[3]==="update")return method==="POST";
     if(parts.length===2&&parts[1]==="cases")return method==="GET";
     if(parts.length===3&&parts[1]==="cases"&&UUID.test(parts[2]))return method==="GET";
     if(parts.length===4&&parts[1]==="cases"&&UUID.test(parts[2])&&
