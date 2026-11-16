@@ -120,12 +120,12 @@ export class ApprovalProposalService{
       {status:"NOT_FOUND",version:null};
   }
   async newProcessVersion(bearer:string,body:unknown){
-    const payload=checkInput(body,["firstReviewerCapability","requestKey","totp"]);
+    const payload=checkInput(body,["firstReviewerCapability","requestKey","currentPassword"]);
     if(payload.firstReviewerCapability!==null&&payload.firstReviewerCapability!=="roles.assign")
       throw new BadRequestException("Choose a supported reviewer step");
     const requestKey=requireUuid(payload.requestKey);
-    if(typeof payload.totp!=="string"||!/^[0-9]{6}$/.test(payload.totp))
-      throw new BadRequestException("Enter a fresh authenticator code");
+    if(typeof payload.currentPassword!=="string"||(payload.currentPassword.length<8||Buffer.byteLength(payload.currentPassword,"utf8")>1024))
+      throw new BadRequestException("Enter a current password to confirm");
     const actor=await this.sessions.requireAction(bearer,"approvals.process.manage");
     const digest=hash([payload.firstReviewerCapability]);
     const original=await this.db.query<{request_digest:string;version:number}>(`
@@ -158,7 +158,7 @@ export class ApprovalProposalService{
         await client.query("COMMIT");active=false;
         return {version:replay.rows[0].version,status:"PREVIOUSLY_CONFIRMED"};
       }
-      await this.sessions.requireFreshFoundationRootProof(client,actor,payload.totp);
+      await this.sessions.requireFreshFoundationRootProof(client,actor,payload.currentPassword);
       // A new Foundation with no process may explicitly choose the secure
       // Super-Admin-only default. Record that first version as a real command;
       // changing an existing process to its own version remains a no-op error.
