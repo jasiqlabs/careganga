@@ -183,11 +183,13 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
       if(!response.ok)throw Error(response.status===403?"DENIED":"OFFLINE");
       const mime=response.headers.get("content-type")??"";
       if(!MIME.has(mime))throw Error("OFFLINE");
-      const size=Number(response.headers.get("content-length")??"0");
-      if(!Number.isSafeInteger(size)||size<1||size>10*1024*1024)
-        throw Error("OFFLINE");
+      const rawLength=response.headers.get("content-length");
+      const expected=rawLength===null?null:Number(rawLength);
+      if(expected!==null&&(!Number.isSafeInteger(expected)||expected<1||
+        expected>10*1024*1024))throw Error("OFFLINE");
       const bytes=new Uint8Array(await response.arrayBuffer());
-      if(bytes.length!==size||bytes.length>10*1024*1024)
+      if(bytes.length<1||bytes.length>10*1024*1024||
+        (expected!==null&&bytes.length!==expected))
         throw Error("OFFLINE");
       const suffix=mime==="application/pdf"?".pdf":
         mime==="image/jpeg"?".jpg":mime==="image/png"?".png":".webp";
@@ -262,7 +264,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
           {!!verified&&<View style={styles.card}>
             <Text style={styles.muted}>Verified private evidence is recorded.
               Files open only through an authorized app-private preview.</Text>
-            {"fileRef" in result&&result.fileRef&&
+            {result&&"fileRef" in result&&result.fileRef&&
               <Pressable accessibilityRole="button" style={styles.button}
                 disabled={busy} onPress={()=>void previewVerified()}>
                 <Text>Preview verified private file</Text>
