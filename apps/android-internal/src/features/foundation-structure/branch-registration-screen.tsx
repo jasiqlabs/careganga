@@ -110,7 +110,11 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
     setBusy(true);setMessage("");setSubmissionKey("");
     try{
       hydrate(await api<Detail>(token,"branches/drafts/"+encodeURIComponent(reference)));
-      await loadStatus(reference);
+      try{await loadStatus(reference);}
+      catch{
+        setStatus(null);
+        setMessage("Approval status is temporarily unavailable. This saved draft remains accessible.");
+      }
     }
     catch(error){setSelected(null);setStatus(null);setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();}
     finally{setBusy(false);}
