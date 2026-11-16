@@ -134,8 +134,7 @@ export class NoticeService{
      // per recipient or later expansion based on mutable roles.
      await client.query(`
        INSERT INTO cg19_notice_recipient(realm_id,notice_id,recipient_id)
-       SELECT $1,$2,recipient_id
-       FROM unnest($3::uuid[]) AS recipient_id
+       SELECT $1,$2,recipient_id FROM unnest($3::uuid[]) AS recipients(recipient_id)
      `,[actor.realmId,created.rows[0].id,audience]);
      await client.query(`
        INSERT INTO cg19_communication_event(realm_id,actor_id,notice_id,kind,metadata)
@@ -220,19 +219,19 @@ export class NoticeService{
                CASE WHEN $5='IN_APP' THEN NULL
                     ELSE COALESCE($9::timestamptz,now()) END,$10
              FROM cg19_notice_recipient r
-             JOIN account current
-               ON current.id=r.recipient_id AND current.realm_id=r.realm_id
-               AND current.status='ACTIVE'
+             JOIN account a
+               ON a.id=r.recipient_id AND a.realm_id=r.realm_id
+               AND a.status='ACTIVE'
              LEFT JOIN cg19_channel_preference consent
                ON consent.realm_id=r.realm_id AND
                   consent.account_id=r.recipient_id AND
                   consent.channel=$5 AND consent.purpose=$8 AND consent.opted_in
              WHERE r.realm_id=$1 AND r.notice_id=$2
                AND ($5='IN_APP' OR
-                 ($5='EMAIL' AND current.email_verified_at IS NOT NULL
+                 ($5='EMAIL' AND a.email_verified_at IS NOT NULL
                    AND consent.account_id IS NOT NULL) OR
-                 ($5='SMS' AND current.contact_phone_verified_at IS NOT NULL
-                   AND current.contact_phone IS NOT NULL
+                 ($5='SMS' AND a.contact_phone_verified_at IS NOT NULL
+                   AND a.contact_phone IS NOT NULL
                    AND consent.account_id IS NOT NULL))
              ON CONFLICT DO NOTHING
              RETURNING id
