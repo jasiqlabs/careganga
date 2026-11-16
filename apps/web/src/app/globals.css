@@ -270,3 +270,25 @@ button:disabled { cursor:wait; opacity:.65; }
   color:var(--cg-text);font:inherit}
 @media(max-width:27rem){.role-workspace .search-row label{width:100%}
   .role-workspace .search-row select{width:100%}}
+
+/* CG-02 U18–U20: original Foundation branch directory and seven-stage draft.
+   Preserve brand tokens; no screenshots or motion values are inferred. */
+.branch-columns{display:grid;grid-template-columns:minmax(12rem,.9fr) minmax(20rem,2fr) minmax(13rem,1fr);gap:1rem;align-items:start}
+.branch-columns>.role-pane{min-width:0}
+.branch-draft-list{padding:0;margin:0;list-style:none;display:grid;gap:.35rem;max-height:36rem;overflow-y:auto}
+.branch-draft-list button{width:100%;display:grid;gap:.3rem;text-align:left;padding:.75rem;border:1px solid var(--cg-border);border-radius:.5rem}
+.branch-draft-list button[aria-current="true"]{border-color:var(--cg-accent);background:var(--cg-surface)}
+.branch-draft-list span{font-size:.8rem;color:var(--cg-muted)}
+.branch-stepper{display:flex;flex-wrap:wrap;gap:.3rem;margin:1rem 0;padding:.5rem 0;border-block:1px solid var(--cg-border)}
+.branch-stepper button{font-size:.79rem;min-height:2.5rem;text-align:left}
+.branch-stepper button[aria-current="step"]{background:var(--cg-accent)!important;color:var(--cg-accent-text)!important}
+.branch-coordinate{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.branch-department-fieldset{display:grid;gap:.65rem;border:1px solid var(--cg-border);border-radius:.5rem;padding:1rem}
+.branch-department-fieldset label{display:flex;gap:.65rem;align-items:center}
+.branch-department-fieldset input{min-height:1.25rem;min-width:1.25rem}
+.branch-workspace .role-pane textarea{width:100%;min-height:5rem;font:inherit;background:var(--cg-surface);border:1px solid var(--cg-border)}
+@media(max-width:76rem){.branch-columns{grid-template-columns:minmax(12rem,1fr) minmax(19rem,2fr)}
+ .branch-columns>.role-pane:last-child{grid-column:1/-1}}
+@media(max-width:48rem){.branch-columns{grid-template-columns:minmax(0,1fr)}
+ .branch-columns>.role-pane:last-child{grid-column:auto}
+ .branch-coordinate{grid-template-columns:1fr}}
