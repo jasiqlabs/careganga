@@ -70,11 +70,11 @@ Dependencies: US-001
 
 Outcome: New/existing patient verifies current CG-01 proof, creates/claims one CG-15 patient profile+consent and safe virtual ID; authorized own-center reception can intake limited provisional record with private source-file controls.
 Requirements: FR-049, CG-15-BR09–16, D-07/08/17; PRD N-01/02/04/05/06/09/11/12/13; original H15 identity/profile.
-Scope: CG-15 patient/account_link/identity claim/consent/event DB and typed real CG-01 OTP/relationship, optional CG-19 files and CG-02 geo only when selected. Foundation Web H15 permitted oversight, Center Portal assisted intake, Public Web AND native Public Android own register/status/claim/consent/ID, Internal Android general patient list NOT_APPLICABLE.
+Scope: CG-15 patient/account_link/identity claim/consent/event DB and typed real CG-01 password session/relationship, optional CG-19 files and CG-02 geo only when selected. Foundation Web H15 permitted oversight, Center Portal assisted intake, Public Web AND native Public Android own register/status/claim/consent/ID, Internal Android general patient list NOT_APPLICABLE.
 Acceptance: Works without doctor/schedule/booking/finance or ERP; no shared-phone auto-merge, unverified provisional claim, second CG-01 identity, government Health ID or private cross-center disclosure.
 
 QA cases (16 concrete scenarios; each PLANNED/NOT_RUN):
-- **US-003-QA01 — source QA:** Public Web new patient with genuine CG-01 mobile OTP proof creates consented minimal BR10 profile and one unique virtual patient display ID; native Public Android reopens exactly same own patient via linked CG-01 authenticated account, not a second login.
+- **US-003-QA01 — source QA:** Public Web new patient with genuine CG-01 current mobile/password session creates consented minimal BR10 profile and one unique virtual patient display ID; native Public Android reopens exactly same own patient via linked CG-01 authenticated account, not a second login.
 - **US-003-QA02 — source QA:** Current CG-01 login without patient profile may create CG-15 patient independently of any CG-14 doctor, schedule, booking, CG-16 lab order, CG-17 payment or future ERP, genuine own profile/ID available immediately.
 - **US-003-QA03 — source QA:** Shared family phone number belongs to two different humans: OTP alone must not auto-merge their patient profiles or grant another patient's clinical history; identity claim needs strong verified patient-specific proof/reviewer.
 - **US-003-QA04 — source QA:** Center Reception with real CG-14 own-center role creates authorized limited PROVISIONAL patient after assisted informed consent, which cannot be automatically treated as a verified patient login without separate legitimate CG-01 claim.
