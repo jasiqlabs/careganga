@@ -1,5 +1,12 @@
 # CG-19 — User Stories & Manual QA
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+CG-19 notices, letter template/issue/revoke and private support access now consume password-authenticated CG-01 sessions; protected operations require actual current-password confirmation rather than TOTP. CG-19 transport does not own Forgot Password OTP challenge, although normal notices retain their own recipient eligibility and privacy rules. QA: authorized notice/letter actions, password wrong/replay, signed-in/suspended session, public-guest exclusion, SMS/email transport and recipient privacy.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026) by **JASIQ AI Design Review Agent**, after latest [module](module.md), [PRD](../../prd.md) FR-070–072, [HLD](../../hld.md), [UIUX](uiux.md), [DLD](dld.md) source review/fix/re-review. All **3 independently testable stories/42 unique inline QA cases** are approved as DESIGN only; no implementation/live/device tests claimed.  
