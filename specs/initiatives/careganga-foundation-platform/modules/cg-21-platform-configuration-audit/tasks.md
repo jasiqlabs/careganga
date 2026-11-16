@@ -1,5 +1,12 @@
 # CG-21 — User Stories & Manual QA
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+CG-21 platform settings, provider reference, guarded backup/recovery authorization now require CG-01's **fresh current-password proof**, no authenticator/TOTP. CG-01 alone owns Forgot Password email OR SMS OTP and recovery challenge. QA: settings/root policy permission, wrong password, stale version/idempotency, independent restore approver, real validated backup evidence, unavailable provider, failed/unknown result; no fake restore success.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content APPROVED (15 Nov 2026), by **JASIQ AI Design Review Agent** following explicit owner confirmation, for latest [module](module.md), [UIUX](uiux.md), [DLD](dld.md), 2 story definitions and 16 QA cases; latest PRD/HLD and Harness ec7c0b81. Formal stage/resolver still BLOCKED.
