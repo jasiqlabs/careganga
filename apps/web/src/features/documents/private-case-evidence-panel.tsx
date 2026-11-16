@@ -132,7 +132,7 @@ export function PrivateCaseEvidencePanel(){
       let placed:Response;
       try{
         placed=await fetch(created.uploadUrl,{method:"PUT",
-          headers:{"Content-Type":file.type},body:file,mode:"cors",
+          headers:created.uploadHeaders,body:file,mode:"cors",
           cache:"no-store",credentials:"omit"});
       }catch{throw Error("UNCERTAIN");}
       if(!placed.ok)throw Error("UNCERTAIN");
