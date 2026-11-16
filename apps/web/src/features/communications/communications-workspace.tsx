@@ -71,7 +71,7 @@ export function CommunicationsWorkspace({
   const [schedule,setSchedule]=useState("");
   const [expiry,setExpiry]=useState("");
   const [href,setHref]=useState("");
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [review,setReview]=useState<{id:string;action:"APPROVE"|"CANCEL";
     revision:number}|null>(null);
   const [pendingKey,setPendingKey]=useState("");
@@ -162,8 +162,8 @@ export function CommunicationsWorkspace({
   }
   async function decide(){
     if(!review||!mayApprove||busy||unknown)return;
-    if(!/^[0-9]{6}$/.test(totp)){
-      setAlert({kind:"error",message:"Enter a fresh 6-digit authenticator code."});return;
+    if((currentPassword.length<8||currentPassword.length>1024)){
+      setAlert({kind:"error",message:"Enter a fresh current password."});return;
     }
     setBusy(true);setAlert(null);
     const requestKey=reviewKey||crypto.randomUUID();
@@ -172,10 +172,10 @@ export function CommunicationsWorkspace({
       const result=await req<{status:string;revision:number}>(
         "notices/"+encodeURIComponent(review.id)+"/decision","POST",{
           action:review.action,expectedRevision:review.revision,
-          requestKey,totp
+          requestKey,currentPassword
         });
       if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
-      setReview(null);setReviewKey("");setTotp("");
+      setReview(null);setReviewKey("");setCurrentPassword("");
       setAlert({kind:"success",message:"Notice status confirmed: "+result.status});
       await reload();
     }catch(e){
@@ -195,7 +195,7 @@ export function CommunicationsWorkspace({
           "The original approval is not confirmed. Keep the request key; contact Foundation operations."});
         return;
       }
-      setUnknown(false);setReview(null);setReviewKey("");setTotp("");
+      setUnknown(false);setReview(null);setReviewKey("");setCurrentPassword("");
       setAlert({kind:"success",message:"Original notice command confirmed: "+state.action});
       await reload();
     }catch(e){setAlert({kind:"error",message:explain(e)})}
@@ -413,14 +413,14 @@ export function CommunicationsWorkspace({
             </div>}
             <strong>{review.action==="APPROVE"?
               "Confirm activation of frozen notice":"Confirm notice cancellation"}</strong>
-            <p>The request must use a fresh Foundation Super Admin authenticator.</p>
-            <label>Authenticator code
-              <input inputMode="numeric" maxLength={6} value={totp}
-                onChange={e=>setTotp(e.target.value.replace(/[^0-9]/g,""))}/></label>
+            <p>The request must use a current Foundation Super Admin password.</p>
+            <label>Current password
+              <input type="password" minLength={8} maxLength={1024} autoComplete="current-password" value={currentPassword}
+                onChange={e=>setCurrentPassword(e.target.value)}/></label>
             <button type="button" disabled={busy||unknown}
               onClick={()=>void decide()}>Confirm {review.action.toLowerCase()}</button>
             <button type="button" disabled={busy||unknown}
-              onClick={()=>{setReview(null);setReviewKey("");setTotp("");}}>
+              onClick={()=>{setReview(null);setReviewKey("");setCurrentPassword("");}}>
               Cancel
             </button>
           </div>}
