@@ -228,12 +228,27 @@ export class FoundationStructureService {
     if(!["ACTIVE","INACTIVE"].includes(x.status))throw new BadRequestException("Choose a valid status");
     return this.perform(bearer,"foundation.geography.manage","AREA_UPDATE",input.requestKey,x,"AREA",
       async(client,actor)=>{
-        const old=await client.query<{level:string;version:number;status:string}>(`
-          SELECT level,version,status FROM geography_area WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
+        const old=await client.query<{level:string;version:number;status:string;parent_area_id:string|null}>(`
+          SELECT level,version,status,parent_area_id FROM geography_area WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
           [areaRef,actor.realmId]);
         if(!old.rowCount)throw new NotFoundException("Geography area is unavailable");
         if(old.rows[0].version!==x.expectedVersion)throw new ConflictException("Area was changed. Refresh first.");
         await this.checkAreaParent(client,actor,old.rows[0].level,x.parentRef,areaRef);
+        // CG-02 US-002 introduces approved branches; a reparent of any
+        // referenced ancestor must not silently relocate an active branch.
+        if(old.rows[0].parent_area_id!==x.parentRef||x.status==="INACTIVE"){
+          const inUse=await client.query(`
+            WITH RECURSIVE subtree AS(
+              SELECT id FROM geography_area WHERE id=$1 AND root_realm_id=$2
+              UNION ALL
+              SELECT g.id FROM geography_area g JOIN subtree s ON g.parent_area_id=s.id
+              WHERE g.root_realm_id=$2)
+            SELECT 1 FROM branch b JOIN subtree s ON s.id=b.geography_area_id
+            WHERE b.root_realm_id=$2 AND b.status='ACTIVE' LIMIT 1
+          `,[areaRef,actor.realmId]);
+          if(inUse.rowCount)
+            throw new ConflictException("An active branch uses this location. Reassign it first.");
+        }
         if(x.status==="INACTIVE"){
           const active=await client.query(`SELECT 1 FROM geography_area
             WHERE parent_area_id=$1 AND root_realm_id=$2 AND status='ACTIVE' LIMIT 1`,
