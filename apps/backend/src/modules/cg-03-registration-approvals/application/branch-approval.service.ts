@@ -341,6 +341,21 @@ export class BranchApprovalService{
  }
  async listCases(bearer:string){
    const actor=await this.sessions.requireAction(bearer,"approvals.review");
+   await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   // Ordinary approvers cannot read the complete protected branch inbox.
+   const protectedRole=await this.db.query<{id:string}>(`
+     SELECT a.id FROM auth_session s
+     JOIN account a ON a.id=s.account_id AND a.realm_id=$2
+       AND a.status='ACTIVE' AND a.access_version=s.account_access_version
+     JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
+       AND ar.revoked_at IS NULL
+     JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id
+       AND r.active AND r.is_protected
+     WHERE s.id=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+       AND s.expires_at>now() LIMIT 1
+   `,[actor.activeSessionId,actor.realmId]);
+   if(!protectedRole.rowCount)
+     throw new ForbiddenException("Super Admin permission is required to review branch applications");
    const cases=await this.db.query<CaseRow & {account_name_snapshot:string}>(`
      SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
      ORDER BY submitted_at DESC,id DESC LIMIT 40
