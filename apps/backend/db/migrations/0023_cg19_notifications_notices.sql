@@ -12,6 +12,7 @@ CREATE TABLE cg19_message_template (
   approved_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,kind,channel,version),UNIQUE(id,realm_id),
+  UNIQUE(id,realm_id,version),
   FOREIGN KEY(approved_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE TABLE cg19_channel_preference (
@@ -78,6 +79,7 @@ CREATE TABLE cg19_notification (
   realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
   source_kind text NOT NULL CHECK(source_kind IN ('CG03_DECISION','NOTICE')),
   source_key uuid NOT NULL,
+  decision_id uuid,
   case_id uuid,
   notice_id uuid,
   recipient_id uuid NOT NULL,
@@ -101,12 +103,17 @@ CREATE TABLE cg19_notification (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,source_kind,source_key,recipient_id,channel,template_id,template_version),
   UNIQUE(id,realm_id),
+  FOREIGN KEY(decision_id,case_id,realm_id)
+    REFERENCES cg03_case_decision(id,case_id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(notice_id,realm_id) REFERENCES cg19_notice(id,realm_id) ON DELETE RESTRICT,
-  FOREIGN KEY(template_id,realm_id) REFERENCES cg19_message_template(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(template_id,realm_id,template_version)
+    REFERENCES cg19_message_template(id,realm_id,version) ON DELETE RESTRICT,
   FOREIGN KEY(recipient_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
-  CHECK((source_kind='CG03_DECISION' AND case_id IS NOT NULL AND notice_id IS NULL)
-     OR (source_kind='NOTICE' AND notice_id IS NOT NULL AND case_id IS NULL)),
+  CHECK((source_kind='CG03_DECISION' AND case_id IS NOT NULL AND
+    decision_id=source_key AND notice_id IS NULL)
+     OR (source_kind='NOTICE' AND notice_id=source_key AND case_id IS NULL
+     AND decision_id IS NULL)),
   CHECK((state='IN_APP' AND channel='IN_APP') OR state<>'IN_APP')
 );
 CREATE INDEX ix_cg19_notifications_inbox ON cg19_notification(realm_id,recipient_id,created_at DESC,id DESC);
@@ -215,3 +222,8 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg19_notice_identity_frozen BEFORE UPDATE ON cg19_notice
  FOR EACH ROW EXECUTE FUNCTION cg19_notice_frozen();
+
+-- CG-03-owned index supporting the bounded, monotonic committed-decision
+-- adapter without scanning every account or tenant while idle.
+CREATE INDEX ix_cg03_decision_root_cursor
+ ON cg03_case_decision(realm_id,created_at,id);
