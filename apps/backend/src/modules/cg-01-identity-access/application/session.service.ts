@@ -252,6 +252,51 @@ export class SessionService implements IdentityAuthorization {
       throw new HttpException("Password confirmation retry limit",HttpStatus.TOO_MANY_REQUESTS);
   }
 
+  /** Signed-in password change for every role; old sessions are invalid immediately. */
+  async changePassword(bearer:string,currentPassword:string,newPassword:string,
+    correlationRef:string):Promise<{status:"PASSWORD_CHANGED";message:string}>{
+    const actor=await this.verifySession(bearer);
+    if(typeof currentPassword!=="string"||typeof newPassword!=="string"
+      ||currentPassword.length<1||Buffer.byteLength(currentPassword,"utf8")>1024
+      ||newPassword.length<8||Buffer.byteLength(newPassword,"utf8")>1024)
+      throw new ForbiddenException("Check the current and new passwords");
+    const newHash=await hashPassword(newPassword);
+    const client=await this.db.connect();
+    try{
+      await client.query("BEGIN");
+      try{
+        const res=await client.query<{password_hash:string}>(`
+          SELECT c.password_hash FROM auth_session s
+          JOIN account a ON a.id=s.account_id AND a.status='ACTIVE'
+            AND a.access_version=s.account_access_version
+          JOIN identity_credential c ON c.account_id=a.id
+          WHERE s.id=$1 AND s.account_id=$2 AND s.revoked_at IS NULL
+            AND s.password_authenticated_at IS NOT NULL AND s.expires_at>now()
+          FOR UPDATE OF s,a,c`,
+          [actor.activeSessionId,actor.accountId]);
+        if(!res.rowCount||!await verifyPassword(currentPassword,res.rows[0].password_hash))
+          throw new ForbiddenException("Current password could not be confirmed");
+        if(await verifyPassword(newPassword,res.rows[0].password_hash))
+          throw new ForbiddenException("Choose a different password");
+        await client.query(`
+          UPDATE identity_credential SET password_hash=$2,
+            credential_version=credential_version+1,updated_at=now()
+          WHERE account_id=$1`,[actor.accountId,newHash]);
+        await client.query("UPDATE account SET access_version=access_version+1,updated_at=now() WHERE id=$1",
+          [actor.accountId]);
+        await client.query("UPDATE auth_session SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL",
+          [actor.accountId]);
+        await client.query(`
+          INSERT INTO access_audit(realm_id,actor_account_id,target_account_id,
+            action_key,outcome,correlation_ref)
+          VALUES($1,$2,$2,'identity.password.change','SUCCESS',$3)`,
+          [actor.realmId,actor.accountId,correlationRef]);
+        await client.query("COMMIT");
+      }catch(e){await client.query("ROLLBACK");throw e;}
+    }finally{client.release();}
+    return {status:"PASSWORD_CHANGED",message:"Password changed. Sign in again."};
+  }
+
   async signOut(bearer: string): Promise<void> {
     const digest=this.digestFromBearer(bearer);
     await this.db.query(`UPDATE auth_session SET revoked_at=now()
