@@ -5,6 +5,17 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const actions=new Set(["PROFILE_SAVE","AREA_CREATE","AREA_UPDATE","DEPARTMENT_CREATE",
   "DEPARTMENT_UPDATE","PARTICIPANT_ADD","PARTICIPANT_END"]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="branch-workflow"){
+    if(parts.length===2&&parts[1]==="cases")return method==="GET";
+    if(parts.length===3&&parts[1]==="cases"&&UUID.test(parts[2]))return method==="GET";
+    if(parts.length===4&&parts[1]==="cases"&&UUID.test(parts[2])&&
+       ["decide","finalize"].includes(parts[3]))return method==="POST";
+    if(parts.length===4&&parts[1]==="registrations"&&UUID.test(parts[2])&&
+       parts[3]==="submit")return method==="POST";
+    if(parts.length===4&&parts[1]==="registrations"&&UUID.test(parts[2])&&
+       parts[3]==="status")return method==="GET";
+    return false;
+  }
   if(parts[0]==="branches"){
     if(parts.length===3&&parts[1]==="managers"&&parts[2]==="options")return method==="GET";
     if(parts.length===2&&parts[1]==="department-options")return method==="GET";
