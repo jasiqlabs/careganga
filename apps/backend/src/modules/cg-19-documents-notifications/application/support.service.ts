@@ -110,6 +110,17 @@ export class SupportService{
       "RETURNING attempt_count",[digest,seconds]);
     if(count.rows[0].attempt_count>limit)
       throw new HttpException("Too many requests. Please try again later.",HttpStatus.TOO_MANY_REQUESTS);
+    // Opportunistic bounded maintenance, not a tenant-wide idle polling job.
+    // Old HMAC buckets are safe to expire; contact/receipt evidence is untouched.
+    if(Math.random()<0.02){
+      try{await this.db.query(
+        "WITH expired AS (SELECT bucket_digest FROM cg19_support_guest_throttle "+
+        "WHERE window_started_at<now()-interval '7 days' "+
+        "ORDER BY window_started_at LIMIT 200) "+
+        "DELETE FROM cg19_support_guest_throttle t USING expired "+
+        "WHERE t.bucket_digest=expired.bucket_digest");
+      }catch{/* Expiry housekeeping must not erase a genuine contact action. */}
+    }
   }
   private async actor(bearer:string,capability:string){
     const actor=await this.sessions.requireAction(bearer,capability);
