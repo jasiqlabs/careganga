@@ -8,6 +8,7 @@ import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
+import { BranchRegistrationScreen } from "../foundation-structure/branch-registration-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -54,12 +55,13 @@ export function StaffAuthenticationScreen(){
   const [policyOpen,setPolicyOpen]=useState(false);
   const [approvalsOpen,setApprovalsOpen]=useState(false);
   const [documentsOpen,setDocumentsOpen]=useState(false);
+  const [branchesOpen,setBranchesOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setBranchesOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -152,7 +154,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setBranchesOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -176,6 +178,9 @@ export function StaffAuthenticationScreen(){
     return <PrivateCaseEvidenceScreen token={token}
       canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+  if(branchesOpen&&token&&actor&&roleActions.includes("foundation.branches.view"))
+    return <BranchRegistrationScreen token={token} canManage={roleActions.includes("foundation.branches.manage")}
+      onExit={()=>setBranchesOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
@@ -210,6 +215,10 @@ export function StaffAuthenticationScreen(){
                 onPress={()=>setDocumentsOpen(true)}>
                 <Text style={styles.buttonText}>Private Case Documents</Text>
               </Pressable>}
+            {roleActions.includes("foundation.branches.view")&&<Pressable accessibilityRole="button"
+              style={styles.button} onPress={()=>setBranchesOpen(true)}>
+              <Text style={styles.buttonText}>Branches & registration</Text>
+            </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
             </Pressable>
