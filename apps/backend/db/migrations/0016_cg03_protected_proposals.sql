@@ -10,7 +10,6 @@ CREATE TABLE cg03_process (
   configured_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,version), UNIQUE(id,realm_id),
-  UNIQUE(id,realm_id,version),
   FOREIGN KEY(configured_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE TABLE cg03_process_step (
@@ -68,8 +67,7 @@ CREATE TABLE cg03_case (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,proposer_id,request_key),
   UNIQUE(id,realm_id),
-  FOREIGN KEY(process_id,realm_id,process_version)
-    REFERENCES cg03_process(id,realm_id,version) ON DELETE RESTRICT,
+  FOREIGN KEY(process_id,realm_id) REFERENCES cg03_process(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(proposer_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(target_account_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(target_role_id,realm_id) REFERENCES role(id,realm_id) ON DELETE RESTRICT,
