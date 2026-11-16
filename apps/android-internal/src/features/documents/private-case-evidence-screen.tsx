@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {
   ActivityIndicator,BackHandler,KeyboardAvoidingView,Platform,Pressable,
   ScrollView,StyleSheet,Text,View
@@ -62,6 +62,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
   const [media,setMedia]=useState<Media[]>([]);
   const [letters,setLetters]=useState<Letter[]>([]);
   const [mediaBusy,setMediaBusy]=useState(false);
+  const mediaRequest=useRef(0);
   const [requestKey,setRequestKey]=useState("");
   const [intentRef,setIntentRef]=useState("");
   const [result,setResult]=useState<CG19UploadStart|CG19UploadStatus|null>(null);
@@ -87,6 +88,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
   },[token,onExpired]);
   useEffect(()=>{void fetchCases()},[fetchCases]);
   const loadMedia=useCallback(async()=>{
+    const seq=++mediaRequest.current;
     if(!selected){setMedia([]);setLetters([]);return;}
     setMediaBusy(true);
     try{
@@ -94,21 +96,26 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
         "/api/documents/files/case/"+encodeURIComponent(selected.caseRef));
       if(!Array.isArray(files.files)||files.files.length>30)
         throw Error("OFFLINE");
+      if(seq!==mediaRequest.current)return;
       setMedia(files.files);
       if(canViewLetters){
         const docs=await api<{letters:Letter[]}>(token,
           "/api/documents/letters/case/"+encodeURIComponent(selected.caseRef));
         if(!Array.isArray(docs.letters)||docs.letters.length>20)
           throw Error("OFFLINE");
-        setLetters(docs.letters);
+        if(seq===mediaRequest.current)setLetters(docs.letters);
       }
     }catch(e){
-      setMedia([]);setLetters([]);
-      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
-      else setMessage(explain(e));
-    }finally{setMediaBusy(false);}
+      if(seq===mediaRequest.current){
+        setMedia([]);setLetters([]);
+        if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+        else setMessage(explain(e));
+      }
+    }finally{
+      if(seq===mediaRequest.current)setMediaBusy(false);
+    }
   },[selected?.caseRef,token,canViewLetters,onExpired]);
-  useEffect(()=>{void loadMedia()},[loadMedia]);
+  useEffect(()=>{void loadMedia();return()=>{++mediaRequest.current};},[loadMedia]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(busy||uncertain)return true;
