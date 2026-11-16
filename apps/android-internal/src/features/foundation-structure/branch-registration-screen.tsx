@@ -119,7 +119,11 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
       setPending(null);setCreating(false);
       await load();await open(result.recordRef);
       setMessage("Draft saved. Document and approval verification are still pending.");
-    }catch(error){setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();}
+    }catch(error){
+      if(error instanceof Error&&["DENIED","CONFLICT","INVALID","EXPIRED"].includes(error.message))
+        setPending(null);
+      setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();
+    }
     finally{setBusy(false);}
   }
   async function checkOriginal(){
