@@ -13,9 +13,12 @@ import type {
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;onExit:()=>void;onExpired:()=>void;canViewLetters?:boolean};
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Selected={uri:string;name:string;size:number;mime:string};
+type Media={fileRef:string;revision:number;mime:string;sizeBytes:number;createdAt:string;revoked:boolean};
+type Letter={documentRef:string;issueRevision:number;templateVersion:number;
+  state:string;canDownload:boolean;issuedAt:string|null};
 async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:unknown){
   let response:Response;
   try{
@@ -52,10 +55,13 @@ const statusLabel=(code:string)=>({
   EXPIRED:"Upload permission expired"
 } as Record<string,string>)[code]??"Private file not confirmed";
 
-export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
+export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters=false}:Props){
   const [list,setList]=useState<CG03CaseView[]>([]);
   const [selected,setSelected]=useState<CG03CaseView|null>(null);
   const [picked,setPicked]=useState<Selected|null>(null);
+  const [media,setMedia]=useState<Media[]>([]);
+  const [letters,setLetters]=useState<Letter[]>([]);
+  const [mediaBusy,setMediaBusy]=useState(false);
   const [requestKey,setRequestKey]=useState("");
   const [intentRef,setIntentRef]=useState("");
   const [result,setResult]=useState<CG19UploadStart|CG19UploadStatus|null>(null);
@@ -80,6 +86,29 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
     }finally{setLoading(false);}
   },[token,onExpired]);
   useEffect(()=>{void fetchCases()},[fetchCases]);
+  const loadMedia=useCallback(async()=>{
+    if(!selected){setMedia([]);setLetters([]);return;}
+    setMediaBusy(true);
+    try{
+      const files=await api<{files:Media[]}>(token,
+        "/api/documents/files/case/"+encodeURIComponent(selected.caseRef));
+      if(!Array.isArray(files.files)||files.files.length>30)
+        throw Error("OFFLINE");
+      setMedia(files.files);
+      if(canViewLetters){
+        const docs=await api<{letters:Letter[]}>(token,
+          "/api/documents/letters/case/"+encodeURIComponent(selected.caseRef));
+        if(!Array.isArray(docs.letters)||docs.letters.length>20)
+          throw Error("OFFLINE");
+        setLetters(docs.letters);
+      }
+    }catch(e){
+      setMedia([]);setLetters([]);
+      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+      else setMessage(explain(e));
+    }finally{setMediaBusy(false);}
+  },[selected?.caseRef,token,canViewLetters,onExpired]);
+  useEffect(()=>{void loadMedia()},[loadMedia]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
       if(busy||uncertain)return true;
@@ -169,20 +198,21 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
       if(e instanceof Error&&e.message==="EXPIRED")onExpired();
     }finally{setBusy(false);}
   }
-  async function previewVerified(){
-    if(!result||!("fileRef" in result)||!result.fileRef||
-      !("cleanVerified" in result)||!result.cleanVerified||busy)return;
+  async function previewVerified(ref:string,kind:"file"|"letter"="file"){
+    if(!ref||busy)return;
     setBusy(true);setMessage("");
     let temporary:File|null=null;
     try{
       const response=await identityRequest(
-        "/api/documents/files/"+encodeURIComponent(result.fileRef)+"/download",{
+        "/api/documents/"+(kind==="letter"?"letters/":"files/")+
+        encodeURIComponent(ref)+"/download",{
           method:"GET",headers:{Authorization:"Bearer "+token}
         });
       if(response.status===401){onExpired();return;}
       if(!response.ok)throw Error(response.status===403?"DENIED":"OFFLINE");
       const mime=response.headers.get("content-type")??"";
-      if(!MIME.has(mime))throw Error("OFFLINE");
+      if(!MIME.has(mime)||(kind==="letter"&&mime!=="application/pdf"))
+        throw Error("OFFLINE");
       const rawLength=response.headers.get("content-length");
       const expected=rawLength===null?null:Number(rawLength);
       if(expected!==null&&(!Number.isSafeInteger(expected)||expected<1||
@@ -266,16 +296,43 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
               Files open only through an authorized app-private preview.</Text>
             {result&&"fileRef" in result&&result.fileRef&&
               <Pressable accessibilityRole="button" style={styles.button}
-                disabled={busy} onPress={()=>void previewVerified()}>
+                disabled={busy} onPress={()=>void previewVerified(result.fileRef)}> 
                 <Text>Preview verified private file</Text>
               </Pressable>}
           </View>}
         </View>}
-        <View style={styles.card}>
-          <Text style={styles.heading}>Approved-access letters</Text>
-          <Text>Letter issuance is unavailable in this checkpoint. No pending
-            application or unscanned file is called an issued document.</Text>
-        </View>
+        {selected&&<View style={styles.card}>
+          <Text style={styles.heading}>Verified case file library</Text>
+          {mediaBusy?<ActivityIndicator accessibilityLabel="Loading verified case files"/>:
+            !media.length?<Text>No verified private files for this application.</Text>:
+            media.map(item=><View key={item.fileRef} style={styles.option}>
+              <Text>{item.mime} · {(item.sizeBytes/1024).toFixed(0)} KB</Text>
+              <Text style={styles.muted}>{item.revoked?"Revoked":"Verified private file"}</Text>
+              {!item.revoked&&<Pressable accessibilityRole="button" style={styles.button}
+                disabled={busy} onPress={()=>void previewVerified(item.fileRef)}>
+                <Text>Preview private file</Text>
+              </Pressable>}
+            </View>)}
+          <Pressable accessibilityRole="button" style={styles.button}
+            disabled={busy||mediaBusy} onPress={()=>void loadMedia()}>
+            <Text>Refresh verified files</Text>
+          </Pressable>
+        </View>}
+        {selected&&canViewLetters&&<View style={styles.card}>
+          <Text style={styles.heading}>Protected access letters</Text>
+          {!letters.length?<Text>No issued private letters for this application.</Text>:
+            letters.map(item=><View key={item.documentRef} style={styles.option}>
+              <Text>Issue {item.issueRevision} · Template {item.templateVersion}</Text>
+              <Text style={styles.muted}>{item.state.replace(/_/g," ")}</Text>
+              {item.canDownload&&<Pressable accessibilityRole="button"
+                style={styles.button} disabled={busy}
+                onPress={()=>void previewVerified(item.documentRef,"letter")}>
+                <Text>Preview private approved letter</Text>
+              </Pressable>}
+            </View>)}
+          <Text style={styles.muted}>Template approval, issue and revoke require
+            privileged confirmation in the Foundation Web administration.</Text>
+        </View>}
       </ScrollView>
     </KeyboardAvoidingView>
   </SafeAreaView>;
