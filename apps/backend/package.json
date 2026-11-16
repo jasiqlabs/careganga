@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "tsc -p tsconfig.json && node --env-file=.env dist/src/main.js",
     "start": "node dist/src/main.js",
     "build": "tsc -p tsconfig.json",
-    "db:migrate": "tsx db/migrate.ts",
-    "bootstrap:root": "tsx src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts"
+    "db:migrate": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",
+    "bootstrap:root": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",

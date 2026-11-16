@@ -43,8 +43,8 @@ async function currentRoleActions(token:string):Promise<string[]>{
   const data:unknown=await response.json();
   if(!data||typeof data!=="object"||!("actions" in data)||
      !Array.isArray(data.actions)||
-     !data.actions.every((a:unknown)=>Boolean(a)&&typeof a==="object"&&
-       "key" in a&&typeof a.key==="string"))
+     !data.actions.every((a:unknown)=>a!==null&&typeof a==="object"&&
+       "key" in a&&typeof (a as {key:unknown}).key==="string"))
     throw new Error("Permissions cannot be verified right now.");
   return data.actions.map((a:{key:string})=>a.key);
 }
@@ -185,6 +185,7 @@ export function StaffAuthenticationScreen(){
   if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
     return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
       canPropose={roleActions.includes("approvals.propose")}
+      canReview={roleActions.includes("approvals.review")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
   if(notificationsOpen&&token&&actor&&
     roleActions.includes("communications.notifications.view"))

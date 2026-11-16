@@ -32,30 +32,26 @@ export default async function AdminRoles(){
       !("roleName" in actor)||typeof actor.roleName!=="string"||
       !effective||typeof effective!=="object"||!("actions" in effective)||
       !Array.isArray(effective.actions))throw new Error("UNVERIFIED");
-    const allowed=effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"
-      &&"key" in a&&a.key==="roles.view");
+    const keys=(effective.actions as unknown[]).filter((a):a is {key:string}=>
+      a!==null&&typeof a==="object"&&"key" in a&&typeof (a as {key:unknown}).key==="string").map(a=>a.key);
+    const allowed=keys.includes("roles.view");
     if(!allowed)return <main className="page main"><h1>Access denied</h1>
       <p>Your current account does not have permission to view roles.</p>
       <Link href="/admin">Return to my account</Link></main>;
-    const hasAccountAction=(key:string)=>effective.actions.some((a:unknown)=>
-      Boolean(a)&&typeof a==="object"&&"key" in a&&a.key===key);
-    const canViewAccounts=hasAccountAction("accounts.view")||
-      (hasAccountAction("accounts.create")&&hasAccountAction("roles.assign"));
+    const canViewAccounts=keys.includes("accounts.view")||
+      (keys.includes("accounts.create")&&keys.includes("roles.assign"));
     return <div className="shell">
       <FoundationAdminNav active="roles" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}
-        canManageSecurityPolicy={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="identity.security-policy.manage")}
-        canViewSettings={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.settings.view")}
-        canViewAudit={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.audit.view")}
-        canViewRecovery={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.recovery.view")}
-        canViewApprovals={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
-        canViewDocuments={["documents.files.view","documents.files.manage"].every(key=>
-          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key===key))&&
-          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
-        canViewCommunications={effective.actions.some((a:unknown)=>
-          Boolean(a)&&typeof a==="object"&&"key" in a&&
-          ["communications.notifications.view","communications.notices.manage",
-            "communications.delivery.view"].includes(String(a.key)))} canViewSupport={effective.actions.some((a:unknown)=>!!a&&typeof a==="object"&&"key" in a&&["support.cases.view","support.faq.manage"].includes(String(a.key)))}/>
+        canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
+        canViewSettings={keys.includes("platform.settings.view")}
+        canViewAudit={keys.includes("platform.audit.view")}
+        canViewRecovery={keys.includes("platform.recovery.view")}
+        canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
+        canViewDocuments={["documents.files.view","documents.files.manage"].every(key=>keys.includes(key))&&
+          (keys.includes("approvals.view")||keys.includes("approvals.propose"))}
+        canViewCommunications={["communications.notifications.view","communications.notices.manage",
+          "communications.delivery.view"].some(k=>keys.includes(k))} canViewSupport={["support.cases.view","support.faq.manage"].some(k=>keys.includes(k))}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){
