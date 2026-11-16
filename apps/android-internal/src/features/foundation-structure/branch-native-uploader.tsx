@@ -102,7 +102,9 @@ export function BranchNativeUploader({token,registrationRef,draftVersion,classif
        httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,
        mimeType:picked.mime,headers:started.uploadHeaders,sessionType:"foreground"
      });
-     const sent=await job.uploadAsync();job.release();
+     let sent;
+     try{sent=await job.uploadAsync();}
+     finally{job.release();}
      if(sent.status<200||sent.status>=300)throw Error("UNKNOWN");
      const final=await api<Status>(token,
        "/intents/"+encodeURIComponent(started.uploadRef)+"/confirm","POST");
