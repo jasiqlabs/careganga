@@ -25,6 +25,23 @@ export class DeliveryService{
     private readonly people:CommunicationRecipientSource,
     private readonly notifications:NotificationService,
     private readonly providers:CommunicationProviders){}
+  private async providerReady(realm:string,channel:"EMAIL"|"SMS"){
+    const provider=channel==="EMAIL"?"sendgrid":"twilio";
+    const purpose=channel.toLowerCase();
+    const secret=process.env[channel==="EMAIL"?
+      "CG19_SENDGRID_SECRET_REF":"CG19_TWILIO_SECRET_REF"]?.trim();
+    if(!secret||!/^secretref:[A-Za-z0-9/_-]{10,230}$/.test(secret))
+      return false;
+    const verified=await this.db.query(`
+      SELECT 1 FROM integration_connection
+      WHERE foundation_realm_id=$1 AND scope_kind='FOUNDATION'
+        AND provider=$2 AND purpose=$3
+        AND secret_reference=$4 AND verification_status='VERIFIED'
+        AND credential_revision=last_checked_credential_revision
+        AND last_result_class='CHECK_ACCEPTED'
+    `,[realm,provider,purpose,secret]);
+    return !!verified.rowCount;
+  }
   /** One fixed-size indexed due scan per deployment-level tick, never per
    * recipient/realm. All network sends happen after durable claim/attempt TX.
    */
@@ -74,14 +91,24 @@ export class DeliveryService{
       if(!this.providers.configured(channel))continue;
       await this.db.query(`
         WITH ready AS (
-          SELECT id FROM cg19_notification
-          WHERE state='PROVIDER_UNAVAILABLE' AND channel=$1
-            AND expires_at>now()
-          ORDER BY created_at,id LIMIT 25 FOR UPDATE SKIP LOCKED
+          SELECT n.id FROM cg19_notification n
+          JOIN integration_connection ic
+            ON ic.foundation_realm_id=n.realm_id
+            AND ic.scope_kind='FOUNDATION'
+            AND ic.provider=$2 AND ic.purpose=$3
+            AND ic.verification_status='VERIFIED'
+            AND ic.credential_revision=ic.last_checked_credential_revision
+            AND ic.last_result_class='CHECK_ACCEPTED'
+            AND ic.secret_reference=$4
+          WHERE n.state='PROVIDER_UNAVAILABLE' AND n.channel=$1
+            AND n.expires_at>now()
+          ORDER BY n.created_at,n.id LIMIT 25 FOR UPDATE OF n SKIP LOCKED
         )
         UPDATE cg19_notification SET state='QUEUED',due_at=now(),
           updated_at=now() WHERE id IN(SELECT id FROM ready)
-      `,[channel]);
+      `,[channel,channel==="EMAIL"?"sendgrid":"twilio",
+        channel.toLowerCase(),process.env[channel==="EMAIL"?
+          "CG19_SENDGRID_SECRET_REF":"CG19_TWILIO_SECRET_REF"]??""]);
     }
     // A single indexed global query per tick; no tenant/user polling.
     const activated=await this.db.query<{id:string}>(`
@@ -164,7 +191,8 @@ export class DeliveryService{
     if(!permitted||!to){
       await this.markSuppressed(row,"SUPPRESSED");return;
     }
-    if(!this.providers.configured(row.channel,row.purpose)){
+    if(!this.providers.configured(row.channel,row.purpose)||
+      !await this.providerReady(row.realm_id,row.channel)){
       await this.releaseUnavailable(row);return;
     }
     const provider:Provider=row.channel==="EMAIL"?"SENDGRID":"TWILIO";
@@ -214,15 +242,17 @@ export class DeliveryService{
     finally{client2.release();}
   }
   async readiness(bearer:string){
-    await this.sessions.requireAction(bearer,"communications.delivery.view");
-    return {channels:[
-      {channel:"EMAIL",provider:"SENDGRID",
-        configured:this.providers.configured("EMAIL"),state:this.providers.configured("EMAIL")?
-          "CONFIGURED_UNVERIFIED":"UNAVAILABLE"},
-      {channel:"SMS",provider:"TWILIO",
-        configured:this.providers.configured("SMS"),state:this.providers.configured("SMS")?
-          "CONFIGURED_UNVERIFIED":"UNAVAILABLE"}
-    ],deliveryProof:"Provider callbacks are required; setup alone is not delivery"};
+    const actor=await this.sessions.requireAction(bearer,"communications.delivery.view");
+    const channels=[] as Array<{channel:string;provider:string;configured:boolean;state:string}>;
+    for(const channel of ["EMAIL","SMS"] as const){
+      const configured=this.providers.configured(channel);
+      const verified=configured&&await this.providerReady(actor.realmId,channel);
+      channels.push({channel,provider:channel==="EMAIL"?"SENDGRID":"TWILIO",
+        configured:verified,state:verified?"VERIFIED_PROVIDER_READY":
+          configured?"CONFIGURED_NOT_VERIFIED":"UNAVAILABLE"});
+    }
+    return {channels,deliveryProof:
+      "Provider callbacks are required; setup alone is not delivery"};
   }
   async process(bearer:string){
     const actor=await this.sessions.requireAction(bearer,"communications.delivery.process");
