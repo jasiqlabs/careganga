@@ -17,7 +17,11 @@ export type BranchDraftSource=Readonly<{
 export type FrozenBranchSubmission=Readonly<{
   submissionRef:string;root:string;registrationRef:string;revision:number;
   digest:string;status:string;requestedBy:string;managerRef:string;
-  branchName:string;caseRef:string|null;fileVersions:readonly {
+  branchName:string;caseRef:string|null;
+  reviewSummary:Readonly<{branchType:string;openingDate:string|null;
+    postalAddress:string;pinCode:string;officialPhone:string;officialEmail:string;
+    selectedFoundationDepartments:number;managerDisplayName:string|null}>;
+  fileVersions:readonly {
     fileRef:string;revision:number;classification:string
   }[];
 }>;
@@ -158,10 +162,29 @@ export class BranchSourceFacade{
    if(typeof managerRef!=="string"||!UUID.test(managerRef)||
       typeof first.branchName!=="string"||first.branchName.trim().length<2)
      throw new ConflictException("The original application details are incomplete");
+   const loc=row.immutable_payload["2"]??{},link=row.immutable_payload["6"]??{};
+   const labelClient=await this.db.connect();
+   let display:string|null=null;
+   try{
+     const labels=await this.identity.accountLabels(labelClient,actor,[managerRef]);
+     display=labels[managerRef]??null;
+   }finally{labelClient.release();}
+   const plain=(value:unknown,max:number):string=>
+     typeof value==="string"?value.slice(0,max):"";
+   const reviewSummary={
+     branchType:plain(first.branchType,80),
+     openingDate:typeof first.openingDate==="string"?first.openingDate:null,
+     postalAddress:plain(loc.postalAddress,700),pinCode:plain(loc.pinCode,6),
+     officialPhone:plain(first.officialPhone,80),
+     officialEmail:plain(first.officialEmail,180),
+     selectedFoundationDepartments:Array.isArray(link.departmentRefs)?
+       Math.min(link.departmentRefs.length,30):0,
+     managerDisplayName:display
+   };
    return {submissionRef:row.id,root:actor.realmId,registrationRef:ref,
      revision:row.submitted_revision,digest:row.immutable_payload_digest,
      status:row.status,requestedBy:row.submitted_by,managerRef,
      branchName:first.branchName,caseRef:row.approval_case_ref,
-     fileVersions:row.verified_file_versions};
+     reviewSummary,fileVersions:row.verified_file_versions};
  }
 }
