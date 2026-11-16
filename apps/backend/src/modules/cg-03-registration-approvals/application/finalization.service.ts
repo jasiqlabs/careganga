@@ -140,8 +140,8 @@ export class ApprovalFinalizationService{
   async status(bearer:string,caseRef:string){
     const {actor}=await this.authorizedCase(bearer,caseRef);
     const rows=await this.db.query<{state:string;attempt_count:number;
-      next_retry_at:Date|null}>(`
-      SELECT f.state,f.attempt_count,f.next_retry_at FROM cg03_finalization f
+      next_retry_at:Date|null;claimed_until:Date|null}>(`
+      SELECT f.state,f.attempt_count,f.next_retry_at,f.claimed_until FROM cg03_finalization f
       JOIN cg03_case c ON c.id=f.case_id AND c.realm_id=f.realm_id
       WHERE c.id=$1 AND c.realm_id=$2
     `,[caseRef,actor.realmId]);
@@ -153,7 +153,8 @@ export class ApprovalFinalizationService{
         (state.state==="PENDING_OWNER"||
           state.state==="OWNER_FAILED_RETRYABLE"&&
           !!state.next_retry_at&&state.next_retry_at<=new Date()||
-          state.state==="APPLYING")};
+          state.state==="APPLYING"&&!!state.claimed_until&&
+            state.claimed_until<=new Date())};
   }
   async retry(bearer:string,caseRef:string){
     const {actor,row}=await this.authorizedCase(bearer,caseRef);
