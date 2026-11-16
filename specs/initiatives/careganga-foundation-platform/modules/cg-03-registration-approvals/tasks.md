@@ -1,5 +1,12 @@
 # CG-03 — User Stories & Manual QA
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+CG-03 protected role and branch approvals now consume CG-01's verified **fresh current-password proof** tied to the actual active root session. All formerly required six-digit TOTP inputs are removed, including Web/Internal Android, while distinct proposer/reviewer, owner-side effect, immutable case revisions, idempotency and audit remain mandatory. QA: wrong current password, altered request, distinct reviewer, stale case, replay, concurrent decisions, permission bypass, branch finalization.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content DELEGATED_APPROVED (15 Nov 2026) by JASIQ AI Design Review Agent, owner-confirmed after completed source review/fix/re-review of [PRD](../../prd.md) FR-006–008, [HLD](../../hld.md), [module](module.md), [UIUX](uiux.md), [DLD](dld.md); 3 stories/31 unique planned QA cases. No source-code execution/runtime/visual QA claimed.  
