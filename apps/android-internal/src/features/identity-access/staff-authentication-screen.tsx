@@ -180,7 +180,7 @@ export function StaffAuthenticationScreen(){
     onChanged={()=>{expireSession();setChangePasswordOpen(false);
       setMessage("Password changed. Sign in again.");}}/>;
   if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
-    inviteOnly={!roleActions.includes("accounts.view")}/>;
+    createOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
   if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
     return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
@@ -239,7 +239,7 @@ export function StaffAuthenticationScreen(){
             <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
             <Text>Role: {actor.roleName}</Text>
             <Text>Access: {actor.scope}</Text>
-            {(roleActions.includes("accounts.view")||(roleActions.includes("accounts.invite")&&roleActions.includes("roles.assign")))&&<Pressable accessibilityRole="button"
+            {(roleActions.includes("accounts.view")||(roleActions.includes("accounts.create")&&roleActions.includes("roles.assign")))&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setAccountsOpen(true)}>
               <Text style={styles.buttonText}>Users Management</Text>
             </Pressable>}
