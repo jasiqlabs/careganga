@@ -9,8 +9,11 @@ CREATE TABLE cg19_message_template (
   subject text NOT NULL CHECK(length(subject) BETWEEN 3 AND 120),
   body text NOT NULL CHECK(length(body) BETWEEN 8 AND 480),
   status text NOT NULL CHECK(status IN ('APPROVED','WITHDRAWN')),
-  approved_by uuid NOT NULL,
+  origin text NOT NULL DEFAULT 'HUMAN' CHECK(origin IN ('SYSTEM','HUMAN')),
+  approved_by uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK((origin='SYSTEM' AND approved_by IS NULL AND kind='CG03_DECISION')
+    OR (origin='HUMAN' AND approved_by IS NOT NULL)),
   UNIQUE(realm_id,kind,channel,version),UNIQUE(id,realm_id),
   UNIQUE(id,realm_id,version),
   FOREIGN KEY(approved_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
@@ -194,6 +197,7 @@ BEGIN
    NEW.version IS DISTINCT FROM OLD.version OR
    NEW.subject IS DISTINCT FROM OLD.subject OR
    NEW.body IS DISTINCT FROM OLD.body OR
+   NEW.origin IS DISTINCT FROM OLD.origin OR
    NEW.approved_by IS DISTINCT FROM OLD.approved_by THEN
    RAISE EXCEPTION 'Versioned notification template cannot change';
  END IF;
