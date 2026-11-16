@@ -118,7 +118,11 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
     setError("");setMessage("");setSubmitKey("");setBusy(true);
     try{
       hydrate(await api<Detail>("/branches/drafts/"+encodeURIComponent(ref)));
-      await loadStatus(ref);
+      try{await loadStatus(ref);}
+      catch{
+        setRegistrationStatus(null);
+        setSubmissionNotice("The approval timeline cannot be verified right now. Your saved draft remains available.");
+      }
     }
     catch(e){setSelected(null);setRegistrationStatus(null);setError(e instanceof Error?e.message:"Draft cannot be verified.");}
     finally{setBusy(false);}
