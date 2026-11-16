@@ -67,7 +67,8 @@ function checkedDraft(row:RegistrationRow){
  if(!registrationRefs.length||!agreements.length)
    throw new BadRequestException("Registration and agreement proof must be attached and verified");
  return {branchName,managerRef,geographyRef,departmentRefs,
-   fileRefs:[...new Set([...registrationRefs,...agreements,...photos])],
+   fileRefs:[...new Set([...registrationRefs,...agreements,...photos,...ids(stage(row,1).photoFiles??[],5),
+     ...ids(stage(row,1).logoFiles??[],5)])],
    first,location,manager,departments};
 }
 /** CG-02 is the sole authority for immutable snapshots, code allocation,
@@ -137,6 +138,18 @@ export class BranchLifecycleService{
    const needed=checkedDraft(draft);
    const expected=[...needed.fileRefs].sort();
    const actual=fileVersions.map(x=>id(x.fileRef)).sort();
+   const category=(refs:string[],allowed:string[])=>{
+     for(const fileRef of refs){
+       const match=fileVersions.find(x=>x.fileRef===fileRef);
+       if(!match||!allowed.includes(match.classification))
+         throw new ConflictException("The saved attachment does not match its evidence category");
+     }
+   };
+   category(ids(stage(draft,3).registrationFiles??[],5),["REGISTRATION_PROOF"]);
+   category(ids(stage(draft,4).agreementFiles??[],5),["AGREEMENT"]);
+   category(ids(stage(draft,4).photoFiles??[],5),["BRANCH_PHOTO","BRANCH_LOGO"]);
+   category(ids(stage(draft,1).photoFiles??[],5),["BRANCH_PHOTO"]);
+   category(ids(stage(draft,1).logoFiles??[],5),["BRANCH_LOGO"]);
    if(JSON.stringify(expected)!==JSON.stringify(actual)||
      actual.length>16||fileVersions.some(x=>!Number.isSafeInteger(x.revision)||x.revision<1))
      throw new ConflictException("Selected documents do not match the saved branch draft");
