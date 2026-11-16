@@ -1,6 +1,6 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useRef,useState} from "react";
-type Values={maxSessionAgeSeconds:number;idleTimeoutSeconds:number;failedAttemptWindowSeconds:number;maxFailedAttempts:number;rootMfaRequired:true};
+type Values={maxSessionAgeSeconds:number;idleTimeoutSeconds:number;failedAttemptWindowSeconds:number;maxFailedAttempts:number;rootPasswordReauthRequired:true};
 type View=Values&{revision:number;updatedAt:string|null};
 type Draft={maxSessionMinutes:number;idleMinutes:number;attemptWindowMinutes:number;maxFailedAttempts:number};
 type Notice={kind:"success"|"error"|"uncertain";message:string};
@@ -19,7 +19,7 @@ function draft(p:View):Draft{return{
 function valid(p:unknown):p is View{
   if(!p||typeof p!=="object")return false;
   const d=p as Record<string,unknown>;
-  return d.rootMfaRequired===true&&Number.isInteger(d.revision)&&Number(d.revision)>=0&&
+  return d.rootPasswordReauthRequired===true&&Number.isInteger(d.revision)&&Number(d.revision)>=0&&
     controls.every(c=>{
       const seconds=c.key==="maxSessionMinutes"?d.maxSessionAgeSeconds:
         c.key==="idleMinutes"?d.idleTimeoutSeconds:
@@ -34,7 +34,7 @@ export function SecurityPolicyPanel(){
   const [values,setValues]=useState<Draft|null>(null);
   const [editing,setEditing]=useState(false);
   const [review,setReview]=useState(false);
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [checkingOutcome,setCheckingOutcome]=useState(false);
@@ -55,7 +55,7 @@ export function SecurityPolicyPanel(){
       if(!valid(body))throw Error("The policy response could not be verified.");
       if(gen!==readGeneration.current)return false;
       const matched=expectedRevision===undefined||body.revision>=expectedRevision;
-      setPolicy(body);setValues(draft(body));setEditing(false);setReview(false);setTotp("");
+      setPolicy(body);setValues(draft(body));setEditing(false);setReview(false);setCurrentPassword("");
       // A stale replica/cached read is not proof the acknowledged revision took effect.
       // Retain the idempotency key so the exact committed command can be checked again.
       if(matched){setUncertain(false);setNotice(null);requestKey.current="";}
@@ -83,7 +83,7 @@ export function SecurityPolicyPanel(){
     dialog.current?.querySelector<HTMLInputElement>("input")?.focus();
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"&&!saveBusy.current){
-        setEditing(false);setReview(false);setTotp("");
+        setEditing(false);setReview(false);setCurrentPassword("");
         return;
       }
       if(event.key!=="Tab")return;
@@ -126,7 +126,7 @@ export function SecurityPolicyPanel(){
   function start(){
     if(!policy)return;
     requestKey.current=crypto.randomUUID();
-    setValues(draft(policy));setReview(false);setTotp("");setNotice(null);
+    setValues(draft(policy));setReview(false);setCurrentPassword("");setNotice(null);
     setUncertain(false);setEditing(true);
   }
   function change(key:keyof Draft,value:string){
@@ -142,14 +142,14 @@ export function SecurityPolicyPanel(){
       return;
     }
     if(!review){setReview(true);return;}
-    if(!/^[0-9]{6}$/.test(totp))return;
+    if(currentPassword.length<8||currentPassword.length>1024)return;
     saveBusy.current=true;setBusy(true);setNotice(null);
     const payload={maxSessionAgeSeconds:values.maxSessionMinutes*60,
       idleTimeoutSeconds:values.idleMinutes*60,
       failedAttemptWindowSeconds:values.attemptWindowMinutes*60,
       maxFailedAttempts:values.maxFailedAttempts,
-      rootMfaRequired:true,expectedRevision:policy.revision,
-      idempotencyKey:requestKey.current,totp};
+      rootPasswordReauthRequired:true,expectedRevision:policy.revision,
+      idempotencyKey:requestKey.current,currentPassword};
     try{
       const resp=await fetch("/api/session/security-policy",{method:"PATCH",
         headers:{"Content-Type":"application/json"},credentials:"same-origin",
@@ -164,7 +164,7 @@ export function SecurityPolicyPanel(){
           setNotice({kind:"error",message:"This policy changed elsewhere. Keep your values and refresh before saving."});
         }else{
           const message=resp.status===429?"Too many code attempts. Try again later.":
-            "Policy change was not accepted. Verify the limits and enter a fresh code.";
+            "Policy change was not accepted. Verify the limits and enter a current password.";
           setReview(false);setNotice({kind:"error",message});
         }
         return;
@@ -175,7 +175,7 @@ export function SecurityPolicyPanel(){
       // Keep the exact request key until the effective revision is verified.
       // A confirmed write followed by a failed read is still an unknown
       // effective state; the operator must be able to check that same command.
-      setEditing(false);setReview(false);setTotp("");
+      setEditing(false);setReview(false);setCurrentPassword("");
       const verified=await read(Number(ack.revision));
       if(!verified)setUncertain(true);
       setNotice(verified
@@ -206,7 +206,7 @@ export function SecurityPolicyPanel(){
         <strong>{draft(policy)[c.key]} {c.key==="maxFailedAttempts"?"attempts":"minutes"}</strong>
         <span>{c.hint}</span>
       </article>)}
-      <article className="kpi"><small>Super Admin MFA</small><strong>Required</strong>
+      <article className="kpi"><small>Super Admin password confirmation</small><strong>Required</strong>
         <span>Cannot be turned off.</span></article></div>
       <p>Last updated: {policy.updatedAt?new Date(policy.updatedAt).toLocaleString():"Secure Foundation defaults"}</p>
     </>}
@@ -214,7 +214,7 @@ export function SecurityPolicyPanel(){
       <section className="role-drawer" role="dialog" aria-modal="true"
         aria-labelledby="security-policy-title" ref={dialog}>
         <header className="topbar"><h2 id="security-policy-title">Edit security policy</h2>
-          <button type="button" disabled={busy} onClick={()=>{setEditing(false);setReview(false);setTotp("");}}>Close</button></header>
+          <button type="button" disabled={busy} onClick={()=>{setEditing(false);setReview(false);setCurrentPassword("");}}>Close</button></header>
         <form className="form" onSubmit={e=>void submit(e)}>
           {controls.map(c=><label className="field" key={c.key}>{c.name}
             <input required type="number" min={c.min} max={c.max} step={1}
@@ -222,11 +222,11 @@ export function SecurityPolicyPanel(){
               onChange={e=>change(c.key,e.target.value)}/>
             <small>{c.hint} · {c.key==="maxFailedAttempts"?"attempts":"minutes"}</small>
           </label>)}
-          <p>Super Admin MFA: <strong>Required</strong> (not editable)</p>
-          <label className="field">Fresh authenticator code
-            <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-              autoComplete="one-time-code" value={totp}
-              onChange={e=>{setTotp(e.target.value.replace(/[^0-9]/g,""));setReview(false);}}/>
+          <p>Super Admin password confirmation: <strong>Required</strong> (not editable)</p>
+          <label className="field">Confirm with your current password
+            <input required type="password" minLength={8} maxLength={1024}
+              autoComplete="current-password" value={currentPassword}
+              onChange={e=>{setCurrentPassword(e.target.value);setReview(false);}}/>
           </label>
           {review&&<div className="permission-group" role="status">
             <strong>Review security policy change</strong>
@@ -235,7 +235,7 @@ export function SecurityPolicyPanel(){
           {notice&&<p role="alert">{notice.message}</p>}
           <div className="toolbar">
             <button type="button" disabled={busy} onClick={()=>{setEditing(false);setReview(false);}}>Cancel</button>
-            <button className="primary" type="submit" disabled={busy||uncertain||totp.length!==6}>
+            <button className="primary" type="submit" disabled={busy||uncertain||currentPassword.length<8}>
               {busy?"Saving…":review?"Confirm and save":"Review change"}</button>
           </div>
         </form>
