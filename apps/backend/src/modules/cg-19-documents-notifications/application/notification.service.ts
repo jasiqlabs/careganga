@@ -1,7 +1,6 @@
 import {
   BadRequestException,ConflictException,ForbiddenException,Inject,Injectable
 } from "@nestjs/common";
-import {createHmac} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -19,9 +18,6 @@ const textByChannel:Record<Channel,{subject:string;body:string}>={
   SMS:{subject:"Foundation application update",
     body:"CareGanga: Your Foundation application has an update. Sign in to view details."}
 };
-const sha=(value:string)=>
-  createHmac("sha256",process.env.CG19_RECIPIENT_HMAC_KEY||"")
-    .update(value).digest("hex");
 function needUuid(value:unknown):string{
   if(typeof value!=="string"||!UUID.test(value))
     throw new BadRequestException("Choose a valid notification");
@@ -54,13 +50,14 @@ export class NotificationService{
     if(!t.rowCount)throw new ConflictException("Current notification copy is unavailable");
     return t.rows[0];
   }
-  private async consent(client:PoolClient,realm:string,account:string,channel:Channel){
+  async hasConsent(client:PoolClient,realm:string,account:string,
+    channel:Channel,purpose:"TRANSACTIONAL"|"PROMOTIONAL"){
     if(channel==="IN_APP")return true;
     const c=await client.query(`
       SELECT 1 FROM cg19_channel_preference
       WHERE realm_id=$1 AND account_id=$2 AND channel=$3
-        AND purpose='TRANSACTIONAL' AND opted_in
-    `,[realm,account,channel]);
+        AND purpose=$4 AND opted_in
+    `,[realm,account,channel,purpose]);
     return !!c.rowCount;
   }
   /** Bounded source recovery. PG timestamp is transmitted as exact text so
@@ -93,9 +90,9 @@ export class NotificationService{
         const person=await this.people.get(client,realm,event.recipientRef);
         if(person?.active){
           const channels:Channel[]=["IN_APP"];
-          if(person.emailVerified&&await this.consent(client,realm,person.accountRef,"EMAIL"))
+          if(person.emailVerified&&await this.hasConsent(client,realm,person.accountRef,"EMAIL","TRANSACTIONAL"))
             channels.push("EMAIL");
-          if(person.mobileVerified&&await this.consent(client,realm,person.accountRef,"SMS"))
+          if(person.mobileVerified&&await this.hasConsent(client,realm,person.accountRef,"SMS","TRANSACTIONAL"))
             channels.push("SMS");
           for(const channel of channels){
             let template=templates.get(channel);
@@ -142,7 +139,7 @@ export class NotificationService{
     return this.captureCommittedDecisions(actor.realmId);
   }
   async inbox(bearer:string,limitInput:unknown=20){
-    const actor=await this.sessions.verifySession(bearer);
+    const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     const limit=Number(limitInput);
     if(!Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Choose a smaller notice page");
@@ -153,11 +150,16 @@ export class NotificationService{
       SELECT n.id,n.subject_snapshot,n.body_snapshot,n.state,n.channel,
         n.created_at,rd.read_at
       FROM cg19_notification n
+      LEFT JOIN cg19_notice notice ON notice.id=n.notice_id
+        AND notice.realm_id=n.realm_id
       LEFT JOIN cg19_notification_read rd ON rd.notification_id=n.id
         AND rd.recipient_id=n.recipient_id AND rd.realm_id=n.realm_id
       JOIN account person ON person.id=n.recipient_id AND person.realm_id=n.realm_id
       WHERE n.realm_id=$1 AND n.recipient_id=$2 AND person.status='ACTIVE'
         AND n.expires_at>now()
+        AND (n.notice_id IS NULL OR
+          (notice.state='ACTIVE' AND
+           (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
     `,[actor.realmId,actor.accountId,limit]);
     return {items:rows.rows.map(row=>({
@@ -167,13 +169,18 @@ export class NotificationService{
     }))};
   }
   async read(bearer:string,rawRef:unknown){
-    const actor=await this.sessions.verifySession(bearer),ref=needUuid(rawRef);
+    const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
+    const ref=needUuid(rawRef);
     const result=await this.db.query<{id:string}>(`
       INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)
       SELECT n.realm_id,n.recipient_id,n.id FROM cg19_notification n
+      LEFT JOIN cg19_notice notice ON notice.id=n.notice_id AND notice.realm_id=n.realm_id
       JOIN account a ON a.id=n.recipient_id AND a.realm_id=n.realm_id
       WHERE n.id=$1 AND n.realm_id=$2 AND n.recipient_id=$3
         AND n.expires_at>now() AND a.status='ACTIVE'
+        AND (n.notice_id IS NULL OR
+          (notice.state='ACTIVE' AND
+           (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
       ON CONFLICT(recipient_id,notification_id) DO NOTHING RETURNING notification_id AS id
     `,[ref,actor.realmId,actor.accountId]);
     const exists=await this.db.query(`
@@ -184,7 +191,7 @@ export class NotificationService{
     return {read:true,changed:!!result.rowCount};
   }
   async preferences(bearer:string){
-    const actor=await this.sessions.verifySession(bearer);
+    const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     const client=await this.db.connect();
     try{
       const person=await this.people.get(client,actor.realmId,actor.accountId);
@@ -199,7 +206,7 @@ export class NotificationService{
     }finally{client.release();}
   }
   async setPreference(bearer:string,payload:unknown){
-    const actor=await this.sessions.verifySession(bearer);
+    const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     if(!payload||typeof payload!=="object"||Array.isArray(payload))
       throw new BadRequestException("Check notification preference");
     const v=payload as Record<string,unknown>;
