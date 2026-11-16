@@ -1,0 +1,33 @@
+import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {BranchWorkflowService} from "../application/branch-workflow.service";
+
+@Controller("api/foundation-structure/branch-workflow")
+export class BranchWorkflowController{
+ constructor(private readonly workflow:BranchWorkflowService){}
+ @Post("registrations/:registrationRef/submit")
+ submit(@Headers("authorization")bearer:string,
+   @Param("registrationRef")ref:string,@Body()body:unknown){
+   return this.workflow.submit(bearer,ref,body);
+ }
+ @Get("registrations/:registrationRef/status")
+ status(@Headers("authorization")bearer:string,@Param("registrationRef")ref:string){
+   return this.workflow.status(bearer,ref);
+ }
+ @Get("cases")
+ cases(@Headers("authorization")bearer:string){
+   return this.workflow.cases(bearer);
+ }
+ @Get("cases/:caseRef")
+ detail(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+   return this.workflow.caseDetail(bearer,ref);
+ }
+ @Post("cases/:caseRef/decide")
+ decide(@Headers("authorization")bearer:string,@Param("caseRef")ref:string,
+   @Body()body:unknown){
+   return this.workflow.decide(bearer,ref,body);
+ }
+ @Post("cases/:caseRef/finalize")
+ finalize(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+   return this.workflow.finalize(bearer,ref);
+ }
+}
