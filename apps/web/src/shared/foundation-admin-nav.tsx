@@ -70,11 +70,12 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
   const approvalAccess=currentActions?
     ["approvals.view","approvals.propose"].some(key=>currentActions.has(key)):canViewApprovals;
   const documentAccess=currentActions?
-    ["documents.files.view","documents.files.manage"].some(key=>currentActions.has(key))&&approvalAccess:
+    ["documents.files.view","documents.files.manage"].every(key=>currentActions.has(key))&&approvalAccess:
     canViewDocuments;
   const communicationAccess=currentActions?
     ["communications.notifications.view","communications.notices.manage",
-      "communications.delivery.view"].some(key=>currentActions.has(key)):canViewCommunications;
+      "communications.notices.approve","communications.delivery.view",
+      "communications.delivery.process"].some(key=>currentActions.has(key)):canViewCommunications;
   const supportAccess=currentActions?
     ["support.cases.view","support.faq.manage"].some(key=>currentActions.has(key)):canViewSupport;
 
