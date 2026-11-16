@@ -3,10 +3,16 @@ export default function AdminLogin(){
   return <main className="cg-login-page">
     <header className="cg-login-brand">
       <img src="/careganga-mark.png" width="64" height="64" alt="CareGanga Foundation logo"/>
-      <div><strong>CAREGANGA FOUNDATION</strong><span>Administrative Portal</span></div>
+      <div><strong>Careganga</strong><span>F O U N D A T I O N</span></div>
     </header>
     <section className="cg-login-card" aria-labelledby="cg-login-title">
-      <div className="cg-login-lock" aria-hidden="true">♙</div>
+      <div className="cg-login-lock" aria-hidden="true">
+        <svg width="35" height="35" viewBox="0 0 24 24" fill="none">
+          <path d="M7 10V7a5 5 0 0 1 10 0v3" stroke="currentColor" strokeWidth="1.75"/>
+          <rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.75"/>
+          <circle cx="12" cy="15" r="1.25" fill="currentColor"/>
+        </svg>
+      </div>
       <h1 id="cg-login-title">Sign in to your Account</h1>
       <p>Enter your registered mobile number or email and password</p>
       <LoginForm/>
