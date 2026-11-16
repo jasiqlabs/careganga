@@ -14,7 +14,8 @@ type Option={value:string;label:string;kind?:string};
 type Area={areaRef:string;name:string;level:string;status:string};
 type Pending={action:"BRANCH_DRAFT_CREATE"|"BRANCH_DRAFT_SAVE";requestKey:string};
 type Status={status:string;branch:{branchCode:string;status:string}|null;
-  approval:{reference:string;status:string}|null;
+  approval:{reference:string;status:string;revision:number;
+    history:{action:string;remarks:string;at:string}[]}|null;
   submissions:{revision:number;status:string}[]};
 type Props={token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void};
 const titles=["Branch details","Location","Registration documents","Agreement & photos",
@@ -320,6 +321,13 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             <Text style={styles.help}>Approval: {status.approval?
               status.approval.reference+" · "+status.approval.status.replaceAll("_"," "):
               "Not yet confirmed"}</Text>
+            {!!status.approval?.history?.length&&<>
+              <Text style={styles.heading}>Approval history</Text>
+              {status.approval.history.map((event,i)=><Text style={styles.help} key={i}>
+                {event.action.replaceAll("_"," ")}
+                {event.remarks?": "+event.remarks:""}
+                {" · "}{new Date(event.at).toLocaleDateString()}</Text>)}
+            </>}
             <Text style={styles.help}>Activation: {status.branch?
               status.branch.branchCode+" · "+status.branch.status:"No branch code issued"}</Text>
             {button("Refresh real approval status",
