@@ -28,7 +28,7 @@ function allowed(parts:string[],method:string){
     if(parts.length===2&&parts[1]==="cases")return method==="GET";
     if(parts.length===3&&parts[1]==="cases"&&UUID.test(parts[2]))return method==="GET";
     if(parts.length===4&&parts[1]==="cases"&&UUID.test(parts[2])&&
-       ["decide","finalize"].includes(parts[3]))return method==="POST";
+       ["decide","finalize","reconcile"].includes(parts[3]))return method==="POST";
     if(parts.length===4&&parts[1]==="registrations"&&UUID.test(parts[2])&&
        parts[3]==="submit")return method==="POST";
     if(parts.length===4&&parts[1]==="registrations"&&UUID.test(parts[2])&&
