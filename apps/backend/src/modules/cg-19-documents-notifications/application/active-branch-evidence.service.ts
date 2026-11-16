@@ -314,6 +314,7 @@ export class ActiveBranchEvidenceService{
          AND owner_kind='CG02_BRANCH' FOR UPDATE
      `,[fileRef,actor.realmId]);
      await this.source.guardActiveBranch(client,actor,row.branch_id,currentBranch.branch.version,true);
+     await this.source.guardNotCurrentActiveEvidence(client,actor,fileRef);
      if(!locked.rows[0]||locked.rows[0].revision!==revisionExpected)
        throw new ConflictException("The private file changed");
      if(!locked.rows[0].revoked_at){
