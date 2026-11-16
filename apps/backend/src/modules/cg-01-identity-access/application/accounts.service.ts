@@ -43,7 +43,7 @@ export class AccountsService {
     const search=(query.search??"").trim().toLowerCase();
     const status=query.status??"all",roleRef=query.roleRef??"";
     const offset=query.offset??0,limit=query.limit??20;
-    if(search.length>80||!["all","INVITED","ACTIVE","SUSPENDED","DEACTIVATED"].includes(status)
+    if(search.length>80||!["all","ACTIVE","SUSPENDED","DEACTIVATED"].includes(status)
        ||(roleRef!==""&&!UUID.test(roleRef))||!Number.isInteger(offset)||offset<0||offset>10000
        ||!Number.isInteger(limit)||limit<1||limit>50)throw new BadRequestException();
     // Escape LIKE wildcards: user searches must not bypass bounded data projections.
@@ -72,7 +72,7 @@ export class AccountsService {
       ORDER BY a.display_name,a.id LIMIT $5 OFFSET $6`,[...params,limit,offset]);
     const count=await this.db.query<{n:string}>(String.raw`
       SELECT count(*)::text AS n FROM account a WHERE ${conditions} `,params);
-    const summary=await this.db.query<{total:string;active:string;invited:string;suspended:string;deactivated:string;assigned:string}>(String.raw`
+    const summary=await this.db.query<{total:string;active:string;suspended:string;deactivated:string;assigned:string}>(String.raw`
       SELECT count(*)::text total,
        count(*) FILTER(WHERE status='ACTIVE')::text active,
        count(*) FILTER(WHERE status='INVITED')::text invited,
@@ -85,9 +85,9 @@ export class AccountsService {
       accountRef:r.id,displayName:r.display_name,email:r.normalized_email,phone:r.contact_phone,
       status:r.status,revision:Number(r.revision),
       roleRef:r.role_id,roleName:r.role_name,roleProtected:Boolean(r.is_protected),assignedAt:r.assigned_at?.toISOString()??null,
-      deliveryStatus:r.delivery_status
+      deliveryStatus:null
     })),total:Number(count.rows[0].n),offset,limit,summary:{
-      total:Number(m.total),active:Number(m.active),invited:Number(m.invited),
+      total:Number(m.total),active:Number(m.active),
       suspended:Number(m.suspended),deactivated:Number(m.deactivated),assigned:Number(m.assigned)
     }};
   }
@@ -98,7 +98,7 @@ export class AccountsService {
     if(typeof search!=="string"||search.length>80)throw new BadRequestException();
     const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\$&");
     const result=await this.db.query<{id:string;display_name:string}>(String.raw`
-      SELECT a.id,a.display_name FROM account a WHERE a.realm_id=$1 AND a.status IN('ACTIVE','INVITED')
+      SELECT a.id,a.display_name FROM account a WHERE a.realm_id=$1 AND a.status='ACTIVE'
       AND NOT EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
         WHERE ar.account_id=a.id AND ar.revoked_at IS NULL AND r.is_protected)
       AND ($2='' OR lower(a.display_name) LIKE $2)
@@ -218,7 +218,7 @@ export class AccountsService {
     if(key.length!==32)throw new Error("Protected identity key unavailable");
     const passwordProof=createHmac("sha256",key).update(input.password,"utf8").digest("hex");
     const passwordHash=await hashPassword(input.password);
-    return this.perform(bearer,"accounts.invite","CREATE",input.requestKey,
+    return this.perform(bearer,"accounts.create","CREATE",input.requestKey,
       {displayName,mobile,email,roleRef,passwordProof},correlationRef,async(client,actor)=>{
         await this.authorize(client,actor,"roles.assign");
         await this.eligibleRole(client,roleRef,actor.realmId);
@@ -296,7 +296,7 @@ export class AccountsService {
       {target,expected,status:input.status},correlationRef,async(client,actor)=>{
       const account=await this.lockTarget(client,actor,target);
       if(account.revision!==expected)throw conflict("STALE_ACCOUNT");
-      if(account.status==="INVITED"||account.status==="DEACTIVATED"&&input.status!=="DEACTIVATED")
+      if(account.status==="DEACTIVATED"&&input.status!=="DEACTIVATED")
         throw new ForbiddenException("This account is not eligible for that status change");
       if(account.status===input.status)throw conflict("ACCOUNT_ALREADY_IN_STATUS");
       const update=await client.query<{revision:number}>(String.raw`
