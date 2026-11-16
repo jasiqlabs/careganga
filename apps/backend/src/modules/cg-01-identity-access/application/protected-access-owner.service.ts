@@ -31,7 +31,7 @@ export class ProtectedAccessOwnerService{
       JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active
       LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
-      WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+      WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
         AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
@@ -57,7 +57,7 @@ export class ProtectedAccessOwnerService{
         AND ar.revoked_at IS NULL
       JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active
       LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id
-      WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+      WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
         AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
@@ -163,7 +163,7 @@ export class ProtectedAccessOwnerService{
         WHERE f.effect_key=$1 AND f.claim_token=$2 AND f.state='APPLYING'
           AND f.claimed_until>now() AND c.status='PENDING_OWNER'
           AND d.action='APPROVE' AND d.actor_id<>c.proposer_id
-          AND d.fresh_mfa_verified_at IS NOT NULL
+          AND d.fresh_password_verified_at IS NOT NULL
           AND d.accepted_case_revision=c.revision
           AND d.step_ordinal=(
             SELECT max(st.ordinal) FROM cg03_process_step st
