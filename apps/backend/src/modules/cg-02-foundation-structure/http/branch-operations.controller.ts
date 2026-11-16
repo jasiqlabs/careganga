@@ -14,6 +14,10 @@ export class BranchOperationsController{
     @Query("status")status?:string){
     return this.operations.list(bearer,this.offset(offset),status);
   }
+  @Get("export")
+  exportPage(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
+    return this.operations.exportPage(bearer,this.offset(offset));
+  }
   @Get(":branchRef")
   detail(@Headers("authorization")bearer:string,@Param("branchRef")branchRef:string){
     return this.operations.detail(bearer,branchRef);
