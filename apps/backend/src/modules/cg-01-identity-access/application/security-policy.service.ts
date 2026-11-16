@@ -3,20 +3,17 @@ import {createHmac} from "node:crypto";
 import type { Pool,PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { SessionService } from "./session.service";
-import { decryptTotpSecret,matchedTotpCounter } from "../domain/secret-crypto";
+
 import { DEFAULT_SECURITY_POLICY,validateSecurityPolicy,
   type SecurityPolicyValues,type SecurityPolicyView } from "../domain/security-policy";
 import type { VerifiedFoundationActor } from "../public-api";
 
 type PolicyRow={
   id:string;revision:number;max_session_age_seconds:number;idle_timeout_seconds:number;
-  failed_attempt_window_seconds:number;max_failed_attempts:number;root_mfa_required:boolean;
+  failed_attempt_window_seconds:number;max_failed_attempts:number;root_password_reauth_required:boolean;
   updated_at:Date;
 };
-type ProofRow={
-  account_id:string;last_totp_counter:string;
-  totp_ciphertext:Buffer|null;totp_nonce:Buffer|null;totp_tag:Buffer|null;
-};
+
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function conflict(code:string):ConflictException{
   return new ConflictException({code});
@@ -26,7 +23,7 @@ function toValues(p:PolicyRow|null):SecurityPolicyValues{
     maxSessionAgeSeconds:p.max_session_age_seconds,
     idleTimeoutSeconds:p.idle_timeout_seconds,
     failedAttemptWindowSeconds:p.failed_attempt_window_seconds,
-    maxFailedAttempts:p.max_failed_attempts,rootMfaRequired:true
+    maxFailedAttempts:p.max_failed_attempts,rootPasswordReauthRequired:true
   }:{...DEFAULT_SECURITY_POLICY};
 }
 function toView(p:PolicyRow|null):SecurityPolicyView{
@@ -54,7 +51,7 @@ export class SecurityPolicyService {
       JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
       WHERE s.id=$1 AND s.account_id=$2 AND a.realm_id=$3
         AND s.revoked_at IS NULL AND s.account_access_version=a.access_version
-        AND s.mfa_verified_at IS NOT NULL AND s.expires_at>now()
+        AND s.password_authenticated_at IS NOT NULL AND s.expires_at>now()
         AND s.issued_at>now()-make_interval(secs=>COALESCE(policy.max_session_age_seconds,28800))
         AND s.last_seen_at>now()-make_interval(secs=>COALESCE(policy.idle_timeout_seconds,1800))
       LIMIT 1`,
@@ -66,32 +63,9 @@ export class SecurityPolicyService {
     const actor=await this.root(bearer);
     const rows=await this.db.query<PolicyRow>(`
       SELECT id,revision,max_session_age_seconds,idle_timeout_seconds,
-        failed_attempt_window_seconds,max_failed_attempts,root_mfa_required,updated_at
+        failed_attempt_window_seconds,max_failed_attempts,root_password_reauth_required,updated_at
       FROM auth_security_policy WHERE access_realm_id=$1`,[actor.realmId]);
     return toView(rows.rows[0]??null);
-  }
-  private async lockCurrent(client:PoolClient,actor:VerifiedFoundationActor):
-      Promise<ProofRow>{
-    const result=await client.query<ProofRow>(`
-      SELECT a.id AS account_id,c.last_totp_counter,
-        c.totp_ciphertext,c.totp_nonce,c.totp_tag
-      FROM account a
-      JOIN access_realm realm ON realm.id=a.realm_id AND realm.realm_key='FOUNDATION_ROOT'
-      JOIN auth_session s ON s.account_id=a.id
-      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
-        AND ar.revoked_at IS NULL
-      JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
-      JOIN identity_credential c ON c.account_id=a.id
-      LEFT JOIN auth_security_policy p ON p.access_realm_id=a.realm_id
-      WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE'
-        AND s.id=$3 AND s.account_access_version=a.access_version
-        AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
-        AND s.expires_at>now() AND s.issued_at>now()-make_interval(secs=>COALESCE(p.max_session_age_seconds,28800))
-        AND s.last_seen_at>now()-make_interval(secs=>COALESCE(p.idle_timeout_seconds,1800))
-      FOR UPDATE OF a,s,c`,
-      [actor.accountId,actor.realmId,actor.activeSessionId]);
-    if(!result.rowCount)throw new ForbiddenException("Root access could not be confirmed");
-    return result.rows[0];
   }
   /** Authenticated result lookup for a lost acknowledgement; never repeats a change. */
   async lookup(bearer:string,requestKey:string):
@@ -108,8 +82,8 @@ export class SecurityPolicyService {
       ?{status:"CONFIRMED",revision:found.rows[0].result_revision}
       :{status:"NOT_FOUND",revision:null};
   }
-  private async rateLimitMfa(actor:VerifiedFoundationActor):Promise<void>{
-    // Bound online proof guesses before checking an authenticator; no raw session identifiers in this table.
+  private async rateLimitPasswordProof(actor:VerifiedFoundationActor):Promise<void>{
+    // Bound online proof guesses before checking current password; no raw session identifiers in this table.
     const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
     if(key.length!==32)throw new Error("Identity key unavailable");
     const hash=createHmac("sha256",key).update("policy-proof:"+actor.accountId).digest("hex");
@@ -142,26 +116,26 @@ export class SecurityPolicyService {
     const input=body as Record<string,unknown>;
     const permitted=[
       "maxSessionAgeSeconds","idleTimeoutSeconds","failedAttemptWindowSeconds",
-      "maxFailedAttempts","rootMfaRequired","expectedRevision","idempotencyKey","totp"
+      "maxFailedAttempts","rootPasswordReauthRequired","expectedRevision","idempotencyKey" ,"currentPassword"
     ];
     if(Object.keys(input).some(k=>!permitted.includes(k))||
       !Number.isSafeInteger(input.expectedRevision)||Number(input.expectedRevision)<0||
       Number(input.expectedRevision)>2147483646||
       typeof input.idempotencyKey!=="string"||!UUID.test(input.idempotencyKey)||
-      typeof input.totp!=="string"||!/^[0-9]{6}$/.test(input.totp))
+      typeof input.currentPassword!=="string"||input.currentPassword.length<8||Buffer.byteLength(input.currentPassword,"utf8")>1024)
       throw new BadRequestException("Check security policy information");
     let values:SecurityPolicyValues;
     try{
       values=validateSecurityPolicy({
         maxSessionAgeSeconds:input.maxSessionAgeSeconds,idleTimeoutSeconds:input.idleTimeoutSeconds,
         failedAttemptWindowSeconds:input.failedAttemptWindowSeconds,
-        maxFailedAttempts:input.maxFailedAttempts,rootMfaRequired:input.rootMfaRequired
+        maxFailedAttempts:input.maxFailedAttempts,rootPasswordReauthRequired:input.rootPasswordReauthRequired
       });
     }catch{throw new BadRequestException("The security policy is outside permitted limits");}
     const expectedRevision=Number(input.expectedRevision);
     const requestDigest=digest(values,expectedRevision);
     // A previously committed identical command must remain replay-safe even if the
-    // original response was lost and the actor has reached the MFA-guess throttle.
+    // original response was lost and the actor has reached the password-proof throttle.
     // The row is checked again under the transaction lock below for concurrent first writes.
     const prior=await this.db.query<{request_digest:string;result_revision:number}>(`
       SELECT request_digest,result_revision FROM auth_security_policy_command
@@ -171,7 +145,7 @@ export class SecurityPolicyService {
         throw conflict("POLICY_REPLAY_CONFLICT");
       return {status:"REPLAY_CONFIRMED",revision:prior.rows[0].result_revision};
     }
-    await this.rateLimitMfa(actor);
+    await this.rateLimitPasswordProof(actor);
     const client=await this.db.connect();
     let transactionOpen=false;
     try{
@@ -181,7 +155,7 @@ export class SecurityPolicyService {
         SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE`,
         [actor.realmId]);
       if(!realm.rowCount)throw new ForbiddenException();
-      const auth=await this.lockCurrent(client,actor);
+      // The protected password proof is checked after the idempotent replay query.
       const existing=await client.query<{request_digest:string;result_revision:number}>(`
         SELECT request_digest,result_revision FROM auth_security_policy_command
         WHERE actor_account_id=$1 AND idempotency_key=$2`,
@@ -192,16 +166,11 @@ export class SecurityPolicyService {
         await client.query("COMMIT");transactionOpen=false;
         return {status:"REPLAY_CONFIRMED",revision:existing.rows[0].result_revision};
       }
-      // Fresh one-use CG-01 TOTP proof; never re-use the login counter.
-      if(!auth.totp_ciphertext||!auth.totp_nonce||!auth.totp_tag)
-        throw new UnauthorizedException("Authenticator confirmation required");
-      const raw=decryptTotpSecret(auth.totp_ciphertext,auth.totp_nonce,auth.totp_tag);
-      const counter=matchedTotpCounter(raw,String(input.totp));raw.fill(0);
-      if(counter===null||counter<=Number(auth.last_totp_counter))
-        throw new UnauthorizedException("A fresh authenticator code is required");
+      // Password proof is checked for each new protected write, never stored or logged.
+      await this.sessions.requireFreshFoundationRootProof(client,actor,String(input.currentPassword));
       const current=await client.query<PolicyRow>(`
         SELECT id,revision,max_session_age_seconds,idle_timeout_seconds,
-          failed_attempt_window_seconds,max_failed_attempts,root_mfa_required,updated_at
+          failed_attempt_window_seconds,max_failed_attempts,root_password_reauth_required,updated_at
         FROM auth_security_policy WHERE access_realm_id=$1 FOR UPDATE`,[actor.realmId]);
       const before=current.rows[0]??null;
       if(expectedRevision!==(before?.revision??0))throw conflict("POLICY_STALE");
@@ -214,7 +183,7 @@ export class SecurityPolicyService {
         const next=await client.query<{id:string}>(`
           UPDATE auth_security_policy SET revision=$2,max_session_age_seconds=$3,
             idle_timeout_seconds=$4,failed_attempt_window_seconds=$5,max_failed_attempts=$6,
-            root_mfa_required=TRUE,updated_by=$7,updated_at=now()
+            root_password_reauth_required=TRUE,updated_by=$7,updated_at=now()
           WHERE id=$1 RETURNING id`,
           [before.id,revision,values.maxSessionAgeSeconds,values.idleTimeoutSeconds,
            values.failedAttemptWindowSeconds,values.maxFailedAttempts,actor.accountId]);
@@ -224,7 +193,7 @@ export class SecurityPolicyService {
         const created=await client.query<{id:string}>(`
           INSERT INTO auth_security_policy(access_realm_id,revision,max_session_age_seconds,
             idle_timeout_seconds,failed_attempt_window_seconds,max_failed_attempts,
-            root_mfa_required,updated_by)
+            root_password_reauth_required,updated_by)
           VALUES($1,1,$2,$3,$4,$5,TRUE,$6) RETURNING id`,
           [actor.realmId,values.maxSessionAgeSeconds,values.idleTimeoutSeconds,
            values.failedAttemptWindowSeconds,values.maxFailedAttempts,actor.accountId]);
@@ -242,18 +211,11 @@ export class SecurityPolicyService {
           action_key,outcome,safe_context,correlation_ref)
         VALUES($1,$2,$2,'identity.security-policy.update','SUCCESS',$3::jsonb,$4)`,
         [actor.realmId,actor.accountId,JSON.stringify({changedFields:changed}),correlationRef]);
-      await client.query(`
-        UPDATE identity_credential SET last_totp_counter=$2 WHERE account_id=$1`,
-        [actor.accountId,counter]);
       // Clear this actor's proof-attempt bucket only after the policy+audit are durable.
       const proofKey=createHmac("sha256",
         Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64"))
         .update("policy-proof:"+actor.accountId).digest("hex");
       await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",[proofKey]);
-      await client.query(`
-        UPDATE auth_session SET mfa_verified_at=now()
-        WHERE id=$1 AND account_id=$2 AND revoked_at IS NULL`,
-        [actor.activeSessionId,actor.accountId]);
       await client.query(`
         INSERT INTO auth_security_policy_command(actor_account_id,idempotency_key,
           request_digest,policy_id,result_revision) VALUES($1,$2,$3,$4,$5)`,
