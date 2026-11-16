@@ -1,5 +1,7 @@
 # CG-02 — Foundation Structure
 
+**Current delivery — 16 November 2026:** **`SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED · MERGED_TO_MAIN`**. Both CG02 stories are source-implemented/reviewed and incorporated into the Foundation `main` baseline through [PR #8](https://github.com/jasiqlabs/careganga/pull/8) (merge commit `515e7fa915fcb8e476ae96c43ab551754064a9f8`). **This is a source-only merge, not a formal Harness `SOURCE_COMPLETE` or runtime/release PASS.** Actual 25-case Web/Internal Android, SQL migration/restore/concurrency, independent qualified security/DB, provider and original U18–U22 visual QA remain pending. The original 15 November design-stage description below is retained for historical approval provenance; the [canonical tasks tracker](tasks.md) gives the current code/QA state.
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22.  
