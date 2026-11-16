@@ -25,6 +25,7 @@ async function request<T>(path:string,method:"GET"|"POST"="GET",body?:object):Pr
 }
 export function BranchApprovalInbox(){
  const [cases,setCases]=useState<Case[]>([]);
+ const [nextCaseOffset,setNextCaseOffset]=useState<number|null>(null);
  const [processConfigured,setProcessConfigured]=useState<boolean|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -48,9 +49,9 @@ export function BranchApprovalInbox(){
  }
  async function refresh(){
    await checkProcess();
-   const list=await request<{cases:Case[]}>("/cases");
+   const list=await request<{cases:Case[];nextOffset:number|null}>("/cases?offset=0");
    if(!Array.isArray(list.cases))throw Error("Review inbox unavailable");
-   setCases(list.cases);
+   setCases(list.cases);setNextCaseOffset(list.nextOffset);
    if(selected){
      const same=list.cases.find(x=>x.caseRef===selected.caseRef);
      if(same)await open(same.caseRef);
@@ -60,8 +61,8 @@ export function BranchApprovalInbox(){
  useEffect(()=>{
    let active=true;
    void checkProcess().catch(()=>{if(active)setProcessConfigured(null);});
-   void request<{cases:Case[]}>("/cases").then(result=>{
-     if(active)setCases(result.cases);
+   void request<{cases:Case[];nextOffset:number|null}>("/cases?offset=0").then(result=>{
+     if(active){setCases(result.cases);setNextCaseOffset(result.nextOffset);}
    }).catch(()=>{if(active){setCases([]);setError("Branch approvals cannot be verified.");}})
     .finally(()=>{if(active)setLoading(false);});
    return()=>{active=false;};
@@ -133,6 +134,14 @@ export function BranchApprovalInbox(){
          <strong>{c.branchName}</strong>
          <span>{c.reference} · {c.status.replaceAll("_"," ")}</span>
        </button></li>)}</ul>}
+   {nextCaseOffset!==null&&<button type="button" disabled={busy} onClick={()=>{
+     setBusy(true);
+     void request<{cases:Case[];nextOffset:number|null}>("/cases?offset="+nextCaseOffset)
+       .then(result=>{setCases(old=>[...old.filter(x=>!result.cases.some(y=>y.caseRef===x.caseRef)),...result.cases]);
+         setNextCaseOffset(result.nextOffset);})
+       .catch(()=>setError("More approval cases could not be verified."))
+       .finally(()=>setBusy(false));
+   }}>Load older approvals</button>}
    {selected&&<div className="form">
      <h3>{selected.reference} · {selected.status.replaceAll("_"," ")}</h3>
      <h4>{selected.submittedBranchName}</h4>
