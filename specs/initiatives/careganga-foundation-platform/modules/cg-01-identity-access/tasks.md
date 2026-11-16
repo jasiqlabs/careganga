@@ -110,3 +110,10 @@ The same credential/session/role contract must be used by CG-02 branch approvals
 **Local validation:** `npm ci`; backend/Web builds, both Expo Android TypeScript/native device builds; PostgreSQL 17 full migrate/repeat/backup/restore; root bootstrap double-run; configured email/SMS delivery; real permission bypass cases; UI fidelity with authentic `admin.careganga.com/login` screenshots and 167-screen U02–U10 audit; no idle workers or secret logs; qualified independent security/database review.
 
 **Closure:** No Source Complete / QA PASS / client delivery / merge approval is asserted until current exact-hash designs and source plus all required review gates have been verified. No business-module parallelization based on unqualified authentication.
+
+## Source-only verification evidence — current feature HEAD
+
+- **US-001-QA08:** Admin password-only login currently renders `apps/web/src/app/(admin)/admin/login/page.tsx`; the former alternate-method divider has been removed. **SOURCE_INSPECTED, visual comparison NOT_RUN.**
+- **US-003-QA03, US-003-QA06, US-003-QA09, US-003-QA14:** `apps/web/src/app/(admin)/admin/accounts/page.tsx`, `apps/web/src/app/(admin)/admin/page.tsx`, `apps/web/src/shared/foundation-admin-nav.tsx`, and all protected Admin route page props consistently allow an eligible `accounts.create` + `roles.assign` operator to reach the create-only account UI without granting `accounts.view`. Backend create remains separately authorization-checked. **SOURCE_INSPECTED; authorized and unauthorized browser/device/API regression NOT_RUN.**
+- **US-003-QA01, US-003-QA04:** `dld.md` now specifies the implemented `accounts.create` action and `roles.assign` for direct ACTIVE-account creation. **SPEC/SOURCE CROSS-CHECK ONLY; actual PostgreSQL/HTTP tests NOT_RUN.**
+- **Foundation regression:** The newer mainline consolidated test runner is not yet reconciled with this feature's credential model and cannot substantiate the canonical 165-case gate. The owning F0–F5 cases remain **NOT_RUN** until fresh actual evidence is traced into their existing tasks; never propagate synthetic `PASS` results.
