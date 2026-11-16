@@ -5,6 +5,8 @@ import {PrivateLetterPanel} from "./private-letter-panel";
 
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Notice={kind:"error"|"info"|"success";text:string};
+type MediaRecord={fileRef:string;revision:number;mime:string;sizeBytes:number;
+  createdAt:string;revoked:boolean};
 async function json<T>(url:string,method:"GET"|"POST"="GET",body?:unknown):Promise<T>{
   let response:Response;
   try{
@@ -50,6 +52,9 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [status,setStatus]=useState<CG19UploadStatus|CG19UploadStart|null>(null);
+  const [media,setMedia]=useState<MediaRecord[]>([]);
+  const [mediaLoading,setMediaLoading]=useState(false);
+  const [revokeReview,setRevokeReview]=useState<MediaRecord|null>(null);
   const [notice,setNotice]=useState<Notice|null>(null);
   const [uncertain,setUncertain]=useState(false);
   const [requestKey,setRequestKey]=useState("");
@@ -72,6 +77,39 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     finally{if(gen===generation.current)setLoading(false)}
   },[]);
   useEffect(()=>{void refresh();return()=>{++generation.current}},[refresh]);
+  const loadMedia=useCallback(async()=>{
+    if(!selected){setMedia([]);return;}
+    setMediaLoading(true);
+    try{
+      const result=await json<{files:MediaRecord[]}>(
+        "/api/documents/files/case/"+encodeURIComponent(selected));
+      if(!Array.isArray(result.files)||result.files.length>30||
+        result.files.some(file=>typeof file.fileRef!=="string"||
+          !Number.isSafeInteger(file.revision)||typeof file.revoked!=="boolean"))
+        throw Error("OFFLINE");
+      setMedia(result.files);
+    }catch(e){
+      setMedia([]);
+      setNotice({kind:"error",text:safeMessage(e)});
+    }finally{setMediaLoading(false);}
+  },[selected]);
+  useEffect(()=>{void loadMedia();},[loadMedia]);
+  async function revokeMedia(item:MediaRecord){
+    if(busy||uncertain||item.revoked)return;
+    if(revokeReview?.fileRef!==item.fileRef){setRevokeReview(item);return;}
+    setBusy(true);setNotice(null);
+    try{
+      const result=await json<{revoked:boolean;revision:number}>(
+        "/api/documents/files/"+encodeURIComponent(item.fileRef)+"/revoke",
+        "POST",{expectedRevision:item.revision});
+      if(!result.revoked)throw Error("UNCERTAIN");
+      setRevokeReview(null);
+      setNotice({kind:"success",text:
+        "The private file was revoked. Previous document history is retained."});
+      await loadMedia();
+    }catch(e){setNotice({kind:"error",text:safeMessage(e)})}
+    finally{setBusy(false);}
+  }
   function chooseFile(f:File|null){
     if(busy||uncertain)return;
     setFile(f);setRequestKey("");setUploadRef("");setStatus(null);setNotice(null);
@@ -175,6 +213,36 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     </div>
     {notice&&<p role={notice.kind==="success"?"status":"alert"}
       className={"notice "+notice.kind}>{notice.text}</p>}
+    {selected&&<section className="role-pane">
+      <div className="role-pane-heading"><h2>Verified case media</h2></div>
+      <div className="role-detail-content">
+        {mediaLoading?<p role="status">Verifying private case files…</p>:
+          !media.length?<p>No verified media files for this application.</p>:
+          <div className="role-table-wrap"><table className="role-table">
+            <thead><tr><th>Date</th><th>Type</th><th>Size</th>
+              <th>Status</th><th>Action</th></tr></thead>
+            <tbody>{media.map(item=><tr key={item.fileRef}>
+              <td>{new Date(item.createdAt).toLocaleString()}</td>
+              <td>{item.mime}</td><td>{(item.sizeBytes/1024).toFixed(0)} KB</td>
+              <td>{item.revoked?"Revoked":"Verified private file"}</td>
+              <td><div className="toolbar">
+                {!item.revoked&&<a href={"/api/documents/files/"+
+                  encodeURIComponent(item.fileRef)+"/download"}>Download</a>}
+                {!item.revoked&&<button type="button" disabled={busy||uncertain}
+                  onClick={()=>void revokeMedia(item)}>
+                  {revokeReview?.fileRef===item.fileRef?"Confirm revoke":"Revoke"}
+                </button>}
+              </div></td>
+            </tr>)}</tbody>
+          </table></div>}
+        <button type="button" disabled={busy||mediaLoading}
+          onClick={()=>void loadMedia()}>Refresh verified media</button>
+        {revokeReview&&<p role="status">
+          Confirm revocation of the selected file. This permanently blocks
+          further authorized downloads, without deleting the audit history.
+        </p>}
+      </div>
+    </section>}
     <section className="role-pane"><div className="role-pane-heading">
       <h2>Attach case evidence</h2></div>
       <div className="role-detail-content">
