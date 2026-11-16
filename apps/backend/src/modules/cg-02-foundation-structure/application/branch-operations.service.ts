@@ -213,6 +213,36 @@ export class BranchOperationsService{
      branchCode:x.branch_code,status:x.status,version:x.version,branchType:x.branch_type})),
      offset,limit:50,nextOffset:rows.rows.length===50?offset+50:null};
  }
+ async exportPage(bearer:string,offset=0){
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
+   const admin=await this.root(bearer);
+   if(!Number.isSafeInteger(offset)||offset<0||offset>50000)
+     throw new BadRequestException("Check approved branch export page");
+   const data=await this.db.query<{name:string;branch_code:string;branch_type:string;
+     status:string;manager:string|null;geography:string;official_phone:string;
+     official_email:string}>(`
+     SELECT b.name,b.branch_code,b.branch_type,b.status,
+       b.official_phone,b.official_email,
+       manager.display_name AS manager,geo.display_name AS geography
+     FROM branch b
+       JOIN account manager ON manager.id=b.manager_account_ref
+         AND manager.realm_id=b.root_realm_id
+       JOIN geography_area geo ON geo.id=b.geography_area_id
+         AND geo.root_realm_id=b.root_realm_id
+     WHERE b.root_realm_id=$1 AND ($2::boolean OR b.manager_account_ref=$3)
+     ORDER BY b.name,b.id LIMIT 200 OFFSET $4
+   `,[actor.realmId,admin,actor.accountId,offset]);
+   const cell=(value:string|null)=>{
+     const safe=String(value??"");
+     const formula=/^[=+@\\-\t\r]/.test(safe)?"'"+safe:safe;
+     return '"'+formula.replace(/"/g,'""')+'"';
+   };
+   const heading=["Branch","Code","Type","Status","Manager","Location","Official phone","Official email"];
+   const rows=data.rows.map(row=>[row.name,row.branch_code,row.branch_type,row.status,
+     row.manager,row.geography,row.official_phone,row.official_email]);
+   return {csv:[heading,...rows].map(cols=>cols.map(cell).join(",")).join("\r\n"),
+     count:rows.length,nextOffset:rows.length===200?offset+200:null};
+ }
  async detail(bearer:string,branchRef:string){
    const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
    const admin=await this.root(bearer);
