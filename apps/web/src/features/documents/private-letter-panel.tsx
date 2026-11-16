@@ -23,7 +23,7 @@ function message(e:unknown){
   const code=e instanceof Error?e.message:"UNKNOWN";
   return code==="DENIED"?"Your protected letter permission is no longer verified.":
     code==="CONFLICT"?"The original letter changed. Refresh before continuing.":
-    code==="INVALID"?"Check the template and fresh authenticator code.":
+    code==="INVALID"?"Check the template and current password.":
     "The letter action outcome could not be confirmed. Check the same request before retrying.";
 }
 function label(s:string){
@@ -44,9 +44,9 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
   const [title,setTitle]=useState("Protected access confirmation");
   const [body,setBody]=useState(
     "This letter confirms that the specified CareGanga Foundation access change was approved and applied. Access remains subject to current permissions and may be revoked.");
-  const [templateTotp,setTemplateTotp]=useState("");
-  const [issueTotp,setIssueTotp]=useState("");
-  const [revokeTotp,setRevokeTotp]=useState("");
+  const [templatePassword,setTemplatePassword]=useState("");
+  const [issuePassword,setIssuePassword]=useState("");
+  const [revokePassword,setRevokePassword]=useState("");
   const [review,setReview]=useState<"TEMPLATE"|"ISSUE"|"REVOKE"|null>(null);
   const [revokeRef,setRevokeRef]=useState("");
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -81,8 +81,8 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
   },[refresh,sourceRevision]);
   async function approveTemplate(){
     if(busy||unknown||!canIssue)return;
-    if(!/^[0-9]{6}$/.test(templateTotp)){
-      setNotice({kind:"error",text:"Enter a fresh six-digit authenticator code."});return;
+    if((templatePassword.length<8||templatePassword.length>1024)){
+      setNotice({kind:"error",text:"Enter a current password."});return;
     }
     if(review!=="TEMPLATE"){setReview("TEMPLATE");return;}
     setBusy(true);setNotice(null);
@@ -90,10 +90,10 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
     try{
       const result=await request<{version:number;status:string}>("template/approve","POST",{
         title,body,expectedVersion:template?.version??0,
-        requestKey:templateKey.current,totp:templateTotp
+        requestKey:templateKey.current,currentPassword:templatePassword
       });
       if(!Number.isInteger(result.version))throw Error("UNKNOWN");
-      templateKey.current="";setReview(null);setTemplateTotp("");
+      templateKey.current="";setReview(null);setTemplatePassword("");
       setNotice({kind:"success",text:
         "A new private letter template version was approved."});
       await refresh();
@@ -104,19 +104,19 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
   }
   async function issue(){
     if(busy||unknown||!canIssue)return;
-    if(!/^[0-9]{6}$/.test(issueTotp)){
-      setNotice({kind:"error",text:"Enter a fresh six-digit authenticator code."});return;
+    if((issuePassword.length<8||issuePassword.length>1024)){
+      setNotice({kind:"error",text:"Enter a current password."});return;
     }
     if(review!=="ISSUE"){setReview("ISSUE");return;}
     setBusy(true);setNotice(null);
     if(!issueKey.current)issueKey.current=crypto.randomUUID();
     try{
       const result=await request<Letter>("issue","POST",{
-        caseRef,sourceRevision,requestKey:issueKey.current,totp:issueTotp
+        caseRef,sourceRevision,requestKey:issueKey.current,currentPassword:issuePassword
       });
       if(!result||typeof result.state!=="string"||
         typeof result.documentRef!=="string")throw Error("UNKNOWN");
-      issueKey.current="";setIssueTotp("");setReview(null);
+      issueKey.current="";setIssuePassword("");setReview(null);
       setNotice({kind:result.state==="ISSUED"?"success":"info",
         text:result.state==="ISSUED"?
           "Private PDF issued and verified.":
@@ -155,15 +155,15 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
   }
   async function revoke(){
     if(!canRevoke||busy||unknown||!revokeRef)return;
-    if(!/^[0-9]{6}$/.test(revokeTotp)){
-      setNotice({kind:"error",text:"Enter a fresh six-digit authenticator code."});return;
+    if((revokePassword.length<8||revokePassword.length>1024)){
+      setNotice({kind:"error",text:"Enter a current password."});return;
     }
     if(review!=="REVOKE"){setReview("REVOKE");return;}
     setBusy(true);setNotice(null);
     try{
       const result=await request<Letter>(
-        encodeURIComponent(revokeRef)+"/revoke","POST",{totp:revokeTotp});
-      setReview(null);setRevokeRef("");setRevokeTotp("");
+        encodeURIComponent(revokeRef)+"/revoke","POST",{currentPassword:revokePassword});
+      setReview(null);setRevokeRef("");setRevokePassword("");
       setNotice({kind:result.state==="REVOKED"?"success":"info",
         text:result.state==="REVOKED"?
           "The private letter is revoked and cannot be downloaded.":
@@ -205,10 +205,10 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
                 disabled={busy||unknown}
                 onChange={e=>{setBody(e.target.value);setReview(null);templateKey.current=""}}/>
             </label>
-            <label className="field">Fresh Super Admin authenticator for template approval
-              <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-                value={templateTotp} disabled={busy||unknown}
-                onChange={e=>{setTemplateTotp(e.target.value.replace(/[^0-9]/g,""));
+            <label className="field">Confirm Super Admin password for template approval
+              <input type="password" autoComplete="current-password" minLength={8} maxLength={1024}
+                value={templatePassword} disabled={busy||unknown}
+                onChange={e=>{setTemplatePassword(e.target.value);
                   setReview(null);}}/>
             </label>
             {review==="TEMPLATE"&&<p role="status">
@@ -222,11 +222,11 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
           <strong>Issue verified access letter</strong>
           <p>Only a completed CG-01 approved-role effect can be confirmed.
             Issuance requires the current frozen application revision and
-            a fresh authenticator code. No public QR will be generated.</p>
-          <label className="field">Fresh Super Admin authenticator
-            <input inputMode="numeric" maxLength={6} pattern="[0-9]{6}"
-              value={issueTotp} disabled={busy||unknown}
-              onChange={e=>{setIssueTotp(e.target.value.replace(/[^0-9]/g,""));
+            a current password. No public QR will be generated.</p>
+          <label className="field">Confirm Super Admin password
+            <input type="password" autoComplete="current-password" minLength={8} maxLength={1024}
+              value={issuePassword} disabled={busy||unknown}
+              onChange={e=>{setIssuePassword(e.target.value);
                 setReview(null);}}/>
           </label>
           {review==="ISSUE"&&<p role="status">
@@ -262,10 +262,10 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
           <strong>Revoke this confirmed private letter</strong>
           <p>Revoking prevents future authorized retrieval. The audit and
             original issued revision remain immutable.</p>
-          <label className="field">Fresh Super Admin authenticator
-            <input inputMode="numeric" maxLength={6} pattern="[0-9]{6}"
-              value={revokeTotp} disabled={busy||unknown}
-              onChange={e=>{setRevokeTotp(e.target.value.replace(/[^0-9]/g,""));
+          <label className="field">Confirm Super Admin password
+            <input type="password" autoComplete="current-password" minLength={8} maxLength={1024}
+              value={revokePassword} disabled={busy||unknown}
+              onChange={e=>{setRevokePassword(e.target.value);
                 setReview(null);}}/>
           </label>
           {review==="REVOKE"&&<p role="status">Confirm permanent revoke for this
@@ -274,7 +274,7 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
             onClick={()=>void revoke()}>{review==="REVOKE"?
               "Confirm revoke":"Review revocation"}</button>
           <button type="button" disabled={busy} onClick={()=>{
-            setRevokeRef("");setRevokeTotp("");setReview(null);}}>Cancel</button>
+            setRevokeRef("");setRevokePassword("");setReview(null);}}>Cancel</button>
         </div>}
         <button type="button" disabled={busy}
           onClick={()=>void refresh()}>Refresh verified letters</button>
