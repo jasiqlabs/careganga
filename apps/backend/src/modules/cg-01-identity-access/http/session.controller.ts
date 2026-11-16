@@ -4,7 +4,7 @@ import { SessionGuard, type AuthenticatedRequest } from "./session.guard";
 import { randomUUID } from "node:crypto";
 import type { CareGangaRequest } from "../../../core/observability/request-correlation";
 
-type SignInBody = { email?: unknown; password?: unknown; totp?: unknown; deviceLabel?: unknown };
+type SignInBody = { identifier?: unknown; password?: unknown; deviceLabel?: unknown };
 
 @Controller("api/identity")
 export class SessionController {
@@ -13,14 +13,14 @@ export class SessionController {
   @Post("login")
   @HttpCode(200)
   async signIn(@Body() body: SignInBody, @Req() request: CareGangaRequest) {
-    if (!body || typeof body.email !== "string" || body.email.length > 254
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
+    if (!body || typeof body.identifier !== "string" || body.identifier.length > 254
+      || !(/^[6-9][0-9]{9}$/.test(body.identifier.trim()) ||
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.identifier.trim()))
       || typeof body.password !== "string" || body.password.length < 1 || Buffer.byteLength(body.password,"utf8") > 1024
-      || typeof body.totp !== "string" || !/^\d{6}$/.test(body.totp)
       || (body.deviceLabel !== undefined && (typeof body.deviceLabel !== "string" || body.deviceLabel.length > 60)))
       throw new BadRequestException();
     return this.service.signIn({
-      email:body.email,password:body.password,totp:body.totp,
+      identifier:body.identifier,password:body.password,
       remoteAddress:request.ip ?? "unknown", deviceLabel:typeof body.deviceLabel === "string" ? body.deviceLabel : "Unknown device",
       correlationRef:request.cgRequestId??randomUUID()
     });
