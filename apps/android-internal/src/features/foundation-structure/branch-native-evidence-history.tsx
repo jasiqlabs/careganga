@@ -1,5 +1,5 @@
-import {useCallback,useEffect,useState} from "react";
-import {Alert,Pressable,StyleSheet,Text,View} from "react-native";
+import {useCallback,useEffect,useRef,useState} from "react";
+import {Alert,AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -21,6 +21,26 @@ async function request(token:string,path:string,method:"GET"|"POST"="GET",body?:
 export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onExpired}:Props){
  const [rows,setRows]=useState<FileItem[]>([]),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
+ const previewFile=useRef<File|null>(null);
+ const leftApp=useRef(false);
+ // File.preview resolves when the external viewer opens, not when it closes:
+ // keep the private cached bytes until return/unmount instead of deleting
+ // them beneath an Android ACTION_VIEW consumer.
+ useEffect(()=>{
+   const subscription=AppState.addEventListener("change",state=>{
+     if(state!=="active"){leftApp.current=true;return;}
+     if(leftApp.current){
+       leftApp.current=false;
+       try{previewFile.current?.delete();}catch{}
+       previewFile.current=null;
+     }
+   });
+   return ()=>{
+     subscription.remove();
+     try{previewFile.current?.delete();}catch{}
+     previewFile.current=null;
+   };
+ },[]);
  const refresh=useCallback(async()=>{
    const result=await request(token,"/registration/"+encodeURIComponent(registrationRef));
    const data=await result.json() as {files:FileItem[]};
@@ -40,6 +60,7 @@ export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onE
    if(busy||file.revoked||file.status!=="VALIDATED")return;
    setBusy(true);setMessage("");
    let temporary:File|null=null;
+   let handedOff=false;
    try{
      const response=await request(token,"/files/"+encodeURIComponent(file.fileRef)+"/download");
      const contentType=response.headers.get("content-type")??"";
@@ -53,17 +74,20 @@ export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onE
        expected!==null&&bytes.length!==expected)throw Error("UNAVAILABLE");
      const suffix=contentType==="application/pdf"?".pdf":
        contentType==="image/jpeg"?".jpg":contentType==="image/png"?".png":".webp";
+     try{previewFile.current?.delete();}catch{}
+     previewFile.current=null;
      temporary=new File(Paths.cache,"careganga-branch-private-"+Crypto.randomUUID()+suffix);
      temporary.create();
      await temporary.write(bytes);
      await temporary.preview({title:"Protected branch evidence"});
+     previewFile.current=temporary;handedOff=true;
    }catch(error){
      setMessage(error instanceof Error&&error.message==="DENIED"?
        "You no longer have permission to view this private document.":
        "The verified private file could not be previewed.");
      if(error instanceof Error&&error.message==="EXPIRED")onExpired();
    }finally{
-     try{temporary?.delete();}catch{}
+     if(!handedOff)try{temporary?.delete();}catch{}
      setBusy(false);
    }
  }
