@@ -196,7 +196,7 @@ export interface CG19UploadRequest {
 }
 export interface CG19UploadStart {
   uploadRef:string;status:CG19FileState;message:string;
-  uploadUrl?:string;expiresAt?:string;
+  uploadUrl?:string;uploadHeaders?:Record<string,string>;expiresAt?:string;
 }
 export interface CG19UploadStatus {
   uploadRef:string;status:CG19FileState;fileRef:string|null;
