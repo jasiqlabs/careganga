@@ -64,7 +64,7 @@ export interface CG01SecurityPolicyUpdate {
   rootPasswordReauthRequired:true;
   expectedRevision:number;
   idempotencyKey:string;
-  /** One fresh six-digit one-use CG-01 authenticator proof, never stored in audit. */
+  /** Fresh current-password proof for protected settings changes; never stored in audit. */
   currentPassword:string;
 }
 export interface CG01SecurityPolicyOutcome {
