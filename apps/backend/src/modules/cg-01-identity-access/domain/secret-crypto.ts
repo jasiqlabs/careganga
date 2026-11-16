@@ -11,7 +11,7 @@ function derive(password: string | Buffer, salt: Buffer, keylen: number, cost: t
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  if (password.length < 14 || Buffer.byteLength(password, "utf8") > 1024)
+  if (password.length < 8 || Buffer.byteLength(password, "utf8") > 1024)
     throw new Error("Password does not meet secure length requirements");
   const salt = randomBytes(24);
   const digest = await derive(password, salt, 64, COST) as Buffer;
