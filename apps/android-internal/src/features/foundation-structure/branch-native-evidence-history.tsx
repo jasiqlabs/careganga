@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {Alert,Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -91,7 +91,12 @@ export function BranchNativeEvidenceHistory({registrationRef,token,canManage,onE
          disabled={busy} style={styles.action} onPress={()=>void openPrivate(row)}>
          <Text style={styles.actionLabel}>Preview private original</Text></Pressable>}
        {canManage&&!row.revoked&&<Pressable accessibilityRole="button" disabled={busy}
-         style={styles.action} onPress={()=>void revoke(row)}>
+         style={styles.action} onPress={()=>Alert.alert(
+           "Revoke protected file?",
+           "This removes access to the selected private document. Existing approval history is retained.",
+           [{text:"Cancel",style:"cancel"},{text:"Revoke file",style:"destructive",
+             onPress:()=>void revoke(row)}]
+         )}>
          <Text style={styles.actionLabel}>Revoke file</Text></Pressable>}
      </View>)}
    <Pressable accessibilityRole="button" disabled={busy} style={styles.action}
