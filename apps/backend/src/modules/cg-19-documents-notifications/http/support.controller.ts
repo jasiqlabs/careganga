@@ -1,4 +1,4 @@
-import {BadRequestException,Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req} from "@nestjs/common";
+import {BadRequestException,Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req,ServiceUnavailableException} from "@nestjs/common";
 import {createHmac,timingSafeEqual} from "node:crypto";
 import {SupportService} from "../application/support.service";
 
@@ -8,7 +8,11 @@ function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
   const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
   // Direct/local development uses socket IP. In production the explicit
   // trusted reverse-proxy proof prevents all visitors sharing one web IP bucket.
-  if(secret.length===0)return req.socket?.remoteAddress??req.ip??"unresolved";
+  if(secret.length===0){
+    if(process.env.NODE_ENV==="production")
+      throw new ServiceUnavailableException("Trusted Foundation contact ingress unavailable");
+    return req.socket?.remoteAddress??req.ip??"unresolved";
+  }
   if(secret.length!==32||typeof client!=="string"||typeof ts!=="string"||
     typeof signature!=="string"||!/^[0-9a-fA-F:.]{3,45}$/.test(client)||
     !/^\d{13}$/.test(ts)||Math.abs(Date.now()-Number(ts))>60000||
