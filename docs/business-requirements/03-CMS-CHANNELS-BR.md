@@ -169,7 +169,7 @@ This is a **logical navigation proposal**, not a demand to create a different ap
 
 ## 8. Internal Android application
 
-- **CG-300-BR07:** Internal Android presents its own native sign-in screen using the same CG-01 mobile/email + password credentials and revocable session/role authority as Admin Web, then shows a dashboard with assigned role, pending work, relevant alerts and permitted modules; no independent password store or activation process.
+- **CG-300-BR07:** Internal Android presents its own native sign-in screen using the same CG-01 mobile/email + password credentials and revocable session/role authority as Admin Web, then shows a dashboard with assigned role, pending work, relevant alerts and permitted modules.
 - **CG-300-BR08:** Authorized employees/volunteers/coordinators can manage assigned records and workflow decisions within their permitted scope: registrations, verification/approvals, projects, field visits with GPS/photo, beneficiary aid, tasks, attendance, leave, expenses/allowances, stock requests and applicable finance/healthcare coordination.
 - **CG-300-BR09:** Apply the same backend authorization and business statuses as Foundation Web Admin; navigation hides inaccessible features but hiding alone is never enforcement.
 - **CG-300-BR10:** Allow secure file capture/upload, field evidence and action feedback; preserve correct draft/submission state on interruption. This is safe interruption/retry handling; a full offline synchronization capability must not be presumed without an approved business requirement.

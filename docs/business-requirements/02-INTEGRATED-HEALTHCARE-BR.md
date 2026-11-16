@@ -82,7 +82,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 ### 4.2 Patient registration, identity and records
 
 - **CG-15-BR09:** New patients can register from the public booking flow or authorized center reception, while existing patients can be located using verified identifiers/phone under access controls.
-- **CG-15-BR10:** Patient details include name, verified mobile for contact/identity-claim ownership using a purpose-bound OTP challenge separate from login, optional email, date of birth/age, gender, optional blood group as health profile attribute, emergency contact, state/district/block, PIN and address as applicable. Protected patient sign-in reuses the existing CG-01 mobile/email + password session, never OTP-only login.
+- **CG-15-BR10:** Patient details include name, verified mobile for contact/identity-claim ownership using a purpose-bound OTP challenge separate from login, optional email, date of birth/age, gender, optional blood group as health profile attribute, emergency contact, state/district/block, PIN and address as applicable. Protected patient sign-in reuses the existing CG-01 mobile/email + password session.
 - **CG-15-BR11:** Optional uploaded personal identity documents, patient photo and medical report/prescription files have appropriate file validation and access controls.
 - **CG-15-BR12:** Generate a unique patient identifier/virtual patient ID on the approved patient lifecycle and provide a patient profile/ID view. Mockups show a 12-digit ID format; exact numbering scheme requires PRD approval.
 - **CG-15-BR13:** Detect potential duplicate patient registrations and support appropriately reviewed correction/merging without losing appointment or medical history.

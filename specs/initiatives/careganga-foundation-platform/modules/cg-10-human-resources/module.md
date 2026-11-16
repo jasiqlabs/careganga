@@ -10,7 +10,7 @@ uiux_reason: New cross-channel business UI must follow original CareGanga theme,
 dld_decision: REQUIRED
 dld_reason: Greenfield business model, authorization, transactional state and cross-owner contracts require scoped detailed design.
 database_impact: CRITICAL
-database_reason: HR application/private identity/bank, real CG-03 exact approval→CG-10 approved employee status and optional current CG-01 account linkage (not account-credential activation), same-root/branch employee assignment, attendance/leave period overlaps, transfer/exit access revocation, CG-19 official document/QR and optional consented public identity carry CRITICAL privacy/security/relational integrity. Independent specialist DB review, migration/backup/restore NOT_RUN.
+database_reason: HR application/private identity/bank, real CG-03 exact approval→CG-10 approved employee status and optional authorized linkage to an existing CG-01 account, same-root/branch employee assignment, attendance/leave period overlaps, transfer/exit access revocation, CG-19 official document/QR and optional consented public identity carry CRITICAL privacy/security/relational integrity. Independent specialist DB review, migration/backup/restore NOT_RUN.
 mobile_store_impact: ANDROID
 mobile_store_reason: Native **Internal Android** My Employment/Attendance/Leave/Appraisal+Transfer/Own Documents and genuine CG-09-linked My Allowances where eligible, consuming current protected HR API. Public Android has no private HR data/browser/employee editor; only optional minimal CG-19 public card verifier if enabled. Real Android lockfile/toolchain/AAB/API/16KB/Play device QA NOT_RUN.
 mobile_android_app_category: GENERAL
