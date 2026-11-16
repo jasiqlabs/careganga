@@ -144,7 +144,8 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired}:Props){
       if(initiated.status==="STORAGE_UNAVAILABLE"||!initiated.uploadUrl){
         setMessage("Secure file storage is not available. No file was accepted.");return;
       }
-      if(!initiated.uploadUrl.startsWith("https://"))throw Error("UNCERTAIN");
+      if(!initiated.uploadUrl.startsWith("https://")||!initiated.uploadHeaders||
+        initiated.uploadHeaders["Content-Type"]!==picked.mime)throw Error("UNCERTAIN");
       const task=nativeFile.createUploadTask(initiated.uploadUrl,{
         httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,mimeType:picked.mime,
         headers:{"Content-Type":picked.mime},
