@@ -3,6 +3,8 @@ import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.mod
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {BranchPrivateEvidenceService} from "./application/branch-private-evidence.service";
 import {BranchWorkflowService} from "./application/branch-workflow.service";
+import {ActiveBranchEvidenceService} from "./application/active-branch-evidence.service";
+import {ActiveBranchEvidenceController} from "./http/active-branch-evidence.controller";
 import {BranchPrivateEvidenceController} from "./http/branch-private-evidence.controller";
 import {BranchWorkflowController} from "./http/branch-workflow.controller";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
@@ -20,9 +22,9 @@ import {PrivateLetterService} from "./application/private-letter.service";
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule],
-  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController],
-  providers:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,
+  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController],
+  providers:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService]
+  exports:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,ActiveBranchEvidenceService]
 })
 export class DocumentsNotificationsModule{}
