@@ -8,6 +8,7 @@ import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
+import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
 import { NotificationsScreen } from "../communications/notifications-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -15,6 +16,10 @@ import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
 
 const STORE_KEY="cg_internal_root_session";
+const communicationRequest=(token:string,path:string,opts:RequestInit={})=>
+  identityRequest(path,{...opts,headers:{
+    Authorization:"Bearer "+token,...(opts.headers as Record<string,string>|undefined)
+  }});
 async function sessionView(token:string):Promise<CG01SessionView|null>{
   const response=await identityRequest("/api/identity/me",{headers:{Authorization:"Bearer "+token}});
   if(response.status===401)return null;
@@ -55,13 +60,14 @@ export function StaffAuthenticationScreen(){
   const [policyOpen,setPolicyOpen]=useState(false);
   const [approvalsOpen,setApprovalsOpen]=useState(false);
   const [documentsOpen,setDocumentsOpen]=useState(false);
+  const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setNotificationsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -154,7 +160,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setNotificationsOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -182,6 +188,12 @@ export function StaffAuthenticationScreen(){
     return <PrivateCaseEvidenceScreen token={token}
       canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+  if(communicationsOpen&&token&&actor&&
+    roleActions.includes("communications.notifications.view"))
+    return <SafeAreaView style={{flex:1,backgroundColor:careGangaTheme.background}}>
+      <RecipientNotifications token={token} makeRequest={communicationRequest}
+        onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
+    </SafeAreaView>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
@@ -220,6 +232,11 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>setNotificationsOpen(true)}>
                 <Text style={styles.buttonText}>My Notices & Notifications</Text>
+              </Pressable>}
+            {roleActions.includes("communications.notifications.view")&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setCommunicationsOpen(true)}>
+                <Text style={styles.buttonText}>My Foundation notices</Text>
               </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
