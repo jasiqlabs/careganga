@@ -68,7 +68,9 @@ function normalizedStage(step:number,raw:unknown):Record<string,unknown>{
     case 1:return {
       branchName:field(data.branchName,160,true),
       branchType:field(data.branchType,80),
-      openingDate:isoDate(data.openingDate)
+      openingDate:isoDate(data.openingDate),
+      officialPhone:field(data.officialPhone,80),officialEmail:field(data.officialEmail,180),
+      photoFiles:refs(data.photoFiles,5),logoFiles:refs(data.logoFiles,5)
     };
     case 2:{
       const pin=field(data.pinCode,6);
