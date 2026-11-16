@@ -84,7 +84,7 @@ export class CommunicationProviders{
     const body=new URLSearchParams({
       To:message.to,Body:message.body,
       MessagingServiceSid:trimEnv("CG19_TWILIO_MESSAGING_SERVICE_SID"),
-      StatusCallback:callback
+      StatusCallback:callback+"?attempt="+encodeURIComponent(message.attemptRef)
     });
     try{
       const result=await fetch(
