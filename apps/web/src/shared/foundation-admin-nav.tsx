@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useEffect,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"foundation";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"foundation"|"branches";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -15,13 +15,15 @@ type FoundationAdminNavProps={
   canViewApprovals?:boolean;
   canViewDocuments?:boolean;
   canViewFoundation?:boolean;
+  canViewBranches?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewFoundation=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewFoundation=false,canViewBranches=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const [foundationAccess,setFoundationAccess]=useState(canViewFoundation);
+  const [branchAccess,setBranchAccess]=useState(canViewBranches);
   // One authenticated current-rights refresh per navigation mount. No polling or client-only authority.
   useEffect(()=>{
     let live=true;
@@ -37,8 +39,12 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
             Boolean(x)&&typeof x==="object"&&"key" in x&&
               ["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(String(x.key))));
         setFoundationAccess(allowed);
+        const canBranches=Boolean(result&&typeof result==="object"&&"actions" in result&&
+          Array.isArray(result.actions)&&result.actions.some((x:unknown)=>
+            Boolean(x)&&typeof x==="object"&&"key" in x&&String(x.key)==="foundation.branches.view"));
+        setBranchAccess(canBranches);
       })
-      .catch(()=>{if(live)setFoundationAccess(false);});
+      .catch(()=>{if(live){setFoundationAccess(false);setBranchAccess(false);}});
     return()=>{live=false;};
   },[]);
 
@@ -47,6 +53,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(canViewAccounts?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
     ...(canViewRoles?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
     ...(foundationAccess?[{key:"foundation" as const,label:"Foundation Structure",href:"/admin/foundation"}]:[]),
+    ...(branchAccess?[{key:"branches" as const,label:"Branches & registration",href:"/admin/foundation/branches"}]:[]),
     ...(canManageSecurityPolicy?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(canViewSettings?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
     ...(canViewAudit?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
