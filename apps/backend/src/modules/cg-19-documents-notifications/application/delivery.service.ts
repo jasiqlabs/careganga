@@ -199,6 +199,17 @@ export class DeliveryService{
     }catch(e){if(open)try{await client2.query("ROLLBACK");}catch{};throw e;}
     finally{client2.release();}
   }
+  async readiness(bearer:string){
+    await this.sessions.requireAction(bearer,"communications.delivery.view");
+    return {channels:[
+      {channel:"EMAIL",provider:"SENDGRID",
+        configured:this.providers.configured("EMAIL"),state:this.providers.configured("EMAIL")?
+          "CONFIGURED_UNVERIFIED":"UNAVAILABLE"},
+      {channel:"SMS",provider:"TWILIO",
+        configured:this.providers.configured("SMS"),state:this.providers.configured("SMS")?
+          "CONFIGURED_UNVERIFIED":"UNAVAILABLE"}
+    ],deliveryProof:"Provider callbacks are required; setup alone is not delivery"};
+  }
   async process(bearer:string){
     const actor=await this.sessions.requireAction(bearer,"communications.delivery.process");
     // Verified Foundation admin can manually trigger recovery after a
@@ -224,7 +235,8 @@ export class DeliveryService{
       `,[attemptRef,provider]);
       const row=attempt.rows[0];
       if(!row)throw new NotFoundException("Delivery attempt unavailable");
-      if(row.provider_ref&&providerRef&&row.provider_ref!==providerRef)
+      if(provider==="TWILIO"&&row.provider_ref&&providerRef&&
+        row.provider_ref!==providerRef)
         throw new ForbiddenException("Provider message reference changed");
       const incoming=await client.query<{id:string}>(`
         INSERT INTO cg19_delivery_receipt(realm_id,attempt_id,provider_event_id,received_status)
