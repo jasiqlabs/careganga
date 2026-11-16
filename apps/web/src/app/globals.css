@@ -436,3 +436,52 @@ button:disabled { cursor:wait; opacity:.65; }
 .foundation-department-sheet .form button{width:100%}
 @media(max-width:32rem){.foundation-department-sheet{padding:1rem .9rem
   max(1rem,env(safe-area-inset-bottom))}}
+
+/* CG-01: original CareGanga Admin login reference — scoped and responsive. */
+.cg-login-page{min-height:100vh;background:radial-gradient(ellipse at 70% 12%,#163b66 0%,#0a2348 42%,#07162c 100%);
+ color:#fff;padding:clamp(1rem,3vw,2.5rem);display:flex;flex-direction:column;align-items:center}
+.cg-login-brand{display:flex;align-items:center;gap:.8rem;justify-content:center;margin:clamp(1rem,3vw,2.2rem) auto 1.5rem}
+.cg-login-brand img{background:#fff;border-radius:.7rem;padding:.35rem;object-fit:contain;box-shadow:0 6px 20px #06152744}
+.cg-login-brand>div{display:grid;gap:.05rem}
+.cg-login-brand strong{font-size:clamp(1rem,2.4vw,1.4rem);letter-spacing:.07em}
+.cg-login-brand span{color:#bdd0e9;font-size:.82rem;letter-spacing:.08em}
+.cg-login-card{background:#fff;color:#17263e;border-radius:1.15rem;padding:clamp(1.35rem,4.2vw,2.5rem);
+ width:min(100%,30rem);box-shadow:0 16px 55px #020b1b5c;text-align:center}
+.cg-login-card h1{font-size:clamp(1.5rem,3.3vw,1.95rem);margin:.7rem 0 .45rem;line-height:1.2}
+.cg-login-card>p{color:#687487;font-size:.91rem;margin:0 0 1.5rem}
+.cg-login-lock{width:3.2rem;height:3.2rem;border:1px solid #dce8fb;background:#edf4ff;
+ border-radius:1rem;color:#2054ba;display:grid;place-items:center;margin:0 auto;font-size:1.7rem}
+.cg-login-form{display:grid;gap:.6rem;text-align:left}
+.cg-login-form>label{font-size:.73rem;font-weight:750;letter-spacing:.08em;color:#465971}
+.cg-login-control{display:flex;align-items:center;gap:.65rem;border:1px solid #d9e2ed;border-radius:.65rem;
+ min-height:3.1rem;padding:0 .9rem;margin-bottom:.7rem}
+.cg-login-control:focus-within{outline:2px solid #1e53dc;outline-offset:1px}
+.cg-login-control>span{color:#64788f;font-size:1.05rem}
+.cg-login-control input{border:0;outline:none;width:100%;flex:1;min-width:0;color:#17263e;background:transparent}
+.cg-password-toggle{border:0;background:transparent;color:#476ca3;font-size:.79rem;font-weight:700;
+ min-height:2.75rem;min-width:2.75rem}
+.cg-login-helpers{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem;
+ margin:.25rem 0 .6rem;font-size:.81rem}
+.cg-login-helpers label{display:flex;gap:.5rem;align-items:center;cursor:pointer}
+.cg-login-helpers input{accent-color:#2565d8;width:1rem;height:1rem}
+.cg-login-helpers a{color:#1d59c3;text-decoration:none;font-weight:650}
+.cg-login-submit{border:0;border-radius:.7rem;min-height:3.1rem;color:#fff;font-weight:750;letter-spacing:.06em;
+ background:linear-gradient(100deg,#205cce,#159d7f);box-shadow:0 6px 15px #155a9640}
+.cg-login-submit:not(:disabled):hover{filter:brightness(1.07)}
+.cg-login-error{margin:.1rem 0;color:#b42318;border-inline-start:3px solid #b42318;padding:.5rem}
+.cg-login-divider{display:flex;align-items:center;gap:.85rem;color:#8b95a4;font-size:.75rem;margin:1.5rem 0}
+.cg-login-divider:before,.cg-login-divider:after{content:"";height:1px;background:#e0e5ed;flex:1}
+.cg-login-secure{background:#f4f8fe;border:1px solid #e2eaf7;border-radius:.65rem;padding:1rem;text-align:left}
+.cg-login-secure strong{font-size:.9rem}
+.cg-login-secure p{font-size:.77rem;color:#627489;margin:.3rem 0 0}
+.cg-login-trust{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;color:#65768b;
+ margin:1.25rem 0 0;font-size:.67rem}
+.cg-login-trust span+span:before{content:"•";margin-right:.5rem}
+.cg-login-footer{text-align:center;font-size:.8rem;color:#b9c8de;display:grid;gap:.5rem;margin:1.3rem auto}
+.cg-login-footer p{margin:0}
+.cg-login-footer>div{display:flex;gap:1.5rem;justify-content:center}
+.cg-login-footer a{color:#d9e7ff}
+.cg-login-footer small{color:#99abc7}
+@media(max-width:32rem){.cg-login-brand img{height:3rem;width:3rem}
+ .cg-login-brand strong{font-size:.95rem}.cg-login-card{padding:1.2rem}
+ .cg-login-trust{font-size:.61rem;gap:.25rem}}
