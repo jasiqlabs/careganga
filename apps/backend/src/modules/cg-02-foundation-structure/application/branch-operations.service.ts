@@ -241,7 +241,9 @@ export class BranchOperationsService{
    ]);
    return {branches:rows.rows.map(x=>({branchRef:x.id,branchName:x.name,
        branchCode:x.branch_code,status:x.status,version:x.version,
-       branchType:x.branch_type,areaName:x.area_name,managerName:x.manager_name})),
+       branchType:x.branch_type,
+       openingDate:x.opening_date?new Date(x.opening_date).toISOString().slice(0,10):null,
+       areaName:x.area_name,managerName:x.manager_name})),
      totals:count.rows[0]??{total:0,active:0,inactive:0,closed:0},
      branchTypes:byType.rows.map(x=>({name:x.branch_type||"Unspecified",total:x.total})),
      offset,limit:50,nextOffset:rows.rows.length===50?offset+50:null};
