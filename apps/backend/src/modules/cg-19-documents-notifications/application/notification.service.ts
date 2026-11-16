@@ -171,31 +171,35 @@ export class NotificationService{
   async read(bearer:string,rawRef:unknown){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     const ref=needUuid(rawRef);
-    const result=await this.db.query<{id:string}>(`
-      INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)
-      SELECT n.realm_id,n.recipient_id,n.id FROM cg19_notification n
-      LEFT JOIN cg19_notice notice ON notice.id=n.notice_id AND notice.realm_id=n.realm_id
-      JOIN account a ON a.id=n.recipient_id AND a.realm_id=n.realm_id
-      WHERE n.id=$1 AND n.realm_id=$2 AND n.recipient_id=$3
-        AND n.expires_at>now() AND a.status='ACTIVE'
-        AND (n.notice_id IS NULL OR
-          (notice.state='ACTIVE' AND
-           (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
-      ON CONFLICT(recipient_id,notification_id) DO NOTHING RETURNING notification_id AS id
-    `,[ref,actor.realmId,actor.accountId]);
-    const exists=await this.db.query(`
-      SELECT 1 FROM cg19_notification n
-      JOIN account a ON a.id=n.recipient_id AND a.realm_id=n.realm_id
-      LEFT JOIN cg19_notice notice ON notice.id=n.notice_id
-        AND notice.realm_id=n.realm_id
-      WHERE n.id=$1 AND n.realm_id=$2
-        AND n.recipient_id=$3 AND n.expires_at>now()
-        AND a.status='ACTIVE' AND (n.notice_id IS NULL OR
-          (notice.state='ACTIVE' AND
-           (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
-    `,[ref,actor.realmId,actor.accountId]);
-    if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
-    return {read:true,changed:!!result.rowCount};
+    const client=await this.db.connect();let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      const exists=await client.query(`
+        SELECT 1 FROM cg19_notification n
+        JOIN account a ON a.id=n.recipient_id AND a.realm_id=n.realm_id
+        LEFT JOIN cg19_notice notice ON notice.id=n.notice_id
+          AND notice.realm_id=n.realm_id
+        WHERE n.id=$1 AND n.realm_id=$2
+          AND n.recipient_id=$3 AND n.expires_at>now()
+          AND a.status='ACTIVE' AND (n.notice_id IS NULL OR
+            (notice.state='ACTIVE' AND
+             (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
+        FOR SHARE OF n,a
+      `,[ref,actor.realmId,actor.accountId]);
+      if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
+      const applied=await client.query(`
+        INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)
+        VALUES($1,$2,$3) ON CONFLICT(recipient_id,notification_id)
+        DO NOTHING RETURNING notification_id
+      `,[actor.realmId,actor.accountId,ref]);
+      if(applied.rowCount)await client.query(`
+        INSERT INTO cg19_communication_event(realm_id,actor_id,notification_id,kind)
+        VALUES($1,$2,$3,'NOTIFICATION_READ')
+      `,[actor.realmId,actor.accountId,ref]);
+      await client.query("COMMIT");open=false;
+      return {read:true,changed:!!applied.rowCount};
+    }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
+    finally{client.release();}
   }
   async preferences(bearer:string){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
