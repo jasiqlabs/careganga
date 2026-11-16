@@ -24,8 +24,9 @@ export async function POST(request:NextRequest) {
     if(!Number.isFinite(expiry.getTime()) || expiry.getTime()<=Date.now())
       return NextResponse.json({message:"Sign-in status could not be confirmed"},{status:503});
     const response=NextResponse.json({signedIn:true});
+    const rememberMe="rememberMe" in body && body.rememberMe===true;
     response.cookies.set("cg_staff_session",data.sessionToken,{
-      httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:expiry
+      httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:rememberMe?expiry:undefined
     });
     response.headers.set("Cache-Control","no-store");
     return response;
