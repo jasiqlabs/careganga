@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {ActiveBranchEvidenceUploader} from "./active-branch-evidence-uploader";
 
 type Branch={branchRef:string;branchName:string;branchCode:string;status:string;version:number;branchType:string};
 type BranchDetail=Branch&{openingDate:string|null;geographyRef:string;postalAddress:string;
@@ -49,6 +50,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    [deptParent,setDeptParent]=useState(""),[deptHead,setDeptHead]=useState(""),
    [deptActive,setDeptActive]=useState(true);
  const [participantAccount,setParticipantAccount]=useState(""),[participantRole,setParticipantRole]=useState("");
+ const [foundationLink,setFoundationLink]=useState("");
+ const [replacementFiles,setReplacementFiles]=useState<string[]>([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [error,setError]=useState(""),[message,setMessage]=useState("");
  const [unknown,setUnknown]=useState(false),[operationKey,setOperationKey]=useState("");
@@ -83,7 +86,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    setLat(branch.latitude===null?"":String(branch.latitude));
    setLng(branch.longitude===null?"":String(branch.longitude));
    setPhone(branch.officialPhone);setEmail(branch.officialEmail);
-   setManager(branch.managerRef);
+   setManager(branch.managerRef);setReplacementFiles([]);
  }
  async function loadAssociations(ref:string){
    const [depts,linked,revision]=await Promise.all([
@@ -117,6 +120,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
      await req(route,method,body);
      setOperationKey("");setStagedOperation(null);
      setMessage("Foundation change saved and source-audited.");
+     setReplacementFiles([]);
      await refresh();
    }catch(e){
      const definite=e&&typeof e==="object"&&"status" in e&&
@@ -212,12 +216,29 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                <option value="">Choose eligible Foundation account</option>
                {managers.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
              </select></label>
+             {canManage&&<section className="form">
+               <h4>Replace protected branch evidence</h4>
+               <p>Private photos, registration documents and agreements are verified before
+                 an operating-profile revision is accepted.</p>
+               {(["BRANCH_PHOTO","BRANCH_LOGO","REGISTRATION_PROOF","AGREEMENT"] as const)
+                 .map(kind=><ActiveBranchEvidenceUploader
+                   key={selected.branchRef+":"+selected.version+":"+kind}
+                   branchRef={selected.branchRef} branchVersion={selected.version}
+                   classification={kind} onVerified={ref=>setReplacementFiles(old=>
+                     old.includes(ref)?old:[...old,ref])}/>)}
+               {!!replacementFiles.length&&<p className="notice">
+                 {replacementFiles.length} new verified private file(s) ready to save.</p>}
+             </section>}
              {canManage&&<button type="button" className="primary" disabled={busy||unknown}
-               onClick={()=>void mutate("PATCH",baseRef,{
+               onClick={()=>void mutate(
+                 replacementFiles.length?"POST":"PATCH",
+                 replacementFiles.length?
+                   "/branch-workflow/operating-branches/"+selected.branchRef+"/update":baseRef,{
                  expectedVersion:selected.version,branchName:name,branchType,
                  openingDate:openingDate||null,geographyRef,postalAddress:address,pinCode:pin,
                  latitude:lat.trim()?Number(lat):null,
-                 longitude:lng.trim()?Number(lng):null,officialPhone:phone,officialEmail:email,managerRef:manager
+                 longitude:lng.trim()?Number(lng):null,officialPhone:phone,officialEmail:email,managerRef:manager,
+                 ...(replacementFiles.length?{evidenceFiles:replacementFiles}:{})
                })}>Save operating profile</button>}
            </fieldset>
            {canAdmin&&selected.status!=="CLOSED"&&<div className="form">
@@ -296,11 +317,14 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                  baseRef+"/department-links/"+link.linkRef+"/end",{})}>Unlink</button>}
            </div>)}
            {canManage&&selected.status==="ACTIVE"&&<div className="form">
-             <label className="field">Link Foundation department<select id="foundation-department-choice">
+             <label className="field">Link Foundation department<select
+               value={foundationLink} onChange={e=>setFoundationLink(e.target.value)}>
                <option value="">Choose existing Foundation department</option>
                {foundationDepartments.map(d=><option key={d.value} value={d.value}>{d.label}</option>)}
              </select></label>
-             <p className="notice">Choose a Foundation department in the selector and link it using the available action.</p>
+             <button type="button" className="primary" disabled={busy||unknown||!foundationLink}
+               onClick={()=>void mutate("POST",baseRef+"/department-links",
+                 {departmentRef:foundationLink})}>Link selected department</button>
            </div>}
            <h3>Immutable operating revision history</h3>
            {history.length===0?<p>No changes have been recorded.</p>:
