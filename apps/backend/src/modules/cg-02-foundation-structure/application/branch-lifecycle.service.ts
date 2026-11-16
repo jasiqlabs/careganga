@@ -307,6 +307,13 @@ export class BranchLifecycleService{
    try{
      await client.query("BEGIN");tx=true;
      await this.scope(client,actor,"foundation.branches.admin");
+     // Same root-local protection as geography commands prevents an ACTIVE
+     // branch using a concurrently reparented/deactivated area.
+     const stableRoot=await client.query(`
+       SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR SHARE
+     `,[actor.realmId]);
+     if(!stableRoot.rowCount)
+       throw new ConflictException("The Foundation root is unavailable");
      await guardDecision(client,actor);
      await guardFiles(client,actor);
      const submitted=await client.query<SubmissionRow>(`
