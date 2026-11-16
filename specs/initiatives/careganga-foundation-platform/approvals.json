@@ -5043,7 +5043,7 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
       "story_count": 4,
       "qa_count": 51,
-      "task_definitions_sha256": "868b0bef6de9be850da6fedf3c5c1d1f91c52f396ef673bcb2587a5675554ada",
+      "task_definitions_sha256": "c6e454877c0a4b982c97c21b827d00104bc084b43a651c62c2414206c4998b52",
       "approval_history": [
         {
           "approved_at": "2026-11-15T15:36:06.450Z",
@@ -5053,7 +5053,7 @@
           "scope": "PREVIOUS_APPROVAL_BEFORE_EXPLICIT_RECOVERY_OR_CHANNEL_REQUIREMENT"
         }
       ],
-      "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited",
+      "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited; 2026-11-16 tasks-definition prefix SHA reference refreshed after purely administrative QA-count/source-gap checkpoint. Module content SHA and 51-case design scope unchanged; formal/runtime gates unchanged.",
       "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     },
     "dld/cg-01-identity-access": {
@@ -5167,10 +5167,10 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner 15 Nov 2026 explicitly requested 24-module developer tracker review, where Forgot/Reset Password and SMS/Email reside, per-channel completeness and preserving original owner/approval process. Current owner source plan reviewed and bounded updates delegated; no actual code or provider testing.",
       "artifact": "modules/cg-01-identity-access/tasks.md",
-      "sha256": "8e3176d6895e202b39059a7765fea2946fb0c1569d17609ad369c2ffc34a53e0",
-      "current_artifact_sha256": "8e3176d6895e202b39059a7765fea2946fb0c1569d17609ad369c2ffc34a53e0",
+      "sha256": "cf8b2b213d8ca895c7aee8084b186600ecf0f4e9860316aadc1e98292f938165",
+      "current_artifact_sha256": "cf8b2b213d8ca895c7aee8084b186600ecf0f4e9860316aadc1e98292f938165",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:32:03.304Z",
+      "approved_at": "2026-11-16",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-01-identity-access/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG_01_IDENTITY_ACCESS_SOURCE_DESIGN_REVIEWED",
@@ -5205,7 +5205,7 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTED_NOT_PROVIDER_VERIFIED_NOT_RELEASE_APPROVED",
       "story_count": 4,
       "qa_count": 51,
-      "task_definitions_sha256": "868b0bef6de9be850da6fedf3c5c1d1f91c52f396ef673bcb2587a5675554ada",
+      "task_definitions_sha256": "c6e454877c0a4b982c97c21b827d00104bc084b43a651c62c2414206c4998b52",
       "approval_history": [
         {
           "approved_at": "2026-11-15T15:36:06.450Z",
@@ -5213,9 +5213,16 @@
           "quality_status": "CURRENT_CG01_SOURCE_DESIGN_COMPLETED",
           "qa_count": 47,
           "scope": "PREVIOUS_APPROVAL_BEFORE_EXPLICIT_RECOVERY_OR_CHANNEL_REQUIREMENT"
+        },
+        {
+          "approved_at": "2026-11-15T17:32:03.304Z",
+          "sha256": "8e3176d6895e202b39059a7765fea2946fb0c1569d17609ad369c2ffc34a53e0",
+          "quality_status": "CURRENT_CG01_SOURCE_DESIGN_REVIEWED",
+          "qa_count": 51,
+          "scope": "PREVIOUS_51_CASE_APPROVAL_BEFORE_2026_11_16_ADMINISTRATIVE_SOURCE_STATUS_RECONCILIATION"
         }
       ],
-      "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited",
+      "reapproval_reason": "Forgot Password / Reset Password / authenticated Change Password first-owner closure; current auth reset/change database and UX contract; US-001 four added real recovery/channel/expiry MFA/session QA. Prior plans and parent approvals preserved, no payment or RBAC modules edited; 2026-11-16 delegated administrative re-review: correct count 47 -> 51 to agree with previously approved 51 definitions and annotate four untraced/source-gap cases, without changing any QA ID, case acceptance definition or owning module boundaries. Current-hash document rebind only; code security/DB/runtime, provider and Harness stage remain NOT_RUN.",
       "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
     },
     "planning/cg-17-healthcare-assistance-settlements": {
