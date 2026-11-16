@@ -344,8 +344,26 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
           {!createOpen&&!selected&&<div className="role-empty">Select a permitted branch draft,
             or start a new registration.</div>}
         </div>
-        <aside className="role-pane"><h2>Registration status</h2>
-          <p>Seven stages: branch, location, documents, agreement, manager, departments and review.</p>
+        <aside className="role-pane"><h2>Branch Setup Summary</h2>
+          <p>Seven-stage registration with real draft and approval status.</p>
+          {selected&&<div className="branch-setup-summary">
+            <label htmlFor="branch-stage-progress">Stage reached:
+              <strong>{selected.currentStep} of 7</strong></label>
+            <progress id="branch-stage-progress" max={7}
+              value={selected.currentStep}/>
+            <dl className="audit-detail">
+              <dt>Branch name</dt><dd>{draftName.trim()||"Not provided"}</dd>
+              <dt>Branch type</dt><dd>{branchType.trim()||"Not provided"}</dd>
+              <dt>Opening date</dt><dd>{openingDate||"Not provided"}</dd>
+              <dt>Manager</dt><dd>{managerOptions.find(x=>x.value===manager)?.label||
+                selected.managerName||"Not assigned"}</dd>
+              <dt>Registration proof selected</dt><dd>{registrationFiles.length}</dd>
+              <dt>Signed agreements selected</dt><dd>{agreementFiles.length}</dd>
+            </dl>
+            <p className="notice">Evidence becomes authoritative only after
+              the selected documents are saved and CG19 verifies them.
+              A branch code is issued only after genuine Super Admin approval.</p>
+          </div>}
           {!!submissionNotice&&<p className="notice" role="status">{submissionNotice}</p>}
           <dl className="audit-detail">
             <dt>Registration</dt><dd>{registrationStatus?.status.replaceAll("_"," ")??"Select a draft"}</dd>
