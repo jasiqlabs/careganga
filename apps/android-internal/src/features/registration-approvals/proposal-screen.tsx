@@ -43,7 +43,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   const [account,setAccount]=useState(""),[role,setRole]=useState("");
   const [form,setForm]=useState(false),[routeForm,setRouteForm]=useState(false);
   const [firstReviewer,setFirstReviewer]=useState<"NONE"|"ACCESS_MANAGER">("NONE");
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [previous,setPrevious]=useState<string|null>(null);
   const [key,setKey]=useState("");
   const [unknown,setUnknown]=useState(false);
@@ -54,7 +54,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   const [ownerBusy,setOwnerBusy]=useState(false);
   const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
   const [decisionRemarks,setDecisionRemarks]=useState("");
-  const [decisionTotp,setDecisionTotp]=useState("");
+  const [decisionPassword,setDecisionPassword]=useState("");
   const [decisionConfirmed,setDecisionConfirmed]=useState(false);
   const [decisionUnknown,setDecisionUnknown]=useState(false);
   const [decisionKey,setDecisionKey]=useState("");
@@ -159,7 +159,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
     finally{setBusy(false);}
   }
   async function see(entry:CG03CaseView){
-    setBusy(true);setDetail(null);setOwnerOutcome(null);setDecisionAction(null);setDecisionTotp("");
+    setBusy(true);setDetail(null);setOwnerOutcome(null);setDecisionAction(null);setDecisionPassword("");
     setDecisionConfirmed(false);
     try{
       const result=await api<CG03CaseDetail>(token,"cases/"+entry.caseRef);
@@ -194,25 +194,25 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   }
   function selectDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
     if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
-    setDecisionAction(action);setDecisionRemarks("");setDecisionTotp("");
+    setDecisionAction(action);setDecisionRemarks("");setDecisionPassword("");
     setDecisionConfirmed(false);setDecisionKey(Crypto.randomUUID());setMessage("");
   }
   async function commitDecision(){
     if(!detail||!decisionAction||busy||decisionUnknown)return;
-    if(detail.requiresFreshAuthenticator&&!/^[0-9]{6}$/.test(decisionTotp)){
-      setMessage("Enter a fresh authenticator code for the final decision.");return;
+    if(detail.requiresCurrentPassword&&(decisionPassword.length<8||decisionPassword.length>1024)){
+      setMessage("Enter a current password for the final decision.");return;
     }
     if(!decisionConfirmed){setDecisionConfirmed(true);return;}
     setBusy(true);setMessage("");
     try{
       const result=await api<{status:string;revision:number}>(token,
         "cases/"+detail.caseRef+"/decisions","POST",{
-          action:decisionAction,remarks:decisionRemarks.trim(),totp:decisionTotp,
+          action:decisionAction,remarks:decisionRemarks.trim(),currentPassword:decisionPassword,
           expectedRevision:detail.revision,requestKey:decisionKey
         });
       if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
       const item=detail;setDecisionAction(null);setDecisionConfirmed(false);
-      setDecisionKey("");setDecisionTotp("");
+      setDecisionKey("");setDecisionPassword("");
       setMessage("Review decision recorded. Account access is confirmed separately.");
       await load();await see(item);
     }catch(error){
@@ -240,15 +240,15 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   }
   async function version(){
     if(!canConfigure||!routeForm||busy||unknown)return;
-    if(!/^[0-9]{6}$/.test(totp)){setMessage("Enter a fresh six-digit code.");return;}
+    if((currentPassword.length<8||currentPassword.length>1024)){setMessage("Enter a current password.");return;}
     setBusy(true);setPendingKind("PROCESS");
     try{
       const result=await api<{version:number}>(token,"process/versions","POST",{
         firstReviewerCapability:firstReviewer==="NONE"?null:"roles.assign",
-        requestKey:key,totp
+        requestKey:key,currentPassword
       });
       if(!Number.isInteger(result.version))throw Error("UNKNOWN");
-      setKey("");setRouteForm(false);setTotp("");
+      setKey("");setRouteForm(false);setCurrentPassword("");
       setMessage("New review process saved. Older applications keep their process.");
       await load();
     }catch(error){
@@ -278,11 +278,11 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
           <Text>Approval process: {route?.active?"Version "+route.version:
             "Starts with first eligible application"}</Text>
           <Text>{route?.firstReviewer?route.firstReviewer+" then ":""}
-            Different Foundation Super Admin (fresh MFA)</Text>
+            Different Foundation Super Admin (current password confirmation)</Text>
           {canConfigure&&<Pressable accessibilityRole="button"
             disabled={busy||unknown} style={styles.button}
             onPress={()=>{setRouteForm(true);setForm(false);setKey(Crypto.randomUUID());
-              setFirstReviewer(route?.firstReviewer?"ACCESS_MANAGER":"NONE");setTotp("");}}>
+              setFirstReviewer(route?.firstReviewer?"ACCESS_MANAGER":"NONE");setCurrentPassword("");}}>
             <Text>Version approval process</Text></Pressable>}
         </View>}
       {!form&&!routeForm&&!detail&&<View style={styles.card}>
@@ -346,14 +346,14 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
           accessibilityState={{selected:firstReviewer==="ACCESS_MANAGER"}}
           style={styles.option} onPress={()=>setFirstReviewer("ACCESS_MANAGER")}>
           <Text>Access manager, then Super Admin</Text></Pressable>
-        <Text style={styles.heading}>Fresh authenticator code</Text>
-        <TextInput accessibilityLabel="Fresh authenticator code" style={styles.input}
-          keyboardType="number-pad" maxLength={6} value={totp}
-          onChangeText={x=>setTotp(x.replace(/[^0-9]/g,""))}/>
+        <Text style={styles.heading}>Current password</Text>
+        <TextInput accessibilityLabel="Current password" style={styles.input}
+          secureTextEntry autoComplete="current-password" maxLength={1024} value={currentPassword}
+          onChangeText={x=>setCurrentPassword(x)}/>
         <View style={styles.row}><Pressable accessibilityRole="button" style={styles.button}
           onPress={()=>setRouteForm(false)}><Text>Cancel</Text></Pressable>
           <Pressable accessibilityRole="button" style={styles.primary}
-            disabled={busy||totp.length!==6} onPress={()=>void version()}>
+            disabled={busy||currentPassword.length<8} onPress={()=>void version()}>
             <Text style={styles.primaryText}>Create new process version</Text></Pressable></View>
       </View>}
       {detail&&<View style={styles.card}>
@@ -401,12 +401,12 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
             <TextInput accessibilityLabel="Reviewer remarks" style={styles.input}
               multiline maxLength={500} value={decisionRemarks}
               onChangeText={value=>{setDecisionRemarks(value);setDecisionConfirmed(false);}}/>
-            {detail.requiresFreshAuthenticator&&<>
-              <Text style={styles.heading}>Fresh authenticator code</Text>
+            {detail.requiresCurrentPassword&&<>
+              <Text style={styles.heading}>Current password</Text>
               <TextInput accessibilityLabel="Fresh reviewer authenticator code"
-                keyboardType="number-pad" maxLength={6} style={styles.input}
-                value={decisionTotp} onChangeText={v=>{
-                  setDecisionTotp(v.replace(/[^0-9]/g,""));setDecisionConfirmed(false);}}/>
+                secureTextEntry autoComplete="current-password" maxLength={1024} style={styles.input}
+                value={decisionPassword} onChangeText={v=>{
+                  setDecisionPassword(v);setDecisionConfirmed(false);}}/>
             </>}
             {decisionConfirmed&&<Text>
               Confirm {decisionAction.toLowerCase()} for {detail.reference}.
