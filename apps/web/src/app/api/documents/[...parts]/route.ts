@@ -7,6 +7,18 @@ const reply=(status:number,message:string)=>NextResponse.json(
   {message},{status,headers:{"Cache-Control":"no-store"}}
 );
 function allowed(parts:string[],method:"GET"|"POST"){
+  if(parts.length===2&&parts[0]==="letters"&&parts[1]==="template")
+    return method==="GET";
+  if(parts.length===3&&parts[0]==="letters"&&parts[1]==="template"&&
+    parts[2]==="approve")return method==="POST";
+  if(parts.length===3&&parts[0]==="letters"&&parts[1]==="case"&&
+    UUID.test(parts[2]))return method==="GET";
+  if(parts.length===2&&parts[0]==="letters"&&parts[1]==="issue")
+    return method==="POST";
+  if(parts.length===3&&parts[0]==="letters"&&UUID.test(parts[1])&&
+    parts[2]==="download")return method==="GET";
+  if(parts.length===3&&parts[0]==="letters"&&UUID.test(parts[1])&&
+    ["reconcile","revoke"].includes(parts[2]))return method==="POST";
   if(parts.length===2&&parts[0]==="files"&&parts[1]==="initiate")
     return method==="POST";
   if(parts.length===3&&parts[0]==="files"&&
@@ -27,7 +39,10 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
   if(!process.env.BACKEND_URL)
     return reply(503,"The protected documents service is unavailable.");
   let body:string|undefined;
-  if(method==="POST"&&parts.length===2){
+  if(method==="POST"&&
+    ((parts.length===2&&["initiate","issue"].includes(parts[1]))||
+      (parts.length===3&&parts[1]==="template"&&parts[2]==="approve")||
+      (parts.length===3&&parts[0]==="letters"&&parts[2]==="revoke"))){
     try{
       const input:unknown=await request.json();
       if(!input||typeof input!=="object"||Array.isArray(input))throw Error();
@@ -35,7 +50,8 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
       if(body.length>1500)throw Error();
     }catch{return reply(400,"Check the file details.");}
   }
-  const download=parts.length===3&&parts[0]==="files"&&parts[2]==="download";
+  const download=parts.length===3&&
+    (parts[0]==="files"||parts[0]==="letters")&&parts[2]==="download";
   try{
     const path="/api/documents/"+parts.join("/");
     const target=new URL(path,process.env.BACKEND_URL);
@@ -57,6 +73,8 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
     }
     if(download){
       const mime=response.headers.get("content-type")??"application/octet-stream";
+      if(parts[0]==="letters"&&mime!=="application/pdf")
+        return reply(503,"The private letter format cannot be verified.");
       if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime))
         return reply(503,"The private file format cannot be verified.");
       const bytes=response.headers.get("content-length");
@@ -64,7 +82,9 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
         return reply(503,"The private file is too large.");
       return new NextResponse(response.body,{
         status:200,headers:{"Content-Type":mime,"Cache-Control":"private, no-store",
-          "Content-Disposition":'attachment; filename="Private-case-evidence"',
+          "Content-Disposition":parts[0]==="letters"?
+            'attachment; filename="Private-access-confirmation.pdf"':
+            'attachment; filename="Private-case-evidence"',
           "X-Content-Type-Options":"nosniff"}
       });
     }
