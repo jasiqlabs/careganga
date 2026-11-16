@@ -16,7 +16,7 @@ The PDF does **not** specify numeric response-time, availability, recovery or lo
 
 | Group | Non-negotiable P0 behaviour | Proposed measurable starting target / verification |
 | --- | --- | --- |
-| **Security / isolation** | Backend enforces roles, geography, center and sensitive-data access on all reads/writes/exports; secure login, session and 2FA support | Negative tests using public, staff, Foundation Admin and two unrelated centers; **zero cross-scope data disclosures** |
+| **Security / isolation** | Backend enforces roles, geography, center and sensitive-data access on all reads/writes/exports; one CG-01 mobile/email + password login, revocable sessions, purpose-bound email/SMS password-reset OTP and fresh-password confirmation for sensitive actions | Negative tests using public, staff, Foundation Admin and two unrelated centers; **zero cross-scope data disclosures** |
 | **Booking integrity** | No double-booking, inconsistent auto-center assignment or silent fee change | 20 simultaneous attempts to book one last slot → only permitted capacity succeeds; every other gets accurate unavailable response |
 | **Financial integrity** | No duplicate payment, contribution, expense, payroll or ledger posting after retry/webhook | Replay payment callback and requests; verify **one** accepted monetary outcome per source event |
 | **Consistency** | Same authoritative data across Admin, center portal, website and Android | State changes reflected on authenticated refresh; public cache invalidation proposed **≤60 seconds** after publish |

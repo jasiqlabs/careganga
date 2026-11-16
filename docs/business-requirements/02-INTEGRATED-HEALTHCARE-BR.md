@@ -38,9 +38,9 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 
 - **CG-14-BR01:** Foundation administrators can register and manage healthcare provider organizations and applicable branches/locations, including clinics, hospitals, nursing homes, diagnostic centers and labs.
 - **CG-14-BR02:** Center profile includes name/code/type, operating address with geography and PIN, phone/email, map coordinates, photographs/logo, description, services, facilities, working hours, relevant licensing/registration documents and contact/settlement information.
-- **CG-14-BR03:** Center representatives can submit or update their own permitted profile and center documents using center login, subject to provider verification/publication rules.
+- **CG-14-BR03:** Center representatives use their existing Admin-created CG-01 mobile/email + password account plus an explicit CG-14 center affiliation to submit or update their own permitted profile and documents; provider review and publication are separate guarded decisions.
 - **CG-14-BR04:** Foundation verifies center authenticity, submitted documents/facilities and decides approve/reject/return-for-correction with remarks/history through CG-03.
-- **CG-14-BR05:** Foundation can activate, suspend, deactivate or block center login and public discoverability according to approved policy; suspended providers must not receive new public bookings.
+- **CG-14-BR05:** Foundation manages CG-14 center affiliation active/suspended/revoked status and separately manages public discoverability; CG-01 alone manages account status, credential and revocable login sessions. Suspended providers must not receive new public bookings.
 - **CG-14-BR06:** A parent center can have multiple registered operating locations/branches; center staff permissions must be restricted to their authorized locations.
 - **CG-14-BR07:** Center services/facilities are configurable, including consultation, lab/diagnostics, health checkups and applicable published center services. A provider's category is not itself a booked procedure.
 - **CG-14-BR08:** Provider administration stores bank and settlement details under restricted finance permissions and does not disclose them publicly.
@@ -82,7 +82,7 @@ Healthcare is **an original, first-class domain inside the CareGanga Foundation 
 ### 4.2 Patient registration, identity and records
 
 - **CG-15-BR09:** New patients can register from the public booking flow or authorized center reception, while existing patients can be located using verified identifiers/phone under access controls.
-- **CG-15-BR10:** Patient details include name, verified mobile/OTP for public access, optional email, date of birth/age, gender, optional blood group as health profile attribute, emergency contact, state/district/block, PIN and address as applicable.
+- **CG-15-BR10:** Patient details include name, verified mobile for contact/identity-claim ownership using a purpose-bound OTP challenge separate from login, optional email, date of birth/age, gender, optional blood group as health profile attribute, emergency contact, state/district/block, PIN and address as applicable. Protected patient sign-in reuses the existing CG-01 mobile/email + password session, never OTP-only login.
 - **CG-15-BR11:** Optional uploaded personal identity documents, patient photo and medical report/prescription files have appropriate file validation and access controls.
 - **CG-15-BR12:** Generate a unique patient identifier/virtual patient ID on the approved patient lifecycle and provide a patient profile/ID view. Mockups show a 12-digit ID format; exact numbering scheme requires PRD approval.
 - **CG-15-BR13:** Detect potential duplicate patient registrations and support appropriately reviewed correction/merging without losing appointment or medical history.
