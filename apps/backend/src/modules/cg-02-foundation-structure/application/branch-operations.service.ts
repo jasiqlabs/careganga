@@ -395,7 +395,9 @@ export class BranchOperationsService{
        return {kind:"BRANCH",id:branch.id,version:updated.rows[0].version};
      });
  }
- async departments(bearer:string,branchRef:string){
+ async departments(bearer:string,branchRef:string,offset=0){
+   if(!Number.isSafeInteger(offset)||offset<0||offset>50000)
+     throw new BadRequestException("Check branch department page");
    const actor=await this.sessions.requireAction(bearer,"foundation.branches.view"),
      admin=await this.root(bearer);
    const client=await this.db.connect();
@@ -403,15 +405,16 @@ export class BranchOperationsService{
      const branch=await this.branch(client,actor,branchRef,admin);
      const rows=await client.query<Dept>(`
        SELECT * FROM department WHERE root_realm_id=$1 AND scope_kind='BRANCH'
-         AND branch_id=$2 ORDER BY name,id LIMIT 100
-     `,[actor.realmId,branch.id]);
+         AND branch_id=$2 ORDER BY name,id LIMIT 100 OFFSET $3
+     `,[actor.realmId,branch.id,offset]);
      const labels=await this.identity.accountLabels(client,actor,
        rows.rows.map(x=>x.head_account_ref).filter((x):x is string=>!!x));
      return {departments:rows.rows.map(x=>({departmentRef:x.id,name:x.name,
        kind:x.kind,description:x.description,active:x.active,version:x.version,
        geographyRef:x.geography_area_id,parentRef:x.parent_department_id,
        headAccountRef:x.head_account_ref,
-       headDisplayName:x.head_account_ref?labels[x.head_account_ref]??null:null}))};
+       headDisplayName:x.head_account_ref?labels[x.head_account_ref]??null:null})),
+       nextOffset:rows.rows.length===100?offset+100:null};
    }finally{client.release();}
  }
  async createDepartment(bearer:string,branchRef:string,input:unknown){
