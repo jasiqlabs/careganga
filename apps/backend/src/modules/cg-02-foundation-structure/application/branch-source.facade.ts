@@ -126,6 +126,21 @@ export class BranchSourceFacade{
  /** Historical evidence revocation cannot retarget a submitted snapshot.
   * Check CG-01 current grants and CG-02 scope in the same transaction.
   */
+ /** The CG-02 current operating branch is the only authority for whether
+  * a verified document is still attached to an ACTIVE profile. Private
+  * CG-19 revocation checks this inside its file-locked transaction.
+  */
+ async guardNotCurrentActiveEvidence(client:PoolClient,actor:VerifiedFoundationActor,
+   fileRef:string){
+   const rows=await client.query<{id:string}>(`
+     SELECT id FROM branch WHERE root_realm_id=$1 AND status='ACTIVE'
+       AND evidence_versions @> jsonb_build_array(jsonb_build_object('fileRef',$2::text))
+     LIMIT 1 FOR SHARE
+   `,[actor.realmId,ensureId(fileRef)]);
+   if(rows.rows[0])
+     throw new ConflictException(
+       "Replace this document in the active branch profile before revoking it");
+ }
  async guardHistoricalRegistration(client:PoolClient,actor:VerifiedFoundationActor,
    registrationRef:string,write=true){
    await this.identity.assertCurrent(client,actor,
