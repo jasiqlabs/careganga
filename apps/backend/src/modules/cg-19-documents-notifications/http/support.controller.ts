@@ -1,4 +1,4 @@
-import {Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req} from "@nestjs/common";
+import {BadRequestException,Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req} from "@nestjs/common";
 import {createHmac,timingSafeEqual} from "node:crypto";
 import {SupportService} from "../application/support.service";
 
@@ -51,8 +51,10 @@ export class SupportController{
   @Post("cases/search")
   search(@Headers("authorization")token:string,@Body()body:unknown){
     if(!body||typeof body!=="object"||Array.isArray(body))
-      return this.support.cases(token,30,"ALL");
+      throw new BadRequestException("Check support search");
     const x=body as Record<string,unknown>;
+    if(Object.keys(x).some(k=>!["limit","filter","cursor","search"].includes(k)))
+      throw new BadRequestException("Unsupported search information");
     return this.support.cases(token,x.limit??30,x.filter??"ALL",x.cursor??null,
       x.search??"");
   }
