@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { hashPassword } from "../domain/secret-crypto";
 import type { Pool, PoolClient } from "pg";
 import { DATABASE } from "../../../core/infrastructure/database.module";
 import { RecoveryDelivery } from "../infrastructure/recovery-delivery";
@@ -219,6 +220,47 @@ export class AccountsService {
       FOR SHARE OF r`,[roleRef,realmId]);
     if(!selected.rowCount)throw new ForbiddenException("Choose an eligible custom role");
   }
+  /** Greenfield: an authorized Admin directly creates an ACTIVE account with one eligible role. */
+  async create(bearer:string,input:{displayName:string;mobile:string;email?:string|null;
+    password:string;roleRef:string;requestKey:string},correlationRef:string):Promise<CommandResult>{
+    if(!input||typeof input!=="object")throw new BadRequestException("Check staff details");
+    const displayName=typeof input.displayName==="string"?
+      input.displayName.trim().replace(/\s+/g," "):"";
+    const mobile=typeof input.mobile==="string"?input.mobile.trim():"";
+    const email=typeof input.email==="string"?input.email.trim().toLowerCase():null;
+    if(displayName.length<2||displayName.length>160||!/^[6-9][0-9]{9}$/.test(mobile)
+      ||(email!==null&&(email.length>254||!EMAIL.test(email)))
+      ||typeof input.password!=="string"||input.password.length<8
+      ||Buffer.byteLength(input.password,"utf8")>1024)
+      throw new BadRequestException("Check name, mobile, optional email and password");
+    const roleRef=checkRef(input.roleRef);
+    checkRef(input.requestKey);
+    // Scope and role assignment are *both* checked before commit; do not let Admin UI dictate authority.
+    await this.actor(bearer,"roles.assign");
+    const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
+    if(key.length!==32)throw new Error("Protected identity key unavailable");
+    const passwordProof=createHmac("sha256",key).update(input.password,"utf8").digest("hex");
+    const passwordHash=await hashPassword(input.password);
+    return this.perform(bearer,"accounts.invite","INVITE",input.requestKey,
+      {displayName,mobile,email,roleRef,passwordProof},correlationRef,async(client,actor)=>{
+        await this.authorize(client,actor,"roles.assign");
+        await this.eligibleRole(client,roleRef,actor.realmId);
+        const created=await client.query<{id:string;revision:number}>(String.raw`
+          INSERT INTO account(realm_id,display_name,normalized_mobile,normalized_email,
+             contact_phone,status)
+          VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id,revision`,
+          [actor.realmId,displayName,mobile,email,"+91"+mobile]);
+        const accountRef=created.rows[0].id;
+        await client.query(
+          "INSERT INTO identity_credential(account_id,password_hash) VALUES($1,$2)",
+          [accountRef,passwordHash]);
+        await client.query(String.raw`
+          INSERT INTO account_role(account_id,role_id,realm_id,assigned_by)
+          VALUES($1,$2,$3,$4)`,[accountRef,roleRef,actor.realmId,actor.accountId]);
+        return {accountRef,revision:created.rows[0].revision,status:"ACTIVE",displayName};
+      });
+  }
+
   async invite(bearer:string,input:Invite,correlationRef:string):Promise<CommandResult>{
     if(!input||typeof input!=="object")throw new BadRequestException();
     const displayName=typeof input.displayName==="string"?input.displayName.trim().replace(/\s+/g," "):"";
