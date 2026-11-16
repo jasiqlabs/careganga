@@ -7,6 +7,7 @@ import { AccountsScreen } from "./accounts-screen";
 import { InvitationActivationScreen } from "./invitation-activation-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
+import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -52,12 +53,13 @@ export function StaffAuthenticationScreen(){
   const [rolesOpen,setRolesOpen]=useState(false);
   const [policyOpen,setPolicyOpen]=useState(false);
   const [approvalsOpen,setApprovalsOpen]=useState(false);
+  const [documentsOpen,setDocumentsOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -150,7 +152,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -168,6 +170,11 @@ export function StaffAuthenticationScreen(){
     return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
       canPropose={roleActions.includes("approvals.propose")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
+  if(documentsOpen&&token&&actor&&
+    roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")&&
+    (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
+    return <PrivateCaseEvidenceScreen token={token}
+      onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
@@ -194,6 +201,13 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>setApprovalsOpen(true)}>
                 <Text style={styles.buttonText}>Registration & Approval</Text>
+              </Pressable>}
+            {roleActions.includes("documents.files.view")&&
+              roleActions.includes("documents.files.manage")&&
+              (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose"))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setDocumentsOpen(true)}>
+                <Text style={styles.buttonText}>Private Case Documents</Text>
               </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
