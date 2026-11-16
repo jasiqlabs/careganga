@@ -3,14 +3,14 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Template={configured:boolean;version:number;title?:string;body?:string;status:string};
 type Letter={documentRef:string;state:string;issueRevision:number;templateVersion:number;
   issuedAt:string|null;canDownload:boolean;canReconcile:boolean};
-type Response={letters:Letter[];caseNumber:string};
+type LetterListResponse={letters:Letter[];caseNumber:string};
 async function request<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
-  let response:Response;
+  let response:globalThis.Response;
   try{
     response=await fetch("/api/documents/letters/"+path,{
       method,credentials:"same-origin",cache:"no-store",
       ...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})
-    }) as Response;
+    });
   }catch{throw Error("UNKNOWN");}
   if(response.status===401||response.status===403)throw Error("DENIED");
   if(response.status===409)throw Error("CONFLICT");
@@ -59,7 +59,7 @@ export function PrivateLetterPanel({caseRef,sourceRevision,canIssue,canRevoke}:{
     try{
       const [t,l]=await Promise.all([
         request<Template>("template"),
-        request<Response>("case/"+encodeURIComponent(caseRef))
+        request<LetterListResponse>("case/"+encodeURIComponent(caseRef))
       ]);
       if(!t||!Number.isInteger(t.version)||!Array.isArray(l.letters)||
         l.letters.length>20)throw Error("UNKNOWN");
