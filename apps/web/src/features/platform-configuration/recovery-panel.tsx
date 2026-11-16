@@ -22,7 +22,7 @@ async function call<T>(path:string,method="GET",body?:object):Promise<T>{
 function describe(e:unknown):string{
   const reason=e instanceof Error?e.message:"UNKNOWN";
   return reason==="DENIED"?"Your recovery permissions expired. Sign in again.":
-    reason==="VALIDATION"?"Check the secured backup reference and fresh authenticator code.":
+    reason==="VALIDATION"?"Check the secured backup reference and current password.":
     reason==="CONFLICT"?"This recovery request changed. Verify the earlier request.":
     reason==="RATE_LIMITED"?"Too many proof attempts. Try again later.":
     "The recovery request outcome could not be verified. Check its original reference before retrying.";
@@ -45,10 +45,10 @@ export function RecoveryPanel(){
   const [unknown,setUnknown]=useState(false);
   const [notice,setNotice]=useState<Feedback|null>(null);
   const [backupReference,setBackupReference]=useState("");
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [review,setReview]=useState(false);
   const [authorization,setAuthorization]=useState<CG21RecoveryOperation|null>(null);
-  const [authorizationTotp,setAuthorizationTotp]=useState("");
+  const [authorizationPassword,setAuthorizationPassword]=useState("");
   const [authorizationReview,setAuthorizationReview]=useState(false);
   const pendingKind=useRef<"REQUEST"|"AUTHORIZE">("REQUEST");
   const requestKey=useRef("");
@@ -76,9 +76,9 @@ export function RecoveryPanel(){
     e.preventDefault();
     if(saving||unknown||availability?.status!=="AVAILABLE")return;
     if(!/^backupref:[A-Za-z0-9/_-]{6,170}$/.test(backupReference)||
-      !/^[0-9]{6}$/.test(totp)){
+      (currentPassword.length<8||currentPassword.length>1024)){
       setNotice({kind:"error",message:
-        "Enter a secured backup reference and fresh six-digit authenticator code."});return;
+        "Enter a secured backup reference and current password."});return;
     }
     if(!review){setReview(true);return;}
     if(!requestKey.current)requestKey.current=crypto.randomUUID();
@@ -86,7 +86,7 @@ export function RecoveryPanel(){
     setSaving(true);setNotice(null);
     try{
       const outcome=await call<CG21RecoveryOutcome>("recovery/request","POST",{
-        backupReference,expectedVersion:0,requestKey:requestKey.current,totp
+        backupReference,expectedVersion:0,requestKey:requestKey.current,currentPassword
       });
       if(outcome.status==="NOT_AVAILABLE"){
         setNotice({kind:"info",message:
@@ -94,7 +94,7 @@ export function RecoveryPanel(){
         return;
       }
       if(!["REQUESTED","REPLAY_CONFIRMED"].includes(outcome.status))throw Error("UNKNOWN");
-      setBackupReference("");setTotp("");setReview(false);requestKey.current="";
+      setBackupReference("");setCurrentPassword("");setReview(false);requestKey.current="";
       setNotice({kind:"success",message:
         "Recovery request recorded. No restore has been started or completed."});
       await read();
@@ -113,8 +113,8 @@ export function RecoveryPanel(){
         endpoint+encodeURIComponent(requestKey.current));
       if(result.status==="CONFIRMED"){
         setUnknown(false);requestKey.current="";setReview(false);
-        setBackupReference("");setTotp("");setAuthorization(null);
-        setAuthorizationTotp("");setAuthorizationReview(false);
+        setBackupReference("");setCurrentPassword("");setAuthorization(null);
+        setAuthorizationPassword("");setAuthorizationReview(false);
         setNotice({kind:"success",message:
           pendingKind.current==="AUTHORIZE"?
             "Authorization was recorded. No restoration was executed.":
@@ -128,13 +128,13 @@ export function RecoveryPanel(){
   function startAuthorization(row:CG21RecoveryOperation){
     if(saving||unknown||availability?.status!=="AVAILABLE"||row.status!=="REQUESTED")return;
     pendingKind.current="AUTHORIZE";requestKey.current=crypto.randomUUID();
-    setAuthorization(row);setAuthorizationTotp("");setAuthorizationReview(false);setNotice(null);
+    setAuthorization(row);setAuthorizationPassword("");setAuthorizationReview(false);setNotice(null);
   }
   async function saveAuthorization(e:FormEvent<HTMLFormElement>){
     e.preventDefault();
     if(!authorization||saving||unknown||availability?.status!=="AVAILABLE")return;
-    if(!/^[0-9]{6}$/.test(authorizationTotp)){
-      setNotice({kind:"error",message:"Enter a fresh six-digit authenticator code."});return;
+    if((authorizationPassword.length<8||authorizationPassword.length>1024)){
+      setNotice({kind:"error",message:"Enter a current password."});return;
     }
     if(!authorizationReview){setAuthorizationReview(true);return;}
     setSaving(true);setNotice(null);
@@ -142,14 +142,14 @@ export function RecoveryPanel(){
       const result=await call<{status:string;version?:number}>(
         "recovery/operations/"+encodeURIComponent(authorization.operationRef)+"/authorize",
         "POST",{expectedVersion:authorization.version,requestKey:requestKey.current,
-          totp:authorizationTotp});
+          currentPassword:authorizationPassword});
       if(result.status==="NOT_AVAILABLE"){
         setNotice({kind:"info",message:"Backup readiness was not verified. No authorization was recorded."});
         return;
       }
       if(result.status!=="PRIVILEGED_AUTHORIZED"&&result.status!=="REPLAY_CONFIRMED")
         throw Error("UNKNOWN");
-      requestKey.current="";setAuthorization(null);setAuthorizationTotp("");
+      requestKey.current="";setAuthorization(null);setAuthorizationPassword("");
       setAuthorizationReview(false);
       setNotice({kind:"success",message:
         "Authorization recorded under current root access. Restoration has not started."});
@@ -201,15 +201,15 @@ export function RecoveryPanel(){
             onChange={e=>{setBackupReference(e.target.value);setReview(false);}}
             maxLength={180} placeholder="backupref:..." required/>
         </label>
-        <label className="field">Fresh Super Admin authenticator code
-          <input inputMode="numeric" autoComplete="one-time-code"
-            maxLength={6} pattern="[0-9]{6}" value={totp}
-            onChange={e=>{setTotp(e.target.value.replace(/[^0-9]/g,""));setReview(false);}}
+        <label className="field">Confirm Super Admin password
+          <input type="password" autoComplete="current-password" minLength={8}
+            maxLength={1024} value={currentPassword}
+            onChange={e=>{setCurrentPassword(e.target.value);setReview(false);}}
             required/></label>
         {review&&<p role="status">Review request: no restore will be executed.
           The request is auditable and subject to independent operations approval.</p>}
         <div className="toolbar">
-          <button type="button" disabled={saving} onClick={()=>{setReview(false);setTotp("");}}>
+          <button type="button" disabled={saving} onClick={()=>{setReview(false);setCurrentPassword("");}}>
             Cancel review</button>
           <button className="primary" type="submit" disabled={saving||unknown}>
             {saving?"Saving…":review?"Confirm request":"Review request"}</button>
@@ -240,17 +240,17 @@ export function RecoveryPanel(){
         aria-labelledby="recovery-authorization-title">
         <header className="topbar"><h2 id="recovery-authorization-title">Authorize recovery request</h2>
           <button type="button" disabled={saving||unknown} onClick={()=>{
-            setAuthorization(null);setAuthorizationTotp("");setAuthorizationReview(false);
+            setAuthorization(null);setAuthorizationPassword("");setAuthorizationReview(false);
             requestKey.current="";
           }}>Close</button></header>
         <form className="form" onSubmit={e=>void saveAuthorization(e)}>
           <p>Authorization is not a restore command. An independently verified
             operations adapter and successful isolated drill are still required.</p>
           <p>Current request revision: {authorization.version}</p>
-          <label className="field">Fresh Super Admin authenticator code
-            <input required inputMode="numeric" autoComplete="one-time-code"
-              maxLength={6} pattern="[0-9]{6}" value={authorizationTotp}
-              onChange={e=>{setAuthorizationTotp(e.target.value.replace(/[^0-9]/g,""));
+          <label className="field">Confirm Super Admin password
+            <input required type="password" autoComplete="current-password" minLength={8}
+              maxLength={1024} value={authorizationPassword}
+              onChange={e=>{setAuthorizationPassword(e.target.value);
                 setAuthorizationReview(false);}}/>
           </label>
           {authorizationReview&&<p role="status">Review this guarded authorization.
