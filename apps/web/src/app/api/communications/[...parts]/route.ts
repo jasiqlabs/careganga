@@ -13,6 +13,8 @@ function permitted(parts:string[],method:"GET"|"POST"){
     return method==="GET";
   if(parts.length===3&&parts[0]==="inbox"&&UUID.test(parts[1])&&
     parts[2]==="read")return method==="POST";
+  if(parts.length===3&&parts[0]==="notices"&&parts[1]==="requests"&&
+    UUID.test(parts[2]))return method==="GET";
   if(parts.length===3&&parts[0]==="notices"&&UUID.test(parts[1])&&
     parts[2]==="decision")return method==="POST";
   if(parts.length===3&&parts[0]==="notices"&&UUID.test(parts[1])&&
