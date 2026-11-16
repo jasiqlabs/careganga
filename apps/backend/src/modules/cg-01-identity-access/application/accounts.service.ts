@@ -20,7 +20,7 @@ const checkRevision=(value:unknown):number=>{
   return Number(value);
 };
 type AccountRow={
-  id:string;realm_id:string;display_name:string;normalized_email:string;contact_phone:string|null;status:string;
+  id:string;realm_id:string;display_name:string;normalized_email:string|null;contact_phone:string|null;status:string;
   revision:number;access_version:string;role_id:string|null;role_name:string|null;
   assigned_at:Date|null;delivery_status:string|null;is_protected:boolean|null;
 };
@@ -48,13 +48,13 @@ export class AccountsService {
        ||!Number.isInteger(limit)||limit<1||limit>50)throw new BadRequestException();
     // Escape LIKE wildcards: user searches must not bypass bounded data projections.
     const term=search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"";
-    const conditions=String.raw`a.realm_id=$1 AND ($2='' OR lower(a.display_name) LIKE $2 OR a.normalized_email LIKE $2)
+    const conditions=String.raw`a.realm_id=$1 AND ($2='' OR lower(a.display_name) LIKE $2 OR a.normalized_email LIKE $2 OR a.normalized_mobile LIKE $2)
       AND ($3='all' OR a.status=$3)
       AND ($4::uuid IS NULL OR EXISTS(SELECT 1 FROM account_role xr
          WHERE xr.account_id=a.id AND xr.role_id=$4::uuid AND xr.revoked_at IS NULL))`;
     const params=[actor.realmId,term,status,roleRef||null];
     const records=await this.db.query<{
-      id:string;display_name:string;normalized_email:string;contact_phone:string|null;status:string;revision:number;
+      id:string;display_name:string;normalized_email:string|null;contact_phone:string|null;status:string;revision:number;
       role_id:string|null;role_name:string|null;is_protected:boolean|null;assigned_at:Date|null;delivery_status:string|null;
     }>(String.raw`
       SELECT a.id,a.display_name,a.normalized_email,a.contact_phone,a.status,a.revision,
