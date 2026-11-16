@@ -403,7 +403,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
               onChangeText={value=>{setDecisionRemarks(value);setDecisionConfirmed(false);}}/>
             {detail.requiresCurrentPassword&&<>
               <Text style={styles.heading}>Current password</Text>
-              <TextInput accessibilityLabel="Fresh reviewer authenticator code"
+              <TextInput accessibilityLabel="Current reviewer password"
                 secureTextEntry autoComplete="current-password" maxLength={1024} style={styles.input}
                 value={decisionPassword} onChangeText={v=>{
                   setDecisionPassword(v);setDecisionConfirmed(false);}}/>
