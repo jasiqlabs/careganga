@@ -29,7 +29,7 @@ export function BranchApprovalInbox(){
  const [processConfigured,setProcessConfigured]=useState<boolean|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
- const [remarks,setRemarks]=useState(""),[totp,setTotp]=useState("");
+ const [remarks,setRemarks]=useState(""),[currentPassword,setCurrentPassword]=useState("");
  const [key,setKey]=useState("");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[error,setError]=useState("");
@@ -68,21 +68,21 @@ export function BranchApprovalInbox(){
    return()=>{active=false;};
  },[]);
  async function open(ref:string){
-   setBusy(true);setError("");setMessage("");setTotp("");setKey("");
+   setBusy(true);setError("");setMessage("");setCurrentPassword("");setKey("");
    try{setSelected(await request<Detail>("/cases/"+encodeURIComponent(ref)));}
    catch(e){setSelected(null);setError(e instanceof Error?e.message:"Review unavailable");}
    finally{setBusy(false);}
  }
  async function decide(){
-   if(!selected||!selected.canDecide||busy||totp.length!==6)return;
+   if(!selected||!selected.canDecide||busy||currentPassword.length<8)return;
    const requestKey=key||crypto.randomUUID();
    setKey(requestKey);setBusy(true);setMessage("");setError("");
    try{
      const state=await request<{status:string;message?:string}>(
        "/cases/"+encodeURIComponent(selected.caseRef)+"/decide","POST",{
-         action,remarks,expectedRevision:selected.revision,requestKey,totp
+         action,remarks,expectedRevision:selected.revision,requestKey,currentPassword
        });
-     setKey("");setTotp("");
+     setKey("");setCurrentPassword("");
      setMessage(state.message??"The decision was recorded. Verify the resulting branch status.");
      await refresh();
    }catch(e){
@@ -173,10 +173,10 @@ export function BranchApprovalInbox(){
          <option value="REJECT">Reject</option></select></label>
        <label className="field">Reason / remarks<textarea maxLength={500}
          value={remarks} onChange={e=>setRemarks(e.target.value)}/></label>
-       <label className="field">Fresh Super Admin authenticator code
-         <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
-           value={totp} onChange={e=>setTotp(e.target.value.replace(/\D/g,""))}/></label>
-       <button type="button" className="primary" disabled={busy||totp.length!==6}
+       <label className="field">Confirm Super Admin password
+         <input type="password" autoComplete="current-password" minLength={8} maxLength={1024}
+           value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label>
+       <button type="button" className="primary" disabled={busy||currentPassword.length<8}
          onClick={()=>void decide()}>Record current decision</button>
        {key&&<p className="notice">A decision request remains unconfirmed.
          Check the current review before starting a different request.</p>}
