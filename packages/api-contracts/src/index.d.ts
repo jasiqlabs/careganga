@@ -1,5 +1,5 @@
 /** CG-01 transport-only types. Authoritative validation and enforcement remain on the backend. */
-export interface CG01SignInRequest { email:string; password:string; totp:string; deviceLabel?:string }
+export interface CG01SignInRequest { identifier:string; password:string; deviceLabel?:string }
 export interface CG01SessionCreated { sessionToken:string; expiresAt:string; displayName:string }
 export interface CG01SessionView { displayName:string; roleName:string; scope:"Foundation" }
 export interface CG01SafeError { status:"error"; message:string; requestId:string }
@@ -25,7 +25,7 @@ export interface CG01AuditEvent {
 /** US-003 original Foundation-root staff identity; refs are opaque transport-only. */
 export type CG01AccountStatus="INVITED"|"ACTIVE"|"SUSPENDED"|"DEACTIVATED";
 export interface CG01AccountView {
-  accountRef:string;displayName:string;email:string;phone:string|null;status:CG01AccountStatus;
+  accountRef:string;displayName:string;email:string|null;phone:string|null;status:CG01AccountStatus;
   revision:number;roleName:string|null;roleRef:string|null;roleProtected:boolean;assignedAt:string|null;
   deliveryStatus:"PENDING"|"CLAIMED"|"PROVIDER_ACCEPTED"|"UNKNOWN"|"UNAVAILABLE"|null;
 }
@@ -35,8 +35,9 @@ export interface CG01AccountList {
 }
 export interface CG01AccountOption {value:string;label:string;context:"Foundation"}
 export interface CG01AccountChangeOutcome {accountRef:string;revision:number;status:string;message:string}
-export interface CG01AccountInvite {
-  displayName:string;email:string;phone?:string;roleRef:string;requestKey:string
+export interface CG01AccountCreate {
+  displayName:string;mobile:string;email?:string;password:string;
+  roleRef:string;requestKey:string
 }
 export interface CG01AccountAssignment {
   roleRef:string;expectedRevision:number;requestKey:string
@@ -51,7 +52,7 @@ export interface CG01SecurityPolicy {
   idleTimeoutSeconds:number;
   failedAttemptWindowSeconds:number;
   maxFailedAttempts:number;
-  rootMfaRequired:true;
+  rootPasswordReauthRequired:true;
   revision:number;
   updatedAt:string|null;
 }
@@ -60,11 +61,11 @@ export interface CG01SecurityPolicyUpdate {
   idleTimeoutSeconds:number;
   failedAttemptWindowSeconds:number;
   maxFailedAttempts:number;
-  rootMfaRequired:true;
+  rootPasswordReauthRequired:true;
   expectedRevision:number;
   idempotencyKey:string;
   /** One fresh six-digit one-use CG-01 authenticator proof, never stored in audit. */
-  totp:string;
+  currentPassword:string;
 }
 export interface CG01SecurityPolicyOutcome {
   status:"SAVED"|"REPLAY_CONFIRMED";
@@ -80,7 +81,7 @@ export interface CG21SettingRevision {
 }
 export interface CG21SettingChange {
   key:"audit.default_page_size";value:number;expectedRevision:number;
-  requestKey:string;totp:string;
+  requestKey:string;currentPassword:string;
 }
 export interface CG21IntegrationView {
   provider:string;purpose:string;revision:number;credentialRevision:number;
@@ -89,7 +90,7 @@ export interface CG21IntegrationView {
 }
 export interface CG21IntegrationReferenceChange {
   provider:string;purpose:string;secretReference:string;
-  expectedRevision:number;requestKey:string;totp:string;
+  expectedRevision:number;requestKey:string;currentPassword:string;
 }
 export interface CG21CommandLookup {
   status:"CONFIRMED"|"NOT_FOUND";revision:number|null;
@@ -128,7 +129,7 @@ export interface CG21RecoveryOperation{
   requestedAt:string;updatedAt:string;
 }
 export interface CG21RecoveryRequest {
-  backupReference:string;expectedVersion:0;requestKey:string;totp:string;
+  backupReference:string;expectedVersion:0;requestKey:string;currentPassword:string;
 }
 export interface CG21RecoveryOutcome {
   status:"NOT_AVAILABLE"|"REQUESTED"|"REPLAY_CONFIRMED";message?:string;
@@ -145,12 +146,12 @@ export interface CG03CaseView{
 }
 export interface CG03CaseDetail extends CG03CaseView{
   allowedDecisions:Array<"APPROVE"|"RETURN"|"REJECT"|"FORWARD">;
-  requiresFreshAuthenticator:boolean;
+  requiresCurrentPassword:boolean;
   history:Array<{action:string;remarks:string;at:string;by:string}>;
 }
 export interface CG03DecisionInput {
   action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD";
-  remarks:string;expectedRevision:number;requestKey:string;totp:string;
+  remarks:string;expectedRevision:number;requestKey:string;currentPassword:string;
 }
 export interface CG03DecisionResult {
   status:string;caseNumber:string;revision:number;
@@ -161,7 +162,7 @@ export interface CG03DecisionLookup {
 }
 export interface CG03ProcessView{
   active:boolean;version:number;firstReviewer:string|null;
-  finalReviewer:string;requiresFreshAuthenticator:boolean;message:string;
+  finalReviewer:string;requiresCurrentPassword:boolean;message:string;
 }
 export interface CG03CreateInput{
   targetAccountRef:string;targetRoleRef:string;requestKey:string;
