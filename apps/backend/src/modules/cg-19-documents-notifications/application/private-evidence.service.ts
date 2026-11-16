@@ -127,19 +127,29 @@ export class PrivateEvidenceService{
         sha256:intent.expected_sha256,expiresAt:intent.reserved_until.toISOString()
       });
       const expires=new Date(reservation.expiresAt).getTime();
+      const uploadHeaders=reservation.headers;
       if(!reservation.url.startsWith("https://")||
         !Number.isFinite(expires)||expires<=Date.now()||
         expires>intent.reserved_until.getTime()||
-        !reservation.reservationRef||reservation.reservationRef.length>160)
+        !reservation.reservationRef||reservation.reservationRef.length>160||
+        !uploadHeaders||typeof uploadHeaders!=="object"||
+        !Object.keys(uploadHeaders).every(name=>
+          ["Content-Type","x-goog-if-generation-match",
+           "x-amz-checksum-sha256","If-None-Match"].includes(name)&&
+          typeof uploadHeaders[name]==="string"&&uploadHeaders[name].length<=160)||
+        uploadHeaders["Content-Type"]!==intent.mime)
         throw new ServiceUnavailableException("Secure upload reservation is not verified");
-      await this.db.query(`
+      const recorded=await this.db.query(`
         UPDATE cg19_upload_intent SET
           storage_reservation_ref=$3,status='INITIATED',updated_at=now()
         WHERE id=$1 AND realm_id=$2 AND status IN('INITIATED','UNKNOWN')
           AND reserved_until>now()
+        RETURNING id
       `,[intent.id,actor.realmId,reservation.reservationRef]);
+      if(!recorded.rowCount)
+        throw new ConflictException("The original upload intent is no longer valid");
       return {uploadRef:intent.id,status:"UPLOAD_READY" as const,
-        uploadUrl:reservation.url,expiresAt:reservation.expiresAt,
+        uploadUrl:reservation.url,uploadHeaders,expiresAt:reservation.expiresAt,
         message:"Upload permission prepared; the file is not yet verified."};
     }catch{
       await this.db.query(`
