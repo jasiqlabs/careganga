@@ -1,5 +1,12 @@
 # CG-02 — Foundation Structure
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+**CG-01 greenfield credential integration (16 Nov 2026, feature-only):** branch and Foundation views authenticate with mobile/email + password; no TOTP. The CG-03 protected branch reviewer must re-enter the correct current password, and separation of duties, branch-case version pins, source/owner finalization and scope checks remain unchanged. CG-02 does not own login, reset OTP, account-role creation or registration. Existing 25 CG-02 QA cases need updated credential assumptions and source/runtime re-tracing. Not merged and not runtime-tested.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Current delivery — 16 November 2026:** **`SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED · MERGED_TO_MAIN`**. Both CG02 stories are source-implemented/reviewed and incorporated into the Foundation `main` baseline through [PR #8](https://github.com/jasiqlabs/careganga/pull/8) (merge commit `515e7fa915fcb8e476ae96c43ab551754064a9f8`). **This is a source-only merge, not a formal Harness `SOURCE_COMPLETE` or runtime/release PASS.** Actual 25-case Web/Internal Android, SQL migration/restore/concurrency, independent qualified security/DB, provider and original U18–U22 visual QA remain pending. The original 15 November design-stage description below is retained for historical approval provenance; the [canonical tasks tracker](tasks.md) gives the current code/QA state.
 
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
