@@ -104,7 +104,7 @@ export class ApprovalProposalService{
       firstReviewer:q.rows[0]?.first_reviewer_capability==="roles.assign"?
         "Permitted access manager":null,
       finalReviewer:"A different Foundation Super Admin",
-      requiresFreshAuthenticator:true,
+      requiresCurrentPassword:true,
       message:q.rowCount?"Protected access route is configured":
         "The protected route is initialized with the first eligible submission"};
   }
@@ -330,7 +330,7 @@ export class ApprovalProposalService{
     const allowedDecisions=canAct?
       step.protected_root_required?["APPROVE","RETURN","REJECT"]:
       ["APPROVE","FORWARD","RETURN","REJECT"]:[];
-    return {...view(row),allowedDecisions,requiresFreshAuthenticator:canAct&&
+    return {...view(row),allowedDecisions,requiresCurrentPassword:canAct&&
       Boolean(step?.protected_root_required),
       history:events.rows.map(e=>({
       action:e.action,remarks:e.safe_remarks,at:e.occurred_at.toISOString(),
