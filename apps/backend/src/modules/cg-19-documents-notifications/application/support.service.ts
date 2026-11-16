@@ -7,6 +7,7 @@ import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes,
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -89,7 +90,8 @@ function searchTerms(values:readonly string[]):string[]{
 @Injectable()
 export class SupportService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
-    private readonly sessions:SessionService){}
+    private readonly sessions:SessionService,
+    private readonly people:CommunicationRecipientSource){}
   private async root(client:PoolClient){
     const found=await client.query<{id:string}>(
       "SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT' LIMIT 1");
@@ -128,6 +130,16 @@ export class SupportService{
       "SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT'",[actor.realmId]);
     if(!scope.rowCount)throw new ForbiddenException("Foundation access only");
     return actor;
+  }
+  async agents(bearer:string,searchInput:unknown=""){
+    const actor=await this.actor(bearer,"support.cases.manage");
+    await this.sessions.requireAction(bearer,"accounts.select");
+    if(typeof searchInput!=="string"||searchInput.length>70)
+      throw new BadRequestException("Check operator search");
+    const client=await this.db.connect();
+    try{return {options:await this.people.supportAgentOptions(
+      client,actor.realmId,searchInput,30)};}
+    finally{client.release();}
   }
   private async current(client:PoolClient,a:VerifiedFoundationActor,capability:string){
     const status=await client.query(
@@ -404,16 +416,11 @@ export class SupportService{
       if(action==="ASSIGN"){
         const target=x.assignedAccountRef===null?null:uuid(x.assignedAccountRef);
         if(target){
-          const allowed=await client.query(
-            "SELECT 1 FROM account person WHERE person.id=$1 AND person.realm_id=$2 "+
-            "AND person.status='ACTIVE' AND EXISTS("+
-            "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.active "+
-            "WHERE ar.account_id=person.id AND ar.realm_id=person.realm_id "+
-            "AND ar.revoked_at IS NULL AND (r.is_protected OR EXISTS("+
-            "SELECT 1 FROM role_grant g WHERE g.role_id=r.id "+
-            "AND g.capability_key='support.cases.view'))) "+
-            "FOR SHARE OF person",[target,a.realmId]);
-          if(!allowed.rowCount)throw new ForbiddenException("Eligible support agent unavailable");
+          // Selection is a distinct CG-01 permission. Backend enforcement does
+          // not trust the UI's hidden selector or guessed account reference.
+          await this.current(client,a,"accounts.select");
+          if(!await this.people.isSupportAgent(client,a.realmId,target))
+            throw new ForbiddenException("Eligible support agent unavailable");
         }
         await client.query(
           "UPDATE cg19_support_case SET assigned_account_id=$3,revision=revision+1,"+
