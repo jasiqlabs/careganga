@@ -1,6 +1,6 @@
 import {
   BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
-  ServiceUnavailableException,TooManyRequestsException
+  HttpException,ServiceUnavailableException
 } from "@nestjs/common";
 import {createHmac,randomUUID} from "node:crypto";
 import type {Pool} from "pg";
@@ -67,8 +67,7 @@ export class MobileVerificationService{
           "Content-Type":"application/x-www-form-urlencoded"},
         body:body.toString()
       });
-    if(response.status===429)throw new TooManyRequestsException(
-      "Mobile verification rate limit reached");
+    if(response.status===429)throw new HttpException("Mobile verification rate limit reached",429);
     if(!response.ok)throw new ServiceUnavailableException(
       "Mobile proof could not be confirmed by the provider");
     const info:unknown=await response.json();
@@ -108,7 +107,7 @@ export class MobileVerificationService{
           message:"Check your original code before requesting another"};
       }
       if(prev&&prev.attempts>=5&&now-prev.requested_at.getTime()<86400_000)
-        throw new TooManyRequestsException("Too many mobile proof attempts");
+        throw new HttpException("Too many mobile proof attempts",429);
       const fingerprint=this.fingerprint(person.contact_phone,cfg.hmac);
       await client.query(`
         INSERT INTO cg01_mobile_verification(
