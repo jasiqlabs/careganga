@@ -178,7 +178,9 @@ export class ApprovalProposalService{
       const process=await client.query<ProcessRow>(`
         INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,configured_by)
         VALUES($1,$2,$3,$4) RETURNING id,version,first_reviewer_capability
-      `,[actor.realmId,current.version+1,payload.firstReviewerCapability,actor.accountId]);
+      `,[actor.realmId,(await client.query<{version:number}>(
+        "SELECT COALESCE(MAX(version),0)+1 AS version FROM cg03_process WHERE realm_id=$1",
+        [actor.realmId])).rows[0].version,payload.firstReviewerCapability,actor.accountId]);
       const newRoute=process.rows[0];
       if(newRoute.first_reviewer_capability){
         await client.query(`
