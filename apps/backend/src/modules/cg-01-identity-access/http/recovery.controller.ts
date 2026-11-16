@@ -1,32 +1,39 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, HttpCode, Post, Req } from "@nestjs/common";
 import type { CareGangaRequest } from "../../../core/observability/request-correlation";
 import { randomUUID } from "node:crypto";
 import { RecoveryService } from "../application/recovery.service";
 
+const identifierValid=(value:unknown):value is string =>
+  typeof value==="string" && value.length<=254 && (
+    /^[6-9][0-9]{9}$/.test(value.trim()) ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+  );
+
 @Controller("api/identity/recovery")
-export class RecoveryController{
-  constructor(private readonly service:RecoveryService){}
+export class RecoveryController {
+  constructor(private readonly service:RecoveryService) {}
   @Post("request")
   @HttpCode(202)
-  async request(@Body() body:{email?:unknown;requestKey?:unknown},@Req() req:CareGangaRequest){
-    if(!body||typeof body.email!=="string" || body.email.length>254
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
-      ||typeof body.requestKey!=="string"|| !/^[0-9a-f-]{36}$/i.test(body.requestKey))
-      throw new BadRequestException();
-    const outcome=await this.service.requestRecovery(body.email,body.requestKey,req.ip??"unknown");
-    if(outcome.status==="UNAVAILABLE")throw new ServiceUnavailableException("Credential recovery is unavailable");
-    return outcome;
+  async request(@Body() body:{identifier?:unknown;channel?:unknown;requestKey?:unknown},
+    @Req() req:CareGangaRequest) {
+    if(!body||!identifierValid(body.identifier)||
+      (body.channel!==undefined&&body.channel!=="email"&&body.channel!=="sms")||
+      typeof body.requestKey!=="string"||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.requestKey))
+      throw new BadRequestException("Check recovery information");
+    return this.service.requestRecovery(body.identifier,
+      body.channel as "email"|"sms"|undefined,body.requestKey,req.ip??"unknown");
   }
   @Post("confirm")
   @HttpCode(200)
-  async confirm(@Body() body:{email?:unknown;token?:unknown;password?:unknown;totp?:unknown},@Req() req:CareGangaRequest){
-    if(!body||typeof body.email!=="string"||body.email.length>254||
-      typeof body.token!=="string"||!/^[a-zA-Z0-9_-]{40,100}$/.test(body.token)||
-      typeof body.password!=="string"||body.password.length<14||Buffer.byteLength(body.password)>1024||
-      typeof body.totp!=="string"|| !/^\d{6}$/.test(body.totp))
-      throw new BadRequestException();
-    return this.service.confirmRecovery({
-      email:body.email,token:body.token,password:body.password,totp:body.totp
-    },req.ip??"unknown",req.cgRequestId??randomUUID());
+  async confirm(@Body() body:{identifier?:unknown;otp?:unknown;newPassword?:unknown},
+    @Req() req:CareGangaRequest) {
+    if(!body||!identifierValid(body.identifier)||
+      typeof body.otp!=="string"|| !/^\d{6}$/.test(body.otp)||
+      typeof body.newPassword!=="string"||body.newPassword.length<8||
+      Buffer.byteLength(body.newPassword,"utf8")>1024)
+      throw new BadRequestException("Check the code and new password");
+    return this.service.confirmRecovery({identifier:body.identifier,otp:body.otp,
+      newPassword:body.newPassword},req.ip??"unknown",req.cgRequestId??randomUUID());
   }
 }
