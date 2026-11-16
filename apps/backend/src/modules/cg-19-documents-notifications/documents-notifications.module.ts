@@ -12,22 +12,24 @@ import {NoticeService} from "./application/notice.service";
 import {DeliveryService} from "./application/delivery.service";
 import {CommunicationProviders} from "./infrastructure/channel-providers";
 import {CommunicationWorker} from "./infrastructure/communication-worker";
+import {SupportService} from "./application/support.service";
+import {SupportController} from "./http/support.controller";
 import {CommunicationsController,CommunicationProviderWebhookController} from
   "./http/communications.controller";
 
-/** CG-19 owns private media/documents/communications/helpdesk. Only US-001
- * source-backed private evidence is registered until the later stories.
+/** CG-19 owns private media/documents, US-002 communications and US-003
+ * Foundation-only contact/helpdesk. No speculative center/CMS source.
  * Firebase or AWS S3 is selected explicitly per client deployment.
  * Missing secured credentials or a real ClamAV scanner stays unavailable.
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule],
   controllers:[PrivateEvidenceController,PrivateLetterController,
-    CommunicationsController,CommunicationProviderWebhookController],
+    CommunicationsController,CommunicationProviderWebhookController,SupportController],
   providers:[PrivateEvidenceService,PrivateLetterService,
     NotificationService,NoticeService,DeliveryService,
-    CommunicationProviders,CommunicationWorker,
+    CommunicationProviders,CommunicationWorker,SupportService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,PrivateLetterService]
+  exports:[PrivateEvidenceService,PrivateLetterService,SupportService]
 })
 export class DocumentsNotificationsModule{}
