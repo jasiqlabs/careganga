@@ -6,8 +6,8 @@ ALTER TABLE account ADD CONSTRAINT ck_cg01_normalized_mobile
   CHECK (normalized_mobile IS NULL OR normalized_mobile ~ '^[6-9][0-9]{9}$');
 ALTER TABLE account ADD CONSTRAINT ck_cg01_email_normalization_optional
   CHECK (normalized_email IS NULL OR normalized_email = lower(trim(normalized_email)));
-CREATE UNIQUE INDEX ux_cg01_login_mobile ON account(normalized_mobile)
-  WHERE normalized_mobile IS NOT NULL;
+ALTER TABLE account ALTER COLUMN normalized_mobile SET NOT NULL;
+CREATE UNIQUE INDEX ux_cg01_login_mobile ON account(normalized_mobile);
 CREATE UNIQUE INDEX ux_cg01_login_email_ci ON account(lower(normalized_email))
   WHERE normalized_email IS NOT NULL;
 ALTER TABLE account ADD COLUMN recovery_contact_changed_at timestamptz;
@@ -27,8 +27,7 @@ CREATE TRIGGER cg01_recovery_contact_changed_before_update
 BEFORE UPDATE OF normalized_mobile,normalized_email ON account
 FOR EACH ROW EXECUTE FUNCTION cg01_recovery_contact_changed();
 ALTER TABLE auth_session ADD COLUMN password_authenticated_at timestamptz;
-ALTER TABLE auth_challenge ADD COLUMN delivery_status text
-  CHECK(delivery_status IS NULL OR delivery_status IN ('PENDING','ACCEPTED','UNAVAILABLE','UNKNOWN'));
+-- auth_challenge.delivery_status already exists in migration 0004: reuse it unchanged.
 ALTER TABLE auth_challenge ADD COLUMN delivery_channel text
   CHECK(delivery_channel IS NULL OR delivery_channel IN ('email','sms'));
 -- New password-based login may not claim authenticator assurance.
