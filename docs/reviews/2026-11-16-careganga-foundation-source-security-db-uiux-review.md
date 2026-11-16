@@ -15,7 +15,7 @@
 
 | Risk | Reviewed owner evidence | Source disposition |
 |---|---|---|
-| Actor/session/MFA revocation | `CG01 SessionService`, protected access owner, CG03 Super Admin fresh proof, role and account guards | Source controls present; prove revocation and MFA replay with actual sessions later |
+| Actor/session/credential revocation | `CG01 SessionService`, protected access owner, CG03 Super Admin fresh proof, role and account guards | Source controls present; the current password-based login and session proof require a new independent source review and live tests |
 | Cross-root data and authorization | Root-scoped composite FKs, CG02 service root predicates, actor-scoped branch/department queries, backend `requireAction`, same-origin BFF allowlists | Source guards present; cross-root adversarial PostgreSQL test not run |
 | UI privilege visibility | Protected Next routes and shared `foundation-admin-nav.tsx`; previously stale menu grants and disabled view-only editors | **Fixed:** all protected menu destinations revalidate current CG01 grants, document page's dual-capability requirement enforced; restricted edit forms/actions hidden rather than merely disabled |
 | Approval/source tampering | Immutable submitted-revision hash, CG03 case-kind checks, Super Admin decision and different proposer, owner-side finalization | Corrected previously found late-committed case attachment; no independent approval or pseudo-approval duplicated |
@@ -59,7 +59,7 @@ Every case is retained in [canonical tasks](../../specs/initiatives/careganga-fo
 | US002 QA06 | `SOURCE_ALIGNED_VISUAL_NOT_RUN` | U18–U22 source patterns | Pixel/motion/device comparison |
 | US002 QA07–QA09 | `SOURCE_TRACED` (3) | Sorted locked CG03/CG19 proofs and CG02 activation, unique keys, replay/return guards | Concurrent PostgreSQL/proxy interruption |
 | US002 QA10 | `SOURCE_ALIGNED_DEVICE_NOT_RUN` | Web/native stages, bounded lists, genuine status/messages | Native device, accessibility and screenshot |
-| US002 QA11–QA16 | `SOURCE_TRACED` (6) | Owner-specific CG01/02/03/19 typed interfaces, recovery, lock boundary and protected file revisions | Actual HTTP/MFA/restore/scan/provider/lock tests |
+| US002 QA11–QA16 | `SOURCE_TRACED` (6) | Owner-specific CG01/02/03/19 typed interfaces, recovery, lock boundary and protected file revisions | Actual HTTP/password proof/restore/scan/provider/lock tests |
 
 **Review status:** 21 primary source-trace dispositions plus 4 cases requiring independent visual/runtime or database execution; zero unsupported claims of 25 runtime passes. Previously identified CG02 source gaps REV-01 (activation placeholder), REV-02 (late case reconciliation), REV-03 (inactive historical file revoke/reactivation guard), REV-04 (CG03 inbox paging), REV-05 (CG02 department paging) were re-read against repaired source and are **SOURCE_FIXED**, with runtime regressions still open.
 
@@ -67,4 +67,4 @@ Every case is retained in [canonical tasks](../../specs/initiatives/careganga-fo
 
 **The owner authorized source-only integration into `main` now, not production release.** This verdict supports integrating the reviewed Foundation feature branch **only if** `main` remains an ancestor of the final head and GitHub reports a clean merge. Never rewrite `main`, run CI/GitHub Actions or deploy automatically.
 
-After source-only merge, local developer must still generate/commit verified workspace lockfile, install/build/typecheck Next/Nest/Expo, apply all migrations twice on disposable PostgreSQL, test restore/concurrency/role isolation/fresh MFA, verify CG19 storage and scanner, run Web/Internal Android device QA and original screenshot comparisons. Record the real PASS/FAIL results in the canonical CG02 tracker. Any failures are fixed and independently re-reviewed in their owning code before release. **Production readiness remains BLOCKED.**
+After source-only merge, local developer must still generate/commit verified workspace lockfile, install/build/typecheck Next/Nest/Expo, apply all migrations twice on disposable PostgreSQL, test restore/concurrency/role isolation/fresh current-password proof, verify CG19 storage and scanner, run Web/Internal Android device QA and original screenshot comparisons. Record the real PASS/FAIL results in the canonical CG02 tracker. Any failures are fixed and independently re-reviewed in their owning code before release. **Production readiness remains BLOCKED.**
