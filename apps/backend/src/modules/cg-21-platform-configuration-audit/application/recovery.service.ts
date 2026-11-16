@@ -68,11 +68,11 @@ export class RecoveryService{
     if(!body||typeof body!=="object"||Array.isArray(body))
       throw new BadRequestException("Check the recovery request");
     const p=body as Record<string,unknown>;
-    if(Object.keys(p).some(key=>!["backupReference","expectedVersion","requestKey","totp"].includes(key))||
+    if(Object.keys(p).some(key=>!["backupReference","expectedVersion","requestKey","currentPassword"].includes(key))||
        typeof p.backupReference!=="string"||!BACKUP.test(p.backupReference)||
        typeof p.requestKey!=="string"||!UUID.test(p.requestKey)||
-       p.expectedVersion!==0||typeof p.totp!=="string"||!/^[0-9]{6}$/.test(p.totp))
-      throw new BadRequestException("Check recovery reference and fresh authenticator code");
+       p.expectedVersion!==0||typeof p.currentPassword!=="string"||(p.currentPassword.length<8||Buffer.byteLength(p.currentPassword,"utf8")>1024))
+      throw new BadRequestException("Check recovery reference and current password");
     const backupRef=p.backupReference,requestKey=p.requestKey;
     const digest=this.requestDigest(backupRef,0);
     // A committed response can be resolved after a provider becomes unavailable.
@@ -110,7 +110,7 @@ export class RecoveryService{
         await client.query("COMMIT");open=false;
         return {status:"REPLAY_CONFIRMED",operationRef:previous.id,version:previous.version};
       }
-      await this.sessions.requireFreshFoundationRootProof(client,actor,String(p.totp));
+      await this.sessions.requireFreshFoundationRootProof(client,actor,String(p.currentPassword));
       const created=await client.query<{id:string;version:number}>(`
         INSERT INTO recovery_operation(foundation_realm_id,operation_type,backup_reference,
           requested_by,status,request_key,request_digest)
@@ -144,11 +144,11 @@ export class RecoveryService{
       !body||typeof body!=="object"||Array.isArray(body))
       throw new BadRequestException("Check recovery authorization");
     const p=body as Record<string,unknown>;
-    if(Object.keys(p).some(key=>!["requestKey","expectedVersion","totp"].includes(key))||
+    if(Object.keys(p).some(key=>!["requestKey","expectedVersion","currentPassword"].includes(key))||
        typeof p.requestKey!=="string"||!UUID.test(p.requestKey)||
        !Number.isSafeInteger(p.expectedVersion)||Number(p.expectedVersion)<1||
-       typeof p.totp!=="string"||!/^[0-9]{6}$/.test(p.totp))
-      throw new BadRequestException("Enter a fresh authenticator proof and current recovery version");
+       typeof p.currentPassword!=="string"||(p.currentPassword.length<8||Buffer.byteLength(p.currentPassword,"utf8")>1024))
+      throw new BadRequestException("Enter a current password confirmation and current recovery version");
     const key=p.requestKey,revision=Number(p.expectedVersion);
     const payloadDigest=createHash("sha256")
       .update(JSON.stringify(["RECOVERY_AUTHORIZE",operationInput,revision])).digest("hex");
@@ -208,7 +208,7 @@ export class RecoveryService{
         await client.query("COMMIT");open=false;
         return {status:"REPLAY_CONFIRMED",version:prior.result_version};
       }
-      await this.sessions.requireFreshFoundationRootProof(client,actor,String(p.totp));
+      await this.sessions.requireFreshFoundationRootProof(client,actor,String(p.currentPassword));
       const updated=await client.query<{version:number}>(`
         UPDATE recovery_operation
         SET status='PRIVILEGED_AUTHORIZED',authorized_by=$3,
