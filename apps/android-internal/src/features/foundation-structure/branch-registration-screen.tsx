@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {BranchNativeUploader} from "./branch-native-uploader";
 
 type Draft={recordRef:string;branchName:string;branchType:string;version:number;
   status:string;currentStep:number;updatedAt:string};
@@ -12,6 +13,9 @@ type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:strin
 type Option={value:string;label:string;kind?:string};
 type Area={areaRef:string;name:string;level:string;status:string};
 type Pending={action:"BRANCH_DRAFT_CREATE"|"BRANCH_DRAFT_SAVE";requestKey:string};
+type Status={status:string;branch:{branchCode:string;status:string}|null;
+  approval:{reference:string;status:string}|null;
+  submissions:{revision:number;status:string}[]};
 type Props={token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void};
 const titles=["Branch details","Location","Registration documents","Agreement & photos",
   "Branch manager","Foundation departments","Review"];
@@ -48,6 +52,14 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   const [selected,setSelected]=useState<Detail|null>(null),[step,setStep]=useState(1);
   const [name,setName]=useState(""),[branchType,setBranchType]=useState("");
   const [openingDate,setOpeningDate]=useState("");
+  const [phone,setPhone]=useState(""),[officialEmail,setOfficialEmail]=useState("");
+  const [photos,setPhotos]=useState<string[]>([]),[logos,setLogos]=useState<string[]>([]);
+  const [registrationFiles,setRegistrationFiles]=useState<string[]>([]);
+  const [agreementFiles,setAgreementFiles]=useState<string[]>([]);
+  const [extraPhotos,setExtraPhotos]=useState<string[]>([]);
+  const [status,setStatus]=useState<Status|null>(null);
+  const [submissionKey,setSubmissionKey]=useState("");
+  const [submissionBusy,setSubmissionBusy]=useState(false);
   const [area,setArea]=useState(""),[address,setAddress]=useState(""),[pin,setPin]=useState("");
   const [latitude,setLatitude]=useState(""),[longitude,setLongitude]=useState("");
   const [manager,setManager]=useState(""),[departmentRefs,setDepartmentRefs]=useState<string[]>([]);
@@ -80,9 +92,13 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   },[onExit]);
   function hydrate(detail:Detail){
     const stages=detail.stages??{},s1=stages["1"]??{},s2=stages["2"]??{},
-      s5=stages["5"]??{},s6=stages["6"]??{},s7=stages["7"]??{};
+      s3=stages["3"]??{},s4=stages["4"]??{},s5=stages["5"]??{},s6=stages["6"]??{},s7=stages["7"]??{};
     setSelected(detail);setStep(Math.max(1,Math.min(7,detail.currentStep)));
     setName(value(s1.branchName));setBranchType(value(s1.branchType));setOpeningDate(value(s1.openingDate));
+    setPhone(value(s1.officialPhone));setOfficialEmail(value(s1.officialEmail));
+    setPhotos(list(s1.photoFiles));setLogos(list(s1.logoFiles));
+    setRegistrationFiles(list(s3.registrationFiles));setAgreementFiles(list(s4.agreementFiles));
+    setExtraPhotos(list(s4.photoFiles));
     setArea(value(s2.geographyRef));setAddress(value(s2.postalAddress));setPin(value(s2.pinCode));
     setLatitude(s2.latitude===null||s2.latitude===undefined?"":String(s2.latitude));
     setLongitude(s2.longitude===null||s2.longitude===undefined?"":String(s2.longitude));
@@ -91,16 +107,20 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   }
   async function open(reference:string){
     setBusy(true);setMessage("");
-    try{hydrate(await api<Detail>(token,"branches/drafts/"+encodeURIComponent(reference)));}
-    catch(error){setSelected(null);setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();}
+    try{
+      hydrate(await api<Detail>(token,"branches/drafts/"+encodeURIComponent(reference)));
+      await loadStatus(reference);
+    }
+    catch(error){setSelected(null);setStatus(null);setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();}
     finally{setBusy(false);}
   }
   function stage():Record<string,unknown>{
-    if(step===1)return {branchName:name,branchType,openingDate:openingDate||null};
+    if(step===1)return {branchName:name,branchType,openingDate:openingDate||null,
+      officialPhone:phone,officialEmail,photoFiles:photos,logoFiles:logos};
     if(step===2)return {geographyRef:area||null,postalAddress:address,pinCode:pin,
       latitude:latitude.trim()?Number(latitude):null,longitude:longitude.trim()?Number(longitude):null};
-    if(step===3)return {registrationFiles:[]};
-    if(step===4)return {agreementFiles:[],photoFiles:[]};
+    if(step===3)return {registrationFiles};
+    if(step===4)return {agreementFiles,photoFiles:extraPhotos};
     if(step===5)return {managerRef:manager||null};
     if(step===6)return {departmentRefs};
     return {reviewAcknowledged:reviewed};
@@ -125,6 +145,27 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
       setMessage(friendly(error));if(error instanceof Error&&error.message==="EXPIRED")onExpired();
     }
     finally{setBusy(false);}
+  }
+  async function loadStatus(reference:string){
+    const current=await api<Status>(token,
+      "branch-workflow/registrations/"+encodeURIComponent(reference)+"/status");
+    setStatus(current);
+  }
+  async function submit(){
+    if(!selected||!canManage||submissionBusy||pending)return;
+    const key=submissionKey||Crypto.randomUUID();setSubmissionKey(key);
+    setSubmissionBusy(true);setMessage("");
+    try{
+      const result=await api<{status:string;message?:string}>(token,
+        "branch-workflow/registrations/"+encodeURIComponent(selected.recordRef)+"/submit",
+        "POST",{requestKey:key,expectedVersion:selected.version});
+      setMessage(result.message??"The original submission needs verification.");
+      if(result.status!=="SUBMISSION_UNCONFIRMED")setSubmissionKey("");
+      await loadStatus(selected.recordRef);await load();
+    }catch(e){
+      setMessage(friendly(e));
+      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+    }finally{setSubmissionBusy(false);}
   }
   async function checkOriginal(){
     if(!pending)return;
@@ -191,6 +232,16 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             {input("Branch name",name,setName)}
             {input("Branch type",branchType,setBranchType)}
             {input("Opening date (YYYY-MM-DD)",openingDate,setOpeningDate)}
+            {input("Official phone",phone,setPhone)}
+            {input("Official email",officialEmail,setOfficialEmail)}
+            {canManage&&selected&&<BranchNativeUploader token={token}
+              registrationRef={selected.recordRef} draftVersion={selected.version}
+              classification="BRANCH_PHOTO" onExpired={onExpired}
+              onVerified={ref=>setPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
+            {canManage&&selected&&<BranchNativeUploader token={token}
+              registrationRef={selected.recordRef} draftVersion={selected.version}
+              classification="BRANCH_LOGO" onExpired={onExpired}
+              onVerified={ref=>setLogos(old=>old.includes(ref)?old:[...old,ref])}/>}
           </>}
           {step===2&&<>
             <Text style={styles.label}>Choose a verified block</Text>
@@ -203,9 +254,26 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             {input("Latitude (optional)",latitude,setLatitude,"numeric")}
             {input("Longitude (optional)",longitude,setLongitude,"numeric")}
           </>}
-          {(step===3||step===4)&&<Text style={styles.notice}>Secure pre-submission evidence
-            upload is not yet connected. This stage can be saved as a draft only;
-            no file is verified and the branch cannot be submitted or activated.</Text>}
+          {step===3&&<>
+            {canManage&&<BranchNativeUploader token={token}
+              registrationRef={selected.recordRef} draftVersion={selected.version}
+              classification="REGISTRATION_PROOF" onExpired={onExpired}
+              onVerified={ref=>setRegistrationFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
+            <Text style={styles.notice}>{registrationFiles.length} registration proof document(s)
+              selected. Save this stage to include them.</Text>
+          </>}
+          {step===4&&<>
+            {canManage&&<BranchNativeUploader token={token}
+              registrationRef={selected.recordRef} draftVersion={selected.version}
+              classification="AGREEMENT" onExpired={onExpired}
+              onVerified={ref=>setAgreementFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
+            {canManage&&<BranchNativeUploader token={token}
+              registrationRef={selected.recordRef} draftVersion={selected.version}
+              classification="BRANCH_PHOTO" onExpired={onExpired}
+              onVerified={ref=>setExtraPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
+            <Text style={styles.notice}>Signed agreement(s): {agreementFiles.length}.
+              Save this stage to preserve your selection.</Text>
+          </>}
           {step===5&&<>
             <Text style={styles.label}>Current eligible Foundation manager</Text>
             {managers.map(row=><Pressable key={row.value} accessibilityRole="radio"
@@ -223,8 +291,9 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
               <Text style={styles.optionTitle}>{row.label} · {row.kind?.toLowerCase()}</Text></Pressable>)}
           </>}
           {step===7&&<>
-            <Text style={styles.notice}>Only real CG19 verified evidence and CG03 final
-              Super Admin approval can activate a branch. Those integrations are pending.</Text>
+            <Text style={styles.notice}>Only verified private registration proof,
+              a signed agreement and a distinct Super Admin final approval can activate a branch.
+              Save this final reviewed step before submitting.</Text>
             <Pressable accessibilityRole="checkbox" accessibilityState={{checked:reviewed}}
               onPress={()=>setReviewed(x=>!x)} style={styles.option}>
               <Text style={styles.optionTitle}>{reviewed?"☑":"☐"} I reviewed this draft</Text></Pressable>
@@ -233,9 +302,25 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             {button("Previous",()=>setStep(x=>x-1),step<=1||busy)}
             {button("Next stage",()=>setStep(x=>x+1),
               step>=7||step>=selected.currentStep+1||busy)}
-            {canManage&&button("Save draft",()=>void write(),busy||!!pending,true)}
+            {canManage&&button("Save draft",()=>void write(),busy||!!pending||submissionBusy,true)}
+            {step===7&&canManage&&["DRAFT","RETURNED"].includes(selected.status)&&
+              button("Submit for Super Admin review",()=>void submit(),
+                busy||!!pending||submissionBusy||selected.stages?.["7"]?.reviewAcknowledged!==true||
+                registrationFiles.length===0||agreementFiles.length===0,true)}
+            {!!submissionKey&&button("Check/retry original submission",()=>void submit(),submissionBusy||busy)}
           </View>
-          {button("Back to drafts",()=>{setSelected(null);setMessage("");},busy)}
+          {!!status&&<View style={styles.card}>
+            <Text style={styles.heading}>Current branch registration status</Text>
+            <Text style={styles.help}>Registration: {status.status.replaceAll("_"," ")}</Text>
+            <Text style={styles.help}>Approval: {status.approval?
+              status.approval.reference+" · "+status.approval.status.replaceAll("_"," "):
+              "Not yet confirmed"}</Text>
+            <Text style={styles.help}>Activation: {status.branch?
+              status.branch.branchCode+" · "+status.branch.status:"No branch code issued"}</Text>
+            {button("Refresh real approval status",
+              ()=>void loadStatus(selected.recordRef).catch(e=>setMessage(friendly(e))),busy)}
+          </View>}
+          {button("Back to drafts",()=>{setSelected(null);setStatus(null);setMessage("");},busy)}
         </View>}
       </ScrollView>
     </KeyboardAvoidingView>
