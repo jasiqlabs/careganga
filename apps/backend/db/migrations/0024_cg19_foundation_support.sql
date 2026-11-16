@@ -132,6 +132,9 @@ CREATE TABLE cg19_support_guest_throttle (
   attempt_count integer NOT NULL CHECK(attempt_count>0)
 );
 
+CREATE INDEX ix_cg19_guest_throttle_retention
+ ON cg19_support_guest_throttle(window_started_at,bucket_digest);
+
 CREATE FUNCTION cg19_support_immutable_evidence() RETURNS trigger
  LANGUAGE plpgsql AS $$
 BEGIN
