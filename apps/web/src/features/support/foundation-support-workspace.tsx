@@ -35,6 +35,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     mayEditFaq:boolean;mayChooseAccounts:boolean}){
   const [tab,setTab]=useState<"CASES"|"FAQ">(mayView?"CASES":"FAQ");
   const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState("");
+  const [appliedSearch,setAppliedSearch]=useState("");
   const [cursor,setCursor]=useState<string|null>(null);
   const [priorCursors,setPriorCursors]=useState<string[]>([]);
   const [nextCursor,setNextCursor]=useState<string|null>(null);
@@ -54,8 +55,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     try{
       const [cases,faqList]=await Promise.all([
         mayView?request<{items:CaseItem[];counts:Counts;nextCursor:string|null}>(
-          "cases?limit=30&filter="+encodeURIComponent(filter)+
-          (cursor?"&cursor="+encodeURIComponent(cursor):"")):
+          "cases/search","POST",{limit:30,filter,cursor,search:appliedSearch}):
           Promise.resolve({items:[],counts:null}),
         mayEditFaq?request<{faqs:Faq[]}>("faqs"):Promise.resolve({faqs:[]})
       ]);
@@ -64,7 +64,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       setFaqs(faqList.faqs);
     }catch(e){setAlert(failure(e))}
     finally{setLoading(false)}
-  },[filter,cursor,mayView,mayEditFaq]);
+  },[filter,cursor,appliedSearch,mayView,mayEditFaq]);
   useEffect(()=>{void load()},[load]);
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
@@ -146,9 +146,15 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
-  const visible=items.filter(x=>
-    [x.subject,x.name,x.status,x.contact].some(v=>
-      v.toLowerCase().includes(search.toLowerCase())));
+  const visible=items; // already filtered using the original server-side blind index
+  const applySearch=()=>{
+    if(search.trim().length>0&&search.trim().length<3){
+      setAlert("Enter at least three characters to search all Foundation cases.");
+      return;
+    }
+    setCursor(null);setPriorCursors([]);setNextCursor(null);
+    setAppliedSearch(search.trim());setAlert("");
+  };
   return <section className="role-workspace">
     <header className="topbar"><div><h1>Contact Messages & Help</h1>
       <p>Foundation support intake, private replies, assignments and help questions</p>
@@ -178,9 +184,15 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           {["ALL","OPEN","UNREAD","REPLIED","CLOSED","ARCHIVED"].map(x=>
             <option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}
         </select>
-        <label htmlFor="support-search">Search current page</label>
-        <input id="support-search" type="search" value={search}
-          onChange={e=>setSearch(e.target.value)} placeholder="Name or subject"/>
+        <label htmlFor="support-search">Search all permitted messages</label>
+        <input id="support-search" type="search" value={search} maxLength={100}
+          onChange={e=>setSearch(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")applySearch()}}
+          placeholder="Name, contact or subject (3+ characters)"/>
+        <button type="button" disabled={busy} onClick={applySearch}>Search</button>
+        {appliedSearch&&<button type="button" onClick={()=>{
+          setSearch("");setAppliedSearch("");setCursor(null);setPriorCursors([]);setNextCursor(null);
+        }}>Clear search</button>}
       </div>
       <div className="role-table-wrap"><table className="role-table">
         <thead><tr><th>Contact</th><th>Subject</th><th>Status</th>
@@ -207,8 +219,8 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
             setPriorCursors(old=>[...old,cursor??""]);setCursor(nextCursor);}}>
           Next page</button>
       </div>
-      <p>Up to 30 authorized messages per page, with server-side paging.
-        Search filters this page only.</p>
+      <p>Up to 30 current authorized cases per page. Search uses protected,
+        server-side word/prefix matching without exposing contact details in URLs.</p>
       {selected&&<div className="drawer-backdrop" role="presentation">
         <section className="role-drawer" role="dialog" aria-modal="true"
           aria-label="Private Foundation support case">
