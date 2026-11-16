@@ -1,5 +1,5 @@
 # CG02 — Local Integration and Independent QA Handoff
-**Authority:** development source review only. **Branch:** `feature/careganga-cg02-foundation-structure-dev-20261115`. **Base:** latest merged `main` (first integration commit `27a41f1723c826415d7d5784d02f24850a1f1982`). **Main merge:** NOT AUTHORIZED until evidence is recorded and user approves. **No GitHub Actions/CI.**
+**Authority:** development source review only. **Branch:** `feature/careganga-cg02-foundation-structure-dev-20261115`. **Base:** latest merged `main` (first integration commit `27a41f1723c826415d7d5784d02f24850a1f1982`). **Main merge:** owner AUTHORIZED a source-only merge on 16 Nov after independent source review (documented in `docs/reviews/2026-11-16-careganga-foundation-source-security-db-uiux-review.md`); **no release/runtime QA approval**. **No GitHub Actions/CI.**
 
 ## Local IDE bootstrap, compile and database
 1. `git fetch origin`; `git checkout feature/careganga-cg02-foundation-structure-dev-20261115`; `git pull --ff-only origin feature/careganga-cg02-foundation-structure-dev-20261115`; confirm `git status --short` is empty, `git merge-base --is-ancestor origin/main HEAD` succeeds, and protect main from direct edits. Compare branch with latest `origin/main` before testing.
@@ -25,10 +25,10 @@
 - Corrected CG02 activation revision INSERT's PostgreSQL placeholder/bind mismatch; repaired original case attachment and CG03 post-decision recovery; protected current evidence in ACTIVE/INACTIVE/CLOSED states and added CG19 owner proof for reactivation; added approved-case and department pagination; rechecked branch ownership *before* command replay; fixed native preview lifetime and upload task release.
 - Integrated `main` into this branch using a **merge commit** preserving both parents rather than history rewriting. Eight overlapping files were explicitly combined; retain main's CG19 notifications/support, CG01 mobile verification, decision NOTIFY and public/private client behavior. A source-only import and SQL-bind scan is **not** a runtime certification.
 
-## Mandatory exit gates before asking to merge main
+## Mandatory local execution gates after the authorized source-only main integration
 - Backend and Web builds, Android TypeScript and binary/device QA: PASS with logs
 - Disposable PostgreSQL migrations, double-run, backup/restore and concurrency tests: PASS with logs
 - CG01 roles/security, CG03 approval, CG19 private storage/scan, Web/Internal Android end-to-end: PASS with reproducible evidence
 - Independent qualified security and database review, PRD/HLD/DLD resolution and exact current SHA-bound delegated design approval: recorded
 - U18–U22 reference screenshot/pixel/motion audit and minimal NFR performance/egress checks: recorded
-- Final developer handoff includes branch SHA, versioned lockfile, unresolved issues (if any) and *new* merge-base check. No production deployment, no CI/GitHub Actions and **do not merge `main`** without the user's next approval.
+- Final developer handoff includes branch SHA, versioned lockfile, unresolved issues (if any) and *new* merge-base check. No production deployment, no CI/GitHub Actions. The owner authorized the source-only Foundation feature integration; **runtime QA/release certification remains blocked** until the above checks pass. Record actual fixes on the authorized feature branch and open another reviewed integration if needed, not by directly editing production `main`.
