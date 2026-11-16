@@ -253,7 +253,7 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
             <nav className="branch-stepper" aria-label="Registration steps">
               {steps.map((title,i)=><button key={title} type="button" disabled={i+1>selected.currentStep+1||busy}
                 aria-current={step===i+1?"step":undefined}
-                onClick={()=>setStep(i+1)}>{i+1}. {title}</button>)}
+                onClick={()=>setStep(i+1)}><span className="branch-step-number">{i+1}</span><span>{title}</span></button>)}
             </nav>
             <h3>Step {step} — {steps[step-1]}</h3>
             {step===1&&<>
