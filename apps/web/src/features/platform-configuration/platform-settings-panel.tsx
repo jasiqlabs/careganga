@@ -36,7 +36,7 @@ const message=(e:unknown)=>{
   const k=e instanceof Error?e.message:"UNCONFIRMED";
   return k==="CONFLICT"?"This setting changed elsewhere. Refresh before saving.":
     k==="ACCESS_DENIED"?"Your Foundation access is no longer verified. Sign in again.":
-    k==="VALIDATION"?"Check the permitted values and enter a fresh authenticator code.":
+    k==="VALIDATION"?"Check the permitted values and enter a fresh current password.":
     k==="RETRY_LATER"?"Too many verification attempts. Try again later.":
     "The outcome could not be confirmed. Check the previous change before retrying.";
 };
@@ -50,12 +50,12 @@ export function PlatformSettingsPanel(){
   const [edit,setEdit]=useState(false);
   const [review,setReview]=useState(false);
   const [pageSize,setPageSize]=useState("25");
-  const [totp,setTotp]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");
   const [unknown,setUnknown]=useState(false);
   const [formProvider,setFormProvider]=useState("");
   const [formPurpose,setFormPurpose]=useState("");
   const [formReference,setFormReference]=useState("");
-  const [integrationTotp,setIntegrationTotp]=useState("");
+  const [integrationPassword,setIntegrationPassword]=useState("");
   const [integrationEdit,setIntegrationEdit]=useState(false);
   const [integrationReview,setIntegrationReview]=useState(false);
   const [checking,setChecking]=useState("");
@@ -101,7 +101,7 @@ export function PlatformSettingsPanel(){
   function begin(){
     if(!setting||unknown||busy||integrationEdit)return;
     pendingAction.current="SETTING_SAVE";requestKey.current=crypto.randomUUID();
-    setPageSize(String(setting.value));setTotp("");setReview(false);
+    setPageSize(String(setting.value));setCurrentPassword("");setReview(false);
     setEdit(true);setNotice(null);
   }
   async function save(e:FormEvent<HTMLFormElement>){
@@ -112,17 +112,17 @@ export function PlatformSettingsPanel(){
       setNotice({kind:"error",message:"Choose a different whole-number page size between 10 and 100."});return;
     }
     if(!review){setReview(true);return;}
-    if(!/^[0-9]{6}$/.test(totp)){
-      setNotice({kind:"error",message:"Enter a fresh six-digit authenticator code."});return;
+    if((currentPassword.length<8||currentPassword.length>1024)){
+      setNotice({kind:"error",message:"Enter a fresh six-digit current password."});return;
     }
     setBusy(true);setNotice(null);
     try{
       const ack=await request<{revision:number}>("settings","PATCH",{
         key:"audit.default_page_size",value:n,expectedRevision:setting.revision,
-        requestKey:requestKey.current,totp
+        requestKey:requestKey.current,currentPassword
       });
       if(!Number.isInteger(ack.revision))throw Error("UNCONFIRMED");
-      setEdit(false);setReview(false);setTotp("");
+      setEdit(false);setReview(false);setCurrentPassword("");
       const verified=await reload(ack.revision);
       if(!verified)setUnknown(true);
       setNotice(verified
@@ -159,7 +159,7 @@ export function PlatformSettingsPanel(){
     pendingAction.current="INTEGRATION_REFERENCE";pendingConnection.current=null;
     requestKey.current=crypto.randomUUID();
     setFormProvider(row?.provider??"");setFormPurpose(row?.purpose??"");
-    setFormReference("");setIntegrationTotp("");setIntegrationReview(false);
+    setFormReference("");setIntegrationPassword("");setIntegrationReview(false);
     setIntegrationEdit(true);setNotice(null);
   }
   async function saveIntegration(e:FormEvent<HTMLFormElement>){
@@ -173,8 +173,8 @@ export function PlatformSettingsPanel(){
         "Enter a valid provider, purpose and secured reference. Do not enter a password or token."});return;
     }
     if(!integrationReview){setIntegrationReview(true);return;}
-    if(!/^[0-9]{6}$/.test(integrationTotp)){
-      setNotice({kind:"error",message:"Enter a fresh authenticator code."});return;
+    if((integrationPassword.length<8||integrationPassword.length>1024)){
+      setNotice({kind:"error",message:"Enter a fresh current password."});return;
     }
     setBusy(true);setNotice(null);
     const existing=connections.find(x=>x.provider===provider&&x.purpose===purpose);
@@ -182,14 +182,14 @@ export function PlatformSettingsPanel(){
     try{
       const result=await request<{revision:number}>("integrations","POST",{
         provider,purpose,secretReference:formReference,
-        expectedRevision:existing?.revision??0,requestKey:requestKey.current,totp:integrationTotp
+        expectedRevision:existing?.revision??0,requestKey:requestKey.current,currentPassword:integrationPassword
       });
       if(!Number.isInteger(result.revision))throw Error("UNCONFIRMED");
       const ok=await reload(undefined,{provider,purpose,revision:result.revision});
       if(!ok){setUnknown(true);setNotice({kind:"uncertain",message:
         "Reference was saved but its current revision could not be verified. Check the previous change."});}
       else{
-        requestKey.current="";setFormReference("");setIntegrationTotp("");
+        requestKey.current="";setFormReference("");setIntegrationPassword("");
         setIntegrationEdit(false);setNotice({kind:"success",message:
           "Reference saved. Provider verification has not been performed."});
       }
@@ -283,10 +283,10 @@ export function PlatformSettingsPanel(){
               onChange={e=>{setPageSize(e.target.value);setReview(false);}}/>
           </label>
           <p>Default 25. Enter a whole number between 10 and 100.</p>
-          <label className="field">Fresh authenticator code
-            <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-              autoComplete="one-time-code" value={totp}
-              onChange={e=>{setTotp(e.target.value.replace(/[^0-9]/g,""));setReview(false);}}/>
+          <label className="field">Fresh current password
+            <input required type="password" minLength={8} maxLength={1024}
+              autoComplete="current-password" value={currentPassword}
+              onChange={e=>{setCurrentPassword(e.target.value);setReview(false);}}/>
           </label>
           {review&&<p role="status">Confirm changing the default audit page size.
             The change creates a permanent configuration history entry.</p>}
@@ -318,10 +318,10 @@ export function PlatformSettingsPanel(){
               placeholder="secretref:..." value={formReference}
               onChange={e=>{setFormReference(e.target.value);setIntegrationReview(false);}}/>
           </label>
-          <label className="field">Fresh authenticator code
-            <input required maxLength={6} pattern="[0-9]{6}" inputMode="numeric"
-              autoComplete="one-time-code" value={integrationTotp}
-              onChange={e=>{setIntegrationTotp(e.target.value.replace(/[^0-9]/g,""));setIntegrationReview(false);}}/>
+          <label className="field">Fresh current password
+            <input required maxLength={1024} type="password" minLength={8}
+              autoComplete="current-password" value={integrationPassword}
+              onChange={e=>{setIntegrationPassword(e.target.value);setIntegrationReview(false);}}/>
           </label>
           {integrationReview&&<p role="status">Confirm this reference update. Existing verification
             status will be invalidated, and no secret value is displayed after saving.</p>}
