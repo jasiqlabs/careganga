@@ -200,20 +200,50 @@ export class BranchOperationsService{
      if(cycle.rowCount)throw new ConflictException("The department would contain itself");
    }
  }
- async list(bearer:string,offset=0,status?:string){
+ async list(bearer:string,offset=0,status?:string,search=""){
    const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
    const admin=await this.root(bearer);
    if(!Number.isInteger(offset)||offset<0||offset>50000||
-     status!==undefined&&!["ACTIVE","INACTIVE","CLOSED"].includes(status))
+     status!==undefined&&!["ACTIVE","INACTIVE","CLOSED"].includes(status)||
+     typeof search!=="string"||search.length>80)
      throw new BadRequestException("Check branch list filters");
-   const rows=await this.db.query<Branch>(`
-     SELECT * FROM branch WHERE root_realm_id=$1
-       AND ($2::boolean OR manager_account_ref=$3)
-       AND ($4::text IS NULL OR status=$4)
-     ORDER BY name,id LIMIT 50 OFFSET $5
-   `,[actor.realmId,admin,actor.accountId,status??null,offset]);
+   const query=search.trim();
+   const [rows,count,byType]=await Promise.all([
+     this.db.query<Branch & {area_name:string;manager_name:string}>(`
+       SELECT b.*,geo.display_name AS area_name,person.display_name AS manager_name
+       FROM branch b
+       JOIN geography_area geo ON geo.id=b.geography_area_id
+         AND geo.root_realm_id=b.root_realm_id
+       JOIN account person ON person.id=b.manager_account_ref
+         AND person.realm_id=b.root_realm_id
+       WHERE b.root_realm_id=$1
+         AND ($2::boolean OR b.manager_account_ref=$3)
+         AND ($4::text IS NULL OR b.status=$4)
+         AND ($5::text='' OR b.name ILIKE '%'||$5||'%'
+            OR b.branch_code ILIKE '%'||$5||'%'
+            OR b.branch_type ILIKE '%'||$5||'%')
+       ORDER BY b.name,b.id LIMIT 50 OFFSET $6
+     `,[actor.realmId,admin,actor.accountId,status??null,query,offset]),
+     this.db.query<{total:number;active:number;inactive:number;closed:number}>(`
+       SELECT count(*)::integer AS total,
+         count(*) FILTER (WHERE status='ACTIVE')::integer AS active,
+         count(*) FILTER (WHERE status='INACTIVE')::integer AS inactive,
+         count(*) FILTER (WHERE status='CLOSED')::integer AS closed
+       FROM branch WHERE root_realm_id=$1
+         AND ($2::boolean OR manager_account_ref=$3)
+     `,[actor.realmId,admin,actor.accountId]),
+     this.db.query<{branch_type:string;total:number}>(`
+       SELECT branch_type,count(*)::integer AS total
+       FROM branch WHERE root_realm_id=$1
+         AND ($2::boolean OR manager_account_ref=$3)
+       GROUP BY branch_type ORDER BY total DESC,branch_type LIMIT 8
+     `,[actor.realmId,admin,actor.accountId])
+   ]);
    return {branches:rows.rows.map(x=>({branchRef:x.id,branchName:x.name,
-     branchCode:x.branch_code,status:x.status,version:x.version,branchType:x.branch_type})),
+       branchCode:x.branch_code,status:x.status,version:x.version,
+       branchType:x.branch_type,areaName:x.area_name,managerName:x.manager_name})),
+     totals:count.rows[0]??{total:0,active:0,inactive:0,closed:0},
+     branchTypes:byType.rows.map(x=>({name:x.branch_type||"Unspecified",total:x.total})),
      offset,limit:50,nextOffset:rows.rows.length===50?offset+50:null};
  }
  async exportPage(bearer:string,offset=0){
