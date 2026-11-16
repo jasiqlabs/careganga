@@ -70,6 +70,17 @@ export function BranchApprovalInbox(){
      setError(e instanceof Error?e.message:"The decision result is unknown.");
    }finally{setBusy(false);}
  }
+ async function reconcile(){
+   if(!selected||busy)return;
+   setBusy(true);setMessage("");setError("");
+   try{
+     const result=await request<{status:string;message?:string}>(
+       "/cases/"+encodeURIComponent(selected.caseRef)+"/reconcile","POST");
+     setMessage(result.message??"The original decision was rechecked.");
+     await refresh();
+   }catch(e){setError(e instanceof Error?e.message:"The original decision is not yet synchronized.");}
+   finally{setBusy(false);}
+ }
  async function finalize(){
    if(!selected||busy)return;
    setBusy(true);setMessage("");setError("");
@@ -114,6 +125,9 @@ export function BranchApprovalInbox(){
        {key&&<p className="notice">A decision request remains unconfirmed.
          Check the current review before starting a different request.</p>}
      </>}
+     {["RETURNED","REJECTED","PENDING_OWNER"].includes(selected.status)&&
+       <button type="button" disabled={busy} onClick={()=>void reconcile()}>
+         Recheck original decision status</button>}
      {selected.status==="PENDING_OWNER"&&<button type="button" className="primary"
        disabled={busy} onClick={()=>void finalize()}>Verify and activate approved branch</button>}
    </div>}
