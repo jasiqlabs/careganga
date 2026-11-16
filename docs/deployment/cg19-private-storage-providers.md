@@ -43,7 +43,7 @@ Storage remains unavailable when a valid provider or ClamAV scanner is missing. 
 4. PUT success alone is NOT VERIFIED. Server re-fetches the exact version, matches length, MIME, SHA-256 and actual ClamAV clean result.
 5. Record verified file metadata, version and scanner proof transactionally. Unknown/failed outcomes never become valid files; reconcile original request before retry.
 6. Read private files through the authenticated backend only, rechecking current CG-01/03 scope. Do not produce public Firebase token or QR disclosure.
-7. Approved access letter/PDF issue/revoke still needs implementation and per-case QA source trace before US-001 can be called source complete.
+7. Approved access letter/PDF issue/revoke is implemented in source with versioned templates, Unicode PDF rendering, an actual CG-01 owner effect, private-versioned storage, issue-key lookup and revocation. Source, cloud, font, migration and device QA are still required before delivery.
 
 ## Later independent developer IDE gates
 
