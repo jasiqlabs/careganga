@@ -219,6 +219,11 @@ export class BranchRegistrationDraftService{
         }
       }
       const payload={...row.profile_payload,[String(step)]:stage};
+      // A returned application must be explicitly reviewed again after any
+      // corrected stage. Never carry old review consent into a new revision.
+      if(row.status==="RETURNED"&&step!==7){
+        payload["7"]={reviewAcknowledged:false};
+      }
       const nextVersion=version+1,nextStep=Math.max(row.current_step,step);
       await client.query(
         "UPDATE branch_registration SET profile_payload=$2::jsonb,geography_area_id=$3, "+
