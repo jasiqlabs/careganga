@@ -12,8 +12,8 @@ CREATE TABLE cg03_case_decision (
   request_key uuid NOT NULL,
   request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
   safe_remarks text NOT NULL DEFAULT '' CHECK(length(safe_remarks)<=500),
-  -- Set only after CG-01 locked, one-use TOTP verification in the decision TX.
-  fresh_mfa_verified_at timestamptz,
+  -- Set only after CG-01 current-password reauthentication in the decision TX.
+  fresh_password_verified_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(case_id,request_key),
   UNIQUE(case_id,expected_case_revision),
