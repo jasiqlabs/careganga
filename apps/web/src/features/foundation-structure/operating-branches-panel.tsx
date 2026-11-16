@@ -158,6 +158,15 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  return <section className="role-workspace operating-branches">
    <header className="toolbar"><div><h2>Active branches & structure</h2>
      <p>Current approved branch directory, contacts, departments and audit history.</p></div>
+     <button type="button" disabled={busy}
+       onClick={()=>void req<{csv:string}>("/operating-branches/export").then(result=>{
+         const blob=new Blob([result.csv],{type:"text/csv;charset=utf-8"});
+         const url=URL.createObjectURL(blob);
+         const link=document.createElement("a");
+         link.href=url;link.download="CareGanga-approved-branches.csv";link.click();
+         URL.revokeObjectURL(url);
+       }).catch(()=>setError("This branch export could not be verified."))}>
+       Export permitted branches</button>
      <button type="button" disabled={busy} onClick={()=>void refresh().catch(
        ()=>setError("Operating branches cannot be refreshed."))}>Refresh</button>
    </header>
