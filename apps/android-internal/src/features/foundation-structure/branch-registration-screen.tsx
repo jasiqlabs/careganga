@@ -9,7 +9,7 @@ import {BranchNativeUploader} from "./branch-native-uploader";
 
 type Draft={recordRef:string;branchName:string;branchType:string;version:number;
   status:string;currentStep:number;updatedAt:string};
-type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:string|null;geographyRef:string|null};
+type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:string|null;managerName:string|null;geographyRef:string|null};
 type Option={value:string;label:string;kind?:string};
 type Area={areaRef:string;name:string;level:string;status:string};
 type Pending={action:"BRANCH_DRAFT_CREATE"|"BRANCH_DRAFT_SAVE";requestKey:string};
@@ -106,7 +106,7 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
     setReviewed(s7.reviewAcknowledged===true);
   }
   async function open(reference:string){
-    setBusy(true);setMessage("");
+    setBusy(true);setMessage("");setSubmissionKey("");
     try{
       hydrate(await api<Detail>(token,"branches/drafts/"+encodeURIComponent(reference)));
       await loadStatus(reference);
@@ -236,11 +236,11 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             {input("Official email",officialEmail,setOfficialEmail)}
             {canManage&&selected&&<BranchNativeUploader token={token}
               registrationRef={selected.recordRef} draftVersion={selected.version}
-              classification="BRANCH_PHOTO" onExpired={onExpired}
+              key={selected.recordRef+":"+selected.version+":"+("BRANCH_PHOTO")} classification="BRANCH_PHOTO" onExpired={onExpired}
               onVerified={ref=>setPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
             {canManage&&selected&&<BranchNativeUploader token={token}
               registrationRef={selected.recordRef} draftVersion={selected.version}
-              classification="BRANCH_LOGO" onExpired={onExpired}
+              key={selected.recordRef+":"+selected.version+":"+("BRANCH_LOGO")} classification="BRANCH_LOGO" onExpired={onExpired}
               onVerified={ref=>setLogos(old=>old.includes(ref)?old:[...old,ref])}/>}
           </>}
           {step===2&&<>
@@ -257,7 +257,7 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
           {step===3&&<>
             {canManage&&<BranchNativeUploader token={token}
               registrationRef={selected.recordRef} draftVersion={selected.version}
-              classification="REGISTRATION_PROOF" onExpired={onExpired}
+              key={selected.recordRef+":"+selected.version+":"+("REGISTRATION_PROOF")} classification="REGISTRATION_PROOF" onExpired={onExpired}
               onVerified={ref=>setRegistrationFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
             <Text style={styles.notice}>{registrationFiles.length} registration proof document(s)
               selected. Save this stage to include them.</Text>
@@ -265,17 +265,22 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
           {step===4&&<>
             {canManage&&<BranchNativeUploader token={token}
               registrationRef={selected.recordRef} draftVersion={selected.version}
-              classification="AGREEMENT" onExpired={onExpired}
+              key={selected.recordRef+":"+selected.version+":"+("AGREEMENT")} classification="AGREEMENT" onExpired={onExpired}
               onVerified={ref=>setAgreementFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
             {canManage&&<BranchNativeUploader token={token}
               registrationRef={selected.recordRef} draftVersion={selected.version}
-              classification="BRANCH_PHOTO" onExpired={onExpired}
+              key={selected.recordRef+":"+selected.version+":"+("BRANCH_PHOTO")} classification="BRANCH_PHOTO" onExpired={onExpired}
               onVerified={ref=>setExtraPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
             <Text style={styles.notice}>Signed agreement(s): {agreementFiles.length}.
               Save this stage to preserve your selection.</Text>
           </>}
           {step===5&&<>
             <Text style={styles.label}>Current eligible Foundation manager</Text>
+            {manager&&selected.managerName&&!managers.some(x=>x.value===manager)&&
+              <Pressable accessibilityRole="radio" accessibilityState={{selected:true}}
+                style={[styles.option,styles.selected]} onPress={()=>setManager(manager)}>
+                <Text style={styles.optionTitle}>{selected.managerName}</Text>
+              </Pressable>}
             {managers.map(row=><Pressable key={row.value} accessibilityRole="radio"
               accessibilityState={{selected:manager===row.value}}
               onPress={()=>setManager(row.value)} style={[styles.option,manager===row.value&&styles.selected]}>
