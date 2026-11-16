@@ -32,14 +32,14 @@ export default async function FoundationAccounts(){
     const keys=(effective.actions as unknown[]).filter((x):x is {key:string}=>
       Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
     const canViewAccounts=keys.includes("accounts.view");
-    const canInviteOnly=!canViewAccounts&&keys.includes("accounts.invite")&&keys.includes("roles.assign");
-    if(!canViewAccounts&&!canInviteOnly)return <main className="page main">
+    const canCreateOnly=!canViewAccounts&&keys.includes("accounts.create")&&keys.includes("roles.assign");
+    if(!canViewAccounts&&!canCreateOnly)return <main className="page main">
       <h1>Access denied</h1><p>You cannot view staff accounts.</p>
       <Link href="/admin">Return to my account</Link></main>;
     return <div className="shell">
       <FoundationAdminNav active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
-        canViewAccounts={canViewAccounts||canInviteOnly}
+        canViewAccounts={canViewAccounts||canCreateOnly}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings={keys.includes("platform.settings.view")}
         canViewAudit={keys.includes("platform.audit.view")}
@@ -50,7 +50,7 @@ export default async function FoundationAccounts(){
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
-      <main className="workspace"><AccountsPanel inviteOnly={canInviteOnly}/></main>
+      <main className="workspace"><AccountsPanel createOnly={canCreateOnly}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
