@@ -44,6 +44,11 @@ export class CommunicationsController{
   draft(@Headers("authorization")token:string,@Body()body:unknown){
     return this.notices.draft(token,body);
   }
+  @Get("notices/:noticeRef/requests/:requestKey")
+  noticeCommandStatus(@Headers("authorization")token:string,
+    @Param("noticeRef")noticeRef:string,@Param("requestKey")key:string){
+    return this.notices.commandStatus(token,noticeRef,key);
+  }
   @Post("notices/:noticeRef/decision")
   noticeDecision(@Headers("authorization")token:string,
     @Param("noticeRef")ref:string,@Body()body:unknown){
