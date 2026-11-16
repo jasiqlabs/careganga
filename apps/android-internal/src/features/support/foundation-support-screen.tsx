@@ -2,6 +2,7 @@ import {useCallback,useEffect,useState} from "react";
 import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
+import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
@@ -113,7 +114,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     try{
       const path="cases/"+selected.caseRef;
       if(kind==="REPLY"){
-        const key=replyKey||crypto.randomUUID();setReplyKey(key);
+        const key=replyKey||Crypto.randomUUID();setReplyKey(key);
         await api(token,path+"/reply","POST",{
           expectedRevision:selected.revision,requestKey:key,body:reply});
         setReply("");setReplyKey("");
