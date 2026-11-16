@@ -78,7 +78,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
     let live=true;
-    void identityRequest("/api/access/accounts/options?search=",{
+    void identityRequest("/api/support/agents?search=",{
       headers:{Authorization:"Bearer "+token}})
       .then(r=>r.ok?r.json():Promise.reject()).then((r:unknown)=>{
         if(live&&r&&typeof r==="object"&&"options" in r&&Array.isArray(r.options))
