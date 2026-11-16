@@ -22,7 +22,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
   if(!result.ok){
     const message=data&&typeof data==="object"&&"message" in data&&typeof data.message==="string"
       ?data.message:"This information cannot be verified right now.";
-    throw Error(message);
+    throw Object.assign(new Error(message),{status:result.status});
   }
   return data as T;
 }
@@ -48,7 +48,6 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
   const [areas,setAreas]=useState<Area[]>([]);
   const [managerOptions,setManagerOptions]=useState<Option[]>([]);
   const [departmentOptions,setDepartmentOptions]=useState<Option[]>([]);
-  const [managerSearch,setManagerSearch]=useState("");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -117,7 +116,11 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
         {requestKey,stage:{branchName:draftName,branchType,openingDate:openingDate||null}});
       setPending(null);setCreateOpen(false);await refreshAfterWrite(result.recordRef);
       setMessage("Branch draft created. No approval or evidence has been claimed.");
-    }catch(e){setError(e instanceof Error?e.message:"The save result is unknown.");}
+    }catch(e){
+      if(e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&
+         [400,401,403,404,409,429].includes(e.status))setPending(null);
+      setError(e instanceof Error?e.message:"The save result is unknown.");
+    }
     finally{setBusy(false);}
   }
   async function save(){
@@ -129,7 +132,11 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
         {requestKey,expectedVersion:selected.version,step,stage:currentStage()});
       setPending(null);await refreshAfterWrite(ref);
       setMessage("Branch draft updated. Documents and approval remain unverified.");
-    }catch(e){setError(e instanceof Error?e.message:"The save result is unknown.");}
+    }catch(e){
+      if(e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&
+         [400,401,403,404,409,429].includes(e.status))setPending(null);
+      setError(e instanceof Error?e.message:"The save result is unknown.");
+    }
     finally{setBusy(false);}
   }
   async function confirmPending(){
