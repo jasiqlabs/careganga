@@ -125,7 +125,8 @@ export function PrivateCaseEvidencePanel(){
         return;
       }
       const destination=new URL(created.uploadUrl);
-      if(destination.protocol!=="https:")throw Error("UNCERTAIN");
+      if(destination.protocol!=="https:"||!created.uploadHeaders||
+        created.uploadHeaders["Content-Type"]!==file.type)throw Error("UNCERTAIN");
       // The signed PUT is allowed only for the object specified by the
       // server reservation. A PUT response is NOT scan or file acceptance.
       let placed:Response;
