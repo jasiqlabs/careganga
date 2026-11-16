@@ -30,7 +30,7 @@ export default async function FoundationAccounts(){
       !effective||typeof effective!=="object"||!("actions" in effective)||
       !Array.isArray(effective.actions))throw new Error("ACCESS_UNAVAILABLE");
     const keys=(effective.actions as unknown[]).filter((x):x is {key:string}=>
-      Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
+      Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     const canViewAccounts=keys.includes("accounts.view");
     const canInviteOnly=!canViewAccounts&&keys.includes("accounts.invite")&&keys.includes("roles.assign");
     if(!canViewAccounts&&!canInviteOnly)return <main className="page main">

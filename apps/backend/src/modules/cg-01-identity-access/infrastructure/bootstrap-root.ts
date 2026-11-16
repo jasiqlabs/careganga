@@ -1,13 +1,34 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Pool } from "pg";
 import { decodeBase32, encryptTotpSecret, hashPassword, matchedTotpCounter } from "../domain/secret-crypto";
+
+function loadEnvIfPresent(): void {
+  const candidates = [
+    ".env",
+    "../.env",
+    join(process.cwd(), ".env"),
+    join(process.cwd(), "apps/backend/.env"),
+    join(__dirname, "../../../../../.env"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        process.loadEnvFile?.(p);
+        break;
+      }
+    } catch {}
+  }
+}
 
 // Run once, from a secured operator shell, against a new database. No public bootstrap API.
 // Never log secrets, passwords, enrollment QR, TOTP or the DB URL.
 async function bootstrapRoot(): Promise<void> {
+  loadEnvIfPresent();
   if (!process.argv.includes("--confirm-one-time-root"))
     throw new Error("Explicit --confirm-one-time-root is required");
-  const url = process.env.DATABASE_MIGRATION_URL;
+  const url = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
   const email = process.env.CAREGANGA_ROOT_EMAIL?.trim().toLowerCase();
   const name = process.env.CAREGANGA_ROOT_NAME?.trim();
   const password = process.env.CAREGANGA_ROOT_PASSWORD ?? "";

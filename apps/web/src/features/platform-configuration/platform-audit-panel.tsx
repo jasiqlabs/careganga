@@ -155,8 +155,8 @@ export function PlatformAuditPanel(){
         throw Error("UNAVAILABLE");
       const blob=new Blob([data.csv],{type:"text/csv;charset=utf-8"});
       const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");a.href=url;
-      a.download="careganga-foundation-audit.csv";a.click();
+      const link=document.createElement("a");link.href=url;
+      link.download="careganga-foundation-audit.csv";link.click();
       URL.revokeObjectURL(url);
       setNotice({kind:"success",message:data.truncated?
         "Exported the first 100 authorized events. More records exist; export is capped.":

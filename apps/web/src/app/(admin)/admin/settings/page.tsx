@@ -36,7 +36,7 @@ export default async function FoundationSettings(){
       !("actions" in access)||!Array.isArray(access.actions))
       throw Error("Access unavailable");
     const keys=(access.actions as unknown[]).filter((x):x is {key:string}=>
-      Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
+      Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     if(!keys.includes("platform.settings.view")||
       !keys.includes("platform.integrations.view"))
       return <main className="page main"><h1>Access denied</h1>

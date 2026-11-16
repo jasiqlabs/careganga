@@ -216,8 +216,7 @@ export function RolesScreen({token,onExit,onExpired}:{token:string;onExit:()=>vo
     if(!historyCursor||busy)return;
     setBusy(true);
     try{
-      const data=await call(token,"audit?limit=30&cursor="+encodeURIComponent(historyCursor))
-        as {events:Audit[];nextCursor:string|null};
+      const data=(await call(token,"audit?limit=30&cursor="+encodeURIComponent(historyCursor))) as {events:Audit[];nextCursor:string|null};
       if(!Array.isArray(data.events))throw new Error("INVALID");
       setHistory(old=>[...(old??[]),...data.events]);setHistoryCursor(data.nextCursor);
     }catch(e){

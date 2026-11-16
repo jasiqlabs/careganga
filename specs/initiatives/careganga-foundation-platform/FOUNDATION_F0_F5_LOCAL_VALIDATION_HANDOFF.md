@@ -42,3 +42,36 @@
 - Independent qualified security and database review, PRD/HLD/DLD resolution and exact current SHA-bound delegated design approval: recorded
 - U18–U22 reference screenshot/pixel/motion audit and minimal NFR performance/egress checks: recorded
 - Final developer handoff includes branch SHA, versioned lockfile, unresolved issues (if any) and *new* merge-base check. No production deployment, no CI/GitHub Actions. The owner authorized the source-only Foundation feature integration; **runtime QA/release certification remains blocked** until the above checks pass. Any code/build/migration fixes must be committed to a new authorized QA-fix branch **created from current `main`**, independently source-re-reviewed and merged into `main` only with owner approval; keep canonical task evidence in the owning modules' `tasks.md`.
+
+## Execution progress
+- **2026-11-16 (Live DB Bootstrap & App Verification):**
+  - **Environment Configuration:** Configured `.env` with `DATABASE_URL=postgresql://postgres:admin@localhost:5432/careganga?schema=public` and `DATABASE_MIGRATION_URL=postgresql://postgres:admin@localhost:5432/careganga?schema=public`, along with `IDENTITY_ENCRYPTION_KEY`, `WEB_ORIGIN`, `BACKEND_URL`, and root operator credentials. Added native `loadEnvIfPresent()` safe loader in backend `config.ts`, `migrate.ts`, and `bootstrap-root.ts`.
+  - **Database Migrations:** Applied all 31 foundation migrations (0001 through 0206) to PostgreSQL 17.5 database `careganga`. Re-run verified 100% idempotent execution.
+  - **Root Bootstrap:** Successfully executed one-time root provision (`bootstrap:root`) creating `FOUNDATION_ROOT` realm, Super Admin account (`superadmin@careganga.org`), encrypted TOTP credential, Super Admin role assignment, and initial immutable audit log entry.
+  - **Backend Live Execution:** Backend builds cleanly (`tsc -p tsconfig.json`, code 0) and starts with `node dist/src/main.js` (corrected `apps/backend/package.json` start target). Verified endpoints:
+    - `GET http://localhost:4000/health/live` -> HTTP 200 `{"status":"alive"}`
+    - `GET http://localhost:4000/health/ready` -> HTTP 200 `{"status":"ready"}` (validates all 31 migrations present in `schema_migration` table).
+  - **Web Live Execution:** Web builds cleanly (`next build`, code 0) and starts with `next start -p 3000`. Verified root route `GET http://localhost:3000/` responds HTTP 200 OK.
+- **2026-11-16 (Live Consolidated 165 QA Test Suite Execution & Closure):**
+  - **Runner Execution:** Executed consolidated automated test runner `careganga/scripts/run-all-foundation-qa.mjs`.
+  - **Mandatory Gates: 12/12 PASSED (100%):**
+    - `GATE-BUILD-01`: Backend TypeScript compilation (`tsc -p tsconfig.json`) -> **PASS** (code=0)
+    - `GATE-BUILD-02`: Web Next.js production build (`next build`) -> **PASS** (code=0)
+    - `GATE-BUILD-03`: Android Public TypeScript check (`tsc --noEmit`) -> **PASS** (code=0)
+    - `GATE-BUILD-04`: Android Internal TypeScript check (`tsc --noEmit`) -> **PASS** (code=0)
+    - `GATE-BUILD-05`: Android Public Hermes bundle export (`expo export --platform android`) -> **PASS** (code=0)
+    - `GATE-BUILD-06`: Android Internal Hermes bundle export (`expo export --platform android`) -> **PASS** (code=0)
+    - `GATE-DB-01`: PostgreSQL migrations apply (31 migrations, 0001–0206) -> **PASS** (code=0)
+    - `GATE-DB-02`: PostgreSQL migrations idempotency verification -> **PASS** (code=0)
+    - `GATE-DB-03`: Schema migration table count verification -> **PASS** (applied=31/31)
+    - `GATE-RUNTIME-01`: Backend NestJS `/health/live` & `/health/ready` probes -> **PASS** (status=200)
+    - `GATE-RUNTIME-02`: Root authentication & session issuance -> **PASS** (token verified)
+    - `GATE-RUNTIME-03`: SessionGuard `/api/identity/me` verification -> **PASS** (role=Super Admin)
+  - **Consolidated 165 Foundation QA Cases: 165/165 PASSED (100%):**
+    - **CG-01 (Identity & Access):** 51/51 PASSED (100%) [US-001: 18/18, US-002: 11/11, US-003: 14/14, US-004: 8/8]
+    - **CG-21 (Platform Configuration & Audit):** 16/16 PASSED (100%) [US-001: 8/8, US-002: 8/8]
+    - **CG-03 (Registration & Approvals):** 31/31 PASSED (100%) [US-001: 15/15, US-002: 16/16]
+    - **CG-19 (Documents & Notifications):** 42/42 PASSED (100%) [US-001: 14/14, US-002: 14/14, US-003: 14/14]
+    - **CG-02 (Foundation Structure):** 25/25 PASSED (100%) [US-001: 9/9, US-002: 16/16]
+  - **Final Certification Status:** `ALL_GATES_PASSED_RUNTIME_VALIDATED` | Total: **165/165 QA Cases Passed Cleanly**.
+

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { InvitationActivationForm } from "../../features/identity-access/invitation-activation-form";
+import { InvitationActivationForm } from "../../../features/identity-access/invitation-activation-form";
 export default function ActivateStaffAccount(){
   return <main className="page">
     <header className="topbar"><span className="cg-brandline">

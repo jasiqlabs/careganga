@@ -57,7 +57,7 @@ export class InvitationEnrollmentService {
     if(await take(tokenKey)>10)
       throw new HttpException("Retry limited",HttpStatus.TOO_MANY_REQUESTS);
   }
-  async begin(body:{email:unknown;token:unknown},remoteAddress:string){
+  async begin(body:{email?:unknown;token?:unknown},remoteAddress:string){
     const parsed=this.parse(body?.email,body?.token);
     await this.limit("invitation.begin",parsed.digest,remoteAddress);
     const client=await this.db.connect();
@@ -101,7 +101,7 @@ export class InvitationEnrollmentService {
       throw e;
     }finally{client.release();}
   }
-  async confirm(body:{email:unknown;token:unknown;password:unknown;totp:unknown},
+  async confirm(body:{email?:unknown;token?:unknown;password?:unknown;totp?:unknown},
      remoteAddress:string,correlationRef:string){
     const parsed=this.parse(body?.email,body?.token);
     if(typeof body?.password!=="string"||body.password.length<14||

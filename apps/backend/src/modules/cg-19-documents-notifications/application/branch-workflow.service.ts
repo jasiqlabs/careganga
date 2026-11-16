@@ -134,8 +134,8 @@ export class BranchWorkflowService{
    return this.operations.update(bearer,ref,input,verified,
      (client,actor)=>this.activeEvidence.guardProof(client,actor,ref,expected,verified));
  }
- async processStatus(bearer:string){return this.approvals.processStatus(bear);}
- async initializeProcess(bearer:string){return this.approvals.initializeProcess(bear);}
+ async processStatus(bearer:string){return this.approvals.processStatus(bearer);}
+ async initializeProcess(bearer:string){return this.approvals.initializeProcess(bearer);}
  async cases(bearer:string,offset=0){return this.approvals.listCases(bearer,offset);}
  async caseDetail(bearer:string,caseRef:string){
    return this.approvals.detail(bearer,id(caseRef));
@@ -199,8 +199,8 @@ export class BranchWorkflowService{
      source.registrationRef,source.revision,source.digest);
    const activated=await this.lifecycle.activate(bearer,source.registrationRef,
      source.revision,source.digest,caseRef,approved.effectKey,
-     (client,actor)=>this.approvals.guardFinalDecision(client,actor,caseRef,
-       source.registrationRef,source.revision,source.digest,approved.effectKey),
+     async (client,actor)=>{await this.approvals.guardFinalDecision(client,actor,caseRef,
+       source.registrationRef,source.revision,source.digest,approved.effectKey);},
      (client,actor)=>this.evidence.guardProof(client,actor,source.registrationRef,live));
    try{
      await this.approvals.markCompleted(bearer,caseRef,approved.effectKey);

@@ -32,27 +32,23 @@ export default async function AdminRoles(){
       !("roleName" in actor)||typeof actor.roleName!=="string"||
       !effective||typeof effective!=="object"||!("actions" in effective)||
       !Array.isArray(effective.actions))throw new Error("UNVERIFIED");
-    const allowed=effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"
-      &&"key" in a&&a.key==="roles.view");
+    const keys=(effective.actions as unknown[]).filter((x:any)=>x&&typeof x.key==="string").map((x:any)=>x.key as string);
+    const allowed=keys.includes("roles.view");
     if(!allowed)return <main className="page main"><h1>Access denied</h1>
       <p>Your current account does not have permission to view roles.</p>
       <Link href="/admin">Return to my account</Link></main>;
-    const canViewAccounts=effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="accounts.view");
+    const canViewAccounts=keys.includes("accounts.view");
     return <div className="shell">
       <FoundationAdminNav active="roles" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}
-        canManageSecurityPolicy={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="identity.security-policy.manage")}
-        canViewSettings={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.settings.view")}
-        canViewAudit={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.audit.view")}
-        canViewRecovery={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key==="platform.recovery.view")}
-        canViewApprovals={effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
-        canViewDocuments={["documents.files.view","documents.files.manage"].every(key=>
-          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&a.key===key))&&
-          effective.actions.some((a:unknown)=>Boolean(a)&&typeof a==="object"&&"key" in a&&(a.key==="approvals.view"||a.key==="approvals.propose"))}
-        canViewCommunications={effective.actions.some((a:unknown)=>
-          Boolean(a)&&typeof a==="object"&&"key" in a&&
-          ["communications.notifications.view","communications.notices.manage",
-            "communications.delivery.view"].includes(String(a.key)))} canViewSupport={effective.actions.some((a:unknown)=>!!a&&typeof a==="object"&&"key" in a&&["support.cases.view","support.faq.manage"].includes(String(a.key)))}/>
+        canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
+        canViewSettings={keys.includes("platform.settings.view")}
+        canViewAudit={keys.includes("platform.audit.view")}
+        canViewRecovery={keys.includes("platform.recovery.view")}
+        canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
+        canViewDocuments={keys.includes("documents.files.view")&&keys.includes("documents.files.manage")&&(keys.includes("approvals.view")||keys.includes("approvals.propose"))}
+        canViewCommunications={keys.some(k=>["communications.notifications.view","communications.notices.manage","communications.delivery.view"].includes(k))}
+        canViewSupport={keys.some(k=>["support.cases.view","support.faq.manage"].includes(k))}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){

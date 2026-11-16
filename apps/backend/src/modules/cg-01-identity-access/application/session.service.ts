@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import type { Pool,PoolClient } from "pg";
@@ -284,4 +284,81 @@ export class SessionService implements IdentityAuthorization {
     await this.db.query(`UPDATE auth_session SET revoked_at=now()
       WHERE token_digest=$1 AND revoked_at IS NULL`, [digest]);
   }
+
+  async changePassword(
+    actor: VerifiedFoundationActor,
+    payload: { currentPassword: string; newPassword: string; totp?: string },
+    correlationRef: string
+  ): Promise<{ status: "PASSWORD_CHANGED"; message: string }> {
+    if (!payload.currentPassword || !payload.newPassword || payload.newPassword.length < 14)
+      throw new BadRequestException("Check password requirements");
+    if (payload.currentPassword === payload.newPassword)
+      throw new BadRequestException("Use a new password");
+    const rules = await this.loginRules();
+    await this.takeAttempt("change-password", actor.accountId, rules.maxFailedAttempts, rules.failedAttemptWindowSeconds);
+
+    const client = await this.db.connect();
+    let open = false;
+    try {
+      await client.query("BEGIN");
+      open = true;
+      const res = await client.query<{
+        id: string; realm_id: string; status: string; access_version: string;
+        password_hash: string; totp_ciphertext: Buffer | null; totp_nonce: Buffer | null;
+        totp_tag: Buffer | null; last_totp_counter: string;
+      }>(String.raw`
+        SELECT a.id, a.realm_id, a.status, a.access_version,
+               ic.password_hash, ic.totp_ciphertext, ic.totp_nonce, ic.totp_tag, ic.last_totp_counter
+        FROM account a
+        JOIN identity_credential ic ON ic.account_id = a.id
+        WHERE a.id = $1 AND a.realm_id = $2
+        FOR UPDATE OF a, ic
+      `, [actor.accountId, actor.realmId]);
+      const row = res.rows[0];
+      if (!row || row.status !== "ACTIVE") throw new ForbiddenException("Account access unavailable");
+      const ok = await verifyPassword(payload.currentPassword, row.password_hash);
+      if (!ok) throw new UnauthorizedException("Current password could not be verified");
+      let matchedCounter: number | null = null;
+      if (row.totp_ciphertext && row.totp_nonce && row.totp_tag) {
+        if (!payload.totp || !/^\d{6}$/.test(payload.totp))
+          throw new ForbiddenException("Authenticator verification code required");
+        const secret = decryptTotpSecret(row.totp_ciphertext, row.totp_nonce, row.totp_tag);
+        matchedCounter = matchedTotpCounter(secret, payload.totp);
+        secret.fill(0);
+        if (matchedCounter === null || matchedCounter <= Number(row.last_totp_counter))
+          throw new ForbiddenException("Use a fresh authenticator code");
+      }
+      const newHash = await hashPassword(payload.newPassword);
+      const newAccessVersion = (BigInt(row.access_version || "1") + 1n).toString();
+      await client.query(
+        "UPDATE identity_credential SET password_hash = $2, credential_version = credential_version + 1, last_totp_counter = COALESCE($3, last_totp_counter), updated_at = now() WHERE account_id = $1",
+        [row.id, newHash, matchedCounter]
+      );
+      await client.query(
+        "UPDATE account SET access_version = $2, updated_at = now() WHERE id = $1",
+        [row.id, newAccessVersion]
+      );
+      await client.query(
+        "UPDATE auth_session SET account_access_version = $2 WHERE id = $1",
+        [actor.activeSessionId, newAccessVersion]
+      );
+      await client.query(
+        "UPDATE auth_session SET revoked_at = now() WHERE account_id = $1 AND id <> $2 AND revoked_at IS NULL",
+        [row.id, actor.activeSessionId]
+      );
+      await client.query(String.raw`
+        INSERT INTO access_audit(realm_id, actor_account_id, target_account_id, action_key, outcome, correlation_ref)
+        VALUES($1, $2, $2, 'identity.password.change', 'SUCCESS', $3)
+      `, [row.realm_id, row.id, correlationRef]);
+      await client.query("COMMIT");
+      open = false;
+      return { status: "PASSWORD_CHANGED", message: "Password updated successfully. Other device sessions were revoked." };
+    } catch (e) {
+      if (open) try { await client.query("ROLLBACK"); } catch {}
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
 }

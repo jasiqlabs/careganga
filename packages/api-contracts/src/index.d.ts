@@ -202,3 +202,10 @@ export interface CG19UploadStatus {
   uploadRef:string;status:CG19FileState;fileRef:string|null;
   cleanVerified:boolean;message?:string;
 }
+
+export interface CG01ChangePasswordRequest { currentPassword: string; newPassword: string; totp?: string }
+export interface CG01ChangePasswordOutcome { status: "PASSWORD_CHANGED"; message: string }
+export interface CG01RecoveryRequest { identifier: string; channel?: "EMAIL" | "SMS"; requestKey: string }
+export interface CG01RecoveryRequestOutcome { message: string; status: "DELIVERY_UNCONFIRMED" | "UNAVAILABLE"; supportReference: string }
+export interface CG01RecoveryConfirmRequest { identifier: string; token: string; password: string; totp: string }
+export interface CG01RecoveryConfirmOutcome { status: "PASSWORD_RESET"; message: string }
