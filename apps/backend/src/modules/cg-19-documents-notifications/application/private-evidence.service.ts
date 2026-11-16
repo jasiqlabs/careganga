@@ -22,7 +22,8 @@ type IntentRow={
 type StoredFileRow={
   id:string;case_id:string;proposal_revision:number;
   original_mime:string;verified_size_bytes:string;verified_sha256:string;object_key:string;
-  object_version:string;revoked_at:Date|null
+  object_version:string;revoked_at:Date|null;revision:number;
+  created_at:Date
 };
 type NewUpload={
   caseRef:string;sourceRevision:number;requestKey:string;
@@ -257,6 +258,76 @@ export class PrivateEvidenceService{
     }catch(error){
       if(transaction){try{await client.query("ROLLBACK");}catch{}}
       throw error;
+    }finally{client.release();}
+  }
+  async listCase(bearer:string,caseRef:string){
+    if(!UUID.test(caseRef))throw new BadRequestException("Choose a valid application");
+    const {actor,source}=await this.scope(bearer,"documents.files.view",caseRef);
+    const rows=await this.db.query<StoredFileRow>(`
+      SELECT id,case_id,proposal_revision,original_mime,verified_size_bytes,
+        object_key,object_version,revoked_at,revision,created_at
+      FROM cg19_stored_file
+      WHERE realm_id=$1 AND case_id=$2 AND proposal_revision=$3
+      ORDER BY created_at DESC,id DESC LIMIT 30
+    `,[actor.realmId,caseRef,source.proposalRevision]);
+    return {files:rows.rows.map(x=>({
+      fileRef:x.id,revision:x.revision,mime:x.original_mime,
+      sizeBytes:Number(x.verified_size_bytes),
+      createdAt:x.created_at.toISOString(),revoked:x.revoked_at!==null
+    }))};
+  }
+  async revoke(bearer:string,fileRef:string,body:unknown){
+    if(!UUID.test(fileRef)||!body||typeof body!=="object"||Array.isArray(body))
+      throw new BadRequestException("Choose a verified file and its current revision");
+    const input=body as Record<string,unknown>;
+    if(Object.keys(input).some(k=>k!=="expectedRevision")||
+      !Number.isSafeInteger(input.expectedRevision)||
+      Number(input.expectedRevision)<1)
+      throw new BadRequestException("Check the current file revision");
+    const actor=await this.sessions.requireAction(bearer,"documents.files.manage");
+    const prior=await this.db.query<StoredFileRow>(`
+      SELECT id,case_id,proposal_revision,original_mime,verified_size_bytes,
+        object_key,object_version,revoked_at,revision,created_at
+      FROM cg19_stored_file WHERE id=$1 AND realm_id=$2
+    `,[fileRef,actor.realmId]);
+    if(!prior.rowCount)throw new NotFoundException("Private file unavailable");
+    await this.scope(bearer,"documents.files.manage",
+      prior.rows[0].case_id,prior.rows[0].proposal_revision);
+    const client=await this.db.connect();
+    let open=false;
+    try{
+      await client.query("BEGIN");open=true;
+      // The row lock serializes revocation with competing operators.
+      const locked=await client.query<StoredFileRow>(`
+        SELECT id,case_id,proposal_revision,original_mime,verified_size_bytes,
+          object_key,object_version,revoked_at,revision,created_at
+        FROM cg19_stored_file WHERE id=$1 AND realm_id=$2 FOR UPDATE
+      `,[fileRef,actor.realmId]);
+      const file=locked.rows[0];
+      if(!file)throw new NotFoundException("Private file unavailable");
+      if(file.revision!==input.expectedRevision)
+        throw new ConflictException("The private file changed. Refresh its state.");
+      if(file.revoked_at){
+        await client.query("COMMIT");open=false;
+        return {revoked:true,revision:file.revision};
+      }
+      const changed=await client.query<{revision:number}>(`
+        UPDATE cg19_stored_file
+        SET revoked_at=now(),revision=revision+1
+        WHERE id=$1 AND realm_id=$2 AND revision=$3 AND revoked_at IS NULL
+        RETURNING revision
+      `,[fileRef,actor.realmId,input.expectedRevision]);
+      if(!changed.rowCount)throw new ConflictException("The file changed.");
+      await client.query(`
+        INSERT INTO cg19_document_event(
+          realm_id,case_id,actor_id,file_id,event_key)
+        VALUES($1,$2,$3,$4,'FILE_REVOKED')
+      `,[actor.realmId,file.case_id,actor.accountId,file.id]);
+      await client.query("COMMIT");open=false;
+      return {revoked:true,revision:changed.rows[0].revision};
+    }catch(e){
+      if(open)try{await client.query("ROLLBACK");}catch{};
+      throw e;
     }finally{client.release();}
   }
   async download(bearer:string,fileRef:string){
