@@ -51,6 +51,7 @@ const value=(x:unknown)=>typeof x==="string"?x:"";
 const list=(x:unknown):string[]=>Array.isArray(x)?x.filter((v):v is string=>typeof v==="string"):[];
 export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Props){
   const [drafts,setDrafts]=useState<Draft[]>([]);
+  const [nextDraftOffset,setNextDraftOffset]=useState<number|null>(null);
   const [selected,setSelected]=useState<Detail|null>(null),[step,setStep]=useState(1);
   const [name,setName]=useState(""),[branchType,setBranchType]=useState("");
   const [openingDate,setOpeningDate]=useState("");
@@ -72,9 +73,15 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   const [creating,setCreating]=useState(false),[loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
   const [pending,setPending]=useState<Pending|null>(null);
-  const load=useCallback(async()=>{
-    const response=await api<{drafts:Draft[]}>(token,"branches/drafts");
-    setDrafts(response.drafts);
+  const load=useCallback(async(offset=0)=>{
+    const response=await api<{drafts:Draft[];nextOffset:number|null}>(
+      token,"branches/drafts?offset="+offset);
+    if(!Array.isArray(response.drafts))
+      throw Error("UNAVAILABLE");
+    setDrafts(previous=>offset===0?response.drafts:[
+      ...previous.filter(item=>!response.drafts.some(incoming=>
+        incoming.recordRef===item.recordRef)),...response.drafts]);
+    setNextDraftOffset(response.nextOffset);
   },[token]);
   useEffect(()=>{
     let alive=true;
@@ -215,6 +222,14 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
             <Text style={styles.optionTitle}>{row.branchName}</Text>
             <Text style={styles.help}>{row.status.replaceAll("_"," ")} · Step {row.currentStep} of 7</Text>
           </Pressable>)}
+          {nextDraftOffset!==null&&button("Load more registrations",()=>{
+            if(busy)return;
+            setBusy(true);
+            void load(nextDraftOffset).catch(error=>{
+              setMessage(friendly(error));
+              if(error instanceof Error&&error.message==="EXPIRED")onExpired();
+            }).finally(()=>setBusy(false));
+          },busy||!!pending)}
           {canManage&&button("New branch draft",()=>{setCreating(true);setName("");setBranchType("");setOpeningDate("");},busy||!!pending,true)}
         </View>}
         {creating&&<View style={styles.card}>
