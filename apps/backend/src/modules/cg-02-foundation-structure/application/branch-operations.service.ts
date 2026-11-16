@@ -140,9 +140,12 @@ export class BranchOperationsService{
      if(!root.rowCount)throw new ForbiddenException("Foundation root is unavailable");
      // Any CG-19 proof is owner-local and runs before the branch row lock.
      if(proof)await proof(client,actor);
+     // Current branch ownership is mandatory even for a replay of an old
+     // accepted command. A reassigned manager cannot retrieve or retry
+     // another manager's historical operation via its idempotency key.
+     const current=await this.branch(client,actor,branchRef,admin,true);
      const command=await this.command(client,actor,action,key,{branchRef,...payload});
      if(command.original){await client.query("COMMIT");tx=false;return command.original;}
-     const current=await this.branch(client,actor,branchRef,admin,true);
      const result=await logic(client,actor,current);
      await this.recorded(client,actor,command.id!,result.kind,result.id,action,result.version);
      await client.query("COMMIT");tx=false;
