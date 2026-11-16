@@ -35,6 +35,9 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     mayEditFaq:boolean;mayChooseAccounts:boolean}){
   const [tab,setTab]=useState<"CASES"|"FAQ">(mayView?"CASES":"FAQ");
   const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState("");
+  const [cursor,setCursor]=useState<string|null>(null);
+  const [priorCursors,setPriorCursors]=useState<string[]>([]);
+  const [nextCursor,setNextCursor]=useState<string|null>(null);
   const [items,setItems]=useState<CaseItem[]>([]);
   const [counts,setCounts]=useState<Counts|null>(null);
   const [selected,setSelected]=useState<CaseDetail|null>(null);
@@ -50,15 +53,18 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     setLoading(true);
     try{
       const [cases,faqList]=await Promise.all([
-        mayView?request<{items:CaseItem[];counts:Counts}>(
-          "cases?limit=30&filter="+encodeURIComponent(filter)):
+        mayView?request<{items:CaseItem[];counts:Counts;nextCursor:string|null}>(
+          "cases?limit=30&filter="+encodeURIComponent(filter)+
+          (cursor?"&cursor="+encodeURIComponent(cursor):"")):
           Promise.resolve({items:[],counts:null}),
         mayEditFaq?request<{faqs:Faq[]}>("faqs"):Promise.resolve({faqs:[]})
       ]);
-      setItems(cases.items);setCounts(cases.counts);setFaqs(faqList.faqs);
+      setItems(cases.items);setCounts(cases.counts);
+      setNextCursor("nextCursor" in cases?cases.nextCursor:null);
+      setFaqs(faqList.faqs);
     }catch(e){setAlert(failure(e))}
     finally{setLoading(false)}
-  },[filter,mayView,mayEditFaq]);
+  },[filter,cursor,mayView,mayEditFaq]);
   useEffect(()=>{void load()},[load]);
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
@@ -162,11 +168,12 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       </div>}
       <div className="search-row">
         <label htmlFor="support-filter">Status</label>
-        <select id="support-filter" value={filter} onChange={e=>setFilter(e.target.value)}>
+        <select id="support-filter" value={filter} onChange={e=>{setFilter(e.target.value);setCursor(null);
+          setPriorCursors([]);setNextCursor(null);}}>
           {["ALL","OPEN","UNREAD","REPLIED","CLOSED","ARCHIVED"].map(x=>
             <option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}
         </select>
-        <label htmlFor="support-search">Search loaded requests</label>
+        <label htmlFor="support-search">Search current page</label>
         <input id="support-search" type="search" value={search}
           onChange={e=>setSearch(e.target.value)} placeholder="Name or subject"/>
       </div>
@@ -185,7 +192,18 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       </table>{!loading&&visible.length===0&&<p className="notice">
         No permitted messages in this page or filter.</p>}
       </div>
-      <p>Showing up to 30 latest authorized messages. Search filters loaded results.</p>
+      <div className="toolbar" aria-label="Support message pages">
+        <button type="button" disabled={busy||priorCursors.length===0}
+          onClick={()=>{const previous=priorCursors.at(-1)??"";
+            setPriorCursors(old=>old.slice(0,-1));setCursor(previous||null);}}>
+          Previous page</button>
+        <button type="button" disabled={busy||!nextCursor}
+          onClick={()=>{if(!nextCursor)return;
+            setPriorCursors(old=>[...old,cursor??""]);setCursor(nextCursor);}}>
+          Next page</button>
+      </div>
+      <p>Up to 30 authorized messages per page, with server-side paging.
+        Search filters this page only.</p>
       {selected&&<div className="drawer-backdrop" role="presentation">
         <section className="role-drawer" role="dialog" aria-modal="true"
           aria-label="Private Foundation support case">
