@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import Link from "next/link";
+import {BranchEvidenceUploader} from "./branch-evidence-uploader";
 
 type Draft={recordRef:string;branchName:string;branchType:string;status:string;
   currentStep:number;version:number;updatedAt:string};
@@ -37,6 +38,14 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
   const [draftName,setDraftName]=useState("");
   const [branchType,setBranchType]=useState("");
   const [openingDate,setOpeningDate]=useState("");
+  const [officialPhone,setOfficialPhone]=useState(""),[officialEmail,setOfficialEmail]=useState("");
+  const [stagePhotos,setStagePhotos]=useState<string[]>([]);
+  const [stageLogos,setStageLogos]=useState<string[]>([]);
+  const [registrationFiles,setRegistrationFiles]=useState<string[]>([]);
+  const [agreementFiles,setAgreementFiles]=useState<string[]>([]);
+  const [documentPhotos,setDocumentPhotos]=useState<string[]>([]);
+  const [submissionNotice,setSubmissionNotice]=useState("");
+  const [submissionBusy,setSubmissionBusy]=useState(false);
   const [areaRef,setAreaRef]=useState("");
   const [address,setAddress]=useState("");
   const [pin,setPin]=useState("");
@@ -78,9 +87,14 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
   },[canManage]);
   function hydrate(data:Detail){
     setSelected(data);setStep(Math.max(1,Math.min(7,data.currentStep)));
-    const stages=data.stages??{},s1=stages["1"]??{},s2=stages["2"]??{},s5=stages["5"]??{},
+    const stages=data.stages??{},s1=stages["1"]??{},s2=stages["2"]??{},
+      s3=stages["3"]??{},s4=stages["4"]??{},s5=stages["5"]??{},
       s6=stages["6"]??{},s7=stages["7"]??{};
     setDraftName(string(s1.branchName));setBranchType(string(s1.branchType));setOpeningDate(string(s1.openingDate));
+    setOfficialPhone(string(s1.officialPhone));setOfficialEmail(string(s1.officialEmail));
+    setStagePhotos(ids(s1.photoFiles));setStageLogos(ids(s1.logoFiles));
+    setRegistrationFiles(ids(s3.registrationFiles));setAgreementFiles(ids(s4.agreementFiles));
+    setDocumentPhotos(ids(s4.photoFiles));
     setAreaRef(string(s2.geographyRef));setAddress(string(s2.postalAddress));setPin(string(s2.pinCode));
     setLatitude(s2.latitude===null||s2.latitude===undefined?"":String(s2.latitude));
     setLongitude(s2.longitude===null||s2.longitude===undefined?"":String(s2.longitude));
@@ -94,11 +108,12 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
     finally{setBusy(false);}
   }
   function currentStage():Record<string,unknown>{
-    if(step===1)return {branchName:draftName,branchType,openingDate:openingDate||null};
+    if(step===1)return {branchName:draftName,branchType,openingDate:openingDate||null,
+      officialPhone,officialEmail,photoFiles:stagePhotos,logoFiles:stageLogos};
     if(step===2)return {geographyRef:areaRef||null,postalAddress:address,pinCode:pin,
       latitude:latitude.trim()?Number(latitude):null,longitude:longitude.trim()?Number(longitude):null};
-    if(step===3)return {registrationFiles:[]};
-    if(step===4)return {agreementFiles:[],photoFiles:[]};
+    if(step===3)return {registrationFiles};
+    if(step===4)return {agreementFiles,photoFiles:documentPhotos};
     if(step===5)return {managerRef:manager||null};
     if(step===6)return {departmentRefs:departments};
     return {reviewAcknowledged:ack};
@@ -210,6 +225,17 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
                 onChange={e=>setBranchType(e.target.value)}/></label>
               <label className="field">Opening date<input type="date" value={openingDate}
                 onChange={e=>setOpeningDate(e.target.value)}/></label>
+              <label className="field">Official phone<input type="tel" maxLength={80}
+                value={officialPhone} onChange={e=>setOfficialPhone(e.target.value)}/></label>
+              <label className="field">Official email<input type="email" maxLength={180}
+                value={officialEmail} onChange={e=>setOfficialEmail(e.target.value)}/></label>
+              {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
+                draftVersion={selected.version} classification="BRANCH_PHOTO"
+                onVerified={ref=>setStagePhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
+              {stagePhotos.length>0&&<p className="notice">{stagePhotos.length} private photograph(s) selected for next save.</p>}
+              {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
+                draftVersion={selected.version} classification="BRANCH_LOGO"
+                onVerified={ref=>setStageLogos(old=>old.includes(ref)?old:[...old,ref])}/>}
             </>}
             {step===2&&<>
               <label className="field">Block / area<select value={areaRef}
@@ -224,9 +250,23 @@ export function BranchDraftPanel({canManage}:{canManage:boolean}){
                 <label className="field">Longitude<input value={longitude} inputMode="decimal"
                   onChange={e=>setLongitude(e.target.value)}/></label></div>
             </>}
-            {(step===3||step===4)&&<p className="notice">Secure evidence upload and verification
-              are not yet available for pre-submission branch drafts. You can save this stage
-              without evidence, but it cannot be submitted or activated. No document is marked verified.</p>}
+            {step===3&&<>
+              {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
+                draftVersion={selected.version} classification="REGISTRATION_PROOF"
+                onVerified={ref=>setRegistrationFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
+              <p className="notice">Registration proof selected: {registrationFiles.length}.
+                A signed agreement is also required before submission.</p>
+            </>}
+            {step===4&&<>
+              {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
+                draftVersion={selected.version} classification="AGREEMENT"
+                onVerified={ref=>setAgreementFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
+              {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
+                draftVersion={selected.version} classification="BRANCH_PHOTO"
+                onVerified={ref=>setDocumentPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
+              <p className="notice">Agreements selected: {agreementFiles.length}.
+                Additional private photos: {documentPhotos.length}.</p>
+            </>}
             {step===5&&<label className="field">Eligible Foundation manager<select value={manager}
               onChange={e=>setManager(e.target.value)}><option value="">Choose a real account</option>
               {managerOptions.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select>
