@@ -10,6 +10,8 @@ function permitted(parts:string[],method:Method){
   if(parts.join("/")==="receipt/status"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="public/faqs"&&method==="GET")return "PUBLIC";
   if(parts.length===1&&parts[0]==="cases"&&method==="GET")return "STAFF";
+  if(parts.length===2&&parts[0]==="cases"&&parts[1]==="search"&&
+    method==="POST")return "STAFF";
   if(parts.length===1&&parts[0]==="faqs"&&["GET","POST"].includes(method))
     return "STAFF";
   if(parts.length===2&&parts[0]==="cases"&&UUID.test(parts[1])&&method==="GET")
