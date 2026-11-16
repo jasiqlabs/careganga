@@ -2,8 +2,6 @@
 
 ## 16 Nov 2026 simple-auth cross-owner change — source-review required
 
-**CG-01 greenfield credential change (16 Nov 2026, feature-only):** protected CG-19 notices and letter actions require password-authenticated current CG-01 sessions plus a fresh actor current-password confirmation for their restricted transactions; no TOTP. Public contact remains guest-accessible, while private notices/letters remain authorization-gated. Email/SMS for credential reset is CG-01-owned security transport and OTP proof, **not** CG-19's ordinary notification challenge. Preserve confidential-recipient eligibility and existing CG-19 42 QA definitions; new current-password sub-assertions are not runtime executed.
-
 **Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
 
 
@@ -39,7 +37,7 @@ mobile_dependency_audit: SOURCE_BASELINE_ONLY; no verified APK/AAB/native QA.
 
 ### Explicit channel acceptance — SMS and Email are first-class CG-19 US-002 channels
 
-**Both `SMS` and `EMAIL` are required supported channels**, not examples or a single generic 'notification' test. An authorized Foundation notice or confirmed original business event may target permitted verified mobile contact by SMS and/or permitted verified email by email, under versioned **channel-specific** templates, actual recipient consent/communication preferences, current CG-01 scope and legitimate communication purpose. For each enabled channel provide a real configured adapter, verified provider connection/approved sending identity (CG-21 holds protected credential reference and on-demand readiness), protected provider response and delivery receipt/status history, finite retriable failures and secure suppressions. Missing one provider never invents success for that channel and need not block the other channel or a permitted in-app notification. Email and SMS must be independently source-traced and externally verified before a release can claim those channels work; **the account-password/MFA OTP challenge is still CG-01-owned and never copied into general CG-19 messaging history**.
+**Both `SMS` and `EMAIL` are required supported channels**, not examples or a single generic 'notification' test. An authorized Foundation notice or confirmed original business event may target permitted the permitted stored contact by SMS and/or permitted verified email by email, under versioned **channel-specific** templates, actual recipient consent/communication preferences, current CG-01 scope and legitimate communication purpose. For each enabled channel provide a real configured adapter, verified provider connection/approved sending identity (CG-21 holds protected credential reference and on-demand readiness), protected provider response and delivery receipt/status history, finite retriable failures and secure suppressions. Missing one provider never invents success for that channel and need not block the other channel or a permitted in-app notification. Email and SMS must be independently source-traced and externally verified before a release can claim those channels work; **the account-password/current-password confirmation OTP challenge is still CG-01-owned and never copied into general CG-19 messaging history**.
 
 ## Complete PRD and BR mapping
 
