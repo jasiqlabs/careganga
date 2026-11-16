@@ -2,7 +2,10 @@
 import {useCallback,useEffect,useState} from "react";
 import {ActiveBranchEvidenceUploader} from "./active-branch-evidence-uploader";
 
-type Branch={branchRef:string;branchName:string;branchCode:string;status:string;version:number;branchType:string};
+type Branch={branchRef:string;branchName:string;branchCode:string;status:string;
+ version:number;branchType:string;areaName:string;managerName:string};
+type BranchTotals={total:number;active:number;inactive:number;closed:number};
+type BranchTypeSummary={name:string;total:number};
 type BranchDetail=Branch&{openingDate:string|null;geographyRef:string;postalAddress:string;
  pinCode:string|null;latitude:number|null;longitude:number|null;officialPhone:string;officialEmail:string;
  managerRef:string;managerName:string|null;evidenceVersions:{fileRef:string;revision:number;classification:string}[]};
@@ -32,6 +35,9 @@ const key=()=>crypto.randomUUID();
 function str(v:unknown){return typeof v==="string"?v:"";}
 export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;canAdmin:boolean}){
  const [rows,setRows]=useState<Branch[]>([]),[next,setNext]=useState<number|null>(null);
+ const [totals,setTotals]=useState<BranchTotals|null>(null);
+ const [branchTypes,setBranchTypes]=useState<BranchTypeSummary[]>([]);
+ const [searchInput,setSearchInput]=useState(""),[searchApplied,setSearchApplied]=useState("");
  const [selected,setSelected]=useState<BranchDetail|null>(null);
  const [history,setHistory]=useState<History[]>([]);
  const [departments,setDepartments]=useState<Department[]>([]),[links,setLinks]=useState<Link[]>([]);
@@ -58,11 +64,15 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  const [unknown,setUnknown]=useState(false),[operationKey,setOperationKey]=useState("");
  const [stagedOperation,setStagedOperation]=useState<{method:"PATCH"|"POST";route:string;body:Record<string,unknown>}|null>(null);
  const load=useCallback(async(offset=0,filter=statusFilter)=>{
-   const result=await req<{branches:Branch[];nextOffset:number|null}>(
-     "/operating-branches?offset="+offset+(filter!=="ALL"?"&status="+encodeURIComponent(filter):""));
+   const result=await req<{branches:Branch[];nextOffset:number|null;
+     totals:BranchTotals;branchTypes:BranchTypeSummary[]}>(
+     "/operating-branches?offset="+offset+
+     (filter!=="ALL"?"&status="+encodeURIComponent(filter):"")+
+     (searchApplied?"&search="+encodeURIComponent(searchApplied):""));
    setRows(prev=>offset===0?result.branches:[...prev,...result.branches]);
+   setTotals(result.totals);setBranchTypes(result.branchTypes);
    setNext(result.nextOffset);
- },[statusFilter]);
+ },[statusFilter,searchApplied]);
  useEffect(()=>{
    let live=true;
    void load(0).catch(()=>{if(live){setRows([]);setError("Operating branches cannot be verified.");}})
@@ -158,8 +168,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
  }
  const baseRef=selected?"/operating-branches/"+selected.branchRef:"";
  return <section className="role-workspace operating-branches">
-   <header className="toolbar"><div><h2>Active branches & structure</h2>
-     <p>Current approved branch directory, contacts, departments and audit history.</p></div>
+   <header className="toolbar"><div><h2>Branches / Locations</h2>
+     <p>Approved operating branches, current locations and change history.</p></div>
      <button type="button" disabled={busy}
        onClick={()=>void req<{csv:string}>("/operating-branches/export").then(result=>{
          const blob=new Blob([result.csv],{type:"text/csv;charset=utf-8"});
@@ -172,29 +182,64 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
      <button type="button" disabled={busy} onClick={()=>void refresh().catch(
        ()=>setError("Operating branches cannot be refreshed."))}>Refresh</button>
    </header>
-   <div className="search-row"><label>Branch status
-     <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setSelected(null);setLoading(true);}}>
-       <option value="ALL">All statuses</option><option value="ACTIVE">Active</option>
-       <option value="INACTIVE">Inactive</option><option value="CLOSED">Closed</option>
-     </select></label></div>
+   {totals&&<div className="kpi-grid branch-overview" aria-label="Live permitted branch summary">
+     {([
+       ["Total branches",totals.total],
+       ["Active branches",totals.active],
+       ["Inactive branches",totals.inactive],
+       ["Closed branches",totals.closed]
+     ] as const).map(([name,value])=><div key={name} className="kpi">
+       <span>{name}</span><strong>{value}</strong>
+     </div>)}
+   </div>}
+   <div className="search-row branch-filters">
+     <label>Search by branch name, code or type
+       <input type="search" value={searchInput} maxLength={80}
+         placeholder="Search approved branches"
+         onChange={e=>setSearchInput(e.target.value)}
+         onKeyDown={e=>{if(e.key==="Enter"){setSelected(null);setSearchApplied(searchInput.trim());}}}/>
+     </label>
+     <label>Branch status
+       <select value={statusFilter}
+         onChange={e=>{setStatusFilter(e.target.value);setSelected(null);setLoading(true);}}>
+         <option value="ALL">All statuses</option><option value="ACTIVE">Active</option>
+         <option value="INACTIVE">Inactive</option><option value="CLOSED">Closed</option>
+       </select>
+     </label>
+     <button type="button" disabled={busy} onClick={()=>{
+       setSelected(null);setSearchApplied(searchInput.trim());
+     }}>Apply filters</button>
+     <button type="button" disabled={busy} onClick={()=>{
+       setSelected(null);setSearchInput("");setSearchApplied("");setStatusFilter("ALL");
+     }}>Reset</button>
+   </div>
    {!!message&&<p role="status" className="notice">{message}</p>}
    {!!error&&<p role="alert" className="notice">{error}</p>}
    {unknown&&<div role="alert" className="notice">The original write is uncertain.
      <button type="button" disabled={busy} onClick={()=>void retryOriginal()}>Check original change</button></div>}
    {loading?<p role="status">Checking current approved branches...</p>:
      <div className="branch-columns">
-       <aside className="role-pane"><h3>Branch directory</h3>
-         {rows.length===0?<p>No permitted operating branches found.</p>:<ul className="branch-draft-list">
-           {rows.map(branch=><li key={branch.branchRef}>
-             <button type="button" disabled={busy} onClick={()=>void open(branch.branchRef)}
-               aria-current={selected?.branchRef===branch.branchRef?"true":undefined}>
-               <strong>{branch.branchName}</strong>
-               <span>{branch.branchCode} · {label(branch.status)}</span>
-             </button></li>)}</ul>}
+       <section className="role-pane"><h3>All permitted branches</h3>
+         {rows.length===0?<p>No operating branches match the selected filters.</p>:
+           <div className="branch-directory-scroll"><table className="role-table branch-directory-table">
+             <thead><tr><th>Branch code</th><th>Branch name</th>
+               <th>Location</th><th>Branch type</th><th>Incharge / Manager</th>
+               <th>Status</th><th>Action</th></tr></thead>
+             <tbody>{rows.map(branch=><tr key={branch.branchRef}>
+               <td>{branch.branchCode}</td><td><strong>{branch.branchName}</strong></td>
+               <td>{branch.areaName}</td><td>{branch.branchType||"Not specified"}</td>
+               <td>{branch.managerName||"Current manager"}</td>
+               <td><span className={"account-status "+branch.status.toLowerCase()}>
+                 {label(branch.status)}</span></td>
+               <td><button type="button" disabled={busy}
+                 aria-label={"View "+branch.branchName}
+                 aria-current={selected?.branchRef===branch.branchRef?"true":undefined}
+                 onClick={()=>void open(branch.branchRef)}>View</button></td>
+             </tr>)}</tbody></table></div>}
          {next!==null&&<button type="button" disabled={busy}
            onClick={()=>void load(next).catch(()=>setError("More branches cannot be verified."))}>
            Load more branches</button>}
-       </aside>
+       </section>
        <div className="role-pane">
          {!selected?<p>Select a branch to view its current authorized details.</p>:<>
            <header><h3>{selected.branchName} · {selected.branchCode}</h3>
@@ -360,10 +405,22 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                Revision {h.version} · {new Date(h.changedAt).toLocaleString()}</li>)}</ol>}
          </>}
        </div>
-       <aside className="role-pane"><h3>Operating facts</h3>
-         <p>Only genuine Super Admin-approved branches are in this directory.
-           Historic submissions and decisions remain preserved.</p>
-         <p>Inactive or closed branches cannot receive new departments or links.</p>
+       <aside className="role-pane"><h3>Branches by status</h3>
+         {totals&&totals.total>0?([
+           ["Active",totals.active],["Inactive",totals.inactive],
+           ["Closed",totals.closed]
+         ] as const).map(([status,count])=><div className="branch-summary-row" key={status}>
+           <span>{status}</span><strong>{count}</strong>
+           <progress aria-label={status+" branches"} max={totals.total} value={count}/>
+         </div>):<p>No approved branch status records yet.</p>}
+         <h3>Branches by type</h3>
+         {branchTypes.length?branchTypes.map(type=><div className="branch-summary-row" key={type.name}>
+           <span>{type.name}</span><strong>{type.total}</strong>
+           <progress aria-label={type.name+" branches"}
+             max={Math.max(1,totals?.total??1)} value={type.total}/>
+         </div>):<p>No approved branch types yet.</p>}
+         <p className="notice">These summaries use the current permitted records.
+           Staff totals and unsupported future-module statistics are not shown.</p>
        </aside>
      </div>}
  </section>;
