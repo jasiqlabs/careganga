@@ -140,13 +140,14 @@ export class BranchApprovalService{
    }finally{client.release();}
  }
  private async actorForCase(bearer:string,caseRef:string){
-   const actor=await this.sessions.verifySession(bearer);
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
    const root=await this.db.query<{id:string}>(`
      SELECT a.id FROM auth_session s JOIN account a ON a.id=s.account_id
        AND a.realm_id=$2 AND a.status='ACTIVE'
      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
      JOIN role r ON r.id=ar.role_id AND r.active AND r.is_protected
      WHERE s.id=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+       AND s.account_access_version=a.access_version
        AND s.expires_at>now() LIMIT 1
    `,[actor.activeSessionId,actor.realmId]);
    const rows=await this.db.query<CaseRow>(`
