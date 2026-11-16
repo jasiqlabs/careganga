@@ -46,6 +46,16 @@ export class SupportController{
     @Query("cursor")cursor?:string){
     return this.support.cases(token,limit??30,filter??"ALL",cursor);
   }
+  /** Private full-source search remains body-only: raw contact words never
+   * appear in URLs, access logs, browser history or referrers. */
+  @Post("cases/search")
+  search(@Headers("authorization")token:string,@Body()body:unknown){
+    if(!body||typeof body!=="object"||Array.isArray(body))
+      return this.support.cases(token,30,"ALL");
+    const x=body as Record<string,unknown>;
+    return this.support.cases(token,x.limit??30,x.filter??"ALL",x.cursor??null,
+      x.search??"");
+  }
   @Get("cases/:caseRef")
   detail(@Headers("authorization")token:string,
     @Param("caseRef")ref:string){return this.support.detail(token,ref);}
