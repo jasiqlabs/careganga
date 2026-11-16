@@ -24,6 +24,10 @@ function allowed(parts:string[],method:"GET"|"POST"){
   if(parts.length===2&&parts[0]==="files"&&parts[1]==="initiate")
     return method==="POST";
   if(parts.length===3&&parts[0]==="files"&&
+    parts[1]==="case"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===3&&parts[0]==="files"&&UUID.test(parts[1])&&
+    parts[2]==="revoke")return method==="POST";
+  if(parts.length===3&&parts[0]==="files"&&
     parts[1]==="intents"&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===4&&parts[0]==="files"&&
     parts[1]==="intents"&&UUID.test(parts[2])&&parts[3]==="confirm")
@@ -44,7 +48,8 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
   if(method==="POST"&&
     ((parts.length===2&&["initiate","issue"].includes(parts[1]))||
       (parts.length===3&&parts[1]==="template"&&parts[2]==="approve")||
-      (parts.length===3&&parts[0]==="letters"&&parts[2]==="revoke"))){
+      (parts.length===3&&["letters","files"].includes(parts[0])&&
+        parts[2]==="revoke"))){
     try{
       const input:unknown=await request.json();
       if(!input||typeof input!=="object"||Array.isArray(input))throw Error();
