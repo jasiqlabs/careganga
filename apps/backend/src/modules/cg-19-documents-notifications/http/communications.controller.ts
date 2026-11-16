@@ -35,6 +35,11 @@ export class CommunicationsController{
   listNotices(@Headers("authorization")token:string,@Query("limit")limit?:string){
     return this.notices.list(token,limit??20);
   }
+  @Get("notices/requests/:requestKey")
+  lookupDraft(@Headers("authorization")token:string,
+    @Param("requestKey")key:string){
+    return this.notices.lookupDraft(token,key);
+  }
   @Post("notices")
   draft(@Headers("authorization")token:string,@Body()body:unknown){
     return this.notices.draft(token,body);
