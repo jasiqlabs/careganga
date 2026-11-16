@@ -163,7 +163,7 @@ export class BranchWorkflowService{
        source.registrationRef,source.revision,source.digest,approved.effectKey),
      (client,actor)=>this.evidence.guardProof(client,actor,source.registrationRef,live));
    try{
-     await this.approvals.markCompleted(caseRef,approved.effectKey);
+     await this.approvals.markCompleted(bearer,caseRef,approved.effectKey);
      return {...activated,message:"Branch activation confirmed with one original branch code."};
    }catch{
      return {...activated,status:"ACTIVE_SOURCE_SYNC_PENDING",
