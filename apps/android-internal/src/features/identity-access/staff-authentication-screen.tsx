@@ -10,6 +10,7 @@ import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
 import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
 import { NotificationsScreen } from "../communications/notifications-screen";
+import { FoundationSupportScreen } from "../support/foundation-support-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -62,12 +63,13 @@ export function StaffAuthenticationScreen(){
   const [documentsOpen,setDocumentsOpen]=useState(false);
   const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
+  const [supportOpen,setSupportOpen]=useState(false);
   const [roleActions,setRoleActions]=useState<string[]>([]);
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -160,7 +162,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -194,6 +196,16 @@ export function StaffAuthenticationScreen(){
       <RecipientNotifications token={token} makeRequest={communicationRequest}
         onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
     </SafeAreaView>;
+  if(supportOpen&&token&&actor&&
+    (roleActions.includes("support.cases.view")||
+      roleActions.includes("support.faq.manage")))
+    return <FoundationSupportScreen token={token}
+      mayView={roleActions.includes("support.cases.view")}
+      mayManage={roleActions.includes("support.cases.manage")}
+      mayReply={roleActions.includes("support.cases.reply")}
+      mayFaq={roleActions.includes("support.faq.manage")}
+      mayChooseAccounts={roleActions.includes("accounts.select")}
+      onExit={()=>setSupportOpen(false)} onExpired={expireSession}/>;
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
     return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
   return <SafeAreaView style={styles.page}>
@@ -237,6 +249,12 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>setCommunicationsOpen(true)}>
                 <Text style={styles.buttonText}>My Foundation notices</Text>
+              </Pressable>}
+            {(roleActions.includes("support.cases.view")||
+              roleActions.includes("support.faq.manage"))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setSupportOpen(true)}>
+                <Text style={styles.buttonText}>Contact Messages & Help</Text>
               </Pressable>}
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
