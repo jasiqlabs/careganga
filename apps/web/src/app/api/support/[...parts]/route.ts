@@ -55,6 +55,8 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     (parts.join("/")==="public/contact"||parts.join("/")==="receipt/status")){
     const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
     const trustedHeader=process.env.CG19_TRUSTED_CLIENT_IP_HEADER;
+    if(process.env.NODE_ENV==="production"&&secret.length!==32)
+      return fail(503,"Trusted support ingress is not configured.");
     if(secret.length>0){
       if(secret.length!==32||!trustedHeader||!/^[a-z0-9-]{2,60}$/.test(trustedHeader))
         return fail(503,"Trusted support ingress is not configured.");
