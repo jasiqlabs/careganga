@@ -1,5 +1,12 @@
 # CG-19 — Documents Notifications
 
+## 16 Nov 2026 simple-auth cross-owner change — source-review required
+
+**CG-01 greenfield credential change (16 Nov 2026, feature-only):** protected CG-19 notices and letter actions require password-authenticated current CG-01 sessions plus a fresh actor current-password confirmation for their restricted transactions; no TOTP. Public contact remains guest-accessible, while private notices/letters remain authorization-gated. Email/SMS for credential reset is CG-01-owned security transport and OTP proof, **not** CG-19's ordinary notification challenge. Preserve confidential-recipient eligibility and existing CG-19 42 QA definitions; new current-password sub-assertions are not runtime executed.
+
+**Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43.  
