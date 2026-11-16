@@ -273,6 +273,17 @@ export class BranchApprovalService{
    if(!rows.rows[0])throw new ConflictException("The approved branch source is stale or unavailable");
    return rows.rows[0].status;
  }
+ async sourceCase(bearer:string,caseRef:string){
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.admin");
+   const result=await this.db.query<CaseRow>(`
+     SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2
+       AND case_kind='BRANCH_REGISTRATION'
+   `,[reference(caseRef),actor.realmId]);
+   if(!result.rows[0])throw new NotFoundException("Branch approval unavailable");
+   const row=result.rows[0];
+   return {registrationRef:row.branch_source_ref,revision:row.branch_source_revision,
+     digest:row.branch_source_digest,status:row.status,caseRef:row.id};
+ }
  async listCases(bearer:string){
    const actor=await this.sessions.requireAction(bearer,"approvals.review");
    const cases=await this.db.query<CaseRow & {account_name_snapshot:string}>(`
