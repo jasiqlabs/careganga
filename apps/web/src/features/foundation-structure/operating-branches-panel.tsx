@@ -259,7 +259,8 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
              <div className="toolbar">
                {(selected.status==="ACTIVE"?["INACTIVE","CLOSED"]:["ACTIVE","CLOSED"]).map(nextStatus=>
                  <button type="button" key={nextStatus} disabled={busy||unknown}
-                   onClick={()=>void mutate("PATCH",baseRef+"/status",
+                   onClick={()=>void mutate("POST",
+                     "/branch-workflow/operating-branches/"+selected.branchRef+"/status",
                      {expectedVersion:selected.version,status:nextStatus})}>
                    Mark {label(nextStatus)}</button>)}
              </div></div>}
