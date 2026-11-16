@@ -333,11 +333,11 @@ export class BranchPrivateEvidenceService{
    const client=await this.db.connect();let tx=false;
    try{
      await client.query("BEGIN");tx=true;
-     await this.source.guardHistoricalRegistration(client,actor,row.rows[0].registration_id,true);
      const locked=await client.query<{id:string;revision:number;revoked_at:Date|null}>(`
        SELECT id,revision,revoked_at FROM cg19_stored_file
        WHERE id=$1 AND realm_id=$2 AND owner_kind='CG02_DRAFT' FOR UPDATE
      `,[fileRef,actor.realmId]);
+     await this.source.guardHistoricalRegistration(client,actor,row.rows[0].registration_id,true);
      if(!locked.rows[0]||locked.rows[0].revision!==expected)
        throw new ConflictException("The private file changed");
      if(!locked.rows[0].revoked_at){
