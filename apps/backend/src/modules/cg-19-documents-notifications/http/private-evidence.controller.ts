@@ -18,6 +18,16 @@ export class PrivateEvidenceController{
     @Param("intentRef")intentRef:string){
     return this.files.confirm(bearer,intentRef);
   }
+  @Get("files/case/:caseRef")
+  caseFiles(@Headers("authorization")bearer:string,
+    @Param("caseRef")caseRef:string){
+    return this.files.listCase(bearer,caseRef);
+  }
+  @Post("files/:fileRef/revoke")
+  revoke(@Headers("authorization")bearer:string,
+    @Param("fileRef")fileRef:string,@Body()body:unknown){
+    return this.files.revoke(bearer,fileRef,body);
+  }
   @Get("files/:fileRef/download")
   @Header("Cache-Control","private, no-store")
   @Header("X-Content-Type-Options","nosniff")
