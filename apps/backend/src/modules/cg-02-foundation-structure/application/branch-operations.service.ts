@@ -132,6 +132,12 @@ export class BranchOperationsService{
    try{
      await client.query("BEGIN");tx=true;
      await this.identity.assertCurrent(client,actor,permission);
+     // Shared Foundation-root read fence serializes these writes with
+     // CG-02 geography reparent/deactivation (which takes a root write lock).
+     const root=await client.query(`
+       SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR SHARE
+     `,[actor.realmId]);
+     if(!root.rowCount)throw new ForbiddenException("Foundation root is unavailable");
      // Any CG-19 proof is owner-local and runs before the branch row lock.
      if(proof)await proof(client,actor);
      const command=await this.command(client,actor,action,key,{branchRef,...payload});
@@ -238,7 +244,8 @@ export class BranchOperationsService{
    `,[actor.realmId,id(branchRef),offset]);
    const labelHistory=(payload:Record<string,unknown>)=>({
      branchName:typeof payload.branchName==="string"?payload.branchName:null,
-     status:typeof payload.status==="string"?payload.status:null,
+     status:typeof payload.status==="string"?payload.status:
+       typeof payload.currentStatus==="string"?payload.currentStatus:null,
      branchType:typeof payload.branchType==="string"?payload.branchType:null,
      openingDate:typeof payload.openingDate==="string"?payload.openingDate:null
    });
@@ -271,6 +278,24 @@ export class BranchOperationsService{
        if(branch.version!==expected)
          throw new ConflictException("The branch profile changed. Refresh first.");
        await this.geography(client,actor.realmId,location);
+       // Changing block must not strand any ACTIVE department underneath
+       // an incompatible area hierarchy. Use one bounded existence query.
+       const stranded=await client.query(`
+         WITH RECURSIVE ancestors AS (
+           SELECT id,parent_area_id FROM geography_area
+             WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
+           UNION ALL
+           SELECT g.id,g.parent_area_id FROM geography_area g JOIN ancestors a
+             ON a.parent_area_id=g.id WHERE g.root_realm_id=$2 AND g.status='ACTIVE'
+         )
+         SELECT 1 FROM department d WHERE d.root_realm_id=$2
+           AND d.scope_kind='BRANCH' AND d.branch_id=$3 AND d.active=true
+           AND d.geography_area_id IS NOT NULL AND NOT EXISTS(
+             SELECT 1 FROM ancestors a WHERE a.id=d.geography_area_id)
+         LIMIT 1
+       `,[location,actor.realmId,branch.id]);
+       if(stranded.rowCount)
+         throw new ConflictException("Move existing branch departments before changing its location");
        await this.identity.eligibleOfficeholder(client,actor,manager);
        // Versioned, verified replacements never silently remove unrelated
        // originals; exactly each replaced file category changes.
