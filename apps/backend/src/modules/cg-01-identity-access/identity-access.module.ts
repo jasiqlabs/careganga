@@ -16,10 +16,11 @@ import { InvitationController } from "./http/invitation.controller";
 import { SecurityPolicyService } from "./application/security-policy.service";
 import { SecurityPolicyController } from "./http/security-policy.controller";
 import { ProtectedAccessOwnerService } from "./application/protected-access-owner.service";
+import { CommunicationRecipientSource } from "./application/communication-recipient-source.service";
 
 @Module({
   controllers:[SessionController,RecoveryController,InvitationController,RolesController,AuditController,AccountsController,SecurityPolicyController],
-  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService],
-  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService]
+  providers:[SessionService,SessionGuard,RecoveryService,InvitationEnrollmentService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource],
+  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource]
 })
 export class IdentityAccessModule {}
