@@ -33,6 +33,21 @@ export class SessionController {
     return { displayName:actor.displayName,roleName:actor.roleName,scope:"Foundation" };
   }
 
+  @Post("password/change")
+  @UseGuards(SessionGuard)
+  @HttpCode(200)
+  async changePassword(@Headers("authorization") bearer:string,
+    @Body() body:{currentPassword?:unknown;newPassword?:unknown},
+    @Req() request:CareGangaRequest){
+    if(!body||typeof body.currentPassword!=="string"||
+      typeof body.newPassword!=="string"||body.newPassword.length<8||
+      Buffer.byteLength(body.currentPassword,"utf8")>1024||
+      Buffer.byteLength(body.newPassword,"utf8")>1024)
+      throw new BadRequestException("Check current and new password");
+    return this.service.changePassword(bearer,body.currentPassword,body.newPassword,
+      request.cgRequestId??randomUUID());
+  }
+
   @Post("logout")
   @HttpCode(200)
   async logout(@Headers("authorization") bearer: string) {
