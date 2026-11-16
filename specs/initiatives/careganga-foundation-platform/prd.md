@@ -1,5 +1,8 @@
 # CareGanga Foundation — Integrated Platform Product Requirements Document
 
+**Greenfield delivery directive (owner, 16 November 2026):** CareGanga has not been delivered to the client and has no functioning legacy deployment or users to migrate. **Backward compatibility (BWC), preserving unshipped TOTP/invitation contracts, and supporting legacy login are not requirements.** Implement one coherent clean-initial-database authentication solution, simplify/drop obsolete code and seed only genuine initial roles. Test on a new disposable PostgreSQL database; never imply existing data migrations, production runtime or completed QA. Security and permission enforcement remain mandatory.
+
+
 **Document version:** 1.2 — narrow source-ownership/visual-scope clarification in the **same canonical PRD**, preserving the original 1.1/1.0 historical hashes and decisions in `approvals.json`. Current artifact receives owner-delegated **design-content** review at its exact SHA-256. This is not client approval, local Harness resolver PASS, source implementation or independent runtime QA.  
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
