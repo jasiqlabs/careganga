@@ -22,20 +22,20 @@ type CaseRow={
  request_key:string;request_digest:string;current_step:number;submitted_at:Date;
 };
 type DecisionBody={action:"APPROVE"|"RETURN"|"REJECT";remarks:string;
- expectedRevision:number;requestKey:string;totp:string};
+ expectedRevision:number;requestKey:string;currentPassword:string};
 function decisionInput(value:unknown):DecisionBody{
  if(!value||typeof value!=="object"||Array.isArray(value))
    throw new BadRequestException("Check the approval decision");
  const r=value as Record<string,unknown>;
- if(Object.keys(r).some(k=>!["action","remarks","expectedRevision","requestKey","totp"].includes(k))||
+ if(Object.keys(r).some(k=>!["action","remarks","expectedRevision","requestKey","currentPassword"].includes(k))||
     !["APPROVE","RETURN","REJECT"].includes(String(r.action))||
     !Number.isSafeInteger(r.expectedRevision)||Number(r.expectedRevision)<1||
     typeof r.remarks!=="string"||r.remarks.length>500||/[\u0000-\u001f\u007f]/.test(r.remarks)||
-    typeof r.totp!=="string"||!/^[0-9]{6}$/.test(r.totp)||
+    typeof r.currentPassword!=="string"||(r.currentPassword.length<8||Buffer.byteLength(r.currentPassword,"utf8")>1024)||
     typeof r.requestKey!=="string"||!UUID.test(r.requestKey))
-  throw new BadRequestException("Check the decision, remarks and fresh authenticator");
+  throw new BadRequestException("Check the decision, remarks and current password");
  return {action:r.action as DecisionBody["action"],remarks:r.remarks.trim(),
-   expectedRevision:Number(r.expectedRevision),requestKey:r.requestKey,totp:r.totp};
+   expectedRevision:Number(r.expectedRevision),requestKey:r.requestKey,currentPassword:r.currentPassword};
 }
 /** CG-03-owned typed branch approval case authority, separate from original
  * CG-01 protected-role proposal behavior, but using the same case/decision/event tables.
@@ -190,7 +190,7 @@ export class BranchApprovalService{
        AND a.realm_id=$2 AND a.status='ACTIVE'
      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
      JOIN role r ON r.id=ar.role_id AND r.active AND r.is_protected
-     WHERE s.id=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+     WHERE s.id=$1 AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
        AND s.account_access_version=a.access_version
        AND s.expires_at>now() LIMIT 1
    `,[actor.activeSessionId,actor.realmId]);
@@ -225,7 +225,7 @@ export class BranchApprovalService{
  async decide(bearer:string,caseRef:string,input:unknown){
    const body=decisionInput(input);
    const actor=await this.sessions.requireAction(bearer,"approvals.review");
-   // Safe same-actor replay is resolved before consuming another one-use MFA proof.
+   // Safe same-actor replay is resolved before consuming another password proof.
    // Current root permission remains mandatory even on a previous request.
    const replayDigest=sha([body.action,body.remarks,body.expectedRevision]);
    const oldDecision=await this.db.query<{actor_id:string;request_digest:string;
@@ -242,13 +242,13 @@ export class BranchApprovalService{
      return {status:"PREVIOUSLY_CONFIRMED",caseRef,
        revision:oldDecision.rows[0].accepted_case_revision};
    }
-   // Keep CG-01 single-use fresh-MFA lock before CG-03 case row lock.
+   // Keep CG-01 single-use current-password proof lock before CG-03 case row lock.
    await this.sessions.limitFoundationRootProof(actor);
    const client=await this.db.connect();let tx=false;
    try{
      await client.query("BEGIN");tx=true;
      await this.owner.verifyReviewer(client,actor,"approvals.review",true);
-     await this.sessions.requireFreshFoundationRootProof(client,actor,body.totp);
+     await this.sessions.requireFreshFoundationRootProof(client,actor,body.currentPassword);
      const current=await client.query<CaseRow>(`
        SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2
          AND case_kind='BRANCH_REGISTRATION' FOR UPDATE
@@ -285,7 +285,7 @@ export class BranchApprovalService{
      const decision=await client.query<{id:string}>(`
        INSERT INTO cg03_case_decision(
          realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,
-         accepted_case_revision,request_key,request_digest,safe_remarks,fresh_mfa_verified_at
+         accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at
        ) VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,$9,now()) RETURNING id
      `,[actor.realmId,row.id,actor.accountId,body.action,
        row.revision,updated.rows[0].revision,body.requestKey,requestDigest,body.remarks]);
@@ -322,7 +322,7 @@ export class BranchApprovalService{
           SELECT realm_id FROM cg03_case WHERE id=$1 AND case_kind='BRANCH_REGISTRATION')
          AND c.branch_source_ref=$2 AND c.branch_source_revision=$3
          AND c.branch_source_digest=$4 AND c.status IN('PENDING_OWNER','OWNER_COMPLETED')
-         AND d.action='APPROVE' AND d.fresh_mfa_verified_at IS NOT NULL
+         AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL
      LIMIT 1
    `,[reference(caseRef),reference(registrationRef),revision,digest,actor.realmId]);
    if(!found.rows[0])throw new ConflictException("A genuine final branch decision is required");
@@ -338,7 +338,7 @@ export class BranchApprovalService{
          AND c.branch_source_ref=$3 AND c.branch_source_revision=$4
          AND c.branch_source_digest=$5 AND e.effect_key=$6
          AND c.status IN('PENDING_OWNER','OWNER_COMPLETED')
-         AND d.action='APPROVE' AND d.fresh_mfa_verified_at IS NOT NULL
+         AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL
        FOR SHARE OF c,e,d
    `,[reference(caseRef),actor.realmId,reference(registrationRef),revision,digest,
      reference(effectKey)]);
@@ -370,7 +370,7 @@ export class BranchApprovalService{
        AND ar.revoked_at IS NULL
      JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id
        AND r.active AND r.is_protected
-     WHERE s.id=$1 AND s.revoked_at IS NULL AND s.mfa_verified_at IS NOT NULL
+     WHERE s.id=$1 AND s.revoked_at IS NULL AND s.password_authenticated_at IS NOT NULL
        AND s.expires_at>now() LIMIT 1
    `,[actor.activeSessionId,actor.realmId]);
    if(!protectedRole.rowCount)
@@ -405,7 +405,7 @@ export class BranchApprovalService{
      JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
      WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='BRANCH_REGISTRATION'
        AND c.status=$3 AND d.action=$4
-       AND (c.status<>'PENDING_OWNER' OR d.fresh_mfa_verified_at IS NOT NULL)
+       AND (c.status<>'PENDING_OWNER' OR d.fresh_password_verified_at IS NOT NULL)
      FOR SHARE OF c,d
    `,[reference(caseRef),actor.realmId,expected,
       expected==="PENDING_OWNER"?"APPROVE":expected==="RETURNED"?"RETURN":"REJECT"]);
