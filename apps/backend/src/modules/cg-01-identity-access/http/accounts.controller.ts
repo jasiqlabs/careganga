@@ -21,6 +21,13 @@ export class AccountsController {
   options(@Headers("authorization") bearer:string,@Query("search") search?:string){
     return this.accounts.options(bearer,search);
   }
+  @Post("accounts")
+  create(@Headers("authorization") bearer:string,
+    @Body() body:{displayName:string;mobile:string;email?:string|null;
+      password:string;roleRef:string;requestKey:string},
+    @Req() req:CareGangaRequest){
+    return this.accounts.create(bearer,body,req.cgRequestId??randomUUID());
+  }
   @Post("invitations")
   invite(@Headers("authorization") bearer:string,
     @Body() body:{displayName:string;email:string;phone?:string;roleRef:string;requestKey:string},
