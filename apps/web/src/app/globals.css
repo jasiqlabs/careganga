@@ -230,3 +230,209 @@ button:disabled { cursor:wait; opacity:.65; }
 .audit-detail>dt,.audit-detail>dd{border-bottom:1px solid var(--cg-border);padding-bottom:.7rem}
 @media(max-width:32rem){.audit-detail{grid-template-columns:1fr;gap:.3rem}
   .audit-detail dd{padding-bottom:.9rem}}
+
+/* CG-02: reuse established CareGanga form/nav tokens for the Foundation-only U21/U22 views. */
+.role-workspace .field textarea {
+  width:100%;max-width:100%;min-height:5.5rem;resize:vertical;
+  background:var(--cg-surface);color:var(--cg-text);font:inherit;
+  padding:.75rem;border:1px solid var(--cg-border);border-radius:.4rem;
+}
+.role-workspace .role-pane>.form {max-width:46rem}
+.role-workspace button:not(.primary) {
+  min-height:2.75rem;padding:.5rem .7rem;border-radius:.4rem;
+  border:1px solid var(--cg-border);background:var(--cg-surface);color:var(--cg-text);
+}
+.role-workspace button:not(.primary):disabled {opacity:.65}
+.role-workspace input[type="date"] {min-width:0}
+.role-workspace [role="tab"][aria-selected="true"] {
+  background:var(--cg-accent);color:var(--cg-accent-text);
+  border-color:var(--cg-accent);
+}
+.role-workspace .notice {background:var(--cg-surface)}
+
+/* CG-02 original U21 overview and U22 right-side department editor.
+   Native modal supplies focus management; only shared CareGanga tokens are used. */
+.foundation-overview{padding:1rem 1rem 0;grid-template-columns:repeat(4,minmax(0,1fr))}
+.foundation-overview .kpi{min-height:6.25rem}
+.foundation-overview .kpi span{color:var(--cg-muted);font-size:.85rem}
+.foundation-department-dialog{position:fixed;inset:0 0 0 auto;margin:0;
+  max-height:100dvh;max-width:min(100%,34rem);border-radius:0;
+  border:0;border-inline-start:1px solid var(--cg-border)}
+.foundation-department-dialog:not([open]){display:none}
+.foundation-department-dialog::backdrop{background:rgba(9,17,35,.52)}
+.foundation-department-dialog .form{width:100%;padding-bottom:max(1.25rem,env(safe-area-inset-bottom))}
+.foundation-department-dialog .field textarea{width:100%;resize:vertical}
+@media(max-width:48rem){.foundation-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:27rem){.foundation-overview{grid-template-columns:1fr}}
+
+.role-workspace .search-row select{min-height:2.75rem;min-width:8rem;padding:.55rem .7rem;
+  border:1px solid var(--cg-border);border-radius:.4rem;background:var(--cg-surface);
+  color:var(--cg-text);font:inherit}
+@media(max-width:27rem){.role-workspace .search-row label{width:100%}
+  .role-workspace .search-row select{width:100%}}
+
+/* CG-02 U18–U20: original Foundation branch directory and seven-stage draft.
+   Preserve brand tokens; no screenshots or motion values are inferred. */
+.branch-columns{display:grid;grid-template-columns:minmax(12rem,.9fr) minmax(20rem,2fr) minmax(13rem,1fr);gap:1rem;align-items:start}
+.branch-columns>.role-pane{min-width:0}
+.branch-draft-list{padding:0;margin:0;list-style:none;display:grid;gap:.35rem;max-height:36rem;overflow-y:auto}
+.branch-draft-list button{width:100%;display:grid;gap:.3rem;text-align:left;padding:.75rem;border:1px solid var(--cg-border);border-radius:.5rem}
+.branch-draft-list button[aria-current="true"]{border-color:var(--cg-accent);background:var(--cg-surface)}
+.branch-draft-list span{font-size:.8rem;color:var(--cg-muted)}
+.branch-stepper{display:flex;flex-wrap:wrap;gap:.3rem;margin:1rem 0;padding:.5rem 0;border-block:1px solid var(--cg-border)}
+.branch-stepper button{font-size:.79rem;min-height:2.5rem;text-align:left}
+.branch-stepper button[aria-current="step"]{background:var(--cg-accent)!important;color:var(--cg-accent-text)!important}
+.branch-coordinate{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.branch-department-fieldset{display:grid;gap:.65rem;border:1px solid var(--cg-border);border-radius:.5rem;padding:1rem}
+.branch-department-fieldset label{display:flex;gap:.65rem;align-items:center}
+.branch-department-fieldset input{min-height:1.25rem;min-width:1.25rem}
+.branch-workspace .role-pane textarea{width:100%;min-height:5rem;font:inherit;background:var(--cg-surface);border:1px solid var(--cg-border)}
+@media(max-width:76rem){.branch-columns{grid-template-columns:minmax(12rem,1fr) minmax(19rem,2fr)}
+ .branch-columns>.role-pane:last-child{grid-column:1/-1}}
+@media(max-width:48rem){.branch-columns{grid-template-columns:minmax(0,1fr)}
+ .branch-columns>.role-pane:last-child{grid-column:auto}
+ .branch-coordinate{grid-template-columns:1fr}}
+
+/* CAREGANGA-ADMIN-ORIGINAL-TOPBAR: U05/U18–U22 actual reference hierarchy.
+   Never render unimplemented global record-search or invented badge counts. */
+.shell{grid-template-columns:minmax(13rem,16rem) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr)}
+.shell>.sidebar{grid-column:1;grid-row:1 / span 2;align-self:start}
+.shell>.workspace{grid-column:2;grid-row:2}
+.admin-topbar{grid-column:2;grid-row:1;min-width:0;
+  background:var(--cg-surface);border-bottom:1px solid var(--cg-border);
+  padding:.85rem clamp(1rem,2vw,2rem);display:flex;align-items:center;
+  justify-content:space-between;gap:1rem;flex-wrap:wrap;position:sticky;top:0;z-index:4}
+.admin-topbar-title h1{font-size:clamp(1rem,1.6vw,1.38rem);line-height:1.3;
+  color:var(--cg-sidebar);margin:0;letter-spacing:-.012em}
+.admin-topbar-title p{margin:.2rem 0 0;color:var(--cg-muted);font-size:.76rem}
+.admin-topbar-tools{display:flex;align-items:center;justify-content:flex-end;
+  gap:clamp(.35rem,.85vw,.8rem);flex-wrap:wrap;min-width:0;flex:1}
+.admin-topbar-search{display:flex;align-items:center;gap:.4rem;
+  border:1px solid var(--cg-border);background:var(--cg-surface);
+  padding:.25rem .5rem;border-radius:.45rem;min-width:min(100%,13rem);
+  max-width:26rem;flex:1}
+.admin-topbar-search>span{position:absolute;width:1px;height:1px;padding:0;
+  margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.admin-topbar-search input{font:inherit;font-size:.84rem;min-width:0;width:100%;
+  padding:.35rem .4rem;border:0;background:transparent;color:var(--cg-text)}
+.admin-topbar-search kbd{color:var(--cg-muted);white-space:nowrap;font-size:.7rem;
+  border:1px solid var(--cg-border);padding:.12rem .28rem;border-radius:.25rem}
+.admin-topbar-link{white-space:nowrap;color:var(--cg-text);
+  text-decoration:none;padding:.5rem .45rem;border-radius:.4rem;font-size:.82rem}
+.admin-topbar-link:hover,.admin-topbar-link:focus-visible{background:#EFF4FF;
+  color:var(--cg-accent)}
+.admin-topbar-identity{display:flex;align-items:center;gap:.48rem;
+  color:var(--cg-text);text-decoration:none;padding:.3rem;border-radius:.4rem;
+  max-width:12rem}
+.admin-topbar-identity>span:last-child{display:grid;min-width:0;line-height:1.2}
+.admin-topbar-identity strong,.admin-topbar-identity small{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-topbar-identity strong{font-size:.78rem}
+.admin-topbar-identity small{font-size:.7rem;color:var(--cg-muted)}
+.admin-topbar-avatar{display:grid;place-items:center;width:2.2rem;height:2.2rem;
+  border-radius:999px;background:var(--cg-accent);color:var(--cg-accent-text);
+  font-weight:700;flex:none}
+@media(max-width:48rem){
+  .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+  .shell>.sidebar{grid-column:1;grid-row:1;position:relative;top:auto;
+    height:auto;max-height:min(36dvh,21rem);border-inline-end:0}
+  .admin-topbar{grid-column:1;grid-row:2;position:relative;top:auto}
+  .shell>.workspace{grid-column:1;grid-row:3}
+  .admin-topbar-search{min-width:min(100%,11rem)}
+}
+@media(max-width:29rem){
+  .admin-topbar-tools{justify-content:flex-start}
+  .admin-topbar-search{max-width:100%;flex-basis:100%}
+  .admin-topbar-identity{max-width:10rem}
+}
+
+/* CG02 U18/U19 source parity: original status overview, directory and wizard.
+   All values above these components come from current scoped backend rows. */
+.operating-branches>.branch-overview{display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem}
+.operating-branches>.branch-overview>.kpi{min-height:6rem;display:grid;gap:.45rem}
+.operating-branches>.branch-overview>.kpi span{font-size:.78rem;color:var(--cg-muted)}
+.operating-branches>.branch-overview>.kpi strong{font-size:clamp(1.25rem,2vw,1.65rem);
+  color:var(--cg-sidebar)}
+.operating-branches .branch-filters{display:flex;gap:.7rem;flex-wrap:wrap;
+  align-items:flex-end;background:var(--cg-surface);padding:1rem;
+  border:1px solid var(--cg-border);border-radius:.65rem}
+.operating-branches .branch-filters label{display:grid;gap:.3rem;
+  min-width:min(100%,13rem);flex:1;font-size:.8rem;color:var(--cg-muted)}
+.operating-branches .branch-filters input{min-height:2.75rem;
+  border:1px solid var(--cg-border);border-radius:.4rem;padding:.5rem .65rem;
+  font:inherit;color:var(--cg-text);min-width:0}
+.operating-branches .branch-filters button{min-height:2.75rem;
+  border:1px solid var(--cg-border);border-radius:.4rem;
+  background:var(--cg-surface);color:var(--cg-text);padding:.5rem .85rem}
+.operating-branches .branch-columns{grid-template-columns:minmax(0,2fr) minmax(13rem,1fr)}
+.operating-branches .branch-columns>.role-pane:first-child{grid-column:1;grid-row:1}
+.operating-branches .branch-columns>.role-pane:nth-child(2){grid-column:1;grid-row:2}
+.operating-branches .branch-columns>.role-pane:last-child{grid-column:2;grid-row:1 / span 2}
+.operating-branches .branch-directory-scroll{overflow-x:auto;max-width:100%}
+.operating-branches .branch-directory-table{width:100%;min-width:46rem;
+  border-collapse:collapse;text-align:left;font-size:.83rem}
+.operating-branches .branch-directory-table td,
+.operating-branches .branch-directory-table th{padding:.7rem .65rem;
+  border-bottom:1px solid var(--cg-border);white-space:normal;vertical-align:middle}
+.operating-branches .branch-directory-table th{font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.025em;background:#F2F6F4;color:var(--cg-muted)}
+.operating-branches .branch-directory-table button{min-height:2.5rem;
+  background:var(--cg-surface);border:1px solid var(--cg-border);
+  border-radius:.35rem;padding:.4rem .65rem;color:var(--cg-accent)}
+.operating-branches .branch-summary-row{display:grid;grid-template-columns:1fr auto;
+  gap:.2rem .55rem;margin:.85rem 0}
+.operating-branches .branch-summary-row span{font-size:.85rem}
+.operating-branches .branch-summary-row strong{font-size:.85rem}
+.operating-branches .branch-summary-row progress{grid-column:1/-1;width:100%;
+  height:.55rem;accent-color:var(--cg-accent)}
+.role-workspace .branch-stepper{display:grid;
+  grid-template-columns:repeat(7,minmax(7rem,1fr));overflow-x:auto;
+  gap:.4rem;border:0;border-bottom:1px solid var(--cg-border);padding:.65rem 0 1rem}
+.role-workspace .branch-stepper button,
+.role-workspace .branch-stepper button[aria-current="step"]{display:grid;
+  justify-items:center;align-content:start;gap:.45rem;text-align:center;
+  min-height:5.25rem;padding:.35rem .25rem;border:0;border-radius:.35rem;
+  color:var(--cg-text)!important;background:transparent!important;
+  font-size:.74rem;white-space:normal;cursor:pointer}
+.role-workspace .branch-stepper button:disabled{opacity:.58;cursor:not-allowed}
+.role-workspace .branch-stepper .branch-step-number{display:grid;place-items:center;
+  width:2.5rem;height:2.5rem;flex:none;border:2px solid var(--cg-border);
+  border-radius:50%;font-weight:700;font-size:1rem;
+  background:var(--cg-surface);color:var(--cg-text)}
+.role-workspace .branch-stepper button[aria-current="step"] .branch-step-number{
+  color:var(--cg-accent-text);background:var(--cg-accent);border-color:var(--cg-accent)}
+@media(max-width:62rem){
+  .operating-branches .branch-columns{grid-template-columns:minmax(0,1fr)}
+  .operating-branches .branch-columns>.role-pane:first-child,
+  .operating-branches .branch-columns>.role-pane:nth-child(2),
+  .operating-branches .branch-columns>.role-pane:last-child{
+    grid-column:1;grid-row:auto}
+}
+@media(max-width:40rem){.operating-branches>.branch-overview{
+  grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:27rem){.operating-branches>.branch-overview{
+  grid-template-columns:minmax(0,1fr)}}
+
+/* CG02 U22 BRANCH DEPARTMENT DRAWER */
+.foundation-department-overlay{position:fixed;inset:0;z-index:15;
+  background:rgba(9,17,35,.52);display:flex;justify-content:flex-end}
+.foundation-department-sheet{position:fixed;inset:0 0 0 auto;margin:0;
+  height:100dvh;max-height:100dvh;overflow-y:auto;overscroll-behavior:contain;
+  width:min(100%,34rem);max-width:100vw;background:var(--cg-surface);
+  border-inline-start:1px solid var(--cg-border);
+  padding:1.25rem 1.4rem max(1.25rem,env(safe-area-inset-bottom));
+  box-shadow:-1rem 0 2rem rgba(10,31,68,.09);display:grid;align-content:start;gap:1rem}
+.foundation-department-sheet:not([open]){display:none}
+.foundation-department-sheet::backdrop{background:rgba(9,17,35,.52)}
+.foundation-department-sheet>.toolbar{justify-content:space-between;
+  padding-bottom:.8rem;border-bottom:1px solid var(--cg-border)}
+.foundation-department-sheet>.toolbar h3{margin:0;font-size:1.15rem}
+.foundation-department-sheet>.toolbar p{margin:.25rem 0 0;
+  color:var(--cg-muted);font-size:.78rem}
+.foundation-department-sheet>.form{display:grid;gap:.85rem}
+.foundation-department-sheet .field textarea{width:100%;min-height:4rem;resize:vertical}
+.foundation-department-sheet .form button{width:100%}
+@media(max-width:32rem){.foundation-department-sheet{padding:1rem .9rem
+  max(1rem,env(safe-area-inset-bottom))}}

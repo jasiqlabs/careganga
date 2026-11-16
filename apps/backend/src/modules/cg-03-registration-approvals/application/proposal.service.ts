@@ -178,7 +178,9 @@ export class ApprovalProposalService{
       const process=await client.query<ProcessRow>(`
         INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,configured_by)
         VALUES($1,$2,$3,$4) RETURNING id,version,first_reviewer_capability
-      `,[actor.realmId,current.version+1,payload.firstReviewerCapability,actor.accountId]);
+      `,[actor.realmId,(await client.query<{version:number}>(
+        "SELECT COALESCE(MAX(version),0)+1 AS version FROM cg03_process WHERE realm_id=$1",
+        [actor.realmId])).rows[0].version,payload.firstReviewerCapability,actor.accountId]);
       const newRoute=process.rows[0];
       if(newRoute.first_reviewer_capability){
         await client.query(`
@@ -222,7 +224,7 @@ export class ApprovalProposalService{
       if(!root.rowCount)throw new ForbiddenException("Foundation realm unavailable");
       await this.owner.verifyProposer(client,actor);
       const old=await client.query<CaseRow>(`
-        SELECT * FROM cg03_case WHERE realm_id=$1 AND proposer_id=$2 AND request_key=$3
+        SELECT * FROM cg03_case WHERE case_kind='CG01_ROLE' AND realm_id=$1 AND proposer_id=$2 AND request_key=$3
       `,[actor.realmId,actor.accountId,requestKey]);
       if(old.rowCount){
         if(old.rows[0].request_digest!==requestDigest)
@@ -235,7 +237,7 @@ export class ApprovalProposalService{
       if(previous){
         const past=await client.query<CaseRow>(`
           SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2 AND proposer_id=$3
-            AND target_account_id=$4 FOR SHARE
+            AND case_kind='CG01_ROLE' AND target_account_id=$4 FOR SHARE
         `,[previous,actor.realmId,actor.accountId,target]);
         if(!past.rowCount||past.rows[0].status!=="RETURNED")
           throw new ConflictException({code:"CORRECTION_REQUIRES_RETURN"});
@@ -282,7 +284,7 @@ export class ApprovalProposalService{
       !Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Check case filters");
     const rows=await this.db.query<CaseRow>(`
-      SELECT c.* FROM cg03_case c WHERE c.realm_id=$1
+      SELECT c.* FROM cg03_case c WHERE c.case_kind='CG01_ROLE' AND c.realm_id=$1
         AND ($2::boolean OR c.proposer_id=$3 OR ($6::boolean AND
           (EXISTS(SELECT 1 FROM cg03_process_step step
             WHERE step.process_id=c.process_id AND step.ordinal=c.current_step
@@ -299,7 +301,7 @@ export class ApprovalProposalService{
     if(typeof caseRef!=="string"||!UUID.test(caseRef))
       throw new BadRequestException("Choose a valid application");
     const rows=await this.db.query<CaseRow>(`
-      SELECT c.* FROM cg03_case c WHERE c.realm_id=$1 AND c.id=$2
+      SELECT c.* FROM cg03_case c WHERE c.case_kind='CG01_ROLE' AND c.realm_id=$1 AND c.id=$2
         AND ($3::boolean OR c.proposer_id=$4 OR ($5::boolean AND
           (EXISTS(SELECT 1 FROM cg03_process_step step
             WHERE step.process_id=c.process_id AND step.ordinal=c.current_step
@@ -339,7 +341,7 @@ export class ApprovalProposalService{
     const actor=await this.sessions.requireAction(bearer,"approvals.propose");
     const requestKey=requireUuid(key);
     const rows=await this.db.query<CaseRow>(`
-      SELECT * FROM cg03_case WHERE realm_id=$1 AND proposer_id=$2 AND request_key=$3
+      SELECT * FROM cg03_case WHERE case_kind='CG01_ROLE' AND realm_id=$1 AND proposer_id=$2 AND request_key=$3
     `,[actor.realmId,actor.accountId,requestKey]);
     return rows.rowCount?{status:"CONFIRMED",case:view(rows.rows[0])}:
       {status:"NOT_FOUND",case:null};

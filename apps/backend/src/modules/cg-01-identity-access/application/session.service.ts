@@ -191,7 +191,7 @@ export class SessionService implements IdentityAuthorization {
     if (!result.rowCount)throw new UnauthorizedException();
     const implemented=capabilitiesInUse();
     // A protected Foundation root has ONLY the concrete implemented CG-01 actions.
-    if(result.rows[0].is_protected)return implemented.map(c=>c.key);
+    if(result.rows.some(row=>row.is_protected))return implemented.map(c=>c.key);
     return [...new Set(result.rows
       .filter(row=>row.capability_key&&(
         implementedCapability(row.capability_key)?.assignable===true||

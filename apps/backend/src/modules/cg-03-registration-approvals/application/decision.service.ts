@@ -65,7 +65,7 @@ export class ApprovalDecisionService{
       await client.query("BEGIN");active=true;
       const result=await client.query<CaseRow>(`
         SELECT id,realm_id,case_number,proposer_id,process_id,status,revision,
-          current_step,proposal_digest FROM cg03_case WHERE realm_id=$1 AND id=$2 FOR UPDATE
+          current_step,proposal_digest FROM cg03_case WHERE case_kind='CG01_ROLE' AND realm_id=$1 AND id=$2 FOR UPDATE
       `,[actor.realmId,caseInput]);
       const row=result.rows[0];
       if(!row)throw new NotFoundException("Application unavailable");
