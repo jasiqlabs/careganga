@@ -72,6 +72,20 @@ function open(blob:Buffer):{name:string;contact:string;subject:string;message:st
 function publicState(status:string){
   return status==="CLOSED"?"CLOSED":status==="REPLIED"?"RESPONDED":"SUBMITTED";
 }
+/** Bounded keyed blind-index terms; no plaintext contact/subject enters DB indexes. */
+function searchTerms(values:readonly string[]):string[]{
+  const terms=new Set<string>();
+  for(const value of values){
+    const normalized=value.normalize("NFKC").toLocaleLowerCase("en-US").trim();
+    if(normalized.length>=3&&normalized.length<=90)terms.add(normalized);
+    for(const word of normalized.match(/[\p{L}\p{N}@+._-]{3,90}/gu)??[]){
+      terms.add(word);
+      for(let length=3;length<=Math.min(word.length,12);length++)
+        terms.add(word.slice(0,length));
+    }
+  }
+  return [...terms].slice(0,200);
+}
 @Injectable()
 export class SupportService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -166,6 +180,13 @@ export class SupportService{
         "VALUES($1,$2,$3,$4,$5,now()+interval '30 days',$6) "+
         "RETURNING id,receipt_expires_at",
         [realm,requestKey,digest,caller,receiptDigest,seal({name,contact,subject,message})]);
+      const terms=searchTerms([name,contact,subject]);
+      if(terms.length){
+        await client.query(
+          "INSERT INTO cg19_support_search_token(realm_id,case_id,term_digest) "+
+          "SELECT $1,$2,unnest($3::text[]) ON CONFLICT DO NOTHING",
+          [realm,created.rows[0].id,terms.map(t=>hmac("search",t))]);
+      }
       await this.event(client,realm,created.rows[0].id,null,"CONTACT_SUBMITTED");
       await client.query("COMMIT");begun=false;
       return {receipt,expiresAt:created.rows[0].receipt_expires_at.toISOString(),
@@ -190,12 +211,27 @@ export class SupportService{
     return {status:publicState(row.status)};
   }
   async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL",
-    pageCursor:unknown=null){
+    pageCursor:unknown=null,search:unknown=""){
     const a=await this.actor(bearer,"support.cases.view");
     const limit=Number(rawLimit);
     if(!Number.isInteger(limit)||limit<1||limit>30||
-      typeof filter!=="string"||!["ALL","OPEN","REPLIED","CLOSED","ARCHIVED","UNREAD"].includes(filter))
+      typeof filter!=="string"||!["ALL","OPEN","REPLIED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
+      typeof search!=="string"||search.length>100)
       throw new BadRequestException("Choose a supported filter");
+    let searchDigests:string[]|null=null;
+    if(search.trim()){
+      const words=searchTerms([search.trim()]);
+      if(!words.length||search.trim().length<3)
+        throw new BadRequestException("Enter at least three search characters");
+      // Every supplied term must match. Exact full contact or word prefixes
+      // work without decryption of unrelated Foundation case records.
+      const tokens=search.trim().normalize("NFKC").toLocaleLowerCase("en-US")
+        .match(/[\p{L}\p{N}@+._-]{3,90}/gu)??[];
+      const unique=[...new Set(tokens)].slice(0,5);
+      searchDigests=(unique.length?unique:words.slice(0,1))
+        .map(t=>hmac("search",t));
+    }
+    const searchProof=sha((searchDigests??[]).join(","));
     let afterTimestamp:string|null=null,afterId:string|null=null;
     if(pageCursor!==null&&pageCursor!==undefined&&pageCursor!==""){
       if(typeof pageCursor!=="string"||pageCursor.length>220||
@@ -206,7 +242,8 @@ export class SupportService{
         if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
           !("t" in parsed)||!("id" in parsed)||!("filter" in parsed)||
           typeof parsed.t!=="string"||typeof parsed.id!=="string"||
-          parsed.filter!==filter||!UUID.test(parsed.id)||
+          parsed.filter!==filter||!("searchProof" in parsed)||
+          parsed.searchProof!==searchProof||!UUID.test(parsed.id)||
           !/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.+-]{10,35}$/.test(parsed.t))
           throw Error("Bad cursor");
         afterTimestamp=parsed.t;afterId=parsed.id;
@@ -223,15 +260,19 @@ export class SupportService{
       "($3='UNREAD' AND (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) OR "+
       "(c.status=$3 AND rs.archived_at IS NULL)) "+
+      "AND ($7::text[] IS NULL OR (SELECT count(*) "+
+      "FROM cg19_support_search_token t WHERE t.realm_id=c.realm_id "+
+      "AND t.case_id=c.id AND t.term_digest=ANY($7::text[])) "+
+      "=cardinality($7::text[])) "+
       "AND ($5::timestamptz IS NULL OR "+
       " (c.updated_at,c.id)<($5::timestamptz,$6::uuid)) "+
       "ORDER BY c.updated_at DESC,c.id DESC LIMIT $4",
-      [a.realmId,a.accountId,filter,limit+1,afterTimestamp,afterId]);
+      [a.realmId,a.accountId,filter,limit+1,afterTimestamp,afterId,searchDigests]);
     const shown=results.rows.slice(0,limit);
     const more=results.rows.length>limit;
     const tail=shown.at(-1);
     const nextCursor=more&&tail?Buffer.from(JSON.stringify({
-      t:tail.timestamp_text,id:tail.id,filter
+      t:tail.timestamp_text,id:tail.id,filter,searchProof
     })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
       closed:string;unread:string;archived:string;received_today:string}>(
