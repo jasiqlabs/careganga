@@ -3,17 +3,12 @@ import { FormEvent,useCallback,useEffect,useRef,useState } from "react";
 import type { CG01AccountList,CG01AccountView,CG01AccountOption } from "@careganga/api-contracts";
 type RoleOption={value:string;label:string;context:string};
 type Notice={kind:"success"|"error"|"uncertain";text:string};
-type Pending={kind:"assign"|"revoke"|"status"|"resend";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
-type Editor="invite"|"detail"|null;
+type Pending={kind:"assign"|"revoke"|"status";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
+type Editor="create"|"detail"|null;
 /** The transport enums are never presented as product copy. */
 const accountStatusLabel=(status:string):string=>({
-  INVITED:"Invited",ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
+  ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
 } as Record<string,string>)[status]??"Status unavailable";
-const deliveryLabel=(status:string|null):string=>status===null?"Not applicable":({
-  PENDING:"Waiting to send",CLAIMED:"Sending status not confirmed",
-  PROVIDER_ACCEPTED:"Accepted by email service",UNKNOWN:"Delivery not confirmed",
-  UNAVAILABLE:"Email service unavailable"
-} as Record<string,string>)[status]??"Delivery status unavailable";
 const auditOutcomeLabel=(outcome:string):string=>({
   Confirmed:"Completed",Denied:"Not permitted",Pending:"Awaiting confirmation"
 } as Record<string,string>)[outcome]??"Outcome unavailable";
@@ -41,7 +36,7 @@ async function change(path:string,method:string,payload:object):Promise<unknown>
   }
   try{return await response.json() as unknown;}catch{throw new Error("UNKNOWN");}
 }
-export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
+export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const [actions,setActions]=useState<string[]>([]);
   const [roles,setRoles]=useState<RoleOption[]>([]);
@@ -66,7 +61,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const [searchRole,setSearchRole]=useState("");
   const requestKey=useRef("");
   const generation=useRef(0);
-  const inviteEntryOpened=useRef(false);
+  const createEntryOpened=useRef(false);
   const roleRead=useRef(0);
   const historyRead=useRef(0);
 
@@ -79,15 +74,15 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     const seq=++generation.current;
     setLoading(true);
     try{
-      if(inviteOnly) {
-        // An inviter can choose a role without reading the confidential staff directory.
+      if(createOnly) {
+        // An creater can choose a role without reading the confidential staff directory.
         const access=await read<{actions:{key:string}[]}>("effective");
         if(seq!==generation.current)return;
         if(!access||!Array.isArray(access.actions)||
            !access.actions.every(x=>x&&typeof x.key==="string"))
           throw new Error("Invalid access response");
         const keys=access.actions.map(x=>x.key);
-        if(!keys.includes("accounts.invite")||!keys.includes("roles.assign"))
+        if(!keys.includes("accounts.create")||!keys.includes("roles.assign"))
           throw new Error("Permission denied");
         setList(null);setActions(keys);return;
       }
@@ -106,14 +101,14 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       if(seq!==generation.current)return;
       purge(e instanceof Error?e.message:"Accounts unavailable");
     }finally{if(seq===generation.current)setLoading(false);}
-  },[purge,inviteOnly]);
+  },[purge,createOnly]);
   useEffect(()=>{void load("",0,"all");},[load]);
   useEffect(()=>{
     const onFocus=()=>{if(document.visibilityState==="visible")void load(applied,offset,filter);};
     window.addEventListener("focus",onFocus);
     return()=>window.removeEventListener("focus",onFocus);
   },[load,applied,offset,filter]);
-  const canInvite=actions.includes("accounts.invite")&&actions.includes("roles.assign");
+  const canCreate=actions.includes("accounts.create")&&actions.includes("roles.assign");
   const canAssign=actions.includes("roles.assign");
   const canStatus=actions.includes("accounts.status.manage");
   async function roleSearch(value:string){
@@ -131,18 +126,18 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       else setNotice({kind:"error",text:"Eligible roles are temporarily unavailable."});
     }
   }
-  function openInvite(){
+  function openCreate(){
     ++roleRead.current;++historyRead.current;
-    setEditor("invite");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
+    setEditor("create");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
     setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
     void roleSearch("");
   }
   useEffect(()=>{
-    if(inviteOnly&&canInvite&&!inviteEntryOpened.current){
-      inviteEntryOpened.current=true;
-      openInvite();
+    if(createOnly&&canCreate&&!createEntryOpened.current){
+      createEntryOpened.current=true;
+      openCreate();
     }
-  },[inviteOnly,canInvite]);
+  },[createOnly,canCreate]);
   function openAccount(row:CG01AccountView){
     ++roleRead.current;++historyRead.current;
     setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
@@ -167,8 +162,8 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
     }
   }
   function purgeProtectedHistory(message:string){purge(message);}
-  async function submitInvite(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();if(!canInvite||busy||uncertain||!roleRef)return;
+  async function submitCreate(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!canCreate||busy||uncertain||!roleRef)return;
     setBusy(true);setNotice(null);
     try{
       await change("accounts","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase()||undefined,
@@ -192,8 +187,6 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       if(choice.kind==="assign"){
         if(!roleRef)return;
         await change(path+"/role","PUT",{roleRef,expectedRevision:choice.target.revision,requestKey:key});
-      }else if(choice.kind==="resend"){
-        await change(path+"/invitation/resend","POST",{expectedRevision:choice.target.revision,requestKey:key});
       }else if(choice.kind==="revoke"){
         await change(path+"/role","DELETE",{expectedRevision:choice.target.revision,requestKey:key});
       }else if(choice.status){
@@ -213,26 +206,26 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
   const stats=list?.summary;
   const values=[
     ["Total Accounts",stats?.total],["Active",stats?.active],
-    ["Invited",stats?.invited],["Suspended",stats?.suspended],
+    ["Created",stats?.created],["Suspended",stats?.suspended],
     ["Deactivated",stats?.deactivated],["Assigned Roles",stats?.assigned]
   ] as const;
   return <div className="role-workspace">
     <header className="topbar"><div><h1>Users Management</h1>
-      <p>Foundation staff accounts and verified access</p></div>
-      <div className="toolbar">{canInvite&&<button type="button" className="primary"
-        onClick={openInvite}>Add staff</button>}</div>
+      <p>Foundation staff accounts and current role access</p></div>
+      <div className="toolbar">{canCreate&&<button type="button" className="primary"
+        onClick={openCreate}>Add staff</button>}</div>
     </header>
-    {inviteOnly&&<p>Invite an eligible Foundation staff member without access to the private staff directory.</p>}
-    {inviteOnly&&notice&&<p role={notice.kind==="success"?"status":"alert"}
+    {createOnly&&<p>Create an eligible Foundation staff member without access to the private staff directory.</p>}
+    {createOnly&&notice&&<p role={notice.kind==="success"?"status":"alert"}
       className={"notice "+notice.kind}>{notice.text}</p>}
-    {inviteOnly&&uncertain&&<p role="alert">Contact Foundation support to check whether the invitation was saved before sending it again. An unconfirmed invitation must not be repeated blindly.</p>}
-    {!inviteOnly&&<>
+    {createOnly&&uncertain&&<p role="alert">The result is uncertain. Refresh account status before creating another user.</p>}
+    {!createOnly&&<>
     <form className="search-row" onSubmit={event=>{
       event.preventDefault();void load(query.trim(),0,filter);
     }}>
       <label htmlFor="account-search">Search accounts</label>
       <input id="account-search" value={query} onChange={event=>setQuery(event.target.value)}
-        maxLength={80} placeholder="Name or email" autoComplete="off"/>
+        maxLength={80} placeholder="Name, mobile or email" autoComplete="off"/>
       <button type="submit" disabled={loading}>Search</button>
       <button type="button" disabled={loading} onClick={()=>{
         setQuery("");void load("",0,"all");
@@ -244,10 +237,10 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       </div>)}
     </section>
     <div className="toolbar" role="group" aria-label="Account status">
-      {(["all","ACTIVE","INVITED","SUSPENDED","DEACTIVATED"] as const).map(s=>
+      {(["all","ACTIVE","SUSPENDED","DEACTIVATED"] as const).map(s=>
         <button type="button" aria-pressed={filter===s} key={s} disabled={loading}
           onClick={()=>void load(applied,0,s)}>{s==="all"?"All":s==="ACTIVE"?"Active":
-          s==="INVITED"?"Invited":s==="SUSPENDED"?"Suspended":"Deactivated"}</button>)}
+          s===?"Created":s==="SUSPENDED"?"Suspended":"Deactivated"}</button>)}
     </div>
     {notice&&<p role={notice.kind==="success"?"status":"alert"} className={"notice "+notice.kind}>
       {notice.text}</p>}
@@ -260,12 +253,11 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       list&&<section className="role-table-wrap" aria-label="Foundation staff directory">
         <table className="role-table">
           <thead><tr><th>Name and contact</th><th>Current role</th><th>Status</th>
-            <th>Invitation delivery</th><th>Actions</th></tr></thead>
+            <th>Actions</th></tr></thead>
           <tbody>{list.accounts.map(row=><tr key={row.accountRef}>
-            <td><strong>{row.displayName}</strong><p>{row.email}</p></td>
+            <td><strong>{row.displayName}</strong><p>{row.email??row.phone??"Mobile login"}</p></td>
             <td>{row.roleName??"Not assigned"}</td>
             <td><span className={"account-status "+row.status.toLowerCase()}>{accountStatusLabel(row.status)}</span></td>
-            <td>{deliveryLabel(row.deliveryStatus)}</td>
             <td><button type="button" onClick={()=>openAccount(row)}>View details</button></td>
           </tr>)}</tbody>
         </table>
@@ -282,11 +274,11 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
       <section role="dialog" aria-modal="true" aria-labelledby="account-drawer-title"
         className="role-drawer">
         <header className="topbar"><h2 id="account-drawer-title">
-          {editor==="invite"?"Add New Staff Account":pending?"Confirm account change":"Account details"}
+          {editor==="create"?"Add New Staff Account":pending?"Confirm account change":"Account details"}
         </h2><button type="button" disabled={busy} onClick={()=>{
           setEditor(null);setPending(null);
         }}>Close</button></header>
-        {editor==="invite"&&<form className="form" onSubmit={event=>void submitInvite(event)}>
+        {editor==="create"&&<form className="form" onSubmit={event=>void submitCreate(event)}>
           <label className="field">Full name<input required maxLength={160}
             value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
           <label className="field">Mobile number (username)
@@ -314,7 +306,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             <option value="">Choose a role explicitly</option>
             {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
           </select></label>
-          <p>The user can sign in immediately. No email invitation or authenticator is required.</p>
+          <p>Account is active immediately after creation.</p>
           {notice&&<p role={notice.kind==="success"?"status":"alert"}
              className={"notice "+notice.kind}>{notice.text}</p>}
           {uncertain&&<p role="alert">The account may already have been created. Refresh the directory before retrying.</p>}
@@ -324,11 +316,10 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             </button></div>
         </form>}
         {editor==="detail"&&target&&!pending&&<div className="form">
-          <h3>{target.displayName}</h3><p>{target.email}</p>
-          {target.phone&&<p>Phone (unverified): {target.phone}</p>}
+          <h3>{target.displayName}</h3><p>{target.email??target.phone??"Mobile login"}</p>
+          {target.phone&&<p>Mobile: {target.phone}</p>}
           <p>Status: {accountStatusLabel(target.status)}</p>
           <p>Current role: {target.roleName??"Not assigned"}</p>
-          <p>Entire foundation · Invitation: {deliveryLabel(target.deliveryStatus)}</p>
           {actions.includes("access.audit.view")&&<button type="button"
             onClick={()=>void loadAccountHistory(target.accountRef)}>View access history</button>}
           {history&&<section aria-label="Account access history">
@@ -339,9 +330,6 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
             </p>)}
           </section>}
           {target.roleProtected?<p>This protected administrator cannot be changed here.</p>:<>
-            {target.status==="INVITED"&&canInvite&&<button type="button" onClick={()=>{
-              requestKey.current=crypto.randomUUID();setPending({kind:"resend",target});
-            }}>Resend invitation</button>}
             {canAssign&&<div className="form">
               <label className="field">Find eligible roles<input maxLength={80}
                 value={searchRole} onChange={event=>setSearchRole(event.target.value)}/></label>
@@ -358,7 +346,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
                 setPending({kind:"revoke",target});requestKey.current=crypto.randomUUID();
               }}>Revoke current role</button>}
             </div>}
-            {canStatus&&target.status!=="INVITED"&&target.status!=="DEACTIVATED"&&<div className="toolbar">
+            {canStatus&&target.status!==&&target.status!=="DEACTIVATED"&&<div className="toolbar">
               {target.status==="ACTIVE"?<button type="button" onClick={()=>{
                 setPending({kind:"status",target,status:"SUSPENDED"});requestKey.current=crypto.randomUUID();
               }}>Suspend account</button>:<button type="button" onClick={()=>{
@@ -372,7 +360,7 @@ export function AccountsPanel({inviteOnly=false}:{inviteOnly?:boolean}){
         </div>}
         {pending&&<div className="form">
           <p>Confirm the {pending.kind==="assign"?"role assignment":
-            pending.kind==="revoke"?"role revocation":pending.kind==="resend"?"invitation resend":"account status change"} for {pending.target.displayName}.</p>
+            pending.kind==="revoke"?"role revocation":"account status change"} for {pending.target.displayName}.</p>
           {pending.kind==="assign"&&<p>Selected role: {roles.find(r=>r.value===roleRef)?.label??"Please choose a role"}</p>}
           {pending.kind==="status"&&<p>New status: {accountStatusLabel(pending.status??"")}</p>}
           <p>This will invalidate previously issued sessions if access changes.</p>
