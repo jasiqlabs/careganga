@@ -54,7 +54,7 @@ export default async function PrivateDocumentsPage(){
         canViewAudit={keys.includes("platform.audit.view")}
         canViewRecovery={keys.includes("platform.recovery.view")}
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
-        canViewDocumentscanViewCommunications={keys.includes("communications.notifications.view")||
+        canViewDocuments canViewCommunications={keys.includes("communications.notifications.view")||
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         />
