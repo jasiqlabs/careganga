@@ -1,5 +1,8 @@
 # CG-01 — Simplified Authentication: Product Owner Change Request (16 November 2026)
 
+**Greenfield delivery directive (owner, 16 November 2026):** CareGanga has not been delivered to the client and has no functioning legacy deployment or users to migrate. **Backward compatibility (BWC), preserving unshipped TOTP/invitation contracts, and supporting legacy login are not requirements.** Implement one coherent clean-initial-database authentication solution, simplify/drop obsolete code and seed only genuine initial roles. Test on a new disposable PostgreSQL database; never imply existing data migrations, production runtime or completed QA. Security and permission enforcement remain mandatory.
+
+
 **Status:** OWNER_DIRECTED_TARGET_BEHAVIOR · IMPLEMENTATION_NOT_STARTED · NOT_RUNTIME_TESTED  
 **Source branch:** `feature/cg01-simple-auth-brickops-style-20261116` (from current CareGanga `main`)  
 **Scope:** CG-01 identity/credential/login, all identity entry screens and existing CG-03/CG-19/CG-21/CG-02 consumers of MFA/session proofs. Preserve the five integrated Foundation modules, 14 existing story workstreams and all canonical QA IDs.  
