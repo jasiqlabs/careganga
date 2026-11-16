@@ -16,7 +16,6 @@ export default function AdminLogin(){
       <h1 id="cg-login-title">Sign in to your Account</h1>
       <p>Enter your registered mobile number or email and password</p>
       <LoginForm/>
-      <div className="cg-login-divider"><span>OR</span></div>
       <div className="cg-login-secure">
         <strong>Secure Access</strong>
         <p>Only authorized CareGanga Foundation users can access this portal.</p>
