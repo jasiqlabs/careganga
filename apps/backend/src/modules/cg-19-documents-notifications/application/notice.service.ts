@@ -96,6 +96,8 @@ export class NoticeService{
      throw new BadRequestException("Choose an upcoming notice expiry/schedule");
    const requestKey=ref(a.requestKey);
    const actor=await this.sessions.requireAction(bearer,"communications.notices.manage");
+   if(type==="ROLE")await this.sessions.requireAction(bearer,"roles.select");
+   if(type==="INDIVIDUAL")await this.sessions.requireAction(bearer,"accounts.select");
    const rawChannels=a.channels as Channel[];
    const hash=digest([title,content,a.priority,a.purpose,rawChannels,
      type,target,href,start?.toISOString()??null,expiry.toISOString()]);
