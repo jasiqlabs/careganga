@@ -184,8 +184,15 @@ export class NotificationService{
       ON CONFLICT(recipient_id,notification_id) DO NOTHING RETURNING notification_id AS id
     `,[ref,actor.realmId,actor.accountId]);
     const exists=await this.db.query(`
-      SELECT 1 FROM cg19_notification WHERE id=$1 AND realm_id=$2
-        AND recipient_id=$3 AND expires_at>now()
+      SELECT 1 FROM cg19_notification n
+      JOIN account a ON a.id=n.recipient_id AND a.realm_id=n.realm_id
+      LEFT JOIN cg19_notice notice ON notice.id=n.notice_id
+        AND notice.realm_id=n.realm_id
+      WHERE n.id=$1 AND n.realm_id=$2
+        AND n.recipient_id=$3 AND n.expires_at>now()
+        AND a.status='ACTIVE' AND (n.notice_id IS NULL OR
+          (notice.state='ACTIVE' AND
+           (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
     `,[ref,actor.realmId,actor.accountId]);
     if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
     return {read:true,changed:!!result.rowCount};
