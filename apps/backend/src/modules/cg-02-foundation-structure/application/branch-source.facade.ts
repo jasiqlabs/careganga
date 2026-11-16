@@ -139,6 +139,26 @@ export class BranchSourceFacade{
    if(row.requested_by!==actor.accountId&&row.manager_account_ref!==actor.accountId)
      await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
  }
+ /** A fresh, owner-verified submitted-source guard for CG-03 case creation.
+  * No CG-03 code reads CG-02 tables or trusts an earlier HTTP preflight.
+  */
+ async guardSubmittedSource(client:PoolClient,actor:VerifiedFoundationActor,
+   registrationRef:string,revision:number,digest:string){
+   await this.guardHistoricalRegistration(client,actor,registrationRef,true);
+   const rows=await client.query<{id:string}>(`
+     SELECT s.id FROM branch_registration r
+     JOIN branch_registration_submission s ON s.registration_id=r.id
+       AND s.root_realm_id=r.root_realm_id
+     WHERE r.id=$1 AND r.root_realm_id=$2 AND r.draft_version=$3
+       AND r.current_submission_revision=$3
+       AND r.status IN ('SUBMISSION_UNCONFIRMED','SUBMITTED','IN_REVIEW')
+       AND s.submitted_revision=$3 AND s.immutable_payload_digest=$4
+       AND s.status IN ('SUBMISSION_UNCONFIRMED','SUBMITTED','IN_REVIEW')
+     FOR SHARE OF r,s
+   `,[ensureId(registrationRef),actor.realmId,revision,digest]);
+   if(!rows.rows[0])
+     throw new ConflictException("Submitted branch source changed before approval case creation");
+ }
  async submission(bearer:string,registrationRef:unknown,revisionInput:unknown,
      digestInput:unknown):Promise<FrozenBranchSubmission>{
    const ref=ensureId(registrationRef),revision=Number(revisionInput);
