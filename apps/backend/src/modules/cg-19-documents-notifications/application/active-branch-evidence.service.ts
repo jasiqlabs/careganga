@@ -295,6 +295,39 @@ export class ActiveBranchEvidenceService{
        throw new ConflictException("The selected private file changed before the branch save");
    }
  }
+ /** Protects a CLOSED/INACTIVE branch reactivation using CG-19's original
+  * private-file metadata, without external provider requests inside the TX.
+  */
+ async guardOperatingEvidence(client:PoolClient,actor:VerifiedFoundationActor,
+   versions:readonly BranchFileVersion[]){
+   if(!Array.isArray(versions)||versions.length<2||versions.length>16||
+     new Set(versions.map(x=>x.fileRef)).size!==versions.length)
+     throw new ConflictException("Current approved branch evidence is incomplete");
+   const refs=versions.map(x=>uuid(x.fileRef)).sort();
+   const found=await client.query<{id:string;revision:number;classification:string;
+     scan_status:string;intent_status:string;revoked_at:Date|null}>(`
+     SELECT f.id,f.revision,i.classification,f.scan_status,
+       i.status AS intent_status,f.revoked_at
+     FROM cg19_stored_file f JOIN cg19_upload_intent i
+       ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+     WHERE f.realm_id=$1 AND f.id=ANY($2::uuid[])
+       AND f.owner_kind IN ('CG02_DRAFT','CG02_BRANCH')
+       AND i.owner_kind=f.owner_kind
+     ORDER BY f.id FOR SHARE OF f,i
+   `,[actor.realmId,refs]);
+   if(found.rowCount!==versions.length)
+     throw new ConflictException("Original approved evidence is unavailable");
+   for(const expected of versions){
+     const actual=found.rows.find(x=>x.id===expected.fileRef);
+     if(!actual||actual.revision!==expected.revision||
+       actual.classification!==expected.classification||actual.revoked_at||
+       actual.scan_status!=="CLEAN_VERIFIED"||actual.intent_status!=="VALIDATED")
+       throw new ConflictException("The approved evidence is revoked, stale or not clean");
+   }
+   if(!versions.some(x=>x.classification==="REGISTRATION_PROOF")||
+      !versions.some(x=>x.classification==="AGREEMENT"))
+     throw new ConflictException("Registration proof and signed agreement must remain verified");
+ }
  async revoke(bearer:string,fileRef:string,expectedVersion:unknown){
    const actor=await this.sessions.requireAction(bearer,"foundation.branches.manage");
    const revisionExpected=revision(expectedVersion);
