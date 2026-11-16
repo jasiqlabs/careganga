@@ -38,6 +38,52 @@ export class CommunicationRecipientSource{
       mobile:row.contact_phone_verified_at?row.contact_phone:null,
       mobileVerified:!!row.contact_phone_verified_at};
   }
+  /** Identity-owned eligible support-agent projection. Neither CG-19 nor the
+   * browser guesses account eligibility from a broad account dropdown.
+   */
+  async supportAgentOptions(client:PoolClient,realm:string,search:string,max=30):
+    Promise<Array<{value:string;label:string}>>{
+    if(!UUID.test(realm)||search.length>70||max<1||max>30)
+      throw new BadRequestException("Check permitted support agents");
+    const found=await client.query<{id:string;display_name:string}>(`
+      SELECT a.id,a.display_name FROM account a
+      JOIN access_realm root ON root.id=a.realm_id
+        AND root.realm_key='FOUNDATION_ROOT'
+      WHERE a.realm_id=$1 AND a.status='ACTIVE'
+        AND a.display_name ILIKE '%'||$2||'%'
+        AND EXISTS (
+          SELECT 1 FROM account_role ar JOIN role rl ON rl.id=ar.role_id
+            AND rl.realm_id=a.realm_id AND rl.active
+          WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id
+            AND ar.revoked_at IS NULL AND
+            (rl.is_protected OR EXISTS (
+              SELECT 1 FROM role_grant g WHERE g.role_id=rl.id
+                AND g.capability_key='support.cases.view'))
+        )
+      ORDER BY a.display_name,a.id LIMIT $3
+    `,[realm,search.trim(),max]);
+    return found.rows.map(x=>({value:x.id,label:x.display_name}));
+  }
+  async isSupportAgent(client:PoolClient,realm:string,account:string):Promise<boolean>{
+    if(!UUID.test(realm)||!UUID.test(account))
+      throw new BadRequestException("Choose a permitted support operator");
+    const eligible=await client.query(`
+      SELECT 1 FROM account a
+      JOIN access_realm root ON root.id=a.realm_id
+        AND root.realm_key='FOUNDATION_ROOT'
+      WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE'
+        AND EXISTS(
+          SELECT 1 FROM account_role ar JOIN role rl ON rl.id=ar.role_id
+            AND rl.realm_id=a.realm_id AND rl.active
+          WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id
+            AND ar.revoked_at IS NULL AND
+            (rl.is_protected OR EXISTS(
+              SELECT 1 FROM role_grant g WHERE g.role_id=rl.id
+                AND g.capability_key='support.cases.view'))
+        ) FOR SHARE OF a
+    `,[account,realm]);
+    return !!eligible.rowCount;
+  }
   async audience(client:PoolClient,realm:string,
     kind:"ALL_ACTIVE"|"ROLE"|"INDIVIDUAL",ref:string|null,
     max=1000):Promise<string[]>{
