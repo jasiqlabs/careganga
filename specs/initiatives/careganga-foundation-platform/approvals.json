@@ -5170,7 +5170,7 @@
       "sha256": "cf8b2b213d8ca895c7aee8084b186600ecf0f4e9860316aadc1e98292f938165",
       "current_artifact_sha256": "cf8b2b213d8ca895c7aee8084b186600ecf0f4e9860316aadc1e98292f938165",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "approved_at": "2026-11-16T06:53:57.305Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-01-identity-access/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG_01_IDENTITY_ACCESS_SOURCE_DESIGN_REVIEWED",
