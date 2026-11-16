@@ -133,13 +133,13 @@ export class BranchSourceFacade{
  async guardNotCurrentActiveEvidence(client:PoolClient,actor:VerifiedFoundationActor,
    fileRef:string){
    const rows=await client.query<{id:string}>(`
-     SELECT id FROM branch WHERE root_realm_id=$1 AND status='ACTIVE'
+     SELECT id FROM branch WHERE root_realm_id=$1
        AND evidence_versions @> jsonb_build_array(jsonb_build_object('fileRef',$2::text))
      LIMIT 1 FOR SHARE
    `,[actor.realmId,ensureId(fileRef)]);
    if(rows.rows[0])
      throw new ConflictException(
-       "Replace this document in the active branch profile before revoking it");
+       "Replace this document in the approved branch profile before revoking it");
  }
  async guardHistoricalRegistration(client:PoolClient,actor:VerifiedFoundationActor,
    registrationRef:string,write=true){
