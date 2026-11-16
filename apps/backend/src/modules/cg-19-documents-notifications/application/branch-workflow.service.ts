@@ -45,6 +45,7 @@ export class BranchWorkflowService{
    const stages=source.stages;
    const refs=[
      ...fileList(stages["1"]?.photoFiles),
+     ...fileList(stages["1"]?.logoFiles),
      ...fileList(stages["3"]?.registrationFiles),
      ...fileList(stages["4"]?.agreementFiles),
      ...fileList(stages["4"]?.photoFiles)
