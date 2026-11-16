@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {ActiveBranchEvidenceUploader} from "./active-branch-evidence-uploader";
 
 type Branch={branchRef:string;branchName:string;branchCode:string;status:string;
- version:number;branchType:string;areaName:string;managerName:string};
+ version:number;branchType:string;openingDate:string|null;areaName:string;managerName:string};
 type BranchTotals={total:number;active:number;inactive:number;closed:number};
 type BranchTypeSummary={name:string;total:number};
 type BranchDetail=Branch&{openingDate:string|null;geographyRef:string;postalAddress:string;
@@ -234,13 +234,14 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
            <div className="branch-directory-scroll"><table className="role-table branch-directory-table">
              <thead><tr><th>Branch code</th><th>Branch name</th>
                <th>Location</th><th>Branch type</th><th>Incharge / Manager</th>
-               <th>Status</th><th>Action</th></tr></thead>
+               <th>Status</th><th>Opening date</th><th>Action</th></tr></thead>
              <tbody>{rows.map(branch=><tr key={branch.branchRef}>
                <td>{branch.branchCode}</td><td><strong>{branch.branchName}</strong></td>
                <td>{branch.areaName}</td><td>{branch.branchType||"Not specified"}</td>
                <td>{branch.managerName||"Current manager"}</td>
                <td><span className={"account-status "+branch.status.toLowerCase()}>
                  {label(branch.status)}</span></td>
+               <td>{branch.openingDate||"Not specified"}</td>
                <td><button type="button" disabled={busy}
                  aria-label={"View "+branch.branchName}
                  aria-current={selected?.branchRef===branch.branchRef?"true":undefined}
