@@ -18,6 +18,14 @@ export class BranchWorkflowController{
    @Param("branchRef")ref:string,@Body()body:unknown){
    return this.workflow.updateOperating(bearer,ref,body);
  }
+ @Get("approval-process")
+ processStatus(@Headers("authorization")bearer:string){
+   return this.workflow.processStatus(bearer);
+ }
+ @Post("approval-process/initialize")
+ initializeProcess(@Headers("authorization")bearer:string){
+   return this.workflow.initializeProcess(bearer);
+ }
  @Get("cases")
  cases(@Headers("authorization")bearer:string){
    return this.workflow.cases(bearer);
