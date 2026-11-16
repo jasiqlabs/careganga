@@ -150,7 +150,7 @@ export class SupportService{
       "AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.active "+
       "LEFT JOIN auth_security_policy p ON p.access_realm_id=account.realm_id "+
       "WHERE s.id=$1 AND s.account_id=$3 AND s.revoked_at IS NULL "+
-      "AND s.expires_at>now() AND s.mfa_verified_at IS NOT NULL "+
+      "AND s.expires_at>now() AND s.password_authenticated_at IS NOT NULL "+
       "AND s.issued_at>now()-make_interval(secs=>COALESCE(p.max_session_age_seconds,28800)) "+
       "AND s.last_seen_at>now()-make_interval(secs=>COALESCE(p.idle_timeout_seconds,1800)) "+
       "AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g "+
