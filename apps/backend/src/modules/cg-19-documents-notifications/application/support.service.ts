@@ -234,10 +234,11 @@ export class SupportService{
       t:tail.timestamp_text,id:tail.id,filter
     })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
-      closed:string;unread:string;archived:string}>(
+      closed:string;unread:string;archived:string;received_today:string}>(
       "SELECT count(*) AS total,count(*) FILTER(WHERE c.status='OPEN') AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
       "count(*) FILTER(WHERE c.status='CLOSED') AS closed,"+
+      "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
       "count(*) FILTER(WHERE (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) AS unread,"+
       "count(*) FILTER(WHERE rs.archived_at IS NOT NULL) AS archived "+
