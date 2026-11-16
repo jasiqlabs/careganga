@@ -60,6 +60,7 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
   const [requestKey,setRequestKey]=useState("");
   const [uploadRef,setUploadRef]=useState("");
   const generation=useRef(0);
+  const mediaGeneration=useRef(0);
   const refresh=useCallback(async()=>{
     const gen=++generation.current;setLoading(true);
     try{
@@ -78,6 +79,7 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
   },[]);
   useEffect(()=>{void refresh();return()=>{++generation.current}},[refresh]);
   const loadMedia=useCallback(async()=>{
+    const request=++mediaGeneration.current;
     if(!selected){setMedia([]);return;}
     setMediaLoading(true);
     try{
@@ -87,13 +89,17 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
         result.files.some(file=>typeof file.fileRef!=="string"||
           !Number.isSafeInteger(file.revision)||typeof file.revoked!=="boolean"))
         throw Error("OFFLINE");
-      setMedia(result.files);
+      if(request===mediaGeneration.current)setMedia(result.files);
     }catch(e){
-      setMedia([]);
-      setNotice({kind:"error",text:safeMessage(e)});
-    }finally{setMediaLoading(false);}
+      if(request===mediaGeneration.current){
+        setMedia([]);
+        setNotice({kind:"error",text:safeMessage(e)});
+      }
+    }finally{
+      if(request===mediaGeneration.current)setMediaLoading(false);
+    }
   },[selected]);
-  useEffect(()=>{void loadMedia();},[loadMedia]);
+  useEffect(()=>{void loadMedia();return()=>{++mediaGeneration.current};},[loadMedia]);
   async function revokeMedia(item:MediaRecord){
     if(busy||uncertain||item.revoked)return;
     if(revokeReview?.fileRef!==item.fileRef){setRevokeReview(item);return;}
