@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActiveBranchEvidenceUploader} from "./active-branch-evidence-uploader";
 
 type Branch={branchRef:string;branchName:string;branchCode:string;status:string;
@@ -58,6 +58,11 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    [deptParent,setDeptParent]=useState(""),[deptHead,setDeptHead]=useState(""),
    [deptActive,setDeptActive]=useState(true);
  const [departmentDrawerOpen,setDepartmentDrawerOpen]=useState(false);
+ const departmentDrawerRef=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{
+   const dialog=departmentDrawerRef.current;
+   if(departmentDrawerOpen&&dialog&&!dialog.open)dialog.showModal();
+ },[departmentDrawerOpen]);
  const [participantAccount,setParticipantAccount]=useState(""),[participantRole,setParticipantRole]=useState("");
  const [foundationLink,setFoundationLink]=useState("");
  const [replacementFiles,setReplacementFiles]=useState<string[]>([]);
@@ -337,11 +342,11 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
            {canManage&&selected.status==="ACTIVE"&&<button type="button" disabled={busy||unknown}
              onClick={()=>resetDepartment()}>New branch department / committee</button>}
            {canManage&&selected.status==="ACTIVE"&&departmentDrawerOpen&&
-             <div className="foundation-department-overlay" role="presentation"
-               onClick={()=>{if(!busy)setDepartmentDrawerOpen(false);}}>
-               <section role="dialog" aria-modal="true"
-                 aria-labelledby="branch-department-drawer-heading"
-                 className="foundation-department-sheet" onClick={e=>e.stopPropagation()}>
+             <dialog ref={departmentDrawerRef}
+               aria-labelledby="branch-department-drawer-heading"
+               className="foundation-department-sheet"
+               onCancel={e=>{if(busy)e.preventDefault();}}
+               onClose={()=>setDepartmentDrawerOpen(false)}>
                <header className="toolbar"><div>
                  <h3 id="branch-department-drawer-heading">
                    {editDepartment?"Edit Department / Committee":"Add New Department"}
@@ -385,7 +390,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                {editDepartment?"Save department":"Create department"}</button>
              <button type="button" disabled={busy}
                onClick={()=>setDepartmentDrawerOpen(false)}>Cancel</button>
-           </div></section></div>}
+           </div></dialog>}
            {focusedDept&&<section><h4>Committee officeholders</h4>
              {participants.map(p=><div className="toolbar" key={p.participationRef}>
                <span>{p.displayName??"Historical account"} · {p.officeRole}</span>
