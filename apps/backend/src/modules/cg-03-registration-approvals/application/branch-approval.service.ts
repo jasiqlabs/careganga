@@ -101,25 +101,34 @@ export class BranchApprovalService{
        return {caseRef:prior.rows[0].id,reference:prior.rows[0].case_number,
          status:prior.rows[0].status,revision:prior.rows[0].revision};
      }
-     const process=await this.currentBranchProcess(client,actor);
+     const predecessor=await client.query<{id:string;status:string;branch_source_revision:number}>(`
+     SELECT id,status,branch_source_revision FROM cg03_case
+     WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
+       AND branch_source_ref=$2 AND branch_source_revision<$3
+     ORDER BY branch_source_revision DESC LIMIT 1 FOR SHARE
+   `,[actor.realmId,registrationRef,revision]);
+   if(predecessor.rows[0]&&predecessor.rows[0].status!=="RETURNED")
+     throw new ConflictException("Only a returned registration may be resubmitted");
+   const previousCase=predecessor.rows[0]?.id??null;
+   const process=await this.currentBranchProcess(client,actor);
      const created=await client.query<CaseRow>(`
        INSERT INTO cg03_case(
          realm_id,case_number,process_id,process_version,proposer_id,
          target_account_id,target_role_id,account_name_snapshot,role_name_snapshot,
          expected_access_version,expected_role_revision,proposal_revision,
          proposal_digest,request_digest,request_key,
-         case_kind,branch_source_ref,branch_source_revision,branch_source_digest
+         case_kind,branch_source_ref,branch_source_revision,branch_source_digest,previous_case_id
        ) VALUES(
          $1,'CG-AP-'||lpad(nextval('cg03_public_case_sequence')::text,6,'0'),
          $2,$3,$4,NULL,NULL,$5,'Branch registration',NULL,NULL,$6,$7,$8,$9,
-         'BRANCH_REGISTRATION',$10,$11,$12
+         'BRANCH_REGISTRATION',$10,$11,$12,$13
        ) RETURNING *
      `,[actor.realmId,process.id,process.version,actor.accountId,
-       source.branchName,revision,digest,requestDigest,key,registrationRef,revision,digest]);
+       source.branchName,revision,digest,requestDigest,key,registrationRef,revision,digest,previousCase]);
      await client.query(`
        INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,correlation_ref)
-       VALUES($1,$2,$3,'SUBMITTED',1,$4)
-     `,[actor.realmId,created.rows[0].id,actor.accountId,randomUUID()]);
+       VALUES($1,$2,$3,$5,1,$4)
+     `,[actor.realmId,created.rows[0].id,actor.accountId,randomUUID(),previousCase?"CORRECTED":"SUBMITTED"]);
      await client.query("COMMIT");tx=false;
      return {caseRef:created.rows[0].id,reference:created.rows[0].case_number,
        status:"SUBMITTED",revision:1};
@@ -263,6 +272,43 @@ export class BranchApprovalService{
      reference(effectKey)]);
    if(!rows.rows[0])throw new ConflictException("The approved branch source is stale or unavailable");
    return rows.rows[0].status;
+ }
+ async listCases(bearer:string){
+   const actor=await this.sessions.requireAction(bearer,"approvals.review");
+   const cases=await this.db.query<CaseRow & {account_name_snapshot:string}>(`
+     SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
+     ORDER BY submitted_at DESC,id DESC LIMIT 40
+   `,[actor.realmId]);
+   return {cases:cases.rows.map(x=>({caseRef:x.id,reference:x.case_number,
+     branchName:x.account_name_snapshot,registrationRef:x.branch_source_ref,
+     submissionRevision:x.branch_source_revision,status:x.status,revision:x.revision,
+     submittedAt:x.submitted_at.toISOString()}))};
+ }
+ /** CG-03-own immutable case proof for a newly submitted CG-02 snapshot. */
+ async guardOriginalCase(client:PoolClient,actor:VerifiedFoundationActor,
+   registrationRef:string,revision:number,digest:string,caseRef:string){
+   const rows=await client.query<CaseRow>(`
+     SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2
+       AND case_kind='BRANCH_REGISTRATION' AND branch_source_ref=$3
+       AND branch_source_revision=$4 AND branch_source_digest=$5
+       AND status IN('SUBMITTED','IN_REVIEW') FOR SHARE
+   `,[reference(caseRef),actor.realmId,reference(registrationRef),revision,digest]);
+   if(!rows.rows[0]||rows.rows[0].proposer_id!==actor.accountId)
+     throw new ConflictException("The source-approved branch application is unavailable");
+ }
+ /** CG-03's decision row, not CG-02 UI status, is authority for state transitions. */
+ async guardOutcome(client:PoolClient,actor:VerifiedFoundationActor,
+   caseRef:string,expected:"RETURNED"|"REJECTED"|"PENDING_OWNER"){
+   const rows=await client.query<CaseRow>(`
+     SELECT c.* FROM cg03_case c
+     JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
+     WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='BRANCH_REGISTRATION'
+       AND c.status=$3 AND d.action=$4
+       AND (c.status<>'PENDING_OWNER' OR d.fresh_mfa_verified_at IS NOT NULL)
+     FOR SHARE OF c,d
+   `,[reference(caseRef),actor.realmId,expected,
+      expected==="PENDING_OWNER"?"APPROVE":expected==="RETURNED"?"RETURN":"REJECT"]);
+   if(!rows.rows[0])throw new ConflictException("The branch decision could not be confirmed");
  }
  async markCompleted(caseRef:string,effectKey:string){
    const client=await this.db.connect();let tx=false;
