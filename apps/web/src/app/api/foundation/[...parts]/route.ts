@@ -5,6 +5,13 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const actions=new Set(["PROFILE_SAVE","AREA_CREATE","AREA_UPDATE","DEPARTMENT_CREATE",
   "DEPARTMENT_UPDATE","PARTICIPANT_ADD","PARTICIPANT_END"]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="branches"){
+    if(parts.length===2&&parts[1]==="drafts")return method==="GET"||method==="POST";
+    if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET"||method==="PATCH";
+    if(parts.length===4&&parts[1]==="changes"&&
+       ["BRANCH_DRAFT_CREATE","BRANCH_DRAFT_SAVE"].includes(parts[2])&&UUID.test(parts[3]))return method==="GET";
+    return false;
+  }
   if(parts.length===1){
     if(parts[0]==="profile")return method==="GET"||method==="PATCH";
     if(parts[0]==="geography"||parts[0]==="departments")return method==="GET"||method==="POST";
