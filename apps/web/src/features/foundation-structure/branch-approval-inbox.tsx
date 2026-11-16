@@ -21,13 +21,29 @@ async function request<T>(path:string,method:"GET"|"POST"="GET",body?:object):Pr
 }
 export function BranchApprovalInbox(){
  const [cases,setCases]=useState<Case[]>([]);
+ const [processConfigured,setProcessConfigured]=useState<boolean|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
  const [remarks,setRemarks]=useState(""),[totp,setTotp]=useState("");
  const [key,setKey]=useState("");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[error,setError]=useState("");
+ async function checkProcess(){
+   const result=await request<{configured:boolean}>("/approval-process");
+   setProcessConfigured(result.configured);
+ }
+ async function initializeProcess(){
+   setBusy(true);setError("");setMessage("");
+   try{
+     const result=await request<{configured:boolean}>("/approval-process/initialize","POST");
+     setProcessConfigured(result.configured);
+     setMessage(result.configured?"Branch approval review is now available.":
+       "The approval route is not ready.");
+   }catch(e){setError(e instanceof Error?e.message:"The approval route could not be initialized.");}
+   finally{setBusy(false);}
+ }
  async function refresh(){
+   await checkProcess();
    const list=await request<{cases:Case[]}>("/cases");
    if(!Array.isArray(list.cases))throw Error("Review inbox unavailable");
    setCases(list.cases);
@@ -39,6 +55,7 @@ export function BranchApprovalInbox(){
  }
  useEffect(()=>{
    let active=true;
+   void checkProcess().catch(()=>{if(active)setProcessConfigured(null);});
    void request<{cases:Case[]}>("/cases").then(result=>{
      if(active)setCases(result.cases);
    }).catch(()=>{if(active){setCases([]);setError("Branch approvals cannot be verified.");}})
@@ -96,6 +113,12 @@ export function BranchApprovalInbox(){
    <header className="toolbar"><h2>Super Admin branch approvals</h2>
      <button type="button" disabled={busy} onClick={()=>void refresh().catch(
        ()=>setError("Current approvals could not be loaded."))}>Refresh</button></header>
+   {processConfigured===false&&<div className="notice">
+     Branch approvals require an authorized one-time Super Admin setup.
+     <button type="button" disabled={busy} onClick={()=>void initializeProcess()}>
+       Enable Foundation branch approvals</button></div>}
+   {processConfigured===true&&<p role="status" className="notice">
+     The approved branch-review process is configured.</p>}
    {loading?<p role="status">Checking branch applications...</p>:null}
    {!!error&&<p role="alert" className="notice">{error}</p>}
    {!!message&&<p role="status" className="notice">{message}</p>}
