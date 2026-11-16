@@ -231,6 +231,10 @@ export class SessionService implements IdentityAuthorization {
     `,[actor.activeSessionId,actor.accountId,actor.realmId]);
     if(!current.rowCount||!await verifyPassword(currentPassword,current.rows[0].password_hash))
       throw new ForbiddenException("Current password could not be confirmed");
+    // Count failed proofs, not every valid protected write. This row deletion
+    // commits only when the caller's protected operation commits successfully.
+    await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",
+      [this.throttleKey("foundation-root-fresh-proof",actor.accountId)]);
   }
 
   /** Throttle fresh privileged password attempts outside the caller's write transaction,
@@ -260,6 +264,8 @@ export class SessionService implements IdentityAuthorization {
       ||currentPassword.length<1||Buffer.byteLength(currentPassword,"utf8")>1024
       ||newPassword.length<8||Buffer.byteLength(newPassword,"utf8")>1024)
       throw new ForbiddenException("Check the current and new passwords");
+    // A stolen session must not become an unlimited online password oracle.
+    await this.takeAttempt("self-password-change",actor.accountId,6,900);
     const newHash=await hashPassword(newPassword);
     const client=await this.db.connect();
     try{
@@ -291,6 +297,8 @@ export class SessionService implements IdentityAuthorization {
             action_key,outcome,correlation_ref)
           VALUES($1,$2,$2,'identity.password.change','SUCCESS',$3)`,
           [actor.realmId,actor.accountId,correlationRef]);
+        await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",
+          [this.throttleKey("self-password-change",actor.accountId)]);
         await client.query("COMMIT");
       }catch(e){await client.query("ROLLBACK");throw e;}
     }finally{client.release();}
