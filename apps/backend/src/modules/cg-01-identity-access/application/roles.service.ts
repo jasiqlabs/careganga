@@ -131,7 +131,7 @@ export class RolesService {
     try{actor=await this.sessions.requireAction(bearer,"roles.select");}
     catch(error){
       if(!(error instanceof ForbiddenException))throw error;
-      try{actor=await this.sessions.requireAction(bearer,"accounts.invite");}
+      try{actor=await this.sessions.requireAction(bearer,"accounts.create");}
       catch(second){
         if(!(second instanceof ForbiddenException))throw second;
         actor=await this.sessions.requireAction(bearer,"roles.assign");
