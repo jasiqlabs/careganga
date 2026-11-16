@@ -7,6 +7,7 @@ import {Injectable,ServiceUnavailableException} from "@nestjs/common";
  */
 export type PrivateUploadReservation=Readonly<{
   url:string;expiresAt:string;reservationRef:string;
+  headers:Record<string,string>;
 }>;
 export type PrivateVerifiedObject=Readonly<{
   state:"CLEAN_VERIFIED";sha256:string;sizeBytes:number;mime:string;
@@ -26,6 +27,12 @@ export abstract class PrivateObjectStorage{
   abstract readVerifiedPrivateObject(request:{
     objectKey:string;objectVersion:string;maxBytes:number
   }):Promise<Buffer>;
+  /** Server-rendered, deterministic private PDF; never a client upload token.
+   * Returns only when object bytes/checksum and version are verified.
+   */
+  abstract writeVerifiedPrivateDocument(request:{
+    objectKey:string;bytes:Buffer;sha256:string
+  }):Promise<{objectVersion:string;sha256:string}>;
 }
 @Injectable()
 export class UnconfiguredPrivateObjectStorage extends PrivateObjectStorage{
@@ -43,4 +50,7 @@ export class UnconfiguredPrivateObjectStorage extends PrivateObjectStorage{
   async readVerifiedPrivateObject(_request:{
     objectKey:string;objectVersion:string;maxBytes:number
   }):Promise<Buffer>{return this.unavailable();}
+  async writeVerifiedPrivateDocument(_request:{
+    objectKey:string;bytes:Buffer;sha256:string
+  }):Promise<{objectVersion:string;sha256:string}>{return this.unavailable();}
 }
