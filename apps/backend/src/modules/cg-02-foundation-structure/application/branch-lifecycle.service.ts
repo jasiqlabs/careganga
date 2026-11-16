@@ -396,7 +396,7 @@ export class BranchLifecycleService{
          before_payload,after_payload,evidence_versions,approved_submission_id
        ) VALUES($1,$2,1,$3,$4,'{}'::jsonb,$5::jsonb,$6::jsonb,$7)
      `,[branchRef,actor.realmId,effect,actor.accountId,
-       JSON.stringify({}),JSON.stringify(activeProfile),
+       JSON.stringify(activeProfile),
        JSON.stringify(snapshot.verified_file_versions),snapshot.id]);
      if(departments.length)await client.query(`
        INSERT INTO branch_department_link(root_realm_id,branch_id,foundation_department_id,linked_by)
