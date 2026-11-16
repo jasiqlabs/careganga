@@ -64,7 +64,7 @@ export class ProtectedAccessOwnerService{
       FOR SHARE OF s,a,ar,r
     `,[actor.activeSessionId,actor.accountId,actor.realmId,capability]);
     const row=rows.rows[0];
-    if(!row||!(rootRequired?row.is_protected:(row.is_protected||row.has_capability)))
+    if(!rows.rowCount||!rows.rows.some(row=>(rootRequired?row.is_protected:(row.is_protected||row.has_capability))))
       throw new ForbiddenException("Your reviewer authority is no longer current");
   }
   async requireDistinctFinalReviewer(client:PoolClient,realm:string,proposer:string){
