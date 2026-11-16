@@ -163,7 +163,12 @@ export class SupportService{
       /^\+?[0-9()\-\s]{8,20}$/.test(contact)))
       throw new BadRequestException("Use an email address or a valid phone number");
     const digest=sha(JSON.stringify([name,contact,subject,message]));
-    const caller=hmac("source",address||"unknown");
+    // A lost response remains recoverable even if the visitor's connection
+    // changes IP. The private opaque request key + exact contact/payload must
+    // match; anonymous rate limiting still uses the current socket IP.
+    const caller=hmac("source",JSON.stringify([
+      name.toLocaleLowerCase("en-US"),contact.toLocaleLowerCase("en-US")
+    ]));
     const client=await this.db.connect();let begun=false;
     try{
       await client.query("BEGIN");begun=true;
