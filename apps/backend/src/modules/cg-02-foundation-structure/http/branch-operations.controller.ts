@@ -38,8 +38,9 @@ export class BranchOperationsController{
     return this.operations.revisions(bearer,branchRef,this.offset(offset));
   }
   @Get(":branchRef/departments")
-  departments(@Headers("authorization")bearer:string,@Param("branchRef")branchRef:string){
-    return this.operations.departments(bearer,branchRef);
+  departments(@Headers("authorization")bearer:string,@Param("branchRef")branchRef:string,
+    @Query("offset")offset?:string){
+    return this.operations.departments(bearer,branchRef,this.offset(offset));
   }
   @Post(":branchRef/departments")
   createDepartment(@Headers("authorization")bearer:string,@Param("branchRef")branchRef:string,
