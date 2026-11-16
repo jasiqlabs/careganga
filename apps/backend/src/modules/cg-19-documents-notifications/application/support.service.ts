@@ -189,15 +189,33 @@ export class SupportService{
       throw new NotFoundException("Original receipt unavailable or expired");
     return {status:publicState(row.status)};
   }
-  async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL"){
+  async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL",
+    pageCursor:unknown=null){
     const a=await this.actor(bearer,"support.cases.view");
     const limit=Number(rawLimit);
     if(!Number.isInteger(limit)||limit<1||limit>30||
       typeof filter!=="string"||!["ALL","OPEN","REPLIED","CLOSED","ARCHIVED","UNREAD"].includes(filter))
       throw new BadRequestException("Choose a supported filter");
+    let afterTimestamp:string|null=null,afterId:string|null=null;
+    if(pageCursor!==null&&pageCursor!==undefined&&pageCursor!==""){
+      if(typeof pageCursor!=="string"||pageCursor.length>220||
+        !/^[A-Za-z0-9_-]+$/.test(pageCursor))
+        throw new BadRequestException("Refresh the message page");
+      try{
+        const parsed:unknown=JSON.parse(Buffer.from(pageCursor,"base64url").toString("utf8"));
+        if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
+          !("t" in parsed)||!("id" in parsed)||!("filter" in parsed)||
+          typeof parsed.t!=="string"||typeof parsed.id!=="string"||
+          parsed.filter!==filter||!UUID.test(parsed.id)||
+          !/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.+-]{10,35}$/.test(parsed.t))
+          throw Error("Bad cursor");
+        afterTimestamp=parsed.t;afterId=parsed.id;
+      }catch{throw new BadRequestException("Refresh the message page");}
+    }
     const results=await this.db.query<CaseRow&{last_seen_inbound_at:Date|null;
-      archived_at:Date|null}>(
-      "SELECT c.*,rs.last_seen_inbound_at,rs.archived_at FROM cg19_support_case c "+
+      archived_at:Date|null;timestamp_text:string}>(
+      "SELECT c.*,c.updated_at::text AS timestamp_text,"+
+      "rs.last_seen_inbound_at,rs.archived_at FROM cg19_support_case c "+
       "LEFT JOIN cg19_support_read_state rs ON rs.case_id=c.id "+
       "AND rs.realm_id=c.realm_id AND rs.operator_account_id=$2 "+
       "WHERE c.realm_id=$1 AND ($3='ALL' OR "+
@@ -205,8 +223,16 @@ export class SupportService{
       "($3='UNREAD' AND (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) OR "+
       "(c.status=$3 AND rs.archived_at IS NULL)) "+
+      "AND ($5::timestamptz IS NULL OR "+
+      " (c.updated_at,c.id)<($5::timestamptz,$6::uuid)) "+
       "ORDER BY c.updated_at DESC,c.id DESC LIMIT $4",
-      [a.realmId,a.accountId,filter,limit]);
+      [a.realmId,a.accountId,filter,limit+1,afterTimestamp,afterId]);
+    const shown=results.rows.slice(0,limit);
+    const more=results.rows.length>limit;
+    const tail=shown.at(-1);
+    const nextCursor=more&&tail?Buffer.from(JSON.stringify({
+      t:tail.timestamp_text,id:tail.id,filter
+    })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
       closed:string;unread:string;archived:string}>(
       "SELECT count(*) AS total,count(*) FILTER(WHERE c.status='OPEN') AS open,"+
@@ -218,7 +244,7 @@ export class SupportService{
       "FROM cg19_support_case c LEFT JOIN cg19_support_read_state rs "+
       "ON rs.case_id=c.id AND rs.realm_id=c.realm_id AND rs.operator_account_id=$2 "+
       "WHERE c.realm_id=$1",[a.realmId,a.accountId]);
-    return {items:results.rows.map(row=>{
+    return {nextCursor,items:shown.map(row=>{
       const data=open(row.request_encrypted);
       return {caseRef:row.id,subject:data.subject,name:data.name,
         contact:data.contact,status:row.status,revision:row.revision,
