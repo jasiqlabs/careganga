@@ -309,11 +309,11 @@ export class ActiveBranchEvidenceService{
    const client=await this.db.connect();let tx=false;
    try{
      await client.query("BEGIN");tx=true;
-     await this.source.guardActiveBranch(client,actor,row.branch_id,currentBranch.branch.version,true);
      const locked=await client.query<{revision:number;revoked_at:Date|null}>(`
        SELECT revision,revoked_at FROM cg19_stored_file WHERE id=$1 AND realm_id=$2
          AND owner_kind='CG02_BRANCH' FOR UPDATE
      `,[fileRef,actor.realmId]);
+     await this.source.guardActiveBranch(client,actor,row.branch_id,currentBranch.branch.version,true);
      if(!locked.rows[0]||locked.rows[0].revision!==revisionExpected)
        throw new ConflictException("The private file changed");
      if(!locked.rows[0].revoked_at){
