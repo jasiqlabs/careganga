@@ -52,7 +52,7 @@ export default async function AdminRoles(){
         canViewCommunications={effective.actions.some((a:unknown)=>
           Boolean(a)&&typeof a==="object"&&"key" in a&&
           ["communications.notifications.view","communications.notices.manage",
-            "communications.delivery.view"].includes(String(a.key)))}/>
+            "communications.delivery.view"].includes(String(a.key)))}canViewSupport={effective.actions.some((a:unknown)=>!!a&&typeof a==="object"&&"key" in a&&["support.cases.view","support.faq.manage"].includes(String(a.key)))}/>
       <main className="workspace"><RolesPanel/></main>
     </div>;
   }catch(error){
