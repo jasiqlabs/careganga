@@ -16,7 +16,7 @@ CREATE TABLE account_command (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
   actor_account_id uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
-  action text NOT NULL CHECK(action IN ('INVITE','ASSIGN','REVOKE','STATUS')),
+  action text NOT NULL CHECK(action IN ('CREATE','INVITE','ASSIGN','REVOKE','STATUS')),
   request_key uuid NOT NULL,
   request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
   target_account_id uuid REFERENCES account(id) ON DELETE RESTRICT,
