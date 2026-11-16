@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 import Link from "next/link";
 import {BranchEvidenceUploader} from "./branch-evidence-uploader";
 import {BranchApprovalInbox} from "./branch-approval-inbox";
+import {BranchEvidenceHistory} from "./branch-evidence-history";
 
 type Draft={recordRef:string;branchName:string;branchType:string;status:string;
   currentStep:number;version:number;updatedAt:string};
@@ -241,6 +242,8 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
               <button type="button" className="primary" disabled={busy||!!pending||draftName.trim().length<2}
                 onClick={()=>void create()}>Create draft</button></div>
           </div>}
+          {selected&&!createOpen&&<BranchEvidenceHistory key={selected.recordRef+":"+selected.version}
+            registrationRef={selected.recordRef} canRevoke={canManage}/>}
           {selected&&!createOpen&&<div className="form">
             <header><h2>{selected.branchName}</h2><p>{selected.status.replaceAll("_"," ")} · Revision {selected.version}</p></header>
             <nav className="branch-stepper" aria-label="Registration steps">
