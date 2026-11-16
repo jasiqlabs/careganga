@@ -13,6 +13,8 @@ CREATE TABLE account (
   normalized_email text UNIQUE CHECK (
     normalized_email IS NULL OR normalized_email = lower(trim(normalized_email))
   ),
+  -- Optional CG-19 protected-notice recipient trust; never a login prerequisite.
+  email_verified_at timestamptz,
   contact_phone text CHECK (contact_phone IS NULL OR contact_phone ~ '^\+[1-9][0-9]{7,14}$'),
   recovery_contact_changed_at timestamptz,
   status text NOT NULL CHECK (status IN ('ACTIVE','SUSPENDED','DEACTIVATED')),
