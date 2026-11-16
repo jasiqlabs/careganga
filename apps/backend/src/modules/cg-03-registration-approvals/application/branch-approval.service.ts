@@ -201,7 +201,13 @@ export class BranchApprovalService{
      SELECT action,safe_remarks,occurred_at FROM cg03_case_event
      WHERE realm_id=$1 AND case_id=$2 ORDER BY occurred_at,id LIMIT 30
    `,[actor.realmId,caseRow.id]);
+   // CG-02's immutable submitted revision is the review display authority;
+   // never read mutable draft stages to decide an earlier case.
+   const frozen=await this.branches.submission(bearer,
+     caseRow.branch_source_ref,caseRow.branch_source_revision,caseRow.branch_source_digest);
    return {caseRef:caseRow.id,reference:caseRow.case_number,
+     submittedBranchName:frozen.branchName,reviewSummary:frozen.reviewSummary,
+     evidence:frozen.fileVersions,
      registrationRef:caseRow.branch_source_ref,submissionRevision:caseRow.branch_source_revision,
      status:caseRow.status,revision:caseRow.revision,
      canDecide:root&&actor.accountId!==caseRow.proposer_id&&
