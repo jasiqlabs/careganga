@@ -6,7 +6,7 @@ import {BranchApprovalInbox} from "./branch-approval-inbox";
 
 type Draft={recordRef:string;branchName:string;branchType:string;status:string;
   currentStep:number;version:number;updatedAt:string};
-type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:string|null;geographyRef:string|null};
+type Detail=Draft&{stages:Record<string,Record<string,unknown>>;managerRef:string|null;managerName:string|null;geographyRef:string|null};
 type Option={value:string;label:string;kind?:string};
 type Area={areaRef:string;name:string;level:string;status:string};
 type Pending={action:"BRANCH_DRAFT_CREATE"|"BRANCH_DRAFT_SAVE";requestKey:string};
@@ -114,7 +114,7 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
     setRegistrationStatus(state);
   }
   async function open(ref:string){
-    setError("");setMessage("");setBusy(true);
+    setError("");setMessage("");setSubmitKey("");setBusy(true);
     try{
       hydrate(await api<Detail>("/branches/drafts/"+encodeURIComponent(ref)));
       await loadStatus(ref);
@@ -208,7 +208,8 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
     </header>
     <div className="toolbar"><span className="account-status">Genuine verified approvals required for activation</span>
       {canManage&&<button type="button" className="primary" disabled={busy||!!pending}
-        onClick={()=>{setSelected(null);setCreateOpen(true);setError("");setMessage("");}}>New branch draft</button>}
+        onClick={()=>{setSelected(null);setCreateOpen(true);setDraftName("");setBranchType("");
+          setOpeningDate("");setError("");setMessage("");setSubmitKey("");}}>New branch draft</button>}
     </div>
     {error&&<p className="notice" role="alert">{error}</p>}
     {message&&<p className="notice" role="status">{message}</p>}
@@ -260,11 +261,11 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
               <label className="field">Official email<input type="email" maxLength={180}
                 value={officialEmail} onChange={e=>setOfficialEmail(e.target.value)}/></label>
               {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
-                draftVersion={selected.version} classification="BRANCH_PHOTO"
+                draftVersion={selected.version} key={selected.recordRef+":"+selected.version+":"+("BRANCH_PHOTO")} classification="BRANCH_PHOTO"
                 onVerified={ref=>setStagePhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
               {stagePhotos.length>0&&<p className="notice">{stagePhotos.length} private photograph(s) selected for next save.</p>}
               {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
-                draftVersion={selected.version} classification="BRANCH_LOGO"
+                draftVersion={selected.version} key={selected.recordRef+":"+selected.version+":"+("BRANCH_LOGO")} classification="BRANCH_LOGO"
                 onVerified={ref=>setStageLogos(old=>old.includes(ref)?old:[...old,ref])}/>}
             </>}
             {step===2&&<>
@@ -282,23 +283,25 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
             </>}
             {step===3&&<>
               {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
-                draftVersion={selected.version} classification="REGISTRATION_PROOF"
+                draftVersion={selected.version} key={selected.recordRef+":"+selected.version+":"+("REGISTRATION_PROOF")} classification="REGISTRATION_PROOF"
                 onVerified={ref=>setRegistrationFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
               <p className="notice">Registration proof selected: {registrationFiles.length}.
                 A signed agreement is also required before submission.</p>
             </>}
             {step===4&&<>
               {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
-                draftVersion={selected.version} classification="AGREEMENT"
+                draftVersion={selected.version} key={selected.recordRef+":"+selected.version+":"+("AGREEMENT")} classification="AGREEMENT"
                 onVerified={ref=>setAgreementFiles(old=>old.includes(ref)?old:[...old,ref])}/>}
               {canManage&&<BranchEvidenceUploader registrationRef={selected.recordRef}
-                draftVersion={selected.version} classification="BRANCH_PHOTO"
+                draftVersion={selected.version} key={selected.recordRef+":"+selected.version+":"+("BRANCH_PHOTO")} classification="BRANCH_PHOTO"
                 onVerified={ref=>setDocumentPhotos(old=>old.includes(ref)?old:[...old,ref])}/>}
               <p className="notice">Agreements selected: {agreementFiles.length}.
                 Additional private photos: {documentPhotos.length}.</p>
             </>}
             {step===5&&<label className="field">Eligible Foundation manager<select value={manager}
               onChange={e=>setManager(e.target.value)}><option value="">Choose a real account</option>
+              {manager&&selected.managerName&&!managerOptions.some(x=>x.value===manager)&&
+                <option value={manager}>{selected.managerName}</option>}
               {managerOptions.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select>
               <small>Only current eligible CG01 accounts can be selected.</small></label>}
             {step===6&&<fieldset className="branch-department-fieldset"><legend>Foundation-wide departments</legend>
