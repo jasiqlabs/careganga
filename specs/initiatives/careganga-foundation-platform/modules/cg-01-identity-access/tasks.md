@@ -4,11 +4,11 @@
 
 **Module:** [CG-01](module.md) · **PRD:** [FR-001–003, FR-080](../../prd.md) · **HLD:** [Architecture](../../hld.md) · **Required designs:** [UI/UX](uiux.md), [DLD](dld.md).  
 **Delivery:** After one-time technical bootstrap, build one **real Foundation-root capability** at a time. No dependency on future CG-02/03/10/14. Business owner data, the same backend, Web and applicable native Android are included in each story; no layer-specific phase/backlog.  
-**Planning review status:** CG-01 CURRENT_SHA_BOUND OWNER_DELEGATED_DESIGN_APPROVED (15 Nov 2026) for US-001–004, including original CG-01-BR11 security policy and 47 distinct source QA cases. These are reviewed, implementation-ready **design definitions**, not proof of source implementation or independent QA. Authenticated pinned Harness resolver, independent CRITICAL database/security review, actual DB/build/device/pixel/motion QA NOT_RUN. Track implementation on `feature/careganga-cg01-foundation-dev-20261115`; no development or runtime PASS is inferred from planning branch.
+**Planning review status:** CG-01 CURRENT_SHA_BOUND OWNER_DELEGATED_DESIGN_APPROVED (15 Nov 2026) for US-001–004, including original CG-01-BR11 security policy and 51 distinct source QA cases. These are reviewed, implementation-ready **design definitions**, not proof of source implementation or independent QA. Authenticated pinned Harness resolver, independent CRITICAL database/security review, actual DB/build/device/pixel/motion QA NOT_RUN. Track implementation on `feature/careganga-cg01-foundation-dev-20261115`; no development or runtime PASS is inferred from planning branch.
 
 ## Current source integration status — GitHub verified 16 November 2026
 
-**CG-01 · F0–F1: `SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED` · `MERGED_TO_MAIN`.** GitHub confirms [PR #4](https://github.com/jasiqlabs/careganga/pull/4) was merged into `main` (merge commit [`a7858b26adf6e07d7210efc85ac04ece0874cc6b`](https://github.com/jasiqlabs/careganga/commit/a7858b26adf6e07d7210efc85ac04ece0874cc6b)), and that this merge commit is an ancestor of current `main`. The present `main` contains CG-01 IdentityAccessModule, accounts, login/MFA, roles, account invitations, security policy and Postgres migrations 0001–0012. **4 source-implemented stories**, 47 canonical QA definitions; Four story records retain their existing source-review and current delegated design history.
+**CG-01 · F0–F1: `SOURCE_VERIFIED_INTEGRATED_NOT_RUNTIME_TESTED` · `MERGED_TO_MAIN`.** GitHub confirms [PR #4](https://github.com/jasiqlabs/careganga/pull/4) was merged into `main` (merge commit [`a7858b26adf6e07d7210efc85ac04ece0874cc6b`](https://github.com/jasiqlabs/careganga/commit/a7858b26adf6e07d7210efc85ac04ece0874cc6b)), and that this merge commit is an ancestor of current `main`. The present `main` contains CG-01 IdentityAccessModule, accounts, login/MFA, roles, account invitations, security policy and Postgres migrations 0001–0012. **4 source-implemented stories**, 51 canonical QA definitions; Four story records retain their existing source-review and current delegated design history.
 
 | Current checkpoint | Status |
 | --- | --- |
@@ -20,6 +20,19 @@
 | Next eligible stage | **Consolidated Foundation QA**, **not** parallel P1 business implementation or production deployment |
 
 **Status precedence:** This section is the **authoritative source-delivery/merge state** as of 16 November 2026. Earlier `IN_PROGRESS`, `NOT_INTEGRATED`, `DO_NOT_MERGE`, `NOT_DELIVERED` or `BLOCKED` records below describe their **historical source-authoring/design gates**; they do **not** overrule the verified GitHub merge. They **remain applicable** to formal current-hash approvals, execution and release readiness. Do not rewrite historical QA evidence or count a source trace as a live test. See the [canonical Foundation development tracker](../../DEVELOPMENT_ORDER.md).
+
+## Updated source/QA reconciliation — 16 November 2026
+
+**Canonical QA definitions: 51** (US-001 18, US-002 11, US-003 14, US-004 8). The earlier 14/14 source trace for US-001 covers only QA01–14 and predates newly added QA15–18; it is not an 18/18 trace. Existing design approval ledger already enumerates 51. Source merge PR #4 is real, but **0/51 runtime QA PASS** is asserted.
+
+| Newly counted US-001 QA | Current evidence | Pending action |
+| --- | --- | --- |
+| QA15 — Forgot Password by verified email/SMS | SOURCE_GAP: current Web/Internal Android/RecoveryService source supports work-email recovery; no separate SMS selection identified | Build secure eligible SMS recovery, then source review and test neutral result, anti-enumeration/throttling |
+| QA16 — Reset Password | SOURCE_PRESENT / CASE_TRACE_PENDING: RecoveryService.confirmRecovery contains expiry/single-use/TOTP/session-revocation/audit checks | Independent source trace plus live replay, concurrency, session invalidation and PostgreSQL verification |
+| QA17 — authenticated Change Password | SOURCE_GAP: no change-password route/account-security UX identified in inspected Session/Recovery controller or current Web/Internal Android identity UI | Implement protected old-password and fresh-MFA proof, atomic credential/session change and Web/native UI |
+| QA18 — independent auth email/SMS delivery | SOURCE_GAP: CG-01 RecoveryDelivery is SMTP/email-only; CG-19 notification SMS cannot replace CG-01 credential delivery | Implement secure SMS credential adapter and channel-specific provider/unknown/unavailable handling; cross-channel negative QA |
+
+**Next gate:** Fix/re-review these genuine first-owner source gaps on an authorized post-merge QA-fix branch from current main, then execute the one-time 165-case integrated Foundation QA locally. Keep historical per-story source evidence unchanged, preserve the existing definitions, and record real new QA dispositions here. Formal Harness, independent qualified security/DB, Web/Android device, migrations, pixel/motion and performance PASS remain open. A documentation-only status correction does **not** constitute an updated SHA-bound delegated design approval or a formal resolver PASS.
 
 ## Approved task definitions
 
