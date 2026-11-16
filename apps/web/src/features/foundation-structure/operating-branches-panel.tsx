@@ -253,7 +253,17 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
          {!selected?<p>Select a branch to view its current authorized details.</p>:<>
            <header><h3>{selected.branchName} · {selected.branchCode}</h3>
              <span className="account-status">{label(selected.status)}</span></header>
-           <fieldset className="form" disabled={!canManage||busy||unknown||selected.status!=="ACTIVE"}>
+           {!canManage&&<dl className="audit-detail">
+             <dt>Branch name</dt><dd>{selected.branchName}</dd>
+             <dt>Branch type</dt><dd>{selected.branchType||"Not specified"}</dd>
+             <dt>Opening date</dt><dd>{selected.openingDate||"Not specified"}</dd>
+             <dt>Address</dt><dd>{selected.postalAddress||"Not specified"}</dd>
+             <dt>PIN code</dt><dd>{selected.pinCode||"Not specified"}</dd>
+             <dt>Official contact</dt><dd>{selected.officialPhone||"Not specified"}</dd>
+             <dt>Official email</dt><dd>{selected.officialEmail||"Not specified"}</dd>
+             <dt>Manager</dt><dd>{selected.managerName||"Current manager"}</dd>
+           </dl>}
+           {canManage&&<fieldset className="form" disabled={busy||unknown||selected.status!=="ACTIVE"}>
              <legend>Operating branch profile</legend>
              <label className="field">Branch name<input maxLength={160} value={name}
                onChange={e=>setName(e.target.value)}/></label>
@@ -307,7 +317,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                  longitude:lng.trim()?Number(lng):null,officialPhone:phone,officialEmail:email,managerRef:manager,
                  ...(replacementFiles.length?{evidenceFiles:replacementFiles}:{})
                })}>Save operating profile</button>}
-           </fieldset>
+           </fieldset>}
            {canAdmin&&selected.status!=="CLOSED"&&<div className="form">
              <h4>Change branch operating status</h4>
              <div className="toolbar">
@@ -321,9 +331,12 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
            <h3>Branch departments and committees</h3>
            {departments.length===0?<p>No branch-scoped departments.</p>:
              <ul className="branch-draft-list">{departments.map(d=><li key={d.departmentRef}>
-               <button type="button" onClick={()=>{resetDepartment(d);
+               {canManage?<button type="button" onClick={()=>{resetDepartment(d);
                  void loadParticipants(selected.branchRef,d.departmentRef);}} disabled={busy}>
-                 <strong>{d.name}</strong><span>{label(d.kind)} · {d.active?"Active":"Inactive"}</span></button>
+                 <strong>{d.name}</strong><span>{label(d.kind)} · {d.active?"Active":"Inactive"}</span>
+               </button>:<div className="branch-department-readonly">
+                 <strong>{d.name}</strong><span>{label(d.kind)} · {d.active?"Active":"Inactive"}</span>
+               </div>}
              </li>)}</ul>}
            {nextDepartmentOffset!==null&&<button type="button" disabled={busy}
              onClick={()=>{
