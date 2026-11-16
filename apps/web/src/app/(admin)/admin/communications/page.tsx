@@ -52,7 +52,7 @@ export default async function FoundationCommunicationsPage(){
         canViewApprovals={keys.includes("approvals.view")||keys.includes("approvals.propose")}
         canViewDocuments={keys.includes("documents.files.view")&&
           keys.includes("documents.files.manage")}
-        canViewCommunications/>
+        canViewCommunicationscanViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
       <main className="workspace">
         <CommunicationsWorkspace mayManage={manage} mayApprove={approve}
           mayProcess={process} mayRead={read} mayViewDelivery={delivery}
