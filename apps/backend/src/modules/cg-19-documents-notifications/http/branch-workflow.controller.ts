@@ -31,6 +31,10 @@ export class BranchWorkflowController{
    @Body()body:unknown){
    return this.workflow.decide(bearer,ref,body);
  }
+ @Post("cases/:caseRef/reconcile")
+ reconcile(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+   return this.workflow.reconcile(bearer,ref);
+ }
  @Post("cases/:caseRef/finalize")
  finalize(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
    return this.workflow.finalize(bearer,ref);
