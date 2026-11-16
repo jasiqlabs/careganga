@@ -10,6 +10,8 @@ type InboxItem={notificationRef:string;title:string;body:string;
   status:string;channel:Channel;receivedAt:string;read:boolean};
 type Providers={channels:Array<{channel:string;state:string;configured:boolean}>};
 type NoticeCounts={counts:Array<{channel:Channel;status:string;count:number}>};
+type PhoneProof={hasNumber:boolean;verified:boolean;maskedContact:string|null;
+  verifiedAt:string|null;providerConfigured:boolean};
 type Alert={kind:"error"|"success"|"info";message:string};
 async function req<T>(path:string,method:"GET"|"POST"="GET",body?:object){
   let response:Response;
@@ -23,6 +25,17 @@ async function req<T>(path:string,method:"GET"|"POST"="GET",body?:object){
   if(response.status===400)throw Error("INVALID");
   if(!response.ok)throw Error("UNKNOWN");
   try{return await response.json() as T;}catch{throw Error("UNKNOWN")}
+}
+async function mobile<T>(path:string,method:"GET"|"POST"="GET",body?:object){
+  const options:RequestInit={method,credentials:"same-origin",cache:"no-store",
+    ...(body?{headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)}:{})};
+  let res:Response;
+  try{res=await fetch("/api/mobile-verification/"+path,options);}
+  catch{throw Error("UNKNOWN")}
+  if(!res.ok)throw Error(res.status===401?"LOGIN":
+    res.status===403?"DENIED":"UNKNOWN");
+  try{return await res.json() as T;}catch{throw Error("UNKNOWN")}
 }
 const explain=(e:unknown)=>{
   const code=e instanceof Error?e.message:"UNKNOWN";
@@ -43,6 +56,8 @@ export function CommunicationsWorkspace({
   const [notices,setNotices]=useState<Notice[]>([]);
   const [inbox,setInbox]=useState<InboxItem[]>([]);
   const [providers,setProviders]=useState<Providers|null>(null);
+  const [phoneProof,setPhoneProof]=useState<PhoneProof|null>(null);
+  const [phoneCode,setPhoneCode]=useState("");
   const [options,setOptions]=useState<Option[]>([]);
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("ALL");
@@ -72,12 +87,13 @@ export function CommunicationsWorkspace({
       const result=await Promise.all([
         mayManage?req<{notices:Notice[]}>("notices?limit=30"):Promise.resolve({notices:[]}),
         mayRead?req<{items:InboxItem[]}>("inbox?limit=30"):Promise.resolve({items:[]}),
-        mayViewDelivery?req<Providers>("providers/status"):Promise.resolve(null)
+        mayViewDelivery?req<Providers>("providers/status"):Promise.resolve(null),
+        mayRead?mobile<PhoneProof>("status"):Promise.resolve(null)
       ]);
       if(result[0].notices.length>30||result[1].items.length>30)
         throw Error("UNKNOWN");
       setNotices(result[0].notices);setInbox(result[1].items);
-      setProviders(result[2]);
+      setProviders(result[2]);setPhoneProof(result[3]);
     }catch(e){setAlert({kind:"error",message:explain(e)})}
     finally{setLoading(false);}
   },[mayManage,mayRead,mayViewDelivery]);
@@ -182,6 +198,32 @@ export function CommunicationsWorkspace({
       setUnknown(false);setReview(null);setReviewKey("");setTotp("");
       setAlert({kind:"success",message:"Original notice command confirmed: "+state.action});
       await reload();
+    }catch(e){setAlert({kind:"error",message:explain(e)})}
+    finally{setBusy(false);}
+  }
+  async function startPhoneProof(){
+    if(busy||!mayRead||!phoneProof?.hasNumber)return;
+    setBusy(true);setAlert(null);
+    try{
+      const result=await mobile<{status:string}>("verify/start","POST");
+      setAlert({kind:result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
+        "info":"error",message:result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
+        "Verification code was requested for your recorded mobile number. Delivery is not guaranteed.":
+        "Original code request: "+result.status.replaceAll("_"," ")});
+    }catch(e){setAlert({kind:"error",message:explain(e)})}
+    finally{setBusy(false);}
+  }
+  async function confirmPhoneProof(){
+    if(busy||!mayRead||!/^\d{4,10}$/.test(phoneCode))return;
+    setBusy(true);setAlert(null);
+    try{
+      const result=await mobile<{status:string}>("verify/confirm",
+        "POST",{code:phoneCode});
+      if(result.status==="VERIFIED"){setPhoneCode("");await reload();}
+      setAlert({kind:result.status==="VERIFIED"?"success":"error",
+        message:result.status==="VERIFIED"?
+          "Your mobile contact was verified by its original proof provider.":
+          "Code has not been verified: "+result.status.replaceAll("_"," ")});
     }catch(e){setAlert({kind:"error",message:explain(e)})}
     finally{setBusy(false);}
   }
@@ -385,6 +427,29 @@ export function CommunicationsWorkspace({
         </div>
       </section>
     </>}
+    {tab==="INBOX"&&mayRead&&<section className="role-pane">
+      <div className="role-pane-heading"><h2>My verified mobile contact</h2></div>
+      <div className="role-detail-content">
+        {!phoneProof?<p>Mobile verification status unavailable.</p>:
+          phoneProof.verified?<p role="status">Verified CG-01 mobile
+            {" "}{phoneProof.maskedContact}. SMS still requires purpose-specific consent.</p>:
+          !phoneProof.hasNumber?<p>No mobile number is recorded in your Foundation
+            account. The CG-01 account owner must record it first.</p>:
+          <div className="permission-group">
+            <p>Recorded mobile: {phoneProof.maskedContact} (not verified).</p>
+            <p>This verification uses CG-01 identity proof, not a general CG-19 message.</p>
+            <button type="button" disabled={busy||!phoneProof.providerConfigured}
+              onClick={()=>void startPhoneProof()}>Request SMS verification code</button>
+            <label className="field">Verification code
+              <input value={phoneCode} inputMode="numeric" maxLength={10}
+                disabled={busy} onChange={e=>
+                  setPhoneCode(e.target.value.replace(/[^0-9]/g,""))}/>
+            </label>
+            <button type="button" disabled={busy||phoneCode.length<4}
+              onClick={()=>void confirmPhoneProof()}>Verify recorded mobile</button>
+          </div>}
+      </div>
+    </section>}
     {tab==="INBOX"&&mayRead&&<section className="role-pane">
       <div className="role-pane-heading"><h2>My verified notifications</h2></div>
       <div className="role-detail-content">
