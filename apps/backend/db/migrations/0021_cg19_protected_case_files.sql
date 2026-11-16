@@ -47,6 +47,8 @@ CREATE TABLE cg19_stored_file (
   object_key text NOT NULL UNIQUE CHECK(length(object_key) BETWEEN 24 AND 255),
   object_version text NOT NULL CHECK(length(object_version) BETWEEN 1 AND 160),
   scan_status text NOT NULL CHECK(scan_status='CLEAN_VERIFIED'),
+  scan_proof_ref text NOT NULL CHECK(length(scan_proof_ref) BETWEEN 8 AND 160),
+  scanned_at timestamptz NOT NULL,
   created_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz,
@@ -148,6 +150,9 @@ BEGIN
      NEW.verified_sha256 IS DISTINCT FROM OLD.verified_sha256 OR
      NEW.verified_size_bytes IS DISTINCT FROM OLD.verified_size_bytes OR
      NEW.original_mime IS DISTINCT FROM OLD.original_mime OR
+     NEW.scan_status IS DISTINCT FROM OLD.scan_status OR
+     NEW.scan_proof_ref IS DISTINCT FROM OLD.scan_proof_ref OR
+     NEW.scanned_at IS DISTINCT FROM OLD.scanned_at OR
      NEW.created_by IS DISTINCT FROM OLD.created_by THEN
      RAISE EXCEPTION 'Verified private object identity cannot be changed';
   END IF;
@@ -156,3 +161,57 @@ END; $$;
 CREATE TRIGGER cg19_file_identity_frozen
   BEFORE UPDATE ON cg19_stored_file FOR EACH ROW
   EXECUTE FUNCTION cg19_document_identity_frozen();
+
+-- Metadata identities cannot be retargeted after a verified source is frozen.
+CREATE FUNCTION cg19_intent_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR
+     NEW.case_id IS DISTINCT FROM OLD.case_id OR
+     NEW.proposal_revision IS DISTINCT FROM OLD.proposal_revision OR
+     NEW.requested_by IS DISTINCT FROM OLD.requested_by OR
+     NEW.request_key IS DISTINCT FROM OLD.request_key OR
+     NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
+     NEW.mime IS DISTINCT FROM OLD.mime OR
+     NEW.size_bytes IS DISTINCT FROM OLD.size_bytes OR
+     NEW.expected_sha256 IS DISTINCT FROM OLD.expected_sha256 OR
+     NEW.classification IS DISTINCT FROM OLD.classification OR
+     NEW.object_key IS DISTINCT FROM OLD.object_key OR
+     NEW.reserved_until IS DISTINCT FROM OLD.reserved_until THEN
+    RAISE EXCEPTION 'Private upload identity is immutable';
+  END IF;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER cg19_intent_identity_guard
+  BEFORE UPDATE ON cg19_upload_intent FOR EACH ROW EXECUTE FUNCTION cg19_intent_frozen();
+CREATE FUNCTION cg19_issued_identity_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR
+     NEW.case_id IS DISTINCT FROM OLD.case_id OR
+     NEW.proposal_revision IS DISTINCT FROM OLD.proposal_revision OR
+     NEW.template_id IS DISTINCT FROM OLD.template_id OR
+     NEW.template_version IS DISTINCT FROM OLD.template_version OR
+     NEW.issue_key IS DISTINCT FROM OLD.issue_key OR
+     NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
+     NEW.issued_by IS DISTINCT FROM OLD.issued_by OR
+     NEW.object_key IS DISTINCT FROM OLD.object_key AND OLD.object_key IS NOT NULL OR
+     NEW.object_version IS DISTINCT FROM OLD.object_version AND OLD.object_version IS NOT NULL OR
+     NEW.content_sha256 IS DISTINCT FROM OLD.content_sha256 AND OLD.content_sha256 IS NOT NULL THEN
+    RAISE EXCEPTION 'Private issued document identity is immutable';
+  END IF;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER cg19_issued_identity_guard
+  BEFORE UPDATE ON cg19_generated_document FOR EACH ROW EXECUTE FUNCTION cg19_issued_identity_frozen();
+CREATE FUNCTION cg19_template_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.realm_id IS DISTINCT FROM OLD.realm_id OR
+     NEW.template_kind IS DISTINCT FROM OLD.template_kind OR
+     NEW.version IS DISTINCT FROM OLD.version OR
+     NEW.content_sha256 IS DISTINCT FROM OLD.content_sha256 OR
+     NEW.approved_by IS DISTINCT FROM OLD.approved_by THEN
+    RAISE EXCEPTION 'Versioned letter template is immutable';
+  END IF;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER cg19_template_identity_guard
+  BEFORE UPDATE ON cg19_document_template FOR EACH ROW EXECUTE FUNCTION cg19_template_frozen();
