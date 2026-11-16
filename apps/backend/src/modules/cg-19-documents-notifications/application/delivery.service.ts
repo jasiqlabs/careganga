@@ -63,11 +63,26 @@ export class DeliveryService{
       UPDATE cg19_notification
       SET state='PROVIDER_UNAVAILABLE',attempt_count=attempt_count-1,
         claim_token=NULL,claimed_until=NULL,
-        due_at=now()+interval '15 minutes',updated_at=now()
+        due_at=NULL,updated_at=now()
       WHERE id=$1 AND realm_id=$2 AND claim_token=$3
     `,[row.id,row.realm_id,row.claim_token]);
   }
   async tick():Promise<{activated:number;expired:number;claimed:number}>{
+    // Requeue only when a channel becomes genuinely configured; with zero
+    // providers there is no periodic per-recipient due work or egress.
+    for(const channel of ["EMAIL","SMS"] as const){
+      if(!this.providers.configured(channel))continue;
+      await this.db.query(`
+        WITH ready AS (
+          SELECT id FROM cg19_notification
+          WHERE state='PROVIDER_UNAVAILABLE' AND channel=$1
+            AND expires_at>now()
+          ORDER BY created_at,id LIMIT 25 FOR UPDATE SKIP LOCKED
+        )
+        UPDATE cg19_notification SET state='QUEUED',due_at=now(),
+          updated_at=now() WHERE id IN(SELECT id FROM ready)
+      `,[channel]);
+    }
     // A single indexed global query per tick; no tenant/user polling.
     const activated=await this.db.query<{id:string}>(`
       WITH due AS (
@@ -183,8 +198,7 @@ export class DeliveryService{
       await client2.query(`
         UPDATE cg19_notification SET state=$4,
           provider_message_ref=$5,provider_kind=$6,
-          due_at=CASE WHEN $4='PROVIDER_UNAVAILABLE'
-            THEN now()+interval '15 minutes' ELSE NULL END,
+          due_at=NULL,
           claim_token=NULL,claimed_until=NULL,updated_at=now()
         WHERE id=$1 AND realm_id=$2 AND claim_token=$3
           AND state NOT IN('DELIVERED','FAILED','SUPPRESSED','EXPIRED')
