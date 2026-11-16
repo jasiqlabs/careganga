@@ -22,6 +22,11 @@ export class PrivateLetterController{
   issue(@Headers("authorization")bearer:string,@Body()body:unknown){
     return this.letters.issue(bearer,body);
   }
+  @Get("requests/:requestKey")
+  lookup(@Headers("authorization")bearer:string,
+    @Param("requestKey")key:string){
+    return this.letters.lookupIssue(bearer,key);
+  }
   @Post(":documentRef/reconcile")
   reconcile(@Headers("authorization")bearer:string,
     @Param("documentRef")ref:string){
