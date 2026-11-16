@@ -349,7 +349,9 @@ export class BranchApprovalService{
    return {registrationRef:row.branch_source_ref,revision:row.branch_source_revision,
      digest:row.branch_source_digest,status:row.status,caseRef:row.id};
  }
- async listCases(bearer:string){
+ async listCases(bearer:string,offset=0){
+   if(!Number.isSafeInteger(offset)||offset<0||offset>50000)
+     throw new BadRequestException("Choose a valid approval page");
    const actor=await this.sessions.requireAction(bearer,"approvals.review");
    await this.sessions.requireAction(bearer,"foundation.branches.admin");
    // Ordinary approvers cannot read the complete protected branch inbox.
@@ -368,12 +370,12 @@ export class BranchApprovalService{
      throw new ForbiddenException("Super Admin permission is required to review branch applications");
    const cases=await this.db.query<CaseRow & {account_name_snapshot:string}>(`
      SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='BRANCH_REGISTRATION'
-     ORDER BY submitted_at DESC,id DESC LIMIT 40
-   `,[actor.realmId]);
+     ORDER BY submitted_at DESC,id DESC LIMIT 40 OFFSET $2
+   `,[actor.realmId,offset]);
    return {cases:cases.rows.map(x=>({caseRef:x.id,reference:x.case_number,
      branchName:x.account_name_snapshot,registrationRef:x.branch_source_ref,
      submissionRevision:x.branch_source_revision,status:x.status,revision:x.revision,
-     submittedAt:x.submitted_at.toISOString()}))};
+     submittedAt:x.submitted_at.toISOString()})),nextOffset:cases.rows.length===40?offset+40:null};
  }
  /** CG-03-own immutable case proof for a newly submitted CG-02 snapshot. */
  async guardOriginalCase(client:PoolClient,actor:VerifiedFoundationActor,
