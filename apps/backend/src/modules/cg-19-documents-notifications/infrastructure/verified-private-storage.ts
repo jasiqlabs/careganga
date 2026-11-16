@@ -19,6 +19,23 @@ const validKey=(key:string)=>
   key.length<=255&&!key.includes("..")&&!key.includes("\\");
 export const digest=(bytes:Buffer)=>
   createHash("sha256").update(bytes).digest("hex");
+export function byteSignatureMatches(bytes:Buffer,mime:string):boolean{
+  if(!Buffer.isBuffer(bytes)||bytes.length<12)return false;
+  if(mime==="application/pdf")
+    return bytes.subarray(0,5).equals(Buffer.from("%PDF-"))&&
+      bytes.subarray(Math.max(0,bytes.length-2048))
+        .includes(Buffer.from("%%EOF"));
+  if(mime==="image/jpeg")
+    return bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff&&
+      bytes[bytes.length-2]===0xff&&bytes[bytes.length-1]===0xd9;
+  if(mime==="image/png")
+    return bytes.subarray(0,8).equals(
+      Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+  if(mime==="image/webp")
+    return bytes.toString("ascii",0,4)==="RIFF"&&
+      bytes.toString("ascii",8,12)==="WEBP";
+  return false;
+}
 
 /** The provider-specific methods supply a version-pinned object; all providers
  * share the exact same checksum, MIME, byte bounds and malware-scan gate.
@@ -51,7 +68,8 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
       throw new BadRequestException("Invalid private file verification");
     const file=await this.loadLatest(request.objectKey,request.sizeBytes);
     if(file.mime!==request.mime||file.bytes.length!==request.sizeBytes||
-      digest(file.bytes)!==request.sha256)
+      digest(file.bytes)!==request.sha256||
+      !byteSignatureMatches(file.bytes,request.mime))
       throw new ServiceUnavailableException("Private object bytes were not verified");
     const proof=await this.scanner.scan(file.bytes);
     return {state:proof.state,mime:request.mime,sizeBytes:request.sizeBytes,
@@ -78,7 +96,7 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
   }):Promise<{objectVersion:string;sha256:string}>{
     if(!validKey(request.objectKey)||!Buffer.isBuffer(request.bytes)||
       request.bytes.length<100||request.bytes.length>10*1024*1024||
-      !request.bytes.subarray(0,5).equals(Buffer.from("%PDF-"))||
+      !byteSignatureMatches(request.bytes,"application/pdf")||
       !SHA.test(request.sha256)||digest(request.bytes)!==request.sha256)
       throw new BadRequestException("Invalid private PDF");
     // Even server-created PDFs must pass malware scanning before issuance.
