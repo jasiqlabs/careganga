@@ -61,7 +61,11 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ["foundation.profile.view","foundation.geography.view","foundation.departments.view"]
       .some(key=>currentActions.has(key)):canViewFoundation;
   const branchAccess=allowed("foundation.branches.view",canViewBranches);
-  const accountsAccess=allowed("accounts.view",canViewAccounts);
+  // Create-only staff operators must see the destination they are authorized to use.
+  const accountsAccess=currentActions?
+    (currentActions.has("accounts.view")||
+      (currentActions.has("accounts.create")&&currentActions.has("roles.assign"))):
+    canViewAccounts;
   const rolesAccess=allowed("roles.view",canViewRoles);
   const policyAccess=allowed("identity.security-policy.manage",canManageSecurityPolicy);
   const settingsAccess=allowed("platform.settings.view",canViewSettings);
