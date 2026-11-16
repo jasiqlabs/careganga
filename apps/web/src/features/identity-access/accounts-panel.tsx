@@ -206,7 +206,7 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   const stats=list?.summary;
   const values=[
     ["Total Accounts",stats?.total],["Active",stats?.active],
-    ["Created",stats?.created],["Suspended",stats?.suspended],
+    ["Suspended",stats?.suspended],
     ["Deactivated",stats?.deactivated],["Assigned Roles",stats?.assigned]
   ] as const;
   return <div className="role-workspace">
