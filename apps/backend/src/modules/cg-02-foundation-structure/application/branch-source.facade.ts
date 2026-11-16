@@ -1,0 +1,116 @@
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const ensureId=(v:unknown):string=>{
+  if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException("Choose a valid branch registration");
+  return v;
+};
+export type BranchDraftSource=Readonly<{
+  registrationRef:string;root:string;revision:number;status:string;
+  requestedBy:string;managerRef:string|null;stages:Record<string,Record<string,unknown>>;
+}>;
+export type FrozenBranchSubmission=Readonly<{
+  submissionRef:string;root:string;registrationRef:string;revision:number;
+  digest:string;status:string;requestedBy:string;managerRef:string;
+  branchName:string;caseRef:string|null;fileVersions:readonly {
+    fileRef:string;revision:number;classification:string
+  }[];
+}>;
+type DraftRow={
+ id:string;root_realm_id:string;requested_by:string;manager_account_ref:string|null;
+ draft_version:number;status:string;profile_payload:Record<string,Record<string,unknown>>;
+};
+type SubmittedRow={
+ id:string;root_realm_id:string;registration_id:string;submitted_revision:number;
+ immutable_payload:Record<string,Record<string,unknown>>;immutable_payload_digest:string;
+ verified_file_versions:{fileRef:string;revision:number;classification:string}[];
+ approval_case_ref:string|null;status:string;submitted_by:string;
+};
+/** Source owner: CG-02. CG-03/CG-19 may only obtain validated scoped projections,
+ * not inspect or mutate CG-02 repositories directly.
+ */
+@Injectable()
+export class BranchSourceFacade{
+ constructor(@Inject(DATABASE)private readonly db:Pool,
+  private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ private async admin(bearer:string):Promise<boolean>{
+   try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
+   catch(e){if(e instanceof ForbiddenException)return false;throw e;}
+ }
+ async draft(bearer:string,registrationRef:unknown,expectedVersion?:number,
+     requireWrite=false):Promise<BranchDraftSource>{
+   const actor=await this.sessions.requireAction(bearer,
+     requireWrite?"foundation.branches.manage":"foundation.branches.view");
+   const admin=await this.admin(bearer);
+   const ref=ensureId(registrationRef);
+   const rows=await this.db.query<DraftRow>(`
+     SELECT id,root_realm_id,requested_by,manager_account_ref,draft_version,status,profile_payload
+     FROM branch_registration WHERE id=$1 AND root_realm_id=$2 AND
+       ($3::boolean OR requested_by=$4 OR manager_account_ref=$4)
+   `,[ref,actor.realmId,admin,actor.accountId]);
+   const row=rows.rows[0];
+   if(!row)throw new NotFoundException("Branch registration unavailable");
+   if(expectedVersion!==undefined&&row.draft_version!==expectedVersion)
+     throw new ConflictException("The branch draft changed. Refresh before continuing.");
+   if(requireWrite&&!["DRAFT","RETURNED"].includes(row.status))
+     throw new ConflictException("This registration can no longer accept new evidence.");
+   return {registrationRef:row.id,root:actor.realmId,revision:row.draft_version,
+     status:row.status,requestedBy:row.requested_by,managerRef:row.manager_account_ref,
+     stages:row.profile_payload};
+ }
+ async guardDraft(client:PoolClient,actor:VerifiedFoundationActor,registrationRef:string,
+     version:number,requireMutable:boolean):Promise<void>{
+   await this.identity.assertCurrent(client,actor,
+     requireMutable?"foundation.branches.manage":"foundation.branches.view");
+   const draft=await client.query<DraftRow>(`
+     SELECT id,root_realm_id,requested_by,manager_account_ref,draft_version,status,profile_payload
+     FROM branch_registration WHERE id=$1 AND root_realm_id=$2 FOR SHARE
+   `,[ensureId(registrationRef),actor.realmId]);
+   const row=draft.rows[0];
+   if(!row||row.draft_version!==version||
+      (requireMutable&&!["DRAFT","RETURNED"].includes(row.status)))
+     throw new ConflictException("The branch source changed. Refresh before continuing.");
+   const protectedRoot=await client.query<{is_protected:boolean}>(`
+     SELECT r.is_protected FROM account_role ar
+     JOIN role r ON r.id=ar.role_id AND r.active
+     WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
+   `,[actor.accountId,actor.realmId]);
+   if(!protectedRoot.rows.some(x=>x.is_protected)&&
+      row.requested_by!==actor.accountId&&row.manager_account_ref!==actor.accountId)
+     throw new ForbiddenException("This branch registration is not available to your role");
+ }
+ async submission(bearer:string,registrationRef:unknown,revisionInput:unknown,
+     digestInput:unknown):Promise<FrozenBranchSubmission>{
+   const ref=ensureId(registrationRef),revision=Number(revisionInput);
+   const digest=String(digestInput);
+   if(!Number.isSafeInteger(revision)||revision<1||!/^[a-f0-9]{64}$/.test(digest))
+     throw new BadRequestException("The submitted branch reference is invalid");
+   const actor=await this.sessions.requireAction(bearer,"foundation.branches.view");
+   const admin=await this.admin(bearer);
+   const rows=await this.db.query<SubmittedRow & {requested_by:string;manager_account_ref:string|null}>(`
+     SELECT s.*,r.requested_by,r.manager_account_ref FROM branch_registration_submission s
+     JOIN branch_registration r ON r.id=s.registration_id
+       AND r.root_realm_id=s.root_realm_id
+     WHERE s.root_realm_id=$1 AND s.registration_id=$2 AND s.submitted_revision=$3
+       AND s.immutable_payload_digest=$4
+       AND ($5::boolean OR r.requested_by=$6 OR r.manager_account_ref=$6)
+   `,[actor.realmId,ref,revision,digest,admin,actor.accountId]);
+   const row=rows.rows[0];
+   if(!row)throw new NotFoundException("Submitted registration unavailable");
+   const first=row.immutable_payload["1"]??{},managerStage=row.immutable_payload["5"]??{};
+   const managerRef=managerStage.managerRef;
+   if(typeof managerRef!=="string"||!UUID.test(managerRef)||
+      typeof first.branchName!=="string"||first.branchName.trim().length<2)
+     throw new ConflictException("The original application details are incomplete");
+   return {submissionRef:row.id,root:actor.realmId,registrationRef:ref,
+     revision:row.submitted_revision,digest:row.immutable_payload_digest,
+     status:row.status,requestedBy:row.submitted_by,managerRef,
+     branchName:first.branchName,caseRef:row.approval_case_ref,
+     fileVersions:row.verified_file_versions};
+ }
+}
