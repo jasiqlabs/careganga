@@ -24,6 +24,7 @@ CREATE TABLE cg19_upload_intent (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,requested_by,request_key),
   UNIQUE(id,realm_id),
+  UNIQUE(id,realm_id,case_id,proposal_revision),
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(requested_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
@@ -50,8 +51,8 @@ CREATE TABLE cg19_stored_file (
   created_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz,
   UNIQUE(id,realm_id),
-  FOREIGN KEY(upload_intent_id,realm_id)
-    REFERENCES cg19_upload_intent(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(upload_intent_id,realm_id,case_id,proposal_revision)
+    REFERENCES cg19_upload_intent(id,realm_id,case_id,proposal_revision) ON DELETE RESTRICT,
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   FOREIGN KEY(created_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   CHECK(revoked_at IS NULL OR revoked_at>=created_at)
@@ -70,6 +71,7 @@ CREATE TABLE cg19_document_template (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(realm_id,template_kind,version),
   UNIQUE(id,realm_id),
+  UNIQUE(id,realm_id,version),
   FOREIGN KEY(approved_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 
@@ -94,7 +96,8 @@ CREATE TABLE cg19_generated_document (
   UNIQUE(realm_id,case_id,proposal_revision,template_id,template_version,issue_key),
   UNIQUE(id,realm_id),
   FOREIGN KEY(case_id,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
-  FOREIGN KEY(template_id,realm_id) REFERENCES cg19_document_template(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(template_id,realm_id,template_version)
+    REFERENCES cg19_document_template(id,realm_id,version) ON DELETE RESTRICT,
   FOREIGN KEY(issued_by,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
   CHECK(state<>'ISSUED' OR
     (object_key IS NOT NULL AND object_version IS NOT NULL AND
