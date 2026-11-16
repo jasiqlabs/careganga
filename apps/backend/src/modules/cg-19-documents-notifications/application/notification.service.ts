@@ -231,16 +231,23 @@ export class NotificationService{
       const old=saved.rows[0];
       if((old?.revision??0)!==v.expectedRevision)
         throw new ConflictException("Notification preference changed");
-      const changed=await client.query<{revision:number}>(`
-        INSERT INTO cg19_channel_preference(
-          realm_id,account_id,channel,purpose,opted_in,revision)
-        VALUES($1,$2,$3,$4,$5,$6)
-        ON CONFLICT(realm_id,account_id,channel,purpose)
-        DO UPDATE SET opted_in=EXCLUDED.opted_in,revision=EXCLUDED.revision,
-          updated_at=now()
-        RETURNING revision
-      `,[actor.realmId,actor.accountId,v.channel,v.purpose,v.optedIn,
-        (old?.revision??0)+1]);
+      const changed=old?
+        await client.query<{revision:number}>(`
+          UPDATE cg19_channel_preference
+          SET opted_in=$5,revision=revision+1,updated_at=now()
+          WHERE realm_id=$1 AND account_id=$2 AND channel=$3 AND purpose=$4
+            AND revision=$6 RETURNING revision
+        `,[actor.realmId,actor.accountId,v.channel,v.purpose,v.optedIn,
+          old.revision]):
+        await client.query<{revision:number}>(`
+          INSERT INTO cg19_channel_preference(
+            realm_id,account_id,channel,purpose,opted_in,revision)
+          VALUES($1,$2,$3,$4,$5,1)
+          ON CONFLICT(realm_id,account_id,channel,purpose) DO NOTHING
+          RETURNING revision
+        `,[actor.realmId,actor.accountId,v.channel,v.purpose,v.optedIn]);
+      if(!changed.rowCount)
+        throw new ConflictException("Notification preference changed concurrently");
       await client.query("COMMIT");open=false;
       return {status:"SAVED",revision:changed.rows[0].revision};
     }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
