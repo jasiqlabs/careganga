@@ -32,7 +32,12 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
   const parts=(await ctx.params).parts;
   const access=permitted(parts,method);
   if(!access)return fail(404,"Requested action unavailable.");
-  if(method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)
+  // Authenticated cookie mutations require same-origin browser requests.
+  // Anonymous native Android has no browser Origin and is instead guarded by
+  // the production trusted-ingress signed client IP / request throttles.
+  const origin=request.headers.get("origin");
+  if(method!=="GET"&&(access==="STAFF"?origin!==request.nextUrl.origin:
+      origin!==null&&origin!==request.nextUrl.origin))
     return fail(403,"Submit from the original CareGanga page.");
   const token=access==="STAFF"?(await cookies()).get("cg_staff_session")?.value:undefined;
   if(access==="STAFF"&&!token)return fail(401,"Sign in to Foundation support.");
