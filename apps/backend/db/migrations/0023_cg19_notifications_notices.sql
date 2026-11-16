@@ -42,6 +42,10 @@ CREATE TABLE cg19_notice (
   channels text[] NOT NULL CHECK(array_length(channels,1) BETWEEN 1 AND 3
     AND channels <@ ARRAY['IN_APP','EMAIL','SMS']::text[]
     AND 'IN_APP'=ANY(channels)),
+  target_href text CHECK(target_href IS NULL OR
+    (length(target_href) BETWEEN 8 AND 180 AND
+     target_href LIKE '/admin/%' AND target_href NOT LIKE '%//%'
+     AND target_href !~ '[[:cntrl:]]')),
   audience_kind text NOT NULL CHECK(audience_kind IN ('ALL_ACTIVE','ROLE','INDIVIDUAL')),
   audience_ref uuid,
   audience_digest char(64) NOT NULL CHECK(audience_digest ~ '^[a-f0-9]{64}$'),
@@ -218,6 +222,7 @@ BEGIN
     NEW.priority IS DISTINCT FROM OLD.priority OR
     NEW.purpose IS DISTINCT FROM OLD.purpose OR
     NEW.channels IS DISTINCT FROM OLD.channels OR
+    NEW.target_href IS DISTINCT FROM OLD.target_href OR
     NEW.audience_kind IS DISTINCT FROM OLD.audience_kind OR
     NEW.audience_ref IS DISTINCT FROM OLD.audience_ref OR
     NEW.audience_digest IS DISTINCT FROM OLD.audience_digest OR
@@ -235,3 +240,20 @@ CREATE TRIGGER cg19_notice_identity_frozen BEFORE UPDATE ON cg19_notice
 -- adapter without scanning every account or tenant while idle.
 CREATE INDEX ix_cg03_decision_root_cursor
  ON cg03_case_decision(realm_id,created_at,id);
+
+CREATE TABLE cg19_notice_command (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL,
+  notice_id uuid NOT NULL,
+  actor_id uuid NOT NULL,
+  request_key uuid NOT NULL,
+  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+  action text NOT NULL CHECK(action IN('APPROVE','CANCEL')),
+  applied_revision integer NOT NULL CHECK(applied_revision>1),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(notice_id,actor_id,request_key),
+  FOREIGN KEY(notice_id,realm_id) REFERENCES cg19_notice(id,realm_id) ON DELETE RESTRICT,
+  FOREIGN KEY(actor_id,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TRIGGER cg19_notice_command_immutable BEFORE UPDATE OR DELETE
+  ON cg19_notice_command FOR EACH ROW EXECUTE FUNCTION cg19_immutable_comm_event();
