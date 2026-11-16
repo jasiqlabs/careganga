@@ -247,6 +247,18 @@ export class PrivateLetterService{
     if(!row)throw new ServiceUnavailableException("The private letter was not recorded");
     return this.reconcile(bearer,row.id);
   }
+  async lookupIssue(bearer:string,key:unknown){
+    const actor=await this.actor(bearer);
+    if(!isUuid(key))throw new BadRequestException("Invalid private letter request");
+    const result=await this.db.query<Letter>(`
+      SELECT * FROM cg19_generated_document
+      WHERE realm_id=$1 AND issued_by=$2 AND issue_key=$3
+    `,[actor.realmId,actor.accountId,key]);
+    if(!result.rowCount)return {status:"NOT_FOUND",letter:null};
+    await this.authorizedCase(bearer,result.rows[0].case_id,
+      result.rows[0].proposal_revision);
+    return {status:"CONFIRMED",letter:publicStatus(result.rows[0])};
+  }
   async reconcile(bearer:string,ref:string){
     if(!isUuid(ref))throw new BadRequestException("Choose a valid private letter");
     const actor=await this.actor(bearer);
