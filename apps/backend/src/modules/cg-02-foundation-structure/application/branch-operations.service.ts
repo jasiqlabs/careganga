@@ -364,10 +364,13 @@ export class BranchOperationsService{
        return {kind:"BRANCH",id:branch.id,version:updated.rows[0].version};
      },proof);
  }
- async changeStatus(bearer:string,branchRef:string,input:unknown){
+ async changeStatus(bearer:string,branchRef:string,input:unknown,proof?:ReadProof){
    const x=asObject(input),expected=version(x.expectedVersion),target=x.status;
    if(!["ACTIVE","INACTIVE","CLOSED"].includes(String(target)))
      throw new BadRequestException("Choose a valid branch status");
+   // Reactivation never trusts a stale uploaded document list.
+   if(target==="ACTIVE"&&!proof)
+     throw new ConflictException("Private branch evidence must be reverified to reactivate");
    return this.perform(bearer,"foundation.branches.admin","CHANGE_BRANCH_STATUS",branchRef,x,
      async(client,actor,branch)=>{
        if(branch.version!==expected||branch.status==="CLOSED"||
@@ -393,7 +396,7 @@ export class BranchOperationsService{
          JSON.stringify(details),JSON.stringify(branch.evidence_versions),
          branch.approved_submission_id]);
        return {kind:"BRANCH",id:branch.id,version:updated.rows[0].version};
-     });
+     },proof);
  }
  async departments(bearer:string,branchRef:string,offset=0){
    if(!Number.isSafeInteger(offset)||offset<0||offset>50000)
