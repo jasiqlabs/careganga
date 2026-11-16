@@ -6,10 +6,11 @@ import {ApprovalDecisionController} from "./http/decision.controller";
 import {ApprovalDecisionService} from "./application/decision.service";
 import {ApprovalFinalizationService} from "./application/finalization.service";
 import {ApprovalFinalizationController} from "./http/finalization.controller";
+import {ApprovalDocumentSource} from "./application/approval-document-source.service";
 @Module({
   imports:[IdentityAccessModule],
-  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService],
+  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource],
   controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController],
-  exports:[ApprovalProposalService]
+  exports:[ApprovalProposalService,ApprovalDocumentSource]
 })
 export class RegistrationApprovalsModule {}
