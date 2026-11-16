@@ -39,7 +39,10 @@ export class HealthController {
         "0020_cg03_process_version_integrity.sql",
         "0021_cg19_protected_case_files.sql",
         "0201_cg02_foundation_structure.sql",
-        "0202_cg02_branch_registration_drafts.sql"
+        "0202_cg02_branch_registration_drafts.sql",
+        "0022_cg03_branch_registration_approval.sql",
+        "0203_cg19_branch_evidence_adapter.sql",
+        "0204_cg02_approved_branches_and_links.sql"
       ] as const;
       const migrations = await this.db.query<{ filename: string }>(
         "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])", [required]
