@@ -1,4 +1,5 @@
 import {cookies} from "next/headers";
+import {createHmac} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
@@ -47,12 +48,33 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
       if(body.length>6000)throw Error();
     }catch{return fail(400,"Check the supplied information.");}
   }
+  let proxyHeaders:Record<string,string>={};
+  if(access==="PUBLIC"&&method==="POST"&&
+    (parts.join("/")==="public/contact"||parts.join("/")==="receipt/status")){
+    const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
+    const trustedHeader=process.env.CG19_TRUSTED_CLIENT_IP_HEADER;
+    if(secret.length>0){
+      if(secret.length!==32||!trustedHeader||!/^[a-z0-9-]{2,60}$/.test(trustedHeader))
+        return fail(503,"Trusted support ingress is not configured.");
+      // Deployment ingress MUST overwrite/remove incoming trustedHeader and
+      // populate it from a real client socket. Never blindly trust XFF.
+      const client=request.headers.get(trustedHeader);
+      if(!client||!/^[0-9a-fA-F:.]{3,45}$/.test(client))
+        return fail(503,"Trusted client address is unavailable.");
+      const timestamp=String(Date.now());
+      const route=parts.join("/")==="public/contact"?"contact":"status";
+      const proof=createHmac("sha256",secret)
+        .update(route+":"+timestamp+":"+client).digest("hex");
+      proxyHeaders={"x-cg19-proxy-client":client,
+        "x-cg19-proxy-ts":timestamp,"x-cg19-proxy-proof":proof};
+    }
+  }
   try{
     const url=new URL("/api/support/"+parts.join("/"),backend);
     if(method==="GET"&&access==="STAFF")url.search=request.nextUrl.search;
     const result=await fetch(url,{method,body,cache:"no-store",
       signal:AbortSignal.timeout(12000),
-      headers:{...(token?{Authorization:"Bearer "+token}:{}),
+      headers:{...proxyHeaders,...(token?{Authorization:"Bearer "+token}:{}),
         ...(body?{"Content-Type":"application/json"}:{})}
     });
     if(!result.ok){
