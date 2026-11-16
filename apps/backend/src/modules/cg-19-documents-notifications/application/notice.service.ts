@@ -8,7 +8,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {NotificationService} from "./notification.service";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Channel="IN_APP"|"EMAIL"|"SMS";
 type NoticeRow={id:string;realm_id:string;author_id:string;title:string;body:string;
   request_digest:string;priority:string;purpose:"TRANSACTIONAL"|"PROMOTIONAL";
