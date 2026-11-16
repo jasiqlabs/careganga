@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RolesScreen } from "./roles-screen";
 import { SecurityPolicyScreen } from "./security-policy-screen";
 import { AccountsScreen } from "./accounts-screen";
-import { InvitationActivationScreen } from "./invitation-activation-screen";
+import { ChangePasswordScreen } from "./change-password-screen";
 import { RecoveryScreen } from "./recovery-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
@@ -56,7 +56,7 @@ export function StaffAuthenticationScreen(){
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
   const [message,setMessage]=useState("");
   const [recover,setRecover]=useState(false);
-  const [activate,setActivate]=useState(false);
+  const [changePasswordOpen,setChangePasswordOpen]=useState(false);
   const [accountsOpen,setAccountsOpen]=useState(false);
   const [rolesOpen,setRolesOpen]=useState(false);
   const [policyOpen,setPolicyOpen]=useState(false);
@@ -175,7 +175,10 @@ export function StaffAuthenticationScreen(){
     finally{setState("idle");}
   }
   if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
-  if(activate) return <InvitationActivationScreen onExit={()=>setActivate(false)}/>;
+  if(changePasswordOpen&&token&&actor)return <ChangePasswordScreen token={token}
+    onExit={()=>setChangePasswordOpen(false)} onExpired={expireSession}
+    onChanged={()=>{expireSession();setChangePasswordOpen(false);
+      setMessage("Password changed. Sign in again.");}}/>;
   if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
     inviteOnly={!roleActions.includes("accounts.view")}/>;
   if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
@@ -284,6 +287,10 @@ export function StaffAuthenticationScreen(){
               style={styles.button} onPress={()=>setBranchesOpen(true)}>
               <Text style={styles.buttonText}>Branches & registration</Text>
             </Pressable>}
+            <Pressable accessibilityRole="button" style={styles.button}
+              onPress={()=>setChangePasswordOpen(true)}>
+              <Text style={styles.buttonText}>Change password</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
               <Text style={styles.buttonText}>Sign out</Text>
             </Pressable>
