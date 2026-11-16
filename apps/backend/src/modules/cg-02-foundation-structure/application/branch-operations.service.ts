@@ -55,7 +55,7 @@ type Branch={
  status:"ACTIVE"|"INACTIVE"|"CLOSED";version:number;updated_at:Date;
 };
 type Dept={id:string;root_realm_id:string;branch_id:string;scope_kind:string;
- kind:string;name:string;description:string;opening_date:string|null;
+ kind:string;name:string;description:string;opening_date:string|Date|null;
  geography_area_id:string|null;parent_department_id:string|null;
  head_account_ref:string|null;active:boolean;version:number};
 type Change={recordRef:string;version:number;status:"CONFIRMED";message:string};
@@ -447,6 +447,7 @@ export class BranchOperationsService{
        rows.rows.map(x=>x.head_account_ref).filter((x):x is string=>!!x));
      return {departments:rows.rows.map(x=>({departmentRef:x.id,name:x.name,
        kind:x.kind,description:x.description,active:x.active,version:x.version,
+       openingDate:x.opening_date?new Date(x.opening_date).toISOString().slice(0,10):null,
        geographyRef:x.geography_area_id,parentRef:x.parent_department_id,
        headAccountRef:x.head_account_ref,
        headDisplayName:x.head_account_ref?labels[x.head_account_ref]??null:null})),
@@ -480,6 +481,7 @@ export class BranchOperationsService{
  async updateDepartment(bearer:string,branchRef:string,departmentRef:string,input:unknown){
    const x=asObject(input),expected=version(x.expectedVersion);
    const name=text(x.name,100,true),description=text(x.description,800);
+   const opening=date(x.openingDate);
    const parent=x.parentRef?id(x.parentRef):null,area=x.geographyRef?id(x.geographyRef):null;
    const head=x.headAccountRef?id(x.headAccountRef):null;
    const active=x.active;
@@ -508,10 +510,10 @@ export class BranchOperationsService{
        const result=await client.query<{version:number}>(`
          UPDATE department SET name=$3,normalized_name=$4,description=$5,
            geography_area_id=$6,parent_department_id=$7,head_account_ref=$8,
-           active=$9,version=version+1,updated_by=$10,updated_at=now()
-         WHERE id=$1 AND root_realm_id=$2 AND version=$11 RETURNING version
+           opening_date=$9,active=$10,version=version+1,updated_by=$11,updated_at=now()
+         WHERE id=$1 AND root_realm_id=$2 AND version=$12 RETURNING version
        `,[previous.id,actor.realmId,name,name.toLowerCase(),description,
-         area,parent,head,active,actor.accountId,expected]);
+         area,parent,head,opening,active,actor.accountId,expected]);
        return {kind:"DEPARTMENT",id:previous.id,version:result.rows[0].version};
      });
  }
