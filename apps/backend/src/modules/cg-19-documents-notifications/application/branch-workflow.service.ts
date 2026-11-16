@@ -125,7 +125,7 @@ export class BranchWorkflowService{
  }
  async processStatus(bearer:string){return this.approvals.processStatus(bear);}
  async initializeProcess(bearer:string){return this.approvals.initializeProcess(bear);}
- async cases(bearer:string){return this.approvals.listCases(bearer);}
+ async cases(bearer:string,offset=0){return this.approvals.listCases(bearer,offset);}
  async caseDetail(bearer:string,caseRef:string){
    return this.approvals.detail(bearer,id(caseRef));
  }
