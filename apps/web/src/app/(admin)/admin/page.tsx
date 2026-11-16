@@ -66,7 +66,7 @@ export default async function AdminHome() {
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
       canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><SignOutButton/></section>
+    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p><SignOutButton/></section>
     </main>
   </div>;
 }
