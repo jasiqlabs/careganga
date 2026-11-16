@@ -119,6 +119,22 @@ export class BranchSourceFacade{
    if(row.manager_account_ref!==actor.accountId)
      await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
  }
+ /** Historical evidence revocation cannot retarget a submitted snapshot.
+  * Check CG-01 current grants and CG-02 scope in the same transaction.
+  */
+ async guardHistoricalRegistration(client:PoolClient,actor:VerifiedFoundationActor,
+   registrationRef:string,write=true){
+   await this.identity.assertCurrent(client,actor,
+     write?"foundation.branches.manage":"foundation.branches.view");
+   const rows=await client.query<{requested_by:string;manager_account_ref:string|null}>(`
+     SELECT requested_by,manager_account_ref FROM branch_registration
+     WHERE id=$1 AND root_realm_id=$2 FOR SHARE
+   `,[ensureId(registrationRef),actor.realmId]);
+   const row=rows.rows[0];
+   if(!row)throw new NotFoundException("Branch registration unavailable");
+   if(row.requested_by!==actor.accountId&&row.manager_account_ref!==actor.accountId)
+     await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
+ }
  async submission(bearer:string,registrationRef:unknown,revisionInput:unknown,
      digestInput:unknown):Promise<FrozenBranchSubmission>{
    const ref=ensureId(registrationRef),revision=Number(revisionInput);
