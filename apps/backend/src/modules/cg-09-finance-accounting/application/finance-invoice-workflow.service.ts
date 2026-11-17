@@ -294,6 +294,103 @@ export class FinanceInvoiceWorkflowService{
    return {confirmed:true,status:"ISSUED",invoiceNumber:x.invoice_number,replayed:false};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
+ /** Bank-statement verification is a real separate source. A receipt link
+  * references exactly one existing journal, never posts income a second time.
+  */
+ async receiptOptions(bearer:string,invoiceInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
+  const ref=ident(invoiceInput);
+  const invoice=await this.db.query<{total_minor:string;receivable_account_id:string;
+   branch_id:string|null;status:string}>(
+   "SELECT total_minor::text,receivable_account_id,branch_id,status "+
+   "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2",
+   [ref,actor.realmId]);
+  const x=invoice.rows[0];
+  if(!x||x.status!=="ISSUED")
+   throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  const rows=await this.db.query<{reconciliationRef:string;bankName:string;
+   statementDate:string;amountMinor:string;statementHint:string}>(
+   "SELECT r.id AS \"reconciliationRef\",a.name AS \"bankName\","+
+   "r.statement_date::text AS \"statementDate\","+
+   "r.statement_amount_minor::text AS \"amountMinor\","+
+   "right(r.bank_item_ref,4) AS \"statementHint\" "+
+   "FROM finance_bank_reconciliation r "+
+   "JOIN finance_account a ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
+   "JOIN journal_line bl ON bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id "+
+   "AND bl.account_id=r.bank_account_id "+
+   "JOIN journal_line ar ON ar.journal_id=r.journal_id AND ar.root_realm_id=r.root_realm_id "+
+   "AND ar.account_id=$3 AND ar.credit_minor=$4 "+
+   "WHERE r.root_realm_id=$1 AND r.status='VERIFIED' AND r.variance_minor=0 "+
+   "AND r.statement_amount_minor=$4 AND r.posted_amount_minor=$4 "+
+   "AND bl.debit_minor=$4 AND bl.credit_minor=0 "+
+   "AND bl.branch_id IS NOT DISTINCT FROM $5::uuid "+
+   "AND ar.branch_id IS NOT DISTINCT FROM $5::uuid "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_invoice_receipt f "+
+   "WHERE f.root_realm_id=r.root_realm_id AND f.reconciliation_id=r.id) "+
+   "ORDER BY r.statement_date DESC,r.id DESC LIMIT 51",
+   [actor.realmId,ref,x.receivable_account_id,x.total_minor,x.branch_id]);
+  return {matches:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
+ }
+ async linkReceipt(bearer:string,invoiceInput:string,payload:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
+  const ref=ident(invoiceInput),v=input(payload,["requestKey","reconciliationRef"]),
+   key=ident(v.requestKey),matchRef=ident(v.reconciliationRef);
+  const fingerprint=hash(["CG09_REAL_INVOICE_RECEIPT_LINK",ref,matchRef]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.issue");
+   const old=await this.command(tx,actor,key);
+   if(old){
+    if(old.request_digest!==fingerprint)
+     throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,status:old.result_status,replayed:true};
+   }
+   const x=await this.load(tx,actor,ref);
+   if(x.status!=="ISSUED"||!x.total_minor)
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   const match=await tx.query<{journal_id:string;statement_date:string;
+    statement_amount_minor:string;status:string}>(
+    "SELECT journal_id,statement_date::text,statement_amount_minor::text,status "+
+    "FROM finance_bank_reconciliation WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
+    [matchRef,actor.realmId]);
+   const m=match.rows[0];
+   if(!m||m.status!=="VERIFIED"||m.statement_amount_minor!==x.total_minor)
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   const digest=hash(["ORIGINAL_PAID_RECEIPT",ref,x.version,x.current_digest,
+    m.journal_id,matchRef,x.total_minor]);
+   const inserted=await tx.query<{receipt_number:string}>(
+    "INSERT INTO finance_invoice_receipt(root_realm_id,invoice_id,"+
+    "source_invoice_version,journal_id,reconciliation_id,amount_minor,"+
+    "receipt_date,recorded_by,request_key,immutable_digest) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING receipt_number",
+    [actor.realmId,ref,x.version,m.journal_id,matchRef,
+     x.total_minor,m.statement_date,actor.accountId,key,digest]);
+   await this.record(tx,actor,ref,x.version,key,fingerprint,"RECEIPT_LINK","PAID_VERIFIED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"PAID_VERIFIED",
+    receiptNumber:inserted.rows[0].receipt_number,replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&
+      ["23505","23514","P0927"].includes(String(e.code)))
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   throw e;
+  }finally{tx.release();}
+ }
+ async receiptStatus(bearer:string,invoiceInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
+  const ref=ident(invoiceInput);
+  const row=await this.db.query<{receiptRef:string;receiptNumber:string;
+   amountMinor:string;paidDate:string}>(
+   "SELECT id AS \"receiptRef\",receipt_number AS \"receiptNumber\","+
+   "amount_minor::text AS \"amountMinor\",receipt_date::text AS \"paidDate\" "+
+   "FROM finance_invoice_receipt WHERE root_realm_id=$1 AND invoice_id=$2",
+   [actor.realmId,ref]);
+  return row.rows[0]?{paymentVerified:true,...row.rows[0]}:
+   {paymentVerified:false,status:"NOT_VERIFIED"};
+ }
  async commandStatus(bearer:string,requestKey:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
   const row=await this.db.query<Command>(
