@@ -81,6 +81,15 @@ function dbError(error:unknown):never{
   };
   const rule=typeof error.code==="string"?rules[error.code]:undefined;
   if(rule)throw new ConflictException(rule);
+  if(error.code==="P0901")throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+  if(error.code==="P0902")throw new ConflictException({code:"FINANCE_ACCOUNT_INACTIVE"});
+  if(error.code==="P0903")throw new BadRequestException({code:"FINANCE_DEBITS_CREDITS",field:"amount"});
+  if(error.code==="P0904")throw new ConflictException({code:"FINANCE_ACCOUNT_SCOPE"});
+  if(error.code==="P0905")throw new BadRequestException({code:"FINANCE_GROUP_INVALID",field:"groupRef"});
+  if(error.code==="P0906"||error.code==="P0907")throw new ConflictException({code:"FINANCE_STALE_RECORD"});
+  if(error.code==="P0908")throw new BadRequestException({code:"FINANCE_GROUP_INVALID",field:"groupRef"});
+  if(error.code==="P0911")throw new BadRequestException({code:"FINANCE_OPENING_DATE",field:"postingDate"});
+  if(error.code==="P0912")throw new ConflictException({code:"FINANCE_POSTED_IMMUTABLE"});
   if(error.code==="23P01")throw new ConflictException({code:"FINANCE_YEAR_OVERLAP"});
   if(error.code==="23505")throw new ConflictException({code:"FINANCE_DUPLICATE"});
   if(error.code==="23503"||error.code==="23514"||error.code==="22P02")
