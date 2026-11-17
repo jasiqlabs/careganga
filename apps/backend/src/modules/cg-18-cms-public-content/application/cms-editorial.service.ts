@@ -17,7 +17,7 @@ const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
  "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
- "GALLERY","ARTICLE","DOCUMENT"]);
+ "GALLERY","ARTICLE","DOCUMENT","IMPACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function uuid(v:unknown,field:string){
@@ -50,7 +50,7 @@ type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
  "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER";order:number;
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
- "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT";
+ "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT"|"IMPACT";
  altText:string;order:number};
 // Only reveal media when its exact authored section or indexed card still exists.
 const IMAGE_MIME=new Set(["image/jpeg","image/png","image/webp"]);
@@ -78,6 +78,7 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
   if(a.role==="GALLERY")return s.kind==="GALLERY_GRID"&&
    Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
   if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;
+  if(a.role==="IMPACT")return s.kind==="IMPACT_GROUP"&&a.order===s.order;
   if(a.role==="DOCUMENT")return s.kind==="COMPLIANCE_FACTS"&&a.order===0;
   return false;
  });
