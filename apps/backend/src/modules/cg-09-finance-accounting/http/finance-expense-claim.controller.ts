@@ -17,6 +17,10 @@ export class FinanceExpenseClaimController{
  workflowCommand(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
   return this.claims.workflowCommand(bearer,key);
  }
+ @Get(":claimRef/eligible-vouchers")
+ eligibleVouchers(@Headers("authorization")bearer:string,@Param("claimRef")ref:string){
+  return this.claims.eligibleVouchers(bearer,ref);
+ }
  @Post(":claimRef/submit")
  submit(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
   @Body()body:unknown){return this.claims.submit(bearer,ref,body);}
