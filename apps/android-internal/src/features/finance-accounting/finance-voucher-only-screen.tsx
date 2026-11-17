@@ -6,8 +6,9 @@ import {identityRequest} from "../identity-access/http-client";
 import {FinanceVoucherDraftScreen} from "./finance-voucher-draft-screen";
 import type {FinanceYear,FinanceBranch} from "./finance-setup-editor";
 
-export function FinanceVoucherOnlyScreen({token,canManage,canViewEvidence,canUploadEvidence,onExit,onExpired}:{
- token:string;canManage:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;onExit:()=>void;onExpired:()=>void
+export function FinanceVoucherOnlyScreen({token,canManage,canViewEvidence,canUploadEvidence,canPost,canVerifyPayment,onExit,onExpired}:{
+ token:string;canManage:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;
+ canPost:boolean;canVerifyPayment:boolean;onExit:()=>void;onExpired:()=>void
 }){
  const [ready,setReady]=useState<{years:FinanceYear[];branches:FinanceBranch[]}|null>(null);
  const [loading,setLoading]=useState(true);
@@ -38,6 +39,7 @@ export function FinanceVoucherOnlyScreen({token,canManage,canViewEvidence,canUpl
  },[ready,onExit]);
  if(ready)return <FinanceVoucherDraftScreen token={token}
   years={ready.years} branches={ready.branches} canManage={canManage} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
+   canPost={canPost} canVerifyPayment={canVerifyPayment}
   onClose={onExit} onExpired={onExpired}/>;
  return <SafeAreaView style={styles.safe} edges={["top","bottom"]}>
   <View style={styles.header}>
