@@ -917,6 +917,15 @@ export class CmsEditorialService{
   if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   if(!(await complianceEligible(this.db,x.foundation_root_id,x.revision_id)))
    throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  // A revoked image can carry private/consent-sensitive context in its
+  // surrounding section. Fail the entire snapshot instead of returning
+  // textual details with an intentionally missing image reference.
+  const inventory=await this.db.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM cms_asset_placement "+
+   "WHERE foundation_root_id=$1 AND page_revision_id=$2",
+   [x.foundation_root_id,x.revision_id]);
+  if(Number(inventory.rows[0]?.count??0)!==assets.rows.length)
+   throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
   fields:sec.structured_fields}));
