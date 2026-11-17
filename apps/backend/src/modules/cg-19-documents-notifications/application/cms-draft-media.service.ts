@@ -9,6 +9,25 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const MIME=new Set(["image/jpeg","image/png","image/webp"]);
+// Every public media read (before and after fetching private bytes) must match
+// a currently effective image placement and the displayed CMS section.
+// This also protects older publications created before authored-role validation.
+const PUBLIC_MEDIA_SECTION_ALLOWED=
+ "AND EXISTS (SELECT 1 FROM cms_section_revision sec "+
+ "WHERE sec.page_revision_id=a.page_revision_id "+
+ "AND sec.foundation_root_id=a.foundation_root_id AND ("+
+ "(a.role IN('HERO','MOBILE_HERO') AND sec.section_kind='HERO' "+
+ "AND sec.order_no=a.sort_order "+
+ "AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false') OR "+
+ "(a.role='ABOUT' AND sec.section_kind='RICH_TEXT' "+
+ "AND sec.order_no=a.sort_order AND sec.structured_fields->>'variant'='SPLIT') OR "+
+ "(a.role='PROMO' AND sec.section_kind='CTA' AND sec.order_no=a.sort_order) OR "+
+ "(a.role='FEATURE' AND sec.section_kind='FEATURE_CARDS' "+
+ "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' "+
+ "THEN jsonb_array_length(sec.structured_fields->'cards') ELSE 0 END) OR "+
+ "(a.role='TEAM' AND sec.section_kind='TEAM' "+
+ "AND (sec.structured_fields->'members'->a.sort_order->>'consentConfirmed')='true')"+
+ ")) ";
 type Intent={id:string;realm_id:string;page_id:string;page_revision_id:string;
  owner_id:string;request_digest:string;request_key:string;original_mime:string;
  size_bytes:string;expected_sha256:string;object_key:string;reserved_until:Date;
@@ -277,11 +296,7 @@ export class CmsDraftMediaService{
    "AND active.page_id=pub.page_id "+
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true AND a.public_rights_status='VALIDATED' "+
-   "AND (a.role NOT IN('HERO','MOBILE_HERO') OR EXISTS ("+
-   "SELECT 1 FROM cms_section_revision sec WHERE sec.page_revision_id=a.page_revision_id "+
-   "AND sec.foundation_root_id=a.foundation_root_id AND sec.section_kind='HERO' "+
-   "AND sec.order_no=a.sort_order "+
-   "AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false')) "+
+   PUBLIC_MEDIA_SECTION_ALLOWED+
    "AND a.cg19_validated_version=f.revision AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "LIMIT 1",[ref]);
@@ -308,11 +323,7 @@ export class CmsDraftMediaService{
    "f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
    "AND a.cg19_validated_version=f.revision "+
    "AND a.public_rights_status='VALIDATED' "+
-   "AND (a.role NOT IN('HERO','MOBILE_HERO') OR EXISTS ("+
-   "SELECT 1 FROM cms_section_revision sec WHERE sec.page_revision_id=a.page_revision_id "+
-   "AND sec.foundation_root_id=a.foundation_root_id AND sec.section_kind='HERO' "+
-   "AND sec.order_no=a.sort_order "+
-   "AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false')) "+
+   PUBLIC_MEDIA_SECTION_ALLOWED+
    "AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())",
    [ref]);
