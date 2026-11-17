@@ -7,7 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
-type CommandKind="YEAR_CREATE"|"GROUP_CREATE"|"ACCOUNT_CREATE"|"OPENING_POST";
+type CommandKind="YEAR_CREATE"|"YEAR_STATUS"|"GROUP_CREATE"|"ACCOUNT_CREATE"|"ACCOUNT_STATUS"|"OPENING_POST";
 type CommandResult={recordRef:string;confirmed:true;replayed:boolean};
 type Normalized=Record<string,string|null>;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -114,8 +114,8 @@ export class FinanceAccountsService{
    INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key)
    VALUES($1,$2,$3,$4,$5,$6)`,
    [actor.realmId,actor.accountId,
-    kind==="YEAR_CREATE"?"YEAR":kind==="GROUP_CREATE"?"GROUP":
-    kind==="ACCOUNT_CREATE"?"ACCOUNT":"JOURNAL",entityRef,action,key]);
+    kind.startsWith("YEAR_")?"YEAR":kind==="GROUP_CREATE"?"GROUP":
+    kind.startsWith("ACCOUNT_")?"ACCOUNT":"JOURNAL",entityRef,action,key]);
  }
  async setup(bearer:string,searchInput?:string,offsetInput?:string){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
@@ -124,8 +124,8 @@ export class FinanceAccountsService{
    throw new BadRequestException({code:"FINANCE_SCOPE_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
   const [years,groups,accounts,opening,branches]=await Promise.all([
-   this.db.query<{yearRef:string;name:string;startOn:string;endOn:string;status:string}>(`
-    SELECT id AS "yearRef",name,start_on AS "startOn",end_on AS "endOn",status
+   this.db.query<{yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number}>(`
+    SELECT id AS "yearRef",name,start_on AS "startOn",end_on AS "endOn",status,version
     FROM financial_year WHERE root_realm_id=$1
     ORDER BY start_on DESC,id DESC LIMIT 30`,[actor.realmId]),
    this.db.query<{groupRef:string;code:string;name:string;category:string}>(`
@@ -134,11 +134,11 @@ export class FinanceAccountsService{
    this.db.query<{
     accountRef:string;code:string;name:string;normalSide:string;kind:string;
     scopeKind:string;branchRef:string|null;branchName:string|null;groupName:string;
-    status:string;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null;
+    status:string;version:number;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null;
    }>(`
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
      a.account_kind AS kind,a.scope_kind AS "scopeKind",a.branch_id AS "branchRef",
-     b.name AS "branchName",g.name AS "groupName",a.status,
+     b.name AS "branchName",g.name AS "groupName",a.status,a.version,
      COALESCE(SUM(l.debit_minor-l.credit_minor),0)::text AS "balanceMinor",
      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
     FROM finance_account a JOIN account_group g ON g.id=a.group_id
@@ -301,10 +301,72 @@ export class FinanceAccountsService{
    return {recordRef:id,confirmed:true,replayed:false};
   });
  }
+ async changeYearStatus(bearer:string,yearInput:string,input:unknown):Promise<CommandResult>{
+  const year=ref(yearInput,"startOn","FINANCE_YEAR_CLOSED"),body=asForm(input);
+  const key=ref(body.requestKey,"requestKey");
+  if(body.status!=="CLOSED"||!Number.isSafeInteger(body.expectedVersion)||
+    Number(body.expectedVersion)<1)
+   throw new BadRequestException({code:"FINANCE_YEAR_CLOSED"});
+  const expectedVersion=Number(body.expectedVersion);
+  const payload={year,expectedVersion:String(expectedVersion),status:"CLOSED"};
+  return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   const claim=await this.claim(client,actor,"YEAR_STATUS",key,payload);
+   if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
+   const found=await client.query<{status:string;version:number}>(`
+    SELECT status,version FROM financial_year WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,
+    [year,actor.realmId]);
+   if(!found.rows[0])throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+   if(found.rows[0].version!==expectedVersion)
+    throw new ConflictException({code:"FINANCE_STALE_RECORD"});
+   if(found.rows[0].status!=="OPEN")
+    throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+   await client.query(`UPDATE financial_year SET status='CLOSED',version=version+1
+    WHERE id=$1 AND root_realm_id=$2`,[year,actor.realmId]);
+   await this.finish(client,actor,"YEAR_STATUS",key,year,"YEAR_CLOSED");
+   return {recordRef:year,confirmed:true,replayed:false};
+  });
+ }
+ async changeAccountStatus(bearer:string,accountInput:string,input:unknown):Promise<CommandResult>{
+  const account=ref(accountInput,"code","FINANCE_ACCOUNT_INACTIVE"),body=asForm(input);
+  const key=ref(body.requestKey,"requestKey"),status=body.status;
+  if(!["ACTIVE","INACTIVE"].includes(String(status))||
+    !Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
+   throw new BadRequestException({code:"FINANCE_ACCOUNT_INACTIVE"});
+  const expectedVersion=Number(body.expectedVersion);
+  const payload={account,expectedVersion:String(expectedVersion),status:String(status)};
+  return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   const claim=await this.claim(client,actor,"ACCOUNT_STATUS",key,payload);
+   if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
+   const found=await client.query<{version:number;status:string;scope_kind:string;
+    branch_id:string|null}>(`
+    SELECT version,status,scope_kind,branch_id FROM finance_account
+     WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,[account,actor.realmId]);
+   if(!found.rows[0])throw new ConflictException({code:"FINANCE_ACCOUNT_INACTIVE"});
+   const current=found.rows[0];
+   if(current.version!==expectedVersion)
+    throw new ConflictException({code:"FINANCE_STALE_RECORD"});
+   if(current.status===status)throw new ConflictException({code:"FINANCE_STALE_RECORD"});
+   if(current.branch_id){
+    const active=await client.query<{version:number}>(`
+      SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' FOR SHARE`,
+      [current.branch_id,actor.realmId]);
+    if(!active.rows[0]&&status==="ACTIVE")
+     throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE"});
+   }
+   await client.query(`
+    UPDATE finance_account SET status=$1,version=version+1
+    WHERE id=$2 AND root_realm_id=$3`,[status,account,actor.realmId]);
+   await client.query(`
+    UPDATE cash_bank_account SET status=$1 WHERE account_id=$2 AND root_realm_id=$3`,
+    [status,account,actor.realmId]);
+   await this.finish(client,actor,"ACCOUNT_STATUS",key,account,"ACCOUNT_STATUS_CHANGED");
+   return {recordRef:account,confirmed:true,replayed:false};
+  });
+ }
  async commandStatus(bearer:string,kindInput:string,keyInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
   const kind=kindInput as CommandKind;
-  if(!["YEAR_CREATE","GROUP_CREATE","ACCOUNT_CREATE","OPENING_POST"].includes(kind))
+  if(!["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"].includes(kind))
    throw new BadRequestException({code:"FINANCE_REQUEST_CONFLICT"});
   const key=ref(keyInput,"requestKey");
   const found=await this.db.query<{entity_ref:string|null}>(`
