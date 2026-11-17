@@ -53,7 +53,8 @@ export default async function FinancePage(){
     canViewVouchers={actions.includes("finance.vouchers.view")}
     canManageVouchers={actions.includes("finance.vouchers.manage")}
     canViewEvidence={actions.includes("documents.files.view")}
-    canUploadEvidence={actions.includes("documents.files.view")&&actions.includes("documents.files.manage")}/></main>
+    canUploadEvidence={actions.includes("documents.files.view")&&actions.includes("documents.files.manage")}
+    canVerifyPayment={actions.includes("approvals.review")&&actions.includes("documents.files.view")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
