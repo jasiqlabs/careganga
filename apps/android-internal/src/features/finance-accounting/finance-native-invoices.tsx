@@ -184,6 +184,14 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   if(!pending||busy)return;
   setBusy(true);setError("");
   try{
+   if(pending.path.includes("/finance-receipts/")&&receipt?.receiptRef){
+    const state=await request<DocumentState>(token,
+      "/api/documents/finance-receipts/receipts/"+receipt.receiptRef+"/status");
+    if(state.status==="ISSUED"){setDocument(state);setPending(null);
+      setNotice("Original verified receipt PDF confirmed.");
+    }else setNotice("Private receipt issue is not confirmed; retry only the same request.");
+    return;
+   }
    if(pending.path.endsWith("/link-receipt")&&current){
     await receiptRefresh(current.ref);
     if(receipt?.paymentVerified){setPending(null);setNotice("Original verified receipt is recorded.");}
@@ -322,9 +330,11 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
        <Action label="Open private paid receipt PDF" onPress={()=>void pdf(
         "/api/documents/finance-receipts/files/"+receiptDocument.documentRef+"/download")}/>:
        <Action label="Issue receipt from actual verified bank collection"
-        disabled={busy||Boolean(pending)} onPress={()=>void execute({
-         key:key(),method:"POST",path:"/api/documents/finance-receipts/receipts/"+
-          receipt.receiptRef+"/issue",body:{requestKey:key()}})}/>}
+        disabled={busy||Boolean(pending)} onPress={()=>{
+          const requestKey=key();
+          void execute({key:requestKey,method:"POST",path:"/api/documents/finance-receipts/receipts/"+
+           receipt.receiptRef+"/issue",body:{requestKey}});
+        }}/>} 
      </>:<>
       <Text style={s.muted}>Select one independently reconciled bank receipt. No amount is inferred.</Text>
       <Options label="Eligible verified bank collection" value={receiptChoice}
