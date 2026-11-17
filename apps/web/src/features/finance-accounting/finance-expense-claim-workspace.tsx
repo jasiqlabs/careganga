@@ -121,7 +121,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
      <textarea required minLength={3} maxLength={500} rows={3}
       value={form.purpose} onChange={e=>change("purpose",e.target.value)}/>
      {fieldError?.name==="purpose"&&<span role="alert">{fieldError.message}</span>}</label>
-    <p className="cg-fin-help">A private verified bill, approval and payout steps are not yet available in this draft-only screen.</p>
+    <p className="cg-fin-help">Save your claim first, then attach its real privately scanned bill below. A separate protected reviewer must approve it before posting or payment.</p>
     <button className="primary" type="submit" disabled={saving}>
      {saving?"Checking the draft…":correction?"Save corrected claim draft":"Save claim draft"}</button>
    </form>
