@@ -139,7 +139,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   for(const [k,value] of request.nextUrl.searchParams){
    if(!keys.has(k)||value.length>80||(k.endsWith("Ref")&&value&&!UUID.test(value))||
      (k==="offset"&&!/^(0|[1-9][0-9]{0,4})$/.test(value))||
-     (["from","to"].includes(k)&&value&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)))
+     (["from","to"].includes(k)&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)))
     return NextResponse.json({message:"Choose a valid financial year, account, branch and date filter."},{status:400});
    target.searchParams.set(k,value);
   }
