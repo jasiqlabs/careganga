@@ -8,6 +8,7 @@ import {FinanceVoucherDraftService} from "./application/finance-voucher-draft.se
 import {FinanceVoucherDraftController} from "./http/finance-voucher-drafts.controller";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
 import {DocumentsNotificationsModule} from "../cg-19-documents-notifications/documents-notifications.module";
+import {FinanceEvidenceSourceModule} from "../cg-19-documents-notifications/finance-evidence-source.module";
 import {FinanceSourceModule} from "./finance-source.module";
 import {FinanceVoucherWorkflowService} from "./application/finance-voucher-workflow.service";
 import {FinanceVoucherWorkflowController} from "./http/finance-voucher-workflow.controller";
@@ -20,7 +21,7 @@ import {FinanceExpenseClaimController} from "./http/finance-expense-claim.contro
 
 /** CG-09 owns a single ledger and finance setup; never duplicates CG-01/02 masters. */
 @Module({
- imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule],
+ imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule,FinanceEvidenceSourceModule],
  providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService],
  controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController],
  exports:[FinanceAccountsService]
