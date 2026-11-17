@@ -13,7 +13,7 @@ type Account={accountRef:string;name:string;code:string;groupName:string;kind:st
 type Setup=FinanceSetup & {accounts:Account[];years:Year[];
   openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
   nextOffset:number|null};
-type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean;onExit:()=>void;onExpired:()=>void};
 function inr(minor:string):string{
  try{
   const n=BigInt(minor),abs=n<0n?-n:n;
@@ -31,7 +31,7 @@ function viewError(status:number):string{
 /** US-001 native read-only counterpart to the original U35/U36 Admin Web
  * account overview; no second finance editor and no raw technical identifiers.
  */
-export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,onExit,onExpired}:Props){
+export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment,onExit,onExpired}:Props){
  const [data,setData]=useState<Setup|null>(null);
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
@@ -94,6 +94,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
  },[category,token,manualRefresh,onExpired]);
  if(voucherOpen&&data)return <FinanceVoucherDraftScreen token={token}
    years={data.years} branches={data.branches} canManage={canManageVouchers} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
+   canPost={canPost} canVerifyPayment={canVerifyPayment}
    onClose={()=>setVoucherOpen(false)} onExpired={onExpired}/>;
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
