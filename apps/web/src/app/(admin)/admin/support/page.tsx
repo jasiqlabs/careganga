@@ -36,7 +36,7 @@ export default async function FoundationSupportPage(){
       <h1>Access denied</h1><p>Your role does not permit Foundation support.</p>
       <Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} active="support" displayName={person.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="support" displayName={person.displayName}
         roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||
