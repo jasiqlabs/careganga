@@ -7,7 +7,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Original={id:string;root_realm_id:string;requested_by:string;version:number;
- status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED";create_digest:string};
+ status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED";current_digest:string};
 @Injectable()
 export class FinanceExpenseClaimSourceFacade{
  constructor(@Inject(DATABASE) private readonly db:Pool,
@@ -20,7 +20,7 @@ export class FinanceExpenseClaimSourceFacade{
   await this.identity.assertCurrent(client,actor,
    mode==="write"?"finance.claims.create":"finance.claims.view");
   const found=await client.query<Original>(
-   "SELECT id,root_realm_id,requested_by,version,status,create_digest "+
+   "SELECT id,root_realm_id,requested_by,version,status,current_digest "+
    "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 AND version=$3 FOR SHARE",
    [reference,actor.realmId,version]);
   const c=found.rows[0];
@@ -38,7 +38,7 @@ export class FinanceExpenseClaimSourceFacade{
    if(write&&c.status!=="DRAFT")
     throw new ConflictException({code:"FINANCE_CLAIM_NOT_EDITABLE"});
    await client.query("COMMIT");
-   return {claimRef:c.id,revision:c.version,status:c.status,sourceDigest:c.create_digest};
+   return {claimRef:c.id,revision:c.version,status:c.status,sourceDigest:c.current_digest};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async historical(bearer:string,reference:string,version:number){
@@ -88,7 +88,7 @@ export class FinanceExpenseClaimSourceFacade{
    "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 AND version=$3 FOR SHARE",
    [reference,actor.realmId,version]);
   const claim=result.rows[0];
-  if(!claim||claim.create_digest!==expectedDigest||
+  if(!claim||claim.current_digest!==expectedDigest||
      claim.status!=="SUBMITTED"||claim.requested_by===actor.accountId)
    throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
   return {claimRef:claim.id,revision:claim.version,sourceDigest:claim.create_digest};
