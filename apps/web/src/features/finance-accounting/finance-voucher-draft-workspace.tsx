@@ -2,6 +2,7 @@
 import {FormEvent,useCallback,useEffect,useState} from "react";
 import {FinanceVoucherSubmissionTools,type VoucherWorkflowRow} from "./finance-voucher-submission-tools";
 import {FinanceVoucherPaymentTools} from "./finance-voucher-payment-tools";
+import {FinanceVoucherDashboard} from "./finance-voucher-dashboard";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
@@ -228,6 +229,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   }finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
+  <FinanceVoucherDashboard onRefresh={()=>void refresh()}/>
   <div className="cg-fin-toolbar"><div><h2>Finance Voucher Drafts</h2>
    <p>Drafts are not approved, posted or paid. Verified file and reviewer workflows follow separately.</p></div>
    <div className="cg-fin-toolbar-actions">
