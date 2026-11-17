@@ -1,8 +1,15 @@
-import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Query} from "@nestjs/common";
 import {FinanceReportsService} from "../application/finance-reports.service";
 @Controller("api/finance-accounting/reports")
 export class FinanceReportsController{
  constructor(private readonly reports:FinanceReportsService){}
+ @Get("export/csv")
+ @Header("Content-Type","text/csv; charset=utf-8")
+ @Header("Content-Disposition","attachment; filename=CareGanga-Finance-Report.csv")
+ @Header("Cache-Control","private, no-store")
+ async exportCsv(@Headers("authorization")auth:string,@Query()q:Record<string,string>){
+  return this.reports.exportCsv(auth,q);
+ }
  @Get("options") options(@Headers("authorization")auth:string){
   return this.reports.options(auth);
  }
