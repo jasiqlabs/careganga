@@ -134,6 +134,29 @@ export class FinanceVoucherDraftService{
   return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
    status:"SOURCE_BACKED_VOUCHER_STATUS"};
  }
+ /** Frozen historical snapshot for CG-03 review of the pinned case revision.
+  * Not the editable current draft and never a payment source.
+  */
+ async historicalDetail(bearer:string,voucherInput:string,versionInput:string){
+  const actor=await this.actor(bearer,"finance.vouchers.view");
+  const voucherRef=uid(voucherInput,"voucherRef");
+  if(!/^[1-9][0-9]{0,5}$/.test(versionInput))
+   throw new BadRequestException({code:"FINANCE_VOUCHER_STALE",field:"expectedVersion"});
+  const version=Number(versionInput);
+  const record=await this.db.query<{voucherNumber:string;version:number;
+   header:Record<string,unknown>;lines:Record<string,unknown>[];
+   grossMinor:string;taxMinor:string;chargesMinor:string;totalMinor:string}>(`
+   SELECT v.voucher_number AS "voucherNumber",r.version,
+     r.header_snapshot AS header,r.line_snapshot AS lines,
+     r.gross_minor::text AS "grossMinor",r.tax_minor::text AS "taxMinor",
+     r.charges_minor::text AS "chargesMinor",r.total_minor::text AS "totalMinor"
+   FROM finance_voucher_draft_revision r JOIN finance_voucher v
+    ON v.id=r.voucher_id AND v.root_realm_id=r.root_realm_id
+   WHERE v.id=$1 AND v.root_realm_id=$2 AND r.version=$3`,
+   [voucherRef,actor.realmId,version]);
+  if(!record.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+  return {...record.rows[0],status:"ORIGINAL_FROZEN_REVISION"};
+ }
  async detail(bearer:string,voucherInput:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
   const ref=uid(voucherInput,"voucherRef");
