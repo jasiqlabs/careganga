@@ -195,7 +195,7 @@ export class CmsEditorialService{
   return this.withTx(async tx=>{
    const page=await this.row(tx,a,ref);
    const rev=await this.revision(tx,a,page);
-   const [sections,assets,published,navigation]=await Promise.all([
+   const [sections,assets,published,navigation,scheduled]=await Promise.all([
     tx.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no,id",
@@ -214,7 +214,12 @@ export class CmsEditorialService{
     tx.query<{login_desired:boolean;member_join_desired:boolean;volunteer_join_desired:boolean}>(
      "SELECT login_desired,member_join_desired,volunteer_join_desired FROM cms_navigation_revision "+
      "WHERE foundation_root_id=$1 AND home_revision_id=$2",
-     [a.realmId,rev.id])
+     [a.realmId,rev.id]),
+    tx.query<{effective_at:Date}>(
+     "SELECT effective_at FROM cms_publication WHERE "+
+     "foundation_root_id=$1 AND page_id=$2 AND state='SCHEDULED' "+
+     "ORDER BY effective_at DESC,id DESC LIMIT 1",
+     [a.realmId,page.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
     revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
@@ -227,6 +232,7 @@ export class CmsEditorialService{
     navigation:page.kind==="HOME"?{loginDesired:navigation.rows[0]?.login_desired??true,
      memberJoinDesired:navigation.rows[0]?.member_join_desired??false,
      volunteerJoinDesired:navigation.rows[0]?.volunteer_join_desired??false}:null,
+    scheduledAt:scheduled.rows[0]?.effective_at?.toISOString()??null,
     publicationStatus:published.rows[0]?.state??"NOT_PUBLISHED"};
   });
  }
@@ -569,10 +575,24 @@ export class CmsEditorialService{
    const selected=await tx.query<{publication_id:string}>(
     "SELECT publication_id FROM cms_page_effective WHERE "+
     "foundation_root_id=$1 AND page_id=$2 FOR UPDATE",[actor.realmId,page.id]);
-   if(!selected.rows[0])throw new ConflictException({code:"CMS_NOT_PUBLISHED"});
-   await tx.query("DELETE FROM cms_page_effective WHERE foundation_root_id=$1 "+
+   const pending=await tx.query<{id:string}>(
+    "SELECT id FROM cms_publication WHERE foundation_root_id=$1 "+
+    "AND page_id=$2 AND state='SCHEDULED' FOR UPDATE",
+    [actor.realmId,page.id]);
+   if(!selected.rows[0]&&!pending.rows.length)
+    throw new ConflictException({code:"CMS_NOT_PUBLISHED"});
+   if(pending.rows.length){
+    await tx.query("UPDATE cms_publication_due SET status='CANCELLED' "+
+     "WHERE foundation_root_id=$1 AND page_publication_ref=ANY($2::uuid[]) "+
+     "AND status='READY'",
+     [actor.realmId,pending.rows.map(x=>x.id)]);
+    await tx.query("UPDATE cms_publication SET state='WITHDRAWN',revoked_at=now() "+
+     "WHERE foundation_root_id=$1 AND id=ANY($2::uuid[]) AND state='SCHEDULED'",
+     [actor.realmId,pending.rows.map(x=>x.id)]);
+   }
+   if(selected.rows[0])await tx.query("DELETE FROM cms_page_effective WHERE foundation_root_id=$1 "+
     "AND page_id=$2",[actor.realmId,page.id]);
-   await tx.query("UPDATE cms_publication SET state='WITHDRAWN',revoked_at=now() "+
+   if(selected.rows[0])await tx.query("UPDATE cms_publication SET state='WITHDRAWN',revoked_at=now() "+
     "WHERE id=$1 AND foundation_root_id=$2 AND state='EFFECTIVE'",
     [selected.rows[0].publication_id,actor.realmId]);
    await tx.query("UPDATE cms_page SET version=version+1 "+
