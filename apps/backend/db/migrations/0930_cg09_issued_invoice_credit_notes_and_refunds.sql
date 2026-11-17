@@ -267,3 +267,38 @@ END; $$;
 CREATE CONSTRAINT TRIGGER cg09_invoice_adjustment_requires_proof
  AFTER INSERT ON journal DEFERRABLE INITIALLY DEFERRED FOR EACH ROW
  EXECUTE FUNCTION cg09_require_invoice_adjustment_proof();
+
+-- The first issued credit note closes the original invoice for new money.
+-- Serialize a concurrent deposit with the credit issuance on invoice row.
+CREATE FUNCTION cg09_stop_invoice_collection_after_credit() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.posting_kind<>'GENERAL' THEN RETURN NEW; END IF;
+ PERFORM 1 FROM finance_invoice i
+  WHERE i.id=NEW.source_ref AND i.root_realm_id=NEW.root_realm_id FOR UPDATE;
+ IF FOUND THEN
+  PERFORM 1 FROM finance_invoice_credit_note c
+   WHERE c.root_realm_id=NEW.root_realm_id AND c.invoice_id=NEW.source_ref FOR SHARE;
+  IF FOUND THEN
+   RAISE EXCEPTION 'This issued invoice was credited; do not collect again'
+    USING ERRCODE='P0931';
+  END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_no_new_collection_after_credit BEFORE INSERT ON journal
+ FOR EACH ROW EXECUTE FUNCTION cg09_stop_invoice_collection_after_credit();
+CREATE FUNCTION cg09_stop_invoice_receipt_after_credit() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ PERFORM 1 FROM finance_invoice
+  WHERE id=NEW.invoice_id AND root_realm_id=NEW.root_realm_id FOR UPDATE;
+ PERFORM 1 FROM finance_invoice_credit_note
+  WHERE invoice_id=NEW.invoice_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
+ IF FOUND THEN
+  RAISE EXCEPTION 'This original invoice has an issued credit note'
+   USING ERRCODE='P0931';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_no_new_receipt_after_credit BEFORE INSERT
+ ON finance_invoice_receipt FOR EACH ROW
+ EXECUTE FUNCTION cg09_stop_invoice_receipt_after_credit();
