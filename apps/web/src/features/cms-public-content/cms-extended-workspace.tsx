@@ -7,6 +7,7 @@ type Section={kind:string;order:number;fields:Record<string,unknown>};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Draft={kind:Kind;slug:string;title:string;seoTitle:string;seoDescription:string;
  sections:Section[];assets:Asset[]};
+type NoticeSource={noticeRef:string;title:string;body:string;expiresAt:string;asOfDate:string};
 type Item={pageRef:string;kind:string;slug:string;title:string;version:string;
  draftStatus:string;publicStatus:string|null};
 type Detail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:string;
@@ -92,6 +93,8 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
  const [busy,setBusy]=useState(false),[preview,setPreview]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
+ const [noticeSources,setNoticeSources]=useState<NoticeSource[]>([]);
+ const [noticeSourceError,setNoticeSourceError]=useState("");
  const [uploadRole,setUploadRole]=useState("IMPACT"),[uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [withdrawReason,setWithdrawReason]=useState("");
@@ -383,6 +386,42 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
          source:"",asOfDate:today(),mediaType:"PHOTO"})}>Add gallery item</button>}
       </>}
       {section.kind==="ARTICLE_BODY"&&<>
+       <details className="cg-cms-card">
+        <summary>Optional: publish an eligible original Foundation notice as an article</summary>
+        <p>Only an active, already approved CG-19 all-staff notice can be selected.
+         This makes an explicit public copy subject to separate CG-03 CMS approval.
+         Private recipients and delivery records are never included.</p>
+        <button type="button" disabled={busy||!canManage} onClick={()=>{
+         void api<{sources:NoticeSource[]}>("notice-sources").then(res=>{
+          setNoticeSources(res.sources);setNoticeSourceError("");
+         }).catch(()=>setNoticeSourceError(
+          "Original notices are unavailable or your role cannot view them."));
+        }}>Load eligible approved notices</button>
+        {noticeSourceError&&<p role="status">{noticeSourceError}</p>}
+        <label>Original notice to copy<select value={str(f.sourceNoticeRef)}
+         onChange={e=>{
+          const chosen=noticeSources.find(x=>x.noticeRef===e.target.value);
+          if(!chosen){const {sourceNoticeRef,publicReleaseConfirmed,...plain}=f;
+           edit(index,plain);return;}
+          edit(index,{...f,sourceNoticeRef:chosen.noticeRef,publicReleaseConfirmed:false,
+           heading:chosen.title,body:chosen.body,excerpt:chosen.body.slice(0,300),
+           category:"Official Notice",authorLabel:"CareGanga Foundation",
+           source:"CG-19 approved Foundation notice",asOfDate:chosen.asOfDate});
+         }}>
+         <option value="">Independent editorial article (not a notice)</option>
+         {noticeSources.map(item=><option key={item.noticeRef} value={item.noticeRef}>
+          {item.title} · expires {item.expiresAt.slice(0,10)}</option>)}
+        </select></label>
+        {typeof f.sourceNoticeRef==="string"&&<label className="cg-cms-consent">
+         <input type="checkbox" checked={f.publicReleaseConfirmed===true}
+          onChange={e=>change("publicReleaseConfirmed",e.target.checked)}/>
+         I confirm that this exact notice title and body are safe for publication
+         to everyone; an independent CMS reviewer must approve the original copy.
+        </label>}
+        {typeof f.sourceNoticeRef==="string"&&<p>Do not rewrite the original
+         notice heading/body. Its cancellation or expiry will automatically hide
+         this article from both public channels.</p>}
+       </details>
        {(["category","authorLabel","source"] as const).map(key=><Field key={key}
         name={key.replace(/([A-Z])/g," $1")} value={f[key]}
         onChange={v=>change(key,v)}/>)}
