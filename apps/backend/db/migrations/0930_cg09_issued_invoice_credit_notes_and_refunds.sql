@@ -278,7 +278,7 @@ CREATE CONSTRAINT TRIGGER cg09_invoice_adjustment_requires_proof
 -- Serialize a concurrent deposit with the credit issuance on invoice row.
 -- Refund bank reconciliation is acceptable only against the exact original
 -- transfer reference and negative bank movement, never a convenient deposit.
-CREATE FUNCTION cg09_guard_refund_statement_match() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_refund_statement_match() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE bank journal%ROWTYPE; requested record;
 BEGIN
  SELECT * INTO bank FROM journal
@@ -296,7 +296,7 @@ BEGIN
    USING ERRCODE='P0932';
  END IF;
  RETURN NEW;
-END; $;
+END; $$;
 CREATE TRIGGER cg09_refund_statement_source_guard
  BEFORE INSERT ON finance_bank_reconciliation
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_refund_statement_match();
