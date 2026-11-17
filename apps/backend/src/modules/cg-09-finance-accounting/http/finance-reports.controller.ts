@@ -6,8 +6,9 @@ export class FinanceReportsController{
  @Get("options") options(@Headers("authorization")auth:string){
   return this.reports.options(auth);
  }
- @Get("summary") summary(@Headers("authorization")auth:string,@Query("yearRef")year?:string){
-  return this.reports.summary(auth,year);
+ @Get("summary") summary(@Headers("authorization")auth:string,
+  @Query("yearRef")year?:string,@Query("branchRef")branch?:string){
+  return this.reports.summary(auth,year,branch);
  }
  @Get("general-ledger")
  ledger(@Headers("authorization")auth:string,@Query()q:Record<string,string>){
