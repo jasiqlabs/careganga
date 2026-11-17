@@ -125,6 +125,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_INVOICE_RECEIPT_NOT_READY:"Only a separately verified real bank statement match can settle this original issued invoice.",
       FINANCE_INVOICE_FILTER_INVALID:"Choose a valid invoice search or list page.",
       FINANCE_BUDGET_SOURCE_INVALID:"Choose a valid Foundation budget from your permitted list.",
+      FINANCE_BUDGET_DUPLICATE:"A budget already exists for this financial year, category, period and branch. Open the existing budget or adjust the scope.",
       FINANCE_BUDGET_STALE:"The original budget version changed. Refresh before saving.",
       FINANCE_BUDGET_FORM_INVALID:"Review the budget name, year, category and required fields.",
       FINANCE_BUDGET_AMOUNT_INVALID:"Enter a valid positive budget amount in rupees.",
