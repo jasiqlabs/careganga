@@ -6,10 +6,10 @@ type Group={groupRef:string;name:string;code:string;category:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
 type Account={accountRef:string;code:string;name:string;groupName:string;kind:string;
  normalSide:string;scopeKind:string;branchRef:string|null;branchName:string|null;
- status:string;version:number;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null};
+ status:string;version:number;balanceMinor:string;openingMinor:string;bankLabel:string|null;maskedDetails:string|null};
 type Opening={journalRef:string;postingDate:string;yearName:string;amountMinor:string};
 type Setup={years:Year[];groups:Group[];branches:Branch[];accounts:Account[];
- openingJournals:Opening[];nextOffset:number|null};
+ openingJournals:Opening[];categorySummary:{category:string;balanceMinor:string;accountCount:string}[];nextOffset:number|null};
 type FormKind="year"|"group"|"account"|"opening";
 type Pending={key:string;kind:string;path:string;payload:Record<string,unknown>;method?:"POST"|"PATCH"};
 type SafeFailure={message:string;field:string|null;uncertain:boolean};
@@ -88,7 +88,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    const result=await res.json() as Setup;
    if(!result||!Array.isArray(result.accounts)||!Array.isArray(result.years)||
      !Array.isArray(result.groups)||!Array.isArray(result.branches)||
-     !Array.isArray(result.openingJournals))throw Error("Finance response could not be confirmed.");
+     !Array.isArray(result.openingJournals)||!Array.isArray(result.categorySummary))throw Error("Finance response could not be confirmed.");
    setData(result);
   }catch(e){setError(e instanceof Error?e.message:"Finance accounts could not be loaded. Please retry.");}
   finally{setLoading(false);}
@@ -99,13 +99,30 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
   setForm(blank());
  }
  const activeAccounts=useMemo(()=>data?.accounts.filter(a=>a.status==="ACTIVE")??[],[data]);
+ const categoryMap=new Map((data?.categorySummary??[]).map(row=>[row.category,row]));
+ const amount=(category:string)=>categoryMap.get(category)?.balanceMinor??"0";
+ const accountsIn=(category:string)=>Number(categoryMap.get(category)?.accountCount??"0");
+ const surplus=(BigInt(amount("INCOME"))-BigInt(amount("EXPENSE"))).toString();
  const summary=[
-  {label:"Accounts on this page",value:String(data?.accounts.length??0),icon:"▣"},
-  {label:"Open financial years",value:String(data?.years.filter(y=>y.status==="OPEN").length??0),icon:"▤"},
-  {label:"Cash accounts on this page",value:String(data?.accounts.filter(a=>a.kind==="CASH").length??0),icon:"₹"},
-  {label:"Bank accounts on this page",value:String(data?.accounts.filter(a=>a.kind==="BANK").length??0),icon:"▥"},
-  {label:"Recent opening entries",value:String(data?.openingJournals.length??0),icon:"✓"}
+  {label:"Total Assets (posted)",value:rupees(amount("ASSET")),icon:"▣"},
+  {label:"Total Liabilities (posted)",value:rupees(amount("LIABILITY")),icon:"▤"},
+  {label:"Equity / Fund (posted)",value:rupees(amount("FUND")),icon:"⚖"},
+  {label:"Total Income (posted)",value:rupees(amount("INCOME")),icon:"↗"},
+  {label:"Total Expenses (posted)",value:rupees(amount("EXPENSE")),icon:"↘"},
+  {label:"Net Surplus (posted)",value:rupees(surplus),icon:"▥"}
  ];
+ const categoryCounts=["ASSET","LIABILITY","FUND","INCOME","EXPENSE"]
+   .map(kind=>({kind,count:accountsIn(kind)})).filter(x=>x.count>0);
+ const legendColors=["#1E53DC","#1BAF7A","#EDA100","#EB6834","#4A3AA7"];
+ const countTotal=categoryCounts.reduce((sum,c)=>sum+c.count,0);
+ let percent=0;
+ const chartBackground=countTotal?"conic-gradient("+
+    categoryCounts.map((c,i)=>{
+      const start=percent;
+      percent+=c.count/countTotal*100;
+      return legendColors[i%legendColors.length]+" "+start+"% "+percent+"%";
+    }).join(",")+")":"#E0E5ED";
+
  function payloadFor(kind:FormKind):Record<string,unknown>{
   if(kind==="year")return {name:form.name,startOn:form.startOn,endOn:form.endOn};
   if(kind==="group")return {name:form.name,code:form.code,category:form.category,
@@ -200,7 +217,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
      <div><p>{s.label}</p><strong>{s.value}</strong></div>
     </div>)}
    </div>
-   <section className="cg-fin-panel">
+   <div className="cg-fin-content-grid"><section className="cg-fin-panel">
     <div className="cg-fin-toolbar">
      <div><h2>Financial accounts & opening setup</h2>
       <p>Amounts are shown only from confirmed, posted finance records.</p></div>
@@ -229,13 +246,14 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
      </form>
      <div className="cg-fin-table-wrap"><table className="cg-fin-table">
       <thead><tr><th>Account Name</th><th>Code</th><th>Group</th><th>Scope</th>
-       <th>Type</th><th>Status</th><th>Posted balance</th>{canManage&&<th>Action</th>}</tr></thead>
+       <th>Type</th><th>Opening balance</th><th>Current balance</th><th>Status</th>{canManage&&<th>Action</th>}</tr></thead>
       <tbody>{data.accounts.map(a=><tr key={a.accountRef}>
        <td><strong>{a.name}</strong>{a.bankLabel&&<small>{a.bankLabel}{a.maskedDetails?" — "+a.maskedDetails:""}</small>}</td>
        <td>{a.code}</td><td>{a.groupName}</td><td>{a.branchName??"Foundation"}</td>
        <td>{a.kind==="GENERAL"?"General":a.kind==="CASH"?"Cash":"Bank"}</td>
-       <td><span className={"cg-fin-status "+(a.status==="ACTIVE"?"is-active":"")}>{a.status==="ACTIVE"?"Active":"Inactive"}</span></td>
+       <td className="cg-fin-money">{rupees(a.openingMinor)}</td>
        <td className="cg-fin-money">{rupees(a.balanceMinor)}</td>
+       <td><span className={"cg-fin-status "+(a.status==="ACTIVE"?"is-active":"")}>{a.status==="ACTIVE"?"Active":"Inactive"}</span></td>
        {canManage&&<td><button type="button" disabled={busy}
         onClick={()=>setStatusConfirm({type:"account",ref:a.accountRef,name:a.name,
          expectedVersion:a.version,nextStatus:a.status==="ACTIVE"?"INACTIVE":"ACTIVE"})}>
@@ -271,6 +289,43 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
        <td><span className="cg-fin-status is-active">Posted</span></td></tr>)}
      </tbody></table>{!data.openingJournals.length&&<p className="cg-fin-empty">No opening entries posted. Select two eligible accounts and an open financial year.</p>}</div>}
    </section>
+   <aside className="cg-fin-side" aria-label="Accounts overview">
+    <section className="cg-fin-rail-card">
+     <h2>Account Overview</h2>
+     <p>Active and inactive account categories in this Foundation.</p>
+     <div className="cg-fin-overview-visual">
+      <div className="cg-fin-donut" style={{background:chartBackground}} role="img"
+        aria-label="Account category distribution based on existing financial accounts">
+       <div><small>Accounts</small><strong>{countTotal}</strong></div></div>
+      <ul className="cg-fin-legend">{categoryCounts.map((c,i)=>
+       <li key={c.kind}><span className="cg-fin-legend-marker"
+        style={{background:legendColors[i%legendColors.length]}}/>
+        <span>{c.kind==="FUND"?"Equity / Fund":
+          c.kind.charAt(0)+c.kind.slice(1).toLowerCase()}</span><b>{c.count}</b></li>)}
+      </ul>
+     </div>
+     {!countTotal&&<p className="cg-fin-empty">Create your first account to see its category.</p>}
+    </section>
+    <section className="cg-fin-rail-card">
+     <h2>Cash & Bank Accounts</h2>
+     <p>Accounts on the current page. Bank numbers remain masked.</p>
+     {data.accounts.filter(a=>a.kind==="CASH"||a.kind==="BANK").length?
+      <ul className="cg-fin-recent-list">{data.accounts.filter(a=>a.kind==="CASH"||a.kind==="BANK")
+       .slice(0,6).map(a=><li key={a.accountRef}><div><b>{a.bankLabel??a.name}</b>
+        <small>{a.maskedDetails??a.kind} · {a.status==="ACTIVE"?"Active":"Inactive"}</small>
+       </div><strong>{rupees(a.balanceMinor)}</strong></li>)}</ul>:
+      <p className="cg-fin-empty">No bank or cash accounts on this page.</p>}
+    </section>
+    <section className="cg-fin-rail-card">
+     <h2>Recent Opening Entries</h2>
+     <p>Only confirmed source-backed entries are displayed.</p>
+     {data.openingJournals.length?<ul className="cg-fin-recent-list">
+      {data.openingJournals.slice(0,5).map(j=><li key={j.journalRef}>
+       <div><b>{j.yearName}</b><small>{j.postingDate}</small></div>
+       <strong>{rupees(j.amountMinor)}</strong></li>)}</ul>:
+      <p className="cg-fin-empty">No opening entries have been posted yet.</p>}
+    </section>
+   </aside></div>
   </>}
   {statusConfirm&&<div className="drawer-backdrop" role="presentation">
    <section className="role-drawer cg-fin-drawer" role="dialog" aria-modal="true"
