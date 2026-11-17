@@ -346,13 +346,9 @@ export class FinanceAccountsService{
    if(current.version!==expectedVersion)
     throw new ConflictException({code:"FINANCE_STALE_RECORD"});
    if(current.status===status)throw new ConflictException({code:"FINANCE_STALE_RECORD"});
-   if(current.branch_id){
-    const active=await client.query<{version:number}>(`
-      SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' FOR SHARE`,
-      [current.branch_id,actor.realmId]);
-    if(!active.rows[0]&&status==="ACTIVE")
-     throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE"});
-   }
+   if(current.branch_id&&status==="ACTIVE")
+    await this.branches.requireFinanceActiveBranch(client,actor,current.branch_id,
+     "finance.accounts.manage");
    await client.query(`
     UPDATE finance_account SET status=$1,version=version+1
     WHERE id=$2 AND root_realm_id=$3`,[status,account,actor.realmId]);
