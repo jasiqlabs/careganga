@@ -1,7 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,
+import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -317,6 +318,11 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
       })}
      </View>;
     }
+    if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
+       "HEALTHCARE_CATEGORIES"].includes(section.kind))
+     return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
+      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
+      onBackToNews={()=>setSlug("articles")}/>;
     // Project teasers require CG05 original owner and cannot be invented.
     return null;
    })}
