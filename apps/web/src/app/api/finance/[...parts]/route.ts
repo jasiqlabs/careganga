@@ -32,7 +32,8 @@ const financeErrors=new Set([
  "FINANCE_BUDGET_FILTER_INVALID",
  "FINANCE_REPORT_FILTER_INVALID","FINANCE_REPORT_TOO_LARGE",
  "FINANCE_RECONCILIATION_INVALID","FINANCE_RECONCILIATION_CONFLICT",
- "FINANCE_RECONCILIATION_VARIANCE"
+ "FINANCE_RECONCILIATION_VARIANCE",
+ "FINANCE_RECONCILIATION_EVIDENCE_INVALID","FINANCE_RECONCILIATION_EVIDENCE_CONFLICT"
 ]);
 function allowed(parts:string[],method:string):boolean{
  if(parts[0]==="reports"){
@@ -225,7 +226,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "bankAccountRef","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "bankAccountRef","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","statementFileRef","statementFileVersion","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
