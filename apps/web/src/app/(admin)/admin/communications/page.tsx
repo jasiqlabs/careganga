@@ -41,7 +41,7 @@ export default async function FoundationCommunicationsPage(){
         <p>Notices are restricted to your current Foundation role.</p>
         <Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="communications"
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} active="communications"
         displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||
