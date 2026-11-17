@@ -3,7 +3,7 @@ import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PUT";
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
  if(parts[0]==="pages"){
   if(parts.length===1)return method==="GET"||method==="POST";
