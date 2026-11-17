@@ -192,10 +192,16 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
       v.status==="SUBMITTED"?"Awaiting real approval":v.status==="APPROVED"?
       "Approved — not paid":v.status==="RETURNED"?"Returned for correction":
       v.status==="REJECTED"?"Rejected":"Review status unavailable"}</span></td>
-     {canManage&&<td><button type="button" disabled={loadingDraft||busy}
-      onClick={()=>void edit(v)}>{v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</button>
-      <FinanceVoucherSubmissionTools voucher={v} canViewEvidence={canViewEvidence}
-       canUploadEvidence={canUploadEvidence} onUpdated={()=>void refresh()}/></td>}
+     {canManage&&<td>
+      {["DRAFT","RETURNED"].includes(v.status)&&<button type="button"
+       disabled={loadingDraft||busy} onClick={()=>void edit(v)}>
+       {v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</button>}
+      {["DRAFT","SUBMITTED"].includes(v.status)&&<FinanceVoucherSubmissionTools
+       voucher={v} canViewEvidence={canViewEvidence}
+       canUploadEvidence={canUploadEvidence} onUpdated={()=>void refresh()}/>}
+      {!["DRAFT","RETURNED","SUBMITTED"].includes(v.status)&&
+       <span className="cg-fin-help">Read-only review outcome</span>}
+     </td>}
     </tr>)}</tbody>
    </table>{!data.length&&<p className="cg-fin-empty">No vouchers have been drafted.
     {canManage?" Choose New Voucher to start a genuine draft.":""}</p>}
