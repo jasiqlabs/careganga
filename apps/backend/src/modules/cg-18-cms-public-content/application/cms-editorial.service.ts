@@ -7,6 +7,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
+import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {extendedKinds,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
 import {complianceEligible} from "./cms-compliance-eligibility";
@@ -289,7 +290,8 @@ export class CmsEditorialService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly approvals:CmsPublicationApprovalService,
-  private readonly media:CmsDraftMediaService){}
+  private readonly media:CmsDraftMediaService,
+  private readonly notices:CmsPublicNoticeSource){}
  private async withTx<T>(cb:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();
   try{await tx.query("BEGIN");const result=await cb(tx);await tx.query("COMMIT");return result;}
@@ -378,6 +380,8 @@ export class CmsEditorialService{
   await tx.query("DELETE FROM cms_section_revision WHERE foundation_root_id=$1 "+
    "AND page_revision_id=$2",[actor.realmId,rev]);
   for(const sec of value.sections){
+   if(sec.kind==="ARTICLE_BODY")
+    await this.notices.validateDraft(tx,actor.realmId,sec.fields);
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
@@ -424,6 +428,8 @@ export class CmsEditorialService{
   const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
   const v=input(raw,["content","requestKey"]);
   const commandKey=uuid(v.requestKey,"requestKey"),content=parseContent(v.content);
+  if(content.sections.some(s=>typeof s.fields.sourceNoticeRef==="string"))
+   await this.notices.requireSelectionAccess(bearer);
   const digest=sha(content);
   return this.withTx(async tx=>{
    await this.identity.assertCurrent(tx,actor,"cms.content.manage");
@@ -472,6 +478,8 @@ export class CmsEditorialService{
   const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
   const v=input(raw,["content","expectedVersion","requestKey"]);
   const key=uuid(v.requestKey,"requestKey"),value=parseContent(v.content);
+  if(value.sections.some(s=>typeof s.fields.sourceNoticeRef==="string"))
+   await this.notices.requireSelectionAccess(bearer);
   const expected=Number(v.expectedVersion);
   if(!Number.isSafeInteger(v.expectedVersion)||expected<1)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"expectedVersion"});
