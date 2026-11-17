@@ -264,13 +264,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     method:c.method,headers:{"Content-Type":"application/json"},body:JSON.stringify(c.body)});
    if(!outcome.confirmed)throw Error("Publication action was not confirmed. Check the original record.");
    setPending(null);setNotice(c.label+" confirmed. "+val(outcome.status).replaceAll("_"," "));
+   // A confirmed write stays confirmed even if the subsequent refresh fails.
+   // Never invite a duplicate save after the server has acknowledged it.
    await refresh();
-   if(c.path.startsWith("pages/")&&selected){
-    const x=await read<PageDetail>("pages/"+selected.pageRef);
-    setSelected(x);setDraft(fromPage(x));
-   }else if(outcome.pageRef){
-    const x=await read<PageDetail>("pages/"+outcome.pageRef);
-    setSelected(x);setDraft(fromPage(x));
+   try{
+    if(c.path.startsWith("pages/")&&selected){
+     const x=await read<PageDetail>("pages/"+selected.pageRef);
+     setSelected(x);setDraft(fromPage(x));
+    }else if(outcome.pageRef){
+     const x=await read<PageDetail>("pages/"+outcome.pageRef);
+     setSelected(x);setDraft(fromPage(x));
+    }
+   }catch{
+    setError("Your change was confirmed, but the latest page could not be loaded. Refresh to see it.");
    }
   }catch(e){setError(e instanceof Error?e.message:"Action not confirmed. Retry the same request key.");}
   finally{setBusy(false);}
