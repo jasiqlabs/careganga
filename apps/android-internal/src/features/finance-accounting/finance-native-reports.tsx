@@ -30,8 +30,8 @@ const viewChoices:{ref:ViewKind;label:string}[]=[
  {ref:"reconciliation",label:"Bank Reconciliation"}];
 const safeCsv=(s:string)=>'"'+(/^\s*[+\-=@]/.test(s)?"'":"")+
  s.replace(/[\r\n]/g," ").replace(/"/g,'""')+'"';
-export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpired}:{
- token:string;canReconcile:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void}){
+export function FinanceNativeReports({token,canReconcile,canUploadStatement,canReview,onExit,onExpired}:{
+ token:string;canReconcile:boolean;canUploadStatement:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void}){
  const [view,setView]=useState<ViewKind>("summary");
  const [years,setYears]=useState<Year[]>([]),[accounts,setAccounts]=useState<Account[]>([]);
  const [year,setYear]=useState(""),[account,setAccount]=useState("");
@@ -159,7 +159,7 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
      statementFileVersion:file.fileVersion}:{})}});
  }
  async function chooseStatement(){
-  if(busy||!canReconcile||!uploadMatch)return;
+  if(busy||!canUploadStatement||!uploadMatch)return;
   try{
    const result=await DocumentPicker.getDocumentAsync({multiple:false,
     type:["application/pdf","image/jpeg","image/png","image/webp"],copyToCacheDirectory:true});
@@ -183,7 +183,7 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
   }catch(e){problemView(e);}finally{setBusy(false);}
  }
  async function uploadStatement(){
-  if(!picked||!uploadMatch||busy||!canReconcile)return;
+  if(!picked||!uploadMatch||busy||!canUploadStatement)return;
   const key=uploadKey||Crypto.randomUUID();setUploadKey(key);
   setBusy(true);setError("");setNotice("");
   try{
@@ -339,13 +339,13 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
      <Text style={s.text}>Statement: {money(x.statementAmountMinor)}
       · Difference: {money(x.varianceMinor)}</Text>
      <Text style={s.muted}>{x.status==="VERIFIED"?"Bank statement reviewed":x.status}</Text>
-     {x.status==="PENDING"&&x.canUpload&&canReconcile&&
+     {x.status==="PENDING"&&x.canUpload&&canUploadStatement&&
       <Action label="Attach original bank statement" secondary onPress={()=>{
        setUploadMatch(x.reconciliationRef);setPicked(null);setUploadKey("");setUploadRef("");}}/>}
      {x.status==="PENDING"&&canReview&&<Action label="Review original bank item"
       secondary onPress={()=>{setReview(x.reconciliationRef);setPassword("");}}/>}
     </View>)}
-    {uploadMatch&&canReconcile&&<Card title="Original private bank statement">
+    {uploadMatch&&canUploadStatement&&<Card title="Original private bank statement">
      <Text style={s.muted}>Only the genuine PDF or image can proceed to an independent review.</Text>
      <Action label="Choose bank statement" secondary disabled={busy} onPress={()=>void chooseStatement()}/>
      {picked&&<Text style={s.text}>{picked.name}</Text>}
