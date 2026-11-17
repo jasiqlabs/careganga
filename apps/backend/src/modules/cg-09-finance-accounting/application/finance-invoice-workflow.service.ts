@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
@@ -11,7 +11,7 @@ import {FinanceJournalPostingService} from "./finance-journal-posting.service";
 import {FinanceInvoiceDocumentService} from "../../cg-19-documents-notifications/application/finance-invoice-document.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-type Invoice={id:string;version:number;current_digest:string;status:string;invoice_number:string;
+type Invoice={id:string;version:number;current_digest:string;status:string;invoice_number:string;created_by:string;
  draft_payload:Record<string,unknown>;financial_year_id:string|null;branch_id:string|null;
  invoice_date:string|null;approval_case_id:string|null;receivable_account_id:string|null;
  income_account_id:string|null;tax_account_id:string|null;gross_minor:string|null;
@@ -50,9 +50,18 @@ export class FinanceInvoiceWorkflowService{
   const actor=await this.sessions.requireAction(bearer,capability);
   return actor;
  }
+ private async requireBranch(bearer:string,capability:
+  "finance.invoices.manage"|"finance.invoices.issue",
+  branchRef:string|null,createdBy:string){
+  const actor=await this.sessions.requireAction(bearer,capability);
+  const scope=await this.branches.financeReportScope(bearer,capability);
+  if(!scope.all&&(!branchRef||!scope.branchRefs.includes(branchRef))&&
+    !(branchRef===null&&createdBy===actor.accountId))
+   throw new ForbiddenException("This invoice is not available to your assigned branch");
+ }
  private async load(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
   const rows=await tx.query<Invoice>(
-   "SELECT id,version,status,current_digest,invoice_number,draft_payload,"+
+   "SELECT id,version,status,current_digest,invoice_number,created_by,draft_payload,"+
    "financial_year_id,branch_id,invoice_date::text,approval_case_id,"+
    "receivable_account_id,income_account_id,tax_account_id,"+
    "gross_minor::text,tax_minor::text,charges_minor::text,total_minor::text "+
@@ -144,6 +153,7 @@ export class FinanceInvoiceWorkflowService{
    if(x.status!=="DRAFT"||x.version!==version)
     throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
    const facts=await this.checkOriginal(tx,actor,x);
+   await this.requireBranch(bearer,"finance.invoices.manage",facts.branch,x.created_by);
    const caseRow=await this.approvals.createCase(tx,actor,{
     invoiceRef:ref,version,digest:x.current_digest,number:x.invoice_number,key});
    const i=facts.info,j=facts.items,p=facts.payment;
@@ -180,6 +190,7 @@ export class FinanceInvoiceWorkflowService{
     throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
    const x=await this.load(tx,actor,ref);
+   await this.requireBranch(bearer,"finance.invoices.manage",x.branch_id,x.created_by);
    if(!x.approval_case_id||x.status!=="SUBMITTED")
     throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
    const caseRef=x.approval_case_id;
@@ -217,6 +228,7 @@ export class FinanceInvoiceWorkflowService{
     await tx.query("COMMIT");
     return {confirmed:true,status:old.result_status,invoiceNumber:oldInvoice.invoice_number,replayed:true};}
    const x=await this.load(tx,actor,ref);
+   await this.requireBranch(bearer,"finance.invoices.manage",x.branch_id,x.created_by);
    if(x.status!=="APPROVED"||!x.approval_case_id||
       !x.financial_year_id||!x.invoice_date||!x.receivable_account_id||
       !x.income_account_id||!x.total_minor||!x.gross_minor||
@@ -273,6 +285,12 @@ export class FinanceInvoiceWorkflowService{
   const digest=hash(["INVOICE_ISSUE_V1",ref]);
   // External PDF issuance cannot be inside the transaction. CG19 uses the same
   // original source key and document-status lookup for any uncertain result.
+  const original=await this.db.query<{branch_id:string|null;created_by:string}>(
+   "SELECT branch_id,created_by FROM finance_invoice WHERE id=$1 AND root_realm_id=$2",
+   [ref,actor.realmId]);
+  if(!original.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  await this.requireBranch(bearer,"finance.invoices.issue",
+   original.rows[0].branch_id,original.rows[0].created_by);
   const result=await this.documents.issue(bearer,ref,key);
   if(result.status!=="ISSUED")
    return {confirmed:false,status:result.status,issueDocumentRef:result.documentRef??null};
@@ -285,6 +303,7 @@ export class FinanceInvoiceWorkflowService{
     throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
    const x=await this.load(tx,actor,ref);
+   await this.requireBranch(bearer,"finance.invoices.issue",x.branch_id,x.created_by);
    if(x.status!=="POSTED")
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
    const changed=await tx.query(
@@ -309,9 +328,9 @@ export class FinanceInvoiceWorkflowService{
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
   await this.sessions.requireAction(bearer,"finance.journals.post");
   const ref=ident(invoiceInput);
-  const source=await this.db.query<{status:string;branch_id:string|null;
+  const source=await this.db.query<{status:string;branch_id:string|null;created_by:string;
    receivable_account_id:string;total_minor:string}>(
-   "SELECT status,branch_id,receivable_account_id,total_minor::text "+
+   "SELECT status,branch_id,created_by,receivable_account_id,total_minor::text "+
    "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2",
    [ref,actor.realmId]);
   const invoice=source.rows[0];
@@ -321,6 +340,7 @@ export class FinanceInvoiceWorkflowService{
    "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
   if(credited.rowCount)
    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+  await this.requireBranch(bearer,"finance.invoices.issue",invoice.branch_id,invoice.created_by);
   const [banks,years]=await Promise.all([
    this.db.query<{accountRef:string;code:string;name:string}>(
     "SELECT id AS \"accountRef\",code,name FROM finance_account "+
@@ -364,6 +384,7 @@ export class FinanceInvoiceWorkflowService{
     return {confirmed:true,status:old.result_status,replayed:true};
    }
    const x=await this.load(tx,actor,ref);
+   await this.requireBranch(bearer,"finance.invoices.issue",x.branch_id,x.created_by);
    if(x.status!=="ISSUED"||!x.total_minor||!x.receivable_account_id)
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
    const credited=await tx.query("SELECT id FROM finance_invoice_credit_note "+
@@ -415,13 +436,14 @@ export class FinanceInvoiceWorkflowService{
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
   const ref=ident(invoiceInput);
   const invoice=await this.db.query<{total_minor:string;receivable_account_id:string;
-   branch_id:string|null;status:string}>(
-   "SELECT total_minor::text,receivable_account_id,branch_id,status "+
+   branch_id:string|null;created_by:string;status:string}>(
+   "SELECT total_minor::text,receivable_account_id,branch_id,created_by,status "+
    "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2",
    [ref,actor.realmId]);
   const x=invoice.rows[0];
   if(!x||x.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  await this.requireBranch(bearer,"finance.invoices.issue",x.branch_id,x.created_by);
   const credited=await this.db.query("SELECT id FROM finance_invoice_credit_note "+
    "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
   if(credited.rowCount)return {matches:[],hasMore:false,outstandingMinor:"0"};
@@ -485,6 +507,7 @@ export class FinanceInvoiceWorkflowService{
     return {confirmed:true,status:old.result_status,replayed:true};
    }
    const x=await this.load(tx,actor,ref);
+   await this.requireBranch(bearer,"finance.invoices.issue",x.branch_id,x.created_by);
    if(x.status!=="ISSUED"||!x.total_minor)
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
    const credited=await tx.query("SELECT id FROM finance_invoice_credit_note "+
@@ -531,14 +554,15 @@ export class FinanceInvoiceWorkflowService{
  async receiptStatus(bearer:string,invoiceInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
   const ref=ident(invoiceInput);
-  const invoice=await this.db.query<{total:string;status:string;credited:boolean}>(
-   "SELECT i.total_minor::text AS total,i.status,"+
+  const invoice=await this.db.query<{total:string;status:string;credited:boolean;branch_id:string|null;created_by:string}>(
+   "SELECT i.total_minor::text AS total,i.status,i.branch_id,i.created_by,"+
    "EXISTS(SELECT 1 FROM finance_invoice_credit_note c "+
    "WHERE c.root_realm_id=i.root_realm_id AND c.invoice_id=i.id) AS credited "+
    "FROM finance_invoice i WHERE i.id=$1 AND i.root_realm_id=$2",[ref,actor.realmId]);
   const original=invoice.rows[0];
   if(!original||original.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  await this.requireBranch(bearer,"finance.invoices.issue",original.branch_id,original.created_by);
   const receipts=await this.db.query<{receiptRef:string;receiptNumber:string;
    amountMinor:string;paidDate:string}>(
    "SELECT id AS \"receiptRef\",receipt_number AS \"receiptNumber\","+
