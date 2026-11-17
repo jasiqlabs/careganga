@@ -855,3 +855,7 @@ button:disabled { cursor:wait; opacity:.65; }
  .cg-public-sections{padding:.75rem}
  .cg-public-hero{padding:1.25rem}
 }
+
+.cg-public-hero-picture{display:block;width:100%;min-width:0}
+.cg-public-team-photo{width:100%;max-height:17rem;aspect-ratio:4/3;object-fit:cover;
+ border-radius:.5rem;margin-bottom:.55rem}
