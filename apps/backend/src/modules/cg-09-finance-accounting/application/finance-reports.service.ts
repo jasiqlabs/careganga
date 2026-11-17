@@ -56,6 +56,23 @@ export class FinanceReportsService{
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"date"});
   return {fy,branch,account,from,to,offset:position(raw.offset)};
  }
+ private async verifyFilterScope(realm:string,v:{
+  fy:string|null;branch:string|null;account:string|null}){
+  const tests:{ref:string|null;field:string;table:string}[]=[
+   {ref:v.fy,field:"yearRef",table:"financial_year"},
+   {ref:v.branch,field:"branchRef",table:"branch"},
+   {ref:v.account,field:"accountRef",table:"finance_account"}
+  ];
+  for(const t of tests){
+   if(!t.ref)continue;
+   // Whitelisted table names only: no request values interpolated into SQL.
+   const result=await this.db.query(
+    "SELECT id FROM "+t.table+" WHERE id=$1 AND root_realm_id=$2",
+    [t.ref,realm]);
+   if(!result.rowCount)
+    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:t.field});
+  }
+ }
  async options(bearer:string){
   const actor=await this.actor(bearer);
   const [years,accounts]=await Promise.all([
@@ -71,6 +88,7 @@ export class FinanceReportsService{
  }
  async ledger(bearer:string,raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
+  await this.verifyFilterScope(actor.realmId,v);
   const rows=await this.db.query<{accountName:string;accountCode:string;category:string;
    postingDate:string;description:string;postingKind:string;debitMinor:string;
    creditMinor:string;normalSide:string;journalRef:string;lineRef:string}>(
@@ -96,11 +114,7 @@ export class FinanceReportsService{
  async trialBalance(bearer:string,yearInput:string,branchInput?:string){
   const actor=await this.actor(bearer),yearRef=uuid(yearInput,"yearRef"),
    branch=branchInput?uuid(branchInput,"branchRef"):null;
-  const present=await this.db.query(
-   "SELECT id FROM financial_year WHERE root_realm_id=$1 AND id=$2",
-   [actor.realmId,yearRef]);
-  if(!present.rowCount)
-   throw new ConflictException({code:"FINANCE_REPORT_FILTER_INVALID",field:"yearRef"});
+  await this.verifyFilterScope(actor.realmId,{fy:yearRef,branch,account:null});
   const row=await this.db.query<{accountName:string;code:string;category:string;
    debitMinor:string;creditMinor:string;normalSide:string}>(
    "SELECT a.name AS \"accountName\",a.code,g.category,a.normal_side AS \"normalSide\","+
@@ -157,6 +171,7 @@ export class FinanceReportsService{
  async summary(bearer:string,yearInput?:string){
   const actor=await this.actor(bearer),
    year=yearInput?uuid(yearInput,"yearRef"):null;
+  await this.verifyFilterScope(actor.realmId,{fy:year,branch:null,account:null});
   const result=await this.db.query<{category:string;amountDebit:string;amountCredit:string}>(
    "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
    "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
