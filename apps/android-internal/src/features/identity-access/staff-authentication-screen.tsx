@@ -251,14 +251,14 @@ export function StaffAuthenticationScreen(){
       canConfigure={roleActions.includes("approvals.process.manage")}
       onExit={closeBudgetReviews} onExpired={expireSession}/>;
   if(invoiceOpen&&token&&actor&&
-    (roleActions.includes("finance.invoices.view")||roleActions.includes("finance.invoices.manage")))
+    roleActions.includes("finance.invoices.view"))
     return <FinanceNativeInvoices token={token}
       canManage={roleActions.includes("finance.invoices.manage")}
       canIssue={roleActions.includes("finance.invoices.issue")}
       canPost={roleActions.includes("finance.journals.post")}
       onExit={closeInvoices} onExpired={expireSession}/>;
   if(budgetOpen&&token&&actor&&
-    (roleActions.includes("finance.budgets.view")||roleActions.includes("finance.budgets.manage")))
+    roleActions.includes("finance.budgets.view"))
     return <FinanceNativeBudgets token={token}
       canManage={roleActions.includes("finance.budgets.manage")}
       onExit={closeBudgets} onExpired={expireSession}/>;
@@ -404,7 +404,7 @@ export function StaffAuthenticationScreen(){
                onPress={()=>setFinanceClaimsOpen(true)}>
                <Text style={styles.buttonText}>Expense Claims</Text>
               </Pressable>}
-            {["finance.invoices.view","finance.invoices.manage"].some(x=>roleActions.includes(x))&&
+            {roleActions.includes("finance.invoices.view")&&
               <Pressable accessibilityRole="button" style={styles.button}
                onPress={()=>setInvoiceOpen(true)}>
                <Text style={styles.buttonText}>Invoices & Receipts</Text></Pressable>}
@@ -412,7 +412,7 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                onPress={()=>setInvoiceReviewOpen(true)}>
                <Text style={styles.buttonText}>Protected Invoice Reviews</Text></Pressable>}
-            {["finance.budgets.view","finance.budgets.manage"].some(x=>roleActions.includes(x))&&
+            {roleActions.includes("finance.budgets.view")&&
               <Pressable accessibilityRole="button" style={styles.button}
                onPress={()=>setBudgetOpen(true)}>
                <Text style={styles.buttonText}>Foundation Budgets</Text></Pressable>}
