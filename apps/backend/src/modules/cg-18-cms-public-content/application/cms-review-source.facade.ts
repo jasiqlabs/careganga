@@ -58,6 +58,18 @@ export class CmsReviewSourceFacade{
    [bearerRealm,revisionRef]);
   if(original.rows[0].kind==="HOME"&&!nav.rows[0])
    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+  const media=await this.db.query<{role:string;altText:string;order:number;current:boolean}>(
+   'SELECT a.role,a.alt_text AS "altText",a.sort_order AS "order",'+
+   '(a.public_rights_status = \'VALIDATED\' AND f.id IS NOT NULL '+
+   'AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL '+
+   'AND f.scan_status = \'CLEAN_VERIFIED\' '+
+   'AND f.public_rights_confirmed=true) AS current '+
+   'FROM cms_asset_placement a LEFT JOIN cg19_cms_media_file f '+
+   'ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id '+
+   'AND f.page_revision_id=a.page_revision_id '+
+   'WHERE a.foundation_root_id=$1 AND a.page_revision_id=$2 '+
+   'ORDER BY a.role,a.sort_order LIMIT 31',
+   [bearerRealm,revisionRef]);
   return {navigation:nav.rows[0]?{
    loginDesired:nav.rows[0].login_desired,
    memberJoinDesired:nav.rows[0].member_join_desired,
@@ -65,6 +77,8 @@ export class CmsReviewSourceFacade{
    title:original.rows[0].title,kind:original.rows[0].kind,
    slug:original.rows[0].slug,seoTitle:original.rows[0].seo_title,
    seoDescription:original.rows[0].seo_description,
+   assets:media.rows.map(a=>({role:a.role,altText:a.altText,
+    order:a.order,current:a.current})),
    sections:original.rows.slice(0,100).filter(x=>x.section_kind!==null)
     .map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields}))};
  }
