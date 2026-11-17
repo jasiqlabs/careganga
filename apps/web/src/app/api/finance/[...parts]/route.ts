@@ -23,7 +23,7 @@ function allowed(parts:string[],method:string):boolean{
    ["submit","reconcile","link-voucher"].includes(parts[2]))return method==="POST";
  if(parts.length===2&&parts[0]==="claims"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="drafts")return method==="POST";
- if(parts.length===2&&parts[0]==="claims"&&parts[1]==="mine")return method==="GET";
+ if(parts.length===2&&parts[0]==="claims"&&["mine","managed"].includes(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
@@ -83,7 +83,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   if(query.length>80)return NextResponse.json({message:"Search using a shorter claim number, category or purpose."},{status:400});
   target.searchParams.set("q",query);
  }
- if(method==="GET"&&parts[0]==="claims"&&parts[1]==="mine"){
+ if(method==="GET"&&parts[0]==="claims"&&["mine","managed"].includes(parts[1])){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
    return NextResponse.json({message:"Choose a valid claim list page and try again."},{status:400});
