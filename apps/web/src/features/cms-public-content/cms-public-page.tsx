@@ -36,6 +36,7 @@ export function CmsPublicPage({page,navigation}:{page:PublicCmsPage;navigation?:
    const v=section.fields??{},key=section.kind+"-"+section.order+"-"+index;
    if(section.kind==="HERO"){
     const hero=assets.find(x=>x.role==="HERO");
+    const mobileHero=assets.find(x=>x.role==="MOBILE_HERO");
     return <section className="cg-public-hero" key={key}>
      <div><p className="cg-public-eyebrow">CareGanga Foundation</p>
       <h1>{text(v.heading)||page.title}</h1>
@@ -45,8 +46,11 @@ export function CmsPublicPage({page,navigation}:{page:PublicCmsPage;navigation?:
        <Action label={v.secondaryLabel} href={v.secondaryPath}/>
       </div>
      </div>
-     {hero&&<img className="cg-public-hero-media" src={hero.src}
-      alt={hero.altText} loading="eager"/>}
+     {(hero||mobileHero)&&<picture className="cg-public-hero-picture">
+      {mobileHero&&<source media="(max-width:52rem)" srcSet={mobileHero.src}/>}
+      <img className="cg-public-hero-media" src={(hero||mobileHero)!.src}
+       alt={(hero||mobileHero)!.altText} loading="eager"/>
+     </picture>}
     </section>;
    }
    if(section.kind==="RICH_TEXT")return <section className="cg-public-card" key={key}>
@@ -60,7 +64,10 @@ export function CmsPublicPage({page,navigation}:{page:PublicCmsPage;navigation?:
       if(!person||typeof person!=="object"||!("consentConfirmed" in person)||
         person.consentConfirmed!==true)return null;
       const p=person as Record<string,unknown>;
+      const photo=assets.find(x=>x.role==="TEAM"&&x.order===i);
       return <article className="cg-public-person" key={i}>
+       {photo&&<img className="cg-public-team-photo" src={photo.src}
+        alt={photo.altText} loading="lazy"/>}
        <h3>{text(p.name)}</h3><strong>{text(p.designation)}</strong>
        {text(p.bio)&&<p>{text(p.bio)}</p>}
       </article>;
