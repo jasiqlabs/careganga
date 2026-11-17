@@ -439,4 +439,28 @@ export class FinanceExpenseClaimService{
   return {claims:rows.rows.slice(0,30),nextOffset:rows.rows.length>30?offset+30:null};
  }
 
+ async eligibleVouchers(bearer:string,claimInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  await this.sessions.requireAction(bearer,"finance.vouchers.view");
+  const claimRef=keyOf(claimInput);
+  const claim=await this.db.query(
+   "SELECT id FROM expense_claim WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='APPROVED'",[claimRef,actor.realmId]);
+  if(!claim.rowCount)
+   throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
+  const rows=await this.db.query<{voucherRef:string;voucherNumber:string;type:string;
+   totalMinor:string;kind:string|null;postedAt:Date}>(
+   "SELECT v.id AS \"voucherRef\",v.voucher_number AS \"voucherNumber\","+
+   "v.voucher_type AS type,v.total_minor::text AS \"totalMinor\","+
+   "l.link_kind AS kind,p.posted_at AS \"postedAt\" "+
+   "FROM finance_voucher v JOIN finance_voucher_posting p "+
+   "ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id "+
+   "LEFT JOIN expense_claim_voucher_link l ON l.voucher_id=v.id "+
+   "AND l.root_realm_id=v.root_realm_id "+
+   "WHERE v.root_realm_id=$1 AND v.expense_claim_id=$2 AND v.status='POSTED' "+
+   "ORDER BY p.posted_at DESC,v.id DESC LIMIT 60",
+   [actor.realmId,claimRef]);
+  return {vouchers:rows.rows};
+ }
+
 }
