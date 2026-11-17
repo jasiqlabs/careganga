@@ -19,8 +19,8 @@ async function errorMessage(res:Response){
 /** Original invoice remains issued. A separate credit note and refund are
  * independent immutable events; neither represents a verified bank payout.
  */
-export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage}:{
- invoiceRef:string;canReview:boolean;canManage:boolean
+export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage,onCredited}:{
+ invoiceRef:string;canReview:boolean;canManage:boolean;onCredited:()=>void
 }){
  const [data,setData]=useState<Status|null>(null);
  const [options,setOptions]=useState<Options|null>(null);
@@ -52,6 +52,7 @@ export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage}:{
    const result=await res.json() as {confirmed?:boolean;status?:string};
    if(!result.confirmed)throw Error("Financial result is not yet confirmed.");
    setPending(null);setCreditPassword("");setRefundPassword("");
+   if(result.status==="CREDIT_NOTE_POSTED")onCredited();
    setNotice(command.label+" recorded: "+(result.status??"confirmed")+
      ". An approved credit note does not prove a bank refund.");
    await refresh();
