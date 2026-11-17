@@ -215,10 +215,13 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
   (!draft.promoHeading||Boolean(draft.promoLabel)===Boolean(draft.promoPath))&&
+  (!draft.featureCards.length||draft.featuresHeading.trim().length>=3)&&
   (!draft.featuresHeading||draft.featureCards.length>0&&draft.featureCards.every(x=>
     x.label.trim().length>=2&&x.title.trim().length>=3&&x.body.trim().length>=5))&&
-  (!draft.volunteerTitle||Boolean(draft.memberTitle)&&
-    Boolean(draft.volunteerBody)&&Boolean(draft.memberBody))&&
+  ((![draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
+    draft.memberBody].some(Boolean))||
+    [draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
+     draft.memberBody].every(x=>x.trim().length>=3))&&
   draft.body.trim().length>=5&&
   draft.team.every(x=>x.consentConfirmed&&x.name.trim().length>=2&&
    x.designation.trim().length>=2);
@@ -548,20 +551,32 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <p>Upload only an original image the Foundation is authorized to publish.
        It must pass the private file scan before saving the draft.</p>
       <label>Placement<select value={uploadRole}
-       onChange={e=>setUploadRole(e.target.value as Asset["role"])}>
-       <option value="HERO">Desktop hero image</option>
-       <option value="MOBILE_HERO">Mobile hero image</option>
-       <option value="TEAM">Team member photograph</option></select></label>
-      {uploadRole==="TEAM"&&<label>Team member
-       <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-        {draft.team.map((m,i)=><option key={i} value={i}>{m.name||"Team member "+(i+1)}</option>)}
-       </select></label>}
-      <label>Describe the image<input value={uploadAlt} maxLength={300}
+        onChange={e=>{setUploadRole(e.target.value as Asset["role"]);setUploadOrder(0)}}>
+        <option value="HERO">Desktop hero slide photo</option>
+        <option value="MOBILE_HERO">Mobile hero slide photo</option>
+        <option value="ABOUT">About / story photograph</option>
+        <option value="PROMO">Volunteer promotional photograph</option>
+        <option value="FEATURE">How We Help card photograph</option>
+        <option value="TEAM">Team member photograph</option></select></label>
+       {(["HERO","MOBILE_HERO","TEAM","FEATURE"] as string[]).includes(uploadRole)&&
+        <label>{uploadRole==="TEAM"?"Team member":uploadRole==="FEATURE"?"Solution card":"Hero slide"}
+         <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
+          {(uploadRole==="TEAM"?draft.team:
+            uploadRole==="FEATURE"?draft.featureCards:draft.slides).map((value,index)=>
+            <option key={index} value={index}>{uploadRole==="TEAM"?
+             (value as Team).name||"Member "+(index+1):uploadRole==="FEATURE"?
+             (value as FeatureCard).title||"Card "+(index+1):
+             (value as Slide).heading||"Slide "+(index+1)}</option>)}
+         </select></label>}
+       <label>Describe the image<input value={uploadAlt} maxLength={300}
        onChange={e=>setUploadAlt(e.target.value)}/></label>
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>I confirm public image rights and consent</label>
       <label>Select original image<input type="file" accept="image/png,image/jpeg,image/webp"
-       disabled={busy||!rights||uploadAlt.trim().length<3||(uploadRole==="TEAM"&&draft.team.length===0)}
+       disabled={busy||!rights||uploadAlt.trim().length<3||
+         (uploadRole==="TEAM"&&draft.team.length===0)||
+         (uploadRole==="FEATURE"&&draft.featureCards.length===0)||
+         (["HERO","MOBILE_HERO"].includes(uploadRole)&&draft.slides.length===0)}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.currentTarget.value="";}}/></label>
       {draft.assets.map(x=><div className="cg-cms-asset" key={x.fileRef}>
        <span>{x.role==="TEAM"?(draft.team[x.order]?.name||"Team member "+(x.order+1)):
