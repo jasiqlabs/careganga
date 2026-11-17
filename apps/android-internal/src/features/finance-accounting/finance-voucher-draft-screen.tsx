@@ -11,7 +11,8 @@ type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:str
 type Line={description:string;quantity:string;unitRate:string};
 type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
- postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null};
+ postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null;
+ debitAccountRef?:string|null;creditAccountRef?:string|null};
  lines:{description:string;quantity:number;unitRateMinor:string}[];
  taxMinor:string;chargesMinor:string};
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
@@ -20,7 +21,7 @@ type Props={token:string;years:readonly FinanceYear[];branches:readonly FinanceB
  onClose:()=>void;onExpired:()=>void};
 const line=():Line=>({description:"",quantity:"1",unitRate:""});
 const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",postingDate:"",payeeName:"",
- purpose:"",paymentAccountRef:"",tax:"0",charges:"0"});
+ purpose:"",paymentAccountRef:"",debitAccountRef:"",creditAccountRef:"",tax:"0",charges:"0"});
 function money(v:string){try{const n=BigInt(v),x=n<0n?-n:n;return(n<0n?"−":"")+"₹"+
  (x/100n).toLocaleString("en-IN")+"."+(x%100n).toString().padStart(2,"0");}catch{return"Amount unavailable";}}
 function decimal(v:string){try{const n=BigInt(v);return(n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");}catch{return"0.00";}}
@@ -64,6 +65,10 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
  const [form,setForm]=useState(empty());
  const [items,setItems]=useState<Line[]>([line()]);
  const [paymentSearch,setPaymentSearch]=useState("");
+ const [accountSearch,setAccountSearch]=useState("");
+ const [accounts,setAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;category:string;branchRef:string|null;branchName:string|null}>>([]);
+ const [accountError,setAccountError]=useState("");
+ const [accountMore,setAccountMore]=useState(false);
  const [paymentAccounts,setPaymentAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;branchRef:string|null;branchName:string|null}>>([]);
  const [paymentError,setPaymentError]=useState("");
  const [paymentMore,setPaymentMore]=useState(false);
@@ -85,6 +90,26 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   finally{setLoading(false);}
  },[token,offset,onExpired]);
  useEffect(()=>{void fetchDrafts();},[fetchDrafts]);
+ useEffect(()=>{
+  if(!editing)return;
+  let active=true;
+  void(async()=>{
+   try{
+    const r=await identityRequest("/api/finance-accounting/vouchers/posting-accounts?q="+
+     encodeURIComponent(accountSearch),{cache:"no-store",
+      headers:{Authorization:"Bearer "+token}});
+    if(r.status===401){onExpired();return;}
+    if(!r.ok)throw Error(await reason(r));
+    const raw:unknown=await r.json();
+    if(!raw||typeof raw!=="object"||!("accounts" in raw)||!Array.isArray(raw.accounts)||
+     !("hasMore" in raw)||typeof raw.hasMore!=="boolean")
+     throw Error("The permitted debit and credit accounts could not be verified.");
+    if(active){setAccounts(raw.accounts);setAccountMore(raw.hasMore);setAccountError("");}
+   }catch(e){if(active){setAccounts([]);setAccountMore(false);setAccountError(
+     e instanceof Error?e.message:"The balancing account choices are unavailable.");}}
+  })();
+  return()=>{active=false;};
+ },[editing,accountSearch,token,onExpired]);
  useEffect(()=>{
   if(!editing)return;
   let active=true;
@@ -137,6 +162,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     branchRef:d.header.branchRef??"",postingDate:d.header.postingDate??"",
     payeeName:d.header.payeeName??"",purpose:d.header.purpose??"",
     paymentAccountRef:d.header.paymentAccountRef??"",
+    debitAccountRef:d.header.debitAccountRef??"",creditAccountRef:d.header.creditAccountRef??"",
     tax:decimal(d.taxMinor),charges:decimal(d.chargesMinor)});
    setItems(d.lines.map(l=>({description:l.description,quantity:String(l.quantity),
     unitRate:decimal(l.unitRateMinor)})));
@@ -148,7 +174,9 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   const b=branches.find(x=>x.branchRef===form.branchRef);
   return {financialYearRef:form.financialYearRef,voucherType:form.type,postingDate:form.postingDate,
    payeeName:form.payeeName,purpose:form.purpose,tax:form.tax,charges:form.charges,
-   paymentAccountRef:form.paymentAccountRef,
+   paymentAccountRef:form.paymentAccountRef,debitAccountRef:form.debitAccountRef,
+   creditAccountRef:["PAYMENT","CONTRA"].includes(form.type)?
+    form.paymentAccountRef:form.creditAccountRef,
    lines:items.map(it=>({description:it.description,quantity:Number(it.quantity),unitRate:it.unitRate})),
    ...(form.branchRef?{branchRef:form.branchRef,branchVersion:b?.version}:{}),
    ...(target?{expectedVersion:target.version}:{})};
@@ -263,6 +291,29 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     <Select label="Foundation or Active Branch" value={form.branchRef}
      options={[{value:"",label:"Foundation-wide"},...branches.map(b=>({value:b.branchRef,label:b.name+" · "+b.code}))]}
      onChange={v=>update("branchRef",v)}/>
+    <TextField label="Find debit and credit account" maxLength={80}
+     value={accountSearch} update={setAccountSearch}
+     placeholder="Search permitted account name or code"/>
+    {!!accountError&&<Text accessibilityRole="alert" style={s.hint}>{accountError}</Text>}
+    <Select label="Debit account *" value={form.debitAccountRef}
+     options={[{value:"",label:"Choose which account is debited"},
+      ...accounts.filter(a=>(!a.branchRef||a.branchRef===form.branchRef)&&
+       (form.type==="EXPENSE"?a.category==="EXPENSE":
+        form.type==="CONTRA"?["CASH","BANK"].includes(a.kind):true))
+       .map(a=>({value:a.accountRef,label:a.name+" · "+a.code+
+        (a.branchName?" ("+a.branchName+"):"")}))]}
+     onChange={v=>update("debitAccountRef",v)}/>
+    {["PAYMENT","CONTRA"].includes(form.type)?
+     <Text style={s.hint}>Credit side is the chosen cash or bank account below.</Text>:
+     <Select label="Credit account *" value={form.creditAccountRef}
+      options={[{value:"",label:"Choose balancing credit account"},
+       ...accounts.filter(a=>(!a.branchRef||a.branchRef===form.branchRef)&&
+        (form.type==="EXPENSE"?a.category==="LIABILITY":true))
+        .map(a=>({value:a.accountRef,label:a.name+" · "+a.code+
+         (a.branchName?" ("+a.branchName+"):"")}))]}
+      onChange={v=>update("creditAccountRef",v)}/>}
+    {accountMore&&<Text style={s.hint}>More accounts exist. Search by name or code.</Text>}
+    <Text style={s.hint}>Posting is separately controlled; this form does not transfer money.</Text>
     <TextField label="Search permitted cash/bank account" maxLength={80}
      value={paymentSearch} update={setPaymentSearch}
      placeholder="Search by account name or code"/>
