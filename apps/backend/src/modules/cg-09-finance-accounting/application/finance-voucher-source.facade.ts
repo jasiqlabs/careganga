@@ -1,4 +1,4 @@
-import {ConflictException,Injectable} from "@nestjs/common";
+import {ConflictException,Inject,Injectable} from "@nestjs/common";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
