@@ -280,6 +280,27 @@ export class FinanceVoucherApprovalService{
    return {caseRef,revision:row.revision+1,status:next};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
+ /** Only original current-password-confirmed final decision is authoritative. */
+ async reviewOutcome(client:PoolClient,actor:VerifiedFoundationActor,input:{
+  caseRef:string;voucherRef:string;sourceVersion:number;digest:string;
+  proofRef:string;proofRevision:number
+ }){
+  const record=await client.query<{status:string;action:string}>(`
+    SELECT c.status,d.action FROM cg03_case c
+    JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
+    WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='FINANCE_VOUCHER'
+     AND c.finance_voucher_id=$3 AND c.finance_voucher_revision=$4
+     AND c.finance_voucher_digest=$5 AND c.finance_proof_file_id=$6
+     AND c.finance_proof_revision=$7 AND d.fresh_password_verified_at IS NOT NULL
+     AND ((c.status='RETURNED' AND d.action='RETURN')
+        OR (c.status='REJECTED' AND d.action='REJECT')
+        OR (c.status IN('PENDING_OWNER','OWNER_COMPLETED') AND d.action='APPROVE'))
+     ORDER BY d.created_at DESC,d.id DESC LIMIT 1 FOR SHARE OF c,d`,
+   [input.caseRef,actor.realmId,input.voucherRef,input.sourceVersion,
+    input.digest,input.proofRef,input.proofRevision]);
+  if(!record.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_REVIEW_UNAVAILABLE"});
+  return record.rows[0].status as "RETURNED"|"REJECTED"|"PENDING_OWNER"|"OWNER_COMPLETED";
+ }
  async guardFinalApproval(client:PoolClient,actor:VerifiedFoundationActor,input:{
   caseRef:string;voucherRef:string;sourceVersion:number;digest:string;
   proofRef:string;proofRevision:number
