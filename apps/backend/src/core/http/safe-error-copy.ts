@@ -122,6 +122,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_INVOICE_NOT_ISSUABLE:"Post the approved invoice before requesting a private PDF.",
       FINANCE_INVOICE_DOCUMENT_UNAVAILABLE:"The private invoice PDF is unavailable or has changed. Refresh its status.",
       FINANCE_INVOICE_ISSUE_CONFLICT:"An original invoice issue is already recorded. Check its status before retrying.",
+      FINANCE_INVOICE_RECEIPT_NOT_READY:"Only a separately verified real bank statement match can settle this original issued invoice."
       FINANCE_INVOICE_FILTER_INVALID:"Choose a valid invoice search or list page.",
       FINANCE_BUDGET_SOURCE_INVALID:"Choose a valid Foundation budget from your permitted list.",
       FINANCE_BUDGET_STALE:"The original budget version changed. Refresh before saving.",
