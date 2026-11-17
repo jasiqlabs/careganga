@@ -89,7 +89,7 @@ export class FinanceReportsService{
    this.db.query<{ref:string;name:string;code:string;kind:string}>(
     "SELECT id AS ref,name,code,account_kind AS kind FROM finance_account "+
     "WHERE root_realm_id=$1 AND ($2::boolean OR "+
-    "(branch_id IS NOT NULL AND branch_id=ANY($3::uuid[]))) "+
+    "(branch_id IS NULL OR branch_id=ANY($3::uuid[]))) "+
     "ORDER BY name,id LIMIT 200",[actor.realmId,scope.all,scope.branchRefs]),
     this.branches.financeBranches(bearer,"finance.reports.view")
   ]);
@@ -255,7 +255,7 @@ export class FinanceReportsService{
   const r=await this.db.query<{accountRef:string;name:string;code:string}>(
    "SELECT id AS \"accountRef\",name,code FROM finance_account "+
    "WHERE root_realm_id=$1 AND account_kind='BANK' AND status='ACTIVE' "+
-   "AND ($2::boolean OR (branch_id IS NOT NULL AND branch_id=ANY($3::uuid[]))) "+
+   "AND ($2::boolean OR branch_id IS NULL OR branch_id=ANY($3::uuid[])) "+
    "ORDER BY name,id LIMIT 50",[actor.realmId,scope.all,scope.branchRefs]);
   return {banks:r.rows};
  }
@@ -271,7 +271,7 @@ export class FinanceReportsService{
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND l.account_id=$2 AND a.account_kind='BANK' "+
    "AND j.status='POSTED' "+
-   "AND ($3::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($4::uuid[]) "+
+   "AND ($3::boolean OR ((a.branch_id IS NULL OR a.branch_id=ANY($4::uuid[])) "+
    "AND l.branch_id=ANY($4::uuid[]))) "+
    "AND NOT EXISTS(SELECT 1 FROM finance_bank_reconciliation r "+
    "WHERE r.root_realm_id=l.root_realm_id AND r.bank_account_id=l.account_id "+
@@ -319,7 +319,7 @@ export class FinanceReportsService{
     "ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
     "WHERE j.id=$1 AND j.root_realm_id=$2 AND j.financial_year_id=$3 "+
     "AND l.account_id=$4 AND a.account_kind='BANK' AND j.status='POSTED' "+
-    "AND ($5::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($6::uuid[]) "+
+    "AND ($5::boolean OR ((a.branch_id IS NULL OR a.branch_id=ANY($6::uuid[])) "+
     "AND l.branch_id=ANY($6::uuid[]))) FOR SHARE OF j,l,a",
     [journalRef,actor.realmId,financialYearRef,bankRef,scope.all,scope.branchRefs]);
    if(line.rows.length!==1)
@@ -351,8 +351,10 @@ export class FinanceReportsService{
    "(r.recorded_by=$2::uuid) AS \"canUpload\" "+
    "FROM finance_bank_reconciliation r JOIN finance_account a "+
    "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
+   "JOIN journal_line bl ON bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id "+
+   "AND bl.account_id=r.bank_account_id "+
    "WHERE r.root_realm_id=$1 "+
-   "AND ($4::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($5::uuid[]))) "+
+   "AND ($4::boolean OR bl.branch_id=ANY($5::uuid[])) "+
    "ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $3",
    [actor.realmId,actor.accountId,offset,scope.all,scope.branchRefs]);
   return {items:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?offset+50:null};
@@ -405,8 +407,10 @@ export class FinanceReportsService{
     "SELECT r.status,r.recorded_by,r.content_digest,r.variance_minor::text "+
     "FROM finance_bank_reconciliation r JOIN finance_account a "+
     "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
+    "JOIN journal_line bl ON bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id "+
+    "AND bl.account_id=r.bank_account_id "+
     "WHERE r.id=$1 AND r.root_realm_id=$2 "+
-    "AND ($3::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($4::uuid[]))) "+
+    "AND ($3::boolean OR bl.branch_id=ANY($4::uuid[])) "+
     "FOR UPDATE OF r",
     [ref,actor.realmId,scope.all,scope.branchRefs]);
    const rec=row.rows[0];
