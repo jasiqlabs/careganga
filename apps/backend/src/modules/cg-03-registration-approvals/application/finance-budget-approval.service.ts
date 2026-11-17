@@ -72,7 +72,7 @@ export class FinanceBudgetApprovalService{
   budgetRef:string;version:number;digest:string;number:string;key:string
  }){
   await this.source.guardDraft(tx,actor,input.budgetRef,input.version,input.digest);
-  const fingerprint=sha(["CG03_ORIGINAL_INVOICE_V1",input.budgetRef,input.version,input.digest,input.key]);
+  const fingerprint=sha(["CG03_ORIGINAL_BUDGET_V1",input.budgetRef,input.version,input.digest,input.key]);
   const earlier=await tx.query<BudgetCase>(
    "SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='FINANCE_BUDGET' "+
    "AND finance_budget_id=$2 AND finance_budget_revision=$3 FOR SHARE",
