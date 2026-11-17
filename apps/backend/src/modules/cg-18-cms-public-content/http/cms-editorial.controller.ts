@@ -1,4 +1,6 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,Put} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Put,Res} from "@nestjs/common";
+import type {Response} from "express";
+import {createHash} from "node:crypto";
 import {CmsEditorialService} from "../application/cms-editorial.service";
 @Controller("api/cms")
 export class CmsEditorialController{
@@ -42,5 +44,17 @@ export class CmsPublicPagesController{
  navigation(){return this.cms.publicNavigation();}
  @Get("pages/:slug")
  @Header("Cache-Control","public, max-age=0, must-revalidate")
- publicPage(@Param("slug")slug:string){return this.cms.publicPage(slug);}
+ async publicPage(@Param("slug")slug:string,
+  @Headers("if-none-match")requestEtag:string|undefined,
+  @Res({passthrough:true})response:Response){
+  // Recheck the effective publication and image rights on EVERY request
+  // before a conditional 304. Revoked files change the ETag even if the
+  // original page revision is unchanged.
+  const page=await this.cms.publicPage(slug);
+  const etag='"'+createHash("sha256").update(JSON.stringify(page)).digest("hex")+'"';
+  response.setHeader("ETag",etag);
+  response.setHeader("X-Content-Type-Options","nosniff");
+  if(requestEtag===etag){response.status(304);return null;}
+  return page;
+ }
 }
