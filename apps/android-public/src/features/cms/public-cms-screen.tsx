@@ -14,7 +14,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact"].includes(route)?route:null;
+ return ["/","/about","/contact","/impact","/80g","/gallery","/healthcare"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -134,15 +134,18 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  },[slug,load,refreshNavigation]);
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-   if(slug==="about"){setSlug("home");return true;}return false;
+   if(slug!=="home"){
+    setSlug(!["about","impact","80g","gallery","healthcare","articles"].includes(slug)?
+     "articles":"home");return true;
+   }return false;
   });
   return()=>sub.remove();
  },[slug]);
  const navigate=(href:unknown)=>{
   const route=local(href);
   if(route==="/")setSlug("home");
-  else if(route==="/about")setSlug("about");
   else if(route==="/contact")onContact();
+  else if(route)setSlug(route.slice(1));
  };
  const page=result.page;
  const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
