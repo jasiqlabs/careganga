@@ -58,9 +58,9 @@ export class CmsReviewSourceFacade{
    [bearerRealm,revisionRef]);
   if(original.rows[0].kind==="HOME"&&!nav.rows[0])
    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
-  const media=await this.db.query<{fileRef:string;role:string;altText:string;order:number;current:boolean}>(
+  const media=await this.db.query<{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}>(
    'SELECT a.cg19_file_ref AS "fileRef",a.role,a.alt_text AS "altText",'+
-   'a.sort_order AS "order",'+
+   'a.sort_order AS "order",f.original_mime AS "mime",'+
    '(a.public_rights_status = \'VALIDATED\' AND f.id IS NOT NULL '+
    'AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL '+
    'AND f.scan_status = \'CLEAN_VERIFIED\' '+
@@ -80,7 +80,7 @@ export class CmsReviewSourceFacade{
    slug:original.rows[0].slug,seoTitle:original.rows[0].seo_title,
    seoDescription:original.rows[0].seo_description,
    assets:media.rows.map(a=>({fileRef:a.fileRef,role:a.role,altText:a.altText,
-    order:a.order,current:a.current})),
+    order:a.order,current:a.current,mime:a.mime})),
    sections:original.rows.slice(0,100).filter(x=>x.section_kind!==null)
     .map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields}))};
  }
