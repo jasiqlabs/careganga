@@ -84,7 +84,8 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   kind==="GALLERY_GRID"?
   ["heading","description","items"]:
   kind==="ARTICLE_BODY"?
-  ["heading","category","excerpt","body","authorLabel","source","asOfDate","tags"]:
+  ["heading","category","excerpt","body","authorLabel","source","asOfDate","tags",
+   "sourceNoticeRef","publicReleaseConfirmed"]:
   kind==="HEALTHCARE_CATEGORIES"?
   ["heading","intro","categories","ctaLabel","ctaPath"]: [];
  const x=obj(raw,"fields",allowed);
@@ -182,7 +183,16 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   if(!Array.isArray(x.tags)||x.tags.length>8)return error("tags");
   const asOfDate=date(x.asOfDate,"asOfDate");
   if(asOfDate>new Date().toISOString().slice(0,10))return error("asOfDate");
-  return {heading:str(x.heading,"heading",180,3),
+  const notice=x.sourceNoticeRef===undefined?null:(()=>{
+   if(typeof x.sourceNoticeRef!=="string"||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x.sourceNoticeRef)||
+    x.publicReleaseConfirmed!==true)return error("sourceNoticeRef");
+   return x.sourceNoticeRef;
+  })();
+  if(notice===null&&x.publicReleaseConfirmed!==undefined)
+   return error("publicReleaseConfirmed");
+  return {...(notice?{sourceNoticeRef:notice,publicReleaseConfirmed:true}:{}),
+   heading:str(x.heading,"heading",180,3),
    category:str(x.category,"category",80,2),
    excerpt:str(x.excerpt,"excerpt",400,10),
    body:str(x.body,"body",7000,20),
