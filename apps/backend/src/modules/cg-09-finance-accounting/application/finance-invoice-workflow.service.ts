@@ -317,6 +317,10 @@ export class FinanceInvoiceWorkflowService{
   const invoice=source.rows[0];
   if(!invoice||invoice.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  const credited=await this.db.query("SELECT id FROM finance_invoice_credit_note "+
+   "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
+  if(credited.rowCount)
+   throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
   const [banks,years]=await Promise.all([
    this.db.query<{accountRef:string;code:string;name:string}>(
     "SELECT id AS \"accountRef\",code,name FROM finance_account "+
@@ -361,6 +365,10 @@ export class FinanceInvoiceWorkflowService{
    }
    const x=await this.load(tx,actor,ref);
    if(x.status!=="ISSUED"||!x.total_minor||!x.receivable_account_id)
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   const credited=await tx.query("SELECT id FROM finance_invoice_credit_note "+
+    "WHERE root_realm_id=$1 AND invoice_id=$2 FOR SHARE",[actor.realmId,ref]);
+   if(credited.rowCount)
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
    if(x.branch_id)
     await this.branches.requireFinanceActiveBranch(tx,actor,x.branch_id,"finance.journals.post");
@@ -414,6 +422,9 @@ export class FinanceInvoiceWorkflowService{
   const x=invoice.rows[0];
   if(!x||x.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  const credited=await this.db.query("SELECT id FROM finance_invoice_credit_note "+
+   "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
+  if(credited.rowCount)return {matches:[],hasMore:false,outstandingMinor:"0"};
   const paid=await this.db.query<{paid:string}>(
    "SELECT COALESCE(SUM(amount_minor),0)::text AS paid FROM finance_invoice_receipt "+
    "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
@@ -476,6 +487,10 @@ export class FinanceInvoiceWorkflowService{
    const x=await this.load(tx,actor,ref);
    if(x.status!=="ISSUED"||!x.total_minor)
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   const credited=await tx.query("SELECT id FROM finance_invoice_credit_note "+
+    "WHERE root_realm_id=$1 AND invoice_id=$2 FOR SHARE",[actor.realmId,ref]);
+   if(credited.rowCount)
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
    const match=await tx.query<{journal_id:string;statement_date:string;
     statement_amount_minor:string;status:string}>(
     "SELECT journal_id,statement_date::text,statement_amount_minor::text,status "+
@@ -516,9 +531,11 @@ export class FinanceInvoiceWorkflowService{
  async receiptStatus(bearer:string,invoiceInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
   const ref=ident(invoiceInput);
-  const invoice=await this.db.query<{total:string;status:string}>(
-   "SELECT total_minor::text AS total,status FROM finance_invoice "+
-   "WHERE id=$1 AND root_realm_id=$2",[ref,actor.realmId]);
+  const invoice=await this.db.query<{total:string;status:string;credited:boolean}>(
+   "SELECT i.total_minor::text AS total,i.status,"+
+   "EXISTS(SELECT 1 FROM finance_invoice_credit_note c "+
+   "WHERE c.root_realm_id=i.root_realm_id AND c.invoice_id=i.id) AS credited "+
+   "FROM finance_invoice i WHERE i.id=$1 AND i.root_realm_id=$2",[ref,actor.realmId]);
   const original=invoice.rows[0];
   if(!original||original.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
@@ -533,8 +550,9 @@ export class FinanceInvoiceWorkflowService{
    "SELECT COALESCE(SUM(amount_minor),0)::text AS paid FROM finance_invoice_receipt "+
    "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
   const paid=BigInt(totals.rows[0].paid);
-  const outstanding=BigInt(original.total)-paid;
-  const state=paid===0n?"NOT_VERIFIED":outstanding===0n?"PAID_VERIFIED":"PARTIALLY_PAID";
+  const outstanding=original.credited?0n:BigInt(original.total)-paid;
+  const state=original.credited?"CREDITED":paid===0n?"NOT_VERIFIED":
+   outstanding===0n?"PAID_VERIFIED":"PARTIALLY_PAID";
   return {paymentVerified:paid>0n,status:state,totalMinor:original.total,
    paidMinor:paid.toString(),outstandingMinor:outstanding.toString(),
    receipts:receipts.rows,hasMore:receipts.rows.length===100};
