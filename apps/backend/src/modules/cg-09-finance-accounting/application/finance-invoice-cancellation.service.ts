@@ -36,6 +36,23 @@ export class FinanceInvoiceCancellationService{
   await this.sessions.requireAction(bearer,"approvals.review");
   return actor;
  }
+ async eligibility(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
+  try{
+   await this.sessions.requireAction(bearer,"finance.invoices.review");
+   await this.sessions.requireAction(bearer,"finance.journals.post");
+   await this.sessions.requireAction(bearer,"approvals.review");
+   const tx=await this.db.connect();
+   try{
+    await tx.query("BEGIN");
+    await this.identity.assertCurrent(tx,actor,"finance.invoices.review");
+    await this.identity.assertCurrent(tx,actor,"finance.journals.post");
+    await this.owner.verifyReviewer(tx,actor,"approvals.review",true);
+    await tx.query("COMMIT");
+    return {canCancel:true};
+   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch{return {canCancel:false};}
+ }
  async status(bearer:string,keyInput:string){
   const actor=await this.reviewer(bearer),key=id(keyInput);
   const row=await this.db.query<{reversal_journal_id:string}>(
