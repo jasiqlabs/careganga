@@ -270,6 +270,31 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   draft.body.trim().length>=5&&
   draft.team.every(x=>x.consentConfirmed&&x.name.trim().length>=2&&
    x.designation.trim().length>=2);
+ const draftIssue=draft.title.trim().length<3?
+  "Enter a website page title of at least 3 characters.":
+  draft.body.trim().length<5?
+  "Add the Foundation story or introduction, using at least 5 characters.":
+  draft.kind==="HOME"&&!draft.slides.length?
+  "Add at least one homepage banner.":
+  draft.slides.some(slide=>slide.heading.trim().length<3)?
+  "Enter a heading of at least 3 characters for every banner.":
+  draft.slides.some(slide=>
+    Boolean(slide.primaryLabel.trim())!==Boolean(slide.primaryPath.trim())||
+    Boolean(slide.secondaryLabel.trim())!==Boolean(slide.secondaryPath.trim())||
+    [slide.primaryPath,slide.secondaryPath].some(v=>v.trim()&&
+      !["/","/about","/contact"].includes(v.trim())))?
+  "Every banner button needs a label and an existing Home, About or Contact destination.":
+  Boolean(draft.promoLabel.trim())!==Boolean(draft.promoPath.trim())?
+  "Enter both a promotional button label and a working page destination.":
+  draft.featuresHeading.trim()&&!draft.featureCards.length?
+  "Add a solution card or clear the unused section heading.":
+  draft.featureCards.some(card=>card.label.trim().length<2||
+    card.title.trim().length<3||card.body.trim().length<5)?
+  "Complete each solution card's category, title and description.":
+  draft.team.some(member=>!member.consentConfirmed||member.name.trim().length<2||
+    member.designation.trim().length<2)?
+  "Enter each public team member's name and designation and confirm display permission.":
+  !okay?"Complete the remaining website content before saving.":null;
  async function send(c:Command){
   if(busy)return;
   setBusy(true);setError("");setNotice("");setPending(c);
@@ -753,6 +778,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         Remove from draft</button></div>)}
      </fieldset>}
     </div>}
+    {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">
      Save your changes before sending this page for approval.</p>}
     {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
