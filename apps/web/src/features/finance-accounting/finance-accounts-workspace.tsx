@@ -113,7 +113,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  useEffect(()=>{void load();},[load]);
  function open(kind:FormKind){
   setDrawer(kind);setFailure(null);setSuccess("");setPending(null);setPendingNotFound(false);
-  setForm(blank());setPostingQuery("");setPostingResults([]);
+  setForm(blank());setPostingQuery("");setPostingResults([]);setPostingLoading(kind==="opening");
   setPostingSaved({});setPostingMore(false);setPostingError("");
  }
  useEffect(()=>{
