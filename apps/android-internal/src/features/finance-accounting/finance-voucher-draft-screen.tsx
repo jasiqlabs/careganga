@@ -50,6 +50,8 @@ function Select({label,value,options,onChange}:{label:string;value:string;
 }
 export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClose,onExpired}:Props){
  const [drafts,setDrafts]=useState<Voucher[]>([]);
+ const [offset,setOffset]=useState(0);
+ const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [loading,setLoading]=useState(true);
  const [problem,setProblem]=useState("");
  const [success,setSuccess]=useState("");
@@ -63,17 +65,18 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
  const fetchDrafts=useCallback(async()=>{
   setLoading(true);setProblem("");
   try{
-   const res=await identityRequest("/api/finance-accounting/vouchers/drafts",
+   const res=await identityRequest("/api/finance-accounting/vouchers/drafts?offset="+offset,
     {headers:{Authorization:"Bearer "+token},cache:"no-store"});
    if(res.status===401){onExpired();return;}
    if(!res.ok)throw Error(await reason(res));
    const val:unknown=await res.json();
-   if(!val||typeof val!=="object"||!("vouchers" in val)||!Array.isArray(val.vouchers))
+   if(!val||typeof val!=="object"||!("vouchers" in val)||!Array.isArray(val.vouchers)||
+      !("nextOffset" in val)||!(val.nextOffset===null||typeof val.nextOffset==="number"))
     throw Error("Voucher list could not be verified. Refresh and retry.");
-   setDrafts(val.vouchers);
-  }catch(e){setDrafts([]);setProblem(e instanceof Error?e.message:"Cannot load vouchers. Check the connection.");}
+   setDrafts(val.vouchers);setNextOffset(val.nextOffset);
+  }catch(e){setDrafts([]);setNextOffset(null);setProblem(e instanceof Error?e.message:"Cannot load vouchers. Check the connection.");}
   finally{setLoading(false);}
- },[token,onExpired]);
+ },[token,offset,onExpired]);
  useEffect(()=>{void fetchDrafts();},[fetchDrafts]);
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -194,6 +197,15 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
      {canManage&&<Pressable accessibilityRole="button" style={s.button}
       onPress={()=>void edit(v)}><Text style={s.plain}>Edit draft</Text></Pressable>}
     </View>)}
+    <View style={s.actions}>
+     <Pressable accessibilityRole="button" style={s.button}
+      disabled={offset===0||loading} onPress={()=>setOffset(n=>Math.max(0,n-40))}>
+      <Text style={s.plain}>Previous</Text></Pressable>
+     <Text style={s.hint}>{drafts.length} on this page</Text>
+     <Pressable accessibilityRole="button" style={s.button}
+      disabled={nextOffset===null||loading} onPress={()=>setOffset(nextOffset??0)}>
+      <Text style={s.plain}>Next</Text></Pressable>
+    </View>
    </>}
    {editing&&<>
     <Text style={s.hint}>Stage 1: voucher details · Stage 2: item amounts. Saving does not post money.</Text>
