@@ -1,6 +1,13 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      IDENTITY_IDENTIFIER_REQUIRED:"Enter your registered mobile number or email address.",
+      IDENTITY_IDENTIFIER_INVALID:"Enter a valid 10-digit Indian mobile number starting with 6–9, or a valid email address.",
+      IDENTITY_PASSWORD_REQUIRED:"Enter your password to sign in.",
+      IDENTITY_PASSWORD_TOO_LONG:"The password is too long. Check your entry and try again.",
+      IDENTITY_CURRENT_PASSWORD_REQUIRED:"Enter your current password to confirm the change.",
+      IDENTITY_NEW_PASSWORD_TOO_SHORT:"Create a new password containing at least 8 characters.",
+      IDENTITY_DEVICE_INVALID:"The device details could not be accepted. Restart the sign-in form and try again.",
       DUPLICATE_ROLE:"A role with this name already exists. Choose another name.",
       STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
       ROLE_RETIRED:"This role was already retired.",
