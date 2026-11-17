@@ -566,6 +566,18 @@ export class CmsEditorialService{
       asset.role==="HERO"&&asset.sort_order===slide.order_no)))
      throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
    }
+   if(page.kind!=="HOME"&&page.kind!=="ABOUT"){
+    const owned=await tx.query<{section_kind:string;order_no:number;
+     structured_fields:Record<string,unknown>}>(
+     "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
+     "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no",
+     [actor.realmId,rev.id]);
+    validateExtendedPage(page.kind,owned.rows.map(row=>({
+     kind:row.section_kind,order:row.order_no,fields:row.structured_fields})),
+     assets.rows.map(a=>({role:a.role,order:a.sort_order})),true);
+   }
+   if(!(await complianceEligible(tx,actor.realmId,rev.id)))
+    throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
    const original=await this.approvals.createCase(tx,actor,{
