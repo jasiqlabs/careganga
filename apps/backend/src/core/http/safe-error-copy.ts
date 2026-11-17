@@ -30,6 +30,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       PLATFORM_COPY_PASSWORD_REQUIRED:"Enter your current password to confirm this change.",
       PLATFORM_COPY_NO_CHANGE:"The replacement wording is unchanged. Edit the message before saving.",
       PLATFORM_COPY_REPLAY_CONFLICT:"This save request was already used for different wording. Refresh and try again.",
+      FINANCE_VOUCHER_POSTING_NOT_READY:"This voucher cannot be posted until its approved accounts, open financial year and any independently verified payment are confirmed.",
       FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY:"This payment is not yet approved for verification. Refresh the voucher and request payment verification first.",
       FINANCE_VOUCHER_PAYMENT_PROOF_INVALID:"Upload an actual bank statement or cash receipt and wait for secure file and malware verification before submitting the payment proof.",
       FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT:"This payment proof has already changed or been used. Refresh the original payment verification before retrying.",
