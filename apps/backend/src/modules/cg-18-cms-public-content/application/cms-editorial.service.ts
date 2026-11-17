@@ -8,7 +8,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
 const KINDS=new Set(["HOME","ABOUT"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER"]);
