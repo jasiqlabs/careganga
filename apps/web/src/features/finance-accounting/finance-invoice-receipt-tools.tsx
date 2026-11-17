@@ -137,8 +137,8 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost,canIssue}:{invoic
     onClick={()=>void perform("/api/finance/invoices/"+invoiceRef+"/record-collection",
      {bankAccountRef:bank,financialYearRef:year,postingDate:date,amount},"COLLECTION")}>
      Post balanced collection journal — awaiting bank verification</button>
-   <p className="cg-fin-help">Then independently verify the actual bank statement in
-    <a href="/admin/finance/reports"> Bank Reconciliation</a>.</p>
+   <p className="cg-fin-help">A separately authorized Finance bank reviewer must verify the
+    matching original statement item before any paid receipt becomes available.</p>
   </div>}
   {outstanding!==null&&outstanding>0n&&canIssue&&<div className="cg-fin-form">
    <h4>2. Link separately verified real bank statement item</h4>
