@@ -177,6 +177,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CMS_MEDIA_REPLAY_CONFLICT:"The upload request was already used for another image. Check the existing upload.",
       CMS_MEDIA_REVISION_CHANGED:"The image belongs to an older or submitted draft. Refresh the original page.",
       CMS_MEDIA_NOT_VALIDATED:"Wait for the real image and malware scan to be verified before publication.",
+      CMS_HERO_IMAGE_REQUIRED:"Add a verified desktop image to each homepage banner, save the draft, and then submit it for review.",
       FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status."
 
 });
