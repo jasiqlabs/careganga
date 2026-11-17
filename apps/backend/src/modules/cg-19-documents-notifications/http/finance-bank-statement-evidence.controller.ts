@@ -27,7 +27,9 @@ export class FinanceBankStatementEvidenceController{
  @Header("X-Content-Type-Options","nosniff")
  async download(@Headers("authorization")bearer:string,@Param("fileRef")ref:string){
   const result=await this.files.download(bearer,ref);
+  const ext=result.mime==="application/pdf"?"pdf":result.mime==="image/jpeg"?"jpg":
+   result.mime==="image/png"?"png":"webp";
   return new StreamableFile(result.data,{type:result.mime,
-   disposition:'attachment; filename="CareGanga-private-bank-statement"'});
+   disposition:'attachment; filename="CareGanga-private-bank-statement.'+ext+'"'});
  }
 }
