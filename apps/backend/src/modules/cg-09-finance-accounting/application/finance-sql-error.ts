@@ -26,7 +26,8 @@ export function financeSqlFailure(error:unknown,area:FinanceArea):never{
  if(code==="P0927")
   throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
  if(code==="P0928")
-  throw new ConflictException({code:area==="budget"?"FINANCE_BUDGET_REVIEW_UNAVAILABLE":
+  throw new ConflictException({code:area==="bank"?"FINANCE_RECONCILIATION_EVIDENCE_CONFLICT":
+   area==="budget"?"FINANCE_BUDGET_REVIEW_UNAVAILABLE":
    "FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
  if(code==="P0924")
   throw new ConflictException({code:"FINANCE_BUDGET_EVENT_INVALID"});
