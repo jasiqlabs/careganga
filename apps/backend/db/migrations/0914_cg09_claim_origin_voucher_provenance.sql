@@ -38,7 +38,7 @@ BEGIN
   IF NEW.voucher_type NOT IN('EXPENSE','PAYMENT') THEN
    RAISE EXCEPTION 'Unsupported claim voucher type' USING ERRCODE='P0920';
   END IF;
-  SELECT status,version,amount_minor INTO eligible
+  SELECT status,version,amount_minor,bill_file_id,bill_file_version INTO eligible
    FROM expense_claim WHERE id=NEW.expense_claim_id
     AND root_realm_id=NEW.root_realm_id FOR SHARE;
   IF NOT FOUND OR eligible.status<>'APPROVED' OR
@@ -47,9 +47,19 @@ BEGIN
    RAISE EXCEPTION 'An approved original claim with equal amount is required'
     USING ERRCODE='P0920';
   END IF;
+  PERFORM 1 FROM cg19_stored_file f JOIN cg19_upload_intent i
+    ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+   WHERE f.id=eligible.bill_file_id AND f.realm_id=NEW.root_realm_id
+    AND f.claim_id=NEW.expense_claim_id AND f.claim_version=NEW.expense_claim_version
+    AND f.revision=eligible.bill_file_version AND f.owner_kind='CG09_CLAIM'
+    AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+    AND i.owner_kind='CG09_CLAIM' AND i.status='VALIDATED' FOR SHARE OF f,i;
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'Approved claim original bill is no longer verified' USING ERRCODE='P0920';
+  END IF;
  END IF;
  RETURN NEW;
-END; $$;
+END; $;
 CREATE TRIGGER cg09_voucher_claim_origin_guard
  BEFORE INSERT OR UPDATE ON finance_voucher FOR EACH ROW
  EXECUTE FUNCTION cg09_voucher_claim_origin_guard();
@@ -57,10 +67,20 @@ CREATE TRIGGER cg09_voucher_claim_origin_guard
 CREATE OR REPLACE FUNCTION cg09_claim_voucher_link_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE original record; voucher_row record; payable record; debit_category text; credit_category text;
 BEGIN
- SELECT status,amount_minor,version INTO original FROM expense_claim
+ SELECT status,amount_minor,version,bill_file_id,bill_file_version INTO original FROM expense_claim
  WHERE id=NEW.claim_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
  IF NOT FOUND OR original.status<>'APPROVED' THEN
   RAISE EXCEPTION 'Only approved claims may link vouchers' USING ERRCODE='P0920';
+ END IF;
+ PERFORM 1 FROM cg19_stored_file f JOIN cg19_upload_intent i
+   ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  WHERE f.id=original.bill_file_id AND f.realm_id=NEW.root_realm_id
+    AND f.claim_id=NEW.claim_id AND f.claim_version=original.version
+    AND f.revision=original.bill_file_version AND f.owner_kind='CG09_CLAIM'
+    AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+    AND i.owner_kind='CG09_CLAIM' AND i.status='VALIDATED' FOR SHARE OF f,i;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Approved claim bill is no longer valid for payment' USING ERRCODE='P0920';
  END IF;
  SELECT v.id,v.status,v.voucher_type,v.total_minor,v.debit_account_id,
    v.credit_account_id,v.expense_claim_id,v.expense_claim_version,p.journal_id
