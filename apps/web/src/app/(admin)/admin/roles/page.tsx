@@ -41,7 +41,7 @@ export default async function AdminRoles(){
     const canViewAccounts=keys.includes("accounts.view")||
       (keys.includes("accounts.create")&&keys.includes("roles.assign"));
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} active="roles" displayName={actor.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="roles" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={allowed} canViewAccounts={canViewAccounts}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}
         canViewSettings={keys.includes("platform.settings.view")}
