@@ -391,8 +391,8 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
        if(x)setAmount(minorToRupees(x.amountMinor));}}/>
      <Field label="Statement item reference" value={statementRef} onChange={setStatementRef}/>
      <Field label="Statement date (YYYY-MM-DD)" value={statementDate} onChange={setStatementDate}/>
-     <Field label="Signed statement amount (₹)" value={amount}
-      keyboardType="decimal-pad" onChange={setAmount}/>
+     <Field label="Signed statement amount (₹; enter - for outgoing refund)" value={amount}
+      keyboardType="default" onChange={setAmount}/>
      <Action label="Record original pending statement match"
       disabled={busy||Boolean(pending)||!journal||!statementRef||!statementDate||!amount}
       onPress={record}/>
