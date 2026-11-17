@@ -34,7 +34,7 @@ export default async function FinanceInvoicesPage(){
   const canCreate=actions.includes("finance.invoices.manage");
   const canView=actions.includes("finance.invoices.view");
   const canManage=canCreate;
-  if(!canViewreturn <main className="page main">
+  if(!canView)return <main className="page main">
    <h1>Invoices access restricted</h1>
    <p>Your role cannot create or view Foundation invoices. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
