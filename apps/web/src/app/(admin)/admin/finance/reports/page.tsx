@@ -33,7 +33,7 @@ export default async function FinanceReportsPage(){
   const canCreate=actions.includes("finance.reconciliation.manage");
   const canView=actions.includes("finance.reports.view");
   const canManage=canCreate;
-  if(!canCreate&&!canView&&!canManage)return <main className="page main">
+  if(!canViewreturn <main className="page main">
    <h1>Reports access restricted</h1>
    <p>Your role cannot open Foundation financial statements. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
@@ -62,7 +62,7 @@ export default async function FinanceReportsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify budget access</h1>
+  return <main className="page main"><h1>Cannot verify reports access</h1>
    <p>Financial statements remain inaccessible until the current Foundation role can be verified.</p>
    <Link href="/admin">Return to my account</Link></main>;
  }
