@@ -137,7 +137,7 @@ export class FinanceVoucherDraftService{
   if(safe.date<year.rows[0].start_on||safe.date>year.rows[0].end_on)
    return fail("FINANCE_VOUCHER_DATE_INVALID","postingDate");
   if(safe.branch)await this.branches.financeActiveBranch(client,actor,safe.branch,
-   safe.branchVersion??0,"finance.accounts.manage");
+   safe.branchVersion??0,"finance.vouchers.manage");
  }
  private async commitDraft(client:PoolClient,actor:VerifiedFoundationActor,
   key:string,safe:SafeDraft,reference:string|null,expectedVersion:number|null){
