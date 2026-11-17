@@ -1,4 +1,4 @@
-import {
+import {BadRequestException,
  Body,Controller,Get,Header,Headers,Param,Post,Query,StreamableFile
 } from "@nestjs/common";
 import {FinanceVoucherEvidenceService} from "../application/finance-voucher-evidence.service";
@@ -22,7 +22,7 @@ export class FinanceVoucherEvidenceController{
  files(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string,
   @Query("version")version?:string){
   if(!version||!/^([1-9][0-9]{0,5})$/.test(version))
-   return {files:[],status:"INVALID_VERSION"};
+   throw new BadRequestException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
   return this.service.list(bearer,ref,Number(version));
  }
  @Post("files/:fileRef/revoke")
