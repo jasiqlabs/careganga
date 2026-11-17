@@ -15,7 +15,26 @@ export async function POST(request:NextRequest) {
       method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,deviceLabel:"Foundation Admin Web"}),
       cache:"no-store",signal:AbortSignal.timeout(10000)
     });
-    if(!result.ok) return NextResponse.json({message:"Unable to sign in"},{status:result.status===429?429:result.status===401?401:503});
+    if(!result.ok){
+      if(result.status===400){
+        const data:unknown=await result.json().catch(()=>null);
+        const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
+        const codes=new Set(["IDENTITY_IDENTIFIER_REQUIRED","IDENTITY_IDENTIFIER_INVALID",
+          "IDENTITY_PASSWORD_REQUIRED","IDENTITY_PASSWORD_TOO_LONG","IDENTITY_DEVICE_INVALID"]);
+        const code=typeof obj.code==="string"&&codes.has(obj.code)?obj.code:null;
+        const field=code&&["identifier","password"].includes(String(obj.field))?obj.field:null;
+        const message=code&&typeof obj.message==="string"&&obj.message.length<=220?
+          obj.message:"Check the mobile number/email and password fields before signing in.";
+        return NextResponse.json({message,...(code?{code}:{}),...(field?{field}:{})},
+          {status:400,headers:{"Cache-Control":"no-store"}});
+      }
+      return NextResponse.json({message:
+        result.status===401?"Mobile number/email or password is incorrect.":
+        result.status===429?"Too many login attempts. Please try again later.":
+        "Sign-in cannot be confirmed right now. Check the connection and retry."},
+        {status:result.status===429?429:result.status===401?401:503,
+         headers:{"Cache-Control":"no-store"}});
+    }
     const data:unknown=await result.json();
     if(!data || typeof data!=="object" || !("sessionToken" in data) || typeof data.sessionToken!=="string"
       || !("expiresAt" in data) || typeof data.expiresAt!=="string")
