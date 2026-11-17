@@ -23,7 +23,7 @@ export class CmsReviewSourceFacade{
    sourceDigest:string;title:string;createdBy:string;pageVersion:number;
    pageKind:string;status:string;currentRevision:number}>(
    'SELECT p.id AS "pageRef",v.id AS "revisionRef",v.revision_no AS "revisionNo",'+
-   'v.content_digest AS "sourceDigest",v.title,p.created_by AS "createdBy",'+
+   'v.content_digest AS "sourceDigest",v.title,v.created_by AS "createdBy",'+
    'p.version AS "pageVersion",p.kind AS "pageKind",v.status,'+
    'p.draft_revision_no AS "currentRevision" FROM cms_page p '+
    'JOIN cms_page_revision v ON v.page_id=p.id AND '+
