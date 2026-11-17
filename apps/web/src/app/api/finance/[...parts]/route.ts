@@ -38,6 +38,7 @@ function allowed(parts:string[],method:string):boolean{
   if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="PATCH";
   if(parts.length===3&&parts[1]==="commands"&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===2&&UUID.test(parts[1]))return method==="GET";
+  if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="eligible-expenses")return method==="GET";
   if(parts.length===3&&UUID.test(parts[1])&&["submit","reconcile","events"].includes(parts[2]))
    return method==="POST";
   return false;
