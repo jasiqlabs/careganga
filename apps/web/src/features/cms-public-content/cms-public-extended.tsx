@@ -1,0 +1,134 @@
+import Link from "next/link";
+import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
+type Asset=PublicCmsPage["assets"][number];
+const text=(v:unknown)=>typeof v==="string"?v:"";
+const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
+ .slice(0,16) as Record<string,unknown>[]:[];
+const photo=(asset:Asset|undefined,cls:string)=>asset?.src?
+ <img src={asset.src} alt={asset.altText} className={cls} loading="lazy"/>:null;
+const label=(source:unknown,asOf:unknown)=>source||asOf?
+ <p className="cg-site-provenance">
+  {source&&<span>Source: {text(source)}</span>}
+  {asOf&&<span> · As of {text(asOf)}</span>}
+  <span> · Editorial information; not an audited financial statement</span>
+ </p>:null;
+
+export function CmsImpactGroup({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
+ const f=section.fields,group=text(f.group),rows=records(f.items);
+ const pic=assets.find(a=>a.role==="IMPACT"&&a.order===section.order);
+ const tabular=["STATS","GROWTH","BREAKDOWN"].includes(group);
+ const heading=text(f.heading);
+ return <section className={"cg-site-content cg-site-impact-group cg-site-impact-"+group.toLowerCase()}>
+  <div className="cg-site-impact-heading">
+   <p className="cg-site-eyebrow">{group.replaceAll("_"," ")}</p>
+   <h2>{heading}</h2>
+   {text(f.intro)&&<p>{text(f.intro)}</p>}
+   {label(f.source,f.asOfDate)}
+  </div>
+  {photo(pic,"cg-site-impact-photo")}
+  {tabular&&rows.length>0?<div className="cg-site-table-wrap">
+   <table className="cg-site-evidence-table">
+    <caption>{heading} — source-reported information</caption>
+    <thead><tr><th scope="col">Description</th><th scope="col">Value</th>
+     <th scope="col">Notes</th></tr></thead>
+    <tbody>{rows.map((item,i)=><tr key={i}>
+     <th scope="row">{text(item.title)}
+      {typeof item.year==="number"?" ("+item.year+")":""}</th>
+     <td>{typeof item.percentage==="number"?item.percentage+"%":
+      typeof item.value==="number"?String(item.value)+" "+text(item.unit):"—"}</td>
+     <td>{text(item.description)}</td>
+    </tr>)}</tbody>
+   </table>
+  </div>:rows.length>0?<div className="cg-site-impact-grid">{rows.map((v,i)=>
+   <article key={i} className="cg-site-impact-card">
+    <h3>{text(v.title)}</h3>{text(v.description)&&<p>{text(v.description)}</p>}
+    {typeof v.percentage==="number"&&<strong>{v.percentage}%</strong>}
+    {typeof v.value==="number"&&<strong>{v.value} {text(v.unit)}</strong>}
+   </article>)}</div>:null}
+  {group==="CTA"&&text(f.ctaPath)&&text(f.ctaLabel)&&
+   ["/","/about","/contact","/impact","/gallery","/healthcare","/80g"].includes(text(f.ctaPath))&&
+   <Link className="cg-site-action" href={text(f.ctaPath)}>{text(f.ctaLabel)}</Link>}
+ </section>;
+}
+export function CmsCompliance({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
+ const f=section.fields;
+ const supported=f.verification==="VERIFIED",proof=assets.find(a=>a.role==="DOCUMENT");
+ return <section className="cg-site-content cg-site-legal">
+  <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
+  <h1>{text(f.heading)}</h1>
+  <p>{text(f.summary)}</p>
+  <p className="cg-site-legal-status">{supported?
+   "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
+  <dl className="cg-site-legal-data">
+   {([["Issuing authority",f.issuer],["PAN",f.pan],["Registration",f.registrationNumber],
+    ["Approval reference",f.approvalNumber],["Valid from",f.validFrom],
+    ["Valid until",f.validUntil],["Source",f.source],
+    ["Reviewed on",f.verifiedAsOf]] as [string,unknown][])
+    .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
+     <dt>{key}</dt><dd>{text(value)}</dd></div>)}
+  </dl>
+  {supported&&proof?.src&&<a className="cg-site-action" href={proof.src}
+   download>View approved supporting document</a>}
+  <p className="cg-site-legal-notice">{text(f.disclaimer)}</p>
+  <p className="cg-site-provenance">Only the current Foundation-published information is shown.
+   Confirm tax applicability with the issuing authority.</p>
+ </section>;
+}
+export function CmsGallery({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
+ const f=section.fields;
+ return <section className="cg-site-content cg-site-gallery">
+  <p className="cg-site-eyebrow">Media &amp; Resources</p>
+  <h1>{text(f.heading)}</h1>
+  <p>{text(f.description)}</p>
+  <div className="cg-site-gallery-grid">{records(f.items).map((v,i)=>{
+   const media=assets.find(a=>a.role==="GALLERY"&&a.order===i);
+   if(!media)return null;
+   return <article className="cg-site-gallery-card" key={i}>
+    {v.mediaType==="PHOTO"?photo(media,"cg-site-gallery-photo"):
+     v.mediaType==="VIDEO"?<video controls preload="none"
+      aria-label={media.altText} src={media.src}/>:
+     v.mediaType==="PUBLICATION"?<a href={media.src} download
+      className="cg-site-action">Read public document</a>:null}
+    <p className="cg-site-eyebrow">{text(v.category)}</p>
+    <h2>{text(v.title)}</h2>
+    <p>{text(v.caption)}</p>
+    {label(v.source,v.asOfDate)}
+   </article>;
+  })}</div>
+ </section>;
+}
+export function CmsArticle({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
+ const f=section.fields,cover=assets.find(a=>a.role==="ARTICLE"&&a.order===0);
+ return <article className="cg-site-content cg-site-article-body">
+  <p className="cg-site-eyebrow">{text(f.category)}</p>
+  <h1>{text(f.heading)}</h1>
+  <p className="cg-site-article-lead">{text(f.excerpt)}</p>
+  {label(f.source,f.asOfDate)}
+  <p className="cg-site-provenance">Editorial credit: {text(f.authorLabel)}</p>
+  {photo(cover,"cg-site-article-cover")}
+  {text(f.body).split(/\n{2,}/).filter(Boolean).map((paragraph,i)=>
+   <p key={i}>{paragraph}</p>)}
+  <div className="cg-site-tags">{Array.isArray(f.tags)&&f.tags.map((tag,i)=>
+   <span key={i}>{text(tag)}</span>)}</div>
+ </article>;
+}
+export function CmsHealthcare({section}:{
+ section:PublicCmsSection}){
+ const f=section.fields;
+ return <section className="cg-site-content cg-site-healthcare">
+  <p className="cg-site-eyebrow">Healthcare Assistance</p>
+  <h1>{text(f.heading)}</h1><p className="cg-site-article-lead">{text(f.intro)}</p>
+  <div className="cg-site-healthcare-grid">{records(f.categories).map((v,i)=>
+   <article key={i} className="cg-site-impact-card">
+    <h2>{text(v.title)}</h2><p>{text(v.description)}</p>
+   </article>)}</div>
+  {f.ctaPath==="/contact"&&text(f.ctaLabel)&&
+   <Link className="cg-site-action" href="/contact">{text(f.ctaLabel)}</Link>}
+  <p className="cg-site-provenance">General Foundation information only.
+   Provider availability, clinical advice and bookings are not represented here.</p>
+ </section>;
+}
