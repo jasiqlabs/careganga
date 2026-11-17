@@ -64,6 +64,21 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"|"PATCH")
     });
     if(!response.ok){
       const status=[400,401,403,404,409,429].includes(response.status)?response.status:503;
+      // CG-21 editor: return only backend-allowlisted plain-language outcomes.
+      // Never proxy an arbitrary provider, database or exception message.
+      if(parts.length===1&&parts[0]==="error-messages"&&status<500){
+        const safeKeys=new Set(["PLATFORM_COPY_FORM_INVALID","PLATFORM_COPY_UNSUPPORTED",
+         "PLATFORM_COPY_WORDING_INVALID","PLATFORM_COPY_STALE",
+         "PLATFORM_COPY_PASSWORD_REQUIRED","PLATFORM_COPY_NO_CHANGE",
+         "PLATFORM_COPY_REPLAY_CONFLICT","PLATFORM_STALE"]);
+        const responseBody:unknown=await response.json().catch(()=>null);
+        if(responseBody&&typeof responseBody==="object"&&!Array.isArray(responseBody)&&
+          "code" in responseBody&&typeof responseBody.code==="string"&&
+          safeKeys.has(responseBody.code)&&"message" in responseBody&&
+          typeof responseBody.message==="string"&&responseBody.message.length<=220){
+          return reply(responseBody.message,status,responseBody.code);
+        }
+      }
       let code:string|undefined;
       if(status===409){
         try{
