@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {FinanceAccountsService} from "../application/finance-accounts.service";
 
 @Controller("api/finance-accounting")
@@ -25,6 +25,12 @@ export class FinanceAccountsController{
  opening(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.postOpening(bearer,body);
  }
+ @Patch("years/:yearRef/status")
+ yearStatus(@Headers("authorization")bearer:string,@Param("yearRef")yearRef:string,
+  @Body()body:unknown){return this.service.changeYearStatus(bearer,yearRef,body);}
+ @Patch("accounts/:accountRef/status")
+ accountStatus(@Headers("authorization")bearer:string,@Param("accountRef")accountRef:string,
+  @Body()body:unknown){return this.service.changeAccountStatus(bearer,accountRef,body);}
  @Get("commands/:kind/:requestKey")
  command(@Headers("authorization")bearer:string,@Param("kind")kind:string,
   @Param("requestKey")key:string){
