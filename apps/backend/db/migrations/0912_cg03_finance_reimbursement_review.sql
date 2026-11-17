@@ -125,9 +125,9 @@ BEGIN
  IF OLD.status='DRAFT' AND NEW.status='SUBMITTED' THEN
   SELECT ac.status,ac.finance_claim_digest,ac.finance_claim_bill_id,ac.finance_claim_bill_version
    INTO case_result FROM cg03_case ac
-   JOIN cg19_stored_file f ON f.id=c.finance_claim_bill_id
-       AND f.realm_id=c.realm_id AND f.claim_id=c.finance_claim_id
-       AND f.claim_version=c.finance_claim_revision
+   JOIN cg19_stored_file f ON f.id=ac.finance_claim_bill_id
+       AND f.realm_id=ac.realm_id AND f.claim_id=ac.finance_claim_id
+       AND f.claim_version=ac.finance_claim_revision
    JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
    WHERE ac.id=NEW.approval_case_id AND ac.realm_id=NEW.root_realm_id
     AND ac.case_kind='FINANCE_REIMBURSEMENT' AND ac.finance_claim_id=NEW.id
