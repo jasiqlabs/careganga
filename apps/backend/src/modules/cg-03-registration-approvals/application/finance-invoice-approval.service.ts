@@ -24,7 +24,7 @@ export class FinanceInvoiceApprovalService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly source:FinanceInvoiceSourceFacade){}
  async processStatus(bearer:string){
-  const a=await this.sessions.requireAction(bearer,"finance.invoices.manage");
+  const a=await this.sessions.requireAction(bearer,"finance.invoices.review");
   const r=await this.db.query("SELECT process_id FROM cg03_invoice_process_current WHERE realm_id=$1",
    [a.realmId]);
   return {configured:Boolean(r.rowCount),status:r.rowCount?"AVAILABLE":"NOT_CONFIGURED"};
