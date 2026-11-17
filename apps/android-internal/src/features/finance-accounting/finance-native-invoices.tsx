@@ -172,7 +172,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
     taxAccountRef:String(p.taxAccountRef??""),
     terms:String(p.terms??"Payment due per invoice"),notes:String(p.notes??"")});
    setReceipt(null);setDocument(null);setReceiptOptions([]);setReceiptDocs({});
-   if(["ISSUED","POSTED"].includes(detail.status))void receiptRefresh(detail.invoiceRef);
+   if(["ISSUED","CREDITED","POSTED"].includes(detail.status))void receiptRefresh(detail.invoiceRef);
   }catch(e){setError(problem(e));expire(e);}
   finally{setBusy(false);}
  }
@@ -402,7 +402,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        offset by one independent protected financial correction.</Text></Card>}
      {current?.status==="POSTED"&&canIssue&&<Action label="Issue approved invoice PDF"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("issue")}/>}
-    {current?.status==="ISSUED"&&<Card title="Private invoice document">
+    {current&&["ISSUED","CREDITED"].includes(current.status)&&<Card title="Private invoice document">
      {document?.status==="ISSUED"&&document.documentRef?
       <Action label="Open private invoice PDF" onPress={()=>void pdf(
        "/api/documents/finance-invoice/files/"+document.documentRef+"/download")}/>:
@@ -410,10 +410,12 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        onPress={()=>void receiptRefresh(current.ref)}/>}
      <Text style={s.muted}>Issuance is not verified payment or cash received.</Text>
     </Card>}
-    {current?.status==="ISSUED"&&<FinanceNativeAdjustments
+    {current&&["ISSUED","CREDITED"].includes(current.status)&&<FinanceNativeAdjustments
      token={token} invoiceRef={current.ref} canReview={canCancelPosted} canManage={canManage}
-     onExpired={onExpired} onPdf={pdf}/>}
-    {current?.status==="ISSUED"&&<Card title="Verified bank collections and partial receipts">
+     onExpired={onExpired} onPdf={pdf}
+     onCredited={()=>{setCurrent(v=>v?{...v,status:"CREDITED"}:v);void load();void loadDashboard();
+      if(current)void receiptRefresh(current.ref);}}/>}
+    {current&&["ISSUED","CREDITED"].includes(current.status)&&<Card title="Verified bank collections and partial receipts">
      <Text style={s.muted}>An invoice issued is not paid. A genuine balanced bank collection
       journal must be independently reconciled with a bank statement.</Text>
      {receipt&&<>
@@ -421,7 +423,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
       <Text style={s.text}>Verified received {money(receipt.paidMinor)}</Text>
       <Text style={s.heading}>Outstanding {money(receipt.outstandingMinor)}</Text>
      </>}
-     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&canPost&&collection&&<Card
+     {current?.status==="ISSUED"&&receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&canPost&&collection&&<Card
       title="1. Post actual bank collection (not yet verified)">
       <Options label="Open financial year" value={collectionYear}
        options={collection.years.map(y=>({ref:y.yearRef,label:y.name}))}
@@ -444,7 +446,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
       <Text style={s.muted}>The posted journal is awaiting independent bank statement
        verification under Finance Ledger and Reports. No receipt is marked paid yet.</Text>
      </Card>}
-     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&<Card
+     {current?.status==="ISSUED"&&receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&<Card
       title="2. Link independently verified bank statement match">
       <Options label="Verified original bank collection" value={receiptChoice}
        options={receiptOptions.map(o=>({ref:o.reconciliationRef,
