@@ -21,6 +21,8 @@ import {FinanceVoucherEvidenceService} from "./application/finance-voucher-evide
 import {FinanceVoucherEvidenceController} from "./http/finance-voucher-evidence.controller";
 import {PrivateEvidenceService} from "./application/private-evidence.service";
 import {CmsDraftMediaService} from "./application/cms-draft-media.service";
+import {CmsPublicNoticeSource} from "./application/cms-public-notice-source.service";
+import {CmsPublicNoticeSourceController} from "./http/cms-public-notice-source.controller";
 import {CmsDraftMediaController,CmsPublicMediaController} from "./http/cms-draft-media.controller";
 import {PrivateObjectStorage} from "./infrastructure/private-object-storage";
 import {makePrivateStorageProvider} from "./infrastructure/private-storage-provider.factory";
@@ -44,12 +46,12 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule,FinanceSourceModule],
-  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,
+  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,CmsPublicNoticeSourceController,
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
-  providers:[PrivateEvidenceService,CmsDraftMediaService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
+  providers:[PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
     NotificationService,NoticeService,DeliveryService,
     CommunicationProviders,CommunicationWorker,SupportService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,CmsDraftMediaService,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
+  exports:[PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
 })
 export class DocumentsNotificationsModule{}
