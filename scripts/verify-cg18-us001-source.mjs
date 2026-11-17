@@ -32,7 +32,10 @@ const files={
  routeGallery:read("apps/web/src/app/gallery/page.tsx"),
  routeBlog:read("apps/web/src/app/blog/page.tsx"),
  routeHealthcare:read("apps/web/src/app/healthcare/page.tsx"),
- notice:read("apps/backend/src/modules/cg-19-documents-notifications/application/notice.service.ts")
+ notice:read("apps/backend/src/modules/cg-19-documents-notifications/application/notice.service.ts"),
+ noticeSource:read("apps/backend/src/modules/cg-19-documents-notifications/application/cms-public-notice-source.service.ts"),
+ storage:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/verified-private-storage.ts"),
+ scanner:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/clamav-scanner.ts")
 };
 const checks=[
  ["All screenshot-driven content blocks validated by backend",
@@ -115,10 +118,26 @@ const checks=[
   files.adminRoute.includes("CmsExtendedWorkspace")&&
   files.header.includes("publishedRoutes")&&
   files.publicSource.includes("effectiveGeneration")],
- ["CG19 internal notices are NOT automatically exposed to the public",
+ ["CG19 original notice is never automatically exposed to public",
   files.notice.includes("audience_kind")&&
-  !files.publicExtended.includes("cg19_notice_recipient")&&
-  !files.adminExtended.includes("cg19_notice_recipient")]
+  files.noticeSource.includes("communications.notices.manage")&&
+  files.noticeSource.includes("revisionEligible(")&&
+  files.noticeSource.includes("audience_kind='ALL_ACTIVE'")&&
+  files.extended.includes("publicReleaseConfirmed")&&
+  files.backend.includes("requireSelectionAccess(bearer)")&&
+  files.backend.includes("await this.notices.revisionEligible(")&&
+  files.adminExtended.includes("I confirm that this exact notice title and body")&&
+  !files.publicExtended.includes("cg19_notice_recipient")],
+ ["CG19 short video is scanned and size-limited without increasing finance limits",
+  files.storage.includes("maxFor=(key:string,mime:string)")&&
+  files.storage.includes('mime==="video/mp4"')&&
+  files.storage.includes("byteSignatureMatches")&&
+  files.scanner.includes("bytes.length>25*1024*1024")],
+ ["80G annual reports require exact indexed scanned original documents",
+  files.extended.includes('"ANNUAL_REPORT"')&&
+  files.extended.includes('role==="DOCUMENT"&&a.order===i')&&
+  files.backend.includes('s.fields.documents.length')&&
+  files.publicExtended.includes("Published original reports")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
