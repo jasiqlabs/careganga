@@ -228,6 +228,32 @@ export class FinanceAccountsService{
   return {years:years.rows,groups:groups.rows,accounts:safeAccounts,
    openingJournals:opening.rows,branches,categorySummary:categorySummary.rows,nextOffset:hasMore?offset+50:null};
  }
+ /** Authenticated, root-scoped account search independent of the current table page.
+  * Only display-safe account names/codes; never exposes bank account numbers.
+  */
+ async postingAccountOptions(bearer:string,query?:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.journals.post");
+  if(query!==undefined&&(typeof query!=="string"||query.length>80))
+   throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID"});
+  const q=query?.trim()??"";
+  const escaped="%"+q.replace(/[\\%_]/g,"\\ async createYear(bearer:string,input:unknown):Promise<CommandResult>{")+"%";
+  const rows=await this.db.query<{
+    accountRef:string;name:string;code:string;scopeKind:string;branchRef:string|null
+  }>(`
+   SELECT a.id AS "accountRef",a.name,a.code,a.scope_kind AS "scopeKind",
+    a.branch_id AS "branchRef"
+   FROM finance_account a
+   WHERE a.root_realm_id=$1 AND a.status='ACTIVE'
+      AND (a.name ILIKE $2 ESCAPE '\\' OR a.code ILIKE $2 ESCAPE '\\')
+   ORDER BY a.name,a.id LIMIT 51`,[actor.realmId,escaped]);
+  const activeBranches=await this.branches.financeBranches(bearer);
+  const labels=new Map(activeBranches.map(b=>[b.branchRef,b]));
+  return {accounts:rows.rows.filter(a=>!a.branchRef||labels.has(a.branchRef))
+    .slice(0,50).map(a=>({...a,
+      branchName:a.branchRef?labels.get(a.branchRef)?.name??null:null,
+      branchVersion:a.branchRef?labels.get(a.branchRef)?.version??null:null})),
+   hasMore:rows.rows.length>50};
+ }
  async createYear(bearer:string,input:unknown):Promise<CommandResult>{
   const body=fields(input,["name","startOn","endOn","requestKey"]);
   const name=label(body.name,"name",80),start=dateOnly(body.startOn,"startOn"),
