@@ -48,7 +48,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
       ?rawCode:null;
     const rawField=payload&&typeof payload==="object"&&"field" in payload?payload.field:null;
     const field=typeof rawField==="string"&&["name","code","category","startOn","endOn","scopeKind",
-      "branchRef","groupRef","accountKind","postingDate","amount","debitAccountRef",
+      "branchRef","groupRef","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
       "creditAccountRef"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
