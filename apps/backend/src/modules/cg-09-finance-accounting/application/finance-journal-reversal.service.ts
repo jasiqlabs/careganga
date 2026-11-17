@@ -30,6 +30,21 @@ export class FinanceJournalReversalService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly posting:FinanceJournalPostingService){}
+ async eligibility(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+  try{
+   await this.sessions.requireAction(bearer,"finance.journals.post");
+   await this.sessions.requireAction(bearer,"approvals.review");
+   const tx=await this.db.connect();
+   try{
+    await tx.query("BEGIN");
+    await this.identity.assertCurrent(tx,actor,"finance.journals.post");
+    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+    await tx.query("COMMIT");
+    return {canReverse:true};
+   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch{return {canReverse:false};}
+ }
  async status(bearer:string,keyInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.journals.post");
   await this.sessions.requireAction(bearer,"approvals.review");
