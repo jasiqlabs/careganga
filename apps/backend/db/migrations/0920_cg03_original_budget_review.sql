@@ -193,6 +193,12 @@ BEGIN
     AND NEW.period_start BETWEEN fy.start_on AND fy.end_on
     AND NEW.period_end BETWEEN fy.start_on AND fy.end_on FOR SHARE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Budget period is outside current year' USING ERRCODE='P0925'; END IF;
+  PERFORM 1 FROM account_group WHERE root_realm_id=NEW.root_realm_id
+   AND category='EXPENSE' AND name=NEW.category_label FOR SHARE;
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'Budget category must refer to a real expense group'
+     USING ERRCODE='P0925';
+  END IF;
   IF NEW.branch_id IS NOT NULL THEN
    PERFORM 1 FROM branch WHERE id=NEW.branch_id AND root_realm_id=NEW.root_realm_id
     AND status='ACTIVE' FOR SHARE;
