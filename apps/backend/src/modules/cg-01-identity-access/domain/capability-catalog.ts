@@ -69,7 +69,10 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"finance.invoices.view",businessLabel:"View Foundation invoices and receipts",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.invoices.manage",businessLabel:"Prepare and submit Foundation invoices",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.invoices.review",businessLabel:"Review protected Foundation invoices",group:"Finance & accounting",assignable:false,sensitive:true},
-  {key:"finance.invoices.issue",businessLabel:"Issue approved Foundation invoices and receipts",group:"Finance & accounting",assignable:true,sensitive:true}
+  {key:"finance.invoices.issue",businessLabel:"Issue approved Foundation invoices and receipts",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.view",businessLabel:"View Foundation budget allocations and utilization",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.manage",businessLabel:"Draft budgets and manage genuine allocation commitments",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.review",businessLabel:"Protected approval of original Foundation budgets",group:"Finance & accounting",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
