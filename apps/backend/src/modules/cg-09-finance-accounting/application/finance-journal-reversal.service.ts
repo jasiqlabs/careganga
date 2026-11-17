@@ -14,7 +14,8 @@ const id=(v:unknown)=>{
 };
 const date=(v:unknown)=>{
  if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v)||
-  new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)
+  (!Number.isFinite(Date.parse(v+"T00:00:00Z"))||
+   new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v))
   throw new BadRequestException({code:"FINANCE_JOURNAL_REVERSAL_INVALID"});
  return v;
 };
