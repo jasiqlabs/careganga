@@ -4,6 +4,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
+import {complianceEligible} from "../application/cms-compliance-eligibility";
 
 type Due={id:string;foundation_root_id:string;page_publication_ref:string};
 type Original={id:string;page_id:string;page_revision_id:string;
@@ -95,7 +96,10 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
     item.source_content_digest,item.created_by),
    this.media.validateScheduledPlacements(tx,item.foundation_root_id,item.page_revision_id)
   ]);
-  if(!approved||!mediaValid){await this.cancel(tx,due,item);return;}
+  if(!approved||!mediaValid||
+    !(await complianceEligible(tx,item.foundation_root_id,item.page_revision_id))){
+   await this.cancel(tx,due,item);return;
+  }
   const active=await tx.query<{publication_id:string}>(
    "SELECT publication_id FROM cms_page_effective WHERE "+
    "foundation_root_id=$1 AND page_id=$2 FOR UPDATE",
