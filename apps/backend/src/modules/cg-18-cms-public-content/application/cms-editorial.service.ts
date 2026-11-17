@@ -8,12 +8,15 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {extendedKinds,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
-const KINDS=new Set(["HOME","ABOUT"]);
+const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
- "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER"]);
-const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE"]);
+ "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
+ "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES"]);
+const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
+ "GALLERY","ARTICLE","DOCUMENT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function uuid(v:unknown,field:string){
@@ -46,7 +49,7 @@ type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
  "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER";order:number;
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
- "ABOUT"|"PROMO"|"FEATURE";
+ "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT";
  altText:string;order:number};
 // Only reveal media when its exact authored section or indexed card still exists.
 function placementFits(sections:readonly Section[],a:{role:string;order:number}){
@@ -58,11 +61,16 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
    Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
   if(a.role==="FEATURE")return s.kind==="FEATURE_CARDS"&&
    Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length;
+  if(a.role==="GALLERY")return s.kind==="GALLERY_GRID"&&
+   Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
+  if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;
+  if(a.role==="DOCUMENT")return s.kind==="COMPLIANCE_FACTS"&&a.order===0;
   return false;
  });
 }
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
-type Content={kind:"HOME"|"ABOUT";slug:string;title:string;seoTitle:string;
+type Content={kind:"HOME"|"ABOUT"|"IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|
+ "CONTACT"|"HEALTHCARE";slug:string;title:string;seoTitle:string;
  seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[];navigation:NavDesired|null};
 function parseContent(raw:unknown):Content{
  const v=input(raw,["kind","slug","title","seoTitle","seoDescription","canonicalPath",
@@ -70,15 +78,21 @@ function parseContent(raw:unknown):Content{
  if(typeof v.kind!=="string"||!KINDS.has(v.kind))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"kind"});
  const kind=v.kind as Content["kind"],slug=text(v.slug,"slug",70,1).toLowerCase();
+ const fixed:Partial<Record<Content["kind"],string>>={HOME:"home",ABOUT:"about",
+  IMPACT:"impact",COMPLIANCE:"80g",GALLERY:"gallery",CONTACT:"contact",
+  HEALTHCARE:"healthcare"};
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug)||reserved.has(slug)||
-  (kind==="HOME"&&slug!=="home")||(kind==="ABOUT"&&slug!=="about"))
+    (fixed[kind]!==undefined&&slug!==fixed[kind])||
+    (kind==="ARTICLE"&&Object.values(fixed).includes(slug)))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"slug"});
  const title=text(v.title,"title",180,3);
  const seoTitle=text(v.seoTitle??v.title,"seoTitle",180,3);
  const seoDescription=text(v.seoDescription??"","seoDescription",300);
- const canonicalPath=path(v.canonicalPath??(kind==="HOME"?"/":"/about"),"canonicalPath");
- if((kind==="HOME"&&canonicalPath!=="/")||
-    (kind==="ABOUT"&&canonicalPath!=="/about"))
+ const expectedPath=kind==="HOME"?"/":kind==="ABOUT"?"/about":
+  kind==="COMPLIANCE"?"/80g":kind==="ARTICLE"?"/blog/"+slug:"/"+slug;
+ const canonicalPath=v.canonicalPath??expectedPath;
+ if(typeof canonicalPath!=="string"||canonicalPath!==expectedPath||
+    !/^\/(?:[a-z0-9-]+\/?)*$/.test(canonicalPath))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"canonicalPath"});
  if(!Array.isArray(v.sections)||v.sections.length<1||v.sections.length>24)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
@@ -87,6 +101,9 @@ function parseContent(raw:unknown):Content{
   if(typeof sec.kind!=="string"||!SECTION.has(sec.kind)||
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
+  if(extendedKinds.has(String(sec.kind)))return {
+   kind:sec.kind as Section["kind"],order:Number(sec.order),
+   fields:parseExtendedSection(String(sec.kind),sec.fields)};
   const fields=input(sec.fields,sec.kind==="HERO"?
    ["heading","subtitle","description","eyebrow","tags","visible",
     "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
@@ -241,6 +258,7 @@ function parseContent(raw:unknown):Content{
   const a=assets[i];
   if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
  }
+ if(kind!=="HOME"&&kind!=="ABOUT")validateExtendedPage(kind,sections,assets);
  return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets,navigation};
 }
 type Page={id:string;kind:string;slug:string;version:string;created_by:string;
