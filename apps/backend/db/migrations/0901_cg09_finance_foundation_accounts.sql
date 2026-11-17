@@ -132,7 +132,8 @@ CREATE TABLE cash_bank_account(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  account_id uuid NOT NULL,
  kind text NOT NULL CHECK(kind IN('CASH','BANK')),
- display_label text NOT NULL CHECK(char_length(btrim(display_label)) BETWEEN 2 AND 120),
+ display_label text NOT NULL CHECK(char_length(btrim(display_label)) BETWEEN 2 AND 120
+  AND display_label !~ '([0-9][ -]?){5,}'),
  masked_details text NOT NULL DEFAULT '' CHECK(
    masked_details='' OR masked_details ~ '^•••• [0-9]{4}$'),
  status text NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','INACTIVE')),
@@ -141,12 +142,25 @@ CREATE TABLE cash_bank_account(
  FOREIGN KEY(account_id,root_realm_id) REFERENCES finance_account(id,root_realm_id) ON DELETE RESTRICT
 );
 CREATE FUNCTION cg09_bank_account_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE current_status text;
 BEGIN
- IF NOT EXISTS (
-  SELECT 1 FROM finance_account a
+ SELECT a.status INTO current_status FROM finance_account a
   WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
-    AND a.account_kind=NEW.kind AND (a.status='ACTIVE' OR NEW.status='INACTIVE')
- ) THEN RAISE EXCEPTION 'Invalid active cash/bank account' USING ERRCODE='P0905'; END IF;
+   AND a.account_kind=NEW.kind FOR SHARE;
+ IF NOT FOUND OR NEW.status<>current_status THEN
+  RAISE EXCEPTION 'Cash/bank account status must match finance account' USING ERRCODE='P0905';
+ END IF;
+ IF TG_OP='UPDATE' THEN
+  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
+   OR NEW.account_id IS DISTINCT FROM OLD.account_id
+   OR NEW.kind IS DISTINCT FROM OLD.kind
+   OR NEW.display_label IS DISTINCT FROM OLD.display_label
+   OR NEW.masked_details IS DISTINCT FROM OLD.masked_details
+   OR NEW.created_at IS DISTINCT FROM OLD.created_at
+   OR NEW.status IS NOT DISTINCT FROM OLD.status THEN
+   RAISE EXCEPTION 'Cash/bank account identity cannot change' USING ERRCODE='P0907';
+  END IF;
+ END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER cg09_bank_kind_guard BEFORE INSERT OR UPDATE ON cash_bank_account
@@ -163,6 +177,22 @@ CREATE TABLE finance_command(
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg09_command_root ON finance_command(root_realm_id,created_at DESC,id);
+-- Command proof may only acquire a result once; no digest or actor changes.
+CREATE FUNCTION cg09_guard_finance_command() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
+  OR NEW.actor_ref IS DISTINCT FROM OLD.actor_ref
+  OR NEW.command_kind IS DISTINCT FROM OLD.command_kind
+  OR NEW.request_key IS DISTINCT FROM OLD.request_key
+  OR NEW.payload_digest IS DISTINCT FROM OLD.payload_digest
+  OR NEW.created_at IS DISTINCT FROM OLD.created_at
+  OR OLD.entity_ref IS NOT NULL OR NEW.entity_ref IS NULL THEN
+  RAISE EXCEPTION 'Finance command cannot be rewritten' USING ERRCODE='P0907';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER cg09_command_once BEFORE UPDATE ON finance_command
+ FOR EACH ROW EXECUTE FUNCTION cg09_guard_finance_command();
 
 -- A direct SQL writer cannot post into a CLOSED/foreign/out-of-period year.
 -- FOR SHARE serializes this check against the year-closing UPDATE.
@@ -227,6 +257,14 @@ BEGIN
  IF v_scope='BRANCH' AND v_branch IS DISTINCT FROM NEW.branch_id THEN
   RAISE EXCEPTION 'Finance posting account is in another branch' USING ERRCODE='P0904';
  END IF;
+ IF NEW.branch_id IS NOT NULL THEN
+  PERFORM 1 FROM branch b
+   WHERE b.id=NEW.branch_id AND b.root_realm_id=NEW.root_realm_id
+    AND b.status='ACTIVE' FOR SHARE;
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'Finance posting branch is not active' USING ERRCODE='P0904';
+  END IF;
+ END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
@@ -278,6 +316,8 @@ BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P
 CREATE TRIGGER cg09_journal_immutable BEFORE UPDATE OR DELETE ON journal
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 CREATE TRIGGER cg09_lines_immutable BEFORE UPDATE OR DELETE ON journal_line
+ FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
+CREATE TRIGGER cg09_command_no_delete BEFORE DELETE ON finance_command
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 
 CREATE TABLE finance_event(
