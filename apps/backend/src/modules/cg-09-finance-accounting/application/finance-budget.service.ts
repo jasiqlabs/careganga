@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
+import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -177,7 +178,7 @@ export class FinanceBudgetService{
    await this.record(tx,actor,key,fingerprint,budgetRef,next,action,"DRAFT");
    await tx.query("COMMIT");
    return {confirmed:true,budgetRef,version:next,status:"DRAFT",replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"budget");}finally{tx.release();}
  }
  async submit(bearer:string,budgetInput:string,raw:unknown){
   const actor=await this.actor(bearer,true),ref=id(budgetInput);
@@ -211,7 +212,7 @@ export class FinanceBudgetService{
    await tx.query("COMMIT");
    return {confirmed:true,status:"SUBMITTED",budgetNumber:budget.budget_number,
     reviewCase:reviewer.caseNumber,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"budget");}finally{tx.release();}
  }
  async reconcile(bearer:string,budgetInput:string,raw:unknown){
   const actor=await this.actor(bearer,true),ref=id(budgetInput);
@@ -241,7 +242,7 @@ export class FinanceBudgetService{
    await this.record(tx,actor,key,fingerprint,ref,budget.version,"RECONCILE",next);
    await tx.query("COMMIT");
    return {confirmed:true,status:next,budgetNumber:budget.budget_number,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"budget");}finally{tx.release();}
  }
  async recordEvent(bearer:string,budgetInput:string,raw:unknown){
   const actor=await this.actor(bearer,true),ref=id(budgetInput);
@@ -279,7 +280,7 @@ export class FinanceBudgetService{
    if(e&&typeof e==="object"&&"code" in e&&
       ["23505","P0924"].includes(String(e.code)))
     throw new ConflictException({code:"FINANCE_BUDGET_EVENT_INVALID"});
-   throw e;
+   financeSqlFailure(e,"budget");
   }finally{tx.release();}
  }
  async eligibleExpenses(bearer:string,budgetInput:string){
