@@ -379,6 +379,8 @@ export class FinanceInvoiceDraftService{
    "i.draft_payload AS draft,i.current_digest AS \"sourceDigest\" "+
    "FROM finance_invoice i LEFT JOIN finance_invoice_posted_cancellation c "+
    "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
+   "LEFT JOIN finance_invoice_credit_note n "+
+   "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
    "WHERE i.id=$1 AND i.root_realm_id=$2",[id,actor.realmId]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   return rows.rows[0];
