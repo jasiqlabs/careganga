@@ -1,0 +1,303 @@
+import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {createHash} from "node:crypto";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {FinanceInvoiceApprovalService} from "../../cg-03-registration-approvals/application/finance-invoice-approval.service";
+import {FinanceJournalPostingService} from "./finance-journal-posting.service";
+import {FinanceInvoiceDocumentService} from "../../cg-19-documents-notifications/application/finance-invoice-document.service";
+import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type Invoice={id:string;version:number;current_digest:string;status:string;invoice_number:string;
+ draft_payload:Record<string,unknown>;financial_year_id:string|null;branch_id:string|null;
+ invoice_date:string|null;approval_case_id:string|null;receivable_account_id:string|null;
+ income_account_id:string|null;tax_account_id:string|null;gross_minor:string|null;
+ tax_minor:string|null;charges_minor:string|null;total_minor:string|null};
+type JournalReply={confirmed:true;status:string;invoiceNumber:string;replayed:boolean};
+const ident=(v:unknown):string=>{
+ if(typeof v!=="string"||!UUID.test(v))
+  throw new BadRequestException({code:"FINANCE_INVOICE_SOURCE_INVALID",field:"invoiceRef"});
+ return v;
+};
+const revision=(v:unknown):number=>{
+ if(!Number.isSafeInteger(v)||Number(v)<1)
+  throw new BadRequestException({code:"FINANCE_INVOICE_STALE",field:"expectedVersion"});
+ return Number(v);
+};
+const input=(v:unknown,allowed:string[])=>{
+ if(!v||typeof v!=="object"||Array.isArray(v)||
+   Object.keys(v).some(k=>!allowed.includes(k)))
+  throw new BadRequestException({code:"FINANCE_INVOICE_FORM_INVALID"});
+ return v as Record<string,unknown>;
+};
+const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+type Command={request_digest:string;invoice_id:string;source_version:number;result_status:string};
+@Injectable()
+export class FinanceInvoiceWorkflowService{
+ constructor(@Inject(DATABASE) private readonly db:Pool,
+  private readonly sessions:SessionService,
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade,
+  private readonly approvals:FinanceInvoiceApprovalService,
+  private readonly posting:FinanceJournalPostingService,
+  private readonly documents:FinanceInvoiceDocumentService){}
+ private async actor(bearer:string,capability:
+  "finance.invoices.manage"|"finance.invoices.issue"){
+  const actor=await this.sessions.requireAction(bearer,capability);
+  return actor;
+ }
+ private async load(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
+  const rows=await tx.query<Invoice>(
+   "SELECT id,version,status,current_digest,invoice_number,draft_payload,"+
+   "financial_year_id,branch_id,invoice_date::text,approval_case_id,"+
+   "receivable_account_id,income_account_id,tax_account_id,"+
+   "gross_minor::text,tax_minor::text,charges_minor::text,total_minor::text "+
+   "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
+   [ref,actor.realmId]);
+  const x=rows.rows[0];
+  if(!x)throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
+  return x;
+ }
+ private async command(tx:PoolClient,actor:VerifiedFoundationActor,key:string){
+  const found=await tx.query<Command>(
+   "SELECT request_digest,invoice_id,source_version,result_status "+
+   "FROM finance_invoice_command WHERE root_realm_id=$1 "+
+   "AND actor_ref=$2 AND request_key=$3 FOR SHARE",
+   [actor.realmId,actor.accountId,key]);
+  return found.rows[0]??null;
+ }
+ private async record(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,
+  version:number,key:string,digest:string,action:"SUBMIT"|"RECONCILE"|"ACCRUAL_POST"|"ISSUE",
+  status:string){
+  await tx.query(
+   "INSERT INTO finance_invoice_command(root_realm_id,actor_ref,request_key,invoice_id,"+
+   "action,request_digest,result_status,source_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+   [actor.realmId,actor.accountId,key,ref,action,digest,status,version]);
+  await tx.query(
+   "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
+   "VALUES($1,$2,'INVOICE',$3,$4,$5)",
+   [actor.realmId,actor.accountId,ref,"INVOICE_"+action+"_"+status,key]);
+ }
+ private async checkOriginal(tx:PoolClient,actor:VerifiedFoundationActor,x:Invoice){
+  const d=x.draft_payload as {info?:Record<string,unknown>;items?:Record<string,unknown>;
+    payment?:Record<string,unknown>};
+  const i=d.info,j=d.items,p=d.payment;
+  if(!i||!j||!p||!Array.isArray(j.rows)||
+     typeof i.financialYearRef!=="string"||!UUID.test(i.financialYearRef)||
+     typeof i.invoiceDate!=="string"||typeof i.dueDate!=="string"||
+     typeof p.receivableAccountRef!=="string"||!UUID.test(p.receivableAccountRef)||
+     typeof p.incomeAccountRef!=="string"||!UUID.test(p.incomeAccountRef)||
+     (p.taxAccountRef!==null&&p.taxAccountRef!==undefined&&
+      (typeof p.taxAccountRef!=="string"||!UUID.test(p.taxAccountRef))))
+   throw new ConflictException({code:"FINANCE_INVOICE_INCOMPLETE"});
+  const fy=await tx.query<{start_on:string;end_on:string;status:string}>(
+   "SELECT start_on::text,end_on::text,status FROM financial_year "+
+   "WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
+   [i.financialYearRef,actor.realmId]);
+  const y=fy.rows[0];
+  if(!y||y.status!=="OPEN"||i.invoiceDate<y.start_on||i.invoiceDate>y.end_on||
+     i.dueDate<i.invoiceDate)throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+  const branch=typeof i.branchRef==="string"&&i.branchRef?i.branchRef:null;
+  if(branch)await this.branches.requireFinanceBranchVersion(tx,actor,branch,
+   Number(i.branchVersion),"finance.invoices.manage");
+  const refs=[p.receivableAccountRef,p.incomeAccountRef,
+   ...(p.taxAccountRef?[p.taxAccountRef]:[])];
+  if(new Set(refs).size!==refs.length)
+   throw new ConflictException({code:"FINANCE_INVOICE_ACCOUNT_INVALID"});
+  const acc=await tx.query<{id:string;category:string;branch_id:string|null}>(
+   "SELECT a.id,g.category,a.branch_id FROM finance_account a JOIN account_group g "+
+   "ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
+   "WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND "+
+   "a.id=ANY($2::uuid[]) FOR SHARE OF a,g",
+   [actor.realmId,refs]);
+  const map=new Map(acc.rows.map(a=>[a.id,a]));
+  const good=(ref:string,c:string)=>map.get(ref)?.category===c&&
+   (map.get(ref)?.branch_id===null||map.get(ref)?.branch_id===branch);
+  if(!good(String(p.receivableAccountRef),"ASSET")||
+     !good(String(p.incomeAccountRef),"INCOME")||
+     (p.taxAccountRef&&!good(String(p.taxAccountRef),"LIABILITY"))||
+     (BigInt(String(j.taxMinor??"0"))>0n&&!p.taxAccountRef))
+   throw new ConflictException({code:"FINANCE_INVOICE_ACCOUNT_INVALID"});
+  return {info:i,items:j,payment:p,branch};
+ }
+ async submit(bearer:string,invoiceInput:string,payload:unknown){
+  const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
+   v=input(payload,["requestKey","expectedVersion"]),
+   key=ident(v.requestKey),version=revision(v.expectedVersion),
+   digest=hash(["INVOICE_SUBMIT_V1",ref,version]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.manage");
+   const old=await this.command(tx,actor,key);
+   if(old){if(old.request_digest!==digest)
+    throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
+   const x=await this.load(tx,actor,ref);
+   if(x.status!=="DRAFT"||x.version!==version)
+    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   const facts=await this.checkOriginal(tx,actor,x);
+   const caseRow=await this.approvals.createCase(tx,actor,{
+    invoiceRef:ref,version,digest:x.current_digest,number:x.invoice_number,key});
+   const i=facts.info,j=facts.items,p=facts.payment;
+   const change=await tx.query(
+    "UPDATE finance_invoice SET status='SUBMITTED',approval_case_id=$3,"+
+    "financial_year_id=$4,branch_id=$5,invoice_date=$6,due_date=$7,"+
+    "category_label=$8,purpose=$9,counterparty_name=$10,counterparty_address=$11,"+
+    "gross_minor=$12,tax_minor=$13,charges_minor=$14,total_minor=$15,"+
+    "receivable_account_id=$16,income_account_id=$17,tax_account_id=$18,"+
+    "updated_at=now() WHERE id=$1 AND root_realm_id=$2 "+
+    "AND status='DRAFT' AND version=$19 RETURNING id",
+    [ref,actor.realmId,caseRow.caseRef,i.financialYearRef,facts.branch,
+     i.invoiceDate,i.dueDate,i.category,i.purpose,i.counterpartyName,
+     i.counterpartyAddress,j.grossMinor,j.taxMinor,j.chargesMinor,j.totalMinor,
+     p.receivableAccountRef,p.incomeAccountRef,p.taxAccountRef??null,version]);
+   if(change.rowCount!==1)
+    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   await this.record(tx,actor,ref,version,key,digest,"SUBMIT","SUBMITTED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"SUBMITTED",invoiceNumber:x.invoice_number,
+    caseNumber:caseRow.caseNumber,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async reconcile(bearer:string,invoiceInput:string,payload:unknown){
+  const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
+   v=input(payload,["requestKey","caseRef"]),key=ident(v.requestKey),
+   caseRef=ident(v.caseRef),digest=hash(["INVOICE_RECONCILE_V1",ref,caseRef]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.manage");
+   const old=await this.command(tx,actor,key);
+   if(old){if(old.request_digest!==digest)
+    throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
+   const x=await this.load(tx,actor,ref);
+   if(x.approval_case_id!==caseRef||x.status!=="SUBMITTED")
+    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   const outcome=await this.approvals.outcome(tx,actor,{
+    caseRef,invoiceRef:ref,version:x.version,digest:x.current_digest});
+   const status=["PENDING_OWNER","OWNER_COMPLETED"].includes(outcome.status)?
+    "APPROVED":outcome.status;
+   if(!["APPROVED","RETURNED","REJECTED"].includes(status))
+    throw new ConflictException({code:"FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
+   const updated=await tx.query(
+    "UPDATE finance_invoice SET status=$3,updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status='SUBMITTED' RETURNING id",
+    [ref,actor.realmId,status]);
+   if(updated.rowCount!==1)throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   if(status==="APPROVED")await this.approvals.finish(tx,actor,caseRef);
+   await this.record(tx,actor,ref,x.version,key,digest,"RECONCILE",status);
+   await tx.query("COMMIT");
+   return {confirmed:true,status,invoiceNumber:x.invoice_number,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async post(bearer:string,invoiceInput:string,payload:unknown):Promise<JournalReply>{
+  const actor=await this.actor(bearer,"finance.invoices.manage");
+  await this.sessions.requireAction(bearer,"finance.journals.post");
+  const ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey),
+   digest=hash(["INVOICE_ACCRUAL_POST_V1",ref]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.manage");
+   await this.identity.assertCurrent(tx,actor,"finance.journals.post");
+   const old=await this.command(tx,actor,key);
+   if(old){if(old.request_digest!==digest)
+    throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    const oldInvoice=await this.load(tx,actor,ref);
+    await tx.query("COMMIT");
+    return {confirmed:true,status:old.result_status,invoiceNumber:oldInvoice.invoice_number,replayed:true};}
+   const x=await this.load(tx,actor,ref);
+   if(x.status!=="APPROVED"||!x.approval_case_id||
+      !x.financial_year_id||!x.invoice_date||!x.receivable_account_id||
+      !x.income_account_id||!x.total_minor||!x.gross_minor||
+      x.tax_minor===null||x.charges_minor===null)
+    throw new ConflictException({code:"FINANCE_INVOICE_POSTING_NOT_READY"});
+   const outcome=await this.approvals.outcome(tx,actor,{
+    caseRef:x.approval_case_id,invoiceRef:ref,
+    version:x.version,digest:x.current_digest});
+   if(!outcome.effect_key||!["PENDING_OWNER","OWNER_COMPLETED"].includes(outcome.status))
+    throw new ConflictException({code:"FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
+   const tax=BigInt(x.tax_minor),total=BigInt(x.total_minor),
+    base=BigInt(x.gross_minor)+BigInt(x.charges_minor);
+   if(base<=0n||tax<0n||tax+base!==total||
+      tax>0n&&!x.tax_account_id)
+    throw new ConflictException({code:"FINANCE_INVOICE_POSTING_NOT_READY"});
+   const digestPosted=hash(["CG09_APPROVED_INVOICE_ACCRUAL_V1",ref,x.version,
+    x.current_digest,x.approval_case_id,x.receivable_account_id,
+    x.income_account_id,x.tax_account_id,total.toString()]);
+   const lines=[
+    {accountRef:x.receivable_account_id,branchRef:x.branch_id,
+     debitMinor:total.toString(),creditMinor:"0"},
+    {accountRef:x.income_account_id,branchRef:x.branch_id,
+     debitMinor:"0",creditMinor:base.toString()},
+    ...(tax>0n&&x.tax_account_id?[{accountRef:x.tax_account_id,
+     branchRef:x.branch_id,debitMinor:"0",creditMinor:tax.toString()}]:[])
+   ];
+   const journalRef=await this.posting.postBalanced(tx,actor,{
+    financialYearRef:x.financial_year_id,postingDate:x.invoice_date,
+    sourceRef:ref,eventKey:outcome.effect_key,immutableDigest:digestPosted,
+    kind:"INVOICE",description:"Approved Foundation invoice "+x.invoice_number,lines
+   });
+   await tx.query(
+    "INSERT INTO finance_invoice_posting(root_realm_id,invoice_id,invoice_version,"+
+    "approval_case_id,journal_id,original_digest,posted_by) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [actor.realmId,ref,x.version,x.approval_case_id,journalRef,digestPosted,actor.accountId]);
+   const changed=await tx.query(
+    "UPDATE finance_invoice SET status='POSTED',updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status='APPROVED' RETURNING id",
+    [ref,actor.realmId]);
+   if(changed.rowCount!==1)
+    throw new ConflictException({code:"FINANCE_INVOICE_POSTING_NOT_READY"});
+   await this.record(tx,actor,ref,x.version,key,digest,"ACCRUAL_POST","POSTED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"POSTED",invoiceNumber:x.invoice_number,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ /** CG19 stores and verifies real PDF bytes first. This is a separate
+  * idempotent command; a failed provider never marks an invoice ISSUED.
+  */
+ async issue(bearer:string,invoiceInput:string,payload:unknown){
+  const actor=await this.actor(bearer,"finance.invoices.issue"),
+   ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey);
+  const digest=hash(["INVOICE_ISSUE_V1",ref]);
+  // External PDF issuance cannot be inside the transaction. CG19 uses the same
+  // original source key and document-status lookup for any uncertain result.
+  const result=await this.documents.issue(bearer,ref,key);
+  if(result.status!=="ISSUED")
+   return {confirmed:false,status:result.status,issueDocumentRef:result.documentRef??null};
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.issue");
+   const old=await this.command(tx,actor,key);
+   if(old){if(old.request_digest!==digest)
+    throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
+   const x=await this.load(tx,actor,ref);
+   if(x.status!=="POSTED")
+    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+   const changed=await tx.query(
+    "UPDATE finance_invoice SET status='ISSUED',updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status='POSTED' RETURNING id",
+    [ref,actor.realmId]);
+   if(changed.rowCount!==1)
+    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   await this.record(tx,actor,ref,x.version,key,digest,"ISSUE","ISSUED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"ISSUED",invoiceNumber:x.invoice_number,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async commandStatus(bearer:string,requestKey:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
+  const row=await this.db.query<Command>(
+   "SELECT request_digest,invoice_id,source_version,result_status "+
+   "FROM finance_invoice_command WHERE root_realm_id=$1 AND actor_ref=$2 "+
+   "AND request_key=$3",[actor.realmId,ident(requestKey)]);
+  return {confirmed:!!row.rows[0],status:row.rows[0]?.result_status??"NOT_FOUND"};
+ }
+}
