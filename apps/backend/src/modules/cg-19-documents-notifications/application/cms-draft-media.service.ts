@@ -53,7 +53,7 @@ const PUBLIC_MEDIA_MIME_ALLOWED=
  "AND f.original_mime='video/mp4') OR ("+
  "gs.structured_fields->'items'->a.sort_order->>'mediaType'='PUBLICATION' "+
  "AND f.original_mime='application/pdf'))))"+
- ")) ";
+ ") ";
 type Intent={id:string;realm_id:string;page_id:string;page_revision_id:string;
  owner_id:string;request_digest:string;request_key:string;original_mime:string;
  size_bytes:string;expected_sha256:string;object_key:string;reserved_until:Date;
