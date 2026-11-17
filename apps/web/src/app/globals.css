@@ -869,6 +869,29 @@ button:disabled { cursor:wait; opacity:.65; }
 @media(max-width:50rem){.cg-cms-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:23rem){.cg-cms-dashboard{grid-template-columns:1fr}}
 
+/* Client original C22: ordered banner list with real verified photo previews,
+ * compact status rows and an adjacent selected editor on wide screens. */
+.cg-cms-banner-summary{display:grid;gap:.6rem;margin:.75rem 0;min-width:0}
+.cg-cms-banner-row{display:grid;grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) auto;
+ align-items:center;gap:.9rem;text-align:left;width:100%;min-width:0;
+ background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:.75rem;
+ padding:.7rem;color:var(--cg-text)}
+.cg-cms-banner-row[aria-pressed="true"]{border-color:var(--cg-accent);
+ box-shadow:inset 0 0 0 1px var(--cg-accent)}
+.cg-cms-banner-row img,.cg-cms-banner-no-image{display:block;width:100%;
+ aspect-ratio:16/9;object-fit:cover;border-radius:.45rem;min-width:0}
+.cg-cms-banner-no-image{background:var(--cg-canvas);border:1px dashed var(--cg-border);
+ display:grid;place-items:center;font-size:.85rem;color:var(--cg-muted)}
+.cg-cms-banner-description{display:grid;gap:.4rem;min-width:0}
+.cg-cms-banner-description strong{overflow-wrap:anywhere;line-height:1.3}
+.cg-cms-banner-description small{color:var(--cg-muted);line-height:1.4}
+.cg-cms-banner-edit{font-size:.83rem;color:var(--cg-accent);font-weight:750}
+.cg-cms-banner-row:focus-visible{outline:2px solid var(--cg-focus);outline-offset:2px}
+@media(max-width:35rem){
+ .cg-cms-banner-row{grid-template-columns:5.5rem minmax(0,1fr);gap:.6rem}
+ .cg-cms-banner-edit{grid-column:2}
+}
+
 /* CG-18 original C22–C24 editor tabs, using the shared Admin palette. */
 .cg-cms-tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin:.65rem 0 1rem;
  border-bottom:1px solid var(--cg-border);padding-bottom:.5rem}
