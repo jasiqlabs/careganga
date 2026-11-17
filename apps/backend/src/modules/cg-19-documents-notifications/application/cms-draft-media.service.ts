@@ -33,7 +33,9 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END) OR "+
  "(a.role='ARTICLE' AND sec.section_kind='ARTICLE_BODY' AND a.sort_order=0) OR "+
  "(a.role='IMPACT' AND sec.section_kind='IMPACT_GROUP' AND sec.order_no=a.sort_order) OR "+
- "(a.role='DOCUMENT' AND sec.section_kind='COMPLIANCE_FACTS' AND a.sort_order=0 "+
+ "(a.role='DOCUMENT' AND sec.section_kind='COMPLIANCE_FACTS' "+
+ "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'documents')='array' "+
+ "THEN jsonb_array_length(sec.structured_fields->'documents') ELSE 0 END "+
  "AND (sec.structured_fields->>'verification'<>'VERIFIED' OR "+
  "sec.structured_fields->>'validUntil'>=to_char(current_date,'YYYY-MM-DD')))"+
  ")) ";
