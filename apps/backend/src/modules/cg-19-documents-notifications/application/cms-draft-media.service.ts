@@ -277,6 +277,11 @@ export class CmsDraftMediaService{
    "AND active.page_id=pub.page_id "+
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true AND a.public_rights_status='VALIDATED' "+
+   "AND (a.role NOT IN('HERO','MOBILE_HERO') OR EXISTS ("+
+   "SELECT 1 FROM cms_section_revision sec WHERE sec.page_revision_id=a.page_revision_id "+
+   "AND sec.foundation_root_id=a.foundation_root_id AND sec.section_kind='HERO' "+
+   "AND sec.order_no=a.sort_order "+
+   "AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false')) "+
    "AND a.cg19_validated_version=f.revision AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "LIMIT 1",[ref]);
@@ -302,7 +307,13 @@ export class CmsDraftMediaService{
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND "+
    "f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
    "AND a.cg19_validated_version=f.revision "+
-   "AND a.public_rights_status='VALIDATED' AND pub.state='EFFECTIVE' "+
+   "AND a.public_rights_status='VALIDATED' "+
+   "AND (a.role NOT IN('HERO','MOBILE_HERO') OR EXISTS ("+
+   "SELECT 1 FROM cms_section_revision sec WHERE sec.page_revision_id=a.page_revision_id "+
+   "AND sec.foundation_root_id=a.foundation_root_id AND sec.section_kind='HERO' "+
+   "AND sec.order_no=a.sort_order "+
+   "AND sec.structured_fields->>'visible' IS DISTINCT FROM 'false')) "+
+   "AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())",
    [ref]);
   if(!latest.rowCount)throw new NotFoundException();
