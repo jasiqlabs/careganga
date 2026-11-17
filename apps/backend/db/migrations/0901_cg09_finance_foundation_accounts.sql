@@ -32,7 +32,7 @@ BEGIN
    OR NEW.status<>'CLOSED' OR OLD.status<>'OPEN'
  THEN RAISE EXCEPTION 'Financial year identity is immutable; only a reviewed close is allowed' USING ERRCODE='P0906'; END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_year_guard_update BEFORE UPDATE ON financial_year
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_year_update();
 
@@ -69,7 +69,7 @@ BEGIN
    RAISE EXCEPTION 'Financial group must use its parent category' USING ERRCODE='P0908'; END IF;
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_group_category_guard BEFORE INSERT OR UPDATE ON account_group
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_group_structure();
 CREATE INDEX ix_cg09_group_list ON account_group(root_realm_id,category,name,id);
@@ -124,7 +124,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_account_category_guard BEFORE INSERT OR UPDATE ON finance_account
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_account_category();
 
@@ -166,7 +166,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_bank_kind_guard BEFORE INSERT OR UPDATE ON cash_bank_account
  FOR EACH ROW EXECUTE FUNCTION cg09_bank_account_guard();
 
@@ -194,7 +194,7 @@ BEGIN
   RAISE EXCEPTION 'Finance command cannot be rewritten' USING ERRCODE='P0907';
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_command_once BEFORE UPDATE ON finance_command
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_finance_command();
 
@@ -213,7 +213,7 @@ BEGIN
   RAISE EXCEPTION 'Finance posting date is outside selected year' USING ERRCODE='P0911';
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TABLE journal(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -270,7 +270,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
  EXECUTE FUNCTION cg09_guard_posting_account();
 CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id,journal_id);
@@ -307,7 +307,7 @@ BEGIN
  IF line_count<2 OR total_debit<=0 OR total_debit<>total_credit THEN
    RAISE EXCEPTION 'Unbalanced posted journal' USING ERRCODE='P0903'; END IF;
  RETURN NULL;
-END $$;
+END; $$;
 CREATE CONSTRAINT TRIGGER cg09_journal_requires_balance
  AFTER INSERT ON journal DEFERRABLE INITIALLY DEFERRED
  FOR EACH ROW EXECUTE FUNCTION cg09_check_balanced_posting();
@@ -317,7 +317,7 @@ CREATE CONSTRAINT TRIGGER cg09_line_requires_balance
 
 -- Journal/history are append-only; corrections must be new linked reversals.
 CREATE FUNCTION cg09_immutable_record() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0912'; END $$;
+BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0912'; END; $$;
 CREATE TRIGGER cg09_journal_immutable BEFORE UPDATE OR DELETE ON journal
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 CREATE TRIGGER cg09_lines_immutable BEFORE UPDATE OR DELETE ON journal_line
