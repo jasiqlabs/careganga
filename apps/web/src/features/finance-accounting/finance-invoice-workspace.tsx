@@ -319,7 +319,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
        <input type="number" min={1} max={1000000} value={line.quantity}
         onChange={e=>setForm(v=>({...v,rows:v.rows.map((r,j)=>j===i?
          {...r,quantity:Number(e.target.value)}:r)}))}/></label>
-      <label className="cg-fin-field">Unit rate in rupees
+      <label className="cg-fin-field">Final unit rate after discount (₹)
        <input inputMode="decimal" value={line.unitRate} onChange={e=>setForm(v=>({
         ...v,rows:v.rows.map((r,j)=>j===i?{...r,unitRate:e.target.value}:r)}))}/></label>
       <button type="button" disabled={form.rows.length===1}
@@ -358,7 +358,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
      <p><strong>Customer / organization:</strong> {form.counterpartyName||"Not entered"}</p>
      <p><strong>Category / purpose:</strong> {form.category||"Not entered"} · {form.purpose||"Not entered"}</p>
      <p><strong>Invoice date / due:</strong> {form.invoiceDate||"Not entered"} · {form.dueDate||"Not entered"}</p>
-     <p><strong>Item lines:</strong> {form.rows.length}. Rates, tax and total are recalculated and frozen by the Finance service on submit.</p>
+     <p><strong>Item lines:</strong> {form.rows.length}. Enter the final agreed unit rate (including any discount). Tax and totals are recalculated and frozen by Finance.</p>
      <p><strong>Payment terms:</strong> {form.terms||"Not entered"}</p>
      <p className="cg-fin-help">Save the Information, Items and Payment stages first.
       Submission creates an immutable review case; approval, journal posting, PDF issuance and received payment remain separate.</p>
