@@ -51,6 +51,31 @@ export class BranchSourceFacade{
     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
   if(!row.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
  }
+ /** One current CG02 manager/administrator authorization, reusable inside a
+  * protected CG03/CG09 transaction without a second bearer token or fake master.
+  */
+ async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
+  branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
+   "finance.invoices.review"|"finance.budgets.manage"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const branchRef=ensureId(branchInput);
+  const source=await client.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch "+
+   "WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' FOR SHARE",
+   [branchRef,actor.realmId]);
+  if(!source.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
+  if(source.rows[0].manager_account_ref===actor.accountId)return;
+  const privileged=await client.query<{allowed:boolean}>(`
+   SELECT EXISTS(
+    SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+    AND r.active=true LEFT JOIN role_grant g ON g.role_id=r.id
+      AND g.capability_key='foundation.branches.admin'
+    WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
+      AND (r.is_protected=true OR g.capability_key IS NOT NULL)
+   ) AS allowed`,[actor.accountId,actor.realmId]);
+  if(!privileged.rows[0]?.allowed)
+   throw new ForbiddenException("This finance branch is not assigned to your account");
+ }
  /** CG-02 owner check for actual Finance invoice branch selection. */
  async requireFinanceBranchVersion(client:PoolClient,actor:VerifiedFoundationActor,
   branchRef:string,expectedVersion:number,action:"finance.invoices.manage"|"finance.budgets.manage"):Promise<void>{
@@ -62,6 +87,7 @@ export class BranchSourceFacade{
    "AND status='ACTIVE' FOR SHARE",[branchRef,actor.realmId]);
   if(!found.rows[0]||found.rows[0].version!==expectedVersion)
    throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+  await this.requireFinanceActorBranch(client,actor,branchRef,action);
  }
  /** Owner-controlled permitted branch labels for past ACTIVE/INACTIVE finance accounts. */
  async financeBranchLabels(bearer:string,branchRefs:readonly string[]):Promise<Record<string,string>>{
