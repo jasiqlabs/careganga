@@ -54,26 +54,35 @@ export class FinanceExpenseClaimSourceFacade{
  async reviewerSnapshot(bearer:string,reference:string,version:number){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.review");
   await this.sessions.requireAction(bearer,"approvals.review");
+  if(typeof reference!=="string"||!UUID.test(reference)||
+      !Number.isSafeInteger(version)||version<1)
+   throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.review");
    const found=await tx.query<{claimRef:string;claimNumber:string;category:string;
     purpose:string;expenseDate:string;amountMinor:string;status:string;version:number;
-    requestedBy:string;billFileRef:string|null;billVersion:number|null}>(
-    "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,"+
-    "purpose,expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\","+
-    "status,version,requested_by AS \"requestedBy\",bill_file_id AS \"billFileRef\","+
-    "bill_file_version AS \"billVersion\" FROM expense_claim "+
-    "WHERE root_realm_id=$1 AND id=$2 AND version=$3 AND status<>'DRAFT' FOR SHARE",
+    requestedBy:string;billFileRef:string;billVersion:number}>(
+    "SELECT c.id AS \"claimRef\",c.claim_number AS \"claimNumber\","+
+    "r.category_label AS category,r.purpose,r.expense_date::text AS \"expenseDate\","+
+    "r.amount_minor::text AS \"amountMinor\",k.status,r.version,"+
+    "c.requested_by AS \"requestedBy\",k.finance_claim_bill_id AS \"billFileRef\","+
+    "k.finance_claim_bill_version AS \"billVersion\" "+
+    "FROM expense_claim_revision r JOIN expense_claim c "+
+    "ON c.id=r.claim_id AND c.root_realm_id=r.root_realm_id "+
+    "JOIN cg03_case k ON k.finance_claim_id=c.id AND k.realm_id=c.root_realm_id "+
+    "AND k.finance_claim_revision=r.version AND k.case_kind='FINANCE_REIMBURSEMENT' "+
+    "WHERE r.root_realm_id=$1 AND r.claim_id=$2 AND r.version=$3 FOR SHARE OF r,c,k",
     [actor.realmId,reference,version]);
-   const c=found.rows[0];
-   if(!c||c.requestedBy===actor.accountId)
+   const row=found.rows[0];
+   if(!row||row.requestedBy===actor.accountId)
     throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
    await tx.query("COMMIT");
-   return {claimNumber:c.claimNumber,claimRef:c.claimRef,category:c.category,
-    purpose:c.purpose,expenseDate:c.expenseDate,amountMinor:c.amountMinor,
-    status:c.status,version:c.version,billFileRef:c.billFileRef,billVersion:c.billVersion};
+   return {claimNumber:row.claimNumber,claimRef:row.claimRef,category:row.category,
+    purpose:row.purpose,expenseDate:row.expenseDate,amountMinor:row.amountMinor,
+    status:row.status,version:row.version,billFileRef:row.billFileRef,
+    billVersion:row.billVersion};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async guardForReviewer(client:PoolClient,actor:VerifiedFoundationActor,reference:string,
