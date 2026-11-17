@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const kinds=new Set(["YEAR_CREATE","GROUP_CREATE","ACCOUNT_CREATE","OPENING_POST"]);
+const kinds=new Set(["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"]);
 const financeErrors=new Set([
  "FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
  "FINANCE_DUPLICATE","FINANCE_GROUP_INVALID","FINANCE_SCOPE_INVALID","FINANCE_BRANCH_INACTIVE",
@@ -14,6 +14,8 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===1&&parts[0]==="setup")return method==="GET";
  if(parts.length===1&&["years","groups","accounts","opening-journals"].includes(parts[0]))
   return method==="POST";
+ if(parts.length===3&&["years","accounts"].includes(parts[0])&&UUID.test(parts[1])
+   &&parts[2]==="status")return method==="PATCH";
  if(parts.length===3&&parts[0]==="commands"&&kinds.has(parts[1])&&UUID.test(parts[2]))
   return method==="GET";
  return false;
@@ -21,14 +23,14 @@ function allowed(parts:string[],method:string):boolean{
 async function handler(request:NextRequest,parts:string[],method:string){
  if(!allowed(parts,method))return NextResponse.json(
   {message:"This finance action is not available."},{status:404});
- if(method==="POST"&&request.headers.get("origin")!==request.nextUrl.origin)
+ if(method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)
   return NextResponse.json({message:"Submit this form from your CareGanga finance page."},{status:403});
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)return NextResponse.json({message:"Your session expired. Sign in again."},{status:401});
  const backend=process.env.BACKEND_URL;
  if(!backend)return NextResponse.json({message:"Finance service is unavailable. Please try again later."},{status:503});
  let body:string|undefined;
- if(method==="POST"){
+ if(method!=="GET"){
   try{
    const parsed:unknown=await request.json();
    if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw Error("FORM");
@@ -74,3 +76,4 @@ async function handler(request:NextRequest,parts:string[],method:string){
 type Ctx={params:Promise<{parts:string[]}>};
 export async function GET(r:NextRequest,c:Ctx){return handler(r,(await c.params).parts,"GET");}
 export async function POST(r:NextRequest,c:Ctx){return handler(r,(await c.params).parts,"POST");}
+export async function PATCH(r:NextRequest,c:Ctx){return handler(r,(await c.params).parts,"PATCH");}
