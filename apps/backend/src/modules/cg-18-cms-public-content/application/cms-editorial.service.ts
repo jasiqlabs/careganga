@@ -439,8 +439,19 @@ export class CmsEditorialService{
  }
  async publish(bearer:string,pageRef:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"cms.content.publish");
-  const v=input(raw,["expectedVersion","requestKey","caseRef"]);
+  const v=input(raw,["expectedVersion","requestKey","caseRef","publishAt"]);
   const key=uuid(v.requestKey,"requestKey"),caseRef=uuid(v.caseRef,"caseRef");
+  let future:Date|null=null;
+  if(v.publishAt!==undefined&&v.publishAt!==null&&v.publishAt!==""){
+   if(typeof v.publishAt!=="string"||
+      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(v.publishAt))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
+   const due=new Date(v.publishAt);
+   const diff=due.getTime()-Date.now();
+   if(!Number.isFinite(diff)||diff<60000||diff>365*86400000)
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
+   future=due;
+  }
   if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
    throw new BadRequestException({code:"CMS_INPUT_INVALID"});
   return this.withTx(async tx=>{
@@ -459,7 +470,8 @@ export class CmsEditorialService{
        rev.rows[0]?.content_digest!==old.rows[0].source_content_digest)
      throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
     return {confirmed:true,status:old.rows[0].state==="EFFECTIVE"?
-     "PUBLISHED":old.rows[0].state==="WITHDRAWN"?"HIDDEN":"SUPERSEDED",replayed:true};
+     "PUBLISHED":old.rows[0].state==="SCHEDULED"?"SCHEDULED":
+     old.rows[0].state==="WITHDRAWN"?"HIDDEN":"SUPERSEDED",replayed:true};
    }
    if(Number(page.version)!==v.expectedVersion)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
@@ -476,6 +488,25 @@ export class CmsEditorialService{
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,
      asset.cg19_file_ref,asset.cg19_validated_version);
+   if(future){
+    const publication=await tx.query<{id:string}>(
+     "INSERT INTO cms_publication(foundation_root_id,page_id,page_revision_id,"+
+     "cg03_final_decision_ref,source_content_digest,publication_key,"+
+     "state,effective_at,created_by) "+
+     "VALUES($1,$2,$3,$4,$5,$6,'SCHEDULED',$7,$8) RETURNING id",
+     [actor.realmId,page.id,rev.id,final.decisionRef,rev.content_digest,
+      key,future,actor.accountId]);
+    await tx.query("INSERT INTO cms_publication_due("+
+     "foundation_root_id,page_publication_ref,due_at) VALUES($1,$2,$3)",
+     [actor.realmId,publication.rows[0].id,future]);
+    await tx.query("UPDATE cms_page SET version=version+1 "+
+     "WHERE id=$1 AND foundation_root_id=$2",[page.id,actor.realmId]);
+    await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
+     "event_key,actor_ref,action,revision_ref) "+
+     "VALUES($1,$2,$3,$4,'SCHEDULE',$5)",
+     [actor.realmId,page.id,key,actor.accountId,rev.id]);
+    return {confirmed:true,status:"SCHEDULED",effectiveAt:future.toISOString(),replayed:false};
+   }
    const active=await tx.query<{publication_id:string}>(
     "SELECT publication_id FROM cms_page_effective WHERE "+
     "foundation_root_id=$1 AND page_id=$2 FOR UPDATE",[actor.realmId,page.id]);
