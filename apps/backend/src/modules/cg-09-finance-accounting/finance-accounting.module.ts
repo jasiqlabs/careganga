@@ -13,12 +13,14 @@ import {FinanceVoucherWorkflowService} from "./application/finance-voucher-workf
 import {FinanceVoucherWorkflowController} from "./http/finance-voucher-workflow.controller";
 import {FinanceVoucherPaymentService} from "./application/finance-voucher-payment.service";
 import {FinanceVoucherPaymentController} from "./http/finance-voucher-payment.controller";
+import {FinanceVoucherDashboardService} from "./application/finance-voucher-dashboard.service";
+import {FinanceVoucherDashboardController} from "./http/finance-voucher-dashboard.controller";
 
 /** CG-09 owns a single ledger and finance setup; never duplicates CG-01/02 masters. */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule],
- providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService],
- controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController],
+ providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService],
+ controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController],
  exports:[FinanceAccountsService]
 })
 export class FinanceAccountingModule {}
