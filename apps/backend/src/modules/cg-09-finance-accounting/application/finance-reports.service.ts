@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -258,7 +259,7 @@ export class FinanceReportsService{
      amount,posted.toString(),variance.toString(),actor.accountId,key,digest]);
    await tx.query("COMMIT");
    return {confirmed:true,status:"PENDING",varianceMinor:variance.toString(),replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"bank");}finally{tx.release();}
  }
  async reconciliationList(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer),offset=position(offsetInput);
@@ -329,6 +330,6 @@ export class FinanceReportsService{
    await tx.query("COMMIT");
    return {confirmed:true,status:v.action==="VERIFY"?"VERIFIED":"REJECTED",replayed:false,
     explanation:"Manual independent reconciliation does not verify an outgoing vendor payment."};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"bank");}finally{tx.release();}
  }
 }
