@@ -69,7 +69,7 @@ export class FinanceInvoiceWorkflowService{
   return found.rows[0]??null;
  }
  private async record(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,
-  version:number,key:string,digest:string,action:"SUBMIT"|"RECONCILE"|"ACCRUAL_POST"|"ISSUE"|"RECEIPT_LINK",
+  version:number,key:string,digest:string,action:"SUBMIT"|"RECONCILE"|"ACCRUAL_POST"|"ISSUE"|"COLLECTION_POST"|"RECEIPT_LINK",
   status:string){
   await tx.query(
    "INSERT INTO finance_invoice_command(root_realm_id,actor_ref,request_key,invoice_id,"+
@@ -297,6 +297,108 @@ export class FinanceInvoiceWorkflowService{
  /** Bank-statement verification is a real separate source. A receipt link
   * references exactly one existing journal, never posts income a second time.
   */
+ /** Source-linked collection journal is real bank debit/receivable credit, never
+  * a verified payment until an independent statement reviewer confirms the
+  * bank line. Each request key is one immutable balanced journal source.
+  */
+ async collectionOptions(bearer:string,invoiceInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
+  await this.sessions.requireAction(bearer,"finance.journals.post");
+  const ref=ident(invoiceInput);
+  const source=await this.db.query<{status:string;branch_id:string|null;
+   receivable_account_id:string;total_minor:string}>(
+   "SELECT status,branch_id,receivable_account_id,total_minor::text "+
+   "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2",
+   [ref,actor.realmId]);
+  const invoice=source.rows[0];
+  if(!invoice||invoice.status!=="ISSUED")
+   throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+  const [banks,years]=await Promise.all([
+   this.db.query<{accountRef:string;code:string;name:string}>(
+    "SELECT id AS \"accountRef\",code,name FROM finance_account "+
+    "WHERE root_realm_id=$1 AND status='ACTIVE' AND account_kind='BANK' "+
+    "AND (branch_id IS NULL OR branch_id=$2::uuid) ORDER BY name,id LIMIT 50",
+    [actor.realmId,invoice.branch_id]),
+   this.db.query<{yearRef:string;name:string;startOn:string;endOn:string}>(
+    "SELECT id AS \"yearRef\",name,start_on::text AS \"startOn\",end_on::text AS \"endOn\" "+
+    "FROM financial_year WHERE root_realm_id=$1 AND status='OPEN' ORDER BY start_on DESC LIMIT 20",
+    [actor.realmId])
+  ]);
+  return {banks:banks.rows,years:years.rows};
+ }
+ async recordCollection(bearer:string,invoiceInput:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
+  await this.sessions.requireAction(bearer,"finance.journals.post");
+  const ref=ident(invoiceInput);
+  const v=input(raw,["requestKey","bankAccountRef","financialYearRef","postingDate","amount"]);
+  const key=ident(v.requestKey),bank=ident(v.bankAccountRef),fy=ident(v.financialYearRef);
+  const date=String(v.postingDate??"");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+"T00:00:00Z"))||
+     new Date(date+"T00:00:00Z").toISOString().slice(0,10)!==date)
+   throw new BadRequestException({code:"FINANCE_INVOICE_DATE_INVALID",field:"postingDate"});
+  if(typeof v.amount!=="string"||!/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$/.test(v.amount))
+   throw new BadRequestException({code:"FINANCE_INVOICE_AMOUNT_INVALID",field:"amount"});
+  const [rupee,paise=""]=v.amount.split(".");
+  const amount=BigInt(rupee)*100n+BigInt((paise+"00").slice(0,2));
+  if(amount<=0n||amount>99999999999999n)
+   throw new BadRequestException({code:"FINANCE_INVOICE_AMOUNT_INVALID",field:"amount"});
+  const requestDigest=hash(["INVOICE_BANK_COLLECTION_POST_V1",ref,bank,fy,date,amount.toString()]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.invoices.issue");
+   await this.identity.assertCurrent(tx,actor,"finance.journals.post");
+   const old=await this.command(tx,actor,key);
+   if(old){
+    if(old.request_digest!==requestDigest)
+     throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,status:old.result_status,replayed:true};
+   }
+   const x=await this.load(tx,actor,ref);
+   if(x.status!=="ISSUED"||!x.total_minor||!x.receivable_account_id)
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   if(x.branch_id)
+    await this.branches.requireFinanceActiveBranch(tx,actor,x.branch_id,"finance.journals.post");
+   const years=await tx.query<{id:string}>(
+    "SELECT id FROM financial_year WHERE id=$1 AND root_realm_id=$2 "+
+    "AND status='OPEN' AND $3::date BETWEEN start_on AND end_on FOR SHARE",
+    [fy,actor.realmId,date]);
+   if(!years.rows[0])throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+   const banks=await tx.query<{id:string}>(
+    "SELECT id FROM finance_account WHERE id=$1 AND root_realm_id=$2 "+
+    "AND account_kind='BANK' AND status='ACTIVE' "+
+    "AND (branch_id IS NULL OR branch_id=$3::uuid) FOR SHARE",
+    [bank,actor.realmId,x.branch_id]);
+   if(!banks.rows[0]||bank===x.receivable_account_id)
+    throw new ConflictException({code:"FINANCE_INVOICE_ACCOUNT_INVALID"});
+   const posted=await tx.query<{total:string}>(
+    "SELECT COALESCE(SUM(l.debit_minor),0)::text AS total "+
+    "FROM journal j JOIN journal_line l ON l.journal_id=j.id "+
+    "AND l.root_realm_id=j.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.source_ref=$2 AND j.posting_kind='GENERAL' "+
+    "AND j.status='POSTED' AND a.account_kind='BANK'",
+    [actor.realmId,ref]);
+   if(BigInt(posted.rows[0].total)+amount>BigInt(x.total_minor))
+    throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+   const journalRef=await this.posting.postBalanced(tx,actor,{
+    financialYearRef:fy,postingDate:date,sourceRef:ref,eventKey:key,
+    immutableDigest:hash(["INVOICE_ORIGINAL_BANK_COLLECTION",ref,
+     x.version,x.current_digest,bank,fy,date,amount.toString()]),
+    kind:"GENERAL",description:"Invoice "+x.invoice_number+" bank receipt pending reconciliation",
+    lines:[
+     {accountRef:bank,branchRef:x.branch_id,debitMinor:amount.toString(),creditMinor:"0"},
+     {accountRef:x.receivable_account_id,branchRef:x.branch_id,
+      debitMinor:"0",creditMinor:amount.toString()}
+    ]
+   });
+   await this.record(tx,actor,ref,x.version,key,requestDigest,"COLLECTION_POST","POSTED_UNVERIFIED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"POSTED_UNVERIFIED",journalRecorded:true,
+    journalRef,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async receiptOptions(bearer:string,invoiceInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
   const ref=ident(invoiceInput);
@@ -329,7 +431,7 @@ export class FinanceInvoiceWorkflowService{
    "WHERE r.root_realm_id=$1 AND r.status='VERIFIED' AND r.variance_minor=0 "+
    "AND r.statement_amount_minor>0 AND r.statement_amount_minor<=$4 "+
    "AND r.posted_amount_minor=r.statement_amount_minor "+
-   "AND j.posting_kind='GENERAL' AND j.status='POSTED' "+
+   "AND j.posting_kind='GENERAL' AND j.status='POSTED' AND j.source_ref=$2 "+
    "AND bl.debit_minor=r.statement_amount_minor AND bl.credit_minor=0 "+
    "AND ar.debit_minor=0 "+
    "AND bl.branch_id IS NOT DISTINCT FROM $5::uuid "+
