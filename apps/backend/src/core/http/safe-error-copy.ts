@@ -28,6 +28,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_DUPLICATE:"This finance name or account code is already in use. Choose a different one.",
       FINANCE_GROUP_INVALID:"Select an existing finance account group for this Foundation.",
       FINANCE_SCOPE_INVALID:"Choose Foundation scope or select an active branch.",
+      FINANCE_FILTER_INVALID:"Choose an available financial year, account type, group, branch or status, then apply filters.",
+      FINANCE_BANK_LABEL_INVALID:"Enter a short bank or cash account name, not its full account number.",
       FINANCE_BRANCH_INACTIVE:"The selected branch is not active. Refresh and choose an active branch.",
       FINANCE_BRANCH_STALE:"The selected branch changed. Refresh the branch list and select it again.",
       FINANCE_YEAR_CLOSED:"This financial year is unavailable or closed. Choose a current open financial year.",
