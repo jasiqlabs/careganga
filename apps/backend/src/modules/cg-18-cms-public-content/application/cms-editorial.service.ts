@@ -47,7 +47,8 @@ function path(v:unknown,field:string){
  return x;
 }
 type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
- "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER";order:number;
+ "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER"|"IMPACT_GROUP"|
+ "COMPLIANCE_FACTS"|"GALLERY_GRID"|"ARTICLE_BODY"|"HEALTHCARE_CATEGORIES";order:number;
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
  "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT"|"IMPACT";
@@ -253,7 +254,7 @@ function parseContent(raw:unknown):Content{
   return {loginDesired:n.loginDesired,memberJoinDesired:n.memberJoinDesired,
    volunteerJoinDesired:n.volunteerJoinDesired};
  })():null;
- if(kind==="ABOUT"&&v.navigation!==undefined)
+ if(kind!=="HOME"&&v.navigation!==undefined)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"navigation"});
  const assets=(v.assets as unknown[]|undefined??[]).map((raw,i)=>{
   const a=input(raw,["fileRef","version","role","altText","order"]);
