@@ -9,10 +9,12 @@ type Branch={branchRef:string;name:string;code:string;version:number};
 type Voucher=VoucherWorkflowRow&{type:string;postingDate:string;
  payeeName:string;purpose:string;totalMinor:string;version:number};
 type Item={description:string;quantity:string;unitRate:string};
+type ClaimOption={claimRef:string;claimNumber:string;version:number;category:string;purpose:string;amountMinor:string};
 type Detail={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
   postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null;
-  debitAccountRef?:string|null;creditAccountRef?:string|null};
+  debitAccountRef?:string|null;creditAccountRef?:string|null;
+  expenseClaimRef?:string|null;expenseClaimVersion?:number|null};
  lines:{description:string;quantity:number;unitRateMinor:string;lineTotalMinor:string}[];
  taxMinor:string;chargesMinor:string;grossMinor:string;totalMinor:string};
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
@@ -41,9 +43,9 @@ async function failure(res:Response):Promise<string>{
 const item=():Item=>({description:"",quantity:"1",unitRate:""});
 const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",
  postingDate:"",payeeName:"",purpose:"",paymentAccountRef:"",
- debitAccountRef:"",creditAccountRef:"",tax:"0",charges:"0"});
-export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEvidence=false,canUploadEvidence=false,canPost=false,canVerifyPayment=false}:{
- years:readonly Year[];branches:readonly Branch[];canManage:boolean;
+ debitAccountRef:"",creditAccountRef:"",expenseClaimRef:"",expenseClaimVersion:"",tax:"0",charges:"0"});
+export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkClaims=false,canViewEvidence=false,canUploadEvidence=false,canPost=false,canVerifyPayment=false}:{
+ years:readonly Year[];branches:readonly Branch[];canManage:boolean;canLinkClaims?:boolean;
  canViewEvidence?:boolean;canUploadEvidence?:boolean;canPost?:boolean;canVerifyPayment?:boolean
 }){
  const [data,setData]=useState<Voucher[]>([]);
@@ -57,6 +59,9 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
  const [target,setTarget]=useState<{ref:string;number:string;version:number}|null>(null);
  const [form,setForm]=useState(initial());
  const [items,setItems]=useState<Item[]>([item()]);
+ const [claimOptions,setClaimOptions]=useState<ClaimOption[]>([]);
+ const [claimSearch,setClaimSearch]=useState("");
+ const [claimError,setClaimError]=useState("");
  const [paymentAccounts,setPaymentAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;branchRef:string|null;branchName:string|null}>>([]);
  const [paymentSearch,setPaymentSearch]=useState("");
  const [accountSearch,setAccountSearch]=useState("");
@@ -122,6 +127,23 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   return()=>{live=false;};
  },[editing,paymentSearch]);
 
+ useEffect(()=>{
+  if(!editing||!canLinkClaims)return;
+  let live=true;
+  void(async()=>{
+   try{
+    const response=await fetch("/api/finance/claims/approved-options?q="+
+      encodeURIComponent(claimSearch),{cache:"no-store"});
+    if(!response.ok)throw Error(await failure(response));
+    const raw:unknown=await response.json();
+    if(!raw||typeof raw!=="object"||!("claims" in raw)||!Array.isArray(raw.claims))
+     throw Error("Approved claim choices could not be verified.");
+    if(live){setClaimOptions(raw.claims);setClaimError("");}
+   }catch(e){if(live){setClaimOptions([]);setClaimError(
+    e instanceof Error?e.message:"Approved claim choices are unavailable.");}}
+  })();
+  return()=>{live=false;};
+ },[editing,canLinkClaims,claimSearch]);
  function start(){
   if(!canManage)return;
   setEditing(true);setTarget(null);setNotice("");setPending(null);setNotFound(false);
@@ -144,6 +166,8 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
     paymentAccountRef:raw.header.paymentAccountRef??"",
     debitAccountRef:raw.header.debitAccountRef??"",
     creditAccountRef:raw.header.creditAccountRef??"",
+    expenseClaimRef:raw.header.expenseClaimRef??"",
+    expenseClaimVersion:String(raw.header.expenseClaimVersion??""),
     tax:decimal(raw.taxMinor),charges:decimal(raw.chargesMinor)});
    setItems(raw.lines.map(l=>({description:l.description,quantity:String(l.quantity),
     unitRate:decimal(l.unitRateMinor)})));
@@ -170,6 +194,8 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
    lines:items.map(l=>({description:l.description,
      quantity:Number(l.quantity),unitRate:l.unitRate})),
    tax:form.tax,charges:form.charges,
+   ...(form.expenseClaimRef?{expenseClaimRef:form.expenseClaimRef,
+      expenseClaimVersion:Number(form.expenseClaimVersion)}:{}),
    ...(target?{expectedVersion:target.version}:{})
   };
  }
@@ -294,6 +320,30 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
        <option value="PAYMENT">Payment voucher</option><option value="EXPENSE">Expense voucher</option>
        <option value="CONTRA">Contra voucher</option><option value="GENERAL">General voucher</option>
       </select></label>
+     {canLinkClaims&&["EXPENSE","PAYMENT"].includes(form.type)&&
+      <div className="cg-fin-field">
+       <label htmlFor="cg-fin-claim-search">Original approved reimbursement (optional)</label>
+       <input id="cg-fin-claim-search" maxLength={80} value={claimSearch}
+        placeholder="Search by claim number, category or purpose"
+        onChange={e=>setClaimSearch(e.target.value)}/>
+       <label htmlFor="cg-fin-original-claim">Link this voucher to an approved claim</label>
+       <select id="cg-fin-original-claim" value={form.expenseClaimRef}
+        onChange={e=>{
+         const option=claimOptions.find(x=>x.claimRef===e.target.value);
+         setForm(v=>({...v,expenseClaimRef:option?.claimRef??"",
+          expenseClaimVersion:option?String(option.version):""}));
+         setNotice("");
+        }}>
+        <option value="">Independent voucher — no reimbursement claim</option>
+        {form.expenseClaimRef&&!claimOptions.some(x=>x.claimRef===form.expenseClaimRef)&&
+         <option value={form.expenseClaimRef}>Previously selected approved claim</option>}
+        {claimOptions.map(x=><option key={x.claimRef} value={x.claimRef}>
+         {x.claimNumber} · {x.category} · {money(x.amountMinor)}</option>)}
+       </select>
+       {claimError&&<p role="alert">{claimError}</p>}
+       <p className="cg-fin-help">The selected claim and voucher total must match exactly.
+        Once saved, the original claim source cannot be changed. Approval and actual payment remain separate.</p>
+      </div>}
      <label className="cg-fin-field">Open financial year *
       <select required value={form.financialYearRef}
        onChange={e=>field("financialYearRef",e.target.value)}>
