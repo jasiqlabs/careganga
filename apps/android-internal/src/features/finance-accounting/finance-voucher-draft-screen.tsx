@@ -255,7 +255,7 @@ const s=StyleSheet.create({
  heading:{flex:1},eyebrow:{fontSize:10,color:t.mutedText},
  title:{fontSize:18,fontWeight:"700",color:t.text},
  back:{minHeight:48,justifyContent:"center"},
- link:{color:t.primary,fontWeight:"650"},
+ link:{color:t.primary,fontWeight:"600"},
  body:{padding:14,paddingBottom:48,gap:13},
  hint:{color:t.mutedText,fontSize:13,lineHeight:21},
  card:{borderWidth:1,borderColor:t.border,borderRadius:8,backgroundColor:t.surface,padding:14,gap:7},
