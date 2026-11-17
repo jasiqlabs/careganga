@@ -20,6 +20,7 @@ type Detail={invoiceRef:string;invoiceNumber:string;status:string;version:number
  draft:{info?:Record<string,unknown>;items?:Record<string,unknown>;payment?:Record<string,unknown>}};
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
+type CorrectedInvoice={invoiceRef:string;invoiceNumber:string;counterpartyName:string;branchRef:string|null};
 type Account={accountRef:string;code:string;name:string;category:string;branchRef:string|null};
 type ReceiptRow={receiptRef:string;receiptNumber:string;amountMinor:string;paidDate:string};
 type Receipt={paymentVerified:boolean;status:string;totalMinor:string;paidMinor:string;
@@ -30,11 +31,12 @@ type DocumentState={status:string;canDownload?:boolean;documentRef?:string};
 type Line={description:string;quantity:string;unitRate:string};
 type Form={financialYearRef:string;branchRef:string;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string;lines:Line[];
+ counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;lines:Line[];
  tax:string;charges:string;receivableAccountRef:string;incomeAccountRef:string;
  taxAccountRef:string;terms:string;notes:string};
 const empty=():Form=>({financialYearRef:"",branchRef:"",branchVersion:null,invoiceDate:"",
  dueDate:"",category:"",purpose:"",counterpartyName:"",counterpartyAddress:"",
+ replacesInvoiceRef:"",
  lines:[{description:"",quantity:"1",unitRate:""}],tax:"0.00",charges:"0.00",
  receivableAccountRef:"",incomeAccountRef:"",taxAccountRef:"",
  terms:"Payment due per invoice",notes:""});
@@ -66,6 +68,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  const [stage,setStage]=useState<Stage>("INFO");
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+ const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [receipt,setReceipt]=useState<Receipt|null>(null);
  const [receiptOptions,setReceiptOptions]=useState<ReceiptOption[]>([]);
@@ -105,9 +108,10 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  useEffect(()=>{let live=true;
   void(async()=>{try{
    const [o,a]=await Promise.all([
-    request<{years:Year[];branches:Branch[]}>(token,"/api/finance-accounting/invoices/options"),
+    request<{years:Year[];branches:Branch[];correctedInvoices:CorrectedInvoice[]}>(token,"/api/finance-accounting/invoices/options"),
     request<{accounts:Account[]}>(token,"/api/finance-accounting/invoices/posting-accounts")]);
-   if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);}
+   if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
+    setCorrectedInvoices(o.correctedInvoices??[]);}
   }catch(e){if(live)setError(problem(e));expire(e);}})();
   return()=>{live=false;};
  },[token,onExpired]);
@@ -162,6 +166,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
     category:String(i.category??""),purpose:String(i.purpose??""),
     counterpartyName:String(i.counterpartyName??""),
     counterpartyAddress:String(i.counterpartyAddress??""),
+    replacesInvoiceRef:String(i.replacesInvoiceRef??""),
     lines:lines.length?lines.map(r=>({description:String(r.description??""),
      quantity:String(r.quantity??"1"),unitRate:minorToRupees(String(r.unitRateMinor??"0"))})):
       [{description:"",quantity:"1",unitRate:""}],
@@ -181,7 +186,8 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
    branchRef:form.branchRef||null,branchVersion:form.branchRef?form.branchVersion:null,
    invoiceDate:form.invoiceDate,dueDate:form.dueDate,category:form.category,
    purpose:form.purpose,counterpartyName:form.counterpartyName,
-   counterpartyAddress:form.counterpartyAddress||null};
+   counterpartyAddress:form.counterpartyAddress||null,
+   replacesInvoiceRef:form.replacesInvoiceRef||null};
   if(stage==="ITEMS")return {rows:form.lines.map(r=>({
    description:r.description,quantity:Number(r.quantity),unitRate:r.unitRate})),
    tax:form.tax,charges:form.charges};
@@ -339,6 +345,12 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        options={[{ref:"",label:"Foundation (no branch)"},...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
        onChange={v=>{const b=branches.find(x=>x.branchRef===v);setForm(f=>({
         ...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}/>
+      {correctedInvoices.some(x=>x.branchRef===(form.branchRef||null))&&
+       <Options label="Replaces credited invoice (optional)" value={form.replacesInvoiceRef}
+        options={[{ref:"",label:"New invoice — not a correction"},
+         ...correctedInvoices.filter(x=>x.branchRef===(form.branchRef||null))
+         .map(x=>({ref:x.invoiceRef,label:x.invoiceNumber+" · "+x.counterpartyName}))]}
+        onChange={v=>change("replacesInvoiceRef",v)}/>}
       {(["invoiceDate","dueDate","category","purpose","counterpartyName","counterpartyAddress"] as const)
        .map(k=><Field key={k} label={k==="invoiceDate"?"Invoice date (YYYY-MM-DD)":
         k==="dueDate"?"Due date (YYYY-MM-DD)":k==="counterpartyName"?
