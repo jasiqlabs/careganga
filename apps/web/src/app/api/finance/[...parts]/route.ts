@@ -75,7 +75,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const safeStatus=[400,401,403,404,409,429].includes(res.status)?res.status:503;
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
-  const fields=new Set(["name","code","category","startOn","endOn","scopeKind","branchRef",
+  const fields=new Set(["search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
    "groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
