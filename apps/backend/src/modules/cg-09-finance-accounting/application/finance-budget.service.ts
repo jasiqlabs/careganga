@@ -294,11 +294,13 @@ export class FinanceBudgetService{
    "j.posting_date::text AS \"postedDate\",v.total_minor::text AS \"amountMinor\" "+
    "FROM journal j JOIN finance_voucher v "+
    "ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id "+
+   "JOIN finance_account a ON a.id=v.debit_account_id AND a.root_realm_id=v.root_realm_id "+
+   "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
    "JOIN finance_voucher_posting p ON p.journal_id=j.id "+
    "AND p.root_realm_id=j.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND j.financial_year_id=$2 "+
    "AND j.posting_kind='VOUCHER' AND j.status='POSTED' "+
-   "AND j.posting_date BETWEEN $3 AND $4 AND v.category_label=$5 "+
+   "AND j.posting_date BETWEEN $3 AND $4 AND g.category='EXPENSE' AND g.name=$5 "+
    "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
    "AND v.branch_id IS NOT DISTINCT FROM $6::uuid "+
    "AND NOT EXISTS(SELECT 1 FROM finance_budget_event e WHERE "+
@@ -366,7 +368,10 @@ export class FinanceBudgetService{
    "end_on::text AS \"endOn\" FROM financial_year WHERE root_realm_id=$1 "+
    "ORDER BY start_on DESC,id DESC LIMIT 30",[actor.realmId]);
   const branches=await this.branches.financeBranches(bearer,"finance.budgets.view");
-  return {years:years.rows,branches};
+  const categories=await this.db.query<{name:string}>(
+   "SELECT DISTINCT name FROM account_group WHERE root_realm_id=$1 "+
+   "AND category='EXPENSE' ORDER BY name LIMIT 100",[actor.realmId]);
+  return {years:years.rows,branches,categories:categories.rows.map(r=>r.name)};
  }
  async commandStatus(bearer:string,keyInput:string){
   const actor=await this.actor(bearer);
