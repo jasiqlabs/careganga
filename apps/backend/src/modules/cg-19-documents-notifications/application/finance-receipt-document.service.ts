@@ -146,7 +146,17 @@ export class FinanceReceiptDocumentService{
    "JOIN finance_bank_reconciliation b ON b.id=r.reconciliation_id "+
    "AND b.root_realm_id=r.root_realm_id "+
    "WHERE r.id=$1 AND r.root_realm_id=$2 AND r.status='PAID_VERIFIED' "+
-   "AND i.status='ISSUED' AND b.status='VERIFIED' AND b.variance_minor=0",
+   "AND i.status='ISSUED' AND b.status='VERIFIED' AND b.variance_minor=0 "+
+   "AND EXISTS(SELECT 1 FROM finance_reconciliation_decision d "+
+   "JOIN cg19_stored_file f ON f.id=d.statement_file_id "+
+   "AND f.realm_id=d.root_realm_id AND f.reconciliation_id=d.reconciliation_id "+
+   "AND f.revision=d.statement_file_version "+
+   "JOIN cg19_upload_intent u ON u.id=f.upload_intent_id "+
+   "AND u.realm_id=f.realm_id AND u.reconciliation_id=d.reconciliation_id "+
+   "WHERE d.root_realm_id=b.root_realm_id AND d.reconciliation_id=b.id "+
+   "AND d.action='VERIFY' AND f.owner_kind='CG09_BANK_STATEMENT' "+
+   "AND u.owner_kind='CG09_BANK_STATEMENT' AND u.status='VALIDATED' "+
+   "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL)",
    [doc.receipt_id,actor.realmId]);
   if(!actual.rows[0]||actual.rows[0].immutable_digest!==doc.source_digest)
    throw new ConflictException({code:"FINANCE_INVOICE_DOCUMENT_UNAVAILABLE"});
