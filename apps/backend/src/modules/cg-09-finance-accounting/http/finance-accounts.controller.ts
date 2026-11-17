@@ -34,6 +34,10 @@ export class FinanceAccountsController{
  manualJournals(@Headers("authorization")bearer:string){
   return this.service.manualJournalHistory(bearer);
  }
+ @Get("manual-journals/reversal-commands/:requestKey")
+ manualReversalStatus(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.corrections.status(bearer,key);
+ }
  @Post("manual-journals/:journalRef/reverse")
  reverseManual(@Headers("authorization")bearer:string,@Param("journalRef")ref:string,
   @Body()body:unknown){return this.corrections.reverse(bearer,ref,body);}
