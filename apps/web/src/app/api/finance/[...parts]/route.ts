@@ -25,6 +25,13 @@ const financeErrors=new Set([
  "FINANCE_INVOICE_NOT_ISSUABLE","FINANCE_INVOICE_DOCUMENT_UNAVAILABLE",
  "FINANCE_INVOICE_ISSUE_CONFLICT","FINANCE_INVOICE_FILTER_INVALID","FINANCE_INVOICE_RECEIPT_NOT_READY",
  "FINANCE_INVOICE_CANCEL_INVALID","FINANCE_INVOICE_CANCEL_CONFLICT",
+ "FINANCE_ADJUSTMENT_INVALID","FINANCE_ADJUSTMENT_NOT_FOUND",
+ "FINANCE_CREDIT_NOTE_CONFLICT","FINANCE_CREDIT_NOTE_ALREADY_EXISTS",
+ "FINANCE_CREDIT_NOTE_COLLECTION_PENDING","FINANCE_CREDIT_NOTE_REFUND_ACCOUNT_REQUIRED",
+ "FINANCE_CREDIT_NOTE_NOT_FOUND","FINANCE_REFUND_CONFLICT","FINANCE_REFUND_NOT_REQUIRED",
+ "FINANCE_REFUND_ALREADY_REQUESTED","FINANCE_REFUND_BANK_INVALID",
+ "FINANCE_REFUND_NOT_FOUND","FINANCE_REFUND_ALREADY_APPROVED",
+ "FINANCE_REFUND_INDEPENDENT_REVIEWER",
  "FINANCE_BUDGET_SOURCE_INVALID","FINANCE_BUDGET_DUPLICATE","FINANCE_BUDGET_STALE",
  "FINANCE_BUDGET_FORM_INVALID","FINANCE_BUDGET_AMOUNT_INVALID",
  "FINANCE_BUDGET_PERIOD_INVALID","FINANCE_BUDGET_REPLAY_CONFLICT",
@@ -61,6 +68,10 @@ function allowed(parts:string[],method:string):boolean{
   return false;
  }
  if(parts[0]==="invoices"){
+  if(parts.length===4&&parts[1]==="refunds"&&UUID.test(parts[2])&&parts[3]==="approve")return method==="POST";
+  if(parts.length===4&&UUID.test(parts[1])&&parts[2]==="credit-note"&&parts[3]==="pdf")return method==="GET";
+  if(parts.length===3&&UUID.test(parts[1])&&["adjustment","adjustment-options"].includes(parts[2]))return method==="GET";
+  if(parts.length===3&&UUID.test(parts[1])&&["credit-note","refunds"].includes(parts[2]))return method==="POST";
   if(parts.length===2&&["options","posting-accounts","dashboard","draft-commands","workflow-commands","cancel-commands","drafts"].includes(parts[1])){
    if(["draft-commands","workflow-commands","cancel-commands"].includes(parts[1]))return false;
    return parts[1]==="drafts"?(method==="GET"||method==="POST"):method==="GET";
@@ -225,13 +236,23 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const res=await fetch(target,{method,body,cache:"no-store",
    signal:AbortSignal.timeout(12000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
+  if(res.ok&&parts[0]==="invoices"&&parts.length===4&&parts[2]==="credit-note"&&parts[3]==="pdf"){
+   if(!res.headers.get("content-type")?.startsWith("application/pdf"))
+    return NextResponse.json({message:"Protected credit note PDF is unavailable."},{status:503});
+   const file=await res.arrayBuffer();
+   if(file.byteLength<100||file.byteLength>10485760)
+    return NextResponse.json({message:"Private credit note PDF failed size verification."},{status:503});
+   return new NextResponse(file,{status:200,headers:{"Content-Type":"application/pdf",
+    "Content-Disposition":"attachment; filename=CareGanga-Credit-Note.pdf",
+    "Cache-Control":"private, no-store"}});
+  }
   const data:unknown=await res.json().catch(()=>null);
   if(res.ok)return NextResponse.json(data,{status:res.status,headers:{"Cache-Control":"no-store"}});
   const safeStatus=[400,401,403,404,409,429].includes(res.status)?res.status:503;
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "bankAccountRef","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","statementFileRef","statementFileVersion","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "bankAccountRef","refundLiabilityAccountRef","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","statementFileRef","statementFileVersion","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
