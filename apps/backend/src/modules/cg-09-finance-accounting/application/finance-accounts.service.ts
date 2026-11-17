@@ -137,7 +137,7 @@ export class FinanceAccountsService{
   const offset=Number(offsetInput??"0");
   const kind=filters.kind||"ALL",status=filters.status||"ALL";
   if(!["ALL","GENERAL","CASH","BANK"].includes(kind))
-   fieldError("FINANCE_SCOPE_INVALID","accountKind");
+   fieldError("FINANCE_ACCOUNT_KIND_INVALID","accountKind");
   if(!["ALL","ACTIVE","INACTIVE"].includes(status))
    fieldError("FINANCE_SCOPE_INVALID","scopeKind");
   const group=filters.groupRef?ref(filters.groupRef,"groupRef"):null;
@@ -254,7 +254,7 @@ export class FinanceAccountsService{
      SELECT category FROM account_group WHERE id=$1 AND root_realm_id=$2 FOR SHARE`,
      [parent,actor.realmId]);
     if(!found.rows[0]||found.rows[0].category!==category)
-     fieldError("FINANCE_GROUP_INVALID","groupRef");
+     fieldError("FINANCE_GROUP_INVALID","parentRef");
    }
    const inserted=await client.query<{id:string}>(`
     INSERT INTO account_group(root_realm_id,code,name,category,parent_id,created_by)
@@ -272,12 +272,12 @@ export class FinanceAccountsService{
    branch=scope==="BRANCH"?ref(body.branchRef,"branchRef","FINANCE_SCOPE_INVALID"):null,
    branchVersion=body.branchVersion,key=ref(body.requestKey,"requestKey");
   if(!["GENERAL","CASH","BANK"].includes(String(kind)))
-   fieldError("FINANCE_SCOPE_INVALID","accountKind");
+   fieldError("FINANCE_ACCOUNT_KIND_INVALID","accountKind");
   if(!["FOUNDATION","BRANCH"].includes(String(scope)))
    fieldError("FINANCE_SCOPE_INVALID","scopeKind");
   if(scope==="BRANCH"&&(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1))
    fieldError("FINANCE_BRANCH_STALE","branchRef");
-  const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"name",120);
+  const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"bankLabel",120);
   const lastFour=kind==="BANK"&&body.bankLastFour?body.bankLastFour:"";
   if(typeof lastFour!=="string"||(lastFour&&!/^[0-9]{4}$/.test(lastFour)))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
@@ -310,7 +310,7 @@ export class FinanceAccountsService{
  }
  async postOpening(bearer:string,input:unknown):Promise<CommandResult>{
   const body=fields(input,["financialYearRef","debitAccountRef","creditAccountRef","postingDate","amount","branchVersion","requestKey"]);
-  const year=ref(body.financialYearRef,"startOn","FINANCE_YEAR_CLOSED"),
+  const year=ref(body.financialYearRef,"financialYearRef","FINANCE_YEAR_CLOSED"),
    debit=ref(body.debitAccountRef,"debitAccountRef","FINANCE_DEBITS_CREDITS"),
    credit=ref(body.creditAccountRef,"creditAccountRef","FINANCE_DEBITS_CREDITS"),
    date=dateOnly(body.postingDate,"postingDate"),amount=amountMinor(body.amount),
@@ -361,7 +361,7 @@ export class FinanceAccountsService{
   const key=ref(body.requestKey,"requestKey");
   if(body.status!=="CLOSED"||!Number.isSafeInteger(body.expectedVersion)||
     Number(body.expectedVersion)<1)
-   throw new BadRequestException({code:"FINANCE_YEAR_CLOSED"});
+   throw new BadRequestException({code:"FINANCE_STALE_RECORD"});
   const expectedVersion=Number(body.expectedVersion);
   const payload={year,expectedVersion:String(expectedVersion),status:"CLOSED"};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
@@ -386,7 +386,7 @@ export class FinanceAccountsService{
   const key=ref(body.requestKey,"requestKey"),status=body.status;
   if(!["ACTIVE","INACTIVE"].includes(String(status))||
     !Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
-   throw new BadRequestException({code:"FINANCE_ACCOUNT_INACTIVE"});
+   throw new BadRequestException({code:"FINANCE_ACCOUNT_STATUS_INVALID"});
   const expectedVersion=Number(body.expectedVersion);
   const payload={account,expectedVersion:String(expectedVersion),status:String(status)};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
