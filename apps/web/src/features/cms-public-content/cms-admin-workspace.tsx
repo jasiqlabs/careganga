@@ -194,6 +194,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  function edit<K extends keyof Draft>(field:K,value:Draft[K]){
   setDraft(x=>({...x,[field]:value}));
  }
+ function moveSlide(index:number,delta:number){
+  const target=index+delta;if(target<0||target>=draft.slides.length)return;
+  const slides=[...draft.slides];[slides[index],slides[target]]=[slides[target],slides[index]];
+  const assets=draft.assets.map(a=>{
+   if(a.role!=="HERO"&&a.role!=="MOBILE_HERO")return a;
+   return a.order===index?{...a,order:target}:
+    a.order===target?{...a,order:index}:a;
+  });
+  setDraft(v=>({...v,slides,assets}));
+ }
+ function removeSlide(index:number){
+  const slides=draft.slides.filter((_,i)=>i!==index);
+  const assets=draft.assets.filter(a=>!["HERO","MOBILE_HERO"].includes(a.role)||
+   a.order!==index).map(a=>["HERO","MOBILE_HERO"].includes(a.role)&&a.order>index?
+    {...a,order:a.order-1}:a);
+  setDraft(v=>({...v,slides,assets}));
+ }
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
@@ -284,7 +301,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    if(!confirmed.cleanVerified||!confirmed.fileRef||!confirmed.validatedVersion)
     throw Error("The image is awaiting secure validation. Check before uploading again.");
    const next:Asset={fileRef:confirmed.fileRef,version:confirmed.validatedVersion,
-    role:uploadRole,altText:uploadAlt.trim(),order:uploadRole==="TEAM"?uploadOrder:0};
+    role:uploadRole,altText:uploadAlt.trim(),order:uploadRole==="ABOUT"?20:
+      uploadRole==="PROMO"?30:uploadOrder};
    setDraft(v=>({...v,assets:[...v.assets.filter(x=>x.role!==next.role||x.order!==next.order),next]}));
    setUploadAlt("");setRights(false);
    setNotice("Image verified. Save the draft to attach it to the page.");
@@ -389,21 +407,40 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        Request volunteer registration link when available</label>
      </fieldset>}
      <div className="cg-cms-editor-grid">
-      <fieldset><legend>Hero banner</legend>
-       <label>Heading<input disabled={!canManage} value={draft.heroHeading}
-        maxLength={180} onChange={e=>edit("heroHeading",e.target.value)}/></label>
-       <label>Subtitle<textarea disabled={!canManage} value={draft.heroSubtitle}
-        maxLength={700} onChange={e=>edit("heroSubtitle",e.target.value)}/></label>
-       <label>Primary button label<input disabled={!canManage} value={draft.heroPrimaryLabel}
-        onChange={e=>edit("heroPrimaryLabel",e.target.value)}/></label>
-       <label>Primary local page link<input disabled={!canManage} value={draft.heroPrimaryPath}
-        placeholder="/about" onChange={e=>edit("heroPrimaryPath",e.target.value)}/></label>
-       <label>Secondary button label<input disabled={!canManage} value={draft.heroSecondaryLabel}
-        onChange={e=>edit("heroSecondaryLabel",e.target.value)}/></label>
-       <label>Secondary local page link<input disabled={!canManage} value={draft.heroSecondaryPath}
-        placeholder="/contact" onChange={e=>edit("heroSecondaryPath",e.target.value)}/></label>
-      </fieldset>
-      <fieldset><legend>Page body</legend>
+      <fieldset><legend>Hero banners — original C22–C24</legend>
+        <p>Each slide has independent text, buttons and approved desktop/mobile images.
+         The current slide order is saved with the draft and subject to independent review.</p>
+        {draft.slides.map((slide,index)=><div className="cg-cms-team" key={index}>
+         <h4>Slide {index+1}</h4>
+         <label>Eyebrow<input disabled={!canManage} maxLength={100} value={slide.eyebrow}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,eyebrow:e.target.value}:x))}/></label>
+         <label>Heading<input disabled={!canManage} maxLength={180} value={slide.heading}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,heading:e.target.value}:x))}/></label>
+         <label>Highlighted subtitle<textarea disabled={!canManage} maxLength={700} value={slide.subtitle}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,subtitle:e.target.value}:x))}/></label>
+         <label>Supporting paragraph<textarea disabled={!canManage} maxLength={400} value={slide.description}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,description:e.target.value}:x))}/></label>
+         <label>Badges (up to four, comma-separated)<input disabled={!canManage} value={slide.tags}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,tags:e.target.value}:x))}/></label>
+         <label>Primary button label<input disabled={!canManage} maxLength={60} value={slide.primaryLabel}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryLabel:e.target.value}:x))}/></label>
+         <label>Primary route<input disabled={!canManage} value={slide.primaryPath} placeholder="/about"
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryPath:e.target.value}:x))}/></label>
+         <label>Secondary button label<input disabled={!canManage} maxLength={60} value={slide.secondaryLabel}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryLabel:e.target.value}:x))}/></label>
+         <label>Secondary route<input disabled={!canManage} value={slide.secondaryPath} placeholder="/contact"
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryPath:e.target.value}:x))}/></label>
+         {canManage&&<div className="cg-cms-actions">
+          <button type="button" disabled={index===0} onClick={()=>moveSlide(index,-1)}>Move up</button>
+          <button type="button" disabled={index===draft.slides.length-1}
+           onClick={()=>moveSlide(index,1)}>Move down</button>
+          <button type="button" disabled={draft.kind==="HOME"&&draft.slides.length===1}
+           onClick={()=>removeSlide(index)}>Remove slide</button>
+         </div>}
+        </div>)}
+        {canManage&&draft.slides.length<6&&<button type="button"
+         onClick={()=>edit("slides",[...draft.slides,blankSlide()])}>Add slide</button>}
+       </fieldset>      <fieldset><legend>Page body</legend>
        <label>Section heading<input disabled={!canManage} value={draft.bodyHeading}
         onChange={e=>edit("bodyHeading",e.target.value)}/></label>
        <label>Foundation information<textarea disabled={!canManage} rows={9}
