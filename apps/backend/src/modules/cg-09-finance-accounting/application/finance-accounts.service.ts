@@ -134,12 +134,12 @@ export class FinanceAccountsService{
     WHERE root_realm_id=$1 ORDER BY category,name,id LIMIT 100`,[actor.realmId]),
    this.db.query<{
     accountRef:string;code:string;name:string;normalSide:string;kind:string;
-    scopeKind:string;branchRef:string|null;branchName:string|null;groupName:string;
+    scopeKind:string;branchRef:string|null;branchName:string|null;groupName:string;category:string;
     status:string;version:number;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null;
    }>(`
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
      a.account_kind AS kind,a.scope_kind AS "scopeKind",a.branch_id AS "branchRef",
-     b.name AS "branchName",g.name AS "groupName",a.status,a.version,
+     b.name AS "branchName",g.name AS "groupName",g.category,a.status,a.version,
      COALESCE(SUM(l.debit_minor-l.credit_minor),0)::text AS "balanceMinor",
      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
     FROM finance_account a JOIN account_group g ON g.id=a.group_id
