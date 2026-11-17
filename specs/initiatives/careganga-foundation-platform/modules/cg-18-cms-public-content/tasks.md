@@ -11,7 +11,7 @@
 
 **Selected module:** CG-18, sequential source-only US-001 → US-002 → US-003 → US-004, retaining all 76 original QA definitions. The owner's authorization to begin source implementation on the shared branch allows draft-source progression despite pending formal global/Harness approval; it does **not** mean source-complete, independent review pass, runtime QA, client pixel PASS, or production readiness. Apply the mandatory simple-working-V1 AGENTS.md rule: original 4 stories only, real CG-01/03/19 predecessor contracts, no speculative MFA, duplicate CMS/approval/file store, or fictional CG-04/05 projects / Join routes.
 
-**Development checkpoint:** CG-18 US-001 IN_PROGRESS: initial original/root-scoped PostgreSQL migration `0932_cg18_foundation_editorial_publication.sql` committed on this shared branch, with a source-review fix denying insertion of late media/sections after submission. **This is not a complete US-001 vertical**: CG-03 genuine CMS_PUBLICATION source/approval, CG-19 original scanned pre-review media adapter, NestJS/API, Admin Web, public Next.js and native Public Android still NOT_IMPLEMENTED; all 20 US-001 QA, all 76 module QA, local migrations/runtime, independent review remain NOT_RUN. Use a single shared migration sequence after existing CG-09 0931, one integration owner for shared app modules/sidebar/route registry, and no parallel modifications by other developers to this same branch until coordinated. Add source proof one story at a time below; do not change the original QA wording. Web/Public Android pixel/API/DB/device/runtime evidence remains NOT_RUN.
+**Development checkpoint (17 Nov 2026):** CG-18 **US-001 IN_PROGRESS / SOURCE_ONLY**, NOT source-complete. Committed source: migrations 0932–0935; genuine CG-03 CMS review case/inbox/decision, original CG-19 private scanned CMS media source, typed backend CMS page editor/publish/unpublish/nav API, Admin Web CMS workspace and role-hidden sidebar, public Next.js Home/About/hero/team/SEO/image proxy, and public Android native Home/About. Original C50 desired Login/Member/Volunteer flag source is versioned, with fake joins suppressed. Source fixes applied for UUID validation, submitted child immutability, current published-only nav, independent reviewer, draft author, replay, safe routes, and editable CG-21 error copy. **Not yet closed:** formal current-hash independent review, exhaustive US-001 QA01–20 source trace, executable PostgreSQL migration/build/API/Web/Android and device/pixel tests, and unimplemented/untested edge acceptance such as scheduled activation / revocation and original image semantics. US-002–004 remain NOT_STARTED. All 76 runtime QA NOT_RUN; no acceptance/merge claim. Use a single shared migration sequence after existing CG-09 0931, one integration owner for shared app modules/sidebar/route registry, and no parallel modifications by other developers to this same branch until coordinated. Add source proof one story at a time below; do not change the original QA wording. Web/Public Android pixel/API/DB/device/runtime evidence remains NOT_RUN.
 
 ## Delegated-approved full-stack story specifications and 76 manual QA cases — design only
 
@@ -137,11 +137,12 @@ QA cases:
 Verification: On actual implementation source-trace US-004-QA01–QA18 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
-## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
-- US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+## Execution progress — source-verified checkpoint, not runtime acceptance
+- US-001: IN_PROGRESS_SOURCE_ONLY | backend/API, Admin Web, public Web, public Android authored; independent current-hash source review and 20 original QA traces NOT_COMPLETE; runtime/live/device/visual QA NOT_RUN.
+- US-002: NOT_STARTED | 18 original QA NOT_RUN.
+- US-003: NOT_STARTED | 20 original QA NOT_RUN.
+- US-004: NOT_STARTED | 18 original QA NOT_RUN.
+- **CG-18 total:** 4 user stories, 76 canonical QA scenarios, **0 runtime QA passed**, 0 user stories formally source-complete. Shared CG-09+CG-18 branch remains DRAFT/unmerged.
 
 
 ### Development source trace — US-001 initial database slice, not a completed story
@@ -151,3 +152,10 @@ Dependencies: US-001
 - **Review/fix:** secured late INSERT/UPDATE/DELETE into frozen page sections/assets; source-inspected text, not executed against PostgreSQL. CG-03 source-proof constraints and CG-19 rights check remain required at the source-owning implementation slice. Do not present this as approved publish.
 - **Next work in this same branch:** implement original CG-03 CMS_PUBLICATION case/process and CG-19 protected CMS draft media source, then backend CMS service/controller, Admin Web, public Web + Public Android for Home/About/hero/team/nav, and trace **US-001 QA01–QA20**. Follow with US-002–004 and 76 total case trace; keep CG-09 QA separate.
 - **Gate truth:** `US-001=IN_PROGRESS_SOURCE_ONLY`, `US-002..004=NOT_STARTED`, `runtime_QA=0/76`, `formal_SOURCE_COMPLETE=NOT_PASSED`, `merge=NOT_AUTHORIZED_YET`.
+
+### 17 Nov CG-18 US-001 latest source development trace (not acceptance)
+
+- Original source files: `apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts`, `application/cms-review-source.facade.ts`, `http/cms-editorial.controller.ts`; CG-03 `cms-publication-approval.service.ts` and owner controller; CG-19 `cms-draft-media.service.ts` and owner controller; CMS migrations 0932–0935.
+- Web source: `apps/web/src/features/cms-public-content/cms-admin-workspace.tsx`, `cms-public-page.tsx`, `cms-public-source.ts`, original `admin/website` route, `api/cms/[...parts]` and approved public media proxy, role-gated nav. Android source: `apps/android-public/src/features/cms/public-cms-screen.tsx` integrated with original public entry.
+- Source review/fix already applied: valid 8-4-4-4-12 UUIDs, protected approval-source relations, frozen submitted sections/assets, true published login visibility, actual published-only media and original-safe message catalog, consented team imagery. This is a developer source checkpoint, **not** independent source QA approval, migration proof or measured performance.
+- Still required before US-001 SOURCE_COMPLETE: inspect/fix all original 20 QA scenarios with file:function traces, resolve scheduling and publisher/reviewer/renderer consistency blockers, peer security/database/UIUX current-hash review, manually hand off and record local runtime verification honestly. No change to original QA case descriptions.
