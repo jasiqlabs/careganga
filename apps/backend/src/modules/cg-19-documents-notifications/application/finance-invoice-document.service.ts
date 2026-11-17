@@ -49,6 +49,8 @@ export class FinanceInvoiceDocumentService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":invoice-document:"+invoiceRef+":"+String(source.version)]);
    const prior=await tx.query<Document>(
     "SELECT * FROM cg19_finance_invoice_document WHERE root_realm_id=$1 "+
     "AND invoice_id=$2 AND source_version=$3 FOR UPDATE",
