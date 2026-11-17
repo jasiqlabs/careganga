@@ -156,7 +156,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
  }
  if(method==="GET"&&parts[0]==="invoices"&&parts[1]==="drafts"){
   const filter=request.nextUrl.searchParams.get("status")??"ALL";
-  if(!["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED","APPROVED","POSTED","ISSUED"].includes(filter))
+  if(!["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED","APPROVED","POSTED","ISSUED","REVERSED"].includes(filter))
    return NextResponse.json({message:"Choose a supported invoice status tab."},{status:400});
   target.searchParams.set("status",filter);
   const offset=request.nextUrl.searchParams.get("offset")??"0";
