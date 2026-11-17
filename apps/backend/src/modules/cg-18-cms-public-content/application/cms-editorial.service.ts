@@ -491,10 +491,19 @@ export class CmsEditorialService{
    const page=await this.row(tx,actor,pageRef,true),rev=await this.revision(tx,actor,page);
    if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT")
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
-   const assets=await tx.query<{file_ref:string;version:number}>(
-    "SELECT cg19_file_ref AS file_ref,cg19_validated_version AS version "+
+   const assets=await tx.query<{file_ref:string;version:number;role:string;sort_order:number}>(
+    "SELECT cg19_file_ref AS file_ref,cg19_validated_version AS version,role,sort_order "+
     "FROM cms_asset_placement WHERE foundation_root_id=$1 AND page_revision_id=$2",
     [actor.realmId,rev.id]);
+   if(page.kind==="HOME"){
+    const slides=await tx.query<{order_no:number}>(
+     "SELECT order_no FROM cms_section_revision "+
+     "WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='HERO' "+
+     "ORDER BY order_no",[actor.realmId,rev.id]);
+    if(!slides.rows.length||slides.rows.some(slide=>!assets.rows.some(asset=>
+      asset.role==="HERO"&&asset.sort_order===slide.order_no)))
+     throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
+   }
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
    const original=await this.approvals.createCase(tx,actor,{
