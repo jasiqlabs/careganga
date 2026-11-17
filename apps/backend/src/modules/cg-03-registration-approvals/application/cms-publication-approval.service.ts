@@ -51,7 +51,7 @@ export class CmsPublicationApprovalService{
  }){
   if(!UUID.test(source.requestKey)||!DIGEST.test(source.digest))
    throw new BadRequestException({code:"CMS_REVIEW_INVALID"});
-  await this.source.original(tx,actor,source.pageRef,source.revisionRef,
+  const frozen=await this.source.original(tx,actor,source.pageRef,source.revisionRef,
    source.revisionNo,source.digest);
 // A currently authorized editor may submit a revision. The proposal binds the
   // actual submitting actor; the reviewer must be a distinct current account.
