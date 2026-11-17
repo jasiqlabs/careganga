@@ -196,9 +196,9 @@ export class CmsDraftMediaService{
   * All checks use original current CG19 evidence under the due transaction.
   */
  async validateScheduledPlacements(tx:PoolClient,realm:string,rev:string):Promise<boolean>{
-  const files=await tx.query<{id:string;actual_id:string|null;revision:number;
-   expected_version:number}>(
-   'SELECT a.id,f.id AS actual_id,f.revision,'+
+  const files=await tx.query<{id:string;actual_id:string|null;intent_id:string|null;
+   revision:number;expected_version:number}>(
+   'SELECT a.id,f.id AS actual_id,i.id AS intent_id,f.revision,'+
    'a.cg19_validated_version AS expected_version FROM cms_asset_placement a '+
    'LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref AND '+
    'f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id '+
@@ -213,7 +213,7 @@ export class CmsDraftMediaService{
    "SELECT count(*)::text AS count FROM cms_asset_placement "+
    "WHERE foundation_root_id=$1 AND page_revision_id=$2",[realm,rev]);
   if(files.rows.length!==Number(all.rows[0]?.count??"0"))return false;
-  return files.rows.every(f=>f.actual_id!==null&&
+  return files.rows.every(f=>f.actual_id!==null&&f.intent_id!==null&&
    f.revision===f.expected_version);
  }
  /** Public bytes only from current approved live publication, not a signed
