@@ -17,6 +17,7 @@ const financeErrors=new Set([
  "FINANCE_CLAIM_STALE","FINANCE_CLAIM_VOUCHER_INVALID"
 ]);
 function allowed(parts:string[],method:string):boolean{
+ if(parts.length===2&&parts[0]==="claims"&&parts[1]==="dashboard")return method==="GET";
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="approved-options")return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&parts[1]==="workflow-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&UUID.test(parts[1])&&
