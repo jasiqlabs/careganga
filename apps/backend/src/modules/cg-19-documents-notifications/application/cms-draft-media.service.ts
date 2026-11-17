@@ -191,6 +191,31 @@ export class CmsDraftMediaService{
   return {fileRef, fileVersion:rows.rows[0].revision,
    mime:rows.rows[0].original_mime,pageRevisionRef:revisionRef};
  }
+ /** Private, source-authorized scheduled activation recheck. The due
+  * worker has no bearer token and cannot forge a human-upload proof.
+  * All checks use original current CG19 evidence under the due transaction.
+  */
+ async validateScheduledPlacements(tx:PoolClient,realm:string,rev:string):Promise<boolean>{
+  const files=await tx.query<{id:string;actual_id:string|null;revision:number;
+   expected_version:number}>(
+   'SELECT a.id,f.id AS actual_id,f.revision,'+
+   'a.cg19_validated_version AS expected_version FROM cms_asset_placement a '+
+   'LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref AND '+
+   'f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id '+
+   "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+   'AND f.public_rights_confirmed=true '+
+   'LEFT JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id '+
+   "AND i.realm_id=f.realm_id AND i.status='VALIDATED' "+
+   'WHERE a.foundation_root_id=$1 AND a.page_revision_id=$2 '+
+   "AND a.public_rights_status='VALIDATED' ORDER BY a.id",
+   [realm,rev]);
+  const all=await tx.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM cms_asset_placement "+
+   "WHERE foundation_root_id=$1 AND page_revision_id=$2",[realm,rev]);
+  if(files.rows.length!==Number(all.rows[0]?.count??"0"))return false;
+  return files.rows.every(f=>f.actual_id!==null&&
+   f.revision===f.expected_version);
+ }
  /** Public bytes only from current approved live publication, not a signed
   * private object URL. This origin read revalidates rights EVERY request.
   */
