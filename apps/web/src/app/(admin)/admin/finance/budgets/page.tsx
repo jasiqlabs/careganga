@@ -5,8 +5,7 @@ import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceBudgetWorkspace} from "../../../../../features/finance-accounting/finance-budget-workspace";
 export const dynamic="force-dynamic";
 
-/** Dedicated U41 expense intake for existing CG-01 Foundation users.
- * No employee/volunteer future-module selector is required. */
+/** Original B01/B02 Foundation and real CG02 branch budget wizard. */
 export default async function FinanceBudgetsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
@@ -56,15 +55,13 @@ export default async function FinanceBudgetsPage(){
     canViewVouchers={actions.includes("finance.vouchers.view")}
     canViewClaims={actions.includes("finance.claims.view")}
     canViewBudgets={true}/>
-   <main className="workspace"><FinanceInvoiceWorkspace canManage={canManage}
-     canIssue={actions.includes("finance.budgets.issue")}
-     canPost={actions.includes("finance.journals.post")}/></main>
+   <main className="workspace"><FinanceBudgetWorkspace canManage={canManage}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
   return <main className="page main"><h1>Cannot verify budget access</h1>
-   <p>The claim page remains protected until the current Foundation role can be checked.</p>
+   <p>The Foundation budget workspace remains protected until current permissions can be verified.</p>
    <Link href="/admin">Return to my account</Link></main>;
  }
 }
