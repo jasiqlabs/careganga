@@ -35,7 +35,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
- const [category,setCategory]=useState<"ACCOUNTS"|"YEARS"|"OPENING">("ACCOUNTS");
+ const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING">("ACCOUNTS");
  const [editor,setEditor]=useState<{kind:FinanceKind;target?:{
    ref:string;name:string;status:string;version:number}}|null>(null);
  const reload=useCallback(async()=>{
@@ -78,7 +78,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
     <Text style={s.backText}>Refresh</Text></Pressable>
   </View>
   <View style={s.tabs}>
-   {([["ACCOUNTS","Accounts"],["YEARS","Financial Years"],["OPENING","Opening Entries"]] as const)
+   {([["ACCOUNTS","Accounts"],["GROUPS","Groups"],["YEARS","Financial Years"],["OPENING","Opening Entries"]] as const)
     .map(([key,label])=><Pressable key={key} accessibilityRole="tab"
      accessibilityState={{selected:category===key}} style={[s.tab,category===key&&s.selectedTab]}
      onPress={()=>setCategory(key)}><Text style={[s.tabText,category===key&&s.selectedTabText]}>
@@ -124,8 +124,14 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
        style={[s.pagerButton,data.nextOffset===null&&s.disabled]}
        onPress={()=>setOffset(data.nextOffset??0)}><Text style={s.pagerText}>Next</Text></Pressable></View>
    </>}
+   {!busy&&data&&category==="GROUPS"&&
+    (!data.groups.length?<Text style={s.empty}>No account groups have been added yet. Use the New Account Group action if your role permits it.</Text>:
+     data.groups.map(g=><View style={s.card} key={g.groupRef}>
+       <Text style={s.cardTitle}>{g.name}</Text><Text style={s.meta}>Business code: {g.code}</Text>
+       <Text style={s.meta}>Category: {g.category.toLowerCase()}</Text>
+      </View>))}
    {!busy&&data&&category==="YEARS"&&
-    (!data.years.length?<Text style={s.empty}>No financial year exists. An authorized Finance Administrator can create one from the Web Admin.</Text>:
+    (!data.years.length?<Text style={s.empty}>No financial year exists. An authorized Finance Administrator can create one using the Financial Year action.</Text>:
      data.years.map(y=><View style={s.card} key={y.yearRef}>
        <View style={s.line}><Text style={s.cardTitle}>{y.name}</Text>
         <Text style={[s.status,y.status==="OPEN"&&s.active]}>{y.status==="OPEN"?"Open":"Closed"}</Text></View>
@@ -137,7 +143,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
        </Pressable>
       </View>))}
    {!busy&&data&&category==="OPENING"&&
-    (!data.openingJournals.length?<Text style={s.empty}>No opening entries are posted yet. New opening entries are created in the authorized Finance Web Admin.</Text>:
+    (!data.openingJournals.length?<Text style={s.empty}>No opening entries are posted yet. An authorized staff member can post a balanced opening entry using the Opening Entry action.</Text>:
      data.openingJournals.map(j=><View style={s.card} key={j.journalRef}>
        <Text style={s.cardTitle}>{j.yearName}</Text><Text style={s.meta}>{j.postingDate} · Posted</Text>
        <Text style={s.amount}>{inr(j.amountMinor)}</Text>
