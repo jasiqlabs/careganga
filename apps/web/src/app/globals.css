@@ -670,3 +670,58 @@ button:disabled { cursor:wait; opacity:.65; }
  .cg-fin-voucher-actions{min-width:12rem;max-width:100%}
  .cg-fin-paging{justify-content:center}
 }
+
+/* Original CareGanga U33/A19 screenshot-inspired Finance voucher projection. */
+.cg-fin-voucher-dashboard{display:grid;gap:.85rem;padding:1rem;background:var(--cg-background,#f4f4f1)}
+.cg-fin-dashboard-title{display:flex;justify-content:space-between;gap:1rem;align-items:center}
+.cg-fin-dashboard-title h3{font-size:1.14rem;font-weight:750;color:var(--cg-text);margin:0}
+.cg-fin-dashboard-title p{font-size:.8rem;color:var(--cg-muted);margin:.18rem 0 0}
+.cg-fin-dashboard-title button{background:var(--cg-primary,#1e53dc);color:white;border:0;
+ border-radius:.45rem;font-weight:650;min-height:2.65rem;padding:.5rem .9rem}
+.cg-fin-voucher-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.65rem}
+.cg-fin-voucher-tile{display:flex;align-items:center;gap:.6rem;border:1px solid var(--cg-border);
+ border-radius:.72rem;background:var(--cg-surface);padding:.9rem .75rem;min-width:0}
+.cg-fin-tile-symbol{display:grid;place-items:center;flex:none;border-radius:.7rem;
+ width:2.2rem;height:2.2rem;background:#edf3ff;color:#1e53dc;font-size:1.25rem;font-weight:750}
+.cg-fin-voucher-tile div{min-width:0}
+.cg-fin-tile-label{font-size:.71rem;color:var(--cg-muted);margin:0}
+.cg-fin-voucher-tile strong{font-size:1.03rem;display:block;color:var(--cg-text);font-weight:750}
+.cg-fin-voucher-tile small{display:block;font-size:.64rem;color:var(--cg-muted);line-height:1.25}
+.cg-fin-voucher-charts{display:grid;grid-template-columns:1.12fr 1fr 1fr;gap:.7rem}
+.cg-fin-voucher-chart{border:1px solid var(--cg-border);background:var(--cg-surface);
+ border-radius:.72rem;min-width:0;padding:.9rem}
+.cg-fin-voucher-chart h4{margin:0 0 .65rem;font-size:.88rem;font-weight:750;color:var(--cg-text)}
+.cg-fin-donut-detail{display:grid;grid-template-columns:minmax(7rem,1fr) minmax(7rem,1fr);
+ gap:.6rem;align-items:center}
+.cg-fin-donut{width:min(100%,11rem);aspect-ratio:1;border-radius:50%;display:grid;place-items:center}
+.cg-fin-donut>div{width:64%;height:64%;border-radius:50%;background:var(--cg-surface);
+ display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cg-fin-donut strong{font-size:1.55rem;color:var(--cg-text)}
+.cg-fin-donut span{font-size:.66rem;color:var(--cg-muted)}
+.cg-fin-chart-legend{min-width:0;display:grid;gap:.2rem}
+.cg-fin-chart-legend p{display:flex;justify-content:space-between;gap:.5rem;
+ padding:.23rem 0;font-size:.7rem;line-height:1.3;color:var(--cg-text);margin:0}
+.cg-fin-chart-legend strong{font-size:.73rem;white-space:nowrap}
+.cg-fin-month-bars{height:10rem;display:grid;grid-auto-columns:minmax(0,1fr);
+ grid-auto-flow:column;align-items:end;gap:.35rem;padding:.4rem .2rem .2rem;
+ border-bottom:1px solid var(--cg-border)}
+.cg-fin-month{height:100%;display:flex;flex-direction:column;align-items:center;
+ justify-content:flex-end;gap:.25rem}
+.cg-fin-month span{display:block;width:min(1.2rem,75%);background:var(--cg-primary,#1e53dc);
+ border-radius:.2rem .2rem 0 0}
+.cg-fin-month small{font-size:.65rem;color:var(--cg-muted)}
+.cg-fin-category-pie{width:min(100%,9rem);aspect-ratio:1;border-radius:50%;margin:.6rem auto}
+.cg-fin-voucher-dashboard{--cg-chart-0:#1e53dc;--cg-chart-1:#17aa78;
+ --cg-chart-2:#e9a528;--cg-chart-3:#8058cf;--cg-chart-4:#db4772;--cg-chart-5:#40a5ce}
+@media(max-width:78rem){
+ .cg-fin-voucher-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cg-fin-voucher-charts{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cg-fin-voucher-chart:last-child{grid-column:span 2}
+}
+@media(max-width:43rem){
+ .cg-fin-voucher-tiles,.cg-fin-voucher-charts{grid-template-columns:minmax(0,1fr)}
+ .cg-fin-voucher-chart:last-child{grid-column:auto}
+ .cg-fin-voucher-tile{min-height:4.3rem}
+ .cg-fin-donut-detail{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .cg-fin-dashboard-title{align-items:flex-start;flex-direction:column}
+}
