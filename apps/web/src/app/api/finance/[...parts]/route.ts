@@ -65,6 +65,7 @@ function allowed(parts:string[],method:string):boolean{
    if(["draft-commands","workflow-commands","cancel-commands"].includes(parts[1]))return false;
    return parts[1]==="drafts"?(method==="GET"||method==="POST"):method==="GET";
   }
+  if(parts.length===2&&parts[1]==="cancel-eligibility")return method==="GET";
   if(parts.length===3&&["draft-commands","workflow-commands","cancel-commands"].includes(parts[1])&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===4&&parts[1]==="drafts"&&UUID.test(parts[2])&&parts[3]==="stages")return method==="PATCH";
@@ -85,6 +86,7 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===3&&parts[0]==="claims"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="manual-journals"&&parts[1]==="reversal-eligibility")return method==="GET";
  if(parts.length===3&&parts[0]==="manual-journals"&&parts[1]==="reversal-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===3&&parts[0]==="manual-journals"&&UUID.test(parts[1])&&parts[2]==="reverse")return method==="POST";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="options")return method==="GET";
