@@ -19,12 +19,21 @@ export function financeSqlFailure(error:unknown,area:FinanceArea):never{
  if(code==="23505")
   throw new ConflictException({code:area==="invoice"?"FINANCE_INVOICE_REPLAY_CONFLICT":
    area==="budget"?"FINANCE_BUDGET_DUPLICATE":"FINANCE_RECONCILIATION_CONFLICT"});
- if(["P0921","P0922","P0923","P0927","P0928"].includes(code))
+ if(["P0921","P0922"].includes(code))
   throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
- if(["P0924","P0925"].includes(code))
+ if(code==="P0923")
+  throw new ConflictException({code:"FINANCE_INVOICE_DOCUMENT_UNAVAILABLE"});
+ if(code==="P0927")
+  throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+ if(code==="P0928")
+  throw new ConflictException({code:area==="budget"?"FINANCE_BUDGET_REVIEW_UNAVAILABLE":
+   "FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
+ if(code==="P0924")
+  throw new ConflictException({code:"FINANCE_BUDGET_EVENT_INVALID"});
+ if(code==="P0925")
   throw new ConflictException({code:"FINANCE_BUDGET_STALE"});
  if(code==="P0926")
-  throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
+  throw new ConflictException({code:"FINANCE_RECONCILIATION_INVALID"});
  if(["23503","23514","22P02","22003"].includes(code))
   throw new BadRequestException({code:area==="invoice"?"FINANCE_INVOICE_FORM_INVALID":
    area==="budget"?"FINANCE_BUDGET_FORM_INVALID":"FINANCE_RECONCILIATION_INVALID"});
