@@ -440,15 +440,89 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         </div>)}
         {canManage&&draft.slides.length<6&&<button type="button"
          onClick={()=>edit("slides",[...draft.slides,blankSlide()])}>Add slide</button>}
-       </fieldset>      <fieldset><legend>Page body</legend>
+       </fieldset>      <fieldset><legend>Foundation About / story</legend>
+       <label>Eyebrow<input disabled={!canManage} value={draft.bodyEyebrow} maxLength={100}
+        onChange={e=>edit("bodyEyebrow",e.target.value)}/></label>
        <label>Section heading<input disabled={!canManage} value={draft.bodyHeading}
-        onChange={e=>edit("bodyHeading",e.target.value)}/></label>
+        maxLength={160} onChange={e=>edit("bodyHeading",e.target.value)}/></label>
+       <label>Layout<select disabled={!canManage} value={draft.bodyVariant}
+        onChange={e=>edit("bodyVariant",e.target.value as Draft["bodyVariant"])}>
+        <option value="SPLIT">Original photo / text split</option>
+        <option value="STANDARD">Plain text</option></select></label>
        <label>Foundation information<textarea disabled={!canManage} rows={9}
         value={draft.body} maxLength={4000}
         onChange={e=>edit("body",e.target.value)}/></label>
-      </fieldset>
-     </div>
-     <fieldset><legend>Public team members (with permission)</legend>
+       <label>Highlights (one per line)<textarea disabled={!canManage} rows={4}
+        value={draft.highlights} maxLength={800}
+        onChange={e=>edit("highlights",e.target.value)}/></label>
+      </fieldset>     </div>
+     {draft.kind==="HOME"&&<>
+     <fieldset><legend>Volunteer photo banner</legend>
+      <label>Eyebrow<input disabled={!canManage} value={draft.promoEyebrow}
+       maxLength={80} onChange={e=>edit("promoEyebrow",e.target.value)}/></label>
+      <label>Heading<input disabled={!canManage} value={draft.promoHeading}
+       maxLength={160} onChange={e=>edit("promoHeading",e.target.value)}/></label>
+      <label>Description<textarea disabled={!canManage} value={draft.promoBody}
+       maxLength={400} onChange={e=>edit("promoBody",e.target.value)}/></label>
+      <label>Button label<input disabled={!canManage} value={draft.promoLabel}
+       maxLength={80} onChange={e=>edit("promoLabel",e.target.value)}/></label>
+      <label>Button route<input disabled={!canManage} value={draft.promoPath}
+       placeholder="/contact" onChange={e=>edit("promoPath",e.target.value)}/></label>
+     </fieldset>
+     <fieldset><legend>How We Help — solution cards</legend>
+      <label>Eyebrow<input disabled={!canManage} value={draft.featuresEyebrow}
+       maxLength={80} onChange={e=>edit("featuresEyebrow",e.target.value)}/></label>
+      <label>Heading<input disabled={!canManage} value={draft.featuresHeading}
+       maxLength={160} onChange={e=>edit("featuresHeading",e.target.value)}/></label>
+      <label>Description<textarea disabled={!canManage} value={draft.featuresBody}
+       maxLength={500} onChange={e=>edit("featuresBody",e.target.value)}/></label>
+      {draft.featureCards.map((card,index)=><div className="cg-cms-team" key={index}>
+       <h4>Card {index+1}</h4>
+       {(["label","title","body"] as const).map(field=><label key={field}>
+        {field==="label"?"Category":field==="title"?"Title":"Description"}
+        <input disabled={!canManage} value={card[field]}
+         onChange={e=>edit("featureCards",draft.featureCards.map((x,i)=>
+          i===index?{...x,[field]:e.target.value}:x))}/>
+       </label>)}
+       {canManage&&<button type="button"
+        onClick={()=>edit("featureCards",draft.featureCards.filter((_,i)=>i!==index))}>
+        Remove card</button>}
+      </div>)}
+      {canManage&&draft.featureCards.length<3&&<button type="button"
+       onClick={()=>edit("featureCards",[...draft.featureCards,{label:"",title:"",body:""}])}>
+       Add solution card</button>}
+     </fieldset>
+     <fieldset><legend>Member and volunteer editorial cards</legend>
+      <p>Real Join links only appear after CG-04 registration routes are operational.</p>
+      <label>Volunteer heading<input disabled={!canManage} maxLength={120}
+       value={draft.volunteerTitle} onChange={e=>edit("volunteerTitle",e.target.value)}/></label>
+      <label>Volunteer description<textarea disabled={!canManage} maxLength={500}
+       value={draft.volunteerBody} onChange={e=>edit("volunteerBody",e.target.value)}/></label>
+      <label>Volunteer benefits (one per line)<textarea disabled={!canManage}
+       value={draft.volunteerBenefits} onChange={e=>edit("volunteerBenefits",e.target.value)}/></label>
+      <label>Member heading<input disabled={!canManage} maxLength={120}
+       value={draft.memberTitle} onChange={e=>edit("memberTitle",e.target.value)}/></label>
+      <label>Member description<textarea disabled={!canManage} maxLength={500}
+       value={draft.memberBody} onChange={e=>edit("memberBody",e.target.value)}/></label>
+      <label>Member benefits (one per line)<textarea disabled={!canManage}
+       value={draft.memberBenefits} onChange={e=>edit("memberBenefits",e.target.value)}/></label>
+     </fieldset>
+     <fieldset><legend>Website header / footer content</legend>
+      <p>Published site contact information is reused on Home and About.</p>
+      <label>Mission<textarea disabled={!canManage} maxLength={600}
+       value={draft.footerMission} onChange={e=>edit("footerMission",e.target.value)}/></label>
+      <label>Public address<input disabled={!canManage} maxLength={300}
+       value={draft.footerAddress} onChange={e=>edit("footerAddress",e.target.value)}/></label>
+      <label>Phone<input disabled={!canManage} maxLength={32}
+       value={draft.footerPhone} onChange={e=>edit("footerPhone",e.target.value)}/></label>
+      <label>Email<input disabled={!canManage} maxLength={150}
+       value={draft.footerEmail} onChange={e=>edit("footerEmail",e.target.value)}/></label>
+      <label>Newsletter description<textarea disabled={!canManage} maxLength={250}
+       value={draft.footerNewsletterText}
+       onChange={e=>edit("footerNewsletterText",e.target.value)}/></label>
+     </fieldset>
+    </>}
+    <fieldset><legend>Public team members (with permission)</legend>
       <label>Section heading<input disabled={!canManage} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
       {draft.team.map((member,index)=><div className="cg-cms-team" key={index}>
