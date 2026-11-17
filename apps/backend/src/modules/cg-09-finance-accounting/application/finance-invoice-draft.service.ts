@@ -293,6 +293,7 @@ export class FinanceInvoiceDraftService{
  }
  async dashboard(bearer:string){
   const actor=await this.owner(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.invoices.view");
   const rows=await this.db.query<{total:number;drafts:number;pending:number;
    approved:number;issued:number;rejected:number;returned:number;
    paidVerified:number;partiallyPaid:number;faceValueMinor:string;issuedMinor:string;
@@ -321,20 +322,27 @@ export class FinanceInvoiceDraftService{
    "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
-   "WHERE i.root_realm_id=$1",[actor.realmId]);
+   "WHERE i.root_realm_id=$1 "+
+   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[]) "+
+   "OR (i.branch_id IS NULL AND i.created_by=$4::uuid))",
+   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
   const monthly=await this.db.query<{month:string;count:number;issuedMinor:string}>(
    "SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,"+
    "COUNT(*)::int AS count,"+
    "COALESCE(SUM(total_minor) FILTER(WHERE status='ISSUED'),0)::text AS \"issuedMinor\" "+
    "FROM finance_invoice WHERE root_realm_id=$1 "+
+   "AND ($2::boolean OR branch_id=ANY($3::uuid[]) "+
+   "OR (branch_id IS NULL AND created_by=$4::uuid)) "+
    "AND created_at>=date_trunc('month',now())-interval '11 months' "+
    "GROUP BY date_trunc('month',created_at) "+
-   "ORDER BY date_trunc('month',created_at) LIMIT 12",[actor.realmId]);
+   "ORDER BY date_trunc('month',created_at) LIMIT 12",
+   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
   return {cards:rows.rows[0],monthly:monthly.rows,
    explanation:"Invoice face value is not paid income. Verified receipts are separately linked to original reconciled bank journals."};
  }
  async list(bearer:string,offsetInput?:string,statusInput?:string){
   const actor=await this.owner(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.invoices.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return reject("FINANCE_INVOICE_FILTER_INVALID","offset");
   const validStatus=new Set(["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED",
@@ -358,17 +366,20 @@ export class FinanceInvoiceDraftService{
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
    "WHERE i.root_realm_id=$1 "+
+   "AND ($4::boolean OR i.branch_id=ANY($5::uuid[]) "+
+   "OR (i.branch_id IS NULL AND i.created_by=$6::uuid)) "+
    "AND ($3::text IS NULL OR "+
    "($3='REVERSED' AND c.invoice_id IS NOT NULL) OR "+
    "($3='CREDITED' AND n.invoice_id IS NOT NULL) OR "+
    "($3 NOT IN('REVERSED','CREDITED') AND i.status=$3 "+
    "AND c.invoice_id IS NULL AND n.invoice_id IS NULL)) "+
    "ORDER BY i.created_at DESC,i.id DESC LIMIT 41 OFFSET $2",
-   [actor.realmId,offset,chosen]);
+   [actor.realmId,offset,chosen,scope.all,scope.branchRefs,actor.accountId]);
   return {invoices:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
  async detail(bearer:string,invoiceInput:string){
   const actor=await this.owner(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.invoices.view");
   const id=ref(invoiceInput,"invoiceRef");
   const rows=await this.db.query<{invoiceRef:string;invoiceNumber:string;
    createdBy:string;version:number;status:string;draft:Draft;sourceDigest:string}>(
@@ -381,7 +392,10 @@ export class FinanceInvoiceDraftService{
    "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
-   "WHERE i.id=$1 AND i.root_realm_id=$2",[id,actor.realmId]);
+   "WHERE i.id=$1 AND i.root_realm_id=$2 "+
+   "AND ($3::boolean OR i.branch_id=ANY($4::uuid[]) "+
+   "OR (i.branch_id IS NULL AND i.created_by=$5::uuid))",
+   [id,actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   return rows.rows[0];
  }
