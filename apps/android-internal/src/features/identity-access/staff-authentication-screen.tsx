@@ -85,7 +85,7 @@ export function StaffAuthenticationScreen(){
   const closeFinanceReview=useCallback(()=>setFinanceReviewOpen(false),[]);
   const closeFinanceClaims=useCallback(()=>setFinanceClaimsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceClaimsOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
