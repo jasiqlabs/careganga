@@ -160,7 +160,8 @@ function CmsReviewSection({kind,fields}:{kind:string;fields:Record<string,unknow
   {!!heading&&<h5>{heading}</h5>}
   {labels.filter(([,value])=>val(value)).map(([label,value],i)=>
    <p key={i}><strong>{val(label)}:</strong> {val(value)}</p>)}
-  {["FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER"].includes(kind)&&
+  {["FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP",
+    "COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES"].includes(kind)&&
    <pre className="cg-cms-review-text">{JSON.stringify(fields,null,2).slice(0,7000)}</pre>}
   {kind==="TEAM"&&Array.isArray(fields.members)&&fields.members.map((member,i)=>{
    const x=member as Record<string,unknown>;
@@ -213,7 +214,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
  const refresh=useCallback(async()=>{
-  try{const x=await read<{pages:PageItem[]}>("pages");setPages(x.pages);}
+  try{const x=await read<{pages:PageItem[]}>("pages");
+   setPages(x.pages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT"));}
   catch(e){setError(e instanceof Error?e.message:"Could not load website pages.");}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
