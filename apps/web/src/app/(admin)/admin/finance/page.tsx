@@ -51,7 +51,9 @@ export default async function FinancePage(){
     canManage={actions.includes("finance.accounts.manage")}
     canPost={actions.includes("finance.journals.post")}
     canViewVouchers={actions.includes("finance.vouchers.view")}
-    canManageVouchers={actions.includes("finance.vouchers.manage")}/></main>
+    canManageVouchers={actions.includes("finance.vouchers.manage")}
+    canViewEvidence={actions.includes("documents.files.view")}
+    canUploadEvidence={actions.includes("documents.files.view")&&actions.includes("documents.files.manage")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
