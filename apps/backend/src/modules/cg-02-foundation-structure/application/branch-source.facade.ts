@@ -42,6 +42,15 @@ type SubmittedRow={
 export class BranchSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
+ async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
+  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const row=await client.query<{id:string}>(`
+    SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
+    FOR SHARE`,[ensureId(branchRef),actor.realmId]);
+  if(!row.rows[0])throw new ConflictException("This branch is not active. Choose an active branch before using its finance account.");
+ }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
