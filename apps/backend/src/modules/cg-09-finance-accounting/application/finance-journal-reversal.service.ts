@@ -30,6 +30,17 @@ export class FinanceJournalReversalService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly posting:FinanceJournalPostingService){}
+ async status(bearer:string,keyInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.journals.post");
+  await this.sessions.requireAction(bearer,"approvals.review");
+  const ref=id(keyInput);
+  const rows=await this.db.query<{reversal_journal_id:string}>(
+   "SELECT reversal_journal_id FROM finance_manual_journal_reversal "+
+   "WHERE root_realm_id=$1 AND reviewer_id=$2 AND request_key=$3",
+   [actor.realmId,actor.accountId,ref]);
+  return {confirmed:!!rows.rows[0],status:rows.rows[0]?"REVERSED":"NOT_FOUND",
+   reversalRef:rows.rows[0]?.reversal_journal_id??null};
+ }
  async reverse(bearer:string,originalInput:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.journals.post");
   await this.sessions.requireAction(bearer,"approvals.review");
