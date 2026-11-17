@@ -35,6 +35,13 @@ export function financeSqlFailure(error:unknown,area:FinanceArea):never{
   throw new ConflictException({code:"FINANCE_BUDGET_STALE"});
  if(code==="P0926")
   throw new ConflictException({code:"FINANCE_RECONCILIATION_INVALID"});
+ if(code==="P0931")
+  throw new ConflictException({code:"FINANCE_CREDIT_NOTE_CONFLICT"});
+ if(code==="P0932")
+  throw new ConflictException({code:area==="bank"?
+   "FINANCE_RECONCILIATION_INVALID":"FINANCE_REFUND_CONFLICT"});
+ if(code==="P0933")
+  throw new ConflictException({code:"FINANCE_INVOICE_REISSUE_CONFLICT"});
  if(["23503","23514","22P02","22003"].includes(code))
   throw new BadRequestException({code:area==="invoice"?"FINANCE_INVOICE_FORM_INVALID":
    area==="budget"?"FINANCE_BUDGET_FORM_INVALID":"FINANCE_RECONCILIATION_INVALID"});
