@@ -340,6 +340,8 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
      ["Cash & bank net",summary.cashBankMinor]] as [string,string][])
      .map(([k,v])=><Text style={s.text} key={k}>{k}: {money(v)}</Text>)}
     <Text style={s.muted}>Drafts, claim approvals and invoice issuance are not cash receipts.</Text>
+    <Action label="Export financial summary (CSV)" secondary disabled={busy}
+     onPress={()=>void exportFull()}/>
    </Card>}
    {view==="trial-balance"&&trial&&<Card title="Original balanced trial">
     <Text style={s.text}>Total debits: {money(trial.totalDebitMinor)}</Text>
