@@ -11,9 +11,17 @@ const financeErrors=new Set([
  "FINANCE_REQUEST_CONFLICT","FINANCE_PERMISSION","FINANCE_UNAVAILABLE",
  "FINANCE_CLAIM_FORM_INVALID","FINANCE_CLAIM_REQUEST_KEY_INVALID","FINANCE_CLAIM_PURPOSE_INVALID",
  "FINANCE_CLAIM_CATEGORY_INVALID","FINANCE_CLAIM_DATE_INVALID","FINANCE_CLAIM_AMOUNT_INVALID",
- "FINANCE_CLAIM_REPLAY_CONFLICT","FINANCE_CLAIM_FILTER_INVALID"
+ "FINANCE_CLAIM_REPLAY_CONFLICT","FINANCE_CLAIM_FILTER_INVALID",
+ "FINANCE_CLAIM_SOURCE_INVALID","FINANCE_CLAIM_NOT_EDITABLE","FINANCE_CLAIM_BILL_INVALID",
+ "FINANCE_CLAIM_BILL_CONFLICT","FINANCE_CLAIM_REVIEW_INVALID","FINANCE_CLAIM_REVIEW_UNAVAILABLE",
+ "FINANCE_CLAIM_STALE","FINANCE_CLAIM_VOUCHER_INVALID"
 ]);
 function allowed(parts:string[],method:string):boolean{
+ if(parts.length===2&&parts[0]==="claims"&&parts[1]==="approved-options")return method==="GET";
+ if(parts.length===3&&parts[0]==="claims"&&parts[1]==="workflow-commands"&&UUID.test(parts[2]))return method==="GET";
+ if(parts.length===3&&parts[0]==="claims"&&UUID.test(parts[1])&&
+   ["submit","reconcile","link-voucher"].includes(parts[2]))return method==="POST";
+ if(parts.length===2&&parts[0]==="claims"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="drafts")return method==="POST";
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="mine")return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
@@ -70,6 +78,11 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="claims"&&parts[1]==="approved-options"){
+  const query=request.nextUrl.searchParams.get("q")??"";
+  if(query.length>80)return NextResponse.json({message:"Search using a shorter claim number, category or purpose."},{status:400});
+  target.searchParams.set("q",query);
+ }
  if(method==="GET"&&parts[0]==="claims"&&parts[1]==="mine"){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
@@ -125,7 +138,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "expenseDate","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
