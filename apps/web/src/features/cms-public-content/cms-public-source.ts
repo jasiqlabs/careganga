@@ -2,7 +2,8 @@ import "server-only";
 import type {PublicCmsPage} from "./cms-public-page";
 export type CmsPageResult={state:"PUBLISHED";page:PublicCmsPage}|
  {state:"NOT_PUBLISHED"|"UNAVAILABLE";page:null};
-export async function publishedCmsPage(slug:"home"|"about"):Promise<CmsPageResult>{
+export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
+ if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
  const backend=process.env.BACKEND_URL;
  if(!backend)return {state:"UNAVAILABLE",page:null};
  try{
@@ -17,7 +18,15 @@ export async function publishedCmsPage(slug:"home"|"about"):Promise<CmsPageResul
     typeof source.title!=="string"||typeof source.seoTitle!=="string"||
     typeof source.seoDescription!=="string"||!Array.isArray(source.sections)||
     !Array.isArray(source.assets)||source.slug!==slug||
-    source.kind!==(slug==="home"?"HOME":"ABOUT"))
+    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"].includes(
+       String(source.kind))||
+    (source.kind==="HOME"&&slug!=="home")||
+    (source.kind==="ABOUT"&&slug!=="about")||
+    (source.kind==="IMPACT"&&slug!=="impact")||
+    (source.kind==="COMPLIANCE"&&slug!=="80g")||
+    (source.kind==="GALLERY"&&slug!=="gallery")||
+    (source.kind==="HEALTHCARE"&&slug!=="healthcare")||
+    (source.kind==="CONTACT"&&slug!=="contact"))
    throw Error();
   return {state:"PUBLISHED",page:p as PublicCmsPage};
  }catch{return {state:"UNAVAILABLE",page:null};}
