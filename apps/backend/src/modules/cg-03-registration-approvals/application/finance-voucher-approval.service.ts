@@ -290,7 +290,11 @@ export class FinanceVoucherApprovalService{
     VALUES($1,$2,$3)`,[caseRef,actor.realmId,decision.rows[0].id]);
    await tx.query("COMMIT");
    return {caseRef,revision:row.revision+1,status:next};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0915")
+    throw new ConflictException({code:"FINANCE_VOUCHER_REVIEW_SOURCE_CHANGED"});
+   throw e;
+  }finally{tx.release();}
  }
  /** Only original current-password-confirmed final decision is authoritative. */
  async reviewOutcome(client:PoolClient,actor:VerifiedFoundationActor,input:{
