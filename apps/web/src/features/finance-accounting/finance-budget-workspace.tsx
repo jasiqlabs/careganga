@@ -190,7 +190,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    <table className="cg-fin-table"><thead><tr><th>Budget</th><th>Category</th>
     <th>Period</th><th>Ceiling</th><th>Status</th><th>Action</th></tr></thead><tbody>
     {budgets.map(b=><tr key={b.budgetRef}><td>{b.budgetNumber} · {b.name}</td>
-     <td>{b.category}</td><td>{b.periodStart} to {b.periodEnd}</td>
+     <td>{categories.find(c=>c.code===b.category)?.name??b.category}</td><td>{b.periodStart} to {b.periodEnd}</td>
      <td>{currency(b.ceilingMinor)}</td><td>{b.status}</td>
      <td><button type="button" onClick={()=>void open(b.budgetRef)}>Open</button></td></tr>)}
    </tbody></table>
@@ -247,7 +247,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
        onChange={e=>update("fundingNote",e.target.value)}/></label>
      <p>Project and donor funding options appear only when their original source modules exist.</p>
     </div>}
-    {stage===3&&<div><p>{form.budgetName} · {form.category} · {form.periodStart} to {form.periodEnd}</p>
+    {stage===3&&<div><p>{form.budgetName} · {categories.find(c=>c.code===form.category)?.name??form.category} · {form.periodStart} to {form.periodEnd}</p>
      <p>Requested ceiling: {form.ceiling} rupees</p>
      <button className="primary" type="button" disabled={busy||Boolean(pending)}
       onClick={save}>Save original budget draft</button>
