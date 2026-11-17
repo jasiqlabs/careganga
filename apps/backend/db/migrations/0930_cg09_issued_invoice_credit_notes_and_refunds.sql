@@ -149,6 +149,9 @@ CREATE TABLE finance_invoice_refund(
  status text NOT NULL DEFAULT 'REQUESTED' CHECK(status IN('REQUESTED','BANK_POSTED')),
  approved_by uuid,approved_at timestamptz,password_verified_at timestamptz,
  approval_key uuid,approval_journal_id uuid,
+ transfer_reference text CHECK(transfer_reference IS NULL OR
+  (char_length(btrim(transfer_reference)) BETWEEN 4 AND 100 AND
+   transfer_reference ~ '^[A-Za-z0-9._/: -]+$')),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(id,root_realm_id),UNIQUE(root_realm_id,credit_note_id),
  UNIQUE(root_realm_id,requested_by,request_key),
@@ -169,10 +172,12 @@ CREATE TABLE finance_invoice_refund(
  FOREIGN KEY(approval_journal_id,root_realm_id)
   REFERENCES journal(id,root_realm_id) ON DELETE RESTRICT,
  CHECK((status='REQUESTED' AND approved_by IS NULL AND approved_at IS NULL
-    AND password_verified_at IS NULL AND approval_key IS NULL AND approval_journal_id IS NULL)
+    AND password_verified_at IS NULL AND approval_key IS NULL AND approval_journal_id IS NULL
+    AND transfer_reference IS NULL)
   OR (status='BANK_POSTED' AND approved_by IS NOT NULL AND approved_at IS NOT NULL
     AND password_verified_at IS NOT NULL AND approval_key IS NOT NULL
-    AND approval_journal_id IS NOT NULL AND approved_by<>requested_by))
+    AND approval_journal_id IS NOT NULL AND approved_by<>requested_by
+    AND transfer_reference IS NOT NULL))
 );
 CREATE INDEX ix_cg09_refund_worklist ON finance_invoice_refund
  (root_realm_id,status,created_at DESC,id DESC);
@@ -185,10 +190,10 @@ BEGIN
  END IF;
  IF TG_OP='UPDATE' AND (to_jsonb(NEW)-
     'status'-'approved_by'-'approved_at'-'password_verified_at'-
-    'approval_key'-'approval_journal_id')
+    'approval_key'-'approval_journal_id'-'transfer_reference')
    IS DISTINCT FROM (to_jsonb(OLD)-
     'status'-'approved_by'-'approved_at'-'password_verified_at'-
-    'approval_key'-'approval_journal_id') THEN
+    'approval_key'-'approval_journal_id'-'transfer_reference') THEN
   RAISE EXCEPTION 'Only the protected reviewer can post a refund' USING ERRCODE='P0932';
  END IF;
  SELECT invoice_id,collected_minor,refund_liability_account_id INTO c
@@ -207,6 +212,7 @@ BEGIN
  END IF;
  IF TG_OP='UPDATE' THEN
   IF OLD.status<>'REQUESTED' OR NEW.status<>'BANK_POSTED' OR
+     NEW.transfer_reference IS NULL OR
      NEW.approved_by=NEW.requested_by OR NEW.approved_at IS NULL OR
      NEW.password_verified_at<NEW.approved_at-interval '5 minutes' OR
      NEW.password_verified_at>NEW.approved_at+interval '1 minute' THEN
