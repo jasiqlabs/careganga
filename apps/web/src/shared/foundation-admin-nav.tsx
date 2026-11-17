@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -19,11 +19,12 @@ type FoundationAdminNavProps={
   canViewFoundation?:boolean;
   canViewBranches?:boolean;
   canViewFinance?:boolean;
+  canViewVouchers?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const searchRef=useRef<HTMLInputElement>(null);
   // Unlike the old admin screenshot's unverified people search, this
@@ -85,6 +86,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ["support.cases.view","support.faq.manage"].some(key=>currentActions.has(key)):canViewSupport;
 
   const financeAccess=allowed("finance.accounts.view",canViewFinance);
+  const voucherAccess=allowed("finance.vouchers.view",canViewVouchers);
   const links=[
     {key:"account" as const,label:"My account",href:"/admin"},
     ...(accountsAccess?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
@@ -92,6 +94,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(foundationAccess?[{key:"foundation" as const,label:"Foundation Structure",href:"/admin/foundation"}]:[]),
     ...(branchAccess?[{key:"branches" as const,label:"Branches & registration",href:"/admin/foundation/branches"}]:[]),
     ...(financeAccess?[{key:"finance" as const,label:"Accounts",href:"/admin/finance"}]:[]),
+    ...(voucherAccess?[{key:"financeVouchers" as const,label:"Voucher Drafts",href:"/admin/finance/vouchers"}]:[]),
     ...(policyAccess?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(settingsAccess?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
     ...(auditAccess?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
@@ -107,7 +110,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     audit:"Audit Logs",recovery:"Backup & Restore",
     approvals:"Registration & Approval",documents:"Private Case Documents",
     communications:"Notices & Notifications",support:"Help & Support",
-    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting"
+    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting",financeVouchers:"Finance Voucher Drafts"
   };
   return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
@@ -122,7 +125,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
         {name:"DASHBOARD",keys:["account"]},
         {name:"USER & ACCESS MANAGEMENT",keys:["accounts","roles","approvals","policy"]},
         {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation"]},
-        {name:"FINANCE & ACCOUNTING",keys:["finance"]},
+        {name:"FINANCE & ACCOUNTING",keys:["finance","financeVouchers"]},
         {name:"PLATFORM & COMMUNICATIONS",
           keys:["documents","communications","support","settings","audit","recovery"]}
       ] as const).map(group=>{
