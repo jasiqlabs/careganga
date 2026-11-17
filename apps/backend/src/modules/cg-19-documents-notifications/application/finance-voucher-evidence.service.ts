@@ -10,7 +10,7 @@ import {FinanceVoucherSourceFacade} from "../../cg-09-finance-accounting/applica
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{64}$/;
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 const id=(v:unknown):string=>{
