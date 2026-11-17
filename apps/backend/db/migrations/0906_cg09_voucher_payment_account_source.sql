@@ -2,8 +2,8 @@
 -- Source stays Finance-owned, original voucher revision is immutable after review.
 ALTER TABLE finance_voucher
  ADD COLUMN payment_account_id uuid,
- ADD CONSTRAINT cg09_voucher_payment_account_fk FOREIGN KEY(payment_account_id,root_realm_id)
-  REFERENCES cash_bank_account(account_id,root_realm_id) ON DELETE RESTRICT;
+ ADD CONSTRAINT cg09_voucher_payment_account_fk FOREIGN KEY(root_realm_id,payment_account_id)
+  REFERENCES cash_bank_account(root_realm_id,account_id) ON DELETE RESTRICT;
 CREATE INDEX ix_cg09_voucher_bank_scope
  ON finance_voucher(root_realm_id,payment_account_id,created_at DESC)
  WHERE payment_account_id IS NOT NULL;
