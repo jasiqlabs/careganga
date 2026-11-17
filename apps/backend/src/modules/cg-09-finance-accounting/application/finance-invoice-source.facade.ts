@@ -59,6 +59,7 @@ export class FinanceInvoiceSourceFacade{
  async guardDraft(tx:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,digest:string){
   const x=await this.original(tx,actor,reference,version,"finance.invoices.manage");
+  if(x.branchRef)await this.branches.requireFinanceActorBranch(tx,actor,x.branchRef,"finance.invoices.manage");
   if(x.status!=="DRAFT"||x.sourceDigest!==digest)
    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
   return x;
@@ -66,6 +67,7 @@ export class FinanceInvoiceSourceFacade{
  async submittedForReviewer(tx:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,digest:string){
   const x=await this.original(tx,actor,reference,version,"finance.invoices.review");
+  if(x.branchRef)await this.branches.requireFinanceActorBranch(tx,actor,x.branchRef,"finance.invoices.review");
   await this.identity.assertCurrent(tx,actor,"approvals.review");
   if(x.status!=="SUBMITTED"||x.sourceDigest!==digest||x.createdBy===actor.accountId)
    throw new ConflictException({code:"FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
@@ -108,6 +110,7 @@ export class FinanceInvoiceSourceFacade{
   try{
    await tx.query("BEGIN");
    const source=await this.original(tx,actor,reference,version,"finance.invoices.issue");
+   if(source.branchRef)await this.branches.requireFinanceActorBranch(tx,actor,source.branchRef,"finance.invoices.issue");
    const scope=await this.branches.financeReportScope(bearer,"finance.invoices.issue");
    if(!scope.all&&(!source.branchRef||!scope.branchRefs.includes(source.branchRef))&&
       !(source.branchRef===null&&source.createdBy===actor.accountId))
