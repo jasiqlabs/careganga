@@ -8,7 +8,8 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
-const MIME=new Set(["image/jpeg","image/png","image/webp"]);
+const MIME=new Set(["image/jpeg","image/png","image/webp","application/pdf","video/mp4"]);
+const maxMimeBytes=(mime:string)=>mime==="video/mp4"?25*1024*1024:10*1024*1024;
 // Every public media read (before and after fetching private bytes) must match
 // a currently effective image placement and the displayed CMS section.
 // This also protects older publications created before authored-role validation.
@@ -45,7 +46,7 @@ function parse(v:unknown){
     typeof x.requestKey!=="string"||!UUID.test(x.requestKey)||
     typeof x.mime!=="string"||!MIME.has(x.mime)||
     !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||
-    Number(x.sizeBytes)>10*1024*1024||typeof x.sha256!=="string"||
+    Number(x.sizeBytes)>maxMimeBytes(x.mime)||typeof x.sha256!=="string"||
     !SHA.test(x.sha256)||x.rightsConfirmed!==true)
    throw new BadRequestException({code:"CMS_MEDIA_INVALID"});
  return x as {pageRef:string;revisionRef:string;requestKey:string;mime:string;
@@ -264,7 +265,8 @@ export class CmsDraftMediaService{
   const item=found.rows[0];if(!item)throw new NotFoundException();
   let bytes:Buffer;
   try{bytes=await this.objects.readVerifiedPrivateObject({
-   objectKey:item.object_key,objectVersion:item.object_version,maxBytes:10*1024*1024});}
+   objectKey:item.object_key,objectVersion:item.object_version,
+    maxBytes:maxMimeBytes(item.original_mime)});}
   catch{throw new ServiceUnavailableException("Preview temporarily unavailable");}
   if(bytes.length!==Number(item.verified_size_bytes)||
     createHash("sha256").update(bytes).digest("hex")!==item.verified_sha256)
@@ -303,7 +305,8 @@ export class CmsDraftMediaService{
   const x=result.rows[0];if(!x)throw new NotFoundException();
   let bytes:Buffer;
   try{bytes=await this.objects.readVerifiedPrivateObject({
-   objectKey:x.object_key,objectVersion:x.object_version,maxBytes:10*1024*1024});
+   objectKey:x.object_key,objectVersion:x.object_version,
+    maxBytes:maxMimeBytes(x.original_mime)});
   }catch{throw new ServiceUnavailableException("The published image is temporarily unavailable");}
   if(bytes.length!==Number(x.verified_size_bytes)||
     createHash("sha256").update(bytes).digest("hex")!==x.verified_sha256)
