@@ -76,6 +76,7 @@ function parseContent(raw:unknown):Content{
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
   const fields=input(sec.fields,sec.kind==="HERO"?
    ["heading","subtitle","description","eyebrow","tags",
+    "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
     "primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
    sec.kind==="TEAM"?["heading","members"]:
    sec.kind==="CTA"?["heading","eyebrow","body","label","path"]:
@@ -97,6 +98,24 @@ function parseContent(raw:unknown):Content{
    out.description=text(fields.description??"","description",400);
    out.eyebrow=text(fields.eyebrow??"","eyebrow",100);
    out.tags=array(fields.tags??[],"tags",4,36);
+   const heroStyle=(field:string,raw:unknown,allowed:string[],fallback:string)=>{
+    if(raw===undefined)return fallback;
+    const candidate=text(raw,field,30,1);
+    if(!allowed.includes(candidate))
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
+    return candidate;
+   };
+   const heroColor=(field:string,raw:unknown,fallback:string)=>{
+    if(raw===undefined)return fallback;
+    if(typeof raw!=="string"||!/^#[0-9A-Fa-f]{6}$/.test(raw))
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
+    return raw.toUpperCase();
+   };
+   out.headingFont=heroStyle("headingFont",fields.headingFont,["SERIF","SANS"],"SERIF");
+   out.headingWeight=heroStyle("headingWeight",fields.headingWeight,["REGULAR","BOLD"],"BOLD");
+   out.headingSize=heroStyle("headingSize",fields.headingSize,["STANDARD","LARGE"],"LARGE");
+   out.headingColor=heroColor("headingColor",fields.headingColor,"#FFE34A");
+   out.subtitleColor=heroColor("subtitleColor",fields.subtitleColor,"#8CF442");
    if(fields.primaryLabel!==undefined)out.primaryLabel=text(fields.primaryLabel,"primaryLabel",60,2);
    if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath");
    if(Boolean(fields.primaryLabel)!==Boolean(fields.primaryPath))
