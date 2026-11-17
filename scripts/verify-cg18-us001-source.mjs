@@ -16,7 +16,23 @@ const files={
  proxy:read("apps/web/src/app/api/cms-image-preview/[fileRef]/route.ts"),
  android:read("apps/android-public/src/features/cms/public-cms-screen.tsx"),
  reference:read("apps/web/src/features/cms-public-content/cms-client-screenshot-reference.ts"),
- cg03:read("apps/backend/src/modules/cg-03-registration-approvals/application/cms-publication-approval.service.ts")
+ cg03:read("apps/backend/src/modules/cg-03-registration-approvals/application/cms-publication-approval.service.ts"),
+ extended:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-extended-sections.ts"),
+ proof:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-compliance-eligibility.ts"),
+ due:read("apps/backend/src/modules/cg-18-cms-public-content/infrastructure/cms-publication-due.worker.ts"),
+ db1938:read("apps/backend/db/migrations/0938_cg18_public_impact_media_and_healthcare.sql"),
+ db1939:read("apps/backend/db/migrations/0939_cg18_impact_editorial_photo.sql"),
+ adminExtended:read("apps/web/src/features/cms-public-content/cms-extended-workspace.tsx"),
+ publicExtended:read("apps/web/src/features/cms-public-content/cms-public-extended.tsx"),
+ publicSource:read("apps/web/src/features/cms-public-content/cms-public-source.ts"),
+ androidExtended:read("apps/android-public/src/features/cms/cms-extended-native-screen.tsx"),
+ adminRoute:read("apps/web/src/app/(admin)/admin/website/page.tsx"),
+ routeImpact:read("apps/web/src/app/impact/page.tsx"),
+ route80g:read("apps/web/src/app/80g/page.tsx"),
+ routeGallery:read("apps/web/src/app/gallery/page.tsx"),
+ routeBlog:read("apps/web/src/app/blog/page.tsx"),
+ routeHealthcare:read("apps/web/src/app/healthcare/page.tsx"),
+ notice:read("apps/backend/src/modules/cg-19-documents-notifications/application/notice.service.ts")
 };
 const checks=[
  ["All screenshot-driven content blocks validated by backend",
@@ -60,7 +76,49 @@ const checks=[
  ["Original verified banner thumbnails retain responsive Admin focus and selection",
   files.admin.includes('src={"/api/cms-image-preview/"+desktop.fileRef}')&&
   files.adminStyles.includes(".cg-cms-banner-row:focus-visible")&&
-  files.adminStyles.includes(".cg-cms-banner-row[aria-pressed=")]
+  files.adminStyles.includes(".cg-cms-banner-row[aria-pressed=")],
+ ["CG18 US-002 typed ten-group editorial Impact and source/date validated",
+  files.extended.includes("impactGroups=[")&&
+  files.extended.includes('group==="BREAKDOWN"')&&
+  files.extended.includes('out.asOfDate')&&
+  files.adminExtended.includes("claimsFullBreakdown")&&
+  files.publicExtended.includes("cg-site-evidence-table")&&
+  files.androidExtended.includes('section.kind==="IMPACT_GROUP"')],
+ ["CG18 US-002 statutory truth and current proof expiry guards",
+  files.extended.includes('kind==="COMPLIANCE_FACTS"')&&
+  files.extended.includes('fact.verification==="VERIFIED"')&&
+  files.proof.includes("complianceEligible(")&&
+  files.backend.includes("await complianceEligible(")&&
+  files.due.includes("await complianceEligible(")&&
+  files.route80g.includes('slug="80g"')],
+ ["CG18 US-003 gallery and article originals reuse CG19 private bytes",
+  files.extended.includes('kind==="GALLERY_GRID"')&&
+  files.extended.includes('kind==="ARTICLE_BODY"')&&
+  files.db1938.includes("application/pdf")&&files.db1938.includes("video/mp4")&&
+  files.media.includes("PUBLIC_MEDIA_MIME_ALLOWED")&&
+  files.publicExtended.includes("CmsGallery")&&
+  files.publicExtended.includes("CmsArticle")&&
+  files.androidExtended.includes('section.kind==="GALLERY_GRID"')&&
+  files.routeBlog.includes("publishedCmsArticles")],
+ ["CG18 US-003 public Contact preserves original CG19 support master",
+  files.adminExtended.includes('kind==="CONTACT"')&&
+  files.publicSource.includes("publishedCmsArticles")&&
+  !files.extended.includes("cms_contact_message")],
+ ["CG18 US-004 genuine neutral Healthcare editorial only",
+  files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
+  files.extended.includes('healthcareClaims')&&
+  files.adminExtended.includes('kind:"HERO"')&&
+  files.routeHealthcare.includes('slug="healthcare"')&&
+  files.publicExtended.includes("CmsHealthcare")&&
+  files.androidExtended.includes('section.kind==="HEALTHCARE_CATEGORIES"')],
+ ["All new CG18 editors stay in original authorized Admin and public source",
+  files.adminRoute.includes("CmsExtendedWorkspace")&&
+  files.header.includes("publishedRoutes")&&
+  files.publicSource.includes("effectiveGeneration")],
+ ["CG19 internal notices are NOT automatically exposed to the public",
+  files.notice.includes("audience_kind")&&
+  !files.publicExtended.includes("cg19_notice_recipient")&&
+  !files.adminExtended.includes("cg19_notice_recipient")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
@@ -68,4 +126,4 @@ for(const [label,ok] of checks){
  if(!ok)errors++;
 }
 assert.equal(errors,0,"Source wiring assertions failed");
-console.log("CG-18 US-001 static assertions passed; 20 original user-story QA remain NOT EXECUTED.");
+console.log("CG-18 US-001–004 static source wiring assertions passed; all 76 original runtime QA remain NOT EXECUTED. Public CG19 notice release and qualified original-pixel fidelity are not covered by this static guard.");
