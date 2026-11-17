@@ -41,8 +41,11 @@ function initial(kind:Kind):Draft{
   kind==="CONTACT"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:"Contact the Foundation",body:"",
    eyebrow:"",variant:"STANDARD",highlights:[]}}]:
-  [{kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
-   heading:"",intro:"",categories:[]}}];
+  [{kind:"HERO",order:0,fields:{heading:"",subtitle:"",description:"",eyebrow:"",
+    tags:[],visible:true,headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
+    headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
+   {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
+    heading:"",intro:"",categories:[]}}];
  return {kind,slug:slugFor(kind),title:"",seoTitle:"",seoDescription:"",
   sections,assets:[]};
 }
@@ -264,6 +267,14 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
       <legend>{section.kind==="IMPACT_GROUP"?"Impact: "+groupName.replaceAll("_"," "):
        section.kind.replaceAll("_"," ")}</legend>
       <Field name="Heading" value={f.heading} onChange={v=>change("heading",v)}/>
+      {section.kind==="HERO"&&<>
+       <Field name="Healthcare hero subtitle" value={f.subtitle}
+        onChange={v=>change("subtitle",v)}/>
+       <Field name="Short hero description" large value={f.description}
+        onChange={v=>change("description",v)}/>
+       <Field name="Section label" value={f.eyebrow}
+        onChange={v=>change("eyebrow",v)}/>
+      </>}
       {section.kind==="IMPACT_GROUP"&&<>
        <Field name="Explanation" value={f.intro} large onChange={v=>change("intro",v)}/>
        <Field name="Data or editorial source" value={f.source} onChange={v=>change("source",v)}/>
@@ -387,13 +398,14 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
        value={f.body} large onChange={v=>change("body",v)}/>}
      </fieldset>;
     })}
-    {selected?.status==="DRAFT"&&draft.kind!=="CONTACT"&&draft.kind!=="HEALTHCARE"&&
+    {selected?.status==="DRAFT"&&draft.kind!=="CONTACT"&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
       <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>
        {draft.kind==="IMPACT"?<option value="IMPACT">Impact group photo</option>:
         draft.kind==="GALLERY"?<option value="GALLERY">Gallery item</option>:
         draft.kind==="COMPLIANCE"?<option value="DOCUMENT">Official proof scan or PDF</option>:
+        draft.kind==="HEALTHCARE"?<option value="HERO">Healthcare hero photograph</option>:
         <option value="ARTICLE">Article cover photo</option>}
       </select></label>
       {["IMPACT","GALLERY"].includes(uploadRole)&&<label>Placement position<select
