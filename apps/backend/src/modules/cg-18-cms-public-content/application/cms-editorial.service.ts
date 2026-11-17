@@ -589,6 +589,8 @@ export class CmsEditorialService{
    }
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
+   if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
+    throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
    const original=await this.approvals.createCase(tx,actor,{
@@ -659,6 +661,8 @@ export class CmsEditorialService{
     throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
+   if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
+    throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    const final=await this.approvals.approved(tx,actor,{
     caseRef,pageRef:page.id,revisionRef:rev.id,
     revisionNo:rev.revision_no,digest:rev.content_digest});
@@ -927,6 +931,8 @@ export class CmsEditorialService{
   if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   if(!(await complianceEligible(this.db,x.foundation_root_id,x.revision_id)))
    throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  if(!(await this.notices.revisionEligible(this.db,x.foundation_root_id,x.revision_id)))
+   throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   // A revoked image can carry private/consent-sensitive context in its
   // surrounding section. Fail the entire snapshot instead of returning
   // textual details with an intentionally missing image reference.
@@ -950,7 +956,9 @@ export class CmsEditorialService{
    lastPublishedAt:x.changed_at.toISOString(),
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
-    fields:v.structured_fields})),
+    fields:v.section_kind==="ARTICLE_BODY"?
+      Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
+       !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):v.structured_fields})),
    assets:visibleAssets.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
