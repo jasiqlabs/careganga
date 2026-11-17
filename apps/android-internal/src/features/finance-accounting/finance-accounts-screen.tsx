@@ -40,6 +40,22 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
  const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING"|"JOURNALS">("ACCOUNTS");
  const [voucherOpen,setVoucherOpen]=useState(false);
  const [reversingJournal,setReversingJournal]=useState("");
+ const [protectedEligible,setProtectedEligible]=useState(false);
+ const canCorrect=canReverse&&protectedEligible;
+ useEffect(()=>{
+  if(!canReverse){setProtectedEligible(false);return;}
+  let active=true;
+  void (async()=>{
+   try{
+    const res=await identityRequest("/api/finance-accounting/manual-journals/reversal-eligibility",{
+     headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    if(res.status===401){onExpired();return;}
+    const v=res.ok?await res.json() as {canReverse?:boolean}:null;
+    if(active)setProtectedEligible(v?.canReverse===true);
+   }catch{if(active)setProtectedEligible(false);}
+  })();
+  return()=>{active=false;};
+ },[token,canReverse,onExpired]);
  const [manualJournals,setManualJournals]=useState<Array<{
   journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string;
   reversed:boolean;differentCreator:boolean}>>([]);
@@ -207,7 +223,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
       <Text style={s.amount}>{inr(j.debitMinor)}</Text>
       <Text style={s.meta}>{j.reversed?"Original reversed by an offsetting journal":
        "Posted to ledger — not a verified payment"}</Text>
-      {canReverse&&j.differentCreator&&!j.reversed&&
+      {canCorrect&&j.differentCreator&&!j.reversed&&
        <Pressable accessibilityRole="button" style={s.create}
         onPress={()=>setReversingJournal(j.journalRef)}>
         <Text style={s.createText}>Correct original journal</Text>
