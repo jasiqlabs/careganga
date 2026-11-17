@@ -27,7 +27,32 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'cards') ELSE 0 END) OR "+
  "(a.role='TEAM' AND sec.section_kind='TEAM' "+
- "AND (sec.structured_fields->'members'->a.sort_order->>'consentConfirmed')='true')"+
+ "AND (sec.structured_fields->'members'->a.sort_order->>'consentConfirmed')='true') OR "+
+ "(a.role='GALLERY' AND sec.section_kind='GALLERY_GRID' "+
+ "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'items')='array' "+
+ "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END) OR "+
+ "(a.role='ARTICLE' AND sec.section_kind='ARTICLE_BODY' AND a.sort_order=0) OR "+
+ "(a.role='DOCUMENT' AND sec.section_kind='COMPLIANCE_FACTS' AND a.sort_order=0 "+
+ "AND (sec.structured_fields->>'verification'<>'VERIFIED' OR "+
+ "sec.structured_fields->>'validUntil'>=to_char(current_date,'YYYY-MM-DD')))"+
+ ")) ";
+// No non-image data can be rendered as an author, hero or person photograph.
+// Videos and PDFs must match the specific approved gallery item type.
+const PUBLIC_MEDIA_MIME_ALLOWED=
+ "AND (("+
+ "a.role IN('HERO','MOBILE_HERO','TEAM','ABOUT','PROMO','FEATURE','ARTICLE') "+
+ "AND f.original_mime IN('image/jpeg','image/png','image/webp')) OR "+
+ "(a.role='DOCUMENT' AND f.original_mime IN("+
+ "'image/jpeg','image/png','image/webp','application/pdf')) OR "+
+ "(a.role='GALLERY' AND EXISTS (SELECT 1 FROM cms_section_revision gs "+
+ "WHERE gs.foundation_root_id=a.foundation_root_id AND gs.page_revision_id=a.page_revision_id "+
+ "AND gs.section_kind='GALLERY_GRID' AND (("+
+ "gs.structured_fields->'items'->a.sort_order->>'mediaType'='PHOTO' "+
+ "AND f.original_mime IN('image/jpeg','image/png','image/webp')) OR ("+
+ "gs.structured_fields->'items'->a.sort_order->>'mediaType'='VIDEO' "+
+ "AND f.original_mime='video/mp4') OR ("+
+ "gs.structured_fields->'items'->a.sort_order->>'mediaType'='PUBLICATION' "+
+ "AND f.original_mime='application/pdf'))))"+
  ")) ";
 type Intent={id:string;realm_id:string;page_id:string;page_revision_id:string;
  owner_id:string;request_digest:string;request_key:string;original_mime:string;
@@ -298,7 +323,7 @@ export class CmsDraftMediaService{
    "AND active.page_id=pub.page_id "+
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true AND a.public_rights_status='VALIDATED' "+
-   PUBLIC_MEDIA_SECTION_ALLOWED+
+   PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED+
    "AND a.cg19_validated_version=f.revision AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "LIMIT 1",[ref]);
@@ -326,7 +351,7 @@ export class CmsDraftMediaService{
    "f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
    "AND a.cg19_validated_version=f.revision "+
    "AND a.public_rights_status='VALIDATED' "+
-   PUBLIC_MEDIA_SECTION_ALLOWED+
+   PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED+
    "AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())",
    [ref]);
