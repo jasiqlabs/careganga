@@ -173,7 +173,8 @@ export class CmsDraftMediaService{
   return this.status(bearer,ref);
  }
  /** Same transaction source guard: CG18 may reference only CURRENT clean,
-  * rights-attested original CG19 media pinned to the exact page revision.
+  * rights-attested original CG19 media pinned to its original file version.
+  * Verified photos may be reused by a later revision of that SAME page and root.
   */
  async validatePlacement(tx:PoolClient,actor:VerifiedFoundationActor,
   revisionRef:string,fileRef:string,version:number):Promise<CmsMediaProof>{
@@ -182,7 +183,9 @@ export class CmsDraftMediaService{
   const rows=await tx.query<{id:string;revision:number;original_mime:string}>(
    "SELECT f.id,f.revision,f.original_mime FROM cg19_cms_media_file f "+
    "JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
-   "WHERE f.id=$1 AND f.realm_id=$2 AND f.page_revision_id=$3 "+
+   "JOIN cms_page_revision target ON target.id=$3 AND target.foundation_root_id=f.realm_id "+
+   "AND target.page_id=f.page_id "+
+   "WHERE f.id=$1 AND f.realm_id=$2 "+
    "AND f.revision=$4 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true AND i.status='VALIDATED' "+
    "AND i.rights_confirmed=true AND i.reserved_until>i.created_at "+
@@ -201,7 +204,9 @@ export class CmsDraftMediaService{
    'SELECT a.id,f.id AS actual_id,i.id AS intent_id,f.revision,'+
    'a.cg19_validated_version AS expected_version FROM cms_asset_placement a '+
    'LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref AND '+
-   'f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id '+
+   'f.realm_id=a.foundation_root_id AND f.page_id=(SELECT target.page_id '+
+   'FROM cms_page_revision target WHERE target.id=a.page_revision_id '+
+   'AND target.foundation_root_id=a.foundation_root_id) '+
    "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    'AND f.public_rights_confirmed=true '+
    'LEFT JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id '+
@@ -224,11 +229,11 @@ export class CmsDraftMediaService{
   if(!UUID.test(ref))throw new NotFoundException();
   const sql="SELECT f.object_key,f.object_version,f.original_mime,"+
    "f.verified_sha256,f.verified_size_bytes FROM cg19_cms_media_file f "+
-   "JOIN cms_page_revision v ON v.id=f.page_revision_id AND v.foundation_root_id=f.realm_id "+
-   "JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id "+
+   "JOIN cms_page p ON p.id=f.page_id AND p.foundation_root_id=f.realm_id "+
    "JOIN cg19_cms_upload_intent u ON u.id=f.upload_intent_id AND u.realm_id=f.realm_id "+
    "WHERE f.id=$1 AND f.realm_id=$2 AND p.archived_at IS NULL "+
-   "AND v.revision_no=p.draft_revision_no AND v.status IN('DRAFT','SUBMITTED') "+
+   "AND EXISTS(SELECT 1 FROM cms_page_revision v WHERE v.id=f.page_revision_id "+
+   "AND v.foundation_root_id=f.realm_id) "+
    "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true AND u.status='VALIDATED' "+
    "AND u.rights_confirmed=true LIMIT 1";
@@ -260,7 +265,9 @@ export class CmsDraftMediaService{
    "SELECT f.object_key,f.object_version,f.original_mime,f.verified_sha256,"+
    "f.verified_size_bytes FROM cg19_cms_media_file f "+
    "JOIN cms_asset_placement a ON a.cg19_file_ref=f.id "+
-   "AND a.foundation_root_id=f.realm_id AND a.page_revision_id=f.page_revision_id "+
+   "AND a.foundation_root_id=f.realm_id "+
+   "JOIN cms_page_revision target ON target.id=a.page_revision_id "+
+   "AND target.foundation_root_id=a.foundation_root_id AND target.page_id=f.page_id "+
    "JOIN cms_publication pub ON pub.page_revision_id=a.page_revision_id "+
    "AND pub.foundation_root_id=a.foundation_root_id "+
    "JOIN cms_page_effective active ON active.publication_id=pub.id "+
@@ -282,8 +289,10 @@ export class CmsDraftMediaService{
   // Publication could have been withdrawn while the object store was read.
   const latest=await this.db.query(
    "SELECT 1 FROM cg19_cms_media_file f JOIN cms_asset_placement a "+
-   "ON a.cg19_file_ref=f.id AND a.page_revision_id=f.page_revision_id "+
+   "ON a.cg19_file_ref=f.id "+
    "AND a.foundation_root_id=f.realm_id "+
+   "JOIN cms_page_revision target ON target.id=a.page_revision_id "+
+   "AND target.foundation_root_id=a.foundation_root_id AND target.page_id=f.page_id "+
    "JOIN cms_publication pub ON pub.page_revision_id=a.page_revision_id "+
    "AND pub.foundation_root_id=a.foundation_root_id "+
    "JOIN cms_page_effective active ON active.publication_id=pub.id "+
