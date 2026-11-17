@@ -137,3 +137,26 @@ BEGIN
  END IF;
  RETURN NEW;
 END; $$;
+
+-- Stable actor-bound request identity for submission and reviewer-result settlement.
+CREATE TABLE finance_voucher_workflow_command(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ voucher_id uuid NOT NULL,
+ actor_ref uuid NOT NULL,
+ action text NOT NULL CHECK(action IN('SUBMIT','SETTLE')),
+ request_key uuid NOT NULL,
+ request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
+ voucher_version integer NOT NULL CHECK(voucher_version>0),
+ case_id uuid NOT NULL,
+ result_status text NOT NULL CHECK(result_status IN('SUBMITTED','RETURNED','REJECTED','APPROVED')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(root_realm_id,actor_ref,request_key),
+ FOREIGN KEY(voucher_id,root_realm_id) REFERENCES finance_voucher(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(case_id,root_realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg09_voucher_command_original ON finance_voucher_workflow_command(root_realm_id,voucher_id,created_at DESC);
+CREATE TRIGGER cg09_voucher_command_immutable
+ BEFORE UPDATE OR DELETE ON finance_voucher_workflow_command
+ FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
