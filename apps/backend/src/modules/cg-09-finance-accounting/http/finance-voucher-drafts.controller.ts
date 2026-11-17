@@ -7,6 +7,10 @@ import {FinanceVoucherDraftService} from "../application/finance-voucher-draft.s
 @Controller("api/finance-accounting/vouchers")
 export class FinanceVoucherDraftController{
  constructor(private readonly service:FinanceVoucherDraftService){}
+ @Get("payment-accounts")
+ paymentAccounts(@Headers("authorization")bearer:string,@Query("q")q?:string){
+  return this.service.paymentAccounts(bearer,q);
+ }
  @Get("options")
  options(@Headers("authorization")bearer:string){return this.service.options(bearer);}
  @Get("drafts")
