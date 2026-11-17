@@ -24,6 +24,7 @@ const financeErrors=new Set([
  "FINANCE_INVOICE_INCOMPLETE","FINANCE_INVOICE_POSTING_NOT_READY",
  "FINANCE_INVOICE_NOT_ISSUABLE","FINANCE_INVOICE_DOCUMENT_UNAVAILABLE",
  "FINANCE_INVOICE_ISSUE_CONFLICT","FINANCE_INVOICE_FILTER_INVALID","FINANCE_INVOICE_RECEIPT_NOT_READY",
+ "FINANCE_INVOICE_CANCEL_INVALID","FINANCE_INVOICE_CANCEL_CONFLICT",
  "FINANCE_BUDGET_SOURCE_INVALID","FINANCE_BUDGET_DUPLICATE","FINANCE_BUDGET_STALE",
  "FINANCE_BUDGET_FORM_INVALID","FINANCE_BUDGET_AMOUNT_INVALID",
  "FINANCE_BUDGET_PERIOD_INVALID","FINANCE_BUDGET_REPLAY_CONFLICT",
@@ -60,15 +61,15 @@ function allowed(parts:string[],method:string):boolean{
   return false;
  }
  if(parts[0]==="invoices"){
-  if(parts.length===2&&["options","posting-accounts","dashboard","draft-commands","workflow-commands","drafts"].includes(parts[1])){
-   if(["draft-commands","workflow-commands"].includes(parts[1]))return false;
+  if(parts.length===2&&["options","posting-accounts","dashboard","draft-commands","workflow-commands","cancel-commands","drafts"].includes(parts[1])){
+   if(["draft-commands","workflow-commands","cancel-commands"].includes(parts[1]))return false;
    return parts[1]==="drafts"?(method==="GET"||method==="POST"):method==="GET";
   }
-  if(parts.length===3&&["draft-commands","workflow-commands"].includes(parts[1])&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===3&&["draft-commands","workflow-commands","cancel-commands"].includes(parts[1])&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET";
   if(parts.length===4&&parts[1]==="drafts"&&UUID.test(parts[2])&&parts[3]==="stages")return method==="PATCH";
   if(parts.length===3&&UUID.test(parts[1])&&["receipt","receipt-options","collection-options"].includes(parts[2]))return method==="GET";
-  if(parts.length===3&&UUID.test(parts[1])&&["submit","reconcile","post","issue","link-receipt","record-collection"].includes(parts[2]))return method==="POST";
+  if(parts.length===3&&UUID.test(parts[1])&&["submit","reconcile","post","issue","link-receipt","record-collection","cancel-posted"].includes(parts[2]))return method==="POST";
   return false;
  }
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="dashboard")return method==="GET";
