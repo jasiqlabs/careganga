@@ -139,16 +139,15 @@ export class FinanceAccountsService{
    }>(`
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
      a.account_kind AS kind,a.scope_kind AS "scopeKind",a.branch_id AS "branchRef",
-     b.name AS "branchName",g.name AS "groupName",g.category,a.status,a.version,
+     NULL::text AS "branchName",g.name AS "groupName",g.category,a.status,a.version,
      COALESCE(SUM(l.debit_minor-l.credit_minor),0)::text AS "balanceMinor",
      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
     FROM finance_account a JOIN account_group g ON g.id=a.group_id
-    LEFT JOIN branch b ON b.id=a.branch_id AND b.root_realm_id=a.root_realm_id
     LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
     LEFT JOIN cash_bank_account cb ON cb.account_id=a.id AND cb.root_realm_id=a.root_realm_id
     WHERE a.root_realm_id=$1 AND ($2='' OR a.name ILIKE $2 ESCAPE '\\'
       OR a.code ILIKE $2 ESCAPE '\\')
-    GROUP BY a.id,b.name,g.name,g.category,cb.display_label,cb.masked_details
+    GROUP BY a.id,g.name,g.category,cb.display_label,cb.masked_details
     ORDER BY a.name,a.id LIMIT 51 OFFSET $3`,
     [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset]),
    this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
@@ -161,7 +160,13 @@ export class FinanceAccountsService{
    this.branches.financeBranches(bearer)
   ]);
   const hasMore=accounts.rows.length>50;
-  return {years:years.rows,groups:groups.rows,accounts:accounts.rows.slice(0,50),
+  const accountRows=accounts.rows.slice(0,50);
+  const branchLabels=await this.branches.financeBranchLabels(bearer,
+    accountRows.map(a=>a.branchRef).filter((x):x is string=>x!==null));
+  const safeAccounts=accountRows.map(a=>({
+    ...a,branchName:a.branchRef?(branchLabels[a.branchRef]??"Branch unavailable"):null
+  }));
+  return {years:years.rows,groups:groups.rows,accounts:safeAccounts,
    openingJournals:opening.rows,branches,nextOffset:hasMore?offset+50:null};
  }
  async createYear(bearer:string,input:unknown):Promise<CommandResult>{
