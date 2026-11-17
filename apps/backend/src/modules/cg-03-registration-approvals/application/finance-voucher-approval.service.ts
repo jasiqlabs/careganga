@@ -9,6 +9,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {FinanceVoucherSourceFacade} from "../../cg-09-finance-accounting/application/finance-voucher-source.facade";
+import {FinanceVoucherProofSourceFacade} from "../../cg-19-documents-notifications/application/finance-voucher-proof-source.facade";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const requireId=(v:unknown):string=>{
@@ -43,7 +44,8 @@ export class FinanceVoucherApprovalService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly protectedOwner:ProtectedAccessOwnerService,
-  private readonly financeSource:FinanceVoucherSourceFacade){}
+  private readonly financeSource:FinanceVoucherSourceFacade,
+  private readonly evidence:FinanceVoucherProofSourceFacade){}
  async processStatus(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.manage");
   const result=await this.db.query<{version:number}>(`
@@ -254,6 +256,12 @@ export class FinanceVoucherApprovalService{
    }
    if(!["SUBMITTED","IN_REVIEW"].includes(row.status)||row.revision!==input.expectedRevision)
     throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+   // A reviewer cannot approve revoked, stale or unscanned files.
+   // CG-19 remains the authoritative owner of this source check.
+   await this.evidence.guardForReviewer(tx,actor,{
+    voucherRef:row.finance_voucher_id,voucherVersion:row.finance_voucher_revision,
+    fileRef:row.finance_proof_file_id,fileVersion:row.finance_proof_revision
+   });
    const step=await tx.query<{ordinal:number}>(`
      SELECT ordinal FROM cg03_process_step WHERE process_id=$1 AND ordinal=$2
        AND capability_key='approvals.review' AND protected_root_required=true FOR SHARE`,
