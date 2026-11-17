@@ -48,6 +48,26 @@ CREATE TABLE account_group(
  FOREIGN KEY(parent_id,root_realm_id) REFERENCES account_group(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
+-- A group cannot silently change meaning and a child must inherit its category.
+CREATE FUNCTION cg09_guard_group_structure() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE parent_category text;
+BEGIN
+ IF TG_OP='UPDATE' AND (
+  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+  NEW.category IS DISTINCT FROM OLD.category OR
+  NEW.code IS DISTINCT FROM OLD.code OR
+  NEW.parent_id IS DISTINCT FROM OLD.parent_id
+ ) THEN RAISE EXCEPTION 'Financial account group hierarchy is immutable'; END IF;
+ IF NEW.parent_id IS NOT NULL THEN
+  SELECT category INTO parent_category FROM account_group
+    WHERE id=NEW.parent_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
+  IF parent_category IS NULL OR parent_category<>NEW.category THEN
+   RAISE EXCEPTION 'Financial group must use its parent category'; END IF;
+ END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER cg09_group_category_guard BEFORE INSERT OR UPDATE ON account_group
+ FOR EACH ROW EXECUTE FUNCTION cg09_guard_group_structure();
 CREATE INDEX ix_cg09_group_list ON account_group(root_realm_id,category,name,id);
 
 CREATE TABLE finance_account(
@@ -69,6 +89,37 @@ CREATE TABLE finance_account(
  FOREIGN KEY(branch_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
+-- Normal balances derive from category; direct writes cannot create bank
+-- liabilities or an inverted asset account.
+CREATE FUNCTION cg09_guard_account_category() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE group_category text; expected_side text;
+BEGIN
+ SELECT category INTO group_category FROM account_group
+  WHERE id=NEW.group_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
+ IF group_category IS NULL THEN
+  RAISE EXCEPTION 'Finance group is unavailable'; END IF;
+ expected_side:=CASE WHEN group_category IN('ASSET','EXPENSE') THEN 'DEBIT' ELSE 'CREDIT' END;
+ IF NEW.normal_side<>expected_side OR
+  (NEW.account_kind IN('CASH','BANK') AND group_category<>'ASSET') THEN
+  RAISE EXCEPTION 'Invalid finance account category and balance side'; END IF;
+ IF TG_OP='UPDATE' AND (
+  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+  NEW.group_id IS DISTINCT FROM OLD.group_id OR
+  NEW.code IS DISTINCT FROM OLD.code OR
+  NEW.normal_side IS DISTINCT FROM OLD.normal_side OR
+  NEW.account_kind IS DISTINCT FROM OLD.account_kind OR
+  NEW.scope_kind IS DISTINCT FROM OLD.scope_kind OR
+  NEW.branch_id IS DISTINCT FROM OLD.branch_id OR
+  NEW.created_by IS DISTINCT FROM OLD.created_by OR
+  NEW.created_at IS DISTINCT FROM OLD.created_at OR
+  NEW.version<>OLD.version+1 OR
+  NEW.status IS NOT DISTINCT FROM OLD.status
+ ) THEN RAISE EXCEPTION 'Account identity cannot change during a status update'; END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER cg09_account_category_guard BEFORE INSERT OR UPDATE ON finance_account
+ FOR EACH ROW EXECUTE FUNCTION cg09_guard_account_category();
+
 CREATE INDEX ix_cg09_account_list
  ON finance_account(root_realm_id,scope_kind,branch_id,status,name,id);
 
