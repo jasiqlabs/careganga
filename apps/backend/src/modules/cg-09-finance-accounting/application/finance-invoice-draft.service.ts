@@ -333,7 +333,7 @@ export class FinanceInvoiceDraftService{
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return reject("FINANCE_INVOICE_FILTER_INVALID","offset");
   const validStatus=new Set(["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED",
-   "APPROVED","POSTED","ISSUED"]);
+   "APPROVED","POSTED","ISSUED","REVERSED"]);
   if(statusInput!==undefined&&!validStatus.has(statusInput))
    return reject("FINANCE_INVOICE_FILTER_INVALID","status");
   const chosen=statusInput&&statusInput!=="ALL"?statusInput:null;
@@ -341,13 +341,19 @@ export class FinanceInvoiceDraftService{
   const rows=await this.db.query<{invoiceRef:string;invoiceNumber:string;
    createdAt:Date;invoiceDate:string|null;dueDate:string|null;category:string|null;
    counterpartyName:string|null;totalMinor:string|null;status:string;version:number}>(
-   "SELECT id AS \"invoiceRef\",invoice_number AS \"invoiceNumber\","+
-   "created_at AS \"createdAt\",invoice_date::text AS \"invoiceDate\","+
-   "due_date::text AS \"dueDate\",category_label AS category,"+
-   "counterparty_name AS \"counterpartyName\",total_minor::text AS \"totalMinor\","+
-   "status,version FROM finance_invoice WHERE root_realm_id=$1 "+
-   "AND ($3::text IS NULL OR status=$3) "+
-   "ORDER BY created_at DESC,id DESC LIMIT 41 OFFSET $2",
+   "SELECT i.id AS \"invoiceRef\",i.invoice_number AS \"invoiceNumber\","+
+   "i.created_at AS \"createdAt\",i.invoice_date::text AS \"invoiceDate\","+
+   "i.due_date::text AS \"dueDate\",i.category_label AS category,"+
+   "i.counterparty_name AS \"counterpartyName\",i.total_minor::text AS \"totalMinor\","+
+   "CASE WHEN c.invoice_id IS NOT NULL THEN 'REVERSED' ELSE i.status END AS status,"+
+   "i.version FROM finance_invoice i "+
+   "LEFT JOIN finance_invoice_posted_cancellation c "+
+   "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
+   "WHERE i.root_realm_id=$1 "+
+   "AND ($3::text IS NULL OR "+
+   "($3='REVERSED' AND c.invoice_id IS NOT NULL) OR "+
+   "($3<>'REVERSED' AND i.status=$3 AND c.invoice_id IS NULL)) "+
+   "ORDER BY i.created_at DESC,i.id DESC LIMIT 41 OFFSET $2",
    [actor.realmId,offset,chosen]);
   return {invoices:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
@@ -356,10 +362,13 @@ export class FinanceInvoiceDraftService{
   const id=ref(invoiceInput,"invoiceRef");
   const rows=await this.db.query<{invoiceRef:string;invoiceNumber:string;
    createdBy:string;version:number;status:string;draft:Draft;sourceDigest:string}>(
-   "SELECT id AS \"invoiceRef\",invoice_number AS \"invoiceNumber\","+
-   "created_by AS \"createdBy\",version,status,draft_payload AS draft,"+
-   "current_digest AS \"sourceDigest\" FROM finance_invoice "+
-   "WHERE id=$1 AND root_realm_id=$2",[id,actor.realmId]);
+   "SELECT i.id AS \"invoiceRef\",i.invoice_number AS \"invoiceNumber\","+
+   "i.created_by AS \"createdBy\",i.version,"+
+   "CASE WHEN c.invoice_id IS NOT NULL THEN 'REVERSED' ELSE i.status END AS status,"+
+   "i.draft_payload AS draft,i.current_digest AS \"sourceDigest\" "+
+   "FROM finance_invoice i LEFT JOIN finance_invoice_posted_cancellation c "+
+   "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
+   "WHERE i.id=$1 AND i.root_realm_id=$2",[id,actor.realmId]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   return rows.rows[0];
  }
