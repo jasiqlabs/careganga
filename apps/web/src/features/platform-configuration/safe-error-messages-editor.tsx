@@ -56,11 +56,15 @@ export function SafeErrorMessagesEditor({canEdit}:{canEdit:boolean}){
    });
    if(!res.ok){
     if(res.status>=500)throw Error("UNCONFIRMED");
-    setNotice({kind:"error",message:res.status===409?
-     "This wording was changed by someone else. Refresh the list before trying again.":
+    const safe:unknown=await res.json().catch(()=>null);
+    const exact=safe&&typeof safe==="object"&&!Array.isArray(safe)&&
+      "message" in safe&&typeof safe.message==="string"&&safe.message.length<=220?
+      safe.message:null;
+    setNotice({kind:"error",message:exact??(res.status===409?
+     "This wording changed while you edited it. Refresh the list before trying again.":
      res.status===401||res.status===403?
-     "Your current session or permission cannot authorize this change. Sign in and ask the Foundation Administrator.":
-     "Review the replacement sentence and current password. The message was not saved."});return;
+     "Your session or permission cannot authorize this change. Sign in and ask the Foundation Administrator.":
+     "Review the replacement sentence and current password, then try again.")});return;
    }
    const updated=await res.json() as {revision?:number};
    if(!Number.isInteger(updated.revision))throw Error("UNCONFIRMED");
