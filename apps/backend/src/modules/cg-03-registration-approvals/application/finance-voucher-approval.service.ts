@@ -160,6 +160,7 @@ export class FinanceVoucherApprovalService{
  private async reviewActor(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"approvals.review");
   await this.sessions.requireAction(bearer,"finance.vouchers.view");
+  await this.sessions.requireAction(bearer,"documents.files.view");
   return actor;
  }
  async list(bearer:string,offsetInput?:string){
