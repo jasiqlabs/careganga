@@ -7,7 +7,8 @@ export type InvoicePdfSource=Readonly<{
  invoiceNumber:string;date:string;due:string;counterparty:string;address:string|null;
  purpose:string;category:string;items:readonly Item[];
  grossMinor:string;taxMinor:string;chargesMinor:string;totalMinor:string;
- terms:string;notes:string|null;postedAt:string;issueAt:string;sourceDigest:string;sourceVersion:number
+ terms:string;notes:string|null;postedAt:string;issueAt:string;sourceDigest:string;sourceVersion:number;
+ replacesInvoiceNumber?:string|null
 }>;
 const currency=(v:string)=>{
  const n=BigInt(v),abs=n<0n?-n:n;
@@ -80,7 +81,9 @@ export async function renderOriginalFinanceInvoice(input:InvoicePdfSource):Promi
    ["Invoice No.",input.invoiceNumber],["Invoice Date",input.date],
    ["Due Date",input.due],["Counterparty",input.counterparty],
    ["Address",input.address??"Not provided"],["Category",input.category],
-   ["Purpose",input.purpose],["Approved journal recorded (UTC)",input.postedAt]
+   ["Purpose",input.purpose],
+   ...(input.replacesInvoiceNumber?[["Replaces credited invoice",input.replacesInvoiceNumber]]:[]),
+   ["Approved journal recorded (UTC)",input.postedAt]
   ])write(name+": "+value,10,19);
   y-=12;
   write("Items and Amounts",13,24);
