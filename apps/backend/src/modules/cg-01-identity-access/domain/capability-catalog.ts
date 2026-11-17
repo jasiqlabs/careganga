@@ -64,7 +64,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"finance.vouchers.manage",businessLabel:"Create and revise Finance voucher drafts",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.claims.create",businessLabel:"Create my Foundation expense claims",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.claims.view",businessLabel:"View my Foundation expense claims",group:"Finance & accounting",assignable:true,sensitive:true},
-  {key:"finance.claims.review",businessLabel:"Review protected Foundation reimbursements",group:"Finance & accounting",assignable:false,sensitive:true}
+  {key:"finance.claims.review",businessLabel:"Review protected Foundation reimbursements",group:"Finance & accounting",assignable:false,sensitive:true},
+  {key:"finance.claims.manage",businessLabel:"Reconcile approved Foundation claims and link original posted vouchers",group:"Finance & accounting",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
