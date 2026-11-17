@@ -39,7 +39,6 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
  const [active,setActive]=useState<Active|null>(null);
  const [stage,setStage]=useState<Stage>("INFO");
  const [form,setForm]=useState<Form>(empty());
- const [caseRef,setCaseRef]=useState("");
  const [notice,setNotice]=useState("");
  const [error,setError]=useState("");
  const [busy,setBusy]=useState(false);
@@ -157,7 +156,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
   if(!active)return;
   void command("/api/finance/invoices/"+active.ref+"/"+name,"POST",
    name==="submit"?{expectedVersion:active.version}:
-   name==="reconcile"?{caseRef}:{},"WORKFLOW");
+   {},"WORKFLOW");
  }
  return <section className="cg-fin-manual">
   <div className="cg-fin-toolbar"><div><h2>Invoices & Receipts</h2>
@@ -250,11 +249,8 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
    <div className="cg-fin-toolbar-actions">
     {active?.status==="DRAFT"&&<button className="primary" disabled={busy||Boolean(pending)}
       type="button" onClick={()=>workflow("submit")}>Review & Submit</button>}
-    {active?.status==="SUBMITTED"&&<><label className="cg-fin-field">Protected review case reference
-     <input value={caseRef} onChange={e=>setCaseRef(e.target.value)}
-      placeholder="Select original review case"/></label>
-     <button type="button" disabled={busy||Boolean(pending)||!caseRef}
-      onClick={()=>workflow("reconcile")}>Reconcile protected review</button></>}
+    {active?.status==="SUBMITTED"&&<button type="button" disabled={busy||Boolean(pending)}
+      onClick={()=>workflow("reconcile")}>Check original protected reviewer decision</button>}
     {active?.status==="APPROVED"&&canPost&&<button className="primary" type="button"
       disabled={busy||Boolean(pending)} onClick={()=>workflow("post")}>Post balanced invoice accrual</button>}
     {active?.status==="POSTED"&&canIssue&&<button className="primary" type="button"
