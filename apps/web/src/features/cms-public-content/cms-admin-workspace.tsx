@@ -404,7 +404,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <button type="button" onClick={()=>setPreview(v=>!v)}>
       {preview?"Back to editor":"Preview draft"}</button></div>
     {preview?<div className="cg-cms-preview">
-     <p>Private editor preview — not published. Images are shown only after approval.</p>
+     <p>Private draft preview — not published. Verified images load only for authorized Foundation staff; live visitors never see this draft.</p>
      <CmsPublicPage page={previewPage}/>
     </div>:<div className="cg-cms-form">
      <p>The original site's visible words are a drafting reference. Confirm all
