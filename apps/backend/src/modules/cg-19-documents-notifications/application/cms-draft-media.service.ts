@@ -244,7 +244,11 @@ export class CmsDraftMediaService{
     createHash("sha256").update(bytes).digest("hex")!==item.verified_sha256)
    throw new ServiceUnavailableException("Preview verification failed");
   await this.sessions.requireAction(bearer,"cms.content.view");
-  if(!(await this.db.query(sql,[ref,actor.realmId])).rowCount)
+  const current=await this.db.query<typeof item>(sql,[ref,actor.realmId]);
+  if(!current.rows[0]||
+     current.rows[0].object_version!==item.object_version||
+     current.rows[0].verified_sha256!==item.verified_sha256||
+     current.rows[0].verified_size_bytes!==item.verified_size_bytes)
    throw new NotFoundException();
   return {mime:item.original_mime,bytes};
  }
