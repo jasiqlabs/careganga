@@ -8,7 +8,8 @@ import {NativeFinanceAction as Action,NativeFinanceCard as Card,
 type Choice={ref:string;name:string};
 type Note={credit_note_number:string;total_minor:string;collected_minor:string};
 type Refund={refundRef:string;status:string;amountMinor:string};
-type Detail={creditNote:Note|null;refund:Refund|null};
+type Detail={creditNote:Note|null;refund:Refund|null;
+ replacementInvoice:{invoiceNumber:string;status:string}|null};
 type OptionsData={refundLiabilityAccounts:Choice[];years:Choice[];banks:Choice[]};
 type Command={path:string;body:Record<string,unknown>;label:string};
 /** Native equivalent of the original Admin invoice correction/refund path.
@@ -65,6 +66,7 @@ export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
    <Text style={s.heading}>Credit note {data.creditNote.credit_note_number}</Text>
    <Text style={s.text}>{money(data.creditNote.total_minor)} invoice correction</Text>
    <Text style={s.muted}>Original verified collection: {money(data.creditNote.collected_minor)}</Text>
+   {data.replacementInvoice&&<Text style={s.text}>Replacement: {data.replacementInvoice.invoiceNumber} · {data.replacementInvoice.status}</Text>}
    <Action label="View / print protected credit note PDF" secondary disabled={busy}
     onPress={()=>void onPdf(base+"credit-note/pdf")}/>
    {data.refund&&<Text style={s.text}>Refund: {data.refund.status.replaceAll("_"," ")}</Text>}
