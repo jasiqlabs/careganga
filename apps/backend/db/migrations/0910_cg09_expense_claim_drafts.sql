@@ -25,6 +25,6 @@ CREATE INDEX ix_cg09_claim_requester_created ON
 CREATE TRIGGER cg09_claim_draft_immutable BEFORE UPDATE OR DELETE ON expense_claim
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 
-ALTER TABLE finance_event DROP CONSTRAINT finance_event_entity_kind_check;
-ALTER TABLE finance_event ADD CONSTRAINT finance_event_entity_kind_check
+ALTER TABLE finance_event DROP CONSTRAINT cg09_finance_event_voucher_kind;
+ALTER TABLE finance_event ADD CONSTRAINT cg09_finance_event_voucher_kind
  CHECK(entity_kind IN('YEAR','GROUP','ACCOUNT','JOURNAL','VOUCHER','CLAIM'));
