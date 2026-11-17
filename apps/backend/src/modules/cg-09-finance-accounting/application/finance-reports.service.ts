@@ -236,6 +236,8 @@ export class FinanceReportsService{
    "WHERE i.root_realm_id=$1 AND i.status IN('POSTED','ISSUED') "+
    "AND NOT EXISTS(SELECT 1 FROM finance_invoice_posted_cancellation c "+
    "WHERE c.root_realm_id=i.root_realm_id AND c.invoice_id=i.id) "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_invoice_credit_note c "+
+   "WHERE c.root_realm_id=i.root_realm_id AND c.invoice_id=i.id) "+
    "AND ($2::uuid IS NULL OR i.financial_year_id=$2) "+
    "AND ($3::uuid IS NULL OR i.branch_id=$3) "+
    "AND ($4::uuid IS NULL OR i.receivable_account_id=$4) "+
