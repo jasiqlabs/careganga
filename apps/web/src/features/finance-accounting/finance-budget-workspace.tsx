@@ -9,6 +9,10 @@ type Detail={budgetRef:string;budgetNumber:string;name:string;status:string;vers
  start:string;end:string;allocatedMinor:string;committedOutstandingMinor:string;
  utilizedMinor:string;availableMinor:string;overBudgetMinor:string;releasedMinor:string;
  events:{kind:string;amountMinor:string;recordedAt:string}[]};
+type Dashboard={cards:{total:number;drafts:number;submitted:number;approved:number;
+ returned:number;rejected:number;archived:number;totalCeilingMinor:string;
+ allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
+ availableMinor:string;overBudgetMinor:string};explanation:string};
 type Expense={journalRef:string;voucherNumber:string;postedDate:string;amountMinor:string};
 type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;
  category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string};
@@ -34,6 +38,8 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  const [branches,setBranches]=useState<Branch[]>([]);
  const [categories,setCategories]=useState<string[]>([]);
  const [budgets,setBudgets]=useState<Budget[]>([]);
+ const [overview,setOverview]=useState<Dashboard|null>(null);
+ const [refreshTick,setRefreshTick]=useState(0);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [expenses,setExpenses]=useState<Expense[]>([]);
  const [form,setForm]=useState<Form>(clean());
@@ -48,6 +54,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  const [notice,setNotice]=useState("");
  const [pending,setPending]=useState<{key:string;path:string;method:string;body:Record<string,unknown>}|null>(null);
  const list=useCallback(async()=>{
+  setRefreshTick(v=>v+1);
   try{
    const response=await fetch("/api/finance/budgets/list?offset="+offset,{cache:"no-store"});
    if(!response.ok)throw Error(await failure(response));
@@ -57,6 +64,17 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
   }catch(e){setError(e instanceof Error?e.message:"Budget list is unavailable.");}
  },[offset]);
  useEffect(()=>{void list();},[list]);
+ useEffect(()=>{
+  let live=true;
+  void(async()=>{try{
+   const r=await fetch("/api/finance/budgets/dashboard",{cache:"no-store"});
+   if(!r.ok)throw Error(await failure(r));
+   const data=await r.json() as Dashboard;
+   if(!data?.cards)throw Error("Original budget totals cannot be confirmed.");
+   if(live)setOverview(data);
+  }catch(e){if(live)setError(e instanceof Error?e.message:"Budget totals unavailable.");}})();
+  return()=>{live=false;};
+ },[refreshTick]);
  useEffect(()=>{let mounted=true;
   void(async()=>{
    try{
@@ -141,6 +159,25 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
   {notice&&<p role="status" className="cg-fin-notice">{notice}</p>}
   {pending&&<div className="cg-fin-card"><p>A financial command is unconfirmed. Check it before retrying.</p>
    <button type="button" disabled={busy} onClick={()=>void verify()}>Check original budget request</button></div>}
+  {overview&&<div className="cg-fin-voucher-dashboard">
+   <div className="cg-fin-voucher-tiles">
+    {[
+     ["All budgets",String(overview.cards.total)],
+     ["Awaiting protected approval",String(overview.cards.submitted)],
+     ["Approved",String(overview.cards.approved)],
+     ["Rejected / Returned",String(overview.cards.rejected+overview.cards.returned)],
+     ["Approved ceilings",currency(overview.cards.totalCeilingMinor)],
+     ["Allocated earmarks",currency(overview.cards.allocatedMinor)],
+     ["Outstanding commitments",currency(overview.cards.committedOutstandingMinor)],
+     ["Utilized from posted expenses",currency(overview.cards.utilizedMinor)],
+     ["Available funds authorization",currency(overview.cards.availableMinor)],
+     ["Over-budget",currency(overview.cards.overBudgetMinor)]
+    ].map(([k,v])=><article key={k} className="cg-fin-voucher-tile">
+      <div><p className="cg-fin-tile-label">{k}</p><strong>{v}</strong></div>
+    </article>)}
+   </div>
+   <p className="cg-fin-help">{overview.explanation}</p>
+  </div>}
   <div className="cg-fin-voucher-tiles">
    {(selected?[
     ["Approved ceiling",selected.ceilingMinor],["Allocated (earmarked)",selected.allocatedMinor],
