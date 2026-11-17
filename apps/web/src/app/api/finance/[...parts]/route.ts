@@ -4,14 +4,14 @@ export const dynamic="force-dynamic";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const kinds=new Set(["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"]);
 const financeErrors=new Set([
- "FINANCE_ACCOUNT_KIND_INVALID","FINANCE_ACCOUNT_STATUS_INVALID","FINANCE_FILTER_INVALID","FINANCE_BANK_LABEL_INVALID","FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_POSTED_IMMUTABLE","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
+ "FINANCE_ACCOUNT_SEARCH_INVALID","FINANCE_ACCOUNT_KIND_INVALID","FINANCE_ACCOUNT_STATUS_INVALID","FINANCE_FILTER_INVALID","FINANCE_BANK_LABEL_INVALID","FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_POSTED_IMMUTABLE","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
  "FINANCE_DUPLICATE","FINANCE_GROUP_INVALID","FINANCE_SCOPE_INVALID","FINANCE_BRANCH_INACTIVE",
  "FINANCE_BRANCH_STALE","FINANCE_YEAR_CLOSED","FINANCE_ACCOUNT_INACTIVE","FINANCE_ACCOUNT_SCOPE",
  "FINANCE_OPENING_AMOUNT","FINANCE_DEBITS_CREDITS","FINANCE_OPENING_DATE",
  "FINANCE_REQUEST_CONFLICT","FINANCE_PERMISSION","FINANCE_UNAVAILABLE"
 ]);
 function allowed(parts:string[],method:string):boolean{
- if(parts.length===1&&parts[0]==="setup")return method==="GET";
+ if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&["years","groups","accounts","opening-journals"].includes(parts[0]))
   return method==="POST";
  if(parts.length===3&&["years","accounts"].includes(parts[0])&&UUID.test(parts[1])
@@ -39,6 +39,13 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="account-options"){
+  const query=request.nextUrl.searchParams.get("q")??"";
+  if(query.length>80)
+   return NextResponse.json({message:"Search by a shorter account name or code (up to 80 characters)."},
+    {status:400});
+  target.searchParams.set("q",query);
+ }
  if(method==="GET"&&parts[0]==="setup"){
   const search=request.nextUrl.searchParams.get("search")??"";
   const offset=request.nextUrl.searchParams.get("offset")??"0";
