@@ -39,7 +39,7 @@ const financeErrors=new Set([
 function allowed(parts:string[],method:string):boolean{
  if(parts[0]==="reports"){
   if(parts.length===2&&["options","summary","general-ledger","trial-balance",
-     "day-book","cash-book","bank-book"].includes(parts[1]))return method==="GET";
+     "day-book","cash-book","bank-book","receivables"].includes(parts[1]))return method==="GET";
   if(parts.length===3&&parts[1]==="reconciliation"&&
      ["banks","matches"].includes(parts[2]))
    return parts[2]==="banks"?method==="GET":method==="GET"||method==="POST";
