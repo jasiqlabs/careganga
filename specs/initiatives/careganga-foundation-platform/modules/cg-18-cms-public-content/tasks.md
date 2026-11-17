@@ -11,7 +11,7 @@
 
 **Selected module:** CG-18, sequential source-only US-001 → US-002 → US-003 → US-004, retaining all 76 original QA definitions. The owner's authorization to begin source implementation on the shared branch allows draft-source progression despite pending formal global/Harness approval; it does **not** mean source-complete, independent review pass, runtime QA, client pixel PASS, or production readiness. Apply the mandatory simple-working-V1 AGENTS.md rule: original 4 stories only, real CG-01/03/19 predecessor contracts, no speculative MFA, duplicate CMS/approval/file store, or fictional CG-04/05 projects / Join routes.
 
-**Current entry:** CG-18 planning approved on design content; implementation NOT_STARTED at this handoff. Use a single shared migration sequence after existing CG-09 0931, one integration owner for shared app modules/sidebar/route registry, and no parallel modifications by other developers to this same branch until coordinated. Add source proof one story at a time below; do not change the original QA wording. Web/Public Android pixel/API/DB/device/runtime evidence remains NOT_RUN.
+**Development checkpoint:** CG-18 US-001 IN_PROGRESS: initial original/root-scoped PostgreSQL migration `0932_cg18_foundation_editorial_publication.sql` committed on this shared branch, with a source-review fix denying insertion of late media/sections after submission. **This is not a complete US-001 vertical**: CG-03 genuine CMS_PUBLICATION source/approval, CG-19 original scanned pre-review media adapter, NestJS/API, Admin Web, public Next.js and native Public Android still NOT_IMPLEMENTED; all 20 US-001 QA, all 76 module QA, local migrations/runtime, independent review remain NOT_RUN. Use a single shared migration sequence after existing CG-09 0931, one integration owner for shared app modules/sidebar/route registry, and no parallel modifications by other developers to this same branch until coordinated. Add source proof one story at a time below; do not change the original QA wording. Web/Public Android pixel/API/DB/device/runtime evidence remains NOT_RUN.
 
 ## Delegated-approved full-stack story specifications and 76 manual QA cases — design only
 
@@ -142,3 +142,12 @@ Dependencies: US-001
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+
+### Development source trace — US-001 initial database slice, not a completed story
+
+- **Actual branch:** `feature/careganga-cg09-finance-accounting-dev-20261117` only. No CG-18 code written to the prior independent CG-18 branch.
+- **Source:** `apps/backend/db/migrations/0932_cg18_foundation_editorial_publication.sql`; root-scoped canonical page, immutable submitted revision, ordered sections, original CG-19 file reference placement only, approval-bound publication pointer, separate three desired nav flags, due queue and audit. No demo content, patient/HR/project/Join owner records or duplicate CMS file storage.
+- **Review/fix:** secured late INSERT/UPDATE/DELETE into frozen page sections/assets; source-inspected text, not executed against PostgreSQL. CG-03 source-proof constraints and CG-19 rights check remain required at the source-owning implementation slice. Do not present this as approved publish.
+- **Next work in this same branch:** implement original CG-03 CMS_PUBLICATION case/process and CG-19 protected CMS draft media source, then backend CMS service/controller, Admin Web, public Web + Public Android for Home/About/hero/team/nav, and trace **US-001 QA01–QA20**. Follow with US-002–004 and 76 total case trace; keep CG-09 QA separate.
+- **Gate truth:** `US-001=IN_PROGRESS_SOURCE_ONLY`, `US-002..004=NOT_STARTED`, `runtime_QA=0/76`, `formal_SOURCE_COMPLETE=NOT_PASSED`, `merge=NOT_AUTHORIZED_YET`.
