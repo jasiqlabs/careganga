@@ -81,7 +81,7 @@ export class BranchSourceFacade{
   * see all. An ordinary branch manager sees only their real assigned branch(es);
   * finance.reports.view alone never silently grants Foundation-wide money.
   */
- async financeReportScope(bearer:string,capability:"finance.reports.view"|"finance.reconciliation.manage"|"finance.reconciliation.review"|"finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.review"="finance.reports.view"):Promise<{all:boolean;branchRefs:string[]}>{
+ async financeReportScope(bearer:string,capability:"finance.reports.view"|"finance.reconciliation.manage"|"finance.reconciliation.review"|"finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.review"|"finance.invoices.issue"="finance.reports.view"):Promise<{all:boolean;branchRefs:string[]}>{
    const actor=await this.sessions.requireAction(bearer,capability);
    const protectedRole=await this.db.query<{allowed:boolean}>(`
      SELECT EXISTS(SELECT 1 FROM account_role ar
