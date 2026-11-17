@@ -33,6 +33,13 @@ export abstract class PrivateObjectStorage{
   abstract writeVerifiedPrivateDocument(request:{
     objectKey:string;bytes:Buffer;sha256:string
   }):Promise<{objectVersion:string;sha256:string}>;
+  /** Recover an existing create-only, server-issued invoice/receipt PDF after
+   * a lost write/SQL response. Verify actual private bytes and malware state.
+   * Never permit a client-uploaded evidence key to use this operation.
+   */
+  abstract reconcileIssuedPrivateDocument(request:{
+    objectKey:string;maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>;
 }
 @Injectable()
 export class UnconfiguredPrivateObjectStorage extends PrivateObjectStorage{
@@ -53,4 +60,7 @@ export class UnconfiguredPrivateObjectStorage extends PrivateObjectStorage{
   async writeVerifiedPrivateDocument(_request:{
     objectKey:string;bytes:Buffer;sha256:string
   }):Promise<{objectVersion:string;sha256:string}>{return this.unavailable();}
+  async reconcileIssuedPrivateDocument(_request:{
+    objectKey:string;maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{return this.unavailable();}
 }
