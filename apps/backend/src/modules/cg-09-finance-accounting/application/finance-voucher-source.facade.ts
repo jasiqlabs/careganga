@@ -37,6 +37,32 @@ export class FinanceVoucherSourceFacade{
   return {voucherRef:v.id,rootRef:v.root_realm_id,revision:v.version,
    createdBy:v.created_by,status:v.status,sourceDigest:v.payload_digest};
  }
+ /** Historical original CG-09 source is immutable and may be read after RETURN/correction.
+  * This is read-only; it never authorizes a stale submission or new upload.
+  */
+ async historical(bearer:string,reference:string,revision:number){
+  const actor=await this.sessions.requireAction(bearer,"finance.vouchers.view");
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference)||
+   !Number.isSafeInteger(revision)||revision<1)
+   throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+  const client=await this.db.connect();
+  try{
+   await client.query("BEGIN");
+   await this.identity.assertCurrent(client,actor,"finance.vouchers.view");
+   const found=await client.query<{id:string;root_realm_id:string;created_by:string;
+    status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
+    SELECT v.id,v.root_realm_id,v.created_by,v.status,r.payload_digest
+    FROM finance_voucher_draft_revision r JOIN finance_voucher v
+     ON v.id=r.voucher_id AND v.root_realm_id=r.root_realm_id
+    WHERE v.id=$1 AND v.root_realm_id=$2 AND r.version=$3 FOR SHARE OF v,r`,
+    [reference,actor.realmId,revision]);
+   if(!found.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+   await client.query("COMMIT");
+   return {voucherRef:found.rows[0].id,rootRef:found.rows[0].root_realm_id,
+    revision,createdBy:found.rows[0].created_by,status:found.rows[0].status,
+    sourceDigest:found.rows[0].payload_digest};
+  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+ }
  async current(bearer:string,reference:string,revision:number,write:boolean=false){
   const actor=await this.sessions.requireAction(bearer,
    write?"finance.vouchers.manage":"finance.vouchers.view");
