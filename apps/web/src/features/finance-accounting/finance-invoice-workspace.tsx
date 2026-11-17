@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {FinanceInvoiceReceiptTools} from "./finance-invoice-receipt-tools";
+import {FinanceInvoiceAdjustmentTools} from "./finance-invoice-adjustment-tools";
 type Stage="INFO"|"ITEMS"|"PAYMENT"|"REVIEW";
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;totalMinor:string|null;invoiceDate:string|null};
@@ -386,6 +387,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     </p>}
     {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
    {active?.status==="ISSUED"&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost} canIssue={canIssue}/>}
+   {active?.status==="ISSUED"&&<FinanceInvoiceAdjustmentTools invoiceRef={active.ref} canManage={canManage} canReview={canCancelPosted}/>}
   </section>}
   {cancelOpen&&active?.status==="POSTED"&&canCancelPosted&&<div className="drawer-backdrop" role="presentation">
    <section role="dialog" aria-modal="true" aria-labelledby="cg-invoice-cancel-title"
