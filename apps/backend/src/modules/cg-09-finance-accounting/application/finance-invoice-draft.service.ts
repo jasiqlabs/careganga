@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
@@ -143,16 +143,16 @@ export class FinanceInvoiceDraftService{
    "FROM finance_invoice_credit_note c JOIN finance_invoice i "+
    "ON i.id=c.invoice_id AND i.root_realm_id=c.root_realm_id "+
    "WHERE c.root_realm_id=$1 "+
-   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[]) "+
-   "OR (i.branch_id IS NULL AND i.created_by=$4::uuid)) "+
+   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[])) "+
+   " "+
    "AND NOT EXISTS(SELECT 1 FROM finance_invoice_reissue_link l "+
    "JOIN finance_invoice replacement ON replacement.id=l.replacement_invoice_id "+
    "AND replacement.root_realm_id=l.root_realm_id "+
    "WHERE l.root_realm_id=c.root_realm_id AND l.original_invoice_id=i.id "+
    "AND replacement.status<>'REJECTED') "+
    "ORDER BY c.created_at DESC LIMIT 50",
-   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
-  return {years:years.rows,branches,correctedInvoices:corrected.rows};
+   [actor.realmId,scope.all,scope.branchRefs]);
+  return {years:years.rows,branches,allBranches:scope.all,correctedInvoices:corrected.rows};
  }
  async accounts(bearer:string,searchInput?:string){
   const actor=await this.owner(bearer);
@@ -275,6 +275,10 @@ export class FinanceInvoiceDraftService{
      throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
    }
    const payload:Draft={...(invoice?.draft_payload??{}),[stage.toLowerCase()]:normalized};
+   const rights=await this.branches.financeReportScope(bearer,"finance.invoices.manage");
+   if(payload.info&&!rights.all&&
+      (!payload.info.branchRef||!rights.branchRefs.includes(payload.info.branchRef)))
+    throw new ForbiddenException("Select an active branch assigned to your account");
    if(payload.info)await this.validateInfo(tx,actor,payload.info);
    if(payload.info&&payload.payment)await this.validatePayment(tx,actor,payload);
    const version=invoice?invoice.version+1:1;
@@ -355,20 +359,20 @@ export class FinanceInvoiceDraftService{
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
    "WHERE i.root_realm_id=$1 "+
-   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[]) "+
-   "OR (i.branch_id IS NULL AND i.created_by=$4::uuid))",
-   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
+   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[])) "+
+   "",
+   [actor.realmId,scope.all,scope.branchRefs]);
   const monthly=await this.db.query<{month:string;count:number;issuedMinor:string}>(
    "SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,"+
    "COUNT(*)::int AS count,"+
    "COALESCE(SUM(total_minor) FILTER(WHERE status='ISSUED'),0)::text AS \"issuedMinor\" "+
    "FROM finance_invoice WHERE root_realm_id=$1 "+
-   "AND ($2::boolean OR branch_id=ANY($3::uuid[]) "+
-   "OR (branch_id IS NULL AND created_by=$4::uuid)) "+
+   "AND ($2::boolean OR branch_id=ANY($3::uuid[])) "+
+   " "+
    "AND created_at>=date_trunc('month',now())-interval '11 months' "+
    "GROUP BY date_trunc('month',created_at) "+
    "ORDER BY date_trunc('month',created_at) LIMIT 12",
-   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
+   [actor.realmId,scope.all,scope.branchRefs]);
   return {cards:rows.rows[0],monthly:monthly.rows,
    explanation:"Invoice face value is not paid income. Verified receipts are separately linked to original reconciled bank journals."};
  }
@@ -398,15 +402,15 @@ export class FinanceInvoiceDraftService{
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
    "WHERE i.root_realm_id=$1 "+
-   "AND ($4::boolean OR i.branch_id=ANY($5::uuid[]) "+
-   "OR (i.branch_id IS NULL AND i.created_by=$6::uuid)) "+
+   "AND ($4::boolean OR i.branch_id=ANY($5::uuid[])) "+
+   " "+
    "AND ($3::text IS NULL OR "+
    "($3='REVERSED' AND c.invoice_id IS NOT NULL) OR "+
    "($3='CREDITED' AND n.invoice_id IS NOT NULL) OR "+
    "($3 NOT IN('REVERSED','CREDITED') AND i.status=$3 "+
    "AND c.invoice_id IS NULL AND n.invoice_id IS NULL)) "+
    "ORDER BY i.created_at DESC,i.id DESC LIMIT 41 OFFSET $2",
-   [actor.realmId,offset,chosen,scope.all,scope.branchRefs,actor.accountId]);
+   [actor.realmId,offset,chosen,scope.all,scope.branchRefs]);
   return {invoices:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
  async detail(bearer:string,invoiceInput:string){
@@ -425,9 +429,9 @@ export class FinanceInvoiceDraftService{
    "LEFT JOIN finance_invoice_credit_note n "+
    "ON n.invoice_id=i.id AND n.root_realm_id=i.root_realm_id "+
    "WHERE i.id=$1 AND i.root_realm_id=$2 "+
-   "AND ($3::boolean OR i.branch_id=ANY($4::uuid[]) "+
-   "OR (i.branch_id IS NULL AND i.created_by=$5::uuid))",
-   [id,actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
+   "AND ($3::boolean OR i.branch_id=ANY($4::uuid[])) "+
+   "",
+   [id,actor.realmId,scope.all,scope.branchRefs]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   return rows.rows[0];
  }
