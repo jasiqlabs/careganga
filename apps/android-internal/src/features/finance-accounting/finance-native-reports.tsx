@@ -15,6 +15,7 @@ type Ledger={accountName?:string;accountCode?:string;account?:string;category?:s
  debitMinor?:string;creditMinor?:string;netDebitMinor?:string;netCreditMinor?:string};
 type Year={ref:string;name:string},Account={ref:string;code:string;name:string;kind:string};
 type Bank={accountRef:string;name:string;code:string};
+type Branch={branchRef:string;name:string;code:string;version:number};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
 type Match={reconciliationRef:string;accountName:string;statementDate:string;
  bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean};
@@ -35,6 +36,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
  const [view,setView]=useState<ViewKind>("summary");
  const [years,setYears]=useState<Year[]>([]),[accounts,setAccounts]=useState<Account[]>([]);
  const [year,setYear]=useState(""),[account,setAccount]=useState("");
+ const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
  const [offset,setOffset]=useState(0),[next,setNext]=useState<number|null>(null);
  const [rows,setRows]=useState<Ledger[]>([]);
@@ -69,14 +71,16 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
     setBanks(b.banks);setMatches(m.items);setNext(m.nextOffset);
    }else if(view==="summary"){
     const value=await request<typeof summary>(token,
-     "/api/finance-accounting/reports/summary"+(year?"?yearRef="+year:""));
+     "/api/finance-accounting/reports/summary?"+new URLSearchParams({
+      ...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}).toString());
     setSummary(value);setRows([]);setNext(null);
    }else{
     if(view==="trial-balance"&&!year){setRows([]);setTrial(null);
      setError("Select the financial year before calculating a trial balance.");return;}
     const params=new URLSearchParams();
     if(year)params.set("yearRef",year);
-    if(view==="general-ledger"&&account)params.set("accountRef",account);
+    if(branch)params.set("branchRef",branch);
+    if(["general-ledger","cash-book","bank-book","day-book"].includes(view)&&account)params.set("accountRef",account);
     if(from&&view!=="trial-balance")params.set("from",from);
     if(to&&view!=="trial-balance")params.set("to",to);
     if(view!=="trial-balance")params.set("offset",String(offset));
@@ -94,13 +98,13 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
    }
   }catch(e){problemView(e);setRows([]);}
   finally{setBusy(false);}
- },[token,view,year,account,from,to,offset,onExpired]);
+ },[token,view,year,branch,account,from,to,offset,onExpired]);
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
-   const opts=await request<{years:Year[];accounts:Account[]}>(token,
+   const opts=await request<{years:Year[];accounts:Account[];branches:Branch[]}>(token,
     "/api/finance-accounting/reports/options");
-   if(alive){setYears(opts.years);setAccounts(opts.accounts);}
+   if(alive){setYears(opts.years);setAccounts(opts.accounts);setBranches(opts.branches);}
   }catch(e){if(alive)problemView(e);}})();return()=>{alive=false;};
  },[token,onExpired]);
  useEffect(()=>{let alive=true;if(view!=="reconciliation"||!bank){
@@ -273,7 +277,11 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
     <Options label="Financial year" value={year}
      options={[{ref:"",label:"All years"},...years.map(y=>({ref:y.ref,label:y.name}))]}
      onChange={v=>{setYear(v);setOffset(0);}}/>
-    {view==="general-ledger"&&<Options label="General Ledger account" value={account}
+    <Options label="Foundation / branch" value={branch}
+     options={[{ref:"",label:"All permitted branches"},...branches.map(x=>({
+      ref:x.branchRef,label:x.code+" · "+x.name}))]}
+     onChange={v=>{setBranch(v);setOffset(0);}}/>
+    {["general-ledger","cash-book","bank-book","day-book"].includes(view)&&<Options label="Finance account" value={account}
      options={[{ref:"",label:"All accounts"},...accounts.map(a=>({
       ref:a.ref,label:a.code+" · "+a.name}))]}
      onChange={v=>{setAccount(v);setOffset(0);}}/>}
