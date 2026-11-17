@@ -30,6 +30,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       PLATFORM_COPY_PASSWORD_REQUIRED:"Enter your current password to confirm this change.",
       PLATFORM_COPY_NO_CHANGE:"The replacement wording is unchanged. Edit the message before saving.",
       PLATFORM_COPY_REPLAY_CONFLICT:"This save request was already used for different wording. Refresh and try again.",
+      FINANCE_JOURNAL_MEMO_INVALID:"Enter a journal description between 3 and 500 characters.",
+      FINANCE_JOURNAL_LINES_INVALID:"Add 2–40 journal lines. Choose a valid account and enter a positive debit or credit amount on each line, with balanced totals.",
       FINANCE_FORM_INVALID:"Review the required finance fields, correct any missing information and submit again.",
       FINANCE_ACCOUNT_KIND_INVALID:"Choose an available account type: General, Cash or Bank.",
       FINANCE_ACCOUNT_STATUS_INVALID:"Select Active or Inactive status and try again.",
