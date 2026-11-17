@@ -14,6 +14,7 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="options")return method==="GET";
+ if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="dashboard")return method==="GET";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="payment-accounts")return method==="GET";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="posting-accounts")return method==="GET";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="drafts")return method==="GET"||method==="POST";
