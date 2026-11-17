@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims"|"financeClaimReviews"|"financeInvoices"|"financeInvoiceReviews";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims"|"financeClaimReviews"|"financeInvoices"|"financeInvoiceReviews"|"financeBudgets"|"financeBudgetReviews";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -25,11 +25,13 @@ type FoundationAdminNavProps={
   canReviewClaims?:boolean;
   canViewInvoices?:boolean;
   canReviewInvoices?:boolean;
+  canViewBudgets?:boolean;
+  canReviewBudgets?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false,canReviewClaims=false,canViewInvoices=false,canReviewInvoices=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false,canReviewClaims=false,canViewInvoices=false,canReviewInvoices=false,canViewBudgets=false,canReviewBudgets=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const searchRef=useRef<HTMLInputElement>(null);
   // Unlike the old admin screenshot's unverified people search, this
@@ -97,6 +99,8 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
       .every(k=>currentActions.has(k)):canReviewClaims;
   const claimsAccess=currentActions?["finance.claims.view","finance.claims.create","finance.claims.manage"].some(k=>currentActions.has(k)):canViewClaims;
   const invoiceAccess=currentActions?["finance.invoices.view","finance.invoices.manage"].some(k=>currentActions.has(k)):canViewInvoices;
+  const budgetAccess=currentActions?["finance.budgets.view","finance.budgets.manage"].some(k=>currentActions.has(k)):canViewBudgets;
+  const budgetReviewAccess=currentActions?["finance.budgets.review","approvals.review"].every(k=>currentActions.has(k)):canReviewBudgets;
   const invoiceReviewAccess=currentActions?["finance.invoices.review","approvals.review"].every(k=>currentActions.has(k)):canReviewInvoices;
   const reviewerAccess=currentActions?
     ["approvals.review","finance.vouchers.view","documents.files.view"].every(k=>currentActions.has(k)):
@@ -111,6 +115,8 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(voucherAccess?[{key:"financeVouchers" as const,label:"Voucher Drafts",href:"/admin/finance/vouchers"}]:[]),
     ...(claimsAccess?[{key:"financeClaims" as const,label:"Expense Claims",href:"/admin/finance/claims"}]:[]),
     ...(invoiceAccess?[{key:"financeInvoices" as const,label:"Invoices & Receipts",href:"/admin/finance/invoices"}]:[]),
+    ...(budgetAccess?[{key:"financeBudgets" as const,label:"Budgets",href:"/admin/finance/budgets"}]:[]),
+    ...(budgetReviewAccess?[{key:"financeBudgetReviews" as const,label:"Budget Reviews",href:"/admin/finance/budget-reviews"}]:[]),
     ...(invoiceReviewAccess?[{key:"financeInvoiceReviews" as const,label:"Invoice Reviews",href:"/admin/finance/invoice-reviews"}]:[]),
     ...(claimsReviewerAccess?[{key:"financeClaimReviews" as const,label:"Claim Reviews",href:"/admin/finance/claim-reviews"}]:[]),
     ...(reviewerAccess?[{key:"financeReviews" as const,label:"Voucher Reviews",href:"/admin/finance/voucher-approvals"}]:[]),
@@ -129,7 +135,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     audit:"Audit Logs",recovery:"Backup & Restore",
     approvals:"Registration & Approval",documents:"Private Case Documents",
     communications:"Notices & Notifications",support:"Help & Support",
-    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting",financeInvoices:"Invoices & Receipts",financeInvoiceReviews:"Invoice Reviews",financeClaims:"Expense Claims",financeClaimReviews:"Expense Claim Reviews",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
+    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting",financeBudgets:"Budgets",financeBudgetReviews:"Budget Reviews",financeInvoices:"Invoices & Receipts",financeInvoiceReviews:"Invoice Reviews",financeClaims:"Expense Claims",financeClaimReviews:"Expense Claim Reviews",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
   };
   return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
@@ -144,7 +150,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
         {name:"DASHBOARD",keys:["account"]},
         {name:"USER & ACCESS MANAGEMENT",keys:["accounts","roles","approvals","policy"]},
         {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation"]},
-        {name:"FINANCE & ACCOUNTING",keys:["finance","financeVouchers","financeReviews","financeClaims","financeClaimReviews","financeInvoices","financeInvoiceReviews"]},
+        {name:"FINANCE & ACCOUNTING",keys:["finance","financeVouchers","financeReviews","financeClaims","financeClaimReviews","financeInvoices","financeInvoiceReviews","financeBudgets","financeBudgetReviews"]},
         {name:"PLATFORM & COMMUNICATIONS",
           keys:["documents","communications","support","settings","audit","recovery"]}
       ] as const).map(group=>{
