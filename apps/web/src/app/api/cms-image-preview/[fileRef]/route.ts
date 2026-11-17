@@ -20,6 +20,7 @@ export async function GET(_req:Request,ctx:Ctx){
   if(bytes.byteLength<1||bytes.byteLength>10*1024*1024)return missing();
   return new Response(bytes,{status:200,headers:{"Content-Type":type,
    "Cache-Control":"private, no-store","X-Robots-Tag":"noindex",
+   "Cross-Origin-Resource-Policy":"same-origin",
    "X-Content-Type-Options":"nosniff"}});
  }catch{return missing();}
 }
