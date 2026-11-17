@@ -134,7 +134,8 @@ export class FinanceInvoiceDocumentService{
     terms:String(payment.terms??"Payment due per invoice"),
     notes:typeof payment.notes==="string"?payment.notes:null,
     postedAt:source.postedAt,issueAt:issuedAt,
-    sourceDigest:source.sourceDigest,sourceVersion:source.version
+    sourceDigest:source.sourceDigest,sourceVersion:source.version,
+    replacesInvoiceNumber:source.replacesInvoiceNumber
    });
    const digest=createHash("sha256").update(bytes).digest("hex");
    const stored=await this.storage.writeVerifiedPrivateDocument({
