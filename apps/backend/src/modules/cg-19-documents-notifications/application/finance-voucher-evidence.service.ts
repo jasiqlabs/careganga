@@ -252,6 +252,23 @@ export class FinanceVoucherEvidenceService{
   if(!row.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
   return {fileRef,fileVersion};
  }
+ /** Verifies the already-submitted immutable proof from the original CG-19 tables. */
+ async guardFrozenProof(client:PoolClient,actor:VerifiedFoundationActor,
+  voucherRef:string,voucherVersion:number,digest:string,fileRef:string,fileVersion:number){
+  await this.source.guardFrozen(client,actor,voucherRef,voucherVersion,digest);
+  if(!UUID.test(fileRef)||!Number.isSafeInteger(fileVersion)||fileVersion<1)
+   throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
+  const files=await client.query<{id:string}>(`
+    SELECT f.id FROM cg19_stored_file f
+    JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+    WHERE f.id=$1 AND f.realm_id=$2 AND f.voucher_id=$3 AND f.voucher_version=$4
+     AND f.revision=$5 AND f.owner_kind='CG09_VOUCHER'
+     AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+     AND i.owner_kind='CG09_VOUCHER' AND i.status='VALIDATED'
+    FOR SHARE OF f,i`,[fileRef,actor.realmId,voucherRef,voucherVersion,fileVersion]);
+  if(!files.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
+  return {fileRef,fileVersion};
+ }
  async revoke(bearer:string,fileRef:string,expectedVersion:number){
   const actor=await this.authority(bearer,true);
   if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
