@@ -129,8 +129,15 @@ export class FinanceInvoiceSourceFacade{
     [actor.realmId,source.invoiceRef,version]);
    if(!link.rows[0])
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
+   const corrected=await tx.query<{invoice_number:string}>(
+    "SELECT original.invoice_number FROM finance_invoice_reissue_link l "+
+    "JOIN finance_invoice original ON original.id=l.original_invoice_id "+
+    "AND original.root_realm_id=l.root_realm_id "+
+    "WHERE l.root_realm_id=$1 AND l.replacement_invoice_id=$2",
+    [actor.realmId,source.invoiceRef]);
    await tx.query("COMMIT");
-   return {...source,journalPosted:true,postedAt:link.rows[0].posted_at.toISOString()};
+   return {...source,journalPosted:true,postedAt:link.rows[0].posted_at.toISOString(),
+    replacesInvoiceNumber:corrected.rows[0]?.invoice_number??null};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 }
