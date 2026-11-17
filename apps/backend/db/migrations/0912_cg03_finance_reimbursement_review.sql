@@ -21,32 +21,50 @@ ALTER TABLE cg03_case
 ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_kind_finance CHECK(
  case_kind IN('CG01_ROLE','BRANCH_REGISTRATION','FINANCE_VOUCHER','FINANCE_REIMBURSEMENT'));
 ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
- (case_kind='CG01_ROLE' AND branch_source_ref IS NULL AND finance_voucher_id IS NULL
-   AND finance_claim_id IS NULL AND target_account_id IS NOT NULL AND target_role_id IS NOT NULL
+ (case_kind='CG01_ROLE'
+   AND branch_source_ref IS NULL AND branch_source_revision IS NULL
+   AND branch_source_digest IS NULL
+   AND finance_voucher_id IS NULL AND finance_voucher_revision IS NULL
+   AND finance_voucher_digest IS NULL AND finance_proof_file_id IS NULL
+   AND finance_proof_revision IS NULL
+   AND finance_claim_id IS NULL AND finance_claim_revision IS NULL
+   AND finance_claim_digest IS NULL AND finance_claim_bill_id IS NULL
+   AND finance_claim_bill_version IS NULL
+   AND target_account_id IS NOT NULL AND target_role_id IS NOT NULL
    AND expected_access_version IS NOT NULL AND expected_role_revision IS NOT NULL)
  OR
- (case_kind='BRANCH_REGISTRATION' AND branch_source_ref IS NOT NULL
-   AND branch_source_revision>0 AND branch_source_digest ~ '^[0-9a-f]{64}$'
-   AND finance_voucher_id IS NULL AND finance_claim_id IS NULL
+ (case_kind='BRANCH_REGISTRATION'
+   AND branch_source_ref IS NOT NULL AND branch_source_revision>0
+   AND branch_source_digest ~ '^[0-9a-f]{64}$'
+   AND finance_voucher_id IS NULL AND finance_voucher_revision IS NULL
+   AND finance_voucher_digest IS NULL AND finance_proof_file_id IS NULL
+   AND finance_proof_revision IS NULL
+   AND finance_claim_id IS NULL AND finance_claim_revision IS NULL
+   AND finance_claim_digest IS NULL AND finance_claim_bill_id IS NULL
+   AND finance_claim_bill_version IS NULL
    AND target_account_id IS NULL AND target_role_id IS NULL
    AND expected_access_version IS NULL AND expected_role_revision IS NULL)
  OR
- (case_kind='FINANCE_VOUCHER' AND branch_source_ref IS NULL
+ (case_kind='FINANCE_VOUCHER'
+   AND branch_source_ref IS NULL AND branch_source_revision IS NULL
+   AND branch_source_digest IS NULL
    AND finance_voucher_id IS NOT NULL AND finance_voucher_revision>0
    AND finance_voucher_digest ~ '^[0-9a-f]{64}$'
    AND finance_proof_file_id IS NOT NULL AND finance_proof_revision>0
    AND finance_claim_id IS NULL AND finance_claim_revision IS NULL
    AND finance_claim_digest IS NULL AND finance_claim_bill_id IS NULL
-   AND finance_claim_bill_version IS NULL AND target_account_id IS NULL
-   AND target_role_id IS NULL AND expected_access_version IS NULL
-   AND expected_role_revision IS NULL)
+   AND finance_claim_bill_version IS NULL
+   AND target_account_id IS NULL AND target_role_id IS NULL
+   AND expected_access_version IS NULL AND expected_role_revision IS NULL)
  OR
- (case_kind='FINANCE_REIMBURSEMENT' AND branch_source_ref IS NULL
-   AND branch_source_revision IS NULL AND branch_source_digest IS NULL
+ (case_kind='FINANCE_REIMBURSEMENT'
+   AND branch_source_ref IS NULL AND branch_source_revision IS NULL
+   AND branch_source_digest IS NULL
    AND finance_voucher_id IS NULL AND finance_voucher_revision IS NULL
    AND finance_voucher_digest IS NULL AND finance_proof_file_id IS NULL
-   AND finance_proof_revision IS NULL AND finance_claim_id IS NOT NULL
-   AND finance_claim_revision>0 AND finance_claim_digest ~ '^[0-9a-f]{64}$'
+   AND finance_proof_revision IS NULL
+   AND finance_claim_id IS NOT NULL AND finance_claim_revision>0
+   AND finance_claim_digest ~ '^[0-9a-f]{64}$'
    AND finance_claim_bill_id IS NOT NULL AND finance_claim_bill_version>0
    AND target_account_id IS NULL AND target_role_id IS NULL
    AND expected_access_version IS NULL AND expected_role_revision IS NULL)
@@ -83,7 +101,7 @@ ALTER TABLE expense_claim
 -- Protect final financial approval even against a direct SQL writer. Freeze the
 -- claimed original scanned bill + case digest, and current separate reviewer proof.
 CREATE OR REPLACE FUNCTION cg09_claim_source_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE c record;
+DECLARE case_result record;
 BEGIN
  IF TG_OP='DELETE' THEN
   RAISE EXCEPTION 'Original claim history cannot be deleted' USING ERRCODE='P0919';
@@ -105,33 +123,33 @@ BEGIN
     NEW.approval_case_id IS DISTINCT FROM OLD.approval_case_id AND OLD.status<>'DRAFT'
  THEN RAISE EXCEPTION 'Original claim revision cannot change' USING ERRCODE='P0919'; END IF;
  IF OLD.status='DRAFT' AND NEW.status='SUBMITTED' THEN
-  SELECT c.status,c.finance_claim_digest,c.finance_claim_bill_id,c.finance_claim_bill_version
-   INTO c FROM cg03_case c
+  SELECT ac.status,ac.finance_claim_digest,ac.finance_claim_bill_id,ac.finance_claim_bill_version
+   INTO case_result FROM cg03_case ac
    JOIN cg19_stored_file f ON f.id=c.finance_claim_bill_id
        AND f.realm_id=c.realm_id AND f.claim_id=c.finance_claim_id
        AND f.claim_version=c.finance_claim_revision
    JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
-   WHERE c.id=NEW.approval_case_id AND c.realm_id=NEW.root_realm_id
-    AND c.case_kind='FINANCE_REIMBURSEMENT' AND c.finance_claim_id=NEW.id
-    AND c.finance_claim_revision=NEW.version AND
-    c.finance_claim_digest=NEW.create_digest AND
-    c.finance_claim_bill_id=NEW.bill_file_id AND
-    c.finance_claim_bill_version=NEW.bill_file_version
-    AND c.status IN('SUBMITTED','IN_REVIEW') AND f.revoked_at IS NULL
+   WHERE ac.id=NEW.approval_case_id AND ac.realm_id=NEW.root_realm_id
+    AND ac.case_kind='FINANCE_REIMBURSEMENT' AND ac.finance_claim_id=NEW.id
+    AND ac.finance_claim_revision=NEW.version AND
+    ac.finance_claim_digest=NEW.create_digest AND
+    ac.finance_claim_bill_id=NEW.bill_file_id AND
+    ac.finance_claim_bill_version=NEW.bill_file_version
+    AND ac.status IN('SUBMITTED','IN_REVIEW') AND f.revoked_at IS NULL
     AND f.revision=NEW.bill_file_version AND f.scan_status='CLEAN_VERIFIED'
-    AND i.status='VALIDATED' FOR SHARE OF c,f,i;
+    AND i.status='VALIDATED' FOR SHARE OF ac,f,i;
   IF NOT FOUND THEN
    RAISE EXCEPTION 'A verified original claim bill and case are required' USING ERRCODE='P0919';
   END IF;
  ELSIF OLD.status='SUBMITTED' AND NEW.status IN('RETURNED','REJECTED','APPROVED') THEN
-  SELECT c.status INTO c FROM cg03_case c
-   WHERE c.id=OLD.approval_case_id AND c.realm_id=OLD.root_realm_id
-    AND c.finance_claim_id=OLD.id AND c.finance_claim_revision=OLD.version
-    AND c.case_kind='FINANCE_REIMBURSEMENT' FOR SHARE;
+  SELECT ac.status INTO case_result FROM cg03_case ac
+   WHERE ac.id=OLD.approval_case_id AND ac.realm_id=OLD.root_realm_id
+    AND ac.finance_claim_id=OLD.id AND ac.finance_claim_revision=OLD.version
+    AND ac.case_kind='FINANCE_REIMBURSEMENT' FOR SHARE;
   IF NOT FOUND OR
-    (NEW.status='RETURNED' AND c.status<>'RETURNED') OR
-    (NEW.status='REJECTED' AND c.status<>'REJECTED') OR
-    (NEW.status='APPROVED' AND c.status NOT IN('PENDING_OWNER','OWNER_COMPLETED'))
+    (NEW.status='RETURNED' AND case_result.status<>'RETURNED') OR
+    (NEW.status='REJECTED' AND case_result.status<>'REJECTED') OR
+    (NEW.status='APPROVED' AND case_result.status NOT IN('PENDING_OWNER','OWNER_COMPLETED'))
    THEN RAISE EXCEPTION 'Protected original reimbursement decision is required' USING ERRCODE='P0919';
   END IF;
   IF NEW.status='APPROVED' THEN
