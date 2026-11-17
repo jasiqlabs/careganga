@@ -378,7 +378,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
       </option>)}
      </select></label>
     {statementFileRef&&<a href={"/api/finance-bank-statements/files/"+statementFileRef+"/download"}
-     target="_blank" rel="noopener noreferrer">Open the private statement document for review</a>}
+     target="_blank" rel="noopener noreferrer">Download the private statement document for review</a>}
     <label className="cg-fin-field"><input type="checkbox" checked={inspectedStatement}
      onChange={e=>setInspectedStatement(e.target.checked)} disabled={!statementFileRef}/>
      I inspected this statement and checked the exact bank item and amount.</label>
