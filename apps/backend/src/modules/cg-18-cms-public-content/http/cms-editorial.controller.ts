@@ -48,7 +48,7 @@ export class CmsPublicPagesController{
   return this.cms.publicArticles(category,cursor);
  }
  @Get("pages/:slug")
- @Header("Cache-Control","public, max-age=0, must-revalidate")
+ @Header("Cache-Control","no-store")
  async publicPage(@Param("slug")slug:string,
   @Headers("if-none-match")requestEtag:string|undefined,
   @Res({passthrough:true})response:Response){
