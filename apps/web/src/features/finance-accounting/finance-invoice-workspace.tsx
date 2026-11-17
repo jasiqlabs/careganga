@@ -244,8 +244,8 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
       <textarea value={form.notes} maxLength={500}
        onChange={e=>setForm(v=>({...v,notes:e.target.value}))}/></label>
     </>}
-    {(!active||active.status==="DRAFT")&&<button className="primary" disabled={busy||Boolean(pending)}
-     type="button" onClick={saveStage}>Save this stage as draft</button>}
+    {(!active||["DRAFT","RETURNED"].includes(active.status))&&<button className="primary" disabled={busy||Boolean(pending)}
+     type="button" onClick={saveStage}>Save original draft or corrected revision</button>}
    </div>
    <div className="cg-fin-toolbar-actions">
     {active?.status==="DRAFT"&&<button className="primary" disabled={busy||Boolean(pending)}
