@@ -108,9 +108,9 @@ export class FinanceExpenseClaimService{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.view");
    const result=await client.query<{
-    claimRef:string;category:string;purpose:string;expenseDate:string;
+    claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
     amountMinor:string;status:string;version:number;createdAt:Date}>(
-    "SELECT id AS \"claimRef\",category_label AS category,purpose, "+
+    "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
     "expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\", "+
     "status,version,created_at AS \"createdAt\" FROM expense_claim "+
     "WHERE root_realm_id=$1 AND requested_by=$2 "+
@@ -358,11 +358,11 @@ export class FinanceExpenseClaimService{
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   const claimRef=keyOf(claimInput);
   const rows=await this.db.query<{
-   claimRef:string;category:string;purpose:string;expenseDate:string;amountMinor:string;
+   claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;amountMinor:string;
    status:string;version:number;caseRef:string|null;billFileRef:string|null;
    billVersion:number|null;payableVoucherNumber:string|null;
    payoutVoucherNumber:string|null}>(
-   "SELECT c.id AS \"claimRef\",c.category_label AS category,c.purpose,"+
+   "SELECT c.id AS \"claimRef\",c.claim_number AS \"claimNumber\",c.category_label AS category,c.purpose,"+
    "c.expense_date::text AS \"expenseDate\",c.amount_minor::text AS \"amountMinor\","+
    "c.status,c.version,c.approval_case_id AS \"caseRef\",c.bill_file_id AS \"billFileRef\","+
    "c.bill_file_version AS \"billVersion\",pv.voucher_number AS \"payableVoucherNumber\","+
