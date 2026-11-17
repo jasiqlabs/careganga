@@ -47,6 +47,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
  const [refreshVersion,setRefreshVersion]=useState(0);
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+ const [allowFoundation,setAllowFoundation]=useState(false);
  const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [active,setActive]=useState<Active|null>(null);
@@ -100,11 +101,12 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     const [op,ac]=await Promise.all([fetch("/api/finance/invoices/options",{cache:"no-store"}),
       fetch("/api/finance/invoices/posting-accounts",{cache:"no-store"})]);
     if(!op.ok||!ac.ok)throw Error(await errorFor(!op.ok?op:ac));
-    const o=await op.json() as {years?:Year[];branches?:Branch[];correctedInvoices?:CorrectedInvoice[]};
+    const o=await op.json() as {years?:Year[];branches?:Branch[];allBranches?:boolean;correctedInvoices?:CorrectedInvoice[]};
     const a=await ac.json() as {accounts?:Account[]};
     if(!Array.isArray(o.years)||!Array.isArray(o.branches)||!Array.isArray(a.accounts))
      throw Error("Current account/branch choices are unavailable.");
     if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
+     setAllowFoundation(o.allBranches===true);
      setCorrectedInvoices(o.correctedInvoices??[]);}
    }catch(e){if(live)setError(errorMessage(e));}
   })();return()=>{live=false;};
@@ -307,7 +309,8 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
       onChange={e=>{const branch=branches.find(b=>b.branchRef===e.target.value);
        setForm(v=>({...v,branchRef:branch?.branchRef??"",branchVersion:branch?.version??null,
         replacesInvoiceRef:""}));}}>
-      <option value="">Foundation (no branch)</option>
+      {allowFoundation?<option value="">Foundation (no branch)</option>:
+       <option value="">Select assigned branch</option>}
       {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
      </select></label>
      {(Boolean(form.replacesInvoiceRef)||correctedInvoices.some(v=>v.branchRef===(form.branchRef||null)))&&
