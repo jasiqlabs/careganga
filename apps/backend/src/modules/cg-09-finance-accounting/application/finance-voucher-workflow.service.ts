@@ -128,7 +128,13 @@ export class FinanceVoucherWorkflowService{
    await client.query("COMMIT");
    return {confirmed:true,caseRef:caseResult.caseRef,status:"SUBMITTED",
     voucherNumber:v.voucher_number,version:v.version,replayed:false};
-  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+  }catch(e){await client.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0914")
+    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0913")
+    throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_CONFLICT"});
+   throw e;
+  }finally{client.release();}
  }
  /** Reconciling a real CG-03 decision is separate from approving a payment.
   * No ledger postings, external disbursements or cash/bank PAID state here.
@@ -191,7 +197,13 @@ export class FinanceVoucherWorkflowService{
    await client.query("COMMIT");
    return {confirmed:true,caseRef,status:finalStatus,
     voucherNumber:voucher.voucher_number,version:voucher.version,replayed:false};
-  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+  }catch(e){await client.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0914")
+    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0913")
+    throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_CONFLICT"});
+   throw e;
+  }finally{client.release();}
  }
  async commandStatus(bearer:string,keyInput:string){
   const actor=await this.actor(bearer);
