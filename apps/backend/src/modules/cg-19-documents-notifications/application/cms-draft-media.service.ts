@@ -244,7 +244,8 @@ export class CmsDraftMediaService{
     createHash("sha256").update(bytes).digest("hex")!==item.verified_sha256)
    throw new ServiceUnavailableException("Preview verification failed");
   await this.sessions.requireAction(bearer,"cms.content.view");
-  const current=await this.db.query<typeof item>(sql,[ref,actor.realmId]);
+  const current=await this.db.query<{object_version:string;verified_sha256:string;
+   verified_size_bytes:string}>(sql,[ref,actor.realmId]);
   if(!current.rows[0]||
      current.rows[0].object_version!==item.object_version||
      current.rows[0].verified_sha256!==item.verified_sha256||
