@@ -12,6 +12,7 @@ function permitted(parts:string[],method:string):boolean{
     if(parts[0]==="settings")return method==="GET"||method==="PATCH";
     if(parts[0]==="integrations")return method==="GET"||method==="POST";
     if(parts[0]==="audit")return method==="GET";
+    if(parts[0]==="error-messages")return method==="GET"||method==="PATCH";
   }
   if(parts.length===2&&parts[0]==="settings"&&parts[1]==="history")return method==="GET";
   if(parts.length===2&&parts[0]==="audit"&&parts[1]==="export")return method==="GET";
