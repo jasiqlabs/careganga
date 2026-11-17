@@ -105,5 +105,23 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_CLAIM_REVIEW_UNAVAILABLE:"An authorized reimbursement review is not yet configured or the original decision is unavailable.",
       FINANCE_CLAIM_STALE:"This claim or approval changed since you opened it. Refresh and review the latest status.",
       FINANCE_CLAIM_VOUCHER_INVALID:"Choose a posted voucher originating from this approved claim, with the exact amount and correct payable or verified payout accounts."
+      FINANCE_INVOICE_SOURCE_INVALID:"Choose a valid Foundation invoice from the list.",
+      FINANCE_INVOICE_FORM_INVALID:"Review the invoice details and save the requested stage again.",
+      FINANCE_INVOICE_TEXT_INVALID:"Enter a valid invoice name, purpose or address within the allowed length.",
+      FINANCE_INVOICE_DATE_INVALID:"Enter a valid invoice date and a due date on or after it.",
+      FINANCE_INVOICE_AMOUNT_INVALID:"Enter a valid item quantity, rate and tax amount.",
+      FINANCE_INVOICE_ITEMS_INVALID:"Add at least one invoice item with quantity and positive rate.",
+      FINANCE_INVOICE_ACCOUNT_INVALID:"Choose active and permitted receivable, income and tax accounts.",
+      FINANCE_INVOICE_STAGE_INVALID:"Choose Invoice Information, Items or Payment & Tax Details.",
+      FINANCE_INVOICE_STALE:"The original invoice changed. Refresh its current version before saving.",
+      FINANCE_INVOICE_REPLAY_CONFLICT:"This request was used for different invoice data. Refresh before retrying.",
+      FINANCE_INVOICE_REVIEW_UNAVAILABLE:"A separate protected invoice review or original decision is unavailable.",
+      FINANCE_INVOICE_REVIEW_INVALID:"Choose a valid reviewer decision, version and current password.",
+      FINANCE_INVOICE_INCOMPLETE:"Complete the invoice information, items and payment stages before review.",
+      FINANCE_INVOICE_POSTING_NOT_READY:"Invoice must be genuinely approved before one balanced journal posting.",
+      FINANCE_INVOICE_NOT_ISSUABLE:"Post the approved invoice before requesting a private PDF.",
+      FINANCE_INVOICE_DOCUMENT_UNAVAILABLE:"The private invoice PDF is unavailable or has changed. Refresh its status.",
+      FINANCE_INVOICE_ISSUE_CONFLICT:"An original invoice issue is already recorded. Check its status before retrying.",
+      FINANCE_INVOICE_FILTER_INVALID:"Choose a valid invoice search or list page.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
