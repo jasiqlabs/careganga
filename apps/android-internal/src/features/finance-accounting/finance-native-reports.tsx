@@ -9,10 +9,13 @@ import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
  formatFinanceMoney as money,minorToRupees} from "./finance-native-source-kit";
-type ViewKind="summary"|"general-ledger"|"trial-balance"|"day-book"|"cash-book"|"bank-book"|"reconciliation";
+type ViewKind="summary"|"general-ledger"|"trial-balance"|"day-book"|"cash-book"|"bank-book"|"receivables"|"reconciliation";
 type Ledger={accountName?:string;accountCode?:string;account?:string;category?:string;
  code?:string;postingDate?:string;description?:string;postingKind?:string;
- debitMinor?:string;creditMinor?:string;netDebitMinor?:string;netCreditMinor?:string};
+ debitMinor?:string;creditMinor?:string;netDebitMinor?:string;netCreditMinor?:string;
+ invoiceNumber?:string;invoiceDate?:string;dueDate?:string;
+ counterpartyName?:string;status?:string;totalMinor?:string;verifiedMinor?:string;
+ outstandingMinor?:string};
 type Year={ref:string;name:string},Account={ref:string;code:string;name:string;kind:string};
 type Bank={accountRef:string;name:string;code:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
@@ -28,6 +31,7 @@ const viewChoices:{ref:ViewKind;label:string}[]=[
  {ref:"summary",label:"Dashboard"},{ref:"general-ledger",label:"General Ledger"},
  {ref:"day-book",label:"Day Book"},{ref:"cash-book",label:"Cash Book"},
  {ref:"bank-book",label:"Bank Book"},{ref:"trial-balance",label:"Trial Balance"},
+ {ref:"receivables",label:"Invoice Receivables"},
  {ref:"reconciliation",label:"Bank Reconciliation"}];
 const safeCsv=(s:string)=>'"'+(/^\s*[+\-=@]/.test(s)?"'":"")+
  s.replace(/[\r\n]/g," ").replace(/"/g,'""')+'"';
@@ -80,15 +84,15 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
     const params=new URLSearchParams();
     if(year)params.set("yearRef",year);
     if(branch)params.set("branchRef",branch);
-    if(["general-ledger","cash-book","bank-book","day-book"].includes(view)&&account)params.set("accountRef",account);
+    if(["general-ledger","cash-book","bank-book","day-book","receivables"].includes(view)&&account)params.set("accountRef",account);
     if(from&&view!=="trial-balance")params.set("from",from);
     if(to&&view!=="trial-balance")params.set("to",to);
     if(view!=="trial-balance")params.set("offset",String(offset));
-    const response=await request<{lines?:Ledger[];accounts?:Ledger[];
+    const response=await request<{lines?:Ledger[];accounts?:Ledger[];items?:Ledger[];
      totalDebitMinor?:string;totalCreditMinor?:string;balanced?:boolean;
      nextOffset?:number|null}>(token,
      "/api/finance-accounting/reports/"+view+"?"+params.toString());
-    const v=response.lines??response.accounts;
+    const v=response.lines??response.accounts??response.items;
     if(!Array.isArray(v))throw Error("UNKNOWN");
     setRows(v);setNext(response.nextOffset??null);
     setTrial(view==="trial-balance"?{
@@ -250,6 +254,9 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
     ["accountName","code","category","netDebitMinor","netCreditMinor"]:
     view==="general-ledger"?
     ["postingDate","accountName","description","debitMinor","creditMinor"]:
+    view==="receivables"?
+    ["invoiceNumber","invoiceDate","dueDate","counterpartyName","status","totalMinor",
+     "verifiedMinor","outstandingMinor"]:
     ["postingDate","account","description","debitMinor","creditMinor"];
    const csv=[headers.map(safeCsv).join(","),...rows.map(x=>headers.map(k=>
     safeCsv(String((x as Record<string,unknown>)[k]??""))).join(","))].join("\r\n");
@@ -281,7 +288,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
      options={[{ref:"",label:"All permitted branches"},...branches.map(x=>({
       ref:x.branchRef,label:x.code+" · "+x.name}))]}
      onChange={v=>{setBranch(v);setOffset(0);}}/>
-    {["general-ledger","cash-book","bank-book","day-book"].includes(view)&&<Options label="Finance account" value={account}
+    {["general-ledger","cash-book","bank-book","day-book","receivables"].includes(view)&&<Options label="Finance account" value={account}
      options={[{ref:"",label:"All accounts"},...accounts.map(a=>({
       ref:a.ref,label:a.code+" · "+a.name}))]}
      onChange={v=>{setAccount(v);setOffset(0);}}/>}
@@ -306,10 +313,20 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
    </Card>}
    {!["summary","reconciliation"].includes(view)&&<Card title="Actual posted ledger lines">
     {rows.map((x,i)=><View key={i} style={s.card}>
-     <Text style={s.heading}>{x.code??x.accountCode??x.account??""} {x.accountName??""}</Text>
-     <Text style={s.muted}>{x.postingDate??""} · {x.description??x.category??""}</Text>
-     <Text style={s.text}>Debit: {money(x.netDebitMinor??x.debitMinor??"0")}</Text>
-     <Text style={s.text}>Credit: {money(x.netCreditMinor??x.creditMinor??"0")}</Text>
+     {view==="receivables"?<>
+      <Text style={s.heading}>{x.invoiceNumber??"Original invoice"}</Text>
+      <Text style={s.muted}>{x.invoiceDate??""} · Due {x.dueDate??""} ·
+       {x.status==="ISSUED"?" Issued":" Posted, not yet issued"}</Text>
+      <Text style={s.text}>{x.counterpartyName??"Foundation financial counterparty"}</Text>
+      <Text style={s.text}>Original accrual: {money(x.totalMinor??"0")}</Text>
+      <Text style={s.text}>Verified receipts: {money(x.verifiedMinor??"0")}</Text>
+      <Text style={s.text}>Outstanding: {money(x.outstandingMinor??"0")}</Text>
+     </>:<>
+      <Text style={s.heading}>{x.code??x.accountCode??x.account??""} {x.accountName??""}</Text>
+      <Text style={s.muted}>{x.postingDate??""} · {x.description??x.category??""}</Text>
+      <Text style={s.text}>Debit: {money(x.netDebitMinor??x.debitMinor??"0")}</Text>
+      <Text style={s.text}>Credit: {money(x.netCreditMinor??x.creditMinor??"0")}</Text>
+     </>}
     </View>)}
     {!rows.length&&<Text style={s.muted}>No matching posted lines.</Text>}
     <Action label="Export visible report page" secondary disabled={!rows.length||busy}
