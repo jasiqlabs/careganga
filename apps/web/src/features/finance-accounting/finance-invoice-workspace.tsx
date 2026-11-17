@@ -6,7 +6,7 @@ type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:numbe
  counterpartyName:string|null;totalMinor:string|null;invoiceDate:string|null};
 type Account={accountRef:string;name:string;code:string;category:string;branchName:string|null};
 type Dashboard={cards:{total:number;drafts:number;pending:number;approved:number;
- issued:number;rejected:number;returned:number;paidVerified:number;
+ issued:number;rejected:number;returned:number;paidVerified:number;partiallyPaid:number;
  faceValueMinor:string;issuedMinor:string;receivedVerifiedMinor:string};
  monthly:{month:string;count:number;issuedMinor:string}[];explanation:string};
 type Year={yearRef:string;name:string;status:string};
@@ -200,7 +200,8 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
       {title:"Approved / posted",value:String(dashboard.cards.approved)},
       {title:"Issued",value:String(dashboard.cards.issued)},
       {title:"Rejected / returned",value:String(dashboard.cards.rejected+dashboard.cards.returned)},
-      {title:"Independently paid",value:String(dashboard.cards.paidVerified)},
+      {title:"Fully paid (bank verified)",value:String(dashboard.cards.paidVerified)},
+      {title:"Partially paid (bank verified)",value:String(dashboard.cards.partiallyPaid)},
       {title:"Issued face value",value:format(dashboard.cards.issuedMinor)},
       {title:"Verified bank collection",value:format(dashboard.cards.receivedVerifiedMinor)}
     ].map(x=><div className="cg-fin-voucher-tile" key={x.title}>
