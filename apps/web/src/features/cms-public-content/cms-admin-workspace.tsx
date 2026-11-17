@@ -18,7 +18,7 @@ type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:numbe
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
  assets:{fileRef:string;role:string;altText:string;order:number;current:boolean}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;
+type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
  headingColor:string;subtitleColor:string;
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
@@ -33,7 +33,7 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  footerMission:string;footerAddress:string;footerPhone:string;footerEmail:string;
  footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
-const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",
+const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
  headingColor:"#FFE34A",subtitleColor:"#8CF442",primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
 const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
@@ -58,7 +58,7 @@ function fromPage(p:PageDetail):Draft{
  return {...draft,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
   slides:p.sections.filter(x=>x.kind==="HERO").sort((a,b)=>a.order-b.order)
    .map(x=>({heading:val(x.fields.heading),subtitle:val(x.fields.subtitle),
-    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),
+    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),visible:x.fields.visible!==false,
     tags:Array.isArray(x.fields.tags)?x.fields.tags.filter(y=>typeof y==="string").join(", "):"",
     headingFont:(x.fields.headingFont==="SANS"?"SANS":"SERIF") as Slide["headingFont"],
     headingWeight:(x.fields.headingWeight==="REGULAR"?"REGULAR":"BOLD") as Slide["headingWeight"],
@@ -97,7 +97,7 @@ function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
  d.slides.forEach((slide,index)=>{
   const fields:Record<string,unknown>={heading:slide.heading,subtitle:slide.subtitle,
-   description:slide.description,eyebrow:slide.eyebrow,
+   description:slide.description,eyebrow:slide.eyebrow,visible:slide.visible,
    headingFont:slide.headingFont,headingWeight:slide.headingWeight,
    headingSize:slide.headingSize,headingColor:slide.headingColor,
    subtitleColor:slide.subtitleColor,
@@ -148,7 +148,7 @@ function CmsReviewSection({kind,fields}:{kind:string;fields:Record<string,unknow
    ["Badges",Array.isArray(fields.tags)?fields.tags.join(", "):""],
    ["Description",fields.description],["Subtitle",fields.subtitle],
    ["Heading font",fields.headingFont],["Weight",fields.headingWeight],
-   ["Size",fields.headingSize],["Heading colour",fields.headingColor],
+   ["Size",fields.headingSize],["Visible on website",fields.visible===false?"No":"Yes"],["Heading colour",fields.headingColor],
    ["Subtitle colour",fields.subtitleColor],
    ["Primary button",fields.primaryLabel],["Primary destination",fields.primaryPath],
    ["Secondary button",fields.secondaryLabel],["Secondary destination",fields.secondaryPath]]:
@@ -245,7 +245,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  }
  const unsaved=selected!==null&&
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
- const heroPhotoMissing=draft.kind==="HOME"&&draft.slides.some((_,index)=>
+ const heroPhotoMissing=draft.kind==="HOME"&&draft.slides.some((slide,index)=>
+  slide.visible&&
   !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
@@ -488,6 +489,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
          The current slide order is saved with the draft and subject to independent review.</p>
         {draft.slides.map((slide,index)=><div className="cg-cms-team" key={index}>
          <h4>Slide {index+1}</h4>
+         <label className="cg-cms-consent"><input type="checkbox"
+          disabled={!canManage} checked={slide.visible}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>
+           i===index?{...x,visible:e.target.checked}:x))}/>
+          Show this banner on the public website and Android app</label>
          <label>Eyebrow<input disabled={!canManage} maxLength={100} value={slide.eyebrow}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,eyebrow:e.target.value}:x))}/></label>
          <label>Heading<input disabled={!canManage} maxLength={180} value={slide.heading}
