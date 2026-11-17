@@ -115,6 +115,9 @@ export class FinanceInvoiceAdjustmentService{
    "SELECT r.*,EXISTS(SELECT 1 FROM finance_bank_reconciliation m "+
    "WHERE m.root_realm_id=r.root_realm_id AND m.journal_id=r.approval_journal_id "+
    "AND m.bank_account_id=r.bank_account_id AND m.status='VERIFIED' "+
+   "AND m.bank_item_ref=r.transfer_reference "+
+   "AND m.statement_amount_minor=-r.amount_minor "+
+   "AND m.posted_amount_minor=-r.amount_minor "+
    "AND m.variance_minor=0) AS verified "+
    "FROM finance_invoice_refund r WHERE r.root_realm_id=$1 AND r.invoice_id=$2",
    [actor.realmId,ref]);
