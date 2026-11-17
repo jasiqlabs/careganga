@@ -8,7 +8,7 @@ import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/b
 import {FinanceJournalPostingService} from "./finance-journal-posting.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
-type CommandKind="YEAR_CREATE"|"YEAR_STATUS"|"GROUP_CREATE"|"ACCOUNT_CREATE"|"ACCOUNT_STATUS"|"OPENING_POST";
+type CommandKind="YEAR_CREATE"|"YEAR_STATUS"|"GROUP_CREATE"|"ACCOUNT_CREATE"|"ACCOUNT_STATUS"|"OPENING_POST"|"GENERAL_POST";
 type CommandResult={recordRef:string;confirmed:true;replayed:boolean};
 type AccountFilters={kind?:string;groupRef?:string;branchRef?:string;status?:string;yearRef?:string};
 type Normalized=Record<string,string|null>;
@@ -410,6 +410,79 @@ export class FinanceAccountsService{
    return {recordRef:id,confirmed:true,replayed:false};
   });
  }
+
+ /** US-002: manually posted balanced journal is a financial POSTED event,
+  * not a voucher, approval, receivable or verified cash/bank payment.
+  * No CG-03/CG-19 case or future project is assumed by this first subflow.
+  */
+ async postGeneral(bearer:string,input:unknown):Promise<CommandResult>{
+  const body=fields(input,["financialYearRef","postingDate","description",
+    "lines","branchVersion","requestKey"]);
+  const year=ref(body.financialYearRef,"financialYearRef","FINANCE_YEAR_CLOSED"),
+    date=dateOnly(body.postingDate,"postingDate"),
+    key=ref(body.requestKey,"requestKey");
+  if(typeof body.description!=="string"||
+    body.description.trim().length<3||body.description.trim().length>500)
+   fieldError("FINANCE_JOURNAL_MEMO_INVALID","description");
+  const memo=body.description.trim().replace(/\\s+/g," ");
+  if(!Array.isArray(body.lines)||body.lines.length<2||body.lines.length>40)
+   fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
+  const parsed=body.lines.map((inputLine:unknown)=>{
+   const line=fields(inputLine,["accountRef","debit","credit"]);
+   const accountRef=ref(line.accountRef,"lines","FINANCE_JOURNAL_LINES_INVALID");
+   const debit=(line.debit===undefined||line.debit===""||line.debit==="0"||
+     line.debit==="0.00")?"0":amountMinor(line.debit);
+   const credit=(line.credit===undefined||line.credit===""||line.credit==="0"||
+     line.credit==="0.00")?"0":amountMinor(line.credit);
+   if((debit==="0")===(credit==="0"))
+    fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
+   return {accountRef,debitMinor:debit,creditMinor:credit};
+  });
+  const debitTotal=parsed.reduce((acc,l)=>acc+BigInt(l.debitMinor),0n);
+  const creditTotal=parsed.reduce((acc,l)=>acc+BigInt(l.creditMinor),0n);
+  if(debitTotal<=0n||debitTotal!==creditTotal)
+   fieldError("FINANCE_DEBITS_CREDITS","lines");
+  const digestBody={year,date,memo,lines:JSON.stringify(parsed)};
+  return this.transact(bearer,"finance.journals.post",async(client,actor)=>{
+   const claim=await this.claim(client,actor,"GENERAL_POST",key,digestBody);
+   if(claim.duplicate)
+    return {recordRef:claim.duplicate,confirmed:true,replayed:true};
+   const fy=await client.query<{start_on:string;end_on:string;status:string}>(`
+     SELECT start_on::text AS start_on,end_on::text AS end_on,status FROM financial_year
+     WHERE id=$1 AND root_realm_id=$2 FOR SHARE`,[year,actor.realmId]);
+   if(!fy.rows[0]||fy.rows[0].status!=="OPEN")
+    throw new ConflictException({code:"FINANCE_YEAR_CLOSED",field:"financialYearRef"});
+   if(date<fy.rows[0].start_on||date>fy.rows[0].end_on)
+    fieldError("FINANCE_OPENING_DATE","postingDate");
+   const accountIds=[...new Set(parsed.map(l=>l.accountRef))];
+   const accounts=await client.query<{id:string;status:string;scope_kind:string;branch_id:string|null}>(`
+     SELECT id,status,scope_kind,branch_id FROM finance_account
+     WHERE root_realm_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE`,
+     [actor.realmId,accountIds]);
+   if(accounts.rows.length!==accountIds.length||
+     accounts.rows.some(a=>a.status!=="ACTIVE"))
+    throw new ConflictException({code:"FINANCE_ACCOUNT_INACTIVE",field:"lines"});
+   const branchIds=[...new Set(accounts.rows.map(a=>a.branch_id)
+     .filter((b):b is string=>b!==null))];
+   if(branchIds.length>1)
+    throw new ConflictException({code:"FINANCE_ACCOUNT_SCOPE",field:"lines"});
+   const branch=branchIds[0]??null;
+   if(branch){
+    const branchVersion=body.branchVersion;
+    if(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1)
+     fieldError("FINANCE_BRANCH_STALE","branchRef");
+    await this.branches.financeActiveBranch(client,actor,branch,
+      Number(branchVersion),"finance.journals.post");
+   }
+   const id=await this.postings.postBalanced(client,actor,{
+    financialYearRef:year,postingDate:date,sourceRef:key,eventKey:key,
+    immutableDigest:digest(digestBody),kind:"GENERAL",description:memo,
+    lines:parsed.map(l=>({...l,branchRef:branch}))
+   });
+   await this.finish(client,actor,"GENERAL_POST",key,id,"GENERAL_JOURNAL_POSTED");
+   return {recordRef:id,confirmed:true,replayed:false};
+  });
+ }
  async changeYearStatus(bearer:string,yearInput:string,input:unknown):Promise<CommandResult>{
   const year=ref(yearInput,"startOn","FINANCE_YEAR_CLOSED"),body=fields(input,["status","expectedVersion","requestKey"]);
   const key=ref(body.requestKey,"requestKey");
@@ -470,10 +543,10 @@ export class FinanceAccountsService{
  }
  async commandStatus(bearer:string,kindInput:string,keyInput:string){
   const kind=kindInput as CommandKind;
-  if(!["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"].includes(kind))
+  if(!["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST","GENERAL_POST"].includes(kind))
    throw new BadRequestException({code:"FINANCE_REQUEST_CONFLICT"});
   const actor=await this.sessions.requireAction(bearer,
-   kind==="OPENING_POST"?"finance.journals.post":"finance.accounts.manage");
+   ["OPENING_POST","GENERAL_POST"].includes(kind)?"finance.journals.post":"finance.accounts.manage");
   const key=ref(keyInput,"requestKey");
   const found=await this.db.query<{entity_ref:string|null}>(`
    SELECT entity_ref FROM finance_command WHERE root_realm_id=$1
