@@ -11,7 +11,7 @@ type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:str
 type Line={description:string;quantity:string;unitRate:string};
 type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
- postingDate?:string;payeeName?:string;purpose?:string};
+ postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null};
  lines:{description:string;quantity:number;unitRateMinor:string}[];
  taxMinor:string;chargesMinor:string};
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
@@ -20,7 +20,7 @@ type Props={token:string;years:readonly FinanceYear[];branches:readonly FinanceB
  onClose:()=>void;onExpired:()=>void};
 const line=():Line=>({description:"",quantity:"1",unitRate:""});
 const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",postingDate:"",payeeName:"",
- purpose:"",tax:"0",charges:"0"});
+ purpose:"",paymentAccountRef:"",tax:"0",charges:"0"});
 function money(v:string){try{const n=BigInt(v),x=n<0n?-n:n;return(n<0n?"−":"")+"₹"+
  (x/100n).toLocaleString("en-IN")+"."+(x%100n).toString().padStart(2,"0");}catch{return"Amount unavailable";}}
 function decimal(v:string){try{const n=BigInt(v);return(n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");}catch{return"0.00";}}
@@ -63,6 +63,10 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
  const [target,setTarget]=useState<{ref:string;number:string;version:number}|null>(null);
  const [form,setForm]=useState(empty());
  const [items,setItems]=useState<Line[]>([line()]);
+ const [paymentSearch,setPaymentSearch]=useState("");
+ const [paymentAccounts,setPaymentAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;branchRef:string|null;branchName:string|null}>>([]);
+ const [paymentError,setPaymentError]=useState("");
+ const [paymentMore,setPaymentMore]=useState(false);
  const [pending,setPending]=useState<Pending|null>(null);
  const [retryAllowed,setRetryAllowed]=useState(false);
  const fetchDrafts=useCallback(async()=>{
@@ -81,6 +85,27 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   finally{setLoading(false);}
  },[token,offset,onExpired]);
  useEffect(()=>{void fetchDrafts();},[fetchDrafts]);
+ useEffect(()=>{
+  if(!editing)return;
+  let active=true;
+  void(async()=>{
+   try{
+    const r=await identityRequest("/api/finance-accounting/vouchers/payment-accounts?q="+
+     encodeURIComponent(paymentSearch),{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    if(r.status===401){onExpired();return;}
+    if(!r.ok)throw Error(await reason(r));
+    const raw:unknown=await r.json();
+    if(!raw||typeof raw!=="object"||!("accounts" in raw)||!Array.isArray(raw.accounts)||
+     !("hasMore" in raw)||typeof raw.hasMore!=="boolean")
+     throw Error("Permitted bank/cash accounts could not be verified.");
+    if(active){setPaymentAccounts(raw.accounts);setPaymentError("");setPaymentMore(raw.hasMore);}
+   }catch(e){if(active){setPaymentAccounts([]);setPaymentMore(false);
+    setPaymentError(e instanceof Error?e.message:
+     "Bank and cash choices are unavailable. Check the connection and retry.");}}
+  })();
+  return()=>{active=false;};
+ },[editing,paymentSearch,token,onExpired]);
+
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(busy||pending)return true;
@@ -111,6 +136,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
    setForm({type:d.header.type??"EXPENSE",financialYearRef:d.header.financialYearRef??"",
     branchRef:d.header.branchRef??"",postingDate:d.header.postingDate??"",
     payeeName:d.header.payeeName??"",purpose:d.header.purpose??"",
+    paymentAccountRef:d.header.paymentAccountRef??"",
     tax:decimal(d.taxMinor),charges:decimal(d.chargesMinor)});
    setItems(d.lines.map(l=>({description:l.description,quantity:String(l.quantity),
     unitRate:decimal(l.unitRateMinor)})));
@@ -122,6 +148,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   const b=branches.find(x=>x.branchRef===form.branchRef);
   return {financialYearRef:form.financialYearRef,voucherType:form.type,postingDate:form.postingDate,
    payeeName:form.payeeName,purpose:form.purpose,tax:form.tax,charges:form.charges,
+   paymentAccountRef:form.paymentAccountRef,
    lines:items.map(it=>({description:it.description,quantity:Number(it.quantity),unitRate:it.unitRate})),
    ...(form.branchRef?{branchRef:form.branchRef,branchVersion:b?.version}:{}),
    ...(target?{expectedVersion:target.version}:{})};
@@ -151,6 +178,9 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   if(busy||pending||!canManage)return;
   if(items.some(it=>!/^[1-9][0-9]{0,5}$/.test(it.quantity)||Number(it.quantity)>1000000)){
    setProblem("Enter each item quantity as a whole number between 1 and 1,000,000.");return;
+  }
+  if(["PAYMENT","CONTRA"].includes(form.type)&&!form.paymentAccountRef){
+   setProblem("Choose an active permitted cash or bank account before saving.");return;
   }
   void save({key:Crypto.randomUUID(),method:target?"PATCH":"POST",
    path:target?"vouchers/drafts/"+target.ref:"vouchers/drafts",payload:payload()});
@@ -233,6 +263,20 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     <Select label="Foundation or Active Branch" value={form.branchRef}
      options={[{value:"",label:"Foundation-wide"},...branches.map(b=>({value:b.branchRef,label:b.name+" · "+b.code}))]}
      onChange={v=>update("branchRef",v)}/>
+    <TextField label="Search permitted cash/bank account" maxLength={80}
+     value={paymentSearch} update={setPaymentSearch}
+     placeholder="Search by account name or code"/>
+    {!!paymentError&&<Text accessibilityRole="alert" style={s.hint}>{paymentError}</Text>}
+    <Select label={["PAYMENT","CONTRA"].includes(form.type)?
+      "Cash or bank account *":"Cash or bank account (optional)"}
+     value={form.paymentAccountRef}
+     options={[{value:"",label:"Choose a permitted account"},...paymentAccounts
+      .filter(a=>!a.branchRef||a.branchRef===form.branchRef)
+      .map(a=>({value:a.accountRef,label:a.name+" · "+a.kind+
+       (a.branchName?" ("+a.branchName+")":"")}))]}
+     onChange={v=>update("paymentAccountRef",v)}/>
+    {paymentMore&&<Text style={s.hint}>More accounts exist. Refine the search.</Text>}
+    <Text style={s.hint}>This account choice does not confirm a payment or transfer.</Text>
     <TextField label="Payee or counterparty *" maxLength={150} value={form.payeeName}
      update={v=>update("payeeName",v)}/>
     <TextField label="Voucher purpose *" maxLength={500} value={form.purpose}
