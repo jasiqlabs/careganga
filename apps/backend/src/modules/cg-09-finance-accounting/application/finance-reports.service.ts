@@ -315,12 +315,12 @@ export class FinanceReportsService{
    await this.identity.assertCurrent(tx,actor,"finance.reconciliation.review");
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [actor.realmId+":"+actor.accountId+":"+key]);
-   const old=await tx.query<{id:string;actor_ref:string;action:string}>(
-    "SELECT id,actor_ref,action FROM finance_reconciliation_decision "+
+   const old=await tx.query<{id:string;actor_ref:string;action:string;reconciliation_id:string}>(
+    "SELECT id,actor_ref,action,reconciliation_id FROM finance_reconciliation_decision "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
     [actor.realmId,actor.accountId,key]);
    if(old.rows[0]){
-    if(old.rows[0].action!==v.action)
+    if(old.rows[0].reconciliation_id!==ref||old.rows[0].action!==v.action)
      throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:"PREVIOUSLY_CONFIRMED",replayed:true};
    }
