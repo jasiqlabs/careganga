@@ -33,6 +33,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
 }
 
 export type PublicCmsNavigation={schemaVersion:number;effectiveGeneration:string|null;
+ publishedRoutes?:{kind:string;slug:string;path:string}[];
  login:{visible:boolean;label:string;path:string|null};
  memberJoin:{visible:boolean;label:string;path:string|null};
  volunteerJoin:{visible:boolean;label:string;path:string|null}};
