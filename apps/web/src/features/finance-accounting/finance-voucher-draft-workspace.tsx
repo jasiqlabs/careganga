@@ -9,7 +9,7 @@ type Voucher=VoucherWorkflowRow&{type:string;postingDate:string;
 type Item={description:string;quantity:string;unitRate:string};
 type Detail={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
-  postingDate?:string;payeeName?:string;purpose?:string};
+  postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null};
  lines:{description:string;quantity:number;unitRateMinor:string;lineTotalMinor:string}[];
  taxMinor:string;chargesMinor:string;grossMinor:string;totalMinor:string};
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
@@ -37,7 +37,7 @@ async function failure(res:Response):Promise<string>{
 }
 const item=():Item=>({description:"",quantity:"1",unitRate:""});
 const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",
- postingDate:"",payeeName:"",purpose:"",tax:"0",charges:"0"});
+ postingDate:"",payeeName:"",purpose:"",paymentAccountRef:"",tax:"0",charges:"0"});
 export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEvidence=false,canUploadEvidence=false}:{
  years:readonly Year[];branches:readonly Branch[];canManage:boolean;
  canViewEvidence?:boolean;canUploadEvidence?:boolean
@@ -53,6 +53,10 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
  const [target,setTarget]=useState<{ref:string;number:string;version:number}|null>(null);
  const [form,setForm]=useState(initial());
  const [items,setItems]=useState<Item[]>([item()]);
+ const [paymentAccounts,setPaymentAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;branchRef:string|null;branchName:string|null}>>([]);
+ const [paymentSearch,setPaymentSearch]=useState("");
+ const [paymentError,setPaymentError]=useState("");
+ const [paymentMore,setPaymentMore]=useState(false);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
  const [pending,setPending]=useState<Pending|null>(null);
@@ -72,6 +76,26 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   finally{setLoading(false);}
  },[offset]);
  useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+  if(!editing)return;
+  let live=true;
+  void(async()=>{
+   try{
+    const response=await fetch("/api/finance/vouchers/payment-accounts?q="+
+      encodeURIComponent(paymentSearch),{cache:"no-store"});
+    if(!response.ok)throw Error(await failure(response));
+    const raw:unknown=await response.json();
+    if(!raw||typeof raw!=="object"||!("accounts" in raw)||!Array.isArray(raw.accounts)||
+      !("hasMore" in raw)||typeof raw.hasMore!=="boolean")
+     throw Error("Cash and bank account choices could not be verified.");
+    if(live){setPaymentAccounts(raw.accounts);setPaymentMore(raw.hasMore);setPaymentError("");}
+   }catch(e){if(live){setPaymentAccounts([]);setPaymentMore(false);
+    setPaymentError(e instanceof Error?e.message:
+     "Cash and bank accounts are unavailable. Refresh the selector.");}}
+  })();
+  return()=>{live=false;};
+ },[editing,paymentSearch]);
+
  function start(){
   if(!canManage)return;
   setEditing(true);setTarget(null);setNotice("");setPending(null);setNotFound(false);
@@ -91,6 +115,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
    setForm({type:raw.header.type??"EXPENSE",financialYearRef:raw.header.financialYearRef??"",
     branchRef:raw.header.branchRef??"",postingDate:raw.header.postingDate??"",
     payeeName:raw.header.payeeName??"",purpose:raw.header.purpose??"",
+    paymentAccountRef:raw.header.paymentAccountRef??"",
     tax:decimal(raw.taxMinor),charges:decimal(raw.chargesMinor)});
    setItems(raw.lines.map(l=>({description:l.description,quantity:String(l.quantity),
     unitRate:decimal(l.unitRateMinor)})));
@@ -109,6 +134,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   return {
    financialYearRef:form.financialYearRef,voucherType:form.type,
    postingDate:form.postingDate,payeeName:form.payeeName,purpose:form.purpose,
+   paymentAccountRef:form.paymentAccountRef,
    ...(form.branchRef?{branchRef:form.branchRef,branchVersion:branch?.version}:{}),
    lines:items.map(l=>({description:l.description,
      quantity:Number(l.quantity),unitRate:l.unitRate})),
@@ -142,6 +168,9 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   event.preventDefault();if(!canManage||busy||pending)return;
   const invalid=items.some(l=>!/^([1-9][0-9]{0,5})$/.test(l.quantity));
   if(invalid){setNotice("Enter each item's whole-unit quantity between 1 and 1,000,000.");return;}
+  if(["PAYMENT","CONTRA"].includes(form.type)&&!form.paymentAccountRef){
+   setNotice("Select an active cash or bank account for this payment voucher.");return;
+  }
   const payload=requestBody();
   void save({key:crypto.randomUUID(),
    path:target?"vouchers/drafts/"+target.ref:"vouchers/drafts",
@@ -243,6 +272,26 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
        {branches.map(b=><option key={b.branchRef} value={b.branchRef}>
         {b.name} — {b.code}</option>)}
       </select></label>
+     <div className="cg-fin-field">
+      <label htmlFor="cg-fin-payments-search">Find cash or bank account by name / code</label>
+      <input id="cg-fin-payments-search" value={paymentSearch} maxLength={80}
+       placeholder="Search permitted Foundation or branch accounts"
+       onChange={e=>setPaymentSearch(e.target.value)}/>
+      {paymentError&&<p role="alert">{paymentError}</p>}
+      <label htmlFor="cg-fin-payments-account">Cash or bank account
+       {["PAYMENT","CONTRA"].includes(form.type)?" *":" (optional)"}</label>
+      <select id="cg-fin-payments-account" value={form.paymentAccountRef}
+       required={["PAYMENT","CONTRA"].includes(form.type)}
+       onChange={e=>field("paymentAccountRef",e.target.value)}>
+       <option value="">Choose a real permitted cash/bank account</option>
+       {paymentAccounts.filter(a=>!a.branchRef||a.branchRef===form.branchRef)
+        .map(a=><option key={a.accountRef} value={a.accountRef}>
+         {a.name} · {a.kind} · {a.code}{a.branchName?" ("+a.branchName+")":""}
+        </option>)}
+      </select>
+      {paymentMore&&<p className="cg-fin-help">More accounts exist. Refine the search to find the right one.</p>}
+      <p className="cg-fin-help">Selecting an account does not transfer funds or confirm payment.</p>
+     </div>
      <label className="cg-fin-field">Payee / Counterparty name *
       <input required minLength={2} maxLength={150} value={form.payeeName}
        onChange={e=>field("payeeName",e.target.value)}/></label>
