@@ -21,7 +21,8 @@ CREATE INDEX ix_cg09_year_root ON financial_year(root_realm_id,start_on DESC,id)
 -- meaning of immutable journal history. Closing is a versioned one-way action.
 CREATE FUNCTION cg09_guard_year_update() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
+ IF NEW.id IS DISTINCT FROM OLD.id
+   OR NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
    OR NEW.name IS DISTINCT FROM OLD.name
    OR NEW.start_on IS DISTINCT FROM OLD.start_on
    OR NEW.end_on IS DISTINCT FROM OLD.end_on
@@ -53,7 +54,8 @@ CREATE FUNCTION cg09_guard_group_structure() RETURNS trigger LANGUAGE plpgsql AS
 DECLARE parent_category text;
 BEGIN
  IF TG_OP='UPDATE' THEN
-  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+  IF NEW.id IS DISTINCT FROM OLD.id OR
+    NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
     NEW.category IS DISTINCT FROM OLD.category OR
     NEW.code IS DISTINCT FROM OLD.code OR
     NEW.parent_id IS DISTINCT FROM OLD.parent_id THEN
@@ -105,7 +107,9 @@ BEGIN
   (NEW.account_kind IN('CASH','BANK') AND group_category<>'ASSET') THEN
   RAISE EXCEPTION 'Invalid finance account category and balance side' USING ERRCODE='P0905'; END IF;
  IF TG_OP='UPDATE' THEN
-  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+  IF NEW.id IS DISTINCT FROM OLD.id OR
+    NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+    NEW.name IS DISTINCT FROM OLD.name OR
     NEW.group_id IS DISTINCT FROM OLD.group_id OR
     NEW.code IS DISTINCT FROM OLD.code OR
     NEW.normal_side IS DISTINCT FROM OLD.normal_side OR
@@ -296,7 +300,8 @@ BEGIN
     ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
    WHERE l.journal_id=v_journal AND l.root_realm_id=r
     AND (a.scope_kind='BRANCH' AND a.branch_id IS DISTINCT FROM l.branch_id)
- ) THEN
+ ) OR (SELECT count(DISTINCT l.branch_id) FROM journal_line l
+        WHERE l.journal_id=v_journal AND l.root_realm_id=r)>1 THEN
   RAISE EXCEPTION 'Finance journal branch and account scope do not match' USING ERRCODE='P0904';
  END IF;
  IF line_count<2 OR total_debit<=0 OR total_debit<>total_credit THEN
