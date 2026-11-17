@@ -29,6 +29,7 @@ export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage,on
  const [creditPassword,setCreditPassword]=useState("");
  const [refundYear,setRefundYear]=useState(""),[refundDate,setRefundDate]=useState("");
  const [refundBank,setRefundBank]=useState(""),[refundPassword,setRefundPassword]=useState("");
+ const [transferReference,setTransferReference]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [pending,setPending]=useState<Pending|null>(null);
  const refresh=useCallback(async()=>{
@@ -139,15 +140,21 @@ export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage,on
    </div>}
   {data?.refund?.status==="PENDING_APPROVAL"&&canReview&&<div className="cg-fin-form">
    <h4>Independently approve refund</h4>
-   <p>The requester cannot approve their own refund. This records an outgoing bank journal;
-    bank-statement verification remains separate.</p>
+   <p>The requester cannot approve their own refund. Enter the actual bank transfer reference;
+    the outgoing journal still awaits independent statement verification.</p>
+   <label className="cg-fin-field">Actual bank transfer reference
+    <input value={transferReference} maxLength={100} onChange={e=>setTransferReference(e.target.value)}
+     placeholder="Transaction reference from the completed bank transfer"/>
+   </label>
    <label className="cg-fin-field">Current reviewer password
     <input type="password" autoComplete="current-password" value={refundPassword}
      onChange={e=>setRefundPassword(e.target.value)}/></label>
-   <button type="button" disabled={busy||Boolean(pending)||refundPassword.length<8}
+   <button type="button" disabled={busy||Boolean(pending)||refundPassword.length<8||
+    !/^[A-Za-z0-9._/: -]{4,100}$/.test(transferReference.trim())}
     onClick={()=>void submit({label:"Refund approval",
      path:"refunds/"+data.refund!.refundRef+"/approve",
-     body:{requestKey:crypto.randomUUID(),currentPassword:refundPassword}})}>
+     body:{requestKey:crypto.randomUUID(),currentPassword:refundPassword,
+      transferReference:transferReference.trim()}})}>
     Approve refund and post bank journal</button>
   </div>}
   {pending&&<div role="status" className="cg-fin-pending">
