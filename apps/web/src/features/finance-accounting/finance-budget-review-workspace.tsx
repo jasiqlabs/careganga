@@ -8,6 +8,10 @@ const message=async(r:Response)=>{
  return d&&typeof d==="object"&&"message" in d&&typeof d.message==="string"?
   d.message:"Protected budget decision is not confirmed. Refresh its original case.";
 };
+const rupees=(raw:string)=>{try{const amount=BigInt(raw);
+ return "₹"+(amount/100n).toLocaleString("en-IN")+"."+
+  (amount%100n).toString().padStart(2,"0");
+}catch{return "Amount unavailable";}};
 export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolean}){
  const [list,setList]=useState<Case[]>([]);
  const [current,setCurrent]=useState<Detail|null>(null);
@@ -106,8 +110,8 @@ export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolea
     <p>Budget: {current.source.name}</p>
     <p>Category: {current.source.category}</p>
     <p>Period: {current.source.periodStart} – {current.source.periodEnd}</p>
-    <p>Approval ceiling (INR minor units): {current.source.amountMinor}</p>
-    <p>Item lines are frozen to the original reviewer case. This is not a bank payment.</p>
+    <p>Original approval ceiling: {rupees(current.source.amountMinor)}</p>
+    <p>The original budget category, period and approved ceiling are frozen for this separate review. Approval does not prove bank funding or expenditure.</p>
     {["SUBMITTED","IN_REVIEW"].includes(current.status)&&<>
      <label className="cg-fin-field">Reviewer decision
       <select value={action} onChange={e=>setAction(e.target.value as typeof action)}>
