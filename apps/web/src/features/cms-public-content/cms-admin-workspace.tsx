@@ -205,6 +205,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
  const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
+ const [activeHeroIndex,setActiveHeroIndex]=useState(0);
  const [teamEditorTab,setTeamEditorTab]=useState<"BASIC"|"DETAILS"|"PREVIEW">("BASIC");
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
@@ -236,6 +237,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     a.order===target?{...a,order:index}:a;
   });
   setDraft(v=>({...v,slides,assets}));
+  setActiveHeroIndex(target);
  }
  function removeIndexedContent(role:"TEAM"|"FEATURE",index:number){
   setDraft(current=>({
@@ -253,6 +255,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    a.order!==index).map(a=>["HERO","MOBILE_HERO"].includes(a.role)&&a.order>index?
     {...a,order:a.order-1}:a);
   setDraft(v=>({...v,slides,assets}));
+  setActiveHeroIndex(v=>Math.min(v,Math.max(0,slides.length-1)));
  }
  const unsaved=selected!==null&&
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
@@ -531,6 +534,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <fieldset><legend>Hero banners — original C22–C24</legend>
         <p>Each slide has independent text, buttons and approved desktop/mobile images.
          The current slide order is saved with the draft and subject to independent review.</p>
+        <div className="cg-cms-banner-summary" aria-label="Homepage banner list">
+         {draft.slides.map((slide,index)=>{
+          const desktop=draft.assets.find(asset=>asset.role==="HERO"&&asset.order===index);
+          const mobile=draft.assets.some(asset=>asset.role==="MOBILE_HERO"&&asset.order===index);
+          const active=index===Math.min(activeHeroIndex,draft.slides.length-1);
+          return <button type="button" key={index} className="cg-cms-banner-row"
+           aria-pressed={active} onClick={()=>setActiveHeroIndex(index)}>
+           {desktop?<img alt={desktop.altText} loading="lazy"
+            src={"/api/cms-image-preview/"+desktop.fileRef}/>:
+            <span className="cg-cms-banner-no-image">Add image</span>}
+           <span className="cg-cms-banner-description"><strong>{slide.heading||"Untitled banner"}</strong>
+            <small>Banner {index+1} · {slide.visible?"Visible":"Hidden"} ·
+             {mobile?"Mobile image":"No mobile image"}</small></span>
+           <span className="cg-cms-banner-edit">{active?"Editing":"Edit"}</span>
+          </button>;
+         })}
+        </div>
         <div className="cg-cms-tabs" role="tablist" aria-label="Hero banner editor">
          {([["BASIC","Basic Information"],["IMAGES","Images"],
            ["BUTTONS","Button Settings"],["PREVIEW","Preview"]] as const)
@@ -541,7 +561,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         {heroEditorTab==="PREVIEW"&&<div className="cg-cms-preview">
          <CmsPublicPage page={previewPage}/>
         </div>}
-        {heroEditorTab!=="PREVIEW"&&draft.slides.map((slide,index)=><div className="cg-cms-team" key={index}>
+        {heroEditorTab!=="PREVIEW"&&draft.slides.map((slide,index)=>
+         index===Math.min(activeHeroIndex,draft.slides.length-1)?<div className="cg-cms-team" key={index}>
          <h4>Slide {index+1}</h4>
          {heroEditorTab==="BASIC"&&<>
          <label className="cg-cms-consent"><input type="checkbox"
@@ -623,9 +644,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           <button type="button" disabled={draft.kind==="HOME"&&draft.slides.length===1}
            onClick={()=>removeSlide(index)}>Remove slide</button>
          </div>}
-        </div>)}
+        </div>:null)}
         {canManage&&draft.slides.length<6&&<button type="button"
-         onClick={()=>edit("slides",[...draft.slides,blankSlide()])}>Add slide</button>}
+         onClick={()=>{setActiveHeroIndex(draft.slides.length);
+          edit("slides",[...draft.slides,blankSlide()]);setHeroEditorTab("BASIC");}}>
+         Add new banner</button>}
        </fieldset>      <fieldset><legend>Foundation About / story</legend>
        <label>Eyebrow<input disabled={!canManage} value={draft.bodyEyebrow} maxLength={100}
         onChange={e=>edit("bodyEyebrow",e.target.value)}/></label>
