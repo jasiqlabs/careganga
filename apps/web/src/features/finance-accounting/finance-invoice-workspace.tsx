@@ -384,7 +384,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    {active?.status==="REVERSED"&&<p role="status" className="cg-fin-notice">
      This posted invoice was reversed before issue. The original journal remains in the audit ledger.
     </p>}
-    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>
+    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
    {active?.status==="ISSUED"&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost} canIssue={canIssue}/>}
   </section>}
   {cancelOpen&&active?.status==="POSTED"&&canCancelPosted&&<div className="drawer-backdrop" role="presentation">
