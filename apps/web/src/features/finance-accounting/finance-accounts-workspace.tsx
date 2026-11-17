@@ -206,14 +206,14 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    const res=await fetch(base+"/commands/"+pending.kind+"/"+pending.key,{cache:"no-store"});
    if(!res.ok)throw Error((await parseFailure(res)).message);
    const result=await res.json() as {confirmed?:boolean};
-   if(result.confirmed){
-    setPending(null);setDrawer(null);
+   if(result.confirmed===true){
+    setPending(null);setDrawer(null);setStatusConfirm(null);
     setSuccess("Your original finance request was confirmed. The updated accounts have been loaded.");
     setOffset(0);void load();
-   }else{
+   }else if(result.confirmed===false){
     setPendingNotFound(true);
     setFailure({message:"No completed change was found for this request. You may retry the same request without creating a duplicate.",field:null,uncertain:true});
-   }
+   }else{setFailure({message:"The original result could not be verified. Check again before retrying.",field:null,uncertain:true});}
   }catch(e){setFailure({message:e instanceof Error?e.message:"Cannot verify the request yet. Try checking again.",field:null,uncertain:true});}
   finally{setBusy(false);}
  }
