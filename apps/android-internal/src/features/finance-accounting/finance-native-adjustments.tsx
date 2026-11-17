@@ -25,6 +25,7 @@ export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
   [reviewPassword,setReviewPassword]=useState("");
  const [refundYear,setRefundYear]=useState(""),[refundDate,setRefundDate]=useState(""),
   [refundBank,setRefundBank]=useState(""),[refundPassword,setRefundPassword]=useState("");
+ const [transferReference,setTransferReference]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),
   [notice,setNotice]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
@@ -103,14 +104,18 @@ export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
   {data?.refund?.status==="PENDING_APPROVAL"&&canReview&&<View style={s.card}>
    <Text style={s.heading}>Independent refund approval</Text>
    <Text style={s.muted}>The refund requester cannot approve their own bank posting.
-    The original bank statement still needs independent verification.</Text>
+    Enter a real completed transfer reference. The statement still needs independent verification.</Text>
+   <Field label="Completed bank transfer reference" value={transferReference}
+    onChange={setTransferReference}/>
    <Field label="Current reviewer password" secure value={refundPassword}
     onChange={setRefundPassword}/>
    <Action label="Approve and post refund bank journal" disabled={busy||!!pending||
-    refundPassword.length<8}
+    refundPassword.length<8||
+    !/^[A-Za-z0-9._/: -]{4,100}$/.test(transferReference.trim())
     onPress={()=>void execute({path:"/api/finance-accounting/invoices/refunds/"+
      data.refund!.refundRef+"/approve",label:"Refund approval",
-     body:{requestKey:Crypto.randomUUID(),currentPassword:refundPassword}})}/>
+     body:{requestKey:Crypto.randomUUID(),currentPassword:refundPassword,
+      transferReference:transferReference.trim()}})}/>
   </View>}
   {pending&&<View style={s.card}>
    <Text style={s.muted}>The original write result is uncertain. Retry only this request key.</Text>
