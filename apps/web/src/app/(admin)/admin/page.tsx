@@ -20,6 +20,7 @@ export default async function AdminHome() {
   let canViewDocuments=false;
   let canViewCommunications=false;
   let canViewSupport=false;
+  let canViewFinance=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -34,6 +35,7 @@ export default async function AdminHome() {
         if(permissions.ok){
           const effective=await permissions.json() as {actions?:{key?:string}[]};
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
+          canViewFinance=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.accounts.view");
           canViewAccounts=Array.isArray(effective.actions)&&
             (effective.actions.some(x=>x.key==="accounts.view")||
               (effective.actions.some(x=>x.key==="accounts.create")&&
@@ -67,7 +69,7 @@ export default async function AdminHome() {
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
-      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport}/>
+      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p><SignOutButton/></section>
     </main>
