@@ -363,6 +363,47 @@ export class FinanceBudgetService{
    [actor.realmId,offset]);
   return {budgets:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
+ /** B01 overview is one root-scoped projection over the ONLY budget event store.
+  * No fabricated project allocation, donor cash or competing balance table.
+  */
+ async dashboard(bearer:string){
+  const actor=await this.actor(bearer);
+  const rows=await this.db.query<{total:number;drafts:number;submitted:number;approved:number;
+   returned:number;rejected:number;archived:number;totalCeilingMinor:string;
+   allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
+   availableMinor:string;overBudgetMinor:string}>(
+   "WITH movement AS(SELECT root_realm_id,budget_id,"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0) AS allocated,"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0) AS committed,"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0) AS released,"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized "+
+   "FROM finance_budget_event WHERE root_realm_id=$1 GROUP BY root_realm_id,budget_id),"+
+   "fact AS(SELECT b.status,b.approved_ceiling_minor,"+
+   "COALESCE(m.allocated,0) AS allocated,"+
+   "GREATEST(0,COALESCE(m.committed,0)-COALESCE(m.released,0)) AS outstanding,"+
+   "COALESCE(m.utilized,0) AS utilized "+
+   "FROM finance_budget b LEFT JOIN movement m "+
+   "ON m.budget_id=b.id AND m.root_realm_id=b.root_realm_id "+
+   "WHERE b.root_realm_id=$1) "+
+   "SELECT COUNT(*)::int AS total,"+
+   "COUNT(*) FILTER(WHERE status='DRAFT')::int AS drafts,"+
+   "COUNT(*) FILTER(WHERE status='SUBMITTED')::int AS submitted,"+
+   "COUNT(*) FILTER(WHERE status='APPROVED')::int AS approved,"+
+   "COUNT(*) FILTER(WHERE status='RETURNED')::int AS returned,"+
+   "COUNT(*) FILTER(WHERE status='REJECTED')::int AS rejected,"+
+   "COUNT(*) FILTER(WHERE status='ARCHIVED')::int AS archived,"+
+   "COALESCE(SUM(approved_ceiling_minor) FILTER(WHERE status='APPROVED'),0)::text AS \"totalCeilingMinor\","+
+   "COALESCE(SUM(allocated) FILTER(WHERE status='APPROVED'),0)::text AS \"allocatedMinor\","+
+   "COALESCE(SUM(outstanding) FILTER(WHERE status='APPROVED'),0)::text AS \"committedOutstandingMinor\","+
+   "COALESCE(SUM(utilized) FILTER(WHERE status='APPROVED'),0)::text AS \"utilizedMinor\","+
+   "COALESCE(SUM(approved_ceiling_minor-outstanding-utilized) "+
+   "FILTER(WHERE status='APPROVED'),0)::text AS \"availableMinor\","+
+   "COALESCE(SUM(GREATEST(outstanding+utilized-approved_ceiling_minor,0)) "+
+   "FILTER(WHERE status='APPROVED'),0)::text AS \"overBudgetMinor\" "+
+   "FROM fact",[actor.realmId]);
+  return {cards:rows.rows[0],explanation:
+   "Approved ceilings and allocations are authorizations, not received funds. Utilized is matched original posted expense only."};
+ }
  async options(bearer:string){
   const actor=await this.actor(bearer);
   const years=await this.db.query<{yearRef:string;name:string;status:string;
