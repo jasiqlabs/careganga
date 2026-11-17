@@ -27,6 +27,7 @@ const financeErrors=new Set([
  "FINANCE_INVOICE_CANCEL_INVALID","FINANCE_INVOICE_CANCEL_CONFLICT",
  "FINANCE_ADJUSTMENT_INVALID","FINANCE_ADJUSTMENT_NOT_FOUND",
  "FINANCE_CREDIT_NOTE_CONFLICT","FINANCE_CREDIT_NOTE_ALREADY_EXISTS",
+ "FINANCE_INVOICE_REISSUE_CONFLICT",
  "FINANCE_CREDIT_NOTE_COLLECTION_PENDING","FINANCE_CREDIT_NOTE_REFUND_ACCOUNT_REQUIRED",
  "FINANCE_CREDIT_NOTE_NOT_FOUND","FINANCE_REFUND_CONFLICT","FINANCE_REFUND_NOT_REQUIRED",
  "FINANCE_REFUND_ALREADY_REQUESTED","FINANCE_REFUND_BANK_INVALID",
@@ -265,7 +266,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "bankAccountRef","refundLiabilityAccountRef","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","statementFileRef","statementFileVersion","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "bankAccountRef","refundLiabilityAccountRef","replacesInvoiceRef","transferReference","postingDate","amount","reconciliationRef","bankRef","bankItemReference","statementDate","statementAmount","statementFileRef","statementFileVersion","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","date","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
