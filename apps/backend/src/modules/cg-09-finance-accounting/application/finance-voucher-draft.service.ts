@@ -108,16 +108,20 @@ export class FinanceVoucherDraftService{
  private async actor(bearer:string,capability:"finance.vouchers.manage"|"finance.vouchers.view"){
   return this.sessions.requireAction(bearer,capability);
  }
- async list(bearer:string){
+ async list(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
+  if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
+   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
+  const offset=Number(offsetInput??"0");
   const rows=await this.db.query<{voucherRef:string;voucherNumber:string;type:string;
     postingDate:string;payeeName:string;purpose:string;totalMinor:string;version:number}>(`
     SELECT id AS "voucherRef",voucher_number AS "voucherNumber",voucher_type AS type,
      posting_date::text AS "postingDate",payee_name AS "payeeName",
      purpose,total_minor::text AS "totalMinor",version
     FROM finance_voucher WHERE root_realm_id=$1 AND status='DRAFT'
-    ORDER BY updated_at DESC,id DESC LIMIT 40`,[actor.realmId]);
-  return {vouchers:rows.rows,status:"DRAFT_NOT_APPROVED_OR_POSTED"};
+    ORDER BY updated_at DESC,id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
+  return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
+   status:"DRAFT_NOT_APPROVED_OR_POSTED"};
  }
  async detail(bearer:string,voucherInput:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
