@@ -287,7 +287,7 @@ BEGIN
   END IF;
   RETURN NEW;
  ELSIF OLD.status='SUBMITTED' AND NEW.status IN('RETURNED','REJECTED','APPROVED') THEN
-  IF (to_jsonb(NEW)-'status') IS DISTINCT FROM (to_jsonb(OLD)-'status') THEN
+  IF (to_jsonb(NEW)-'status'-'updated_at') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'updated_at') THEN
    RAISE EXCEPTION 'Submitted invoice snapshot is immutable' USING ERRCODE='P0922';
   END IF;
   SELECT status INTO y FROM cg03_case c WHERE c.id=OLD.approval_case_id
@@ -309,7 +309,7 @@ BEGIN
   END IF;
   RETURN NEW;
  ELSIF OLD.status='APPROVED' AND NEW.status='POSTED' THEN
-  IF (to_jsonb(NEW)-'status') IS DISTINCT FROM (to_jsonb(OLD)-'status') THEN
+  IF (to_jsonb(NEW)-'status'-'updated_at') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'updated_at') THEN
    RAISE EXCEPTION 'Posted invoice cannot edit approved facts' USING ERRCODE='P0922';
   END IF;
   PERFORM 1 FROM finance_invoice_posting p JOIN journal j
@@ -338,7 +338,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Only balanced posted original invoice may proceed' USING ERRCODE='P0922'; END IF;
   RETURN NEW;
  ELSIF OLD.status='POSTED' AND NEW.status='ISSUED' THEN
-  IF (to_jsonb(NEW)-'status') IS DISTINCT FROM (to_jsonb(OLD)-'status') THEN
+  IF (to_jsonb(NEW)-'status'-'updated_at') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'updated_at') THEN
    RAISE EXCEPTION 'Issued invoice cannot edit financial facts' USING ERRCODE='P0922';
   END IF;
   PERFORM 1 FROM cg19_finance_invoice_document d
