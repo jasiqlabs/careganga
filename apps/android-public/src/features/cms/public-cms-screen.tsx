@@ -108,7 +108,8 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   else if(route==="/contact")onContact();
  };
  const page=result.page;
- const slides=page?.sections.filter(s=>s.kind==="HERO").sort((a,b)=>a.order-b.order)??[];
+ const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
+  .sort((a,b)=>a.order-b.order)??[];
  const safeImage=(asset:Asset|undefined)=>{
   if(!asset||!base||!asset.src.startsWith("/api/public/content/media/")||
     !/^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(asset.src))return null;
