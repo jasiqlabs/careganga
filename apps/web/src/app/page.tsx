@@ -16,7 +16,8 @@ export default async function PublicHome(){
  return <main className="page main">
   <header className="topbar"><span className="cg-brandline"><img src="/careganga-mark.png"
    width="40" height="40" alt=""/><strong>CareGanga Foundation</strong></span>
-   <Link href="/admin/login">Foundation staff login</Link></header>
+{navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
+    <Link href="/admin/login">Foundation staff login</Link>}</header>
   <h1>CareGanga Foundation</h1>
   <p>{result.state==="NOT_PUBLISHED"?
    "Our public homepage has not yet been published.":
