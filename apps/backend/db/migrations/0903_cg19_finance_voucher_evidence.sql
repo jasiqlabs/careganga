@@ -1,33 +1,41 @@
 -- CG-09 US-002 introduces a narrow CG-19-owned voucher evidence source.
 -- Keep one original CG-19 upload intent, scanned stored-file and event authority.
 -- No CG-09 file bytes, second file table, fabricated scan or provider shortcut.
-ALTER TABLE cg19_upload_intent DROP CONSTRAINT IF EXISTS cg19_upload_intent_owner_kind_check;
+ALTER TABLE cg19_upload_intent DROP CONSTRAINT IF EXISTS cg19_intent_owner_kind;
 ALTER TABLE cg19_upload_intent DROP CONSTRAINT IF EXISTS cg19_intent_branch_source;
 ALTER TABLE cg19_upload_intent DROP CONSTRAINT IF EXISTS cg19_intent_source_classification;
 ALTER TABLE cg19_upload_intent
  ADD COLUMN voucher_id uuid,
  ADD COLUMN voucher_version integer,
  ADD CONSTRAINT cg19_intent_owner_kind_voucher CHECK(owner_kind IN
-   ('CG03_CASE','CG02_DRAFT','CG09_VOUCHER')),
+   ('CG03_CASE','CG02_DRAFT','CG02_BRANCH','CG09_VOUCHER')),
  ADD CONSTRAINT cg19_intent_one_source_voucher CHECK(
    (owner_kind='CG03_CASE' AND case_id IS NOT NULL
       AND registration_id IS NULL AND registration_draft_version IS NULL
+      AND branch_id IS NULL AND branch_version IS NULL
       AND voucher_id IS NULL AND voucher_version IS NULL)
    OR
    (owner_kind='CG02_DRAFT' AND case_id IS NULL
       AND registration_id IS NOT NULL AND registration_draft_version>0
       AND proposal_revision=registration_draft_version
+      AND branch_id IS NULL AND branch_version IS NULL
+      AND voucher_id IS NULL AND voucher_version IS NULL)
+   OR
+   (owner_kind='CG02_BRANCH' AND case_id IS NULL AND registration_id IS NULL
+      AND registration_draft_version IS NULL AND branch_id IS NOT NULL
+      AND branch_version>0 AND proposal_revision=branch_version
       AND voucher_id IS NULL AND voucher_version IS NULL)
    OR
    (owner_kind='CG09_VOUCHER' AND case_id IS NULL
       AND registration_id IS NULL AND registration_draft_version IS NULL
+      AND branch_id IS NULL AND branch_version IS NULL
       AND voucher_id IS NOT NULL AND voucher_version>0
       AND proposal_revision=voucher_version)
  ),
  ADD CONSTRAINT cg19_intent_voucher_classification CHECK(
    (owner_kind='CG03_CASE' AND classification IN
       ('PRIVATE_CASE_EVIDENCE','PRIVATE_CASE_ARCHIVE'))
-   OR (owner_kind='CG02_DRAFT' AND classification IN
+   OR (owner_kind IN('CG02_DRAFT','CG02_BRANCH') AND classification IN
       ('BRANCH_PHOTO','BRANCH_LOGO','REGISTRATION_PROOF','AGREEMENT'))
    OR (owner_kind='CG09_VOUCHER' AND classification='FINANCE_VOUCHER_PROOF')
  ),
@@ -37,25 +45,33 @@ ALTER TABLE cg19_upload_intent
 CREATE INDEX ix_cg19_voucher_intent ON cg19_upload_intent(realm_id,voucher_id,voucher_version,created_at DESC,id DESC)
  WHERE owner_kind='CG09_VOUCHER';
 
-ALTER TABLE cg19_stored_file DROP CONSTRAINT IF EXISTS cg19_stored_file_owner_kind_check;
+ALTER TABLE cg19_stored_file DROP CONSTRAINT IF EXISTS cg19_file_owner_kind;
 ALTER TABLE cg19_stored_file DROP CONSTRAINT IF EXISTS cg19_file_branch_source;
 ALTER TABLE cg19_stored_file
  ADD COLUMN voucher_id uuid,
  ADD COLUMN voucher_version integer,
  ADD CONSTRAINT cg19_file_owner_kind_voucher CHECK(owner_kind IN
-   ('CG03_CASE','CG02_DRAFT','CG09_VOUCHER')),
+   ('CG03_CASE','CG02_DRAFT','CG02_BRANCH','CG09_VOUCHER')),
  ADD CONSTRAINT cg19_file_one_source_voucher CHECK(
    (owner_kind='CG03_CASE' AND case_id IS NOT NULL
       AND registration_id IS NULL AND registration_draft_version IS NULL
+      AND branch_id IS NULL AND branch_version IS NULL
       AND voucher_id IS NULL AND voucher_version IS NULL)
    OR
    (owner_kind='CG02_DRAFT' AND case_id IS NULL
       AND registration_id IS NOT NULL AND registration_draft_version>0
       AND proposal_revision=registration_draft_version
+      AND branch_id IS NULL AND branch_version IS NULL
+      AND voucher_id IS NULL AND voucher_version IS NULL)
+   OR
+   (owner_kind='CG02_BRANCH' AND case_id IS NULL AND registration_id IS NULL
+      AND registration_draft_version IS NULL AND branch_id IS NOT NULL
+      AND branch_version>0 AND proposal_revision=branch_version
       AND voucher_id IS NULL AND voucher_version IS NULL)
    OR
    (owner_kind='CG09_VOUCHER' AND case_id IS NULL
       AND registration_id IS NULL AND registration_draft_version IS NULL
+      AND branch_id IS NULL AND branch_version IS NULL
       AND voucher_id IS NOT NULL AND voucher_version>0
       AND proposal_revision=voucher_version)
  ),
@@ -71,7 +87,7 @@ ALTER TABLE cg19_document_event DROP CONSTRAINT IF EXISTS cg19_doc_event_source;
 ALTER TABLE cg19_document_event
  ADD COLUMN voucher_id uuid,
  ADD CONSTRAINT cg19_doc_event_three_sources CHECK(
-   num_nonnulls(case_id,registration_id,voucher_id)=1
+   num_nonnulls(case_id,registration_id,branch_id,voucher_id)=1
  ),
  ADD CONSTRAINT fk_cg19_doc_event_voucher FOREIGN KEY(voucher_id,realm_id)
    REFERENCES finance_voucher(id,root_realm_id) ON DELETE RESTRICT;
