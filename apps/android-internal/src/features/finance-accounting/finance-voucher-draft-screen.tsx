@@ -56,6 +56,7 @@ function Select({label,value,options,onChange}:{label:string;value:string;
 }
 export function FinanceVoucherDraftScreen({token,years,branches,canManage,canViewEvidence,canUploadEvidence,canPost,canVerifyPayment,onClose,onExpired}:Props){
  const [drafts,setDrafts]=useState<Voucher[]>([]);
+ const [dashboard,setDashboard]=useState<{total:number;pending:number;approved:number;rejected:number;paid:number;posted:number;totalMinor:string}|null>(null);
  const [workflowRef,setWorkflowRef]=useState("");
  const [offset,setOffset]=useState(0);
  const [nextOffset,setNextOffset]=useState<number|null>(null);
@@ -89,6 +90,16 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
       !("nextOffset" in val)||!(val.nextOffset===null||typeof val.nextOffset==="number"))
     throw Error("Voucher list could not be verified. Refresh and retry.");
    setDrafts(val.vouchers);setNextOffset(val.nextOffset);
+   try{
+    const counts=await identityRequest("/api/finance-accounting/vouchers/dashboard",{
+     cache:"no-store",headers:{Authorization:"Bearer "+token}});
+    if(counts.ok){const summary:unknown=await counts.json();
+     if(summary&&typeof summary==="object"&&"cards" in summary&&summary.cards&&
+      typeof summary.cards==="object"&&"total" in summary.cards)
+      setDashboard(summary.cards as typeof dashboard);
+    }else setDashboard(null);
+   }catch{setDashboard(null);}
+
   }catch(e){setDrafts([]);setNextOffset(null);setProblem(e instanceof Error?e.message:"Cannot load vouchers. Check the connection.");}
   finally{setLoading(false);}
  },[token,offset,onExpired]);
@@ -240,11 +251,18 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
    disabled={busy||Boolean(pending)} onPress={()=>editing?setEditing(false):onClose()}>
    <Text style={s.link}>‹ Back</Text></Pressable>
    <View style={s.heading}><Text style={s.eyebrow}>CAREGANGA / FINANCE</Text>
-    <Text style={s.title}>{editing?(target?"Edit "+target.number:"New Voucher Draft"):"Voucher Drafts"}</Text></View>
+    <Text style={s.title}>{editing?(target?"Edit "+target.number:"New Voucher Draft"):"Finance Vouchers"}</Text></View>
   </View>
   <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
    {!editing&&<>
-    <Text style={s.hint}>These are real draft vouchers only. None has been approved, posted or paid.</Text>
+    <Text style={s.hint}>Real current vouchers; approval, payment verification and balanced ledger posting are separate.</Text>
+    {dashboard&&<View style={s.card}>
+     <Text style={s.bold}>Voucher Management Dashboard</Text>
+     <Text style={s.hint}>Total {dashboard.total} · Awaiting review {dashboard.pending}</Text>
+     <Text style={s.hint}>Approved or in progress {dashboard.approved} · Rejected {dashboard.rejected}</Text>
+     <Text style={s.hint}>Money verified {dashboard.paid} · Journal posted {dashboard.posted}</Text>
+     <Text style={s.money}>All voucher amounts: {money(dashboard.totalMinor)}</Text>
+    </View>}
     <View style={s.actions}>
      <Pressable style={s.button} onPress={()=>void fetchDrafts()}><Text style={s.plain}>Refresh</Text></Pressable>
      {canManage&&<Pressable style={[s.button,s.primary]} onPress={start}>
@@ -260,14 +278,16 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
      <Text style={s.hint}>{v.status==="DRAFT"?"Draft — not posted":v.status==="SUBMITTED"?
       "Submitted for review — not posted":v.status==="APPROVED"?"Approved — not paid":
       v.status==="RETURNED"?"Returned for correction":v.status==="REJECTED"?
-      "Rejected":"Original status unverified"}</Text>
+      "Rejected":v.status==="PAYMENT_REQUESTED"?"Awaiting separate payment proof":
+      v.status==="PAID_VERIFIED"?"Money independently verified — not posted":
+      v.status==="POSTED"?"Original balanced journal posted":"Original status unverified"}</Text>
      {canManage&&["DRAFT","RETURNED"].includes(v.status)&&<Pressable accessibilityRole="button"
       style={s.button} onPress={()=>void edit(v)}>
       <Text style={s.plain}>{v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</Text></Pressable>}
-     {canManage&&["DRAFT","SUBMITTED","APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&<Pressable accessibilityRole="button"
+     {(canManage||canVerifyPayment||canPost)&&["DRAFT","SUBMITTED","APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&<Pressable accessibilityRole="button"
       style={s.button} onPress={()=>setWorkflowRef(w=>w===v.voucherRef?"":v.voucherRef)}>
       <Text style={s.plain}>Verified evidence & review</Text></Pressable>}
-     {workflowRef===v.voucherRef&&["DRAFT","SUBMITTED"].includes(v.status)&&
+     {workflowRef===v.voucherRef&&canManage&&["DRAFT","SUBMITTED"].includes(v.status)&&
       <FinanceVoucherNativeEvidence token={token}
        voucher={v} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
        onExpired={onExpired} onUpdated={()=>{setWorkflowRef("");void fetchDrafts();}}/>}
