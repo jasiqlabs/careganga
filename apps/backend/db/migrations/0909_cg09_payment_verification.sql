@@ -89,7 +89,7 @@ CREATE TABLE finance_voucher_payment_verification(
  review_digest char(64),
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,voucher_id),
+ UNIQUE(root_realm_id,voucher_id,request_key),
  UNIQUE(root_realm_id,requested_by,request_key),
  UNIQUE(id,root_realm_id),
  FOREIGN KEY(voucher_id,root_realm_id) REFERENCES finance_voucher(id,root_realm_id)
@@ -110,8 +110,12 @@ CREATE TABLE finance_voucher_payment_verification(
    AND review_request_key IS NOT NULL AND review_digest ~ '^[0-9a-f]{64}$'
    AND verified_by<>requested_by))
 );
+CREATE UNIQUE INDEX ux_cg09_active_payment_attempt
+ ON finance_voucher_payment_verification(root_realm_id,voucher_id)
+ WHERE status IN('PENDING_REVIEW','VERIFIED');
 CREATE UNIQUE INDEX ux_cg09_voucher_bank_reference ON finance_voucher_payment_verification
- (root_realm_id,bank_reference) WHERE method='BANK_STATEMENT' AND bank_reference IS NOT NULL;
+ (root_realm_id,bank_reference) WHERE method='BANK_STATEMENT'
+ AND bank_reference IS NOT NULL AND status IN('PENDING_REVIEW','VERIFIED');
 CREATE INDEX ix_cg09_payment_pending
  ON finance_voucher_payment_verification(root_realm_id,status,created_at DESC,id DESC);
 
