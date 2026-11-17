@@ -233,6 +233,7 @@ export class FinanceAccountsService{
   */
  async postingAccountOptions(bearer:string,query?:string){
   const actor=await this.sessions.requireAction(bearer,"finance.journals.post");
+  await this.sessions.requireAction(bearer,"finance.accounts.view");
   if(query!==undefined&&(typeof query!=="string"||query.length>80))
    throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID"});
   const q=query?.trim()??"";
