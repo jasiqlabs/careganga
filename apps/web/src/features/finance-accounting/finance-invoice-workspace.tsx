@@ -5,6 +5,10 @@ type Stage="INFO"|"ITEMS"|"PAYMENT";
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;totalMinor:string|null;invoiceDate:string|null};
 type Account={accountRef:string;name:string;code:string;category:string;branchName:string|null};
+type Dashboard={cards:{total:number;drafts:number;pending:number;approved:number;
+ issued:number;rejected:number;returned:number;paidVerified:number;
+ faceValueMinor:string;issuedMinor:string;receivedVerifiedMinor:string};
+ monthly:{month:string;count:number;issuedMinor:string}[];explanation:string};
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
 type Detail={invoiceRef:string;invoiceNumber:string;version:number;status:string;
@@ -34,6 +38,9 @@ const format=(v:string|null)=>{if(!v)return "Not calculated";
 export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
  canManage:boolean;canIssue:boolean;canPost:boolean}){
  const [rows,setRows]=useState<Invoice[]>([]);
+ const [dashboard,setDashboard]=useState<Dashboard|null>(null);
+ const [filter,setFilter]=useState("ALL");
+ const [refreshVersion,setRefreshVersion]=useState(0);
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
@@ -48,14 +55,16 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
  const [pending,setPending]=useState<{key:string;url:string;method:string;body:unknown}|null>(null);
  const load=useCallback(async()=>{
   setError("");
+  setRefreshVersion(n=>n+1);
   try{
-   const req=await fetch("/api/finance/invoices/drafts?offset="+offset,{cache:"no-store"});
+   const req=await fetch("/api/finance/invoices/drafts?offset="+offset+
+    "&status="+filter,{cache:"no-store"});
    if(!req.ok)throw Error(await errorFor(req));
    const value=await req.json() as {invoices?:Invoice[];nextOffset?:number|null};
    if(!Array.isArray(value.invoices))throw Error("Original invoices could not be verified.");
    setRows(value.invoices);setNextOffset(value.nextOffset??null);
   }catch(e){setError(errorMessage(e));setRows([]);}
- },[offset]);
+ },[offset,filter]);
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{
   let live=true;
@@ -72,6 +81,18 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
    }catch(e){if(live)setError(errorMessage(e));}
   })();return()=>{live=false;};
  },[]);
+ useEffect(()=>{
+  let live=true;
+  void(async()=>{
+   try{
+    const r=await fetch("/api/finance/invoices/dashboard",{cache:"no-store"});
+    if(!r.ok)throw Error(await errorFor(r));
+    const data=await r.json() as Dashboard;
+    if(!data?.cards||!Array.isArray(data.monthly))throw Error("Invoice totals are unavailable.");
+    if(live)setDashboard(data);
+   }catch(e){if(live)setNotice(errorMessage(e));}
+  })();return()=>{live=false;};
+ },[refreshVersion]);
  async function openInvoice(row:Invoice){
   setBusy(true);setError("");setNotice("");
   try{
@@ -169,6 +190,36 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
    Check the original request before submitting another financial action.</p>
    <button type="button" disabled={busy} onClick={()=>void checkPending()}>Check existing request</button>
   </div>}
+  {dashboard&&<div className="cg-fin-voucher-dashboard">
+   <div className="cg-fin-voucher-tiles">
+    {[
+      {title:"Total invoices",value:String(dashboard.cards.total)},
+      {title:"Drafts",value:String(dashboard.cards.drafts)},
+      {title:"Pending verification",value:String(dashboard.cards.pending)},
+      {title:"Approved / posted",value:String(dashboard.cards.approved)},
+      {title:"Issued",value:String(dashboard.cards.issued)},
+      {title:"Rejected / returned",value:String(dashboard.cards.rejected+dashboard.cards.returned)},
+      {title:"Independently paid",value:String(dashboard.cards.paidVerified)},
+      {title:"Issued face value",value:format(dashboard.cards.issuedMinor)},
+      {title:"Verified bank collection",value:format(dashboard.cards.receivedVerifiedMinor)}
+    ].map(x=><div className="cg-fin-voucher-tile" key={x.title}>
+     <div><p className="cg-fin-tile-label">{x.title}</p><strong>{x.value}</strong></div>
+    </div>)}
+   </div>
+   <div className="cg-fin-voucher-charts">
+    <article className="cg-fin-voucher-chart"><h4>Monthly invoice trend</h4>
+      <div className="cg-fin-month-bars" role="img" aria-label="Actual monthly invoice count">
+       {dashboard.monthly.map(m=><div key={m.month} className="cg-fin-month">
+        <span style={{height:Math.max(4,100*m.count/
+          Math.max(1,...dashboard.monthly.map(v=>v.count)))+"%"}}
+         title={m.month+": "+m.count+" invoices"}/>
+        <small>{m.month.slice(5)}</small>
+       </div>)}
+      </div>
+    </article>
+   </div>
+   <p className="cg-fin-help">{dashboard.explanation}</p>
+  </div>}
   {canManage&&<section className="cg-fin-card">
    <div className="cg-fin-toolbar"><h3>{active?active.number:"Create invoice"}</h3>
     <button type="button" disabled={busy||Boolean(pending)} onClick={()=>{
@@ -260,6 +311,15 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
    {active?.status==="ISSUED"&&canIssue&&<FinanceInvoiceReceiptTools invoiceRef={active.ref}/>}
   </section>}
+  <div className="cg-fin-toolbar-actions" role="group" aria-label="Invoice status tabs">
+   {[
+    ["ALL","All"],["DRAFT","Drafts"],["SUBMITTED","Pending Verification"],
+    ["APPROVED","Approved"],["POSTED","Posted"],
+    ["ISSUED","Approved & Issued"],["REJECTED","Rejected"],["RETURNED","Returned"]
+   ].map(([key,label])=><button type="button" key={key}
+     aria-current={filter===key?"page":undefined}
+     onClick={()=>{setFilter(key);setOffset(0);}}>{label}</button>)}
+  </div>
   <div className="cg-fin-table-wrap"><h3>Original invoices</h3>
    <table className="cg-fin-table"><thead><tr><th>Invoice</th><th>Date</th><th>Counterparty</th>
     <th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>
