@@ -238,7 +238,7 @@ export class FinanceInvoiceDraftService{
      [target,actor.realmId]);
     invoice=found.rows[0];
     if(!invoice||invoice.created_by!==actor.accountId||
-       invoice.status!=="DRAFT"||invoice.version!==expected)
+       !["DRAFT","RETURNED"].includes(invoice.status)||invoice.version!==expected)
      throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
    }
    const payload:Draft={...(invoice?.draft_payload??{}),[stage.toLowerCase()]:normalized};
@@ -252,8 +252,13 @@ export class FinanceInvoiceDraftService{
    if(invoice){
     const updated=await tx.query(
      "UPDATE finance_invoice SET version=$3,draft_payload=$4::jsonb,"+
-     "current_digest=$5,updated_at=now() "+
-     "WHERE id=$1 AND root_realm_id=$2 AND status='DRAFT' AND version=$6 RETURNING id",
+     "current_digest=$5,status='DRAFT',approval_case_id=NULL,"+
+     "financial_year_id=NULL,branch_id=NULL,invoice_date=NULL,due_date=NULL,"+
+     "category_label=NULL,purpose=NULL,counterparty_name=NULL,counterparty_address=NULL,"+
+     "gross_minor=NULL,tax_minor=NULL,charges_minor=NULL,total_minor=NULL,"+
+     "receivable_account_id=NULL,income_account_id=NULL,tax_account_id=NULL,updated_at=now() "+
+     "WHERE id=$1 AND root_realm_id=$2 AND status IN('DRAFT','RETURNED') "+
+     "AND version=$6 RETURNING id",
      [id,actor.realmId,version,JSON.stringify(payload),sourceDigest,invoice.version]);
     if(updated.rowCount!==1)throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
    }else{
