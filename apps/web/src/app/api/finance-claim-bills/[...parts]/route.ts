@@ -8,6 +8,7 @@ function allowed(p:string[],method:string){
  if(p.length===2&&p[0]==="intents"&&UUID.test(p[1]))return method==="GET";
  if(p.length===3&&p[0]==="intents"&&UUID.test(p[1])&&p[2]==="confirm")return method==="POST";
  if(p.length===3&&p[0]==="claims"&&UUID.test(p[1])&&p[2]==="files")return method==="GET";
+ if(p.length===4&&p[0]==="review"&&p[1]==="files"&&UUID.test(p[2])&&p[3]==="download")return method==="GET";
  if(p.length===3&&p[0]==="files"&&UUID.test(p[1])&&p[2]==="download")return method==="GET";
  return false;
 }
@@ -38,7 +39,8 @@ async function handle(req:NextRequest,parts:string[],method:string){
  try{
   const res=await fetch(target,{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
-  const download=method==="GET"&&parts[0]==="files"&&parts[2]==="download";
+  const download=method==="GET"&&((parts[0]==="files"&&parts[2]==="download")||
+   (parts[0]==="review"&&parts[1]==="files"&&parts[3]==="download"));
   if(res.ok&&download){
    const type=res.headers.get("content-type")?.split(";")[0]??"";
    if(!mime.has(type))return NextResponse.json({message:"The private file type could not be verified."},{status:503});
