@@ -126,7 +126,7 @@ export class FinanceAccountsService{
   const offset=Number(offsetInput??"0");
   const [years,groups,accounts,opening,branches]=await Promise.all([
    this.db.query<{yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number}>(`
-    SELECT id AS "yearRef",name,start_on AS "startOn",end_on AS "endOn",status,version
+    SELECT id AS "yearRef",name,start_on::text AS "startOn",end_on::text AS "endOn",status,version
     FROM financial_year WHERE root_realm_id=$1
     ORDER BY start_on DESC,id DESC LIMIT 30`,[actor.realmId]),
    this.db.query<{groupRef:string;code:string;name:string;category:string}>(`
@@ -265,7 +265,7 @@ export class FinanceAccountsService{
    const claim=await this.claim(client,actor,"OPENING_POST",key,data);
    if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
    const fy=await client.query<{start_on:string;end_on:string;status:string}>(`
-    SELECT start_on,end_on,status FROM financial_year WHERE id=$1 AND root_realm_id=$2
+    SELECT start_on::text AS start_on,end_on::text AS end_on,status FROM financial_year WHERE id=$1 AND root_realm_id=$2
     FOR SHARE`,[year,actor.realmId]);
    if(!fy.rows[0]||fy.rows[0].status!=="OPEN")
     throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
