@@ -29,9 +29,24 @@ const financeErrors=new Set([
  "FINANCE_BUDGET_PERIOD_INVALID","FINANCE_BUDGET_REPLAY_CONFLICT",
  "FINANCE_BUDGET_REVIEW_INVALID","FINANCE_BUDGET_REVIEW_UNAVAILABLE",
  "FINANCE_BUDGET_NOT_APPROVED","FINANCE_BUDGET_EVENT_INVALID",
- "FINANCE_BUDGET_FILTER_INVALID"
+ "FINANCE_BUDGET_FILTER_INVALID",
+ "FINANCE_REPORT_FILTER_INVALID","FINANCE_REPORT_TOO_LARGE",
+ "FINANCE_RECONCILIATION_INVALID","FINANCE_RECONCILIATION_CONFLICT",
+ "FINANCE_RECONCILIATION_VARIANCE"
 ]);
 function allowed(parts:string[],method:string):boolean{
+ if(parts[0]==="reports"){
+  if(parts.length===2&&["options","summary","general-ledger","trial-balance",
+     "day-book","cash-book","bank-book"].includes(parts[1]))return method==="GET";
+  if(parts.length===3&&parts[1]==="reconciliation"&&
+     ["banks","matches"].includes(parts[2]))
+   return parts[2]==="banks"?method==="GET":method==="GET"||method==="POST";
+  if(parts.length===5&&parts[1]==="reconciliation"&&parts[2]==="banks"&&
+     UUID.test(parts[3])&&parts[4]==="entries")return method==="GET";
+  if(parts.length===5&&parts[1]==="reconciliation"&&parts[2]==="matches"&&
+     UUID.test(parts[3])&&parts[4]==="decision")return method==="POST";
+  return false;
+ }
  if(parts[0]==="budgets"){
   if(parts.length===2&&["options","list"].includes(parts[1]))return method==="GET";
   if(parts.length===2&&parts[1]==="drafts")return method==="POST";
@@ -118,6 +133,16 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="reports"){
+  const keys=new Set(["yearRef","branchRef","accountRef","from","to","offset"]);
+  for(const [k,value] of request.nextUrl.searchParams){
+   if(!keys.has(k)||value.length>80||(k.endsWith("Ref")&&value&&!UUID.test(value))||
+     (k==="offset"&&!/^(0|[1-9][0-9]{0,4})$/.test(value))||
+     (["from","to"].includes(k)&&value&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)))
+    return NextResponse.json({message:"Choose a valid financial year, account, branch and date filter."},{status:400});
+   target.searchParams.set(k,value);
+  }
+ }
  if(method==="GET"&&parts[0]==="budgets"&&parts[1]==="list"){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
@@ -195,7 +220,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "bankRef","bankItemReference","statementDate","statementAmount","reconciliationRef","budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
