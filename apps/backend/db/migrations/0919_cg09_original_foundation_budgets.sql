@@ -135,12 +135,14 @@ BEGIN
  IF NEW.kind='UTILIZE' THEN
   PERFORM 1 FROM journal j JOIN finance_voucher v
      ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id
+    JOIN finance_account a ON a.id=v.debit_account_id AND a.root_realm_id=v.root_realm_id
+    JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id
    WHERE j.id=NEW.source_journal_id AND j.root_realm_id=NEW.root_realm_id
     AND j.status='POSTED' AND j.financial_year_id=b.financial_year_id
     AND j.posting_kind='VOUCHER' AND j.posting_date BETWEEN b.period_start AND b.period_end
-    AND v.voucher_type='EXPENSE' AND v.category_label=b.category_label
+    AND v.voucher_type='EXPENSE' AND g.category='EXPENSE' AND g.name=b.category_label
     AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED')
-   FOR SHARE OF j,v;
+   FOR SHARE OF j,v,a,g;
   IF NOT FOUND THEN RAISE EXCEPTION 'Real posted journal required' USING ERRCODE='P0924'; END IF;
   SELECT COALESCE(SUM(l.debit_minor),0) INTO journal_total FROM journal_line l
    JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
