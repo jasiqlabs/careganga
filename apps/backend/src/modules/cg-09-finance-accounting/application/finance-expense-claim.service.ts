@@ -147,6 +147,95 @@ export class FinanceExpenseClaimService{
  /** Every original claim transition is keyed by the authenticated actor and
   * request digest. The result is persisted in the SAME transaction as the source.
   */
+ /** Correct only a genuinely returned CG03 case, preserving the SAME claim
+  * business reference and all immutable old bill/case revisions.
+  */
+ async correctReturned(bearer:string,claimInput:string,value:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
+  const claimRef=keyOf(claimInput);
+  if(!value||typeof value!=="object"||Array.isArray(value))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const body=value as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","purpose","category","expenseDate","amount"].includes(k)))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const key=keyOf(body.requestKey);
+  if(!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
+   return invalid("FINANCE_CLAIM_STALE","expectedVersion");
+  const expected=Number(body.expectedVersion);
+  const v={purpose:label(body.purpose,"purpose",3,500),
+   category:label(body.category,"category",2,80),
+   expenseDate:dateOnly(body.expenseDate),amountMinor:amount(body.amount)};
+  const revision=expected+1;
+  const hash=createHash("sha256").update(JSON.stringify([
+   "CG09_CLAIM_CORRECTED_V1",claimRef,revision,v.purpose,v.category,
+   v.expenseDate,v.amountMinor])).digest("hex");
+  const digest=createHash("sha256").update(JSON.stringify([
+   "CORRECT_CLAIM",claimRef,expected,hash])).digest("hex");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   const existing=await tx.query<{request_digest:string;result_status:string}>(
+    "SELECT request_digest,result_status FROM expense_claim_command "+
+    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
+    [actor.realmId,actor.accountId,key]);
+   if(existing.rows[0]){
+    if(existing.rows[0].request_digest!==digest)
+     throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,claimRef,status:"DRAFT",
+     version:revision,replayed:true};
+   }
+   const current=await tx.query<{id:string;version:number;status:string;requested_by:string;
+    approval_case_id:string|null}>(
+    "SELECT id,version,status,requested_by,approval_case_id FROM expense_claim "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,claimRef]);
+   const row=current.rows[0];
+   if(!row||row.requested_by!==actor.accountId||row.status!=="RETURNED"||
+      row.version!==expected||!row.approval_case_id)
+    throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   const decision=await tx.query(
+    "SELECT c.id FROM cg03_case c JOIN cg03_case_decision d "+
+    "ON d.case_id=c.id AND d.realm_id=c.realm_id "+
+    "WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='FINANCE_REIMBURSEMENT' "+
+    "AND c.finance_claim_id=$3 AND c.finance_claim_revision=$4 "+
+    "AND c.status='RETURNED' AND d.action='RETURN' "+
+    "AND d.fresh_password_verified_at IS NOT NULL FOR SHARE OF c,d",
+    [row.approval_case_id,actor.realmId,claimRef,expected]);
+   if(!decision.rowCount)
+    throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
+   await tx.query(
+    "INSERT INTO expense_claim_revision(root_realm_id,claim_id,version,current_digest,"+
+    "category_label,purpose,expense_date,amount_minor,recorded_by) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+    [actor.realmId,claimRef,revision,hash,v.category,v.purpose,v.expenseDate,
+     v.amountMinor,actor.accountId]);
+   const changed=await tx.query(
+    "UPDATE expense_claim SET category_label=$3,purpose=$4,expense_date=$5,"+
+    "amount_minor=$6,version=$7,current_digest=$8,status='DRAFT',"+
+    "bill_file_id=NULL,bill_file_version=NULL,approval_case_id=NULL "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status='RETURNED' AND version=$9 RETURNING id",
+    [claimRef,actor.realmId,v.category,v.purpose,v.expenseDate,v.amountMinor,
+     revision,hash,expected]);
+   if(changed.rowCount!==1)throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   await tx.query(
+    "INSERT INTO expense_claim_command(root_realm_id,claim_id,actor_ref,request_key,"+
+    "action,request_digest,result_status,case_id) "+
+    "VALUES($1,$2,$3,$4,'CORRECT',$5,'DRAFT',$6)",
+    [actor.realmId,claimRef,actor.accountId,key,digest,row.approval_case_id]);
+   await tx.query(
+    "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
+    "VALUES($1,$2,'CLAIM',$3,'CLAIM_CORRECTED_AFTER_RETURN',$4)",
+    [actor.realmId,actor.accountId,claimRef,key]);
+   await tx.query("COMMIT");
+   return {confirmed:true,claimRef,status:"DRAFT",version:revision,replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0919")
+    throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   throw e;
+  }finally{tx.release();}
+ }
  async submit(bearer:string,claimInput:string,payload:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
   await this.sessions.requireAction(bearer,"documents.files.view");
