@@ -69,7 +69,7 @@ export class FinanceInvoiceWorkflowService{
   return found.rows[0]??null;
  }
  private async record(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,
-  version:number,key:string,digest:string,action:"SUBMIT"|"RECONCILE"|"ACCRUAL_POST"|"ISSUE",
+  version:number,key:string,digest:string,action:"SUBMIT"|"RECONCILE"|"ACCRUAL_POST"|"ISSUE"|"RECEIPT_LINK",
   status:string){
   await tx.query(
    "INSERT INTO finance_invoice_command(root_realm_id,actor_ref,request_key,invoice_id,"+
