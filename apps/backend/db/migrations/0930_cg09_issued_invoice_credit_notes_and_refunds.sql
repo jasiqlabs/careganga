@@ -44,7 +44,7 @@ CREATE INDEX ix_cg09_credit_notes_date
 
 CREATE FUNCTION cg09_validate_issued_credit_note() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE inv record; orig record; correction record; paid bigint; collected bigint;
-DECLARE actual record; liability record;
+ actual record; liability record;
 BEGIN
  SELECT status,version,created_by,total_minor,gross_minor,tax_minor,charges_minor,
   branch_id,receivable_account_id,income_account_id,tax_account_id
