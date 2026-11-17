@@ -220,3 +220,59 @@
 }
 
 .cg-cms-review-image{display:block;max-width:22rem;width:100%;height:auto;max-height:15rem;object-fit:contain;border-radius:.7rem;border:1px solid #dce5dc;margin:.6rem 0}
+
+
+/* CG-18 approved Impact, Transparency, Media and Healthcare content uses the
+ * client's public gold/cream/emerald identity, not the blue Admin palette. */
+.cg-site-impact-group,.cg-site-legal,.cg-site-gallery,.cg-site-article-body,.cg-site-healthcare{
+ padding:clamp(1.7rem,4vw,4rem) 0}
+.cg-site-impact-heading h2,.cg-site-legal h1,.cg-site-gallery h1,
+.cg-site-article-body h1,.cg-site-healthcare h1{
+ font-family:Georgia,"Times New Roman",serif;font-size:clamp(2rem,3vw,3.6rem);
+ color:#183e34;line-height:1.12;max-width:28ch;margin:.5rem 0 1.2rem}
+.cg-site-provenance{color:#64766e;font-size:.83rem;line-height:1.6;margin:.6rem 0 1.2rem}
+.cg-site-impact-photo,.cg-site-article-cover{display:block;width:100%;max-height:30rem;
+ object-fit:cover;border-radius:1.2rem;margin:1.2rem 0}
+.cg-site-impact-grid,.cg-site-healthcare-grid,.cg-site-gallery-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.35rem;margin-top:1.5rem}
+.cg-site-impact-card,.cg-site-gallery-card{
+ border-radius:1rem;background:#fff;border:1px solid #e8e9e2;
+ box-shadow:0 .25rem .9rem #153b2811;padding:1.4rem;min-width:0}
+.cg-site-impact-card h3,.cg-site-healthcare-grid h2,.cg-site-gallery-card h2{
+ font-family:Georgia,serif;color:#1a4032;font-size:1.35rem;line-height:1.2;margin:.5rem 0}
+.cg-site-impact-card p,.cg-site-gallery-card p{color:#4a6258;overflow-wrap:anywhere}
+.cg-site-impact-card strong{font-size:1.7rem;color:#157055;display:block;margin:.6rem 0}
+.cg-site-gallery-photo,.cg-site-gallery-card video{width:100%;aspect-ratio:4/3;
+ object-fit:cover;border-radius:.8rem;max-width:100%}
+.cg-site-table-wrap{width:100%;overflow-x:auto;margin-top:1.4rem}
+.cg-site-evidence-table{width:100%;border-collapse:collapse;min-width:30rem;
+ text-align:left;background:#fff;border:1px solid #d7e2da;border-radius:.65rem}
+.cg-site-evidence-table caption{text-align:left;font-weight:700;padding:1rem;color:#184334}
+.cg-site-evidence-table th,.cg-site-evidence-table td{padding:1rem;
+ border-bottom:1px solid #e5ece5;vertical-align:top}
+.cg-site-evidence-table thead{background:#dceee4;color:#133b2c}
+.cg-site-legal-status{font-weight:700;color:#1d624b;padding:.85rem;
+ background:#f1f7ee;border-radius:.5rem;width:fit-content}
+.cg-site-legal-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:1rem;margin:1.5rem 0}
+.cg-site-legal-data>div{border-bottom:1px solid #dbe5d9;padding:1rem 0}
+.cg-site-legal-data dt{font-size:.8rem;color:#6a766b;text-transform:uppercase;letter-spacing:.04em}
+.cg-site-legal-data dd{margin:.35rem 0;font-size:1rem;font-weight:600;color:#1e4e3b;overflow-wrap:anywhere}
+.cg-site-legal-notice{font-weight:600;color:#784f0b;background:#fff5df;
+ padding:1rem;border-radius:.7rem}
+.cg-site-article-body{max-width:50rem;line-height:1.9}
+.cg-site-article-body>p{overflow-wrap:anywhere;white-space:pre-wrap}
+.cg-site-article-lead{font-size:1.2rem;line-height:1.65;color:#385c4a}
+.cg-site-tags{display:flex;flex-wrap:wrap;gap:.55rem}
+.cg-site-tags span{border:1px solid #d7e5d3;border-radius:1rem;padding:.3rem .8rem;color:#235e46}
+.cg-site-healthcare{background:linear-gradient(135deg,#e8f5eb,#fffbed);border-radius:1.2rem;
+ padding:clamp(1.7rem,4vw,4rem);margin-top:2rem}
+@media(max-width:860px){
+ .cg-site-impact-grid,.cg-site-healthcare-grid,.cg-site-gallery-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:540px){
+ .cg-site-impact-grid,.cg-site-healthcare-grid,.cg-site-gallery-grid,
+ .cg-site-legal-data{grid-template-columns:1fr}
+ .cg-site-healthcare{padding:1.2rem}
+}
