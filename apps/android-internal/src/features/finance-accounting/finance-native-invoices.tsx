@@ -46,6 +46,21 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  const [dashboard,setDashboard]=useState<InvoiceDashboard|null>(null);
  const [current,setCurrent]=useState<{ref:string;number:string;version:number;status:string}|null>(null);
  const [cancelSource,setCancelSource]=useState("");
+ const [protectedEligible,setProtectedEligible]=useState(false);
+ const canCancelPosted=canCancel&&protectedEligible;
+ useEffect(()=>{
+  if(!canCancel){setProtectedEligible(false);return;}
+  let active=true;
+  void (async()=>{
+   try{
+    const result=await request<{canCancel:boolean}>(token,
+     "/api/finance-accounting/invoices/cancel-eligibility");
+    if(active)setProtectedEligible(result.canCancel===true);
+   }catch(e){if(active)setProtectedEligible(false);
+    if(e instanceof Error&&e.message==="SESSION_EXPIRED")onExpired();}
+  })();
+  return()=>{active=false;};
+ },[token,canCancel,onExpired]);
  const [form,setForm]=useState<Form>(empty());
  const [stage,setStage]=useState<Stage>("INFO");
  const [years,setYears]=useState<Year[]>([]);
@@ -378,7 +393,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
      disabled={busy||Boolean(pending)} onPress={()=>workflow("reconcile")}/>}
     {current?.status==="APPROVED"&&canPost&&<Action label="Post approved balanced receivable"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("post")}/>}
-    {current?.status==="POSTED"&&canCancel&&<Action label="Reverse unissued posted invoice"
+    {current?.status==="POSTED"&&canCancelPosted&&<Action label="Reverse unissued posted invoice"
       secondary disabled={busy||Boolean(pending)}
       onPress={()=>setCancelSource(current.ref)}/>}
      {current?.status==="REVERSED"&&<Card title="Invoice reversed before issue">
