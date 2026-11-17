@@ -326,7 +326,47 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
        error={notice?.field==="amount"?notice.message:undefined}/>
      <Text style={styles.hint}>This creates one balanced, immutable entry. The amount is posted once on each side—not twice as cash.</Text>
     </>}
-    {(kind==="accountStatus"||kind==="yearStatus")&&<View style={styles.warn}>
+    {kind==="manual"&&<>
+      <ChoiceRow title="Open financial year *" value={form.financialYearRef}
+       options={data.years.filter(y=>y.status==="OPEN").map(y=>({value:y.yearRef,
+        label:y.name+" · "+y.startOn+" – "+y.endOn}))}
+       onChange={v=>change("financialYearRef",v)}/>
+      <Field label="Posting date (YYYY-MM-DD) *" value={form.postingDate} maxLength={10}
+       keyboard="numeric" onChange={v=>change("postingDate",v)}
+       error={notice?.field==="postingDate"?notice.message:undefined}/>
+      <Field label="Journal description *" value={form.description} maxLength={500}
+       onChange={v=>change("description",v)}
+       error={notice?.field==="description"?notice.message:undefined}/>
+      <Field label="Find permitted account by name or code" value={search}
+       maxLength={80} onChange={setSearch} placeholder="Search account name or code"/>
+      {choiceBusy&&<ActivityIndicator color={theme.primary}/>}
+      {!!choiceError&&<View style={styles.warn}><Text style={styles.notice}>{choiceError}</Text>
+       <Pressable accessibilityRole="button" style={styles.button} onPress={()=>setSearchReload(n=>n+1)}>
+        <Text style={styles.buttonText}>Retry account search</Text></Pressable></View>}
+      {choiceMore&&<Text style={styles.hint}>More accounts exist. Refine the search before selecting.</Text>}
+      {manualLines.map((line,index)=><View style={styles.warn} key={index}>
+       <View style={styles.lineHead}><Text style={styles.bold}>Journal line {index+1}</Text>
+        {manualLines.length>2&&<Pressable accessibilityRole="button"
+          onPress={()=>setManualLines(old=>old.filter((_,i)=>i!==index))}>
+          <Text style={styles.backText}>Remove</Text></Pressable>}</View>
+       <ChoiceRow title="Account *" value={line.accountRef}
+        options={[...options.filter(x=>x.accountRef===line.accountRef),
+         ...options.filter(x=>x.accountRef!==line.accountRef).slice(0,11)]
+          .map(x=>({value:x.accountRef,label:x.name+" · "+x.code+
+           (x.branchName?" ("+x.branchName+")":"")}))}
+        onChange={v=>editManualLine(index,"accountRef",v)}/>
+       <Field label="Debit amount in INR" value={line.debit} maxLength={16} keyboard="numeric"
+        onChange={v=>editManualLine(index,"debit",v)}/>
+       <Field label="Credit amount in INR" value={line.credit} maxLength={16} keyboard="numeric"
+        onChange={v=>editManualLine(index,"credit",v)}/>
+      </View>)}
+      {manualLines.length<40&&<Pressable accessibilityRole="button" style={styles.button}
+       onPress={()=>setManualLines(old=>[...old,{accountRef:"",debit:"",credit:""}])}>
+       <Text style={styles.buttonText}>+ Add journal line</Text></Pressable>}
+      <Text style={styles.hint}>Each line requires either a debit or credit. Totals must balance.
+       A posted journal does not confirm voucher approval or payment.</Text>
+     </>}
+     {(kind==="accountStatus"||kind==="yearStatus")&&<View style={styles.warn}>
       <Text style={styles.bold}>{target?.name??"Selected record"}</Text>
       <Text style={styles.hint}>{kind==="yearStatus"?
        "Closing prevents new postings in this financial year. Historical records remain unchanged.":
@@ -388,6 +428,7 @@ const styles=StyleSheet.create({
   backgroundColor:theme.surface},
  notice:{color:theme.text,fontSize:13,lineHeight:20},
  bold:{fontWeight:"700",fontSize:15,color:theme.text},
+ lineHead:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:10},
  actions:{flexDirection:"row",justifyContent:"flex-end",gap:10,paddingTop:14},
  button:{borderWidth:1,borderColor:theme.border,borderRadius:7,paddingHorizontal:16,
   minHeight:48,justifyContent:"center",backgroundColor:theme.surface},
