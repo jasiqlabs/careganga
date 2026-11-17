@@ -104,6 +104,8 @@ CREATE TABLE finance_budget_event(
  CHECK((kind='UTILIZE' AND source_journal_id IS NOT NULL)
    OR(kind<>'UTILIZE' AND source_journal_id IS NULL))
 );
+CREATE UNIQUE INDEX ux_cg09_one_budget_per_spent_journal ON finance_budget_event
+ (root_realm_id,source_journal_id) WHERE source_journal_id IS NOT NULL;
 CREATE INDEX ix_cg09_budget_source_events ON finance_budget_event
  (root_realm_id,budget_id,recorded_at DESC,id DESC);
 CREATE TRIGGER cg09_budget_event_immutable BEFORE UPDATE OR DELETE
@@ -119,7 +121,7 @@ CREATE FUNCTION cg09_budget_event_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE b record; used bigint; committed bigint; released bigint; allocated bigint;
  journal_total bigint;
 BEGIN
- SELECT status,approved_ceiling_minor,financial_year_id,branch_id INTO b
+ SELECT status,approved_ceiling_minor,financial_year_id,branch_id,category_label,period_start,period_end INTO b
   FROM finance_budget WHERE id=NEW.budget_id AND root_realm_id=NEW.root_realm_id FOR UPDATE;
  IF NOT FOUND OR b.status<>'APPROVED' THEN
   RAISE EXCEPTION 'Budget must have protected approval' USING ERRCODE='P0924';
@@ -131,11 +133,14 @@ BEGIN
  INTO used,committed,released,allocated
  FROM finance_budget_event WHERE root_realm_id=NEW.root_realm_id AND budget_id=NEW.budget_id;
  IF NEW.kind='UTILIZE' THEN
-  PERFORM 1 FROM journal j
+  PERFORM 1 FROM journal j JOIN finance_voucher v
+     ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id
    WHERE j.id=NEW.source_journal_id AND j.root_realm_id=NEW.root_realm_id
     AND j.status='POSTED' AND j.financial_year_id=b.financial_year_id
-    AND j.posting_kind IN('VOUCHER','GENERAL')
-   FOR SHARE;
+    AND j.posting_kind='VOUCHER' AND j.posting_date BETWEEN b.period_start AND b.period_end
+    AND v.voucher_type='EXPENSE' AND v.category_label=b.category_label
+    AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED')
+   FOR SHARE OF j,v;
   IF NOT FOUND THEN RAISE EXCEPTION 'Real posted journal required' USING ERRCODE='P0924'; END IF;
   SELECT COALESCE(SUM(l.debit_minor),0) INTO journal_total FROM journal_line l
    JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
