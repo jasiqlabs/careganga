@@ -98,8 +98,8 @@ export class FinanceReportsService{
   const row=await this.db.query<{accountName:string;code:string;category:string;
    debitMinor:string;creditMinor:string;normalSide:string}>(
    "SELECT a.name AS \"accountName\",a.code,g.category,a.normal_side AS \"normalSide\","+
-   "COALESCE(SUM(l.debit_minor),0)::text AS \"debitMinor\","+
-   "COALESCE(SUM(l.credit_minor),0)::text AS \"creditMinor\" "+
+   "COALESCE(SUM(CASE WHEN j.id IS NOT NULL THEN l.debit_minor ELSE 0 END),0)::text AS \"debitMinor\","+
+   "COALESCE(SUM(CASE WHEN j.id IS NOT NULL THEN l.credit_minor ELSE 0 END),0)::text AS \"creditMinor\" "+
    "FROM finance_account a JOIN account_group g ON g.id=a.group_id "+
    "AND g.root_realm_id=a.root_realm_id "+
    "LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id "+
@@ -107,10 +107,13 @@ export class FinanceReportsService{
    "LEFT JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
    "AND j.financial_year_id=$2 AND j.status='POSTED' "+
    "WHERE a.root_realm_id=$1 "+
-   "GROUP BY a.id,a.name,a.code,a.normal_side,g.category ORDER BY a.code,a.id LIMIT 1000",
+   "GROUP BY a.id,a.name,a.code,a.normal_side,g.category ORDER BY a.code,a.id LIMIT 1001",
    [actor.realmId,yearRef,branch]);
   // Calculate year-only totals in the SUM conditional; unrelated journal rows
   // must not be counted merely because the account exists in another year.
+  if(row.rows.length>1000)
+   throw new ConflictException({code:"FINANCE_REPORT_TOO_LARGE",
+    message:"Select a branch or narrower financial-year account set."});
   const balances=row.rows.map(a=>{
    const debit=BigInt(a.debitMinor),credit=BigInt(a.creditMinor);
    const net=debit-credit;
