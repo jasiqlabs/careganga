@@ -22,6 +22,13 @@
 - Configure CG-19 **real** S3 or Firebase private storage and required ClamAV scanner, private Unicode PDF font, versioning/checksum/revocation; compare actual invoice/receipt PDFs with the client-supplied references and U39/U40 originals. Verify the `UNKNOWN` provider recovery/reissue design explicitly; never treat an uncertain write as issued.
 - Compare original CareGanga Finance screenshots A19, B01, B02, U33–U42 to rendered Web and Internal Android pages for palette, shell, data density, KPI cards, tables, four-step invoice flow, status labels, drawers, access states, keyboard, device and responsive layout. Still images do **not** prove animation timing.
 
+## Additional critical regression cases from the 17 Nov source-fix cycle
+
+- **Invoice command-status SQL:** post a genuine invoice command; request `GET .../command-status/:requestKey` as the same actor and verify original status. Try another actor, different Foundation root and unknown key; all must be scoped and should not fail due to SQL bind count.
+- **Bank reviewer replay key:** for two real pending reconciliations, use one reviewer request key to verify the first then replay the identical key against the second. Server must reject the second, retain unchanged original bank record and preserve both independent decisions and original journal totals. Test incorrect action under the same key.
+- **Invoice and receipt original PDF provider recovery:** simulate committed create-only object plus lost DB acknowledgement (original row PENDING/UNKNOWN). Retry with **same** issue key and source, verify actual S3/Firebase private version and original checksum, independent ClamAV proof, one CG19 document, one CG09 issuance, no replacement PDF. Simulate object absent, mismatched bytes, malicious PDF, revoked account and unavailable scanner: all must fail closed without an ISSUED claim; retry must use only the server-created original document key.
+- **Private upload-key denial:** request a signed client upload for an `invoices/` or `receipts/` document key and assert DENIED; normal authorized document/evidence reservations outside those server-owned prefixes must continue to work.
+
 ## Known source gaps — must be resolved before calling CG-09 complete
 
 Original invoice credit-note/reversal and legally versioned reissue; recovery from uncertain CG-19 storage/provider states; actual verified bank-statement evidence versus a manually entered reference; full reconciliation mismatch/correction history; policy/executed check for per-branch report/export visibility; exact client PDF template verification; concrete CG05/CG12 source integration only when those owner modules are delivered (no speculative selectors). These are documented in `tasks.md`; do not silently waive any gate.
