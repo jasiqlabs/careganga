@@ -42,6 +42,28 @@ type SubmittedRow={
 export class BranchSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ /** CG-09 finance uses only the actual active branch identity, not private branch files. */
+ async financeBranches(bearer:string):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
+   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+   const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
+     SELECT id,name,branch_code,version FROM branch
+     WHERE root_realm_id=$1 AND status='ACTIVE'
+     ORDER BY name,id LIMIT 100`,[actor.realmId]);
+   return rows.rows.map(b=>({branchRef:b.id,name:b.name,code:b.branch_code,version:b.version}));
+ }
+ /** Finance transaction must recheck real CG-02 branch and current CG-01 action. */
+ async financeActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
+     branchRef:string,expectedVersion:number,action:string):Promise<void>{
+   if(!["finance.accounts.manage","finance.journals.post"].includes(action))
+     throw new ForbiddenException("You do not have permission to use this branch for finance");
+   await this.identity.assertCurrent(client,actor,action);
+   const rows=await client.query<{version:number}>(`
+     SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
+     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
+   if(!rows.rows[0])throw new ConflictException("The selected branch is not active. Choose an active branch.");
+   if(rows.rows[0].version!==expectedVersion)
+     throw new ConflictException("This branch changed. Refresh the list and select it again.");
+ }
  private async admin(bearer:string):Promise<boolean>{
    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
    catch(e){if(e instanceof ForbiddenException)return false;throw e;}
