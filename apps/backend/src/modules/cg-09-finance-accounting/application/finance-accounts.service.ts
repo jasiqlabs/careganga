@@ -424,10 +424,11 @@ export class FinanceAccountsService{
   });
  }
  async commandStatus(bearer:string,kindInput:string,keyInput:string){
-  const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
   const kind=kindInput as CommandKind;
   if(!["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"].includes(kind))
    throw new BadRequestException({code:"FINANCE_REQUEST_CONFLICT"});
+  const actor=await this.sessions.requireAction(bearer,
+   kind==="OPENING_POST"?"finance.journals.post":"finance.accounts.manage");
   const key=ref(keyInput,"requestKey");
   const found=await this.db.query<{entity_ref:string|null}>(`
    SELECT entity_ref FROM finance_command WHERE root_realm_id=$1
