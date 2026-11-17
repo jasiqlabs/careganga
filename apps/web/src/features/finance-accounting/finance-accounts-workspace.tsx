@@ -88,9 +88,14 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    const result=await res.json() as Setup;
    if(!result||!Array.isArray(result.accounts)||!Array.isArray(result.years)||
      !Array.isArray(result.groups)||!Array.isArray(result.branches)||
-     !Array.isArray(result.openingJournals)||!Array.isArray(result.categorySummary))throw Error("Finance response could not be confirmed.");
+     !Array.isArray(result.openingJournals)||!Array.isArray(result.categorySummary)||
+     !result.categorySummary.every(x=>x&&typeof x.category==="string"&&
+       ["ASSET","LIABILITY","FUND","INCOME","EXPENSE"].includes(x.category)&&
+       typeof x.balanceMinor==="string"&&/^-?[0-9]{1,25}$/.test(x.balanceMinor)&&
+       typeof x.accountCount==="string"&&/^[0-9]{1,9}$/.test(x.accountCount)))
+      throw Error("Finance records could not be verified. Refresh and try again.");
    setData(result);
-  }catch(e){setError(e instanceof Error?e.message:"Finance accounts could not be loaded. Please retry.");}
+  }catch(e){setData(null);setError(e instanceof Error?e.message:"Finance accounts could not be loaded. Please retry.");}
   finally{setLoading(false);}
  },[appliedSearch,offset]);
  useEffect(()=>{void load();},[load]);
@@ -156,9 +161,21 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     else{setPending(null);}
     return;
    }
+   const confirmation:unknown=await res.json().catch(()=>null);
+   if(!confirmation||typeof confirmation!=="object"||Array.isArray(confirmation)||
+      !("confirmed" in confirmation)||confirmation.confirmed!==true||
+      !("recordRef" in confirmation)||typeof confirmation.recordRef!=="string")throw Error("UNCONFIRMED");
+   const earlier="replayed" in confirmation&&confirmation.replayed===true;
+   const done:Record<string,string>={
+    YEAR_CREATE:"Financial year created",
+    GROUP_CREATE:"Account group created",
+    ACCOUNT_CREATE:"Financial account created",
+    OPENING_POST:"Balanced opening entry posted",
+    YEAR_STATUS:"Financial year closed",
+    ACCOUNT_STATUS:request.payload.status==="INACTIVE"?"Account deactivated":"Account reactivated"
+   };
    setPending(null);setDrawer(null);setStatusConfirm(null);
-   setSuccess("The "+(drawer?friendlyKind[drawer].toLowerCase():"finance request")+
-    " was saved successfully.");
+   setSuccess(earlier?"Your earlier finance change was confirmed.":(done[request.kind]??"Finance change")+" successfully.");
    setOffset(0);void load();
   }catch{
    setPending(request);
