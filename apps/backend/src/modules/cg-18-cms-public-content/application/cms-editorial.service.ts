@@ -355,10 +355,10 @@ export class CmsEditorialService{
     revisionRef=rev.rows[0].id;
    }else{
     await tx.query("UPDATE cms_page_revision SET title=$3,seo_title=$4,"+
-     "seo_description=$5,seo_canonical_path=$6,content_digest=$7,created_by=$8 "+
+     "seo_description=$5,seo_canonical_path=$6,content_digest=$7 "+
      "WHERE id=$1 AND foundation_root_id=$2 AND status='DRAFT'",
      [current.id,actor.realmId,value.title,value.seoTitle,value.seoDescription,
-      value.canonicalPath,digest,actor.accountId]);
+      value.canonicalPath,digest]);
    }
    await this.putSections(tx,actor,revisionRef,value);
    if(value.navigation)await this.saveNavigation(tx,actor,revisionRef,digest,value.navigation);
