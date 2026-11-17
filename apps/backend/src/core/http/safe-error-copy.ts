@@ -140,7 +140,9 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_REPORT_TOO_LARGE:"The trial balance is too large. Choose a narrower branch or financial-year account set.",
       FINANCE_RECONCILIATION_INVALID:"Choose a real posted bank entry and enter the matching bank statement reference and amount.",
       FINANCE_RECONCILIATION_CONFLICT:"This bank statement item was already recorded or the independent review has changed.",
-      FINANCE_RECONCILIATION_VARIANCE:"Statement amount and original bank journal amount must match before verification."
+      FINANCE_RECONCILIATION_VARIANCE:"Statement amount and original bank journal amount must match before verification.",
+      FINANCE_RECONCILIATION_EVIDENCE_INVALID:"Upload and scan the original bank statement, then select the exact file and version for independent review.",
+      FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
