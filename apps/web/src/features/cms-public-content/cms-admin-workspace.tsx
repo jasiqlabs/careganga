@@ -10,7 +10,7 @@ type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef
  revisionNo:number;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
  sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:Asset[];navigation:NavDesired|null;publicationStatus:string};
+ assets:Asset[];navigation:NavDesired|null;publicationStatus:string;scheduledAt:string|null};
 type Review={caseRef:string;number:string;title:string;status:string;revision:number};
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
@@ -110,6 +110,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [reviewPassword,setReviewPassword]=useState("");
  const [remark,setRemark]=useState("");
  const [withdrawReason,setWithdrawReason]=useState("");
+ const [publishWhen,setPublishWhen]=useState("");
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
@@ -124,7 +125,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   if(busy)return;
   setBusy(true);setError("");setNotice("");
   try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setDraft(fromPage(x));
-   setReviewing(false);setReview(null);setPreview(false);setPending(null);}
+   setReviewing(false);setReview(null);setPreview(false);setPending(null);setPublishWhen("");}
   catch(e){setError(e instanceof Error?e.message:"Page detail unavailable.");}
   finally{setBusy(false);}
  }
@@ -401,20 +402,33 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       onClick={()=>command("Submitted for approval","pages/"+selected.pageRef+"/submit","POST",
        {expectedVersion:selected.version})}>Send for review</button>}
      {selected&&selected.status==="SUBMITTED"&&selected.approvalCaseRef&&canPublish&&
-      <button type="button" disabled={busy||!!pending}
-       onClick={()=>command("Page publication","pages/"+selected.pageRef+"/publish","POST",
-        {expectedVersion:selected.version,caseRef:selected.approvalCaseRef})}>
-       Publish approved page</button>}
-     {selected&&selected.publicationStatus==="EFFECTIVE"&&canPublish&&<>
+      !selected.scheduledAt&&<>
+      <label>Publish later (optional, local date and time)
+       <input type="datetime-local" value={publishWhen}
+        onChange={e=>setPublishWhen(e.target.value)}/></label>
+      <button type="button" disabled={busy||!!pending||
+        (Boolean(publishWhen)&&(!Number.isFinite(Date.parse(publishWhen))||
+         Date.parse(publishWhen)-Date.now()<60000))}
+       onClick={()=>{
+        const publishAt=publishWhen?new Date(publishWhen).toISOString():undefined;
+        command(publishAt?"Scheduled publication":"Page publication",
+         "pages/"+selected.pageRef+"/publish","POST",
+         {expectedVersion:selected.version,caseRef:selected.approvalCaseRef,
+          ...(publishAt?{publishAt}:{})});
+       }}>
+       {publishWhen?"Schedule approved page":"Publish approved page now"}</button></>}
+     {selected&&(selected.publicationStatus==="EFFECTIVE"||selected.scheduledAt)&&canPublish&&<>
       <label>Why hide this page?<input value={withdrawReason} maxLength={300}
        onChange={e=>setWithdrawReason(e.target.value)}/></label>
       <button type="button" disabled={busy||!!pending||withdrawReason.trim().length<8}
        onClick={()=>command("Publication withdrawal","pages/"+selected.pageRef+"/withdraw","POST",
-        {expectedVersion:selected.version,reason:withdrawReason})}>Hide from public website</button>
+        {expectedVersion:selected.version,reason:withdrawReason})}>
+       {selected.scheduledAt?"Cancel scheduled publication / hide page":"Hide from public website"}</button>
      </>}
     </div>
     {selected&&<p className="cg-cms-muted">Current draft: {selected.status.replaceAll("_"," ")}.
      Public page: {selected.publicationStatus.replaceAll("_"," ")}.
+     {selected.scheduledAt&&" Scheduled for "+new Date(selected.scheduledAt).toLocaleString()+"."}
      {selected.status==="SUBMITTED"&&" A different authorized reviewer must approve the exact draft."}</p>}
    </section>}
   </>}
