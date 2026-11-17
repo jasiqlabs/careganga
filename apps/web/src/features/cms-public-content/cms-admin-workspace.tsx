@@ -196,6 +196,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
  const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
+ const [teamEditorTab,setTeamEditorTab]=useState<"BASIC"|"DETAILS"|"PREVIEW">("BASIC");
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
@@ -668,19 +669,44 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      </fieldset>
     </>}
     <fieldset><legend>Public team members (with permission)</legend>
+      <p>Public profiles only. Private employee records and contact details are not copied into the website.</p>
       <label>Section heading<input disabled={!canManage} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
+      <p>{draft.team.length} public profile{draft.team.length===1?"":"s"} in this draft</p>
+      <div className="cg-cms-tabs" role="tablist" aria-label="Team profile editor">
+       {([["BASIC","Basic Information"],["DETAILS","Additional Details"],
+         ["PREVIEW","Preview"]] as const).map(([value,label])=>
+        <button type="button" key={value} role="tab"
+         className={teamEditorTab===value?"is-active":""}
+         aria-selected={teamEditorTab===value}
+         onClick={()=>setTeamEditorTab(value)}>{label}</button>)}
+      </div>
       {draft.team.map((member,index)=><div className="cg-cms-team" key={index}>
-       <label>Public name<input disabled={!canManage} value={member.name}
-        onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,name:e.target.value}:v))}/></label>
-       <label>Role<input disabled={!canManage} value={member.designation}
-        onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,designation:e.target.value}:v))}/></label>
-       <label>Biography<textarea disabled={!canManage} value={member.bio}
-        onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,bio:e.target.value}:v))}/></label>
-       <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-        checked={member.consentConfirmed} onChange={e=>
-         edit("team",draft.team.map((v,i)=>i===index?{...v,consentConfirmed:e.target.checked}:v))}/>
-        I confirm permission to publish this profile</label>
+       <h4>{member.name||"Team profile "+(index+1)}</h4>
+       {teamEditorTab==="BASIC"&&<>
+        <label>Public name<input disabled={!canManage} maxLength={100} value={member.name}
+         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,name:e.target.value}:v))}/></label>
+        <label>Designation<input disabled={!canManage} maxLength={100} value={member.designation}
+         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,designation:e.target.value}:v))}/></label>
+       </>}
+       {teamEditorTab==="DETAILS"&&<>
+        <label>Public biography<textarea disabled={!canManage} maxLength={600} value={member.bio}
+         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,bio:e.target.value}:v))}/></label>
+        <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+         checked={member.consentConfirmed} onChange={e=>
+          edit("team",draft.team.map((v,i)=>i===index?{...v,consentConfirmed:e.target.checked}:v))}/>
+         The Foundation confirms this person's permission for public display</label>
+       </>}
+       {teamEditorTab==="PREVIEW"&&<div className="cg-cms-team-preview">
+        {draft.assets.filter(asset=>asset.role==="TEAM"&&asset.order===index)
+         .map(asset=><img key={asset.fileRef} className="cg-cms-review-image"
+          alt={asset.altText} src={"/api/cms-image-preview/"+asset.fileRef} loading="lazy"/>)}
+        <strong>{member.name||"Name not entered"}</strong>
+        <span>{member.designation||"Designation not entered"}</span>
+        {!!member.bio&&<p>{member.bio}</p>}
+        <small>{member.consentConfirmed?"Public-use permission confirmed":
+         "Permission required before publication"}</small>
+       </div>}
        {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
         Remove profile</button>}
       </div>)}
