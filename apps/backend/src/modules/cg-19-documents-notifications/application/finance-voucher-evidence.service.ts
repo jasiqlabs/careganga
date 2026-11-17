@@ -148,7 +148,8 @@ export class FinanceVoucherEvidenceService{
     AND owner_kind='CG09_VOUCHER'`,[id(reference),actor.realmId]);
   const row=result.rows[0];
   if(!row)throw new NotFoundException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
-  await this.source.current(bearer,row.voucher_id,row.voucher_version,write);
+  if(write)await this.source.current(bearer,row.voucher_id,row.voucher_version,true);
+  else await this.source.historical(bearer,row.voucher_id,row.voucher_version);
   return {actor,row};
  }
  async status(bearer:string,reference:string){
@@ -222,7 +223,7 @@ export class FinanceVoucherEvidenceService{
  }
  async list(bearer:string,voucherRef:string,voucherVersion:number){
   const actor=await this.authority(bearer);
-  await this.source.current(bearer,id(voucherRef),voucherVersion);
+  await this.source.historical(bearer,id(voucherRef),voucherVersion);
   const found=await this.db.query<{fileRef:string;fileVersion:number;mime:string;sizeBytes:string}>(`
    SELECT f.id AS "fileRef",f.revision AS "fileVersion",
     f.original_mime AS mime,f.verified_size_bytes::text AS "sizeBytes"
@@ -320,7 +321,7 @@ export class FinanceVoucherEvidenceService{
    [id(fileRef),actor.realmId]);
   const file=row.rows[0];
   if(!file)throw new NotFoundException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
-  await this.source.current(bearer,file.voucher_id,file.voucher_version);
+  await this.source.historical(bearer,file.voucher_id,file.voucher_version);
   const bytes=await this.storage.readVerifiedPrivateObject({
    objectKey:file.object_key,objectVersion:file.object_version,
    maxBytes:Number(file.verified_size_bytes)
@@ -329,7 +330,7 @@ export class FinanceVoucherEvidenceService{
      createHash("sha256").update(bytes).digest("hex")!==file.verified_sha256)
    throw new ServiceUnavailableException("The original private evidence could not be verified.");
   await this.authority(bearer);
-  await this.source.current(bearer,file.voucher_id,file.voucher_version);
+  await this.source.historical(bearer,file.voucher_id,file.voucher_version);
   const live=await this.db.query<{id:string}>(`
     SELECT id FROM cg19_stored_file
     WHERE id=$1 AND realm_id=$2 AND revision=$3
