@@ -8,6 +8,7 @@ import * as SecureStore from "expo-secure-store";
 import {careGangaTheme as theme} from "../../../packages/design-tokens/src/index";
 import {RecipientNotifications} from "../../../packages/native-communications/src/recipient-notifications";
 import {FoundationContactScreen} from "../src/features/support/foundation-contact-screen";
+import {PublicCmsContent} from "../src/features/cms/public-cms-screen";
 
 const KEY="cg_public_own_notice_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -139,7 +140,7 @@ export default function PublicHome(){
               accessibilityLabel="CareGanga Foundation" style={styles.brandImage}/>
             <Text accessibilityRole="header" style={styles.title}>CareGanga Foundation</Text>
           </View>
-          <Text>Foundation operations and healthcare assistance.</Text>
+          <PublicCmsContent onContact={()=>setContactOpen(true)}/>
           <View style={styles.card}>
             <Text style={styles.heading}>Contact & Help</Text>
             <Text>Send a private Foundation request without signing in,
