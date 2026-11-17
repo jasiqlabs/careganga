@@ -580,6 +580,14 @@ export class CmsEditorialService{
    const final=await this.approvals.approved(tx,actor,{
     caseRef,pageRef:page.id,revisionRef:rev.id,
     revisionNo:rev.revision_no,digest:rev.content_digest});
+   // One independent decision can authorize one publication. The page row
+   // lock serializes competing publishers so repeated DIFFERENT request keys
+   // yield a safe 409 rather than a raw database unique-index failure.
+   const consumed=await tx.query(
+    "SELECT id FROM cms_publication WHERE foundation_root_id=$1 "+
+    "AND page_id=$2 AND cg03_final_decision_ref=$3 FOR SHARE",
+    [actor.realmId,page.id,final.decisionRef]);
+   if(consumed.rowCount)throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
    const assets=await tx.query<{cg19_file_ref:string;cg19_validated_version:number}>(
     "SELECT cg19_file_ref,cg19_validated_version FROM cms_asset_placement "+
     "WHERE foundation_root_id=$1 AND page_revision_id=$2 FOR SHARE",
