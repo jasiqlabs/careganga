@@ -2,9 +2,9 @@ import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const kinds=new Set(["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"]);
+const kinds=new Set(["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST","GENERAL_POST"]);
 const financeErrors=new Set([
- "FINANCE_YEAR_NAME_TOO_LONG","FINANCE_GROUP_NAME_TOO_LONG","FINANCE_ACCOUNT_NAME_TOO_LONG","FINANCE_BANK_LABEL_TOO_LONG","FINANCE_GROUP_CATEGORY_INVALID","FINANCE_REQUEST_KEY_INVALID","FINANCE_ACCOUNT_SEARCH_INVALID","FINANCE_ACCOUNT_KIND_INVALID","FINANCE_ACCOUNT_STATUS_INVALID","FINANCE_FILTER_INVALID","FINANCE_BANK_LABEL_INVALID","FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_POSTED_IMMUTABLE","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
+ "FINANCE_YEAR_NAME_TOO_LONG","FINANCE_GROUP_NAME_TOO_LONG","FINANCE_ACCOUNT_NAME_TOO_LONG","FINANCE_BANK_LABEL_TOO_LONG","FINANCE_GROUP_CATEGORY_INVALID","FINANCE_REQUEST_KEY_INVALID","FINANCE_JOURNAL_MEMO_INVALID","FINANCE_JOURNAL_LINES_INVALID","FINANCE_ACCOUNT_SEARCH_INVALID","FINANCE_ACCOUNT_KIND_INVALID","FINANCE_ACCOUNT_STATUS_INVALID","FINANCE_FILTER_INVALID","FINANCE_BANK_LABEL_INVALID","FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_POSTED_IMMUTABLE","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
  "FINANCE_DUPLICATE","FINANCE_GROUP_INVALID","FINANCE_SCOPE_INVALID","FINANCE_BRANCH_INACTIVE",
  "FINANCE_BRANCH_STALE","FINANCE_YEAR_CLOSED","FINANCE_ACCOUNT_INACTIVE","FINANCE_ACCOUNT_SCOPE",
  "FINANCE_OPENING_AMOUNT","FINANCE_DEBITS_CREDITS","FINANCE_OPENING_DATE",
@@ -12,6 +12,7 @@ const financeErrors=new Set([
 ]);
 function allowed(parts:string[],method:string):boolean{
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
+ if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
  if(parts.length===1&&["years","groups","accounts","opening-journals"].includes(parts[0]))
   return method==="POST";
  if(parts.length===3&&["years","accounts"].includes(parts[0])&&UUID.test(parts[1])
@@ -75,7 +76,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const safeStatus=[400,401,403,404,409,429].includes(res.status)?res.status:503;
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
-  const fields=new Set(["search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
+  const fields=new Set(["description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
    "groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
