@@ -3,7 +3,8 @@ import {useCallback,useEffect,useState} from "react";
 type Choice={ref:string;code?:string;name:string};
 type Credit={credit_note_number:string;collected_minor:string;total_minor:string};
 type Refund={refundRef:string;amountMinor:string;status:string};
-type Status={invoiceNumber:string;invoiceStatus:string;creditNote:Credit|null;refund:Refund|null};
+type Status={invoiceNumber:string;invoiceStatus:string;creditNote:Credit|null;refund:Refund|null;
+ replacementInvoice:{invoiceNumber:string;status:string}|null};
 type Options={refundLiabilityAccounts:Choice[];years:Choice[];banks:Choice[]};
 type Pending={path:string;body:Record<string,unknown>;label:string};
 const money=(minor:string)=>{try{const n=BigInt(minor);return "₹"+
@@ -87,6 +88,7 @@ export function FinanceInvoiceAdjustmentTools({invoiceRef,canReview,canManage,on
   {data?.creditNote?<div className="cg-fin-summary">
    <p><strong>Credit note:</strong> {data.creditNote.credit_note_number} · {money(data.creditNote.total_minor)}</p>
    <p>Verified collections covered by refund: {money(data.creditNote.collected_minor)}</p>
+   {data.replacementInvoice&&<p>Replacement invoice: <strong>{data.replacementInvoice.invoiceNumber}</strong> · {data.replacementInvoice.status}</p>}
    <button type="button" disabled={busy} onClick={()=>void download()}>Download / print credit note</button>
    {data.refund?<p role="status"><strong>Refund status:</strong> {data.refund.status.replaceAll("_"," ")}
     {data.refund.status==="BANK_POSTED_AWAITING_STATEMENT"&&
