@@ -327,14 +327,15 @@ export class FinanceBudgetService{
    [budgetRef,actor.realmId]);
   const b=found.rows[0];
   if(!b)throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
-  const totals=await this.db.query<{allocated:string;committed:string;released:string;utilized:string}>(
+  const totals=await this.db.query<{allocated:string;committed:string;released:string;utilized:string;applied:string}>(
    "SELECT COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)::text AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0)::text AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0)::text AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0)::text AS utilized "+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0)::text AS utilized,"+
+   "COALESCE(SUM(commitment_applied_minor),0)::text AS applied "+
    "FROM finance_budget_event WHERE root_realm_id=$1 AND budget_id=$2",
    [actor.realmId,budgetRef]);
-  const t=totals.rows[0],outstanding=BigInt(t.committed)-BigInt(t.released);
+  const t=totals.rows[0],outstanding=BigInt(t.committed)-BigInt(t.released)-BigInt(t.applied);
   const available=BigInt(b.ceilingMinor)-outstanding-BigInt(t.utilized);
   const events=await this.db.query<{kind:string;amountMinor:string;recordedAt:Date}>(
    "SELECT kind,amount_minor::text AS \"amountMinor\",recorded_at AS \"recordedAt\" "+
@@ -342,7 +343,7 @@ export class FinanceBudgetService{
    "ORDER BY recorded_at DESC,id DESC LIMIT 30",[actor.realmId,budgetRef]);
   return {budgetRef,...b,allocatedMinor:t.allocated,
    committedOutstandingMinor:outstanding.toString(),utilizedMinor:t.utilized,
-   releasedMinor:t.released,availableMinor:available.toString(),
+   releasedMinor:t.released,commitmentFulfilledMinor:t.applied,availableMinor:available.toString(),
    overBudgetMinor:available<0n?(-available).toString():"0",events:events.rows,
    explanation:"Allocation is earmarked, not spent. Utilized totals are exclusively matched original posted expenses."};
  }
@@ -376,11 +377,12 @@ export class FinanceBudgetService{
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0) AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0) AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0) AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized "+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized,"+
+   "COALESCE(SUM(commitment_applied_minor),0) AS applied "+
    "FROM finance_budget_event WHERE root_realm_id=$1 GROUP BY root_realm_id,budget_id),"+
    "fact AS(SELECT b.status,b.approved_ceiling_minor,"+
    "COALESCE(m.allocated,0) AS allocated,"+
-   "GREATEST(0,COALESCE(m.committed,0)-COALESCE(m.released,0)) AS outstanding,"+
+   "GREATEST(0,COALESCE(m.committed,0)-COALESCE(m.released,0)-COALESCE(m.applied,0)) AS outstanding,"+
    "COALESCE(m.utilized,0) AS utilized "+
    "FROM finance_budget b LEFT JOIN movement m "+
    "ON m.budget_id=b.id AND m.root_realm_id=b.root_realm_id "+
