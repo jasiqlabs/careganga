@@ -276,6 +276,31 @@ CREATE CONSTRAINT TRIGGER cg09_invoice_adjustment_requires_proof
 
 -- The first issued credit note closes the original invoice for new money.
 -- Serialize a concurrent deposit with the credit issuance on invoice row.
+-- Refund bank reconciliation is acceptable only against the exact original
+-- transfer reference and negative bank movement, never a convenient deposit.
+CREATE FUNCTION cg09_guard_refund_statement_match() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE bank journal%ROWTYPE; requested record;
+BEGIN
+ SELECT * INTO bank FROM journal
+  WHERE id=NEW.journal_id AND root_realm_id=NEW.root_realm_id;
+ IF NOT FOUND OR bank.posting_kind<>'REFUND' THEN RETURN NEW; END IF;
+ SELECT r.bank_account_id,r.amount_minor,r.transfer_reference,r.status
+  INTO requested FROM finance_invoice_refund r
+  WHERE r.id=bank.source_ref AND r.root_realm_id=NEW.root_realm_id FOR SHARE;
+ IF NOT FOUND OR requested.status<>'BANK_POSTED' OR
+    NEW.bank_account_id IS DISTINCT FROM requested.bank_account_id OR
+    NEW.bank_item_ref IS DISTINCT FROM requested.transfer_reference OR
+    NEW.statement_amount_minor IS DISTINCT FROM -requested.amount_minor OR
+    NEW.posted_amount_minor IS DISTINCT FROM -requested.amount_minor THEN
+  RAISE EXCEPTION 'Use the actual matching outbound refund transfer reference'
+   USING ERRCODE='P0932';
+ END IF;
+ RETURN NEW;
+END; $;
+CREATE TRIGGER cg09_refund_statement_source_guard
+ BEFORE INSERT ON finance_bank_reconciliation
+ FOR EACH ROW EXECUTE FUNCTION cg09_guard_refund_statement_match();
+
 CREATE FUNCTION cg09_stop_invoice_collection_after_credit() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.posting_kind<>'GENERAL' THEN RETURN NEW; END IF;
