@@ -42,7 +42,28 @@ export class FinanceExpenseClaimSourceFacade{
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async historical(bearer:string,reference:string,version:number){
-  return this.current(bearer,reference,version,false);
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
+  if(typeof reference!=="string"||!UUID.test(reference)||
+     !Number.isSafeInteger(version)||version<1)
+   throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.view");
+   const rows=await tx.query<{id:string;requested_by:string;status:string;
+    current_digest:string}>(
+    "SELECT c.id,c.requested_by,c.status,r.current_digest "+
+    "FROM expense_claim c JOIN expense_claim_revision r "+
+    "ON r.claim_id=c.id AND r.root_realm_id=c.root_realm_id "+
+    "WHERE c.id=$1 AND c.root_realm_id=$2 AND r.version=$3 FOR SHARE OF c,r",
+    [reference,actor.realmId,version]);
+   const value=rows.rows[0];
+   if(!value||value.requested_by!==actor.accountId)
+    throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+   await tx.query("COMMIT");
+   return {claimRef:value.id,revision:version,status:value.status,
+    sourceDigest:value.current_digest};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async guardDraft(client:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number){
