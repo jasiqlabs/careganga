@@ -435,6 +435,16 @@ export class FinanceInvoiceWorkflowService{
    "WHERE r.root_realm_id=$1 AND r.status='VERIFIED' AND r.variance_minor=0 "+
    "AND r.statement_amount_minor>0 AND r.statement_amount_minor<=$4 "+
    "AND r.posted_amount_minor=r.statement_amount_minor "+
+   "AND EXISTS (SELECT 1 FROM finance_reconciliation_decision d "+
+   "JOIN cg19_stored_file f ON f.id=d.statement_file_id "+
+   "AND f.realm_id=d.root_realm_id AND f.reconciliation_id=d.reconciliation_id "+
+   "AND f.revision=d.statement_file_version "+
+   "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id "+
+   "AND i.realm_id=f.realm_id AND i.reconciliation_id=d.reconciliation_id "+
+   "WHERE d.root_realm_id=r.root_realm_id AND d.reconciliation_id=r.id "+
+   "AND d.action='VERIFY' AND f.owner_kind='CG09_BANK_STATEMENT' "+
+   "AND i.owner_kind='CG09_BANK_STATEMENT' AND i.status='VALIDATED' "+
+   "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL) "+
    "AND j.posting_kind='GENERAL' AND j.status='POSTED' AND j.source_ref=$2 "+
    "AND bl.debit_minor=r.statement_amount_minor AND bl.credit_minor=0 "+
    "AND ar.debit_minor=0 "+
@@ -498,7 +508,7 @@ export class FinanceInvoiceWorkflowService{
   }catch(e){
    await tx.query("ROLLBACK");
    if(e&&typeof e==="object"&&"code" in e&&
-      ["23505","23514","P0927"].includes(String(e.code)))
+      ["23505","23514","P0927","P0928"].includes(String(e.code)))
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
    financeSqlFailure(e,"invoice");
   }finally{tx.release();}
