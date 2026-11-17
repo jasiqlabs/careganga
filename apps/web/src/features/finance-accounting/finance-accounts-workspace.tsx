@@ -8,6 +8,8 @@ type Account={accountRef:string;code:string;name:string;groupName:string;kind:st
  normalSide:string;scopeKind:string;branchRef:string|null;branchName:string|null;
  status:string;version:number;balanceMinor:string;openingMinor:string;bankLabel:string|null;maskedDetails:string|null};
 type Opening={journalRef:string;postingDate:string;yearName:string;amountMinor:string};
+type PostingChoice={accountRef:string;code:string;name:string;branchRef:string|null;
+ branchName:string|null;branchVersion:number|null};
 type Setup={years:Year[];groups:Group[];branches:Branch[];accounts:Account[];
  openingJournals:Opening[];categorySummary:{category:string;balanceMinor:string;accountCount:string}[];nextOffset:number|null};
 type FormKind="year"|"group"|"account"|"opening";
@@ -78,6 +80,13 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [busy,setBusy]=useState(false);
  const [pending,setPending]=useState<Pending|null>(null);
  const [pendingNotFound,setPendingNotFound]=useState(false);
+ const [postingQuery,setPostingQuery]=useState("");
+ const [postingSearchRevision,setPostingSearchRevision]=useState(0);
+ const [postingResults,setPostingResults]=useState<PostingChoice[]>([]);
+ const [postingSaved,setPostingSaved]=useState<Record<string,PostingChoice>>({});
+ const [postingMore,setPostingMore]=useState(false);
+ const [postingLoading,setPostingLoading]=useState(false);
+ const [postingError,setPostingError]=useState("");
  const [statusConfirm,setStatusConfirm]=useState<{type:"year"|"account";ref:string;name:string;expectedVersion:number;nextStatus:string}|null>(null);
  const change=(name:string,value:string)=>setForm(v=>({...v,[name]:value}));
  const load=useCallback(async()=>{
@@ -104,9 +113,46 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  useEffect(()=>{void load();},[load]);
  function open(kind:FormKind){
   setDrawer(kind);setFailure(null);setSuccess("");setPending(null);setPendingNotFound(false);
-  setForm(blank());
+  setForm(blank());setPostingQuery("");setPostingResults([]);
+  setPostingSaved({});setPostingMore(false);setPostingError("");
  }
- const activeAccounts=useMemo(()=>data?.accounts.filter(a=>a.status==="ACTIVE")??[],[data]);
+ useEffect(()=>{
+  if(drawer!=="opening")return;
+  const controller=new AbortController();
+  let active=true;
+  const timer=setTimeout(async()=>{
+   if(!active)return;
+   setPostingLoading(true);setPostingError("");
+   try{
+    const response=await fetch(base+"/account-options?q="+encodeURIComponent(postingQuery.trim()),
+     {cache:"no-store",signal:controller.signal});
+    if(!response.ok)throw Error("Account choices could not be loaded.");
+    const value:unknown=await response.json();
+    if(!value||typeof value!=="object"||Array.isArray(value)||
+       !("accounts" in value)||!Array.isArray(value.accounts)||
+       !("hasMore" in value)||typeof value.hasMore!=="boolean"||
+       !value.accounts.every((x:unknown)=>x&&typeof x==="object"&&
+          "accountRef" in x&&typeof x.accountRef==="string"&&
+          "name" in x&&typeof x.name==="string"&&
+          "code" in x&&typeof x.code==="string"))
+       throw Error("Account choices could not be verified.");
+    if(active){setPostingResults(value.accounts as PostingChoice[]);
+      setPostingMore(value.hasMore);}
+   }catch{
+    if(active){setPostingResults([]);
+     setPostingError("Unable to load eligible posting accounts. Check the connection and retry.");}
+   }finally{if(active)setPostingLoading(false);}
+  },300);
+  return()=>{active=false;clearTimeout(timer);controller.abort();};
+ },[drawer,postingQuery,postingSearchRevision]);
+ const activeAccounts=useMemo(()=>[...postingResults,
+   ...Object.values(postingSaved).filter(p=>
+     !postingResults.some(x=>x.accountRef===p.accountRef))],[postingResults,postingSaved]);
+ function choosePosting(field:"debitAccountRef"|"creditAccountRef",value:string){
+  const selected=activeAccounts.find(x=>x.accountRef===value);
+  if(selected)setPostingSaved(p=>({...p,[value]:selected}));
+  change(field,value);
+ }
  const categoryMap=new Map((data?.categorySummary??[]).map(row=>[row.category,row]));
  const amount=(category:string)=>categoryMap.get(category)?.balanceMinor??"0";
  const accountsIn=(category:string)=>Number(categoryMap.get(category)?.accountCount??"0");
@@ -143,10 +189,10 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     ...(form.accountKind!=="GENERAL"?{bankLabel:form.bankLabel}:{}),
     ...(form.accountKind==="BANK"&&form.bankLastFour?{bankLastFour:form.bankLastFour}:{})};
   }
-  const debit=data?.accounts.find(a=>a.accountRef===form.debitAccountRef);
-  const credit=data?.accounts.find(a=>a.accountRef===form.creditAccountRef);
+  const debit=activeAccounts.find(a=>a.accountRef===form.debitAccountRef);
+  const credit=activeAccounts.find(a=>a.accountRef===form.creditAccountRef);
   const ref=debit?.branchRef??credit?.branchRef;
-  const branchVersion=data?.branches.find(x=>x.branchRef===ref)?.version;
+  const branchVersion=debit?.branchRef?debit.branchVersion:credit?.branchRef?credit.branchVersion:null;
   return {financialYearRef:form.financialYearRef,postingDate:form.postingDate,
    debitAccountRef:form.debitAccountRef,creditAccountRef:form.creditAccountRef,
    amount:form.amount,...(ref?{branchVersion}:{})};
@@ -481,15 +527,24 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
        </select>
       </Field>
       <Field failure={failure} name="postingDate" label="Posting date" form={form} onChange={change} type="date" required/>
+      <label className="cg-fin-field">Search eligible finance accounts
+       <input type="search" value={postingQuery} maxLength={80}
+        placeholder="Search by account name or business code"
+        onChange={e=>setPostingQuery(e.target.value)}/>
+      </label>
+      {postingLoading&&<p role="status">Finding eligible finance accounts…</p>}
+      {postingMore&&<p className="cg-fin-help">More eligible accounts exist. Refine the search to find the correct account.</p>}
+      {postingError&&<div className="cg-fin-notice" role="alert"><p>{postingError}</p>
+       <button type="button" onClick={()=>setPostingSearchRevision(i=>i+1)}>Retry search</button></div>}
       <Field failure={failure} name="debitAccountRef" label="Debit account" form={form} onChange={change} required>
-       <select required value={form.debitAccountRef} onChange={e=>change("debitAccountRef",e.target.value)}>
+       <select required value={form.debitAccountRef} onChange={e=>choosePosting("debitAccountRef",e.target.value)}>
         <option value="">Choose debit account</option>
         {activeAccounts.map(a=><option key={a.accountRef} value={a.accountRef}>
          {a.name} — {a.code}{a.branchName?" ("+a.branchName+")":""}</option>)}
        </select>
       </Field>
       <Field failure={failure} name="creditAccountRef" label="Credit account" form={form} onChange={change} required>
-       <select required value={form.creditAccountRef} onChange={e=>change("creditAccountRef",e.target.value)}>
+       <select required value={form.creditAccountRef} onChange={e=>choosePosting("creditAccountRef",e.target.value)}>
         <option value="">Choose credit account</option>
         {activeAccounts.filter(a=>a.accountRef!==form.debitAccountRef).map(a=>
          <option key={a.accountRef} value={a.accountRef}>
