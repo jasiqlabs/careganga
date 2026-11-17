@@ -147,6 +147,9 @@ function CmsReviewSection({kind,fields}:{kind:string;fields:Record<string,unknow
   [["Eyebrow",fields.eyebrow],
    ["Badges",Array.isArray(fields.tags)?fields.tags.join(", "):""],
    ["Description",fields.description],["Subtitle",fields.subtitle],
+   ["Heading font",fields.headingFont],["Weight",fields.headingWeight],
+   ["Size",fields.headingSize],["Heading colour",fields.headingColor],
+   ["Subtitle colour",fields.subtitleColor],
    ["Primary button",fields.primaryLabel],["Primary destination",fields.primaryPath],
    ["Secondary button",fields.secondaryLabel],["Secondary destination",fields.secondaryPath]]:
   kind==="RICH_TEXT"?[["Eyebrow",fields.eyebrow],["Page text",fields.body],
