@@ -31,7 +31,7 @@ function initial(kind:Kind):Draft{
    heading:"",summary:"",issuer:"",pan:"",registrationNumber:"",
    approvalNumber:"",validFrom:"",validUntil:"",verifiedAsOf:today(),
    source:"",verification:"NOT_VERIFIED",
-   disclaimer:"Check current official records before claiming a tax benefit."
+   disclaimer:"Check current official records before claiming a tax benefit.",documents:[]
   }}]:
   kind==="GALLERY"?[{kind:"GALLERY_GRID",order:0,
    fields:{heading:"",description:"",items:[]}}]:
@@ -338,7 +338,27 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
        </select></label>
        <Field name="Required disclaimer" value={f.disclaimer} large
         onChange={v=>change("disclaimer",v)}/>
-       <p>Verified 80G claims require current dates and a scanned, rights-approved CG-19 document.</p>
+       <p>Verified 80G claims require a current approved 80G document in the first position.
+        Registration certificates and annual reports may be added as separate scanned documents.</p>
+       {items(f.documents).map((document,j)=><div className="cg-cms-team" key={j}>
+        <label>Document kind<select value={str(document.type)} onChange={e=>
+         changeItem(index,j,{type:e.target.value},"documents")}>
+         <option value="80G">80G approval</option>
+         <option value="REGISTRATION">Registration</option>
+         <option value="ANNUAL_REPORT">Annual report</option>
+         <option value="OTHER">Other published document</option>
+        </select></label>
+        <Field name="Official document title" value={document.title}
+         onChange={v=>changeItem(index,j,{title:v},"documents")}/>
+        <Field name="Document date" type="date" value={document.asOfDate}
+         onChange={v=>changeItem(index,j,{asOfDate:v},"documents")}/>
+        {canManage&&<button type="button"
+         onClick={()=>removeItem(index,"documents",j,"DOCUMENT")}>Remove document</button>}
+       </div>)}
+       {canManage&&items(f.documents).length<6&&<button type="button"
+        onClick={()=>addItem(index,"documents",{
+         type:items(f.documents).length===0?"80G":"ANNUAL_REPORT",
+         title:"",asOfDate:today()})}>Add 80G / report document</button>}
       </>}
       {section.kind==="GALLERY_GRID"&&<>
        <Field name="Intro" value={f.description} large onChange={v=>change("description",v)}/>
@@ -408,9 +428,10 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
         draft.kind==="HEALTHCARE"?<option value="HERO">Healthcare hero photograph</option>:
         <option value="ARTICLE">Article cover photo</option>}
       </select></label>
-      {["IMPACT","GALLERY"].includes(uploadRole)&&<label>Placement position<select
+      {["IMPACT","GALLERY","DOCUMENT"].includes(uploadRole)&&<label>Placement position<select
        value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-       {(draft.kind==="IMPACT"?draft.sections:items(draft.sections[0]?.fields.items))
+       {(draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
+         items(draft.sections[0]?.fields.documents):items(draft.sections[0]?.fields.items))
         .map((value,i)=><option value={i} key={i}>{draft.kind==="IMPACT"?
          str((value as Section).fields.group):str((value as Record<string,unknown>).title)||"Item "+(i+1)}</option>)}
       </select></label>}
@@ -418,7 +439,9 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
        onChange={setUploadAlt}/>
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>The Foundation owns the public-use rights</label>
-      <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3} accept={
+      <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
+         (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
+         (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
        draft.kind==="GALLERY"?"image/jpeg,image/png,image/webp,video/mp4,application/pdf":
        draft.kind==="COMPLIANCE"?"application/pdf,image/png,image/jpeg,image/webp":
        "image/jpeg,image/png,image/webp"}
