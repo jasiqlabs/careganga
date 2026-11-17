@@ -75,7 +75,10 @@ export class FinanceBudgetService{
   return {budgetName:label(v.budgetName,"budgetName",160),
    financialYearRef:id(v.financialYearRef,"financialYearRef"),
    branchRef:branch,branchVersion:bv,
-   category:label(v.category,"category",80),periodStart,periodEnd,
+   category:(typeof v.category==="string"&&/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(v.category)
+    ?v.category:(()=>{throw new BadRequestException({
+      code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});})()),
+   periodStart,periodEnd,
    fundingNote:label(v.fundingNote??"Foundation budget authorization","fundingNote",250),
    ceilingMinor:minor(v.ceiling)};
  }
