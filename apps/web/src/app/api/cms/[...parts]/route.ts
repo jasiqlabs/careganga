@@ -71,7 +71,7 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
    const safe=original&&typeof original==="object"&&!Array.isArray(original)&&
     "message" in original&&typeof original.message==="string"&&
     original.message.length>=8&&original.message.length<=240&&
-    !/[<>\\u0000-\\u001f\\u007f]/.test(original.message)
+    !/[<>\u0000-\u001f\u007f]/.test(original.message)
      ?original.message:null;
    if(safe)return fail(status,safe);
    return fail(status,status===401?"Sign in again to continue.":
