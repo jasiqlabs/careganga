@@ -5,6 +5,27 @@ import {FinanceExpenseClaimService} from "../application/finance-expense-claim.s
 @Controller("api/finance-accounting/claims")
 export class FinanceExpenseClaimController{
  constructor(private readonly claims:FinanceExpenseClaimService){}
+ @Get("approved-options")
+ approvedOptions(@Headers("authorization")bearer:string,@Query("q")q?:string){
+  return this.claims.approvedOptions(bearer,q);
+ }
+ @Get("workflow-commands/:requestKey")
+ workflowCommand(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.claims.workflowCommand(bearer,key);
+ }
+ @Get(":claimRef")
+ detail(@Headers("authorization")bearer:string,@Param("claimRef")ref:string){
+  return this.claims.detail(bearer,ref);
+ }
+ @Post(":claimRef/submit")
+ submit(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
+  @Body()body:unknown){return this.claims.submit(bearer,ref,body);}
+ @Post(":claimRef/reconcile")
+ reconcile(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
+  @Body()body:unknown){return this.claims.reconcile(bearer,ref,body);}
+ @Post(":claimRef/link-voucher")
+ linkVoucher(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
+  @Body()body:unknown){return this.claims.linkVoucher(bearer,ref,body);}
  @Post("drafts")
  create(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.claims.create(bearer,body);
