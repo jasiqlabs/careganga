@@ -226,6 +226,16 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   });
   setDraft(v=>({...v,slides,assets}));
  }
+ function removeIndexedContent(role:"TEAM"|"FEATURE",index:number){
+  setDraft(current=>({
+   ...current,
+   ...(role==="TEAM"?{team:current.team.filter((_,i)=>i!==index)}:
+     {featureCards:current.featureCards.filter((_,i)=>i!==index)}),
+   assets:current.assets.filter(asset=>asset.role!==role||asset.order!==index)
+    .map(asset=>asset.role===role&&asset.order>index?
+     {...asset,order:asset.order-1}:asset)
+  }));
+ }
  function removeSlide(index:number){
   const slides=draft.slides.filter((_,i)=>i!==index);
   const assets=draft.assets.filter(a=>!["HERO","MOBILE_HERO"].includes(a.role)||
@@ -568,7 +578,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           i===index?{...x,[field]:e.target.value}:x))}/>
        </label>)}
        {canManage&&<button type="button"
-        onClick={()=>edit("featureCards",draft.featureCards.filter((_,i)=>i!==index))}>
+        onClick={()=>removeIndexedContent("FEATURE",index)}>
         Remove card</button>}
       </div>)}
       {canManage&&draft.featureCards.length<3&&<button type="button"
@@ -619,7 +629,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         checked={member.consentConfirmed} onChange={e=>
          edit("team",draft.team.map((v,i)=>i===index?{...v,consentConfirmed:e.target.checked}:v))}/>
         I confirm permission to publish this profile</label>
-       {canManage&&<button type="button" onClick={()=>edit("team",draft.team.filter((_,i)=>i!==index))}>
+       {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
         Remove profile</button>}
       </div>)}
       {canManage&&draft.team.length<15&&<button type="button" onClick={()=>edit("team",[
