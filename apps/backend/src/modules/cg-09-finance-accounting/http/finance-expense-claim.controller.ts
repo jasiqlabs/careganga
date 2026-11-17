@@ -5,6 +5,8 @@ import {FinanceExpenseClaimService} from "../application/finance-expense-claim.s
 @Controller("api/finance-accounting/claims")
 export class FinanceExpenseClaimController{
  constructor(private readonly claims:FinanceExpenseClaimService){}
+ @Get("dashboard")
+ dashboard(@Headers("authorization")bearer:string){return this.claims.dashboard(bearer);}
  @Get("managed")
  managed(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
   return this.claims.managed(bearer,offset);
