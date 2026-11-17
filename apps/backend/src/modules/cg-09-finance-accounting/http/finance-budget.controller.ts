@@ -31,6 +31,9 @@ export class FinanceBudgetController{
   @Param("budgetRef")ref:string,@Body()b:unknown){return this.budgets.submit(a,ref,b);}
  @Post(":budgetRef/reconcile") reconcile(@Headers("authorization")a:string,
   @Param("budgetRef")ref:string,@Body()b:unknown){return this.budgets.reconcile(a,ref,b);}
+ @Post(":budgetRef/archive")
+ archive(@Headers("authorization")a:string,@Param("budgetRef")ref:string,
+  @Body()body:unknown){return this.budgets.archive(a,ref,body);}
  @Post(":budgetRef/events") event(@Headers("authorization")a:string,
   @Param("budgetRef")ref:string,@Body()b:unknown){return this.budgets.recordEvent(a,ref,b);}
 }
