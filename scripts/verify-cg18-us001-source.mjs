@@ -12,6 +12,7 @@ const files={
  header:read("apps/web/src/features/cms-public-content/cms-site-header.tsx"),
  carousel:read("apps/web/src/features/cms-public-content/cms-hero-carousel.tsx"),
  admin:read("apps/web/src/features/cms-public-content/cms-admin-workspace.tsx"),
+ adminStyles:read("apps/web/src/app/globals.css"),
  proxy:read("apps/web/src/app/api/cms-image-preview/[fileRef]/route.ts"),
  android:read("apps/android-public/src/features/cms/public-cms-screen.tsx"),
  reference:read("apps/web/src/features/cms-public-content/cms-client-screenshot-reference.ts"),
@@ -51,7 +52,15 @@ const checks=[
  ["Direct CMS media URLs recheck allowed placements before and after storage fetch",
   files.media.includes("const PUBLIC_MEDIA_SECTION_ALLOWED=")&&
   files.media.split("   PUBLIC_MEDIA_SECTION_ALLOWED+").length===3&&
-  !files.media.includes("a.role NOT IN('HERO','MOBILE_HERO')")]
+  !files.media.includes("a.role NOT IN('HERO','MOBILE_HERO')")],
+ ["Original C22 banner overview is source-driven and selects one editor",
+  files.admin.includes('className="cg-cms-banner-summary"')&&
+  files.admin.includes('aria-pressed={active} onClick={()=>setActiveHeroIndex(index)}')&&
+  files.admin.includes('index===Math.min(activeHeroIndex,draft.slides.length-1)')],
+ ["Original verified banner thumbnails retain responsive Admin focus and selection",
+  files.admin.includes('src={"/api/cms-image-preview/"+desktop.fileRef}')&&
+  files.adminStyles.includes(".cg-cms-banner-row:focus-visible")&&
+  files.adminStyles.includes(".cg-cms-banner-row[aria-pressed=")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
