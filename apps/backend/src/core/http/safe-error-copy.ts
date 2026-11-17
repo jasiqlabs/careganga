@@ -103,6 +103,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_CLAIM_BILL_CONFLICT:"This claim bill changed or cannot be confirmed. Refresh its original status.",
       FINANCE_CLAIM_REVIEW_INVALID:"Select Approve, Return or Reject and confirm the current review version using your password.",
       FINANCE_CLAIM_REVIEW_UNAVAILABLE:"An authorized reimbursement review is not yet configured or the original decision is unavailable.",
-      FINANCE_CLAIM_STALE:"This claim or approval changed since you opened it. Refresh and review the latest status."
+      FINANCE_CLAIM_STALE:"This claim or approval changed since you opened it. Refresh and review the latest status.",
+      FINANCE_CLAIM_VOUCHER_INVALID:"Choose a posted voucher originating from this approved claim, with the exact amount and correct payable or verified payout accounts."
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
