@@ -6,13 +6,13 @@ ALTER TABLE expense_claim
  ('CG-CL-'||lpad(nextval('cg09_claim_number_sequence')::text,10,'0')),
  ADD CONSTRAINT ux_cg09_claim_public_number UNIQUE(root_realm_id,claim_number);
 -- Keep the real business claim number immutable even for a direct DB writer.
-CREATE FUNCTION cg09_claim_number_immutable() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_claim_number_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.claim_number IS DISTINCT FROM OLD.claim_number THEN
   RAISE EXCEPTION 'Original claim number is immutable' USING ERRCODE='P0920';
  END IF;
  RETURN NEW;
-END; $;
+END; $$;
 CREATE TRIGGER cg09_claim_number_frozen BEFORE UPDATE ON expense_claim
  FOR EACH ROW EXECUTE FUNCTION cg09_claim_number_immutable();
 
@@ -59,7 +59,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END; $;
+END; $$;
 CREATE TRIGGER cg09_voucher_claim_origin_guard
  BEFORE INSERT OR UPDATE ON finance_voucher FOR EACH ROW
  EXECUTE FUNCTION cg09_voucher_claim_origin_guard();
