@@ -219,6 +219,35 @@ export class CmsDraftMediaService{
  /** Public bytes only from current approved live publication, not a signed
   * private object URL. This origin read revalidates rights EVERY request.
   */
+ async previewBytes(bearer:string,ref:string):Promise<{mime:string;bytes:Buffer}>{
+  const actor=await this.sessions.requireAction(bearer,"cms.content.view");
+  if(!UUID.test(ref))throw new NotFoundException();
+  const sql="SELECT f.object_key,f.object_version,f.original_mime,"+
+   "f.verified_sha256,f.verified_size_bytes FROM cg19_cms_media_file f "+
+   "JOIN cms_page_revision v ON v.id=f.page_revision_id AND v.foundation_root_id=f.realm_id "+
+   "JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id "+
+   "JOIN cg19_cms_upload_intent u ON u.id=f.upload_intent_id AND u.realm_id=f.realm_id "+
+   "WHERE f.id=$1 AND f.realm_id=$2 AND p.archived_at IS NULL "+
+   "AND v.revision_no=p.draft_revision_no AND v.status IN('DRAFT','SUBMITTED') "+
+   "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+   "AND f.public_rights_confirmed=true AND u.status='VALIDATED' "+
+   "AND u.rights_confirmed=true LIMIT 1";
+  const found=await this.db.query<{object_key:string;object_version:string;
+   original_mime:string;verified_sha256:string;verified_size_bytes:string}>(
+   sql,[ref,actor.realmId]);
+  const item=found.rows[0];if(!item)throw new NotFoundException();
+  let bytes:Buffer;
+  try{bytes=await this.objects.readVerifiedPrivateObject({
+   objectKey:item.object_key,objectVersion:item.object_version,maxBytes:10*1024*1024});}
+  catch{throw new ServiceUnavailableException("Preview temporarily unavailable");}
+  if(bytes.length!==Number(item.verified_size_bytes)||
+    createHash("sha256").update(bytes).digest("hex")!==item.verified_sha256)
+   throw new ServiceUnavailableException("Preview verification failed");
+  await this.sessions.requireAction(bearer,"cms.content.view");
+  if(!(await this.db.query(sql,[ref,actor.realmId])).rowCount)
+   throw new NotFoundException();
+  return {mime:item.original_mime,bytes};
+ }
  async publicBytes(ref:string):Promise<{mime:string;bytes:Buffer}>{
   if(!UUID.test(ref))throw new NotFoundException();
   const result=await this.db.query<{object_key:string;object_version:string;
