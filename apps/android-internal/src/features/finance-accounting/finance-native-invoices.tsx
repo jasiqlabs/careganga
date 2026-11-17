@@ -86,16 +86,15 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   setForm(old=>({...old,[field]:value}));setNotice("");
  };
  async function receiptRefresh(invoiceRef:string){
-  if(!canIssue)return null;
   try{
    const result=await request<Receipt>(token,
     "/api/finance-accounting/invoices/"+invoiceRef+"/receipt");
    setReceipt(result);
-   if(BigInt(result.outstandingMinor)>0n){
+   if(BigInt(result.outstandingMinor)>0n&&canIssue){
     const r=await request<{matches:ReceiptOption[]}>(token,
      "/api/finance-accounting/invoices/"+invoiceRef+"/receipt-options");
     setReceiptOptions(r.matches??[]);
-    if(canPost){
+    if(canPost&&canIssue){
      const eligible=await request<{banks:{accountRef:string;code:string;name:string}[];
       years:{yearRef:string;name:string;startOn:string;endOn:string}[]}>(token,
       "/api/finance-accounting/invoices/"+invoiceRef+"/collection-options");
@@ -340,7 +339,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
        onPress={()=>void receiptRefresh(current.ref)}/>}
      <Text style={s.muted}>Issuance is not verified payment or cash received.</Text>
     </Card>}
-    {current?.status==="ISSUED"&&canIssue&&<Card title="Verified bank collections and partial receipts">
+    {current?.status==="ISSUED"&&<Card title="Verified bank collections and partial receipts">
      <Text style={s.muted}>An invoice issued is not paid. A genuine balanced bank collection
       journal must be independently reconciled with a bank statement.</Text>
      {receipt&&<>
@@ -348,7 +347,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
       <Text style={s.text}>Verified received {money(receipt.paidMinor)}</Text>
       <Text style={s.heading}>Outstanding {money(receipt.outstandingMinor)}</Text>
      </>}
-     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canPost&&collection&&<Card
+     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&canPost&&collection&&<Card
       title="1. Post actual bank collection (not yet verified)">
       <Options label="Open financial year" value={collectionYear}
        options={collection.years.map(y=>({ref:y.yearRef,label:y.name}))}
@@ -371,7 +370,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
       <Text style={s.muted}>The posted journal is awaiting independent bank statement
        verification under Finance Ledger and Reports. No receipt is marked paid yet.</Text>
      </Card>}
-     {receipt&&BigInt(receipt.outstandingMinor)>0n&&<Card
+     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canIssue&&<Card
       title="2. Link independently verified bank statement match">
       <Options label="Verified original bank collection" value={receiptChoice}
        options={receiptOptions.map(o=>({ref:o.reconciliationRef,
@@ -392,14 +391,14 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
         <Action label="Open this private bank-verified receipt PDF"
          onPress={()=>void pdf("/api/documents/finance-receipts/files/"+
           receiptDocs[item.receiptRef].documentRef+"/download")}/>:
-        <Action label={receiptDocs[item.receiptRef]?.status==="UNKNOWN"?
+        canIssue?<Action label={receiptDocs[item.receiptRef]?.status==="UNKNOWN"?
          "Receipt PDF requires provider recovery":"Issue this verified receipt PDF"}
          disabled={busy||Boolean(pending)||receiptDocs[item.receiptRef]?.status==="UNKNOWN"}
          onPress={()=>{const requestKey=key();void execute({
           key:requestKey,method:"POST",
           path:"/api/documents/finance-receipts/receipts/"+item.receiptRef+"/issue",
           body:{requestKey}});
-         }}/>}
+         }}/> : <Text style={s.muted}>Private receipt document is not yet issued.</Text>}
       </View>)}
      </Card>
      <Action label="Refresh actual verified receipts" secondary
