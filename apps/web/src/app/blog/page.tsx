@@ -18,6 +18,13 @@ export default async function FoundationArticles({searchParams}:Query){
    <p className="cg-site-eyebrow">Media &amp; Resources</p>
    <h1>News &amp; Articles</h1>
    <p>Current approved Foundation editorial updates.</p>
+   <form method="GET" action="/blog" className="cg-site-article-filter">
+    <label>Filter by actual category
+     <input name="category" maxLength={80} defaultValue={safeCategory}
+      placeholder="e.g. Education or Healthcare"/></label>
+    <button type="submit">Show matching articles</button>
+    {safeCategory&&<Link href="/blog">Clear filter</Link>}
+   </form>
    {!content.available?<p role="alert">Articles cannot be verified right now. Try again later.</p>:
     content.posts.length===0?<p>No approved articles match this selection.</p>:
     <div className="cg-site-impact-grid">{content.posts.map(post=>
