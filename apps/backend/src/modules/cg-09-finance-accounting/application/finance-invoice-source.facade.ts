@@ -21,6 +21,24 @@ export class FinanceInvoiceSourceFacade{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly branches:BranchSourceFacade){}
+ /** CG-19 must call this before revealing invoice-document status or private bytes.
+  * Finance view capability is necessary but NOT sufficient for branch visibility.
+  */
+ async authorizedView(bearer:string,refInput:string,
+    action:"finance.invoices.view"|"finance.invoices.issue"="finance.invoices.view"){
+  const actor=await this.sessions.requireAction(bearer,action);
+  const reference=valid(refInput);
+  const rows=await this.db.query<{id:string;branch_id:string|null;created_by:string}>(
+   "SELECT id,branch_id,created_by FROM finance_invoice "+
+   "WHERE id=$1 AND root_realm_id=$2",[reference,actor.realmId]);
+  const source=rows.rows[0];
+  if(!source)throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
+  const scope=await this.branches.financeReportScope(bearer,action);
+  if(!scope.all&&(!source.branch_id||!scope.branchRefs.includes(source.branch_id))&&
+    !(source.branch_id===null&&source.created_by===actor.accountId))
+   throw new ForbiddenException("This invoice document belongs to another branch");
+  return {invoiceRef:source.id,branchRef:source.branch_id};
+ }
  private async original(tx:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,action:string):Promise<InvoiceSource>{
   await this.identity.assertCurrent(tx,actor,action);
