@@ -410,7 +410,7 @@ export class FinanceExpenseClaimService{
    }
    const claim=await tx.query(
     "SELECT id FROM expense_claim WHERE root_realm_id=$1 AND id=$2 "+
-    "AND status='APPROVED' FOR UPDATE",[actor.realmId,claimRef]);
+    "AND status='APPROVED' FOR SHARE",[actor.realmId,claimRef]);
    if(!claim.rowCount)
     throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
    const voucher=await tx.query<{id:string;journal_id:string}>(
