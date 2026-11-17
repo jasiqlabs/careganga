@@ -1,4 +1,4 @@
-import {ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
+import {ConflictException,Injectable} from "@nestjs/common";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -7,7 +7,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 
 export type VerifiedVoucherDraftSource=Readonly<{
  voucherRef:string;rootRef:string;revision:number;createdBy:string;
- status:"DRAFT"|"SUBMITTED"|"RETURNED"|"APPROVED"|"POSTED";
+ status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED";
  sourceDigest:string
 }>;
 /** CG-09-owned, read-only cross-owner contract.
