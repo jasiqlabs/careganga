@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 type Kind="HOME"|"ABOUT";
 type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
-type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM";altText:string;order:number};
+type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type PageItem={pageRef:string;kind:Kind;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
 type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:string;
@@ -16,50 +16,112 @@ type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:numbe
  source:{title:string;slug:string;kind:string;seoTitle:string;
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",heroHeading:"",
- heroSubtitle:"",heroPrimaryLabel:"",heroPrimaryPath:"",heroSecondaryLabel:"",
- heroSecondaryPath:"",bodyHeading:"",body:"",teamHeading:"Our team",
- team:[],assets:[],loginDesired:true,memberJoinDesired:false,volunteerJoinDesired:false});
+type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;
+ primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
+type FeatureCard={label:string;title:string;body:string};
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
- heroHeading:string;heroSubtitle:string;heroPrimaryLabel:string;heroPrimaryPath:string;
- heroSecondaryLabel:string;heroSecondaryPath:string;bodyHeading:string;body:string;
- teamHeading:string;team:Team[];assets:Asset[];
+ slides:Slide[];bodyHeading:string;body:string;bodyEyebrow:string;
+ bodyVariant:"STANDARD"|"SPLIT";highlights:string;
+ promoEyebrow:string;promoHeading:string;promoBody:string;promoLabel:string;promoPath:string;
+ featuresEyebrow:string;featuresHeading:string;featuresBody:string;featureCards:FeatureCard[];
+ volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
+ memberTitle:string;memberBody:string;memberBenefits:string;
+ footerMission:string;footerAddress:string;footerPhone:string;footerEmail:string;
+ footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
+const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",
+ primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
+const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
+ slides:kind==="HOME"?[blankSlide()]:[],bodyHeading:"",body:"",bodyEyebrow:"",
+ bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",
+ promoEyebrow:"",promoHeading:"",promoBody:"",promoLabel:"",promoPath:"",
+ featuresEyebrow:"",featuresHeading:"",featuresBody:"",featureCards:[],
+ volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
+ memberTitle:"",memberBody:"",memberBenefits:"",
+ footerMission:"",footerAddress:"",footerPhone:"",footerEmail:"",footerNewsletterText:"",
+ teamHeading:"Our team",team:[],assets:[],loginDesired:true,
+ memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
-function section(d:PageDetail,kind:string){return d.sections.find(x=>x.kind===kind)?.fields??{};}
+function words(v:unknown){return Array.isArray(v)?v.filter(x=>typeof x==="string").join("\n"):"";}
+function section(d:PageDetail,kind:string){
+ return d.sections.find(x=>x.kind===kind)?.fields??{};
+}
 function fromPage(p:PageDetail):Draft{
- const hero=section(p,"HERO"),body=section(p,"RICH_TEXT"),team=section(p,"TEAM");
- return {kind:p.kind,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
- heroHeading:val(hero.heading),heroSubtitle:val(hero.subtitle),
- heroPrimaryLabel:val(hero.primaryLabel),heroPrimaryPath:val(hero.primaryPath),
- heroSecondaryLabel:val(hero.secondaryLabel),heroSecondaryPath:val(hero.secondaryPath),
- bodyHeading:val(body.heading),body:val(body.body),teamHeading:val(team.heading)||"Our team",
- team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
-  .map(v=>{const person=v as Record<string,unknown>;return {
-   name:val(person.name),designation:val(person.designation),bio:val(person.bio),
-   consentConfirmed:person.consentConfirmed===true};}):[],assets:p.assets,
-  loginDesired:p.navigation?.loginDesired??true,
+ const draft=blank(p.kind),body=section(p,"RICH_TEXT"),team=section(p,"TEAM");
+ const promo=section(p,"CTA"),features=section(p,"FEATURE_CARDS");
+ const join=section(p,"JOIN_CARDS"),footer=section(p,"SITE_FOOTER");
+ return {...draft,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
+  slides:p.sections.filter(x=>x.kind==="HERO").sort((a,b)=>a.order-b.order)
+   .map(x=>({heading:val(x.fields.heading),subtitle:val(x.fields.subtitle),
+    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),
+    tags:Array.isArray(x.fields.tags)?x.fields.tags.filter(y=>typeof y==="string").join(", "):"",
+    primaryLabel:val(x.fields.primaryLabel),primaryPath:val(x.fields.primaryPath),
+    secondaryLabel:val(x.fields.secondaryLabel),secondaryPath:val(x.fields.secondaryPath)})),
+  bodyHeading:val(body.heading),body:val(body.body),
+  bodyEyebrow:val(body.eyebrow),bodyVariant:body.variant==="SPLIT"?"SPLIT":"STANDARD",
+  highlights:words(body.highlights),
+  promoEyebrow:val(promo.eyebrow),promoHeading:val(promo.heading),
+  promoBody:val(promo.body),promoLabel:val(promo.label),promoPath:val(promo.path),
+  featuresEyebrow:val(features.eyebrow),featuresHeading:val(features.heading),
+  featuresBody:val(features.body),
+  featureCards:Array.isArray(features.cards)?features.cards
+   .filter(x=>x&&typeof x==="object").map(x=>{const y=x as Record<string,unknown>;
+    return {label:val(y.label),title:val(y.title),body:val(y.body)}}):[],
+  volunteerTitle:val(join.volunteerTitle),volunteerBody:val(join.volunteerBody),
+  volunteerBenefits:words(join.volunteerBenefits),memberTitle:val(join.memberTitle),
+  memberBody:val(join.memberBody),memberBenefits:words(join.memberBenefits),
+  footerMission:val(footer.mission),footerAddress:val(footer.address),
+  footerPhone:val(footer.phone),footerEmail:val(footer.email),
+  footerNewsletterText:val(footer.newsletterText),
+  teamHeading:val(team.heading)||"Our team",
+  team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
+   .map(v=>{const person=v as Record<string,unknown>;return {
+    name:val(person.name),designation:val(person.designation),bio:val(person.bio),
+    consentConfirmed:person.consentConfirmed===true};}):[],
+  assets:p.assets,loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
+function lines(s:string){return s.split("\n").map(v=>v.trim()).filter(Boolean).slice(0,4);}
 function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
- if(d.kind==="HOME"||d.heroHeading.trim()){
-  const fields:Record<string,unknown>={heading:d.heroHeading,subtitle:d.heroSubtitle};
-  if(d.heroPrimaryLabel.trim()&&d.heroPrimaryPath.trim()){
-   fields.primaryLabel=d.heroPrimaryLabel;fields.primaryPath=d.heroPrimaryPath;
+ d.slides.forEach((slide,index)=>{
+  const fields:Record<string,unknown>={heading:slide.heading,subtitle:slide.subtitle,
+   description:slide.description,eyebrow:slide.eyebrow,
+   tags:slide.tags.split(",").map(x=>x.trim()).filter(Boolean).slice(0,4)};
+  if(slide.primaryLabel.trim()&&slide.primaryPath.trim()){
+   fields.primaryLabel=slide.primaryLabel;fields.primaryPath=slide.primaryPath;
   }
-  if(d.heroSecondaryLabel.trim()&&d.heroSecondaryPath.trim()){
-   fields.secondaryLabel=d.heroSecondaryLabel;fields.secondaryPath=d.heroSecondaryPath;
+  if(slide.secondaryLabel.trim()&&slide.secondaryPath.trim()){
+   fields.secondaryLabel=slide.secondaryLabel;fields.secondaryPath=slide.secondaryPath;
   }
-  sections.push({kind:"HERO",order:0,fields});
- }
- if(d.body.trim())sections.push({kind:"RICH_TEXT",order:1,
-  fields:{heading:d.bodyHeading||"About the Foundation",body:d.body}});
- if(d.team.length)sections.push({kind:"TEAM",order:2,
+  sections.push({kind:"HERO",order:index,fields});
+ });
+ if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
+  fields:{heading:d.bodyHeading||"About the Foundation",body:d.body,
+   eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights)}});
+ if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
+  fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
+   ...(d.promoLabel.trim()&&d.promoPath.trim()?
+    {label:d.promoLabel,path:d.promoPath}:{})}});
+ if(d.featuresHeading.trim()&&d.featureCards.length)sections.push({
+  kind:"FEATURE_CARDS",order:40,
+  fields:{heading:d.featuresHeading,eyebrow:d.featuresEyebrow,
+   body:d.featuresBody,cards:d.featureCards}});
+ if(d.volunteerTitle.trim()&&d.memberTitle.trim())sections.push({
+  kind:"JOIN_CARDS",order:50,
+  fields:{volunteerTitle:d.volunteerTitle,volunteerBody:d.volunteerBody,
+   volunteerBenefits:lines(d.volunteerBenefits),
+   memberTitle:d.memberTitle,memberBody:d.memberBody,
+   memberBenefits:lines(d.memberBenefits)}});
+ if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
- if(!sections.length)sections.push({kind:"RICH_TEXT",order:0,
-  fields:{heading:d.title||"About the Foundation",body:d.body}});
+ if(d.kind==="HOME"&&(d.footerMission||d.footerAddress||d.footerEmail||d.footerPhone))
+  sections.push({kind:"SITE_FOOTER",order:90,
+   fields:{mission:d.footerMission,address:d.footerAddress,
+    phone:d.footerPhone,email:d.footerEmail,newsletterText:d.footerNewsletterText}});
+ if(!sections.length)sections.push({kind:"RICH_TEXT",order:20,
+  fields:{heading:d.title||"About the Foundation",body:d.body,variant:"STANDARD"}});
  return {kind:d.kind,slug:d.kind==="HOME"?"home":"about",title:d.title,
   seoTitle:d.seoTitle||d.title,seoDescription:d.seoDescription,
   canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets,
@@ -133,7 +195,13 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   setDraft(x=>({...x,[field]:value}));
  }
  const okay=draft.title.trim().length>=3&&
-  (draft.kind!=="HOME"||draft.heroHeading.trim().length>=3)&&
+  (draft.kind!=="HOME"||draft.slides.length>0)&&
+  draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
+  (!draft.promoHeading||Boolean(draft.promoLabel)===Boolean(draft.promoPath))&&
+  (!draft.featuresHeading||draft.featureCards.length>0&&draft.featureCards.every(x=>
+    x.label.trim().length>=2&&x.title.trim().length>=3&&x.body.trim().length>=5))&&
+  (!draft.volunteerTitle||Boolean(draft.memberTitle)&&
+    Boolean(draft.volunteerBody)&&Boolean(draft.memberBody))&&
   draft.body.trim().length>=5&&
   draft.team.every(x=>x.consentConfirmed&&x.name.trim().length>=2&&
    x.designation.trim().length>=2);
