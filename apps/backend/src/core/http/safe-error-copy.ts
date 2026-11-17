@@ -104,7 +104,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_CLAIM_REVIEW_INVALID:"Select Approve, Return or Reject and confirm the current review version using your password.",
       FINANCE_CLAIM_REVIEW_UNAVAILABLE:"An authorized reimbursement review is not yet configured or the original decision is unavailable.",
       FINANCE_CLAIM_STALE:"This claim or approval changed since you opened it. Refresh and review the latest status.",
-      FINANCE_CLAIM_VOUCHER_INVALID:"Choose a posted voucher originating from this approved claim, with the exact amount and correct payable or verified payout accounts."
+      FINANCE_CLAIM_VOUCHER_INVALID:"Choose a posted voucher originating from this approved claim, with the exact amount and correct payable or verified payout accounts.",
       FINANCE_INVOICE_SOURCE_INVALID:"Choose a valid Foundation invoice from the list.",
       FINANCE_INVOICE_FORM_INVALID:"Review the invoice details and save the requested stage again.",
       FINANCE_INVOICE_TEXT_INVALID:"Enter a valid invoice name, purpose or address within the allowed length.",
@@ -122,7 +122,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_INVOICE_NOT_ISSUABLE:"Post the approved invoice before requesting a private PDF.",
       FINANCE_INVOICE_DOCUMENT_UNAVAILABLE:"The private invoice PDF is unavailable or has changed. Refresh its status.",
       FINANCE_INVOICE_ISSUE_CONFLICT:"An original invoice issue is already recorded. Check its status before retrying.",
-      FINANCE_INVOICE_RECEIPT_NOT_READY:"Only a separately verified real bank statement match can settle this original issued invoice."
+      FINANCE_INVOICE_RECEIPT_NOT_READY:"Only a separately verified real bank statement match can settle this original issued invoice.",
       FINANCE_INVOICE_FILTER_INVALID:"Choose a valid invoice search or list page.",
       FINANCE_BUDGET_SOURCE_INVALID:"Choose a valid Foundation budget from your permitted list.",
       FINANCE_BUDGET_STALE:"The original budget version changed. Refresh before saving.",
