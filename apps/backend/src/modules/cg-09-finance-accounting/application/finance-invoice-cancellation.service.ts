@@ -89,15 +89,15 @@ export class FinanceInvoiceCancellationService{
     throw new ConflictException({code:"FINANCE_INVOICE_CANCEL_CONFLICT"});
    // Fail closed even if a CG-19 provider write is UNKNOWN, or even an
    // unverified collection journal exists. No legal issued-invoice bypass.
-   const blockers=await tx.query<{any:bigint}>(
+   const blockers=await tx.query<{total:string}>(
     "SELECT ((SELECT COUNT(*) FROM cg19_finance_invoice_document "+
     "WHERE root_realm_id=$1 AND invoice_id=$2)+ "+
     "(SELECT COUNT(*) FROM finance_invoice_receipt "+
     "WHERE root_realm_id=$1 AND invoice_id=$2)+ "+
     "(SELECT COUNT(*) FROM journal WHERE root_realm_id=$1 "+
-    "AND source_ref=$2 AND posting_kind='GENERAL'))::bigint AS any",
+    "AND source_ref=$2 AND posting_kind='GENERAL'))::bigint AS total",
     [actor.realmId,invoiceRef]);
-   if(BigInt(blockers.rows[0]?.any??0)>0n)
+   if(BigInt(blockers.rows[0]?.total??"0")>0n)
     throw new ConflictException({code:"FINANCE_INVOICE_CANCEL_CONFLICT"});
    const already=await tx.query(
     "SELECT id FROM finance_invoice_posted_cancellation "+
