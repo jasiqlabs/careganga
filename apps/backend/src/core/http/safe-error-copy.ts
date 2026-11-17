@@ -123,5 +123,17 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_INVOICE_DOCUMENT_UNAVAILABLE:"The private invoice PDF is unavailable or has changed. Refresh its status.",
       FINANCE_INVOICE_ISSUE_CONFLICT:"An original invoice issue is already recorded. Check its status before retrying.",
       FINANCE_INVOICE_FILTER_INVALID:"Choose a valid invoice search or list page.",
+      FINANCE_BUDGET_SOURCE_INVALID:"Choose a valid Foundation budget from your permitted list.",
+      FINANCE_BUDGET_STALE:"The original budget version changed. Refresh before saving.",
+      FINANCE_BUDGET_FORM_INVALID:"Review the budget name, year, category and required fields.",
+      FINANCE_BUDGET_AMOUNT_INVALID:"Enter a valid positive budget amount in rupees.",
+      FINANCE_BUDGET_PERIOD_INVALID:"Choose dates inside the currently open financial year.",
+      FINANCE_BUDGET_REPLAY_CONFLICT:"This request was already used for different budget data.",
+      FINANCE_BUDGET_REVIEW_INVALID:"Confirm the latest review decision using your current password.",
+      FINANCE_BUDGET_REVIEW_UNAVAILABLE:"A different protected reviewer or original budget decision is unavailable.",
+      FINANCE_BUDGET_NOT_APPROVED:"A budget must be independently approved before an allocation or spending event.",
+      FINANCE_BUDGET_EVENT_INVALID:"Check the available budget, existing commitments and original posted expense reference.",
+      FINANCE_BUDGET_FILTER_INVALID:"Choose a valid budget list page.",
+
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
