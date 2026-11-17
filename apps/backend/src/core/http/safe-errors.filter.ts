@@ -23,7 +23,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
           AND message_key=$1 LIMIT 1`,[code]);
       const candidate=rows.rows[0]?.safe_message;
       if(typeof candidate==="string"&&candidate.length>=16&&candidate.length<=220&&
-        !/[<>\\r\\n]/.test(candidate))result=candidate;
+        !/[<>\r\n]/.test(candidate))result=candidate;
     }catch{/* Missing table/DB outage must preserve approved safe default; never expose SQL. */}
     this.cache.set(code,{text:result,expires:now+45_000});
     return result;
