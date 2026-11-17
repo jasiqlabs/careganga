@@ -249,6 +249,37 @@ export class FinanceBudgetService{
    return {confirmed:true,status:next,budgetNumber:budget.budget_number,replayed:false};
   }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"budget");}finally{tx.release();}
  }
+ async archive(bearer:string,budgetInput:string,raw:unknown){
+  const actor=await this.actor(bearer,true),ref=id(budgetInput);
+  const input=body(raw,["requestKey","expectedVersion"]);
+  const key=id(input.requestKey,"requestKey"),expected=version(input.expectedVersion);
+  const fingerprint=sha(["BUDGET_ARCHIVE_V1",ref,expected]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.budgets.manage");
+   const prior=await this.existing(tx,actor,key);
+   if(prior){
+    if(prior.digest!==fingerprint)
+     throw new ConflictException({code:"FINANCE_BUDGET_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,status:prior.result_status,replayed:true};
+   }
+   const original=await this.load(tx,actor,ref);
+   if(original.status!=="APPROVED"||original.version!==expected)
+    throw new ConflictException({code:"FINANCE_BUDGET_STALE"});
+   const updated=await tx.query(
+    "UPDATE finance_budget SET status='ARCHIVED',updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status='APPROVED' AND version=$3 RETURNING id",
+    [ref,actor.realmId,expected]);
+   if(updated.rowCount!==1)
+    throw new ConflictException({code:"FINANCE_BUDGET_STALE"});
+   await this.record(tx,actor,key,fingerprint,ref,expected,"ARCHIVE","ARCHIVED");
+   await tx.query("COMMIT");
+   return {confirmed:true,status:"ARCHIVED",budgetNumber:original.budget_number,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"budget");}
+  finally{tx.release();}
+ }
  async recordEvent(bearer:string,budgetInput:string,raw:unknown){
   const actor=await this.actor(bearer,true),ref=id(budgetInput);
   const v=body(raw,["kind","amount","journalRef","requestKey"]),
