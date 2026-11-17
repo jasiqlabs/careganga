@@ -245,9 +245,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  }
  const unsaved=selected!==null&&
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
- const heroPhotoMissing=draft.kind==="HOME"&&draft.slides.some((slide,index)=>
+ const heroPhotoMissing=draft.kind==="HOME"&&(
+  !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
   slide.visible&&
-  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index));
+  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
