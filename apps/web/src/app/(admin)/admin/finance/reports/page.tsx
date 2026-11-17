@@ -33,7 +33,7 @@ export default async function FinanceReportsPage(){
   const canCreate=actions.includes("finance.reconciliation.manage");
   const canView=actions.includes("finance.reports.view");
   const canManage=canCreate;
-  if(!canViewreturn <main className="page main">
+  if(!canView)return <main className="page main">
    <h1>Reports access restricted</h1>
    <p>Your role cannot open Foundation financial statements. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
