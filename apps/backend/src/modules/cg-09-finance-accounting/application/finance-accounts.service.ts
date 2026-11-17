@@ -419,16 +419,22 @@ export class FinanceAccountsService{
  async manualJournalHistory(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
   const rows=await this.db.query<{journalRef:string;description:string;
-    postingDate:string;yearName:string;debitMinor:string}>(`
+    postingDate:string;yearName:string;debitMinor:string;
+    reversed:boolean;differentCreator:boolean}>(`
    SELECT j.id AS "journalRef",j.description,j.posting_date::text AS "postingDate",
-     fy.name AS "yearName",SUM(l.debit_minor)::text AS "debitMinor"
+     fy.name AS "yearName",SUM(l.debit_minor)::text AS "debitMinor",
+     (r.reversal_journal_id IS NOT NULL) AS reversed,
+     (j.created_by<>$2::uuid) AS "differentCreator"
    FROM journal j
    JOIN financial_year fy ON fy.id=j.financial_year_id
     AND fy.root_realm_id=j.root_realm_id
    JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id
+   LEFT JOIN finance_manual_journal_reversal r
+    ON r.original_journal_id=j.id AND r.root_realm_id=j.root_realm_id
    WHERE j.root_realm_id=$1 AND j.posting_kind='GENERAL'
-   GROUP BY j.id,fy.name
-   ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,[actor.realmId]);
+    AND j.source_ref=j.immutable_source_event_key
+   GROUP BY j.id,fy.name,r.reversal_journal_id
+   ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,[actor.realmId,actor.accountId]);
   return {journals:rows.rows,status:"POSTED_NOT_PAYMENT"};
  }
  async postGeneral(bearer:string,input:unknown):Promise<CommandResult>{
