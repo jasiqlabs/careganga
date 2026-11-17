@@ -149,3 +149,30 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg09_bank_decision_file_guard BEFORE INSERT ON finance_reconciliation_decision
  FOR EACH ROW EXECUTE FUNCTION cg09_bank_decision_file_guard();
+
+-- A statement file revoked after manual review cannot back a *new* receipt.
+-- Do not rewrite an earlier posted journal or silently re-open a verified match.
+CREATE FUNCTION cg09_receipt_current_statement_file_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ PERFORM 1 FROM finance_reconciliation_decision d
+ JOIN cg19_stored_file f
+  ON f.id=d.statement_file_id AND f.realm_id=d.root_realm_id
+  AND f.reconciliation_id=d.reconciliation_id AND f.revision=d.statement_file_version
+ JOIN cg19_upload_intent i
+  ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  AND i.reconciliation_id=d.reconciliation_id
+ WHERE d.root_realm_id=NEW.root_realm_id
+  AND d.reconciliation_id=NEW.reconciliation_id AND d.action='VERIFY'
+  AND f.owner_kind='CG09_BANK_STATEMENT'
+  AND i.owner_kind='CG09_BANK_STATEMENT' AND i.status='VALIDATED'
+  AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+ FOR SHARE OF d,f,i;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Original verified bank statement proof is unavailable'
+   USING ERRCODE='P0928';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_receipt_statement_file_guard
+ BEFORE INSERT ON finance_invoice_receipt FOR EACH ROW
+ EXECUTE FUNCTION cg09_receipt_current_statement_file_guard();
