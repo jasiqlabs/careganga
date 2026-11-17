@@ -22,6 +22,7 @@ const validAction:Record<FormKind,{path:string;kind:string}>={
 const friendlyKind:Record<FormKind,string>={
  year:"Financial year",group:"Account group",account:"Account",opening:"Opening entry"
 };
+const emptyFilters=()=>({kind:"ALL",groupRef:"",branchRef:"",status:"ALL",yearRef:""});
 const blank=():Record<string,string>=>({
  name:"",code:"",startOn:"",endOn:"",category:"ASSET",parentRef:"",
  groupRef:"",accountKind:"GENERAL",scopeKind:"FOUNDATION",branchRef:"",
@@ -66,6 +67,8 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
+ const [filters,setFilters]=useState(emptyFilters);
+ const [appliedFilters,setAppliedFilters]=useState(emptyFilters);
  const [offset,setOffset]=useState(0);
  const [tab,setTab]=useState<"accounts"|"groups"|"years"|"opening">("accounts");
  const [drawer,setDrawer]=useState<FormKind|null>(null);
@@ -80,8 +83,8 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const load=useCallback(async()=>{
   setLoading(true);setError("");
   try{
-   const res=await fetch(base+"/setup?search="+encodeURIComponent(appliedSearch)+
-    "&offset="+offset,{cache:"no-store"});
+   const params=new URLSearchParams({search:appliedSearch,offset:String(offset),...appliedFilters});
+   const res=await fetch(base+"/setup?"+params.toString(),{cache:"no-store"});
    if(!res.ok){
     const e=await parseFailure(res);throw new Error(e.message);
    }
@@ -97,7 +100,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    setData(result);
   }catch(e){setData(null);setError(e instanceof Error?e.message:"Finance accounts could not be loaded. Please retry.");}
   finally{setLoading(false);}
- },[appliedSearch,offset]);
+ },[appliedSearch,appliedFilters,offset]);
  useEffect(()=>{void load();},[load]);
  function open(kind:FormKind){
   setDrawer(kind);setFailure(null);setSuccess("");setPending(null);setPendingNotFound(false);
@@ -244,6 +247,54 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
       {canPost&&<button type="button" onClick={()=>open("opening")}>+ Opening Entry</button>}
      </div>
     </div>
+    <form className="cg-fin-advanced" onSubmit={e=>{
+      e.preventDefault();setOffset(0);setAppliedSearch(search.trim());setAppliedFilters({...filters});
+     }}>
+     <strong>Advanced Search & Filters</strong>
+     <div className="cg-fin-filter-grid">
+      <label>Search
+       <input type="search" value={search} maxLength={80}
+        placeholder="Account name or code" onChange={e=>setSearch(e.target.value)}/>
+      </label>
+      <label>Financial year
+       <select value={filters.yearRef} onChange={e=>setFilters(v=>({...v,yearRef:e.target.value}))}>
+        <option value="">All years</option>
+        {data?.years.map(y=><option value={y.yearRef} key={y.yearRef}>{y.name}</option>)}
+       </select>
+      </label>
+      <label>Account type
+       <select value={filters.kind} onChange={e=>setFilters(v=>({...v,kind:e.target.value}))}>
+        <option value="ALL">All types</option><option value="GENERAL">General</option>
+        <option value="CASH">Cash</option><option value="BANK">Bank</option>
+       </select>
+      </label>
+      <label>Account group
+       <select value={filters.groupRef} onChange={e=>setFilters(v=>({...v,groupRef:e.target.value}))}>
+        <option value="">All groups</option>
+        {data?.groups.map(g=><option key={g.groupRef} value={g.groupRef}>{g.name} — {g.code}</option>)}
+       </select>
+      </label>
+      <label>Branch / Location
+       <select value={filters.branchRef} onChange={e=>setFilters(v=>({...v,branchRef:e.target.value}))}>
+        <option value="">All branches and Foundation</option>
+        {data?.branches.map(b=><option value={b.branchRef} key={b.branchRef}>{b.name} — {b.code}</option>)}
+       </select>
+      </label>
+      <label>Status
+       <select value={filters.status} onChange={e=>setFilters(v=>({...v,status:e.target.value}))}>
+        <option value="ALL">All statuses</option>
+        <option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option>
+       </select>
+      </label>
+     </div>
+     <div className="cg-fin-filter-actions">
+      <button type="button" onClick={()=>{
+        setSearch("");setFilters(emptyFilters());setOffset(0);setAppliedSearch("");
+        setAppliedFilters(emptyFilters());
+       }}>Reset</button>
+      <button className="primary" type="submit">Apply Filters</button>
+     </div>
+    </form>
     <div className="cg-fin-tabs" role="tablist" aria-label="Financial setup sections">
      {([
       ["accounts","Accounts"],["groups","Account Groups"],["years","Financial Years"],["opening","Opening Entries"]
@@ -252,15 +303,6 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
       type="button">{title}</button>)}
     </div>
     {tab==="accounts"&&<>
-     <form className="cg-fin-search" onSubmit={e=>{e.preventDefault();setOffset(0);setAppliedSearch(search.trim());}}>
-      <label htmlFor="cg-fin-search">Search permitted accounts</label>
-      <input id="cg-fin-search" value={search} maxLength={80}
-       placeholder="Search account name or code" onChange={e=>setSearch(e.target.value)}/>
-      <button type="submit">Search</button>
-      {appliedSearch&&<button type="button" onClick={()=>{
-       setSearch("");setAppliedSearch("");setOffset(0);
-      }}>Clear</button>}
-     </form>
      <div className="cg-fin-table-wrap"><table className="cg-fin-table">
       <thead><tr><th>Account Name</th><th>Code</th><th>Group</th><th>Scope</th>
        <th>Type</th><th>Opening balance</th><th>Current balance</th><th>Status</th>{canManage&&<th>Action</th>}</tr></thead>
