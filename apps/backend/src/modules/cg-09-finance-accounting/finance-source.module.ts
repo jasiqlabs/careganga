@@ -11,6 +11,6 @@ import {FinanceVoucherSourceFacade} from "./application/finance-voucher-source.f
 @Module({
  imports:[IdentityAccessModule],
  providers:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade],
- exports:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade]
+ exports:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade]
 })
 export class FinanceSourceModule{}
