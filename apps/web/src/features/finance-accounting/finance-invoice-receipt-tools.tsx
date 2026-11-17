@@ -24,7 +24,7 @@ async function data<T>(url:string):Promise<T>{
  const res=await fetch(url,{cache:"no-store"});
  if(!res.ok)throw Error(await failure(res));return res.json() as Promise<T>;
 }
-export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:string;canPost:boolean}){
+export function FinanceInvoiceReceiptTools({invoiceRef,canPost,canIssue}:{invoiceRef:string;canPost:boolean;canIssue:boolean}){
  const [paid,setPaid]=useState<Paid|null>(null);
  const [options,setOptions]=useState<Option[]>([]);
  const [collection,setCollection]=useState<Collection|null>(null);
@@ -42,11 +42,11 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:stri
    const current=await data<Paid>("/api/finance/invoices/"+invoiceRef+"/receipt");
    setPaid(current);
    const outstanding=BigInt(current.outstandingMinor??"0");
-   if(outstanding>0n){
+   if(outstanding>0n&&canIssue){
     const available=await data<{matches:Option[]}>(
      "/api/finance/invoices/"+invoiceRef+"/receipt-options");
     setOptions(available.matches??[]);
-    if(canPost){
+    if(canPost&&canIssue){
      const setup=await data<Collection>(
       "/api/finance/invoices/"+invoiceRef+"/collection-options");
      setCollection(setup);
@@ -60,7 +60,7 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:stri
    }
    setDoc(documents);
   }catch(e){setError(e instanceof Error?e.message:"Could not verify original receipts.");}
- },[invoiceRef,canPost]);
+ },[invoiceRef,canPost,canIssue]);
  useEffect(()=>{void refresh();},[refresh]);
  async function perform(url:string,body:Record<string,unknown>,
   kind:Pending["action"],receiptRef?:string){
@@ -114,7 +114,7 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:stri
     <article key={name} className="cg-fin-voucher-tile"><div><p>{name}</p>
      <strong>{money(n)}</strong></div></article>)}
   </div>}
-  {outstanding!==null&&outstanding>0n&&canPost&&collection&&<div className="cg-fin-form">
+  {outstanding!==null&&outstanding>0n&&canIssue&&canPost&&collection&&<div className="cg-fin-form">
    <h4>1. Record actual collection journal (not yet verified)</h4>
    <label className="cg-fin-field">Financial year of collection
     <select value={year} onChange={e=>setYear(e.target.value)}>
@@ -140,7 +140,7 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:stri
    <p className="cg-fin-help">Then independently verify the actual bank statement in
     <a href="/admin/finance/reports"> Bank Reconciliation</a>.</p>
   </div>}
-  {outstanding!==null&&outstanding>0n&&<div className="cg-fin-form">
+  {outstanding!==null&&outstanding>0n&&canIssue&&<div className="cg-fin-form">
    <h4>2. Link separately verified real bank statement item</h4>
    <label className="cg-fin-field">Eligible original bank collection
     <select value={choice} onChange={e=>setChoice(e.target.value)}>
@@ -161,11 +161,11 @@ export function FinanceInvoiceReceiptTools({invoiceRef,canPost}:{invoiceRef:stri
     {doc[r.receiptRef]?.canDownload&&doc[r.receiptRef]?.documentRef?
      <a href={"/api/finance-receipts/files/"+doc[r.receiptRef].documentRef+"/download"}>
       Download this protected receipt PDF</a>:
-     <button type="button" disabled={busy||Boolean(pending)||
+     canIssue?<button type="button" disabled={busy||Boolean(pending)||
        doc[r.receiptRef]?.status==="UNKNOWN"} onClick={()=>void perform(
        "/api/finance-receipts/receipts/"+r.receiptRef+"/issue",{},"ISSUE",r.receiptRef)}>
       {doc[r.receiptRef]?.status==="UNKNOWN"?"Receipt issue requires provider recovery":
-       "Issue this verified receipt PDF"}</button>}
+       "Issue this verified receipt PDF"}</button>:<p>Private receipt document not yet issued.</p>}
    </div>):<p>No bank-verified receipts recorded.</p>}
    {paid?.hasMore&&<p>Showing recent receipts only. Totals include all verified receipts.</p>}
   </div>
