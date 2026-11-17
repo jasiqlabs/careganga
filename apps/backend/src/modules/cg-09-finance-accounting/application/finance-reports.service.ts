@@ -130,6 +130,7 @@ export class FinanceReportsService{
    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
    "GROUP BY l.account_id) x ON x.account_id=a.id "+
    "WHERE a.root_realm_id=$1 "+
+   "AND ($3::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id=$3) "+
    "ORDER BY a.code,a.id LIMIT 1001",
    [actor.realmId,yearRef,branch]);
   // Use only posted, year-scoped ledger lines; no cross-year account row scans.
@@ -161,12 +162,13 @@ export class FinanceReportsService{
    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
-   "AND ($4::date IS NULL OR j.posting_date>=$4) "+
-   "AND ($5::date IS NULL OR j.posting_date<=$5) "+
-   "AND ($6='DAY' OR ($6='CASH' AND a.account_kind='CASH') "+
-   "OR ($6='BANK' AND a.account_kind='BANK')) "+
-   "ORDER BY j.posting_date DESC,j.id DESC,l.id DESC LIMIT 51 OFFSET $7",
-   [actor.realmId,v.fy,v.branch,v.from,v.to,kind,v.offset]);
+   "AND ($4::uuid IS NULL OR l.account_id=$4) "+
+   "AND ($5::date IS NULL OR j.posting_date>=$5) "+
+   "AND ($6::date IS NULL OR j.posting_date<=$6) "+
+   "AND ($7='DAY' OR ($7='CASH' AND a.account_kind='CASH') "+
+   "OR ($7='BANK' AND a.account_kind='BANK')) "+
+   "ORDER BY j.posting_date DESC,j.id DESC,l.id DESC LIMIT 51 OFFSET $8",
+   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,kind,v.offset]);
   return {kind,lines:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?v.offset+50:null};
  }
  async summary(bearer:string,yearInput?:string){
