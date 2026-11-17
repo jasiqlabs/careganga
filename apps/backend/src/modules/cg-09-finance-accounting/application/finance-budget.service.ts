@@ -32,6 +32,11 @@ const label=(v:unknown,field:string,max:number):string=>{
   throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field});
  return v.trim().replace(/\s+/g," ");
 };
+const expenseGroupCode=(v:unknown):string=>{
+ if(typeof v!=="string"||!/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(v))
+  throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});
+ return v;
+};
 const day=(v:unknown,field:string)=>{
  if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v)||
   Number.isNaN(new Date(v+"T00:00:00Z").getTime())||
@@ -75,10 +80,7 @@ export class FinanceBudgetService{
   return {budgetName:label(v.budgetName,"budgetName",160),
    financialYearRef:id(v.financialYearRef,"financialYearRef"),
    branchRef:branch,branchVersion:bv,
-   category:(typeof v.category==="string"&&/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(v.category)
-    ?v.category:(()=>{throw new BadRequestException({
-      code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});})()),
-   periodStart,periodEnd,
+   category:expenseGroupCode(v.category),periodStart,periodEnd,
    fundingNote:label(v.fundingNote??"Foundation budget authorization","fundingNote",250),
    ceilingMinor:minor(v.ceiling)};
  }
