@@ -48,7 +48,7 @@ function dateOnly(value:unknown,field:string):string{
   return fieldError(invalid,field);
  const date=new Date(value+"T00:00:00Z");
  if(Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==value)
-  return fieldError("FINANCE_YEAR_DATE_INVALID",field);
+  return fieldError(invalid,field);
  return value;
 }
 function amountMinor(value:unknown):string{
