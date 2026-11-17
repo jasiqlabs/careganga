@@ -43,11 +43,12 @@ type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER";order:number
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM";
  altText:string;order:number};
+type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type Content={kind:"HOME"|"ABOUT";slug:string;title:string;seoTitle:string;
- seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[]};
+ seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[];navigation:NavDesired|null};
 function parseContent(raw:unknown):Content{
  const v=input(raw,["kind","slug","title","seoTitle","seoDescription","canonicalPath",
-  "sections","assets"]);
+  "sections","assets","navigation"]);
  if(typeof v.kind!=="string"||!KINDS.has(v.kind))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"kind"});
  const kind=v.kind as Content["kind"],slug=text(v.slug,"slug",70,1).toLowerCase();
@@ -115,6 +116,17 @@ function parseContent(raw:unknown):Content{
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
  if(!Array.isArray(v.assets??[])||(v.assets as unknown[]).length>20)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
+ const navigation=kind==="HOME"?(()=>{
+  const candidate=v.navigation??{loginDesired:true,memberJoinDesired:false,volunteerJoinDesired:false};
+  const n=input(candidate,["loginDesired","memberJoinDesired","volunteerJoinDesired"]);
+  if(typeof n.loginDesired!=="boolean"||typeof n.memberJoinDesired!=="boolean"||
+     typeof n.volunteerJoinDesired!=="boolean")
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"navigation"});
+  return {loginDesired:n.loginDesired,memberJoinDesired:n.memberJoinDesired,
+   volunteerJoinDesired:n.volunteerJoinDesired};
+ })():null;
+ if(kind==="ABOUT"&&v.navigation!==undefined)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"navigation"});
  const assets=(v.assets as unknown[]|undefined??[]).map((raw,i)=>{
   const a=input(raw,["fileRef","version","role","altText","order"]);
   if(typeof a.role!=="string"||!assetRoles.has(a.role)||
@@ -127,7 +139,7 @@ function parseContent(raw:unknown):Content{
  });
  if(new Set(assets.map(a=>a.role+":"+a.order)).size!==assets.length)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
- return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets};
+ return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets,navigation};
 }
 type Page={id:string;kind:string;slug:string;version:string;created_by:string;
  draft_revision_no:number;archived_at:Date|null};
@@ -181,7 +193,7 @@ export class CmsEditorialService{
   return this.withTx(async tx=>{
    const page=await this.row(tx,a,ref);
    const rev=await this.revision(tx,a,page);
-   const [sections,assets,published]=await Promise.all([
+   const [sections,assets,published,navigation]=await Promise.all([
     tx.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no,id",
@@ -196,7 +208,11 @@ export class CmsEditorialService{
      "JOIN cms_publication pub ON pub.id=e.publication_id "+
      "AND pub.foundation_root_id=e.foundation_root_id "+
      "WHERE e.foundation_root_id=$1 AND e.page_id=$2",
-     [a.realmId,page.id])
+     [a.realmId,page.id]),
+    tx.query<{login_desired:boolean;member_join_desired:boolean;volunteer_join_desired:boolean}>(
+     "SELECT login_desired,member_join_desired,volunteer_join_desired FROM cms_navigation_revision "+
+     "WHERE foundation_root_id=$1 AND home_revision_id=$2",
+     [a.realmId,rev.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
     revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
@@ -206,6 +222,9 @@ export class CmsEditorialService{
     sections:sections.rows.map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields})),
     assets:assets.rows.map(x=>({fileRef:x.cg19_file_ref,
      version:x.cg19_validated_version,role:x.role,altText:x.alt_text,order:x.sort_order})),
+    navigation:page.kind==="HOME"?{loginDesired:navigation.rows[0]?.login_desired??true,
+     memberJoinDesired:navigation.rows[0]?.member_join_desired??false,
+     volunteerJoinDesired:navigation.rows[0]?.volunteer_join_desired??false}:null,
     publicationStatus:published.rows[0]?.state??"NOT_PUBLISHED"};
   });
  }
@@ -227,6 +246,32 @@ export class CmsEditorialService{
     "VALUES($1,$2,$3,$4,$5,$6,$7,'VALIDATED')",
     [actor.realmId,rev,asset.fileRef,asset.version,
      asset.role,asset.altText,asset.order]);
+  }
+ }
+ private async saveNavigation(tx:PoolClient,actor:VerifiedFoundationActor,
+  revisionRef:string,digest:string,nav:NavDesired){
+  const existing=await tx.query("SELECT id FROM cms_navigation_revision WHERE "+
+   "foundation_root_id=$1 AND home_revision_id=$2 FOR UPDATE",
+   [actor.realmId,revisionRef]);
+  if(existing.rows[0]){
+   const updated=await tx.query(
+    "UPDATE cms_navigation_revision SET login_desired=$3,member_join_desired=$4,"+
+    "volunteer_join_desired=$5,source_digest=$6 "+
+    "WHERE foundation_root_id=$1 AND home_revision_id=$2 AND status='DRAFT' RETURNING id",
+    [actor.realmId,revisionRef,nav.loginDesired,nav.memberJoinDesired,
+     nav.volunteerJoinDesired,digest]);
+   if(!updated.rowCount)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+  }else{
+   await tx.query("SELECT id FROM access_realm WHERE id=$1 FOR UPDATE",[actor.realmId]);
+   const seq=await tx.query<{revision_no:number}>(
+    "SELECT COALESCE(MAX(revision_no),0)+1 AS revision_no "+
+    "FROM cms_navigation_revision WHERE foundation_root_id=$1",[actor.realmId]);
+   await tx.query("INSERT INTO cms_navigation_revision(foundation_root_id,"+
+    "revision_no,login_desired,member_join_desired,volunteer_join_desired,"+
+    "source_digest,status,created_by,home_revision_id) "+
+    "VALUES($1,$2,$3,$4,$5,$6,'DRAFT',$7,$8)",
+    [actor.realmId,seq.rows[0].revision_no,nav.loginDesired,
+     nav.memberJoinDesired,nav.volunteerJoinDesired,digest,actor.accountId,revisionRef]);
   }
  }
  async create(bearer:string,raw:unknown){
@@ -262,6 +307,7 @@ export class CmsEditorialService{
     [actor.realmId,page.rows[0].id,content.title,content.seoTitle,
      content.seoDescription,content.canonicalPath,digest,actor.accountId]);
    await this.putSections(tx,actor,rev.rows[0].id,content);
+   if(content.navigation)await this.saveNavigation(tx,actor,rev.rows[0].id,digest,content.navigation);
    await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,event_key,"+
     "actor_ref,action,revision_ref,redacted_metadata) "+
     "VALUES($1,$2,$3,$4,'CREATE',$5,$6::jsonb)",
@@ -315,6 +361,7 @@ export class CmsEditorialService{
       value.canonicalPath,digest,actor.accountId]);
    }
    await this.putSections(tx,actor,revisionRef,value);
+   if(value.navigation)await this.saveNavigation(tx,actor,revisionRef,digest,value.navigation);
    await tx.query("UPDATE cms_page SET version=version+1,draft_revision_no=$3 "+
     "WHERE id=$1 AND foundation_root_id=$2",
     [page.id,actor.realmId,revisionNo]);
