@@ -269,7 +269,7 @@ export class FinanceExpenseClaimService{
      status:existing.rows[0].result_status,replayed:true};
    }
    const found=await tx.query<{
-    id:string;requested_by:string;version:number;status:string;create_digest:string;
+    id:string;requested_by:string;version:number;status:string;current_digest:string;
     category_label:string}>(
     "SELECT id,requested_by,version,status,current_digest,category_label "+
     "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
