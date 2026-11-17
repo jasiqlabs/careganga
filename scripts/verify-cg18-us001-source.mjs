@@ -37,7 +37,13 @@ const checks=[
   files.admin.includes("source.assets.map")],
  ["Native Android uses correct banner media order",files.android.includes("v.order===section.order")],
  ["Original screenshot content remains editable, not seeded",
-  files.reference.includes("NEVER auto-seed")&&files.admin.includes("clientScreenshotHome")]
+  files.reference.includes("NEVER auto-seed")&&files.admin.includes("clientScreenshotHome")],
+ ["Confirmed 4xx rejections release CMS editing and reviewing locks",
+  files.admin.includes("class CmsRequestRejected extends Error")&&
+  files.admin.includes("if(r.status>=400&&r.status<500)throw new CmsRequestRejected")&&
+  (files.admin.match(/if\(e instanceof CmsRequestRejected\)setPending\(null\)/g)||[]).length===2],
+ ["Uncertain CMS writes retain their original idempotency key",
+  files.admin.includes("setPending(c)")&&files.admin.includes("Retry original action")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
