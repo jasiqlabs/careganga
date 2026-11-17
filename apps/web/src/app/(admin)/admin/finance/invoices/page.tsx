@@ -58,7 +58,9 @@ export default async function FinanceInvoicesPage(){
     canViewInvoices={true}/>
    <main className="workspace"><FinanceInvoiceWorkspace canManage={canManage}
      canIssue={actions.includes("finance.invoices.issue")}
-     canPost={actions.includes("finance.journals.post")}/></main>
+     canPost={actions.includes("finance.journals.post")}
+      canCancel={actions.includes("finance.invoices.review")&&
+       actions.includes("finance.journals.post")&&actions.includes("approvals.review")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
