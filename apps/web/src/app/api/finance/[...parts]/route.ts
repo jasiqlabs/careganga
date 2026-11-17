@@ -13,6 +13,9 @@ const financeErrors=new Set([
 function allowed(parts:string[],method:string):boolean{
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="drafts")return method==="GET"||method==="POST";
+ if(parts.length===3&&parts[0]==="vouchers"&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="PATCH";
+ if(parts.length===3&&parts[0]==="vouchers"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===1&&["years","groups","accounts","opening-journals"].includes(parts[0]))
   return method==="POST";
  if(parts.length===3&&["years","accounts"].includes(parts[0])&&UUID.test(parts[1])
@@ -76,7 +79,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const safeStatus=[400,401,403,404,409,429].includes(res.status)?res.status:503;
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
-  const fields=new Set(["description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
+  const fields=new Set(["purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
    "groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
