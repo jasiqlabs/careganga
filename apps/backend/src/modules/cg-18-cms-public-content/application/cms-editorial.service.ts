@@ -52,6 +52,19 @@ type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
  "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT";
  altText:string;order:number};
 // Only reveal media when its exact authored section or indexed card still exists.
+const IMAGE_MIME=new Set(["image/jpeg","image/png","image/webp"]);
+function placementMimeAllowed(asset:Placement,sections:readonly Section[],mime:string){
+ if(asset.role==="DOCUMENT")return mime==="application/pdf"||IMAGE_MIME.has(mime);
+ if(asset.role==="GALLERY"){
+  const gallery=sections.find(s=>s.kind==="GALLERY_GRID");
+  const items=gallery?.fields.items;
+  const item=Array.isArray(items)?items[asset.order] as Record<string,unknown>|undefined:undefined;
+  return item?.mediaType==="PHOTO"?IMAGE_MIME.has(mime):
+   item?.mediaType==="VIDEO"?mime==="video/mp4":
+   item?.mediaType==="PUBLICATION"?mime==="application/pdf":false;
+ }
+ return IMAGE_MIME.has(mime);
+}
 function placementFits(sections:readonly Section[],a:{role:string;order:number}){
  return sections.some(s=>{
   if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order;
@@ -366,7 +379,9 @@ export class CmsEditorialService{
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
   }
   for(const asset of value.assets){
-   await this.media.validatePlacement(tx,actor,rev,asset.fileRef,asset.version);
+   const proof=await this.media.validatePlacement(tx,actor,rev,asset.fileRef,asset.version);
+   if(!placementMimeAllowed(asset,value.sections,proof.mime))
+    throw new BadRequestException({code:"CMS_MEDIA_INVALID",field:"assets"});
    await tx.query("INSERT INTO cms_asset_placement(foundation_root_id,page_revision_id,"+
     "page_id,cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,"+
     "public_rights_status) SELECT $1,$2,v.page_id,$3,$4,$5,$6,$7,'VALIDATED' "+
