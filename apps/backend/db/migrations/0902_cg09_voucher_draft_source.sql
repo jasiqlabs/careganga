@@ -91,3 +91,68 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg09_voucher_draft_guard BEFORE INSERT OR UPDATE ON finance_voucher
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_voucher_draft();
+
+-- No direct SQL writer may forge voucher line arithmetic in the frozen revision.
+CREATE FUNCTION cg09_verify_voucher_draft_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE item jsonb; qty numeric; rate numeric; subtotal numeric; total numeric:=0;
+BEGIN
+ FOR item IN SELECT value FROM jsonb_array_elements(NEW.line_snapshot) LOOP
+  IF jsonb_typeof(item)<>'object'
+   OR (item->>'description') IS NULL
+   OR char_length(btrim(item->>'description')) NOT BETWEEN 2 AND 180
+   OR (item->>'quantity') IS NULL
+   OR (item->>'quantity') !~ '^[0-9]{1,7}$'
+   OR (item->>'unitRateMinor') IS NULL
+   OR (item->>'unitRateMinor') !~ '^[0-9]{1,16}$'
+   OR (item->>'lineTotalMinor') IS NULL
+   OR (item->>'lineTotalMinor') !~ '^[0-9]{1,16}$' THEN
+    RAISE EXCEPTION 'Voucher item is invalid' USING ERRCODE='P0913';
+  END IF;
+  qty:=(item->>'quantity')::numeric;
+  rate:=(item->>'unitRateMinor')::numeric;
+  subtotal:=(item->>'lineTotalMinor')::numeric;
+  IF qty<1 OR qty>1000000 OR rate<=0 OR rate>99999999999999
+     OR subtotal<=0 OR subtotal>99999999999999 OR subtotal<>qty*rate THEN
+    RAISE EXCEPTION 'Voucher item total does not match quantity and rate' USING ERRCODE='P0913';
+  END IF;
+  total:=total+subtotal;
+ END LOOP;
+ IF total<>NEW.gross_minor OR
+  NEW.total_minor<>NEW.gross_minor+NEW.tax_minor+NEW.charges_minor THEN
+  RAISE EXCEPTION 'Voucher items do not balance against the draft amount' USING ERRCODE='P0913';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_voucher_line_arithmetic
+ BEFORE INSERT ON finance_voucher_draft_revision
+ FOR EACH ROW EXECUTE FUNCTION cg09_verify_voucher_draft_revision();
+
+-- Source header and frozen revision must be committed atomically.
+CREATE FUNCTION cg09_verify_voucher_revision_link() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE h jsonb; r record;
+BEGIN
+ SELECT revision.header_snapshot,revision.gross_minor,revision.tax_minor,
+   revision.charges_minor,revision.total_minor
+  INTO r
+ FROM finance_voucher_draft_revision revision
+ WHERE revision.voucher_id=NEW.id AND revision.root_realm_id=NEW.root_realm_id
+   AND revision.version=NEW.version;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Voucher revision is required before a draft is visible' USING ERRCODE='P0913';
+ END IF;
+ h:=r.header_snapshot;
+ IF r.gross_minor<>NEW.gross_minor OR r.tax_minor<>NEW.tax_minor
+  OR r.charges_minor<>NEW.charges_minor OR r.total_minor<>NEW.total_minor
+  OR h->>'financialYearRef' IS DISTINCT FROM NEW.financial_year_id::text
+  OR h->>'branchRef' IS DISTINCT FROM NEW.branch_id::text
+  OR h->>'type' IS DISTINCT FROM NEW.voucher_type
+  OR h->>'postingDate' IS DISTINCT FROM NEW.posting_date::text
+  OR h->>'payeeName' IS DISTINCT FROM NEW.payee_name
+  OR h->>'purpose' IS DISTINCT FROM NEW.purpose THEN
+   RAISE EXCEPTION 'Voucher revision does not match the current draft' USING ERRCODE='P0913';
+ END IF;
+ RETURN NULL;
+END; $$;
+CREATE CONSTRAINT TRIGGER cg09_voucher_requires_frozen_revision
+ AFTER INSERT OR UPDATE ON finance_voucher DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW EXECUTE FUNCTION cg09_verify_voucher_revision_link();
