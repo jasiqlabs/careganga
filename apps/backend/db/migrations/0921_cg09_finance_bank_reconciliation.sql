@@ -65,15 +65,15 @@ CREATE TRIGGER cg09_reconciliation_decision_immutable
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 
 CREATE FUNCTION cg09_reconciliation_source_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE account_kind text; bank_line_count bigint; bank_amount bigint; source_year uuid;
+DECLARE v_account_kind text; bank_line_count bigint; bank_amount bigint; source_year uuid;
 BEGIN
  IF TG_OP='DELETE' THEN
   RAISE EXCEPTION 'Bank reconciliation source cannot be deleted' USING ERRCODE='P0926';
  END IF;
  IF TG_OP='INSERT' THEN
-  SELECT account_kind INTO account_kind FROM finance_account
-   WHERE id=NEW.bank_account_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
-  IF NOT FOUND OR account_kind<>'BANK' THEN
+  SELECT a.account_kind INTO v_account_kind FROM finance_account a
+   WHERE a.id=NEW.bank_account_id AND a.root_realm_id=NEW.root_realm_id FOR SHARE;
+  IF NOT FOUND OR v_account_kind<>'BANK' THEN
    RAISE EXCEPTION 'An actual bank account is required' USING ERRCODE='P0926';
   END IF;
   SELECT j.financial_year_id,COUNT(l.id),COALESCE(SUM(l.debit_minor-l.credit_minor),0)
