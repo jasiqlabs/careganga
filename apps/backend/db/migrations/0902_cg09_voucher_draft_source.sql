@@ -38,6 +38,7 @@ CREATE TABLE finance_voucher_draft_revision(
  root_realm_id uuid NOT NULL,
  voucher_id uuid NOT NULL,
  version integer NOT NULL CHECK(version>0),
+ header_snapshot jsonb NOT NULL CHECK(jsonb_typeof(header_snapshot)='object'),
  line_snapshot jsonb NOT NULL CHECK(jsonb_typeof(line_snapshot)='array'
     AND jsonb_array_length(line_snapshot) BETWEEN 1 AND 40),
  gross_minor bigint NOT NULL CHECK(gross_minor>0),
