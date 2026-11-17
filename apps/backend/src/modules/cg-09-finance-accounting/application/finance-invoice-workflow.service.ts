@@ -171,6 +171,21 @@ export class FinanceInvoiceWorkflowService{
      p.receivableAccountRef,p.incomeAccountRef,p.taxAccountRef??null,version]);
    if(change.rowCount!==1)
     throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   // Reissue follows the normal invoice review, accrual and original CG19 PDF.
+   // This one immutable link is the only added correction-specific source.
+   if(typeof i.replacesInvoiceRef==="string"&&i.replacesInvoiceRef){
+    const prior=await tx.query<{id:string}>(
+     "SELECT id FROM finance_invoice_credit_note "+
+     "WHERE root_realm_id=$1 AND invoice_id=$2 FOR SHARE",
+     [actor.realmId,i.replacesInvoiceRef]);
+    if(!prior.rows[0])
+     throw new ConflictException({code:"FINANCE_INVOICE_REISSUE_CONFLICT"});
+    await tx.query(
+     "INSERT INTO finance_invoice_reissue_link(root_realm_id,original_invoice_id,"+
+     "replacement_invoice_id,original_credit_note_id,recorded_by) "+
+     "VALUES($1,$2,$3,$4,$5)",
+     [actor.realmId,i.replacesInvoiceRef,ref,prior.rows[0].id,actor.accountId]);
+   }
    await this.record(tx,actor,ref,version,key,digest,"SUBMIT","SUBMITTED");
    await tx.query("COMMIT");
    return {confirmed:true,status:"SUBMITTED",invoiceNumber:x.invoice_number,
