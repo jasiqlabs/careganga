@@ -25,7 +25,7 @@ export async function renderFinanceReceipt(source:OriginalReceipt,issuedAt:strin
   const page=pdf.addPage([595,842]),blue=rgb(0.14,0.3,0.67),gray=rgb(0.32,0.36,0.43);
   page.drawRectangle({x:0,y:816,width:595,height:26,color:blue});
   page.drawText("CareGanga Foundation",{x:45,y:779,font,size:18,color:blue});
-  page.drawText("Financial Receipt — Verified Bank Collection",{x:45,y:750,font,size:12,color:gray});
+  page.drawText("Financial Receipt — Reviewed Bank Collection",{x:45,y:750,font,size:12,color:gray});
   page.drawLine({start:{x:45,y:730},end:{x:550,y:730},thickness:0.8,color:gray});
   let y=693;
   const draw=(label:string,value:string)=>{
@@ -46,14 +46,14 @@ export async function renderFinanceReceipt(source:OriginalReceipt,issuedAt:strin
   draw("Received from",source.counterparty);
   draw("Purpose",source.purpose);
   draw("Category",source.category);
-  draw("Verified bank",source.bankName);
+  draw("Receiving bank account",source.bankName);
   draw("Bank statement date",source.paidDate);
-  draw("Verified collection",money(source.amountMinor));
+  draw("Manually reconciled collection",money(source.amountMinor));
   draw("Receipt issued at (UTC)",issuedAt);
   page.drawLine({start:{x:45,y:151},end:{x:550,y:151},color:gray,thickness:0.8});
-  page.drawText("Payment verified against a separately reviewed bank statement item.",{
+  page.drawText("Collection independently reviewed using the entered statement reference.",{
    x:45,y:128,font,size:9,color:gray});
-  page.drawText("Original journal and statement matching records remain in private Finance.",{
+  page.drawText("Bank statement source-file verification must be checked separately.",{
    x:45,y:111,font,size:9,color:gray});
   const bytes=Buffer.from(await pdf.save({useObjectStreams:false}));
   if(bytes.length<100||bytes.length>10485760)throw Error("Invalid receipt size");
