@@ -199,7 +199,7 @@ export function FinanceVoucherNativeEvidence({token,voucher,canViewEvidence,
    </Pressable>)}
    <Pressable accessibilityRole="button" disabled={!current||busy||!!pending}
     style={[styles.button,styles.primary]} onPress={submit}>
-    <Text style={styles.primaryText}>Submit to actual CG-03 review</Text></Pressable>
+    <Text style={styles.primaryText}>Submit for authorized review</Text></Pressable>
   </>}
   {voucher.status==="SUBMITTED"&&<Pressable accessibilityRole="button"
    disabled={busy||!!pending||!voucher.approvalCaseRef} style={styles.button}
