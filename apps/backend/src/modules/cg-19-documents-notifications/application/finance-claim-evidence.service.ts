@@ -242,8 +242,13 @@ export class FinanceClaimEvidenceService{
    [fileRef,actor.realmId,claimRef,claimVersion,fileVersion]);
   if(!found.rows[0])throw new ConflictException({code:"FINANCE_CLAIM_BILL_INVALID"});
  }
- async download(bearer:string,reference:string){
-  const actor=await this.authority(bearer,false);
+ async download(bearer:string,reference:string,reviewer=false){
+  const actor=reviewer?await this.sessions.requireAction(bearer,"finance.claims.review"):
+    await this.authority(bearer,false);
+  if(reviewer){
+   await this.sessions.requireAction(bearer,"approvals.review");
+   await this.sessions.requireAction(bearer,"documents.files.view");
+  }
   const rows=await this.db.query<Proof>(
    "SELECT f.id,f.revision,f.claim_id,f.claim_version,f.object_key,f.object_version,"+
    "f.original_mime,f.verified_sha256,f.verified_size_bytes,f.revoked_at "+
@@ -255,7 +260,11 @@ export class FinanceClaimEvidenceService{
    [uid(reference),actor.realmId]);
   const f=rows.rows[0];
   if(!f)throw new NotFoundException({code:"FINANCE_CLAIM_BILL_INVALID"});
-  await this.source.historical(bearer,f.claim_id,f.claim_version);
+  if(reviewer){
+   const claim=await this.source.reviewerSnapshot(bearer,f.claim_id,f.claim_version);
+   if(claim.billFileRef!==f.id||claim.billVersion!==f.revision)
+    throw new ConflictException({code:"FINANCE_CLAIM_BILL_INVALID"});
+  }else await this.source.historical(bearer,f.claim_id,f.claim_version);
   const bytes=await this.storage.readVerifiedPrivateObject({
    objectKey:f.object_key,objectVersion:f.object_version,
    maxBytes:Number(f.verified_size_bytes)
@@ -265,7 +274,11 @@ export class FinanceClaimEvidenceService{
    throw new ServiceUnavailableException("Private bill integrity could not be verified");
   // Recheck after external storage read, so revocation does not leak stale bytes.
   await this.authority(bearer,false);
-  await this.source.historical(bearer,f.claim_id,f.claim_version);
+  if(reviewer){
+   const claim=await this.source.reviewerSnapshot(bearer,f.claim_id,f.claim_version);
+   if(claim.billFileRef!==f.id||claim.billVersion!==f.revision)
+    throw new ConflictException({code:"FINANCE_CLAIM_BILL_INVALID"});
+  }else await this.source.historical(bearer,f.claim_id,f.claim_version);
   const live=await this.db.query(
    "SELECT id FROM cg19_stored_file WHERE id=$1 AND realm_id=$2 AND revision=$3 "+
    "AND revoked_at IS NULL AND scan_status='CLEAN_VERIFIED'",
