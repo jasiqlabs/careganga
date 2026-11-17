@@ -515,12 +515,15 @@ export class FinanceInvoiceWorkflowService{
    "FROM finance_invoice_receipt WHERE root_realm_id=$1 AND invoice_id=$2 "+
    "ORDER BY created_at DESC,id DESC LIMIT 100",
    [actor.realmId,ref]);
-  const paid=receipts.rows.reduce((n,x)=>n+BigInt(x.amountMinor),0n);
+  const totals=await this.db.query<{paid:string}>(
+   "SELECT COALESCE(SUM(amount_minor),0)::text AS paid FROM finance_invoice_receipt "+
+   "WHERE root_realm_id=$1 AND invoice_id=$2",[actor.realmId,ref]);
+  const paid=BigInt(totals.rows[0].paid);
   const outstanding=BigInt(original.total)-paid;
   const state=paid===0n?"NOT_VERIFIED":outstanding===0n?"PAID_VERIFIED":"PARTIALLY_PAID";
   return {paymentVerified:paid>0n,status:state,totalMinor:original.total,
    paidMinor:paid.toString(),outstandingMinor:outstanding.toString(),
-   receipts:receipts.rows};
+   receipts:receipts.rows,hasMore:receipts.rows.length===100};
  }
  async commandStatus(bearer:string,requestKey:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
