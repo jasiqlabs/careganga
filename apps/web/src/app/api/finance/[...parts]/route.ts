@@ -48,7 +48,7 @@ function allowed(parts:string[],method:string):boolean{
   return false;
  }
  if(parts[0]==="budgets"){
-  if(parts.length===2&&["options","list"].includes(parts[1]))return method==="GET";
+  if(parts.length===2&&["options","list","dashboard"].includes(parts[1]))return method==="GET";
   if(parts.length===2&&parts[1]==="drafts")return method==="POST";
   if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="PATCH";
   if(parts.length===3&&parts[1]==="commands"&&UUID.test(parts[2]))return method==="GET";
