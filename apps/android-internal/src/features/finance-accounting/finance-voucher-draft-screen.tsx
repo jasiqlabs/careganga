@@ -5,9 +5,11 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {FinanceVoucherNativeEvidence} from "./finance-voucher-native-evidence";
+import {FinanceVoucherNativePayment} from "./finance-voucher-native-payment";
 import type {FinanceYear,FinanceBranch} from "./finance-setup-editor";
 type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:string;payeeName:string;
- purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null};
+ purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null;
+ paymentAccountKind:"CASH"|"BANK"|null};
 type Line={description:string;quantity:string;unitRate:string};
 type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
@@ -18,6 +20,7 @@ type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
 type Props={token:string;years:readonly FinanceYear[];branches:readonly FinanceBranch[];
  canManage:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;
+ canPost:boolean;canVerifyPayment:boolean;
  onClose:()=>void;onExpired:()=>void};
 const line=():Line=>({description:"",quantity:"1",unitRate:""});
 const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",postingDate:"",payeeName:"",
@@ -51,7 +54,7 @@ function Select({label,value,options,onChange}:{label:string;value:string;
    accessibilityState={{checked:o.value===value}} onPress={()=>onChange(o.value)}>
    <Text style={o.value===value?s.selected:s.plain}>{o.label}</Text></Pressable>)}</View></View>;
 }
-export function FinanceVoucherDraftScreen({token,years,branches,canManage,canViewEvidence,canUploadEvidence,onClose,onExpired}:Props){
+export function FinanceVoucherDraftScreen({token,years,branches,canManage,canViewEvidence,canUploadEvidence,canPost,canVerifyPayment,onClose,onExpired}:Props){
  const [drafts,setDrafts]=useState<Voucher[]>([]);
  const [workflowRef,setWorkflowRef]=useState("");
  const [offset,setOffset]=useState(0);
@@ -261,12 +264,17 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
      {canManage&&["DRAFT","RETURNED"].includes(v.status)&&<Pressable accessibilityRole="button"
       style={s.button} onPress={()=>void edit(v)}>
       <Text style={s.plain}>{v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</Text></Pressable>}
-     {canManage&&["DRAFT","SUBMITTED"].includes(v.status)&&<Pressable accessibilityRole="button"
+     {canManage&&["DRAFT","SUBMITTED","APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&<Pressable accessibilityRole="button"
       style={s.button} onPress={()=>setWorkflowRef(w=>w===v.voucherRef?"":v.voucherRef)}>
       <Text style={s.plain}>Verified evidence & review</Text></Pressable>}
-     {workflowRef===v.voucherRef&&<FinanceVoucherNativeEvidence token={token}
-      voucher={v} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
-      onExpired={onExpired} onUpdated={()=>{setWorkflowRef("");void fetchDrafts();}}/>}
+     {workflowRef===v.voucherRef&&["DRAFT","SUBMITTED"].includes(v.status)&&
+      <FinanceVoucherNativeEvidence token={token}
+       voucher={v} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
+       onExpired={onExpired} onUpdated={()=>{setWorkflowRef("");void fetchDrafts();}}/>}
+     {workflowRef===v.voucherRef&&["APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&
+      <FinanceVoucherNativePayment token={token} voucher={v} canManage={canManage}
+       canPost={canPost} canUploadProof={canUploadEvidence} canVerifyPayment={canVerifyPayment}
+       onExpired={onExpired} onUpdated={()=>{setWorkflowRef("");void fetchDrafts();}}/>}
     </View>)}
     <View style={s.actions}>
      <Pressable accessibilityRole="button" style={s.button}
