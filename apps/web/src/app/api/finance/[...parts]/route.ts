@@ -59,7 +59,7 @@ function allowed(parts:string[],method:string):boolean{
   return false;
  }
  if(parts[0]==="invoices"){
-  if(parts.length===2&&["options","posting-accounts","draft-commands","workflow-commands","drafts"].includes(parts[1])){
+  if(parts.length===2&&["options","posting-accounts","dashboard","draft-commands","workflow-commands","drafts"].includes(parts[1])){
    if(["draft-commands","workflow-commands"].includes(parts[1]))return false;
    return parts[1]==="drafts"?(method==="GET"||method==="POST"):method==="GET";
   }
@@ -151,6 +151,10 @@ async function handler(request:NextRequest,parts:string[],method:string){
   target.searchParams.set("offset",offset);
  }
  if(method==="GET"&&parts[0]==="invoices"&&parts[1]==="drafts"){
+  const filter=request.nextUrl.searchParams.get("status")??"ALL";
+  if(!["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED","APPROVED","POSTED","ISSUED"].includes(filter))
+   return NextResponse.json({message:"Choose a supported invoice status tab."},{status:400});
+  target.searchParams.set("status",filter);
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
    return NextResponse.json({message:"Choose a valid invoice list page."},{status:400});
