@@ -410,4 +410,33 @@ export class FinanceExpenseClaimService{
   return {claims:rows.rows.slice(0,30),hasMore:rows.rows.length>30};
  }
 
+
+ /** Foundation finance register: real claims, current case and posted-voucher
+  * links only; purpose is visible to explicitly authorized claim managers. */
+ async managed(bearer:string,offsetInput?:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
+   return invalid("FINANCE_CLAIM_FILTER_INVALID","offset");
+  const offset=Number(offsetInput??"0");
+  const rows=await this.db.query<{
+   claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
+   amountMinor:string;status:string;version:number;approvalCaseRef:string|null;
+   payableVoucherNumber:string|null;payoutVoucherNumber:string|null}>(
+   "SELECT c.id AS \"claimRef\",c.claim_number AS \"claimNumber\","+
+   "c.category_label AS category,c.purpose,c.expense_date::text AS \"expenseDate\","+
+   "c.amount_minor::text AS \"amountMinor\",c.status,c.version,"+
+   "c.approval_case_id AS \"approvalCaseRef\","+
+   "pv.voucher_number AS \"payableVoucherNumber\","+
+   "mv.voucher_number AS \"payoutVoucherNumber\" "+
+   "FROM expense_claim c LEFT JOIN expense_claim_voucher_link pl "+
+   "ON pl.root_realm_id=c.root_realm_id AND pl.claim_id=c.id AND pl.link_kind='PAYABLE' "+
+   "LEFT JOIN finance_voucher pv ON pv.id=pl.voucher_id AND pv.root_realm_id=c.root_realm_id "+
+   "LEFT JOIN expense_claim_voucher_link ml ON ml.root_realm_id=c.root_realm_id "+
+   "AND ml.claim_id=c.id AND ml.link_kind='PAYOUT' "+
+   "LEFT JOIN finance_voucher mv ON mv.id=ml.voucher_id AND mv.root_realm_id=c.root_realm_id "+
+   "WHERE c.root_realm_id=$1 ORDER BY c.created_at DESC,c.id DESC LIMIT 31 OFFSET $2",
+   [actor.realmId,offset]);
+  return {claims:rows.rows.slice(0,30),nextOffset:rows.rows.length>30?offset+30:null};
+ }
+
 }
