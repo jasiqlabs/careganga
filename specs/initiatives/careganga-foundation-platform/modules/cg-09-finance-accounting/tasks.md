@@ -2,7 +2,7 @@
 
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
-**Stage (owner-simple V1, 17 Nov 2026):** Six of six independent Foundation finance V1 source slices authored and source-traced. Additional issued legal credit/refund/reissue, bank API and later-owner integrations are deferred. V1_SOURCE_IMPLEMENTATION_FINISHED; FORMAL_SOURCE_COMPLETE remains PENDING current-hash approval and independent source review. All runtime/build/DB/device/visual/provider and release QA NOT_RUN; original 71 canonical cases retained.
+**Stage (owner-simple V1, 17 Nov 2026, latest correction):** Six of six original Foundation finance user stories have source paths. Issued full-value credit note, genuine outgoing refund approval, exact referenced bank-statement verification, protected PDF, and current CG02 branch authorization are now authored on this SAME feature branch in migration **0930** and services/screens. No direct bank API is required for the owner-approved manual-statement V1. **Formal SOURCE_COMPLETE is NOT granted**: independent security/DB/UI review, current-hash Harness approval and actual build/DB/device/visual/provider QA are NOT_RUN. CG05/CG12 real project/vendor cross-owner source and CG07 original donor certificate/receipt are NOT implemented by CG09; these are owned cross-module work, not optional omissions. Original 71 QA definitions remain unchanged.
 **Development gate (17 Nov 2026):** Six user stories / 71 source QA definitions remain preserved. PRD, HLD and CG-09 module/DLD/UIUX/task planning have owner-delegated design-approval records; authenticated Harness resolver has not been executed. Owner authorized source-first development after real CG-01/02 integration and separately delegated expert security/NFR/CRITICAL-database source reviews to this executor. US-001 source review/fix/re-review and ten case traces below are **self-review, not independent QA**. Remaining executable builds, migration/backup/restore, Web/native device, rendered original pixel/motion, concurrent DB conflicts and measured NFR tests are NOT_RUN, required before release. US-001/002/003 source predecessors unblock authorized remaining CG-09 authoring, not production approval.
 
 ## Delegated-approved task definitions — design only
@@ -227,7 +227,7 @@ Source-only evidence below, **not** executed QA or independent sign-off. `REVIEW
 
 Branch pre-trace SHA: `7d322d9e922b1ece232d1345e72cde1c4ba0d88a`. Owner-delegated same-implementer **expert source re-review, not independent review**. This matrix preserves all 71 original QA definitions above without rewriting their acceptance criteria. Each result is source-based; **runtime result for every case = NOT_RUN**, not PASS. Original CG01 authorization, CG02 active branch source, CG03 protected approvals and CG19 private document owner stay authoritative. No GitHub Actions/CI. No changes to main.
 
-**Count:** {"SOURCE_TRACED_NOT_EXECUTED":53,"SOURCE_PARTIAL":7,"FUTURE_OWNER_DEFERRED":5,"VISUAL_NOT_RUN":6} = **71/71 traced**, **0/71 runtime PASS**. `SOURCE_TRACED_NOT_EXECUTED` means implementation path and protection reviewed; `SOURCE_PARTIAL` means a material acceptance condition is still missing; `FUTURE_OWNER_DEFERRED` is genuinely owned by CG05/CG12; `VISUAL_NOT_RUN` is screenshot-structural source parity only.
+**Count:** {"SOURCE_TRACED_NOT_EXECUTED":53,"SOURCE_PARTIAL":7,"CROSS_MODULE_OWNER_NOT_IMPLEMENTED":5,"VISUAL_NOT_RUN":6} = **71/71 traced**, **0/71 runtime PASS**. `SOURCE_TRACED_NOT_EXECUTED` means implementation path and protection reviewed; `SOURCE_PARTIAL` means a material acceptance condition is still missing; `CROSS_MODULE_OWNER_NOT_IMPLEMENTED` is genuinely owned by CG05/CG12; `VISUAL_NOT_RUN` is screenshot-structural source parity only.
 
 | Case | Source review status | Concrete source or remaining acceptance |
 |---|---|---|
@@ -253,7 +253,7 @@ Branch pre-trace SHA: `7d322d9e922b1ece232d1345e72cde1c4ba0d88a`. Owner-delegate
 | US-002-QA10 | SOURCE_TRACED_NOT_EXECUTED | vouchers/review/evidence/verified payment via 0902–0909, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
 | US-002-QA11 | SOURCE_TRACED_NOT_EXECUTED | vouchers/review/evidence/verified payment via 0902–0909, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
 | US-002-QA12 | SOURCE_TRACED_NOT_EXECUTED | vouchers/review/evidence/verified payment via 0902–0909, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
-| US-002-QA13 | FUTURE_OWNER_DEFERRED | CG05 real project source belongs to future owner |
+| US-002-QA13 | CROSS_MODULE_OWNER_NOT_IMPLEMENTED | CG05 real project source belongs to future owner |
 | US-003-QA01 | SOURCE_TRACED_NOT_EXECUTED | claim/reviewer/bill/payable via 0910–0915, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
 | US-003-QA02 | SOURCE_TRACED_NOT_EXECUTED | claim/reviewer/bill/payable via 0910–0915, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
 | US-003-QA03 | SOURCE_TRACED_NOT_EXECUTED | claim/reviewer/bill/payable via 0910–0915, CG03, CG19, Web/native; source evidence only; executable test NOT_RUN |
@@ -271,12 +271,12 @@ Branch pre-trace SHA: `7d322d9e922b1ece232d1345e72cde1c4ba0d88a`. Owner-delegate
 | US-004-QA04 | SOURCE_TRACED_NOT_EXECUTED | original invoices/verified receipts/private documents/statement via 0916–0918, 0922–0924, 0926, 0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-004-QA05 | SOURCE_TRACED_NOT_EXECUTED | original invoices/verified receipts/private documents/statement via 0916–0918, 0922–0924, 0926, 0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-004-QA06 | VISUAL_NOT_RUN | Original screenshot-based Web/native structure only; rendered/accessibility/device checks NOT_RUN |
-| US-004-QA07 | SOURCE_PARTIAL | Posted/unissued/uncollected reversal exists (0929); true issued credit note, lawful refund and reissue not implemented |
-| US-004-QA08 | SOURCE_PARTIAL | Source-based partial receipt+clean bank document+independent human decision; gateway-certified settlement not available |
-| US-004-QA09 | SOURCE_PARTIAL | CG19 issue+receipt private PDF exists; exact client-approved legal templates and actual provider tests absent |
+| US-004-QA07 | SOURCE_PARTIAL | 0929 protected unissued reversal plus new 0930 protected issued full credit note + refund approval/negative bank statement now have real source; new reissued replacement invoice number/visual and executed statutory template QA still not demonstrated |
+| US-004-QA08 | SOURCE_TRACED_NOT_EXECUTED | Original source-linked partial receipt, clean CG19 statement, independent reviewer and checked refund transfer under 0922/0926/0930; no direct bank API required by owner manual V1; actual provider/device checks NOT_RUN |
+| US-004-QA09 | SOURCE_PARTIAL | Actual CG19 immutable invoice/receipt PDF + credit note PDF source; supplied client donation receipt + certificate inspected and accurately assigned to CG07/CG19 in docs/research; pixel-correct client donation PDFs and live provider proof remain unbuilt/unexecuted in their actual owners |
 | US-004-QA10 | SOURCE_TRACED_NOT_EXECUTED | original invoices/verified receipts/private documents/statement via 0916–0918, 0922–0924, 0926, 0929, Web/native; source evidence only; executable test NOT_RUN |
-| US-004-QA11 | SOURCE_PARTIAL | Source-locked private version exists; issued legal amendment, revoke/reissue and printer accuracy unresolved |
-| US-004-QA12 | FUTURE_OWNER_DEFERRED | CG12 real supplier/stock-receipt integration belongs to future owner |
+| US-004-QA11 | SOURCE_PARTIAL | Issued source preserved and full credit note + separate verified bank refund authored in 0930; replacement invoice may be newly drafted but explicit source-linked reissue lineage and original document pixel proof still not implemented/verified |
+| US-004-QA12 | CROSS_MODULE_OWNER_NOT_IMPLEMENTED | CG12 real supplier/stock-receipt integration belongs to future owner |
 | US-004-QA13 | SOURCE_TRACED_NOT_EXECUTED | original invoices/verified receipts/private documents/statement via 0916–0918, 0922–0924, 0926, 0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-005-QA01 | SOURCE_TRACED_NOT_EXECUTED | budgets/current scoped capacity via 0919–0920, 0924, 0927, Web/native; source evidence only; executable test NOT_RUN |
 | US-005-QA02 | SOURCE_TRACED_NOT_EXECUTED | budgets/current scoped capacity via 0919–0920, 0924, 0927, Web/native; source evidence only; executable test NOT_RUN |
@@ -289,19 +289,19 @@ Branch pre-trace SHA: `7d322d9e922b1ece232d1345e72cde1c4ba0d88a`. Owner-delegate
 | US-005-QA09 | SOURCE_TRACED_NOT_EXECUTED | budgets/current scoped capacity via 0919–0920, 0924, 0927, Web/native; source evidence only; executable test NOT_RUN |
 | US-005-QA10 | SOURCE_TRACED_NOT_EXECUTED | budgets/current scoped capacity via 0919–0920, 0924, 0927, Web/native; source evidence only; executable test NOT_RUN |
 | US-005-QA11 | SOURCE_TRACED_NOT_EXECUTED | budgets/current scoped capacity via 0919–0920, 0924, 0927, Web/native; source evidence only; executable test NOT_RUN |
-| US-005-QA12 | FUTURE_OWNER_DEFERRED | CG05 real project budget integration belongs to future owner |
+| US-005-QA12 | CROSS_MODULE_OWNER_NOT_IMPLEMENTED | CG05 real project budget integration belongs to future owner |
 | US-006-QA01 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-006-QA02 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-006-QA03 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-006-QA04 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-006-QA05 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
 | US-006-QA06 | VISUAL_NOT_RUN | Original screenshot-based Web/native structure only; rendered/accessibility/device checks NOT_RUN |
-| US-006-QA07 | SOURCE_PARTIAL | Root/case/role filters exist; branch-staff-specific export policy and runtime authorization audit pending |
-| US-006-QA08 | SOURCE_PARTIAL | Source-backed report/visible-page CSV and linked reversals exist; PDF/full export and executed reconciliation pending |
+| US-006-QA07 | SOURCE_TRACED_NOT_EXECUTED | Branch manager restricted at CG02 source, original CG09 report/CSV/ledger, bank match, invoice lists, reviewer snapshots and CG19 PDF; shared bank entries scoped by real journal line, Super Admin global; runtime cross-branch adversarial QA NOT_RUN |
+| US-006-QA08 | SOURCE_PARTIAL | Actual posted GL/books/trial/receivables, branch-scoped visible-page CSV, manual reversal and original credit/refund journal flows authored; requested full report PDF/complete export and executed financial reconciliation still unverified |
 | US-006-QA09 | SOURCE_TRACED_NOT_EXECUTED | original posted books/trial/reconciliation/receivables and append-only reversal via 0921, 0925, 0926, 0928–0929, Web/native; source evidence only; executable test NOT_RUN |
-| US-006-QA10 | SOURCE_PARTIAL | Manual bank match + clean version-pinned evidence + independent reviewer; real external bank import certification absent |
-| US-006-QA11 | FUTURE_OWNER_DEFERRED | CG12 original supplier report filter belongs to future owner |
-| US-006-QA12 | FUTURE_OWNER_DEFERRED | CG05 original project-filtered posted report belongs to future owner |
+| US-006-QA10 | SOURCE_TRACED_NOT_EXECUTED | Manual bank match with CG19 version-pinned original clean document and independent reviewer accepted as V1, including real negative refund transfer reference check; physical storage/scanner/DB QA NOT_RUN, bank API not required |
+| US-006-QA11 | CROSS_MODULE_OWNER_NOT_IMPLEMENTED | CG12 original supplier report filter belongs to future owner |
+| US-006-QA12 | CROSS_MODULE_OWNER_NOT_IMPLEMENTED | CG05 original project-filtered posted report belongs to future owner |
 
 **Source fixes verified for existence, not execution:** `0927_cg09_budget_current_scope_and_non_reversed_utilization.sql` (current open year/active branch/posted non-reversed expense); `0928_cg09_authorized_manual_journal_reversal.sql` (single immutable independent manual correction); `0929_cg09_protected_unissued_invoice_cancellation.sql` (only POSTED, never issued or collected source, no fake credit note); protected reviewer current eligibility endpoints, actor-bound correction retries, and real invoices/receivables in Web and Internal Android.
 
@@ -318,3 +318,25 @@ Branch pre-trace SHA: `7d322d9e922b1ece232d1345e72cde1c4ba0d88a`. Owner-delegate
 **V1 owner-accepted source content:** Six core stories have real backend/DB/Admin Web/Internal Android paths, no future source or fake money. Latest branch source before this tracker commit: 7b0bcc34d94e1fd66e7b5dac6dd41f6873611e62. Source review = owner-delegated self/manual inspection, NOT independent. Original 71 QA source dispositions remain 53 traced but unexecuted, 7 partial, 5 future-owner, 6 visual unexecuted. CG05/CG12 positive integration stays in supplying owners. The original V1 business flow is source-authored; no claim of a formally approved `SOURCE_COMPLETE` stage while Harness current-hash approvals and independent reviewer are missing.
 
 **Outstanding gates:** Independent security/DB/UI source reviewer → fix/re-review and current-hash approval for formal SOURCE_COMPLETE; local backend/Web/Android builds and disposable migrations through 0929, provider scans, actual device/screenshot and NFR checks for QA/release. CG09 PR #10 remains DRAFT and unmerged; neither production deploy nor GitHub Actions permitted. A dependency-independent next module may start separately from main with explicit owner authorization.
+
+## CG-09 independent source review extension — 17 Nov 2026, after issued-credit correction
+
+**Same authorized branch:** `feature/careganga-cg09-finance-accounting-dev-20261117`. **Do not advance tracker to SOURCE_COMPLETE** unless someone independently verifies code, design parity, current Harness and owner-supplied CG07/CG19 document visual dependency. The former 'simple V1 credit/refund deferred' note above is superseded by this current addendum and the stage line.
+
+| New source QA trace / required local negative scenario | Original DB/backend/UI owner and expected persisted outcome | Status |
+| --- | --- | --- |
+| Credit an originally issued invoice only | `0930`, `FinanceInvoiceAdjustmentService.credit`, finance single balanced `CREDIT_NOTE` journal linked to original; Web/native shows `CREDITED`, former invoice stays immutable | SOURCE_REVIEWED_NOT_EXECUTED |
+| Credit full or partial verified original receipts | Original source's `finance_invoice_receipt` total equals bank GENERAL deposits; amount already received offsets a **real** refund-payable LIABILITY, unmatched bank deposits block credit | SOURCE_REVIEWED_NOT_EXECUTED |
+| Do not collect twice after credit | `0930` guarded journal and receipt triggers, FinanceInvoiceWorkflowService and dashboard `CREDITED` source; concurrent credit/collection same invoice locks source; original receipt history accessible | SOURCE_REVIEWED_NOT_EXECUTED |
+| Request and separately authorize actual refund | `finance_invoice_refund` source + `requestRefund`/ `approveRefund`, different requester/reviewer, current password, real outgoing transfer reference; one `REFUND` bank journal, replay safe, no duplicate money | SOURCE_REVIEWED_NOT_EXECUTED |
+| Never label approved outgoing transfer as verified without bank | Source matches negative statement amount and **exact bank item reference**, CG19 clean-scanned original and independent reconciliation; status remains `BANK_POSTED_AWAITING_STATEMENT` until actual verified match | SOURCE_REVIEWED_NOT_EXECUTED |
+| Original invoice and correction printed | Existing `CG19` source-frozen invoice/receipt PDF + new protected credit-note PDF; no donor receipt generated from commercial finance invoice source. Original actual donor receipt and certificate SHA references in `docs/research/CAREGANGA-ORIGINAL-DONATION-RECEIPT-CERTIFICATE-REFERENCE.md` | SOURCE_REVIEWED_NOT_EXECUTED / DONOR_PIXEL_NOT_BUILT |
+| Direct PDF by guessed ID from other branch | CG09 invoice/receipt source facades verify current CG01 action plus CG02 assigned branches before private CG19 PDF status, before and after verified byte download; deny foreign actor/tenant/branch | SOURCE_REVIEWED_NOT_EXECUTED |
+| Shared Foundation bank for authorized branch | FinanceReportsService chooses current source journal_line.branch_id, *not* only bank account.branch_id. Branch manager sees only own branch bank movements and masked matches; Super Admin sees all | SOURCE_REVIEWED_NOT_EXECUTED |
+| Reconciliation key reuse on another source | Actor-bound original key with matching digest, independent password, scanned proof and unique bank item; same key to different reconciliation fails, no second entry | SOURCE_REVIEWED_NOT_EXECUTED |
+| Foreign branch invoice creation or direct protected reviewer | CG02 manager/administrator branch source, expected version and actor-bound reviewer/issue read in one DB transaction; unauthorized deep links rejected | SOURCE_REVIEWED_NOT_EXECUTED |
+| Cross-owner original donation PDF | Two exact **existing client** donation receipt/certificate files are references, not hardcoded sample donor data. CG07 donor source and CG19 template/issuance must implement exact visual under their owned stories | SOURCE_REFERENCE_ONLY / OWNER_INTEGRATION_NOT_EXECUTED |
+
+**Canonical 71 status counts as updated:** 56 `SOURCE_TRACED_NOT_EXECUTED`, 4 `SOURCE_PARTIAL`, 5 `CROSS_MODULE_OWNER_NOT_IMPLEMENTED`, 6 `VISUAL_NOT_RUN`; 0/71 actual runtime PASS. Original scenario identifiers and case texts remain intact. The source fixes above have been inspected against owning files by the implementing assistant (self-review), **not** tested against a real PostgreSQL transaction, Node/Next/Metro build, physical storage, or independently re-reviewed. No CI/GitHub Actions.
+
+**Keep the module in development until** syntax/build/migration and evidence/provider/device negative QA are actually executed and the cross-module owner work is complete or explicitly accepted as a separate module prerequisite. Do not silently reclassify those five as 'out of scope' or remove original QA.
