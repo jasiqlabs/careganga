@@ -7,7 +7,7 @@ export type InvoicePdfSource=Readonly<{
  invoiceNumber:string;date:string;due:string;counterparty:string;address:string|null;
  purpose:string;category:string;items:readonly Item[];
  grossMinor:string;taxMinor:string;chargesMinor:string;totalMinor:string;
- terms:string;notes:string|null;postedAt:string;issueAt:string
+ terms:string;notes:string|null;postedAt:string;issueAt:string;sourceDigest:string;sourceVersion:number
 }>;
 const currency=(v:string)=>{
  const n=BigInt(v),abs=n<0n?-n:n;
@@ -55,6 +55,7 @@ export async function renderOriginalFinanceInvoice(input:InvoicePdfSource):Promi
   const font=await doc.embedFont(bytes,{subset:true});
   doc.setTitle("CareGanga Foundation — Invoice "+input.invoiceNumber);
   doc.setProducer("CareGanga CG-19 Protected Documents");
+  doc.setSubject("CG09-INVOICE:"+input.sourceVersion+":"+input.sourceDigest);
   doc.setCreationDate(new Date(input.issueAt));
   const navy=rgb(0.14,0.3,0.67),grey=rgb(0.3,0.35,0.43);
   let p=doc.addPage([595,842]),y=790;
