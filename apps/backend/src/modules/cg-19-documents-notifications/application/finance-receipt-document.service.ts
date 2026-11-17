@@ -14,7 +14,7 @@ const id=(value:unknown):string=>{
 };
 type ReceiptDoc={id:string;receipt_id:string;source_version:number;source_digest:string;
  issue_key:string;status:string;object_key:string;object_version:string|null;
- content_sha256:string|null;content_length:number|null;issued_at:Date|null};
+ content_sha256:string|null;content_length:number|null;issued_at:Date|null;created_at:Date};
 @Injectable()
 export class FinanceReceiptDocumentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -61,21 +61,58 @@ export class FinanceReceiptDocumentService{
    }
    await tx.query("COMMIT");
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
-  if(!first)return {confirmed:doc.status==="ISSUED",status:doc.status,documentRef:doc.id};
+  if(!first&&doc.status==="ISSUED")
+   return {confirmed:true,status:"ISSUED",documentRef:doc.id,replayed:true};
+  if(!first&&doc.status!=="PENDING"&&doc.status!=="UNKNOWN")
+   return {confirmed:false,status:doc.status,documentRef:doc.id};
+  if(!first){
+   try{
+    const stored=await this.storage.reconcileIssuedPrivateDocument({
+     objectKey:doc.object_key,maxBytes:10*1024*1024});
+    await this.sessions.requireAction(bearer,"finance.invoices.issue");
+    const recovered=await this.db.query(
+     "UPDATE cg19_finance_receipt_document SET status='ISSUED',object_version=$3,"+
+     "content_sha256=$4,content_length=$5,issued_at=$6,updated_at=now() "+
+     "WHERE id=$1 AND root_realm_id=$2 AND status IN ('PENDING','UNKNOWN') "+
+     "AND object_version IS NULL RETURNING id",
+     [doc.id,actor.realmId,stored.objectVersion,stored.sha256,
+      stored.sizeBytes,doc.created_at]);
+    if(recovered.rowCount)
+     return {confirmed:true,status:"ISSUED",documentRef:doc.id,recovered:true};
+    const latest=await this.db.query<{status:string}>(
+     "SELECT status FROM cg19_finance_receipt_document WHERE id=$1 AND root_realm_id=$2",
+     [doc.id,actor.realmId]);
+    if(latest.rows[0]?.status==="ISSUED")
+     return {confirmed:true,status:"ISSUED",documentRef:doc.id,replayed:true};
+    return {confirmed:false,status:"UNKNOWN",documentRef:doc.id};
+   }catch{
+    // A missing/unverified prior object is not issued. The original key is
+    // create-only on S3 and Firebase; never overwrite a confirmed document.
+   }
+  }
   try{
-   const issuedAt=new Date().toISOString();
+   const issuedAt=doc.created_at.toISOString();
    const bytes=await renderFinanceReceipt(original,issuedAt);
    const digest=createHash("sha256").update(bytes).digest("hex");
    const storage=await this.storage.writeVerifiedPrivateDocument({
     objectKey:doc.object_key,bytes,sha256:digest});
    if(!storage.objectVersion||storage.objectVersion.length>160||
      storage.sha256!==digest)throw Error("Unconfirmed private receipt storage");
+   await this.sessions.requireAction(bearer,"finance.invoices.issue");
    const done=await this.db.query(
     "UPDATE cg19_finance_receipt_document SET status='ISSUED',object_version=$3,"+
-    "content_sha256=$4,content_length=$5,issued_at=now(),updated_at=now() "+
-    "WHERE id=$1 AND root_realm_id=$2 AND status='PENDING' AND object_version IS NULL RETURNING id",
-    [doc.id,actor.realmId,storage.objectVersion,digest,bytes.length]);
-   if(!done.rowCount)throw Error("Original private receipt issuance unconfirmed");
+    "content_sha256=$4,content_length=$5,issued_at=$6,updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status IN ('PENDING','UNKNOWN') "+
+    "AND object_version IS NULL RETURNING id",
+    [doc.id,actor.realmId,storage.objectVersion,digest,bytes.length,doc.created_at]);
+   if(!done.rowCount){
+    const latest=await this.db.query<{status:string}>(
+     "SELECT status FROM cg19_finance_receipt_document WHERE id=$1 AND root_realm_id=$2",
+     [doc.id,actor.realmId]);
+    if(latest.rows[0]?.status==="ISSUED")
+     return {confirmed:true,status:"ISSUED",documentRef:doc.id,replayed:true};
+    throw Error("Original private receipt issuance unconfirmed");
+   }
    return {confirmed:true,status:"ISSUED",documentRef:doc.id};
   }catch{
    await this.db.query(
