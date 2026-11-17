@@ -125,7 +125,7 @@ export class FinanceBudgetService{
   const p=this.parse(value),key=id(value.requestKey,"requestKey"),
    budgetRef=budgetInput?id(budgetInput):randomUUID();
   const expected=budgetInput?version(value.expectedVersion):null;
-  const fingerprint=sha(["CG09_BUDGET_SAVE",budgetRef,expected,p]);
+  const fingerprint=sha(["CG09_BUDGET_SAVE",budgetInput??"NEW",expected,p]);
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");await this.validScope(tx,actor,p);
