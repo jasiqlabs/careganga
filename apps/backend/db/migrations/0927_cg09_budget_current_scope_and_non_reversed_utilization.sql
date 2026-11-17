@@ -6,7 +6,7 @@ DECLARE b record; y record; source record;
 BEGIN
  SELECT financial_year_id,branch_id,category_label,period_start,period_end,status
   INTO b FROM finance_budget
-  WHERE id=NEW.budget_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
+  WHERE id=NEW.budget_id AND root_realm_id=NEW.root_realm_id FOR UPDATE;
  IF NOT FOUND OR b.status<>'APPROVED' THEN
   RAISE EXCEPTION 'An approved original budget is required'
    USING ERRCODE='P0924';
