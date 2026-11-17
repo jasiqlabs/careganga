@@ -305,15 +305,18 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
      </select></label>
      <label className="cg-fin-field">Branch<select value={form.branchRef}
       onChange={e=>{const branch=branches.find(b=>b.branchRef===e.target.value);
-       setForm(v=>({...v,branchRef:branch?.branchRef??"",branchVersion:branch?.version??null}));}}>
+       setForm(v=>({...v,branchRef:branch?.branchRef??"",branchVersion:branch?.version??null,
+        replacesInvoiceRef:""}));}}>
       <option value="">Foundation (no branch)</option>
       {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
      </select></label>
-     {correctedInvoices.some(v=>v.branchRef===(form.branchRef||null))&&
+     {(Boolean(form.replacesInvoiceRef)||correctedInvoices.some(v=>v.branchRef===(form.branchRef||null)))&&
       <label className="cg-fin-field">Replaces credited invoice (optional)
        <select value={form.replacesInvoiceRef} onChange={e=>
         setForm(v=>({...v,replacesInvoiceRef:e.target.value}))}>
         <option value="">New invoice — not a correction</option>
+        {form.replacesInvoiceRef&&!correctedInvoices.some(v=>v.invoiceRef===form.replacesInvoiceRef)&&
+         <option value={form.replacesInvoiceRef}>Previously linked corrected invoice</option>}
         {correctedInvoices.filter(v=>v.branchRef===(form.branchRef||null))
          .map(v=><option key={v.invoiceRef} value={v.invoiceRef}>
           {v.invoiceNumber} · {v.counterpartyName}</option>)}
