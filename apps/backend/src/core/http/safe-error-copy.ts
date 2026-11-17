@@ -35,6 +35,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_VOUCHER_EVIDENCE_INVALID:"Select a currently verified, unrevoked private PDF or image for this voucher revision.",
       FINANCE_VOUCHER_EVIDENCE_CONFLICT:"This evidence changed since you selected it. Refresh and verify its current version.",
       FINANCE_VOUCHER_REVIEW_UNAVAILABLE:"The genuine Finance reviewer decision or approval setup is not yet available. Check the review status.",
+      FINANCE_VOUCHER_REVIEW_SOURCE_CHANGED:"The original voucher or private proof has changed, or a different authorized reviewer is needed. Refresh before deciding.",
       FINANCE_VOUCHER_REVIEW_INVALID:"Choose Approve, Return or Reject and confirm with your current password and the latest review revision.",
       FINANCE_VOUCHER_SOURCE_INVALID:"Choose an existing voucher or financial year from the permitted Finance list.",
       FINANCE_VOUCHER_NAME_INVALID:"Enter a payee or item description within the allowed length; do not enter complete bank account numbers.",
