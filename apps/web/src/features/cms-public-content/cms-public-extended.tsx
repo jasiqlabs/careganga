@@ -69,8 +69,21 @@ export function CmsCompliance({section,assets}:{
     .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
      <dt>{key}</dt><dd>{text(value)}</dd></div>)}
   </dl>
-  {supported&&proof?.src&&<a className="cg-site-action" href={proof.src}
-   download>View approved supporting document</a>}
+  {records(f.documents).length>0&&<section aria-label="Published original reports">
+   <h2>Verified source documents and annual reports</h2>
+   <div className="cg-site-impact-grid">{records(f.documents).map((record,i)=>{
+    const document=assets.find(a=>a.role==="DOCUMENT"&&a.order===i);
+    if(!document)return null;
+    return <article key={i} className="cg-site-impact-card">
+     <p className="cg-site-eyebrow">{text(record.type).replaceAll("_"," ")}</p>
+     <h3>{text(record.title)}</h3><p>Document date: {text(record.asOfDate)}</p>
+     <a href={document.src} download>View approved source document</a>
+    </article>;
+   })}</div>
+  </section>}
+  {supported&&proof?.src&&records(f.documents).length===0&&
+   <a className="cg-site-action" href={proof.src} download>
+    View approved supporting document</a>}
   <p className="cg-site-legal-notice">{text(f.disclaimer)}</p>
   <p className="cg-site-provenance">Only the current Foundation-published information is shown.
    Confirm tax applicability with the issuing authority.</p>
