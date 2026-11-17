@@ -255,7 +255,9 @@ export class CmsDraftMediaService{
    "JOIN cms_page_effective active ON active.publication_id=pub.id "+
    "AND active.foundation_root_id=pub.foundation_root_id "+
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND "+
-   "a.public_rights_status='VALIDATED' AND pub.state='EFFECTIVE' "+
+   "f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
+   "AND a.cg19_validated_version=f.revision "+
+   "AND a.public_rights_status='VALIDATED' AND pub.state='EFFECTIVE' "+
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())",
    [ref]);
   if(!latest.rowCount)throw new NotFoundException();
