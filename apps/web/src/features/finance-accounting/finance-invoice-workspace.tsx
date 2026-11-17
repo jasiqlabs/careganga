@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {FinanceInvoiceReceiptTools} from "./finance-invoice-receipt-tools";
-type Stage="INFO"|"ITEMS"|"PAYMENT";
+type Stage="INFO"|"ITEMS"|"PAYMENT"|"REVIEW";
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;totalMinor:string|null;invoiceDate:string|null};
 type Account={accountRef:string;name:string;code:string;category:string;branchName:string|null};
@@ -168,6 +168,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
   finally{setBusy(false);}
  }
  function saveStage(){
+  if(stage==="REVIEW")return;
   const ref=active?.ref;
   void command(ref?"/api/finance/invoices/drafts/"+ref+"/stages":
    "/api/finance/invoices/drafts",ref?"PATCH":"POST",{
@@ -226,9 +227,9 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
      setActive(null);setForm(empty());setStage("INFO");setNotice("");setError("");}}>
      New invoice</button></div>
    <div className="cg-fin-toolbar-actions">
-    {(["INFO","ITEMS","PAYMENT"] as Stage[]).map((s,i)=><button key={s}
+    {(["INFO","ITEMS","PAYMENT","REVIEW"] as Stage[]).map((s,i)=><button key={s}
      type="button" aria-current={s===stage?"step":undefined} onClick={()=>setStage(s)}>
-     {i+1}. {s==="INFO"?"Invoice Information":s==="ITEMS"?"Items & Amount":"Payment & Tax"}</button>)}
+     {i+1}. {s==="INFO"?"Invoice Information":s==="ITEMS"?"Items & Amount":s==="PAYMENT"?"Payment & Tax":"Review & Submit"}</button>)}
    </div>
    <div className="cg-fin-form">
     {stage==="INFO"&&<>
@@ -295,11 +296,21 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
       <textarea value={form.notes} maxLength={500}
        onChange={e=>setForm(v=>({...v,notes:e.target.value}))}/></label>
     </>}
-    {(!active||["DRAFT","RETURNED"].includes(active.status))&&<button className="primary" disabled={busy||Boolean(pending)}
+    {stage==="REVIEW"&&<div className="cg-fin-card">
+     <h4>Review original invoice draft before submission</h4>
+     <p><strong>Customer / organization:</strong> {form.counterpartyName||"Not entered"}</p>
+     <p><strong>Category / purpose:</strong> {form.category||"Not entered"} · {form.purpose||"Not entered"}</p>
+     <p><strong>Invoice date / due:</strong> {form.invoiceDate||"Not entered"} · {form.dueDate||"Not entered"}</p>
+     <p><strong>Item lines:</strong> {form.rows.length}. Rates, tax and total are recalculated and frozen by the Finance service on submit.</p>
+     <p><strong>Payment terms:</strong> {form.terms||"Not entered"}</p>
+     <p className="cg-fin-help">Save the Information, Items and Payment stages first.
+      Submission creates an immutable review case; approval, journal posting, PDF issuance and received payment remain separate.</p>
+    </div>}
+    {stage!=="REVIEW"&&(!active||["DRAFT","RETURNED"].includes(active.status))&&<button className="primary" disabled={busy||Boolean(pending)}
      type="button" onClick={saveStage}>Save original draft or corrected revision</button>}
    </div>
    <div className="cg-fin-toolbar-actions">
-    {active?.status==="DRAFT"&&<button className="primary" disabled={busy||Boolean(pending)}
+    {active?.status==="DRAFT"&&stage==="REVIEW"&&<button className="primary" disabled={busy||Boolean(pending)}
       type="button" onClick={()=>workflow("submit")}>Review & Submit</button>}
     {active?.status==="SUBMITTED"&&<button type="button" disabled={busy||Boolean(pending)}
       onClick={()=>workflow("reconcile")}>Check original protected reviewer decision</button>}
