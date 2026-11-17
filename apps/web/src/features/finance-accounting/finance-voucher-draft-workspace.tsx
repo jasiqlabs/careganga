@@ -1,9 +1,10 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useState} from "react";
+import {FinanceVoucherSubmissionTools,type VoucherWorkflowRow} from "./finance-voucher-submission-tools";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
-type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:string;
+type Voucher=VoucherWorkflowRow&{type:string;postingDate:string;
  payeeName:string;purpose:string;totalMinor:string;version:number};
 type Item={description:string;quantity:string;unitRate:string};
 type Detail={voucherRef:string;voucherNumber:string;version:number;status:string;
@@ -37,8 +38,9 @@ async function failure(res:Response):Promise<string>{
 const item=():Item=>({description:"",quantity:"1",unitRate:""});
 const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",
  postingDate:"",payeeName:"",purpose:"",tax:"0",charges:"0"});
-export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
- years:readonly Year[];branches:readonly Branch[];canManage:boolean
+export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEvidence=false,canUploadEvidence=false}:{
+ years:readonly Year[];branches:readonly Branch[];canManage:boolean;
+ canViewEvidence?:boolean;canUploadEvidence?:boolean
 }){
  const [data,setData]=useState<Voucher[]>([]);
  const [offset,setOffset]=useState(0);
@@ -76,13 +78,13 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
   setForm(initial());setItems([item()]);setSuccess("");
  }
  async function edit(draft:Voucher){
-  if(!canManage)return;
+  if(!canManage||!["DRAFT","RETURNED"].includes(draft.status))return;
   setLoadingDraft(true);setNotice("");
   try{
    const res=await fetch("/api/finance/vouchers/drafts/"+draft.voucherRef,{cache:"no-store"});
    if(!res.ok)throw Error(await failure(res));
    const raw=await res.json() as Detail;
-   if(!raw||raw.status!=="DRAFT_NOT_APPROVED_OR_POSTED"||
+   if(!raw||!["DRAFT","RETURNED"].includes(raw.status)||
      !Array.isArray(raw.lines)||!raw.header)
      throw Error("The voucher is no longer a draft. Refresh its review status.");
    setTarget({ref:raw.voucherRef,number:raw.voucherNumber,version:raw.version});
@@ -186,9 +188,14 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
      <td><strong>{v.voucherNumber}</strong></td><td>{v.type}</td>
      <td>{v.postingDate}</td><td>{v.payeeName}</td><td>{v.purpose}</td>
      <td className="cg-fin-money">{money(v.totalMinor)}</td>
-     <td><span className="cg-fin-status">Draft — not posted</span></td>
+     <td><span className="cg-fin-status">{v.status==="DRAFT"?"Draft — not posted":
+      v.status==="SUBMITTED"?"Awaiting real approval":v.status==="APPROVED"?
+      "Approved — not paid":v.status==="RETURNED"?"Returned for correction":
+      v.status==="REJECTED"?"Rejected":"Review status unavailable"}</span></td>
      {canManage&&<td><button type="button" disabled={loadingDraft||busy}
-      onClick={()=>void edit(v)}>Edit draft</button></td>}
+      onClick={()=>void edit(v)}>{v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</button>
+      <FinanceVoucherSubmissionTools voucher={v} canViewEvidence={canViewEvidence}
+       canUploadEvidence={canUploadEvidence} onUpdated={()=>void refresh()}/></td>}
     </tr>)}</tbody>
    </table>{!data.length&&<p className="cg-fin-empty">No vouchers have been drafted.
     {canManage?" Choose New Voucher to start a genuine draft.":""}</p>}
