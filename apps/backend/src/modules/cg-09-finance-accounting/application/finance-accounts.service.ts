@@ -29,8 +29,14 @@ function fields(input:unknown,allowed:readonly string[]):Record<string,unknown>{
  return body;
 }
 function label(value:unknown,field:string,max:number):string{
- if(typeof value!=="string"||value.trim().length<2||value.trim().length>max)
+ if(typeof value!=="string"||value.trim().length<2)
   return fieldError("FINANCE_NAME_REQUIRED",field);
+ if(value.trim().length>max){
+  const rule=field==="bankLabel"?"FINANCE_BANK_LABEL_TOO_LONG":
+    max===80?"FINANCE_YEAR_NAME_TOO_LONG":
+    max===120?"FINANCE_GROUP_NAME_TOO_LONG":"FINANCE_ACCOUNT_NAME_TOO_LONG";
+  return fieldError(rule,field);
+ }
  return value.trim().replace(/\s+/g," ");
 }
 function businessCode(value:unknown):string{
@@ -39,7 +45,8 @@ function businessCode(value:unknown):string{
  return value.trim().toUpperCase();
 }
 function ref(value:unknown,field:string,err="FINANCE_GROUP_INVALID"):string{
- if(typeof value!=="string"||!UUID.test(value))return fieldError(err,field);
+ if(typeof value!=="string"||!UUID.test(value))
+  return fieldError(field==="requestKey"?"FINANCE_REQUEST_KEY_INVALID":err,field);
  return value;
 }
 function dateOnly(value:unknown,field:string):string{
@@ -141,7 +148,7 @@ export class FinanceAccountsService{
  async setup(bearer:string,searchInput?:string,offsetInput?:string,filters:AccountFilters={}){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
   if(searchInput!==undefined&&(typeof searchInput!=="string"||searchInput.length>80))
-   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"search"});
+   throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID",field:"search"});
   const search=searchInput?.trim()??"";
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,5})$/.test(offsetInput))
    throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
@@ -290,7 +297,7 @@ export class FinanceAccountsService{
    parent=body.parentRef?ref(body.parentRef,"groupRef"):null,
    key=ref(body.requestKey,"requestKey");
   if(!["ASSET","LIABILITY","FUND","INCOME","EXPENSE"].includes(String(category)))
-   fieldError("FINANCE_GROUP_INVALID","category");
+   fieldError("FINANCE_GROUP_CATEGORY_INVALID","category");
   const normalized={name,code,category:String(category),parent};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
    const claim=await this.claim(client,actor,"GROUP_CREATE",key,normalized);
