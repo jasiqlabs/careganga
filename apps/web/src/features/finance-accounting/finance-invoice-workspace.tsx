@@ -53,6 +53,21 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
  const [offset,setOffset]=useState(0);
  const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [pending,setPending]=useState<{key:string;url:string;method:string;body:unknown}|null>(null);
+ const [protectedEligible,setProtectedEligible]=useState(false);
+ const canCancelPosted=canCancel&&protectedEligible;
+ useEffect(()=>{
+  if(!canCancel){setProtectedEligible(false);return;}
+  let live=true;
+  void (async()=>{
+   try{
+    const r=await fetch("/api/finance/invoices/cancel-eligibility",{cache:"no-store"});
+    if(!r.ok)throw Error("Eligibility unavailable");
+    const result=await r.json() as {canCancel?:boolean};
+    if(live)setProtectedEligible(result.canCancel===true);
+   }catch{if(live)setProtectedEligible(false);}
+  })();
+  return()=>{live=false;};
+ },[canCancel]);
  const [cancelOpen,setCancelOpen]=useState(false);
  const [cancelYear,setCancelYear]=useState("");
  const [cancelDate,setCancelDate]=useState("");
@@ -360,7 +375,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
       disabled={busy||Boolean(pending)} onClick={()=>workflow("post")}>Post balanced invoice accrual</button>}
     {active?.status==="POSTED"&&canIssue&&<button className="primary" type="button"
       disabled={busy||Boolean(pending)||Boolean(cancelPending)} onClick={()=>workflow("issue")}>Issue protected PDF</button>}
-    {active?.status==="POSTED"&&canCancel&&<button type="button"
+    {active?.status==="POSTED"&&canCancelPosted&&<button type="button"
       disabled={busy||Boolean(pending)||Boolean(cancelPending)}
       onClick={()=>{setCancelOpen(true);setCancelYear("");setCancelDate("");
        setCancelReason("");setCancelPassword("");}}>
@@ -372,7 +387,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>
    {active?.status==="ISSUED"&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost} canIssue={canIssue}/>}
   </section>}
-  {cancelOpen&&active?.status==="POSTED"&&canCancel&&<div className="drawer-backdrop" role="presentation">
+  {cancelOpen&&active?.status==="POSTED"&&canCancelPosted&&<div className="drawer-backdrop" role="presentation">
    <section role="dialog" aria-modal="true" aria-labelledby="cg-invoice-cancel-title"
     className="role-drawer cg-fin-drawer">
     <div className="cg-fin-drawer-header"><div><p>Finance / Protected Invoice Correction</p>
