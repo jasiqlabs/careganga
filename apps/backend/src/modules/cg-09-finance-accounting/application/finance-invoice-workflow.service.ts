@@ -51,7 +51,7 @@ export class FinanceInvoiceWorkflowService{
   return actor;
  }
  private async requireBranch(bearer:string,capability:
-  "finance.invoices.manage"|"finance.invoices.issue",
+  "finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.issue",
   branchRef:string|null,createdBy:string){
   const actor=await this.sessions.requireAction(bearer,capability);
   const scope=await this.branches.financeReportScope(bearer,capability);
@@ -562,7 +562,7 @@ export class FinanceInvoiceWorkflowService{
   const original=invoice.rows[0];
   if(!original||original.status!=="ISSUED")
    throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
-  await this.requireBranch(bearer,"finance.invoices.issue",original.branch_id,original.created_by);
+  await this.requireBranch(bearer,"finance.invoices.view",original.branch_id,original.created_by);
   const receipts=await this.db.query<{receiptRef:string;receiptNumber:string;
    amountMinor:string;paidDate:string}>(
    "SELECT id AS \"receiptRef\",receipt_number AS \"receiptNumber\","+
