@@ -424,16 +424,24 @@ export class FinanceAccountsService{
   if(typeof body.description!=="string"||
     body.description.trim().length<3||body.description.trim().length>500)
    fieldError("FINANCE_JOURNAL_MEMO_INVALID","description");
-  const memo=body.description.trim().replace(/\\s+/g," ");
+  const memo=body.description.trim().replace(/\s+/g," ");
   if(!Array.isArray(body.lines)||body.lines.length<2||body.lines.length>40)
    fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
   const parsed=body.lines.map((inputLine:unknown)=>{
    const line=fields(inputLine,["accountRef","debit","credit"]);
    const accountRef=ref(line.accountRef,"lines","FINANCE_JOURNAL_LINES_INVALID");
-   const debit=(line.debit===undefined||line.debit===""||line.debit==="0"||
-     line.debit==="0.00")?"0":amountMinor(line.debit);
-   const credit=(line.credit===undefined||line.credit===""||line.credit==="0"||
-     line.credit==="0.00")?"0":amountMinor(line.credit);
+   const parseSide=(value:unknown):string=>{
+    if(value===undefined||value===null||value===""||
+      (typeof value==="string"&&/^0(?:\.0{1,2})?$/.test(value)))return "0";
+    if(typeof value!=="string"||!/^([1-9][0-9]{0,11}|0)(\.[0-9]{1,2})?$/.test(value))
+     return fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
+    const [whole,decimals=""]=value.split(".");
+    const minor=BigInt(whole)*100n+BigInt((decimals+"00").slice(0,2));
+    if(minor<=0n||minor>99999999999999n)
+     return fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
+    return minor.toString();
+   };
+   const debit=parseSide(line.debit),credit=parseSide(line.credit);
    if((debit==="0")===(credit==="0"))
     fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
    return {accountRef,debitMinor:debit,creditMinor:credit};
