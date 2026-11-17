@@ -114,7 +114,8 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
    AND finance_budget_id IS NOT NULL AND finance_budget_revision>0
    AND finance_budget_digest ~ '^[0-9a-f]{64}$'
    AND target_account_id IS NULL AND target_role_id IS NULL
-   AND expected_access_version IS NULL AND expected_role_revision IS NULL OR
+   AND expected_access_version IS NULL AND expected_role_revision IS NULL)
+ OR
  (case_kind='CMS_PUBLICATION'
    AND cms_page_id IS NOT NULL AND cms_page_revision_id IS NOT NULL
    AND cms_revision_no>0 AND cms_content_digest ~ '^[a-f0-9]{64}$'
