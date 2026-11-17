@@ -392,6 +392,14 @@ export class CmsEditorialService{
    const original=await this.approvals.createCase(tx,actor,{
     pageRef:page.id,revisionRef:rev.id,revisionNo:rev.revision_no,
     digest:rev.content_digest,requestKey:key});
+   if(page.kind==="HOME"){
+    const nav=await tx.query(
+     "UPDATE cms_navigation_revision SET status='SUBMITTED' "+
+     "WHERE foundation_root_id=$1 AND home_revision_id=$2 "+
+     "AND source_digest=$3 AND status='DRAFT' RETURNING id",
+     [actor.realmId,rev.id,rev.content_digest]);
+    if(!nav.rowCount)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   }
    await tx.query("UPDATE cms_page_revision SET status='SUBMITTED',"+
     "submitted_at=now(),approval_case_ref=$3,approval_source_revision=$4 "+
     "WHERE id=$1 AND foundation_root_id=$2 AND status='DRAFT'",
@@ -465,6 +473,20 @@ export class CmsEditorialService{
     [actor.realmId,page.id,result.rows[0].id]);
    await tx.query("UPDATE cms_page SET version=version+1 "+
     "WHERE id=$1 AND foundation_root_id=$2",[page.id,actor.realmId]);
+   if(page.kind==="HOME"){
+    const nav=await tx.query<{id:string}>(
+     "UPDATE cms_navigation_revision SET "+
+     "status='APPROVED',cg03_decision_ref=$3,effective_at=now() "+
+     "WHERE foundation_root_id=$1 AND home_revision_id=$2 "+
+     "AND source_digest=$4 AND status='SUBMITTED' RETURNING id",
+     [actor.realmId,rev.id,final.decisionRef,rev.content_digest]);
+    if(!nav.rows[0])throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+    await tx.query("INSERT INTO cms_navigation_effective(foundation_root_id,revision_id) "+
+     "VALUES($1,$2) ON CONFLICT(foundation_root_id) DO UPDATE "+
+     "SET revision_id=EXCLUDED.revision_id,"+
+     "version=cms_navigation_effective.version+1,changed_at=now()",
+     [actor.realmId,nav.rows[0].id]);
+   }
    await this.approvals.finish(tx,actor,caseRef);
    await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
     "event_key,actor_ref,action,revision_ref) "+
@@ -506,6 +528,29 @@ export class CmsEditorialService{
     [actor.realmId,page.id,key,actor.accountId,JSON.stringify({reason})]);
    return {confirmed:true,status:"HIDDEN",replayed:false};
   });
+ }
+ async publicNavigation(){
+  const response=await this.db.query<{effective_generation:string;login_desired:boolean}>(
+   'SELECT n.id AS "effective_generation",n.login_desired '+
+   'FROM cms_navigation_effective e JOIN cms_navigation_revision n '+
+   'ON n.id=e.revision_id AND n.foundation_root_id=e.foundation_root_id '+
+   'JOIN cms_page_revision v ON v.id=n.home_revision_id '+
+   'AND v.foundation_root_id=n.foundation_root_id '+
+   'JOIN cg03_case c ON c.id=v.approval_case_ref '+
+   'AND c.realm_id=v.foundation_root_id AND c.cms_page_revision_id=v.id '+
+   'JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
+   'AND d.realm_id=c.realm_id '+
+   'JOIN access_realm realm ON realm.id=n.foundation_root_id '+
+   "WHERE realm.realm_key='FOUNDATION_ROOT' AND n.status='APPROVED' "+
+   "AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' "+
+   'AND d.fresh_password_verified_at IS NOT NULL '+
+   'AND n.source_digest=v.content_digest AND n.effective_at<=now() LIMIT 1');
+  const x=response.rows[0];
+  return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
+   login:{visible:x?.login_desired===true,label:"Staff login",
+    path:x?.login_desired?"/admin/login":null},
+   memberJoin:{visible:false,label:"Member registration",path:null},
+   volunteerJoin:{visible:false,label:"Volunteer registration",path:null}};
  }
  async publicPage(slugInput:string){
   const slug=text(slugInput,"slug",70,1);
