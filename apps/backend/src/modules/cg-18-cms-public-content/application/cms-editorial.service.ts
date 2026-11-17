@@ -368,6 +368,11 @@ export class CmsEditorialService{
   const digest=sha(content);
   return this.withTx(async tx=>{
    await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   // The nonexistent slug row cannot be FOR UPDATE locked. Serialize the
+   // rare create per Foundation so duplicates return an actionable 409, not SQL.
+   await tx.query(
+    "SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",
+    [actor.realmId]);
    const replay=await tx.query<{page_or_nav_ref:string;redacted_metadata:Record<string,unknown>;
     actor_ref:string}>(
     "SELECT page_or_nav_ref,redacted_metadata,actor_ref FROM cms_change_audit "+
