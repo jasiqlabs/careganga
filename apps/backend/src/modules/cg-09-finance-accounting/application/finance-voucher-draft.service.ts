@@ -335,6 +335,7 @@ export class FinanceVoucherDraftService{
      if(e.code==="P0904")throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
      if(e.code==="P0907")throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
      if(e.code==="P0913")throw new BadRequestException({code:"FINANCE_VOUCHER_LINES_INVALID",field:"lines"});
+     if(e.code==="P0914")throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
     }
     throw e;
    }
