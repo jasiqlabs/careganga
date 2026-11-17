@@ -51,6 +51,18 @@ export class BranchSourceFacade{
     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
   if(!row.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
  }
+ /** CG-02 owner check for actual Finance invoice branch selection. */
+ async requireFinanceBranchVersion(client:PoolClient,actor:VerifiedFoundationActor,
+  branchRef:string,expectedVersion:number,action:"finance.invoices.manage"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  if(!UUID.test(branchRef)||!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+   throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+  const found=await client.query<{version:number}>(
+   "SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[branchRef,actor.realmId]);
+  if(!found.rows[0]||found.rows[0].version!==expectedVersion)
+   throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+ }
  /** Owner-controlled permitted branch labels for past ACTIVE/INACTIVE finance accounts. */
  async financeBranchLabels(bearer:string,branchRefs:readonly string[]):Promise<Record<string,string>>{
   if(branchRefs.length>60||branchRefs.some(r=>!UUID.test(r)))
@@ -65,7 +77,7 @@ export class BranchSourceFacade{
   return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
  }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
- async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
+ async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,capability);
    const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
      SELECT id,name,branch_code,version FROM branch
