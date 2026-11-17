@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
+import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,
  StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Fields=Record<string,unknown>;
@@ -16,7 +16,8 @@ const local=(v:unknown)=>{
  const route=text(v);
  return ["/","/about","/contact"].includes(route)?route:null;
 };
-async function published(slug:"home"|"about"):Promise<Result>{
+async function published(slug:string):Promise<Result>{
+ if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
  if(!base||!/^https?:\/\//.test(base)||
    (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
   return {state:"UNAVAILABLE",page:null};
@@ -29,26 +30,50 @@ async function published(slug:"home"|"about"):Promise<Result>{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))throw Error();
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||data.slug!==slug||
-     data.kind!==(slug==="home"?"HOME":"ABOUT")||
+     data.kind!==({home:"HOME",about:"ABOUT",impact:"IMPACT",
+       "80g":"COMPLIANCE",gallery:"GALLERY",healthcare:"HEALTHCARE"} as Record<string,string>)[slug]&&
+       !(data.kind==="ARTICLE"&&
+         !["home","about","impact","80g","gallery","healthcare"].includes(slug))||
      typeof data.title!=="string"||!Array.isArray(data.sections)||
      !Array.isArray(data.assets)||typeof data.effectiveGeneration!=="string")
    throw Error();
   return {state:"PUBLISHED",page:raw as CmsSource};
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
-async function approvedLoginFlag():Promise<boolean>{
+type Article={slug:string;title:string;category:string;excerpt:string;asOfDate:string;path:string};
+async function publishedArticles():Promise<{available:boolean;posts:Article[]}>{
  if(!base||!/^https?:\/\//.test(base)||
-  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))return false;
+  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+  return {available:false,posts:[]};
+ try{
+  const r=await fetch(new URL("/api/public/content/articles",base).toString(),
+   {cache:"no-store",signal:AbortSignal.timeout(9000)});
+  if(!r.ok)throw Error();
+  const v:unknown=await r.json();
+  if(!v||typeof v!=="object"||!("posts" in v)||!Array.isArray(v.posts))throw Error();
+  return {available:true,posts:(v.posts as Article[]).filter(a=>a&&
+   typeof a.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(a.slug)&&
+   a.path==="/blog/"+a.slug).slice(0,20)};
+ }catch{return {available:false,posts:[]};}
+}
+async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
+ if(!base||!/^https?:\/\//.test(base)||
+  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+  return {login:false,paths:[]};
  try{
   const r=await fetch(new URL("/api/public/content/navigation",base).toString(),
    {cache:"no-store",signal:AbortSignal.timeout(9000)});
-  if(!r.ok)return false;
+  if(!r.ok)throw Error();
   const result:unknown=await r.json();
-  return Boolean(result&&typeof result==="object"&&
-   "schemaVersion" in result&&result.schemaVersion===1&&
-   "login" in result&&result.login&&typeof result.login==="object"&&
-   "visible" in result.login&&result.login.visible===true);
- }catch{return false;}
+  if(!result||typeof result!=="object"||!("schemaVersion" in result)||
+    result.schemaVersion!==1)return {login:false,paths:[]};
+  const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
+  const valid=new Set(["/about","/impact","/80g","/gallery","/healthcare"]);
+  const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
+   .map(p=>p.path).filter(p=>typeof p==="string"&&
+    (valid.has(p)||/^\/blog\/[a-z0-9-]{1,70}$/.test(p))).slice(0,100):[];
+  return {login:data.login?.visible===true,paths};
+ }catch{return {login:false,paths:[]};}
 }
 function CmsButton({title,onPress,secondary=false}:{
  title:string;onPress:()=>void;secondary?:boolean}){
@@ -62,7 +87,10 @@ function CmsButton({title,onPress,secondary=false}:{
  */
 export function PublicCmsContent({onContact,onLoginVisibility}: {
  onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
- const [slug,setSlug]=useState<"home"|"about">("home");
+ const [slug,setSlug]=useState("home");
+ const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
+ const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
+  available:false,posts:[]});
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
@@ -71,12 +99,21 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  const refreshNavigation=useCallback(async()=>{
   const request=++latestNavRequest.current;
   onLoginVisibility(false);
-  const visible=await approvedLoginFlag();
-  if(request===latestNavRequest.current)onLoginVisibility(visible);
+  const nav=await publishedNavigation();
+  if(request===latestNavRequest.current){
+   onLoginVisibility(nav.login);setPublishedPaths(nav.paths);
+  }
  },[onLoginVisibility]);
- const load=useCallback(async(target:"home"|"about")=>{
+ const load=useCallback(async(target:string)=>{
   const request=++latestPageRequest.current;
   setLoading(true);setActiveSlide(0);
+  if(target==="articles"){
+   const feed=await publishedArticles();
+   if(request!==latestPageRequest.current)return;
+   setArticleFeed(feed);
+   setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
+   setLoading(false);return;
+  }
   const response=await published(target);
   if(request!==latestPageRequest.current)return;
   setResult(response);setLoading(false);
