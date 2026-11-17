@@ -25,6 +25,7 @@ export class FinanceReceiptDocumentService{
  async status(bearer:string,receiptInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
   const ref=id(receiptInput);
+  await this.source.authorizedView(bearer,ref);
   const rows=await this.db.query<ReceiptDoc>(
    "SELECT * FROM cg19_finance_receipt_document "+
    "WHERE root_realm_id=$1 AND receipt_id=$2",[actor.realmId,ref]);
@@ -138,6 +139,7 @@ export class FinanceReceiptDocumentService{
    "SELECT * FROM cg19_finance_receipt_document WHERE id=$1 AND root_realm_id=$2 "+
    "AND status='ISSUED' AND revoked_at IS NULL",[ref,actor.realmId]);
   const doc=docs.rows[0];
+  if(doc)await this.source.authorizedView(bearer,doc.receipt_id);
   if(!doc||!doc.object_version||!doc.content_sha256||!doc.content_length)
    throw new NotFoundException({code:"FINANCE_INVOICE_DOCUMENT_UNAVAILABLE"});
   const actual=await this.db.query<{immutable_digest:string}>(
@@ -166,7 +168,7 @@ export class FinanceReceiptDocumentService{
   if(bytes.length!==doc.content_length||
    createHash("sha256").update(bytes).digest("hex")!==doc.content_sha256)
    throw new ConflictException({code:"FINANCE_INVOICE_DOCUMENT_UNAVAILABLE"});
-  await this.sessions.requireAction(bearer,"finance.invoices.view");
+  await this.source.authorizedView(bearer,doc.receipt_id);
   const live=await this.db.query(
    "SELECT id FROM cg19_finance_receipt_document WHERE id=$1 AND root_realm_id=$2 "+
    "AND status='ISSUED' AND revoked_at IS NULL AND object_version=$3",
