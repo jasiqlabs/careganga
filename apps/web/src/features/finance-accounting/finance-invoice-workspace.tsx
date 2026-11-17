@@ -309,7 +309,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
       disabled={busy||Boolean(pending)} onClick={()=>workflow("issue")}>Issue protected PDF</button>}
    </div>
    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
-   {active?.status==="ISSUED"&&canIssue&&<FinanceInvoiceReceiptTools invoiceRef={active.ref}/>}
+   {active?.status==="ISSUED"&&canIssue&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost}/>}
   </section>}
   <div className="cg-fin-toolbar-actions" role="group" aria-label="Invoice status tabs">
    {[
