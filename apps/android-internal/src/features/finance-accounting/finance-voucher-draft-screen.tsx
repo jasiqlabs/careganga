@@ -4,9 +4,10 @@ import * as Crypto from "expo-crypto";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {FinanceVoucherNativeEvidence} from "./finance-voucher-native-evidence";
 import type {FinanceYear,FinanceBranch} from "./finance-setup-editor";
 type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:string;payeeName:string;
- purpose:string;totalMinor:string;version:number};
+ purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null};
 type Line={description:string;quantity:string;unitRate:string};
 type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
  header:{financialYearRef?:string;branchRef?:string|null;type?:string;
@@ -15,7 +16,8 @@ type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
  taxMinor:string;chargesMinor:string};
 type Pending={key:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
 type Props={token:string;years:readonly FinanceYear[];branches:readonly FinanceBranch[];
- canManage:boolean;onClose:()=>void;onExpired:()=>void};
+ canManage:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;
+ onClose:()=>void;onExpired:()=>void};
 const line=():Line=>({description:"",quantity:"1",unitRate:""});
 const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",postingDate:"",payeeName:"",
  purpose:"",tax:"0",charges:"0"});
@@ -48,8 +50,9 @@ function Select({label,value,options,onChange}:{label:string;value:string;
    accessibilityState={{checked:o.value===value}} onPress={()=>onChange(o.value)}>
    <Text style={o.value===value?s.selected:s.plain}>{o.label}</Text></Pressable>)}</View></View>;
 }
-export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClose,onExpired}:Props){
+export function FinanceVoucherDraftScreen({token,years,branches,canManage,canViewEvidence,canUploadEvidence,onClose,onExpired}:Props){
  const [drafts,setDrafts]=useState<Voucher[]>([]);
+ const [workflowRef,setWorkflowRef]=useState("");
  const [offset,setOffset]=useState(0);
  const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [loading,setLoading]=useState(true);
@@ -81,11 +84,11 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(busy||pending)return true;
-   if(editing)setEditing(false);else onClose();
+   if(editing)setEditing(false);else if(workflowRef)setWorkflowRef("");else onClose();
    return true;
   });
   return()=>subscription.remove();
- },[editing,busy,pending,onClose]);
+ },[editing,busy,pending,workflowRef,onClose]);
  const update=(k:keyof ReturnType<typeof empty>,v:string)=>{setForm(f=>({...f,[k]:v}));setProblem("");};
  const itemField=(i:number,k:keyof Line,v:string)=>{setItems(old=>old.map((row,j)=>i===j?{...row,[k]:v}:row));setProblem("");};
  function start(){
@@ -94,7 +97,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
   setPending(null);setRetryAllowed(false);setProblem("");setSuccess("");
  }
  async function edit(v:Voucher){
-  if(!canManage)return;
+  if(!canManage||!["DRAFT","RETURNED"].includes(v.status))return;
   setBusy(true);setProblem("");
   try{
    const res=await identityRequest("/api/finance-accounting/vouchers/drafts/"+v.voucherRef,
@@ -102,7 +105,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
    if(res.status===401){onExpired();return;}
    if(!res.ok)throw Error(await reason(res));
    const d=await res.json() as Draft;
-   if(!d||d.status!=="DRAFT_NOT_APPROVED_OR_POSTED"||!Array.isArray(d.lines))
+   if(!d||!["DRAFT","RETURNED"].includes(d.status)||!Array.isArray(d.lines))
     throw Error("This voucher is no longer editable. Refresh its latest status.");
    setTarget({ref:d.voucherRef,number:d.voucherNumber,version:d.version});
    setForm({type:d.header.type??"EXPENSE",financialYearRef:d.header.financialYearRef??"",
@@ -193,9 +196,19 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,onClos
      <Text style={s.hint}>{v.payeeName} · {v.postingDate}</Text>
      <Text style={s.hint}>{v.purpose}</Text>
      <Text style={s.money}>{money(v.totalMinor)}</Text>
-     <Text style={s.hint}>Draft — not posted</Text>
-     {canManage&&<Pressable accessibilityRole="button" style={s.button}
-      onPress={()=>void edit(v)}><Text style={s.plain}>Edit draft</Text></Pressable>}
+     <Text style={s.hint}>{v.status==="DRAFT"?"Draft — not posted":v.status==="SUBMITTED"?
+      "Submitted for review — not posted":v.status==="APPROVED"?"Approved — not paid":
+      v.status==="RETURNED"?"Returned for correction":v.status==="REJECTED"?
+      "Rejected":"Original status unverified"}</Text>
+     {canManage&&["DRAFT","RETURNED"].includes(v.status)&&<Pressable accessibilityRole="button"
+      style={s.button} onPress={()=>void edit(v)}>
+      <Text style={s.plain}>{v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</Text></Pressable>}
+     {canManage&&["DRAFT","SUBMITTED"].includes(v.status)&&<Pressable accessibilityRole="button"
+      style={s.button} onPress={()=>setWorkflowRef(w=>w===v.voucherRef?"":v.voucherRef)}>
+      <Text style={s.plain}>Verified evidence & review</Text></Pressable>}
+     {workflowRef===v.voucherRef&&<FinanceVoucherNativeEvidence token={token}
+      voucher={v} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
+      onExpired={onExpired} onUpdated={()=>{setWorkflowRef("");void fetchDrafts();}}/>}
     </View>)}
     <View style={s.actions}>
      <Pressable accessibilityRole="button" style={s.button}
