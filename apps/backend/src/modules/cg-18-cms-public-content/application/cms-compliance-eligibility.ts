@@ -19,7 +19,7 @@ export async function complianceEligible(
  const media=await db.query(
   "SELECT 1 FROM cms_asset_placement a "+
   "JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-  "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+  "AND f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id "+
   "JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id "+
   "AND i.realm_id=f.realm_id "+
   "WHERE a.foundation_root_id=$1 AND a.page_revision_id=$2 "+
