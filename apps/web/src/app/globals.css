@@ -725,3 +725,40 @@ button:disabled { cursor:wait; opacity:.65; }
  .cg-fin-donut-detail{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
  .cg-fin-dashboard-title{align-items:flex-start;flex-direction:column}
 }
+
+/* Original voucher-entry U34: wide contained form, dense three-column information. */
+.cg-voucher-full-editor{width:min(97vw,85rem);max-height:96vh;
+ overflow-y:auto;overscroll-behavior:contain}
+.cg-voucher-full-editor .cg-fin-description{background:var(--cg-surface);
+ border-left:3px solid var(--cg-primary,#1e53dc);padding:.75rem 1rem;margin:.2rem 0 1rem}
+.cg-voucher-full-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:.8rem;padding:.25rem}
+.cg-voucher-full-form>.cg-fin-field{padding:.9rem;border:1px solid var(--cg-border);
+ background:var(--cg-surface);border-radius:.65rem;min-width:0}
+.cg-voucher-full-form>.cg-fin-field>label,.cg-voucher-full-form>.cg-fin-field label{
+ display:block;font-size:.76rem;font-weight:650;margin-bottom:.25rem;color:var(--cg-text)}
+.cg-voucher-full-form>.cg-fin-field input,
+.cg-voucher-full-form>.cg-fin-field textarea,
+.cg-voucher-full-form>.cg-fin-field select{width:100%;min-width:0;max-width:100%}
+.cg-voucher-full-form>.cg-fin-journal-line{grid-column:span 3;background:var(--cg-surface);
+ border:1px solid var(--cg-border);border-radius:.65rem;padding:.8rem}
+.cg-voucher-full-form>.cg-fin-journal-amounts,
+.cg-voucher-full-form>.cg-fin-form-actions{grid-column:span 3}
+.cg-voucher-full-form>.cg-fin-journal-amounts{background:var(--cg-surface);
+ border:1px solid var(--cg-border);border-radius:.65rem;padding:.8rem}
+.cg-voucher-full-form>p,.cg-voucher-full-form>.cg-fin-notice,
+.cg-voucher-full-form>.cg-fin-pending{grid-column:span 3}
+.cg-voucher-full-form>button{max-width:16rem;min-height:2.7rem}
+.cg-voucher-full-form>.cg-fin-form-actions{padding:.9rem 0;
+ display:flex;justify-content:flex-end;flex-wrap:wrap;gap:.65rem}
+@media(max-width:70rem){.cg-voucher-full-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cg-voucher-full-form>.cg-fin-journal-line,.cg-voucher-full-form>.cg-fin-journal-amounts,
+ .cg-voucher-full-form>.cg-fin-form-actions,.cg-voucher-full-form>p,
+ .cg-voucher-full-form>.cg-fin-notice,.cg-voucher-full-form>.cg-fin-pending{grid-column:span 2}
+}
+@media(max-width:42rem){.cg-voucher-full-form{grid-template-columns:minmax(0,1fr)}
+ .cg-voucher-full-form>.cg-fin-journal-line,.cg-voucher-full-form>.cg-fin-journal-amounts,
+ .cg-voucher-full-form>.cg-fin-form-actions,.cg-voucher-full-form>p,
+ .cg-voucher-full-form>.cg-fin-notice,.cg-voucher-full-form>.cg-fin-pending{grid-column:span 1}
+ .cg-voucher-full-editor{width:100%;max-height:100dvh;border-radius:0}
+}
