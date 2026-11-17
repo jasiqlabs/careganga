@@ -104,7 +104,9 @@ export class FinanceClaimApprovalService{
   requestKey:string;categoryLabel:string
  }){
   uid(input.claimRef);uid(input.fileRef);uid(input.requestKey);
-  await this.source.guardDraft(tx,actor,input.claimRef,input.version);
+  const source=await this.source.guardDraft(tx,actor,input.claimRef,input.version);
+  if(source.sourceDigest!==input.digest)
+   throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
   await this.evidence.guardForReviewer(tx,actor,{
    claimRef:input.claimRef,claimVersion:input.version,fileRef:input.fileRef,
    fileVersion:input.fileVersion});
@@ -123,6 +125,16 @@ export class FinanceClaimApprovalService{
     reference:check.rows[0].case_number,revision:check.rows[0].revision};
   }
   await this.protectedOwner.requireDistinctFinalReviewer(tx,actor.realmId,actor.accountId);
+  const previous=await tx.query<Case>(
+   "SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='FINANCE_REIMBURSEMENT' "+
+   "AND finance_claim_id=$2 AND finance_claim_revision<$3 "+
+   "ORDER BY finance_claim_revision DESC LIMIT 1 FOR SHARE",
+   [actor.realmId,input.claimRef,input.version]);
+  if((input.version>1&&(!previous.rows[0]||
+       previous.rows[0].finance_claim_revision!==input.version-1||
+       previous.rows[0].status!=="RETURNED"))||
+      (input.version===1&&Boolean(previous.rows[0])))
+   throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
   const process=await tx.query<{id:string;version:number}>(
    "SELECT p.id,p.version FROM cg03_claim_process_current c "+
    "JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id "+
@@ -136,14 +148,14 @@ export class FinanceClaimApprovalService{
    "role_name_snapshot,expected_access_version,expected_role_revision,proposal_revision,"+
    "proposal_digest,request_digest,request_key,case_kind,finance_claim_id,"+
    "finance_claim_revision,finance_claim_digest,finance_claim_bill_id,"+
-   "finance_claim_bill_version) VALUES($1,'CG-AP-'||"+
+   "finance_claim_bill_version,previous_case_id) VALUES($1,'CG-AP-'||"+
    "lpad(nextval('cg03_public_case_sequence')::text,6,'0'),$2,$3,$4,"+
    "NULL,NULL,$5,'Reimbursement',NULL,NULL,$6,$7,$8,$9,"+
-   "'FINANCE_REIMBURSEMENT',$10,$11,$12,$13,$14) RETURNING *",
+   "'FINANCE_REIMBURSEMENT',$10,$11,$12,$13,$14,$15) RETURNING *",
    [actor.realmId,process.rows[0].id,process.rows[0].version,
     actor.accountId,input.categoryLabel,input.version,input.digest,digest,
     input.requestKey,input.claimRef,input.version,input.digest,
-    input.fileRef,input.fileVersion]);
+    input.fileRef,input.fileVersion,previous.rows[0]?.id??null]);
   await tx.query(
    "INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
    "step_ordinal,correlation_ref) VALUES($1,$2,$3,'SUBMITTED',1,$4)",
