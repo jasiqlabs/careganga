@@ -277,6 +277,37 @@ export class FinanceBudgetService{
    throw e;
   }finally{tx.release();}
  }
+ async eligibleExpenses(bearer:string,budgetInput:string){
+  const actor=await this.actor(bearer);
+  const budgetRef=id(budgetInput);
+  const budget=await this.db.query<{category_label:string;branch_id:string|null;
+   financial_year_id:string;period_start:string;period_end:string;status:string}>(
+   "SELECT category_label,branch_id,financial_year_id,period_start::text,"+
+   "period_end::text,status FROM finance_budget WHERE id=$1 AND root_realm_id=$2",
+   [budgetRef,actor.realmId]);
+  const b=budget.rows[0];
+  if(!b||b.status!=="APPROVED")
+   throw new ConflictException({code:"FINANCE_BUDGET_NOT_APPROVED"});
+  const rows=await this.db.query<{journalRef:string;voucherNumber:string;
+   postedDate:string;amountMinor:string}>(
+   "SELECT j.id AS \"journalRef\",v.voucher_number AS \"voucherNumber\","+
+   "j.posting_date::text AS \"postedDate\",v.total_minor::text AS \"amountMinor\" "+
+   "FROM journal j JOIN finance_voucher v "+
+   "ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id "+
+   "JOIN finance_voucher_posting p ON p.journal_id=j.id "+
+   "AND p.root_realm_id=j.root_realm_id "+
+   "WHERE j.root_realm_id=$1 AND j.financial_year_id=$2 "+
+   "AND j.posting_kind='VOUCHER' AND j.status='POSTED' "+
+   "AND j.posting_date BETWEEN $3 AND $4 AND v.category_label=$5 "+
+   "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
+   "AND v.branch_id IS NOT DISTINCT FROM $6::uuid "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_budget_event e WHERE "+
+   "e.root_realm_id=j.root_realm_id AND e.source_journal_id=j.id) "+
+   "ORDER BY j.posting_date DESC,j.id DESC LIMIT 51",
+   [actor.realmId,b.financial_year_id,b.period_start,b.period_end,
+    b.category_label,b.branch_id]);
+  return {expenses:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
+ }
  async detail(bearer:string,budgetInput:string){
   const actor=await this.actor(bearer);
   const budgetRef=id(budgetInput);
