@@ -25,14 +25,23 @@ async function call<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:
    ...(body?{body:JSON.stringify(body)}:{})});
  }catch{throw Error("UNKNOWN");}
  if(result.status===401)throw Error("EXPIRED");
- if(result.status===403)throw Error("DENIED");
- if(result.status===409)throw Error("CHANGED");
- if(result.status===400)throw Error("INVALID");
- if(!result.ok)throw Error(method==="POST"?"UNKNOWN":"OFFLINE");
+ if(!result.ok){
+  const details:unknown=await result.json().catch(()=>null);
+  const data=details&&typeof details==="object"&&!Array.isArray(details)?
+    details as Record<string,unknown>:{};
+  if(typeof data.code==="string"&&data.code.startsWith("FINANCE_")&&
+    typeof data.message==="string"&&data.message.length<=220)
+    throw Error("USER:"+data.message);
+  if(result.status===403)throw Error("DENIED");
+  if(result.status===409)throw Error("CHANGED");
+  if(result.status===400)throw Error("INVALID");
+  throw Error(method==="POST"?"UNKNOWN":"OFFLINE");
+ }
  try{return await result.json() as T;}catch{throw Error("UNKNOWN");}
 }
 const friendly=(e:unknown)=>{
  const c=e instanceof Error?e.message:"UNKNOWN";
+ if(c.startsWith("USER:"))return c.slice(5);
  return c==="EXPIRED"?"Session expired. Sign in again.":
   c==="DENIED"?"Your current role cannot use private voucher evidence.":
   c==="CHANGED"?"The original voucher, file or reviewer outcome changed. Refresh.":
