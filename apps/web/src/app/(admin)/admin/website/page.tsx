@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {CmsAdminWorkspace} from "../../../../features/cms-public-content/cms-admin-workspace";
+import {CmsExtendedWorkspace} from "../../../../features/cms-public-content/cms-extended-workspace";
 export const dynamic="force-dynamic";
 /** Same original CareGanga Admin navigation and CG01 effective capabilities;
  * no independent CMS login or an alternative role configuration page.
@@ -47,7 +48,13 @@ export default async function WebsiteCmsAdmin(){
    <main className="workspace"><CmsAdminWorkspace
     canManage={actions.has("cms.content.manage")}
     canPublish={actions.has("cms.content.publish")}
-    canReview={actions.has("approvals.review")}/></main>
+    canReview={actions.has("approvals.review")}/>
+    <details className="cg-cms-extra" id="editorial-pages">
+     <summary>Impact, 80G, Gallery, Articles, Contact &amp; Healthcare pages</summary>
+     <CmsExtendedWorkspace canManage={actions.has("cms.content.manage")}
+      canPublish={actions.has("cms.content.publish")}/>
+    </details>
+   </main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
