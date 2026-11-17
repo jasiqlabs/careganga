@@ -15,7 +15,7 @@ export class SafeErrorMessagesService{
   const actor=await this.sessions.requireAction(bearer,"platform.settings.view");
   const rows=await this.db.query<{message_key:string;safe_message:string;revision:number}>(`
    SELECT message_key,safe_message,revision FROM platform_error_message
-   WHERE foundation_realm_id=$1 ORDER BY message_key LIMIT 100`,[actor.realmId]);
+   WHERE foundation_realm_id=$1 ORDER BY message_key LIMIT 500`,[actor.realmId]);
   const overrides=new Map(rows.rows.map(r=>[r.message_key,r]));
   return {messages:editableErrorKeys().map(key=>{
    const row=overrides.get(key);
