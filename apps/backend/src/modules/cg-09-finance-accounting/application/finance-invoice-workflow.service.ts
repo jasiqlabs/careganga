@@ -164,8 +164,8 @@ export class FinanceInvoiceWorkflowService{
  }
  async reconcile(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
-   v=input(payload,["requestKey","caseRef"]),key=ident(v.requestKey),
-   caseRef=ident(v.caseRef),digest=hash(["INVOICE_RECONCILE_V1",ref,caseRef]);
+   v=input(payload,["requestKey"]),key=ident(v.requestKey),
+   digest=hash(["INVOICE_RECONCILE_V1",ref]);
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
@@ -175,8 +175,9 @@ export class FinanceInvoiceWorkflowService{
     throw new ConflictException({code:"FINANCE_INVOICE_REPLAY_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:old.result_status,replayed:true};}
    const x=await this.load(tx,actor,ref);
-   if(x.approval_case_id!==caseRef||x.status!=="SUBMITTED")
+   if(!x.approval_case_id||x.status!=="SUBMITTED")
     throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
+   const caseRef=x.approval_case_id;
    const outcome=await this.approvals.outcome(tx,actor,{
     caseRef,invoiceRef:ref,version:x.version,digest:x.current_digest});
    const status=["PENDING_OWNER","OWNER_COMPLETED"].includes(outcome.status)?
