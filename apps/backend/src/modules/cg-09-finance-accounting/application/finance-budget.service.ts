@@ -91,6 +91,8 @@ export class FinanceBudgetService{
     p.branchVersion!,"finance.budgets.manage");
  }
  private async existing(tx:PoolClient,actor:VerifiedFoundationActor,key:string){
+  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+   [actor.realmId+":"+actor.accountId+":"+key]);
   const rows=await tx.query<Command>(
    "SELECT digest,budget_id,version,result_status FROM finance_budget_command "+
    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
