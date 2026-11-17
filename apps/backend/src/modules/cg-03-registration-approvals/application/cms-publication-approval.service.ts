@@ -241,6 +241,50 @@ export class CmsPublicationApprovalService{
   if(!outcome.rows[0])throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
   return {decisionRef:outcome.rows[0].id,reviewedBy:outcome.rows[0].reviewer_id};
  }
+ /** Due-only service proof: the actual CG03 decision, live independent
+  * reviewer and currently authorized publisher must still be eligible.
+  * No browser actor/token or scheduled success flag is trusted.
+  */
+ async scheduledProof(tx:PoolClient,realm:string,caseRef:string,
+  pageRef:string,revisionRef:string,revisionNo:number,digest:string,
+  publisherRef:string):Promise<boolean>{
+  const x=await tx.query(
+   "SELECT 1 FROM cg03_case c JOIN cg03_case_decision d "+
+   "ON d.case_id=c.id AND d.realm_id=c.realm_id "+
+   "WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='CMS_PUBLICATION' "+
+   "AND c.cms_page_id=$3 AND c.cms_page_revision_id=$4 "+
+   "AND c.cms_revision_no=$5 AND c.cms_content_digest=$6 "+
+   "AND c.status='PENDING_OWNER' AND d.action='APPROVE' "+
+   "AND d.actor_id<>c.proposer_id AND d.fresh_password_verified_at IS NOT NULL "+
+   "AND EXISTS(SELECT 1 FROM account reviewer JOIN account_role ar "+
+   "ON ar.account_id=reviewer.id AND ar.realm_id=reviewer.realm_id "+
+   "AND ar.revoked_at IS NULL JOIN role rr ON rr.id=ar.role_id "+
+   "AND rr.realm_id=reviewer.realm_id AND rr.active=true AND rr.is_protected=true "+
+   "WHERE reviewer.id=d.actor_id AND reviewer.realm_id=c.realm_id "+
+   "AND reviewer.status='ACTIVE') "+
+   "AND EXISTS(SELECT 1 FROM account publisher JOIN account_role ar "+
+   "ON ar.account_id=publisher.id AND ar.realm_id=publisher.realm_id "+
+   "AND ar.revoked_at IS NULL JOIN role rr ON rr.id=ar.role_id "+
+   "AND rr.realm_id=publisher.realm_id AND rr.active=true "+
+   "WHERE publisher.id=$7 AND publisher.realm_id=c.realm_id "+
+   "AND publisher.status='ACTIVE' AND "+
+   "(rr.is_protected OR EXISTS(SELECT 1 FROM role_grant grant_row "+
+   "WHERE grant_row.role_id=rr.id AND grant_row.capability_key='cms.content.publish'))) "+
+   "FOR SHARE OF c,d",
+   [caseRef,realm,pageRef,revisionRef,revisionNo,digest,publisherRef]);
+  return Boolean(x.rowCount);
+ }
+ async finishScheduled(tx:PoolClient,realm:string,caseRef:string,publisherRef:string){
+  const changed=await tx.query(
+   "UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,"+
+   "updated_at=now() WHERE id=$1 AND realm_id=$2 AND case_kind='CMS_PUBLICATION' "+
+   "AND status='PENDING_OWNER' RETURNING id",[caseRef,realm]);
+  if(changed.rowCount!==1)
+   throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
+  await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
+   "step_ordinal,correlation_ref) VALUES($1,$2,$3,'OWNER_COMPLETED',1,$4)",
+   [realm,caseRef,publisherRef,randomUUID()]);
+ }
  async finish(tx:PoolClient,actor:VerifiedFoundationActor,caseRef:string){
   const changed=await tx.query(
    "UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,"+
