@@ -56,7 +56,7 @@ export default async function FinanceReportsPage(){
     canViewClaims={actions.includes("finance.claims.view")}
     canViewFinanceReports={true}/>
    <main className="workspace"><FinanceReportsWorkspace
-     canReconcile={actions.includes("finance.reconciliation.manage")}
+     canReconcile={actions.includes("finance.reconciliation.manage")&&actions.includes("documents.files.manage")}
      canUploadStatement={actions.includes("finance.reconciliation.manage")&&actions.includes("documents.files.manage")}
      canVerify={actions.includes("finance.reconciliation.review")&&actions.includes("approvals.review")&&actions.includes("documents.files.view")}/></main>
   </div>;
