@@ -34,8 +34,7 @@ export class FinanceInvoiceSourceFacade{
   const source=rows.rows[0];
   if(!source)throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   const scope=await this.branches.financeReportScope(bearer,action);
-  if(!scope.all&&(!source.branch_id||!scope.branchRefs.includes(source.branch_id))&&
-    !(source.branch_id===null&&source.created_by===actor.accountId))
+  if(!scope.all&&(!source.branch_id||!scope.branchRefs.includes(source.branch_id)))
    throw new ForbiddenException("This invoice document belongs to another branch");
   return {invoiceRef:source.id,branchRef:source.branch_id};
  }
@@ -112,8 +111,7 @@ export class FinanceInvoiceSourceFacade{
    const source=await this.original(tx,actor,reference,version,"finance.invoices.issue");
    if(source.branchRef)await this.branches.requireFinanceActorBranch(tx,actor,source.branchRef,"finance.invoices.issue");
    const scope=await this.branches.financeReportScope(bearer,"finance.invoices.issue");
-   if(!scope.all&&(!source.branchRef||!scope.branchRefs.includes(source.branchRef))&&
-      !(source.branchRef===null&&source.createdBy===actor.accountId))
+   if(!scope.all&&(!source.branchRef||!scope.branchRefs.includes(source.branchRef)))
     throw new ForbiddenException("This invoice document belongs to another branch");
    if(source.status!=="POSTED"&&source.status!=="ISSUED")
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
