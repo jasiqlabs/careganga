@@ -259,14 +259,23 @@ export class FinanceVoucherEvidenceService{
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
+   const initial=await client.query<{voucher_id:string;voucher_version:number}>(`
+     SELECT voucher_id,voucher_version FROM cg19_stored_file
+     WHERE id=$1 AND realm_id=$2 AND owner_kind='CG09_VOUCHER'`,
+     [id(fileRef),actor.realmId]);
+   if(!initial.rows[0])throw new NotFoundException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
+   // Always lock Finance source before CG-19 file; submit locks in this order too.
+   await this.source.guardDraft(client,actor,
+     initial.rows[0].voucher_id,initial.rows[0].voucher_version);
    const file=await client.query<{id:string;voucher_id:string;voucher_version:number;
      revision:number;revoked_at:Date|null}>(`
      SELECT id,voucher_id,voucher_version,revision,revoked_at FROM cg19_stored_file
      WHERE id=$1 AND realm_id=$2 AND owner_kind='CG09_VOUCHER' FOR UPDATE`,
      [id(fileRef),actor.realmId]);
    const v=file.rows[0];
-   if(!v)throw new NotFoundException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
-   await this.source.guardDraft(client,actor,v.voucher_id,v.voucher_version);
+   if(!v||v.voucher_id!==initial.rows[0].voucher_id||
+      v.voucher_version!==initial.rows[0].voucher_version)
+    throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_CONFLICT"});
    if(v.revision!==expectedVersion)
     throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_CONFLICT"});
    if(!v.revoked_at){
