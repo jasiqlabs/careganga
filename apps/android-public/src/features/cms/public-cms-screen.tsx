@@ -35,6 +35,20 @@ async function published(slug:"home"|"about"):Promise<Result>{
   return {state:"PUBLISHED",page:raw as CmsSource};
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
+async function approvedLoginFlag():Promise<boolean>{
+ if(!base||!/^https?:\/\//.test(base)||
+  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))return false;
+ try{
+  const r=await fetch(new URL("/api/public/content/navigation",base).toString(),
+   {cache:"no-store",signal:AbortSignal.timeout(9000)});
+  if(!r.ok)return false;
+  const result:unknown=await r.json();
+  return Boolean(result&&typeof result==="object"&&
+   "schemaVersion" in result&&result.schemaVersion===1&&
+   "login" in result&&result.login&&typeof result.login==="object"&&
+   "visible" in result.login&&result.login.visible===true);
+ }catch{return false;}
+}
 function CmsButton({title,onPress,secondary=false}:{
  title:string;onPress:()=>void;secondary?:boolean}){
  return <Pressable accessibilityRole="button" onPress={onPress}
@@ -45,20 +59,26 @@ function CmsButton({title,onPress,secondary=false}:{
 /** Public Android receives the same original immutable public DTO as Next.js.
  * Revalidate on foreground; neither old cache nor a guessed CG04 Join is shown.
  */
-export function PublicCmsContent({onContact}: {onContact:()=>void}){
+export function PublicCmsContent({onContact,onLoginVisibility}: {
+ onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState<"home"|"about">("home");
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
+ const refreshNavigation=useCallback(async()=>{
+  onLoginVisibility(false);
+  onLoginVisibility(await approvedLoginFlag());
+ },[onLoginVisibility]);
  const load=useCallback(async(target:"home"|"about")=>{
   setLoading(true);setResult(await published(target));setLoading(false);
  },[]);
  useEffect(()=>{void load(slug);},[slug,load]);
+ useEffect(()=>{void refreshNavigation();},[refreshNavigation]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active")void load(slug);
+   if(state==="active"){void load(slug);void refreshNavigation();}
   });
   return()=>sub.remove();
- },[slug,load]);
+ },[slug,load,refreshNavigation]);
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(slug==="about"){setSlug("home");return true;}return false;
