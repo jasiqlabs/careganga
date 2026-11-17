@@ -4,7 +4,7 @@ export const dynamic="force-dynamic";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const kinds=new Set(["YEAR_CREATE","YEAR_STATUS","GROUP_CREATE","ACCOUNT_CREATE","ACCOUNT_STATUS","OPENING_POST"]);
 const financeErrors=new Set([
- "FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
+ "FINANCE_ACCOUNT_KIND_INVALID","FINANCE_ACCOUNT_STATUS_INVALID","FINANCE_FORM_INVALID","FINANCE_STALE_RECORD","FINANCE_BANK_LAST_FOUR","FINANCE_NAME_REQUIRED","FINANCE_CODE_INVALID","FINANCE_YEAR_DATE_INVALID","FINANCE_YEAR_OVERLAP",
  "FINANCE_DUPLICATE","FINANCE_GROUP_INVALID","FINANCE_SCOPE_INVALID","FINANCE_BRANCH_INACTIVE",
  "FINANCE_BRANCH_STALE","FINANCE_YEAR_CLOSED","FINANCE_ACCOUNT_INACTIVE","FINANCE_ACCOUNT_SCOPE",
  "FINANCE_OPENING_AMOUNT","FINANCE_DEBITS_CREDITS","FINANCE_OPENING_DATE",
@@ -69,7 +69,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["name","code","category","startOn","endOn","scopeKind","branchRef",
-   "groupRef","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
