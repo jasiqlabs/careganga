@@ -59,7 +59,9 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"support.faq.manage",businessLabel:"Manage Foundation help questions",group:"Helpdesk & support",assignable:true,sensitive:true},
   {key:"finance.accounts.view",businessLabel:"View finance accounts and periods",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.accounts.manage",businessLabel:"Manage chart, financial years and cash/bank accounts",group:"Finance & accounting",assignable:true,sensitive:true},
-  {key:"finance.journals.post",businessLabel:"Post balanced finance entries",group:"Finance & accounting",assignable:true,sensitive:true}
+  {key:"finance.journals.post",businessLabel:"Post balanced finance entries",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.vouchers.view",businessLabel:"View Finance voucher drafts and status",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.vouchers.manage",businessLabel:"Create and revise Finance voucher drafts",group:"Finance & accounting",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
