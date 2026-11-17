@@ -15,7 +15,7 @@ const codePattern=/^[A-Z0-9][A-Z0-9_-]{1,19}$/;
 const fieldError=(code:string,field:string):never=>{throw new BadRequestException({code,field});};
 const asForm=(input:unknown):Record<string,unknown>=>{
  if(!input||typeof input!=="object"||Array.isArray(input))
-  throw new BadRequestException({code:"FINANCE_NAME_REQUIRED"});
+  throw new BadRequestException({code:"FINANCE_FORM_INVALID"});
  return input as Record<string,unknown>;
 };
 function label(value:unknown,field:string,max:number):string{
@@ -33,8 +33,9 @@ function ref(value:unknown,field:string,err="FINANCE_GROUP_INVALID"):string{
  return value;
 }
 function dateOnly(value:unknown,field:string):string{
+ const invalid=field==="postingDate"?"FINANCE_OPENING_DATE":"FINANCE_YEAR_DATE_INVALID";
  if(typeof value!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value))
-  return fieldError("FINANCE_YEAR_DATE_INVALID",field);
+  return fieldError(invalid,field);
  const date=new Date(value+"T00:00:00Z");
  if(Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==value)
   return fieldError("FINANCE_YEAR_DATE_INVALID",field);
@@ -222,7 +223,7 @@ export class FinanceAccountsService{
    fieldError("FINANCE_BRANCH_STALE","branchRef");
   const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"name",120);
   const lastFour=kind==="BANK"&&body.bankLastFour?String(body.bankLastFour):"";
-  if(lastFour&&!/^[0-9]{4}$/.test(lastFour))fieldError("FINANCE_SCOPE_INVALID","accountKind");
+  if(lastFour&&!/^[0-9]{4}$/.test(lastFour))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
    branchVersion:String(branchVersion??""),bankLabel,lastFour};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
