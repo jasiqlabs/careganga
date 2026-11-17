@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -21,11 +21,12 @@ type FoundationAdminNavProps={
   canViewFinance?:boolean;
   canViewVouchers?:boolean;
   canReviewFinance?:boolean;
+  canViewClaims?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const searchRef=useRef<HTMLInputElement>(null);
   // Unlike the old admin screenshot's unverified people search, this
@@ -88,6 +89,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
 
   const financeAccess=allowed("finance.accounts.view",canViewFinance);
   const voucherAccess=allowed("finance.vouchers.view",canViewVouchers);
+  const claimsAccess=currentActions?["finance.claims.view","finance.claims.create"].some(k=>currentActions.has(k)):canViewClaims;
   const reviewerAccess=currentActions?
     ["approvals.review","finance.vouchers.view","documents.files.view"].every(k=>currentActions.has(k)):
     canReviewFinance;
@@ -99,6 +101,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(branchAccess?[{key:"branches" as const,label:"Branches & registration",href:"/admin/foundation/branches"}]:[]),
     ...(financeAccess?[{key:"finance" as const,label:"Accounts",href:"/admin/finance"}]:[]),
     ...(voucherAccess?[{key:"financeVouchers" as const,label:"Voucher Drafts",href:"/admin/finance/vouchers"}]:[]),
+    ...(claimsAccess?[{key:"financeClaims" as const,label:"Expense Claims",href:"/admin/finance/claims"}]:[]),
     ...(reviewerAccess?[{key:"financeReviews" as const,label:"Voucher Reviews",href:"/admin/finance/voucher-approvals"}]:[]),
     ...(policyAccess?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(settingsAccess?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
@@ -115,7 +118,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     audit:"Audit Logs",recovery:"Backup & Restore",
     approvals:"Registration & Approval",documents:"Private Case Documents",
     communications:"Notices & Notifications",support:"Help & Support",
-    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
+    foundation:"Departments / Committees",branches:"Branches / Locations",finance:"Finance & Accounting",financeClaims:"Expense Claims",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
   };
   return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
