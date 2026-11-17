@@ -190,9 +190,11 @@ export class FinanceClaimApprovalService{
    const c=rows.rows[0];
    if(!c)throw new NotFoundException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
    await tx.query("COMMIT");
+   const claim=await this.source.reviewerSnapshot(bearer,c.finance_claim_id,
+    c.finance_claim_revision);
    return {caseRef:c.id,reference:c.case_number,claimRef:c.finance_claim_id,
     version:c.finance_claim_revision,billFileRef:c.finance_claim_bill_id,
-    billVersion:c.finance_claim_bill_version,status:c.status,revision:c.revision};
+    billVersion:c.finance_claim_bill_version,status:c.status,revision:c.revision,claim};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async decide(bearer:string,caseInput:string,value:unknown){
