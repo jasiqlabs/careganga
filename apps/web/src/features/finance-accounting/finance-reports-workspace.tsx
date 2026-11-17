@@ -8,6 +8,7 @@ type Trial={accountName:string;code:string;category:string;netDebitMinor:string;
 type Book={postingDate:string;account:string;kind:string;debitMinor:string;creditMinor:string;
  description:string;postingKind:string};
 type Bank={accountRef:string;name:string;code:string};
+type Branch={branchRef:string;name:string;code:string;version:number};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
 type Match={reconciliationRef:string;accountName:string;statementDate:string;
  bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean};
@@ -35,6 +36,8 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
  const [view,setView]=useState<View>("summary");
  const [years,setYears]=useState<Year[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
+ const [branches,setBranches]=useState<Branch[]>([]);
+ const [branch,setBranch]=useState("");
  const [year,setYear]=useState("");
  const [account,setAccount]=useState("");
  const [from,setFrom]=useState("");
@@ -70,9 +73,10 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
    try{
     const r=await fetch("/api/finance/reports/options",{cache:"no-store"});
     if(!r.ok)throw Error(await message(r));
-    const data=await r.json() as {years?:Year[];accounts?:Account[]};
-    if(!Array.isArray(data.years)||!Array.isArray(data.accounts))throw Error("Current report options unavailable.");
-    if(live){setYears(data.years);setAccounts(data.accounts);}
+    const data=await r.json() as {years?:Year[];accounts?:Account[];branches?:Branch[]};
+    if(!Array.isArray(data.years)||!Array.isArray(data.accounts)||!Array.isArray(data.branches))
+     throw Error("Current report options unavailable.");
+    if(live){setYears(data.years);setAccounts(data.accounts);setBranches(data.branches);}
    }catch(e){if(live)setError(e instanceof Error?e.message:"Financial period options unavailable.");}
   })();return()=>{live=false;};
  },[]);
@@ -90,8 +94,10 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
      throw Error("Bank reconciliation register unavailable.");
     setBanks(options.banks);setMatches(status.items);setNext(status.nextOffset??null);
    }else if(view==="summary"){
-    const query=year?"?yearRef="+year:"";
-    const res=await fetch("/api/finance/reports/summary"+query,{cache:"no-store"});
+    const q=new URLSearchParams();
+    if(year)q.set("yearRef",year);
+    if(branch)q.set("branchRef",branch);
+    const res=await fetch("/api/finance/reports/summary?"+q,{cache:"no-store"});
     if(!res.ok)throw Error(await message(res));
     const data=await res.json() as Record<string,string>;
     if(!data||typeof data.incomeMinor!=="string")throw Error("Posted GL summary unavailable.");
@@ -102,7 +108,8 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
     }
     const q=new URLSearchParams();
     if(year)q.set("yearRef",year);
-    if(account&&view==="general-ledger")q.set("accountRef",account);
+    if(branch)q.set("branchRef",branch);
+    if(account&&["general-ledger","bank-book","cash-book","day-book"].includes(view))q.set("accountRef",account);
     if(from&&view!=="trial-balance")q.set("from",from);
     if(to&&view!=="trial-balance")q.set("to",to);
     if(view!=="trial-balance")q.set("offset",String(offset));
@@ -119,7 +126,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
   }catch(e){setError(e instanceof Error?e.message:"Original posted report unavailable.");
    setRows([]);setNext(null);}
   finally{setBusy(false);}
- },[view,year,account,from,to,offset]);
+ },[view,year,branch,account,from,to,offset]);
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{
   let live=true;setStatementFiles([]);setStatementFileRef("");setInspectedStatement(false);
@@ -247,7 +254,13 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
     <select value={year} onChange={e=>{setYear(e.target.value);setOffset(0);}}>
      <option value="">All years</option>{years.map(y=><option key={y.ref} value={y.ref}>{y.name}</option>)}
     </select></label>
-   {view==="general-ledger"&&<label className="cg-fin-field">Account
+   <label className="cg-fin-field">Foundation / branch
+    <select value={branch} onChange={e=>{setBranch(e.target.value);setOffset(0);}}>
+     <option value="">All permitted Foundation branches</option>
+     {branches.map(b=><option key={b.branchRef} value={b.branchRef}>
+      {b.code} · {b.name}</option>)}
+    </select></label>
+   {["general-ledger","bank-book","cash-book","day-book"].includes(view)&&<label className="cg-fin-field">Account
     <select value={account} onChange={e=>{setAccount(e.target.value);setOffset(0);}}>
      <option value="">All permitted accounts</option>
      {accounts.map(a=><option key={a.ref} value={a.ref}>{a.code} · {a.name}</option>)}
