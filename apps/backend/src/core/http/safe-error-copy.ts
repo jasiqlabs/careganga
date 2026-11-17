@@ -15,6 +15,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       POLICY_REPLAY_CONFLICT:"This policy request reference was already used. Refresh before retrying.",
       PLATFORM_STALE:"Platform settings changed elsewhere. Refresh before saving.",
       PLATFORM_REPLAY_CONFLICT:"This configuration request was previously used for another change.",
+      FINANCE_ACCOUNT_SEARCH_INVALID:"Search using a valid account name or code with no more than 80 characters.",
       FINANCE_FORM_INVALID:"Review the required finance fields, correct any missing information and submit again.",
       FINANCE_ACCOUNT_KIND_INVALID:"Choose an available account type: General, Cash or Bank.",
       FINANCE_ACCOUNT_STATUS_INVALID:"Select Active or Inactive status and try again.",
