@@ -65,7 +65,7 @@ function Field({name,label,form,onChange,type="text",required=false,children,fai
     {failure?.message}</small>}
  </label>;
 }
-export function FinanceAccountsWorkspace({canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment}:{canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean}){
+export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment}:{canManage:boolean;canPost:boolean;canReverse:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean}){
  const [data,setData]=useState<Setup|null>(null);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true);
@@ -398,7 +398,7 @@ export function FinanceAccountsWorkspace({canManage,canPost,canViewVouchers,canM
          expectedVersion:y.version,nextStatus:"CLOSED"})}>Close year</button>:"Closed"}</td>}</tr>)}
      </tbody></table>{!data.years.length&&<p className="cg-fin-empty">No financial year exists. Add a financial year to begin.</p>}</div>}
     {tab==="vouchers"&&canViewVouchers&&<FinanceVoucherDraftWorkspace years={data.years} branches={data.branches} canManage={canManageVouchers} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence} canPost={canPost} canVerifyPayment={canVerifyPayment}/>}
-    {tab==="journals"&&<FinanceManualJournalWorkspace years={data.years} canPost={canPost}
+    {tab==="journals"&&<FinanceManualJournalWorkspace years={data.years} canPost={canPost} canReverse={canReverse}
       onUpdated={()=>void load()}/>}
     {tab==="opening"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
      <thead><tr><th>Date</th><th>Financial year</th><th>Balanced opening amount</th><th>Status</th></tr></thead><tbody>
