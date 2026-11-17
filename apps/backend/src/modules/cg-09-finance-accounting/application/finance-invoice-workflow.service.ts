@@ -61,6 +61,8 @@ export class FinanceInvoiceWorkflowService{
   return x;
  }
  private async command(tx:PoolClient,actor:VerifiedFoundationActor,key:string){
+  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+   [actor.realmId+":"+actor.accountId+":"+key]);
   const found=await tx.query<Command>(
    "SELECT request_digest,invoice_id,source_version,result_status "+
    "FROM finance_invoice_command WHERE root_realm_id=$1 "+
