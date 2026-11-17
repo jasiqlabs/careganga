@@ -9,6 +9,9 @@ import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard
  financeNativeRequest as request,financeNativeProblem as problem,
  formatFinanceMoney as money,minorToRupees} from "./finance-native-source-kit";
 type Stage="INFO"|"ITEMS"|"PAYMENT"|"REVIEW";
+type InvoiceDashboard={cards:{total:number;drafts:number;pending:number;approved:number;
+ issued:number;rejected:number;returned:number;paidVerified:number;partiallyPaid:number;
+ issuedMinor:string;receivedVerifiedMinor:string};monthly:{month:string;count:number}[];explanation:string};
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;invoiceDate:string|null;totalMinor:string|null};
 type Detail={invoiceRef:string;invoiceNumber:string;status:string;version:number;
@@ -39,6 +42,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
  token:string;canManage:boolean;canPost:boolean;canIssue:boolean;
  onExit:()=>void;onExpired:()=>void}){
  const [list,setList]=useState<Invoice[]>([]);
+ const [dashboard,setDashboard]=useState<InvoiceDashboard|null>(null);
  const [current,setCurrent]=useState<{ref:string;number:string;version:number;status:string}|null>(null);
  const [form,setForm]=useState<Form>(empty());
  const [stage,setStage]=useState<Stage>("INFO");
@@ -69,6 +73,17 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   }catch(e){setError(problem(e));expire(e);}
  },[token,offset,onExpired]);
  useEffect(()=>{void load();},[load]);
+ const loadDashboard=useCallback(async()=>{
+  try{
+   const snapshot=await request<InvoiceDashboard>(token,
+    "/api/finance-accounting/invoices/dashboard");
+   if(!snapshot?.cards||!Array.isArray(snapshot.monthly))
+    throw Error("Original invoice dashboard unavailable");
+   setDashboard(snapshot);
+  }catch(e){setError(problem(e));expire(e);}
+ },[token,onExpired]);
+ useEffect(()=>{void loadDashboard();},[loadDashboard]);
+
  useEffect(()=>{let live=true;
   void(async()=>{try{
    const [o,a]=await Promise.all([
@@ -255,6 +270,21 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
     <Action label="Check the same request" secondary disabled={busy} onPress={()=>void check()}/>
     <Action label="Retry exactly the same request" disabled={busy}
      onPress={()=>void execute(pending)}/></Card>}
+   {dashboard&&<Card title="Original invoice dashboard">
+    {([
+     ["Total invoices",String(dashboard.cards.total)],
+     ["Draft",String(dashboard.cards.drafts)],
+     ["Pending protected review",String(dashboard.cards.pending)],
+     ["Approved / posted",String(dashboard.cards.approved)],
+     ["Issued",String(dashboard.cards.issued)],
+     ["Fully paid, bank verified",String(dashboard.cards.paidVerified)],
+     ["Partially paid, bank verified",String(dashboard.cards.partiallyPaid)],
+     ["Issued face value",money(dashboard.cards.issuedMinor)],
+     ["Verified bank collection",money(dashboard.cards.receivedVerifiedMinor)]
+    ] as [string,string][]).map(([name,value])=><Text key={name} style={s.text}>
+     {name}: {value}</Text>)}
+    <Text style={s.muted}>{dashboard.explanation}</Text>
+   </Card>}
    <Card title="Invoice register">
     <Action label="Refresh invoices" secondary onPress={()=>void load()}/>
     {list.map(v=><Pressable key={v.invoiceRef} accessibilityRole="button"
