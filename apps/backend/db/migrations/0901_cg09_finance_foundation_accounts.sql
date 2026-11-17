@@ -165,15 +165,20 @@ CREATE INDEX ix_cg09_command_root ON finance_command(root_realm_id,created_at DE
 
 -- A direct SQL writer cannot post into a CLOSED/foreign/out-of-period year.
 -- FOR SHARE serializes this check against the year-closing UPDATE.
-CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE v_start date; v_end date; v_status text;
 BEGIN
- PERFORM 1 FROM financial_year fy
-  WHERE fy.id=NEW.financial_year_id AND fy.root_realm_id=NEW.root_realm_id
-    AND fy.status='OPEN' AND NEW.posting_date BETWEEN fy.start_on AND fy.end_on
-  FOR SHARE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting period is not open' USING ERRCODE='P0901'; END IF;
+ SELECT fy.start_on,fy.end_on,fy.status INTO v_start,v_end,v_status
+  FROM financial_year fy
+  WHERE fy.id=NEW.financial_year_id AND fy.root_realm_id=NEW.root_realm_id FOR SHARE;
+ IF NOT FOUND OR v_status<>'OPEN' THEN
+  RAISE EXCEPTION 'Finance posting period is not open' USING ERRCODE='P0901';
+ END IF;
+ IF NEW.posting_date<v_start OR NEW.posting_date>v_end THEN
+  RAISE EXCEPTION 'Finance posting date is outside selected year' USING ERRCODE='P0911';
+ END IF;
  RETURN NEW;
-END $$;
+END $;
 CREATE TABLE journal(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -209,16 +214,20 @@ CREATE TABLE journal_line(
  FOREIGN KEY(branch_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT
 );
 -- A direct SQL writer cannot bypass current active account/scope eligibility.
-CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE v_status text; v_scope text; v_branch uuid;
 BEGIN
- PERFORM 1 FROM finance_account a
-  WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
-    AND a.status='ACTIVE'
-    AND (a.scope_kind='FOUNDATION' OR a.branch_id=NEW.branch_id)
-  FOR SHARE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting account is unavailable' USING ERRCODE='P0902'; END IF;
+ SELECT a.status,a.scope_kind,a.branch_id INTO v_status,v_scope,v_branch
+  FROM finance_account a WHERE a.id=NEW.account_id
+   AND a.root_realm_id=NEW.root_realm_id FOR SHARE;
+ IF NOT FOUND OR v_status<>'ACTIVE' THEN
+  RAISE EXCEPTION 'Finance posting account is unavailable' USING ERRCODE='P0902';
+ END IF;
+ IF v_scope='BRANCH' AND v_branch IS DISTINCT FROM NEW.branch_id THEN
+  RAISE EXCEPTION 'Finance posting account is in another branch' USING ERRCODE='P0904';
+ END IF;
  RETURN NEW;
-END $$;
+END $;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
  EXECUTE FUNCTION cg09_guard_posting_account();
 CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id,journal_id);
@@ -264,7 +273,7 @@ CREATE CONSTRAINT TRIGGER cg09_line_requires_balance
 
 -- Journal/history are append-only; corrections must be new linked reversals.
 CREATE FUNCTION cg09_immutable_record() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0907'; END $$;
+BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0912'; END $$;
 CREATE TRIGGER cg09_journal_immutable BEFORE UPDATE OR DELETE ON journal
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 CREATE TRIGGER cg09_lines_immutable BEFORE UPDATE OR DELETE ON journal_line
