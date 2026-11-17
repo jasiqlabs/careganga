@@ -340,28 +340,70 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
        onPress={()=>void receiptRefresh(current.ref)}/>}
      <Text style={s.muted}>Issuance is not verified payment or cash received.</Text>
     </Card>}
-    {current?.status==="ISSUED"&&canIssue&&<Card title="Separate verified payment">
-     {receipt?.paymentVerified?<>
-      <Text style={s.text}>{receipt.receiptNumber} · {money(receipt.amountMinor)}</Text>
-      {receiptDocument?.canDownload&&receiptDocument.documentRef?
-       <Action label="Open private paid receipt PDF" onPress={()=>void pdf(
-        "/api/documents/finance-receipts/files/"+receiptDocument.documentRef+"/download")}/>:
-       <Action label="Issue receipt from actual verified bank collection"
-        disabled={busy||Boolean(pending)} onPress={()=>{
-          const requestKey=key();
-          void execute({key:requestKey,method:"POST",path:"/api/documents/finance-receipts/receipts/"+
-           receipt.receiptRef+"/issue",body:{requestKey}});
-        }}/>} 
-     </>:<>
-      <Text style={s.muted}>Select one independently reconciled bank receipt. No amount is inferred.</Text>
-      <Options label="Eligible verified bank collection" value={receiptChoice}
+    {current?.status==="ISSUED"&&canIssue&&<Card title="Verified bank collections and partial receipts">
+     <Text style={s.muted}>An invoice issued is not paid. A genuine balanced bank collection
+      journal must be independently reconciled with a bank statement.</Text>
+     {receipt&&<>
+      <Text style={s.heading}>Original invoice {money(receipt.totalMinor)}</Text>
+      <Text style={s.text}>Verified received {money(receipt.paidMinor)}</Text>
+      <Text style={s.heading}>Outstanding {money(receipt.outstandingMinor)}</Text>
+     </>}
+     {receipt&&BigInt(receipt.outstandingMinor)>0n&&canPost&&collection&&<Card
+      title="1. Post actual bank collection (not yet verified)">
+      <Options label="Open financial year" value={collectionYear}
+       options={collection.years.map(y=>({ref:y.yearRef,label:y.name}))}
+       onChange={setCollectionYear}/>
+      <Options label="Real bank account" value={bank}
+       options={collection.banks.map(x=>({ref:x.accountRef,label:x.code+" · "+x.name}))}
+       onChange={setBank}/>
+      <Field label="Collection posting date (YYYY-MM-DD)" value={collectionDate}
+       onChange={setCollectionDate}/>
+      <Field label="Collection amount (₹)" value={collectionAmount}
+       keyboardType="decimal-pad" onChange={setCollectionAmount}/>
+      <Action label="Post source-linked balanced bank journal" disabled={busy||Boolean(pending)||
+       !collectionYear||!bank||!collectionDate||!collectionAmount}
+       onPress={()=>{if(!current)return;const requestKey=key();
+        void execute({key:requestKey,method:"POST",
+         path:"/api/finance-accounting/invoices/"+current.ref+"/record-collection",
+         body:{requestKey,financialYearRef:collectionYear,bankAccountRef:bank,
+          postingDate:collectionDate,amount:collectionAmount}});
+       }}/>
+      <Text style={s.muted}>The posted journal is awaiting independent bank statement
+       verification under Finance Ledger and Reports. No receipt is marked paid yet.</Text>
+     </Card>}
+     {receipt&&BigInt(receipt.outstandingMinor)>0n&&<Card
+      title="2. Link independently verified bank statement match">
+      <Options label="Verified original bank collection" value={receiptChoice}
        options={receiptOptions.map(o=>({ref:o.reconciliationRef,
         label:o.bankName+" · "+o.statementDate+" · "+money(o.amountMinor)}))}
        onChange={setReceiptChoice}/>
-      <Action label="Link this original received payment once"
-       disabled={!receiptChoice||busy||Boolean(pending)} onPress={()=>workflow("link-receipt")}/>
-     </>}
-     <Action label="Refresh verified receipt" secondary onPress={()=>void receiptRefresh(current.ref)}/>
+      <Action label="Record one real verified partial/full receipt"
+       disabled={!receiptChoice||busy||Boolean(pending)}
+       onPress={()=>workflow("link-receipt")}/>
+      {!receiptOptions.length&&<Text style={s.muted}>No eligible reconciled bank deposit
+       is available. Independently confirm the original bank statement first.</Text>}
+     </Card>}
+     <Card title="3. Original verified receipt history">
+      {!receipt?.receipts.length&&<Text style={s.muted}>No verified bank receipts yet.</Text>}
+      {receipt?.receipts.map(item=><View key={item.receiptRef} style={s.card}>
+       <Text style={s.heading}>{item.receiptNumber} · {money(item.amountMinor)}</Text>
+       <Text style={s.muted}>{item.paidDate}</Text>
+       {receiptDocs[item.receiptRef]?.canDownload&&receiptDocs[item.receiptRef]?.documentRef?
+        <Action label="Open this private bank-verified receipt PDF"
+         onPress={()=>void pdf("/api/documents/finance-receipts/files/"+
+          receiptDocs[item.receiptRef].documentRef+"/download")}/>:
+        <Action label={receiptDocs[item.receiptRef]?.status==="UNKNOWN"?
+         "Receipt PDF requires provider recovery":"Issue this verified receipt PDF"}
+         disabled={busy||Boolean(pending)||receiptDocs[item.receiptRef]?.status==="UNKNOWN"}
+         onPress={()=>{const requestKey=key();void execute({
+          key:requestKey,method:"POST",
+          path:"/api/documents/finance-receipts/receipts/"+item.receiptRef+"/issue",
+          body:{requestKey}});
+         }}/>}
+      </View>)}
+     </Card>
+     <Action label="Refresh actual verified receipts" secondary
+      onPress={()=>void receiptRefresh(current.ref)}/>
     </Card>}
    </Card>}
   </ScrollView>
