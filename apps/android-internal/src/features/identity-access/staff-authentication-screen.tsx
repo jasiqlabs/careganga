@@ -13,6 +13,7 @@ import { NotificationsScreen } from "../communications/notifications-screen";
 import { FoundationNoticeAdminScreen } from "../communications/foundation-notice-admin-screen";
 import { FoundationSupportScreen } from "../support/foundation-support-screen";
 import { BranchRegistrationScreen } from "../foundation-structure/branch-registration-screen";
+import { FinanceAccountsScreen } from "../finance-accounting/finance-accounts-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -63,6 +64,7 @@ export function StaffAuthenticationScreen(){
   const [approvalsOpen,setApprovalsOpen]=useState(false);
   const [documentsOpen,setDocumentsOpen]=useState(false);
   const [branchesOpen,setBranchesOpen]=useState(false);
+  const [financeOpen,setFinanceOpen]=useState(false);
   const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [supportOpen,setSupportOpen]=useState(false);
@@ -71,8 +73,9 @@ export function StaffAuthenticationScreen(){
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
+  const closeFinance=useCallback(()=>setFinanceOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -165,7 +168,7 @@ export function StaffAuthenticationScreen(){
       if(!response.ok)throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);
+      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);
       try{
         await SecureStore.deleteItemAsync(STORE_KEY);
       }catch{
@@ -197,6 +200,8 @@ export function StaffAuthenticationScreen(){
     return <PrivateCaseEvidenceScreen token={token}
       canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+  if(financeOpen&&token&&actor&&roleActions.includes("finance.accounts.view"))
+    return <FinanceAccountsScreen token={token} onExit={closeFinance} onExpired={expireSession}/>;
   if(branchesOpen&&token&&actor&&roleActions.includes("foundation.branches.view"))
     return <BranchRegistrationScreen token={token}
       canManage={roleActions.includes("foundation.branches.manage")}
@@ -284,6 +289,10 @@ export function StaffAuthenticationScreen(){
                 onPress={()=>setSupportOpen(true)}>
                 <Text style={styles.buttonText}>Contact Messages & Help</Text>
               </Pressable>}
+            {roleActions.includes("finance.accounts.view")&&<Pressable accessibilityRole="button"
+              style={styles.button} onPress={()=>setFinanceOpen(true)}>
+              <Text style={styles.buttonText}>Finance Accounts & Years</Text>
+            </Pressable>}
             {roleActions.includes("foundation.branches.view")&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setBranchesOpen(true)}>
               <Text style={styles.buttonText}>Branches & registration</Text>
