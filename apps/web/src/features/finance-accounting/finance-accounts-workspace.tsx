@@ -446,7 +446,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
       <Field failure={failure} name="groupRef" label="Account group" form={form} onChange={change} required>
        <select required value={form.groupRef} onChange={e=>change("groupRef",e.target.value)}>
         <option value="">Select a current group</option>
-        {data?.groups.map(g=><option value={g.groupRef} key={g.groupRef}>{g.name} — {g.code}</option>)}
+        {data?.groups.filter(g=>form.accountKind==="GENERAL"||g.category==="ASSET").map(g=><option value={g.groupRef} key={g.groupRef}>{g.name} — {g.code}</option>)}
        </select>
       </Field>
       <Field failure={failure} name="accountKind" label="Account type" form={form} onChange={change}>
