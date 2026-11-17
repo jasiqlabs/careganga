@@ -50,6 +50,7 @@ export default async function FinancePage(){
    <main className="workspace"><FinanceAccountsWorkspace
     canManage={actions.includes("finance.accounts.manage")}
     canPost={actions.includes("finance.journals.post")}
+    canReverse={actions.includes("finance.journals.post")&&actions.includes("approvals.review")}
     canViewVouchers={actions.includes("finance.vouchers.view")}
     canManageVouchers={actions.includes("finance.vouchers.manage")}
     canViewEvidence={actions.includes("documents.files.view")}
