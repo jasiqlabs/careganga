@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {FinanceInvoiceReceiptTools} from "./finance-invoice-receipt-tools";
 type Stage="INFO"|"ITEMS"|"PAYMENT";
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;totalMinor:string|null;invoiceDate:string|null};
@@ -257,6 +258,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
       disabled={busy||Boolean(pending)} onClick={()=>workflow("issue")}>Issue protected PDF</button>}
    </div>
    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
+   {active?.status==="ISSUED"&&canIssue&&<FinanceInvoiceReceiptTools invoiceRef={active.ref}/>}
   </section>}
   <div className="cg-fin-table-wrap"><h3>Original invoices</h3>
    <table className="cg-fin-table"><thead><tr><th>Invoice</th><th>Date</th><th>Counterparty</th>
