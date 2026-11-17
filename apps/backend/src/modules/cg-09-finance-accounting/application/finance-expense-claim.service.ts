@@ -507,6 +507,40 @@ export class FinanceExpenseClaimService{
 
  /** Foundation finance register: real claims, current case and posted-voucher
   * links only; purpose is visible to explicitly authorized claim managers. */
+ /** U41 dashboard: real root-scoped claim facts only, not posted ledger totals. */
+ async dashboard(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  const [totals,months,categories]=await Promise.all([
+   this.db.query<{total:number;draft:number;pending:number;approved:number;
+    returned:number;rejected:number;claimedMinor:string;approvedMinor:string}>(
+    "SELECT COUNT(*)::int AS total,"+
+    "COUNT(*) FILTER (WHERE status='DRAFT')::int AS draft,"+
+    "COUNT(*) FILTER (WHERE status='SUBMITTED')::int AS pending,"+
+    "COUNT(*) FILTER (WHERE status='APPROVED')::int AS approved,"+
+    "COUNT(*) FILTER (WHERE status='RETURNED')::int AS returned,"+
+    "COUNT(*) FILTER (WHERE status='REJECTED')::int AS rejected,"+
+    "COALESCE(SUM(amount_minor),0)::text AS \"claimedMinor\","+
+    "COALESCE(SUM(amount_minor) FILTER (WHERE status='APPROVED'),0)::text "+
+    "AS \"approvedMinor\" FROM expense_claim WHERE root_realm_id=$1",
+    [actor.realmId]),
+   this.db.query<{month:string;count:number;amountMinor:string}>(
+    "SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,"+
+    "COUNT(*)::int AS count,COALESCE(SUM(amount_minor),0)::text AS \"amountMinor\" "+
+    "FROM expense_claim WHERE root_realm_id=$1 "+
+    "AND created_at>=date_trunc('month',now())-interval '11 months' "+
+    "GROUP BY date_trunc('month',created_at) "+
+    "ORDER BY date_trunc('month',created_at) LIMIT 12",
+    [actor.realmId]),
+   this.db.query<{category:string;count:number;amountMinor:string}>(
+    "SELECT category_label AS category,COUNT(*)::int AS count,"+
+    "COALESCE(SUM(amount_minor),0)::text AS \"amountMinor\" "+
+    "FROM expense_claim WHERE root_realm_id=$1 "+
+    "GROUP BY category_label ORDER BY SUM(amount_minor) DESC,category_label LIMIT 8",
+    [actor.realmId])
+  ]);
+  return {cards:totals.rows[0],monthly:months.rows,categories:categories.rows,
+   explanation:"Claim request totals include drafts. They do not represent posted expenses or verified payments."};
+ }
  async managed(bearer:string,offsetInput?:string){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
