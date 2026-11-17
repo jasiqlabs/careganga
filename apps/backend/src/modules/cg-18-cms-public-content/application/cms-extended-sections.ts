@@ -206,7 +206,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
 }
 
 export function validateExtendedPage(kind:string,sections:readonly EditorialSection[],
- assets:readonly {role:string;order:number}[]){
+ assets:readonly {role:string;order:number}[],requireMedia=false){
  const types=sections.map(x=>x.kind);
  const permitted:Record<string,string[]>={
   IMPACT:["IMPACT_GROUP"],
@@ -229,12 +229,12 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   const fact=sections[0].fields;
   // A claim of currently verified 80G has to show an independently scanned
   // public-rights validated document placement, not merely unchecked fields.
-  if(fact.verification==="VERIFIED"&&!assets.some(a=>a.role==="DOCUMENT"))
+  if(requireMedia&&fact.verification==="VERIFIED"&&!assets.some(a=>a.role==="DOCUMENT"))
    return error("document");
  }
  if(kind==="GALLERY"&&(types.length!==1||types[0]!=="GALLERY_GRID"||
-   (sections[0].fields.items as unknown[]).some((_,i)=>
-    !assets.some(a=>a.role==="GALLERY"&&a.order===i))))
+   (requireMedia&&(sections[0].fields.items as unknown[]).some((_,i)=>
+    !assets.some(a=>a.role==="GALLERY"&&a.order===i)))))
   return error("galleryMedia");
  if(kind==="ARTICLE"&&(types.length!==1||types[0]!=="ARTICLE_BODY"))
   return error("sections");
