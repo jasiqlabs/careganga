@@ -76,6 +76,36 @@ export class BranchSourceFacade{
     ORDER BY name,id LIMIT 60`,[actor.realmId,unique]);
   return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
  }
+ /** Authoritative CG-02 branch visibility for finance reports, selectors and CSV.
+  * Protected Foundation super admin and explicitly granted branch admins may
+  * see all. An ordinary branch manager sees only their real assigned branch(es);
+  * finance.reports.view alone never silently grants Foundation-wide money.
+  */
+ async financeReportScope(bearer:string):Promise<{all:boolean;branchRefs:string[]}>{
+   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+   const protectedRole=await this.db.query<{allowed:boolean}>(`
+     SELECT EXISTS(SELECT 1 FROM account_role ar
+       JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
+       WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL) AS allowed`,
+      [actor.accountId,actor.realmId]);
+   let full=protectedRole.rows[0]?.allowed===true;
+   if(!full){
+     try{await this.sessions.requireAction(bearer,"foundation.branches.admin");full=true;}
+     catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   }
+   if(full)return {all:true,branchRefs:[]};
+   const branches=await this.db.query<{id:string}>(`
+     SELECT id FROM branch WHERE root_realm_id=$1 AND manager_account_ref=$2
+       AND status='ACTIVE' ORDER BY id LIMIT 101`,[actor.realmId,actor.accountId]);
+   if(branches.rows.length>100)
+     throw new ForbiddenException("Choose a narrower authorized branch list");
+   return {all:false,branchRefs:branches.rows.map(x=>x.id)};
+ }
+ async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
+   const allowed=await this.financeReportScope(bearer);
+   if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
+     throw new ForbiddenException("Select a branch assigned to your account");
+ }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"|"finance.budgets.view"|"finance.budgets.manage"|"finance.reports.view"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,capability);
