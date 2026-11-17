@@ -71,7 +71,7 @@ BEGIN
  IF NOT EXISTS (
   SELECT 1 FROM finance_account a
   WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
-    AND a.account_kind=NEW.kind AND a.status='ACTIVE'
+    AND a.account_kind=NEW.kind AND (a.status='ACTIVE' OR NEW.status='INACTIVE')
  ) THEN RAISE EXCEPTION 'Invalid active cash/bank account'; END IF;
  RETURN NEW;
 END $$;
@@ -81,7 +81,7 @@ CREATE TRIGGER cg09_bank_kind_guard BEFORE INSERT OR UPDATE ON cash_bank_account
 CREATE TABLE finance_command(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
- command_kind text NOT NULL CHECK(command_kind IN('YEAR_CREATE','GROUP_CREATE','ACCOUNT_CREATE','OPENING_POST')),
+ command_kind text NOT NULL CHECK(command_kind IN('YEAR_CREATE','YEAR_STATUS','GROUP_CREATE','ACCOUNT_CREATE','ACCOUNT_STATUS','OPENING_POST')),
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
  entity_ref uuid,actor_ref uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
@@ -138,6 +138,14 @@ BEGIN
  SELECT count(*),coalesce(sum(debit_minor),0),coalesce(sum(credit_minor),0)
  INTO line_count,total_debit,total_credit
  FROM journal_line WHERE journal_id=j AND root_realm_id=r;
+ IF EXISTS (
+   SELECT 1 FROM journal_line l JOIN finance_account a
+    ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
+   WHERE l.journal_id=j AND l.root_realm_id=r
+    AND (a.scope_kind='BRANCH' AND a.branch_id IS DISTINCT FROM l.branch_id)
+ ) THEN
+  RAISE EXCEPTION 'Finance journal branch and account scope do not match';
+ END IF;
  IF line_count<2 OR total_debit<=0 OR total_debit<>total_credit THEN
    RAISE EXCEPTION 'Unbalanced posted journal'; END IF;
  RETURN NULL;
