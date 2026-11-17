@@ -68,6 +68,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  const [stage,setStage]=useState<Stage>("INFO");
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+ const [allowFoundation,setAllowFoundation]=useState(false);
  const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [receipt,setReceipt]=useState<Receipt|null>(null);
@@ -108,9 +109,10 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  useEffect(()=>{let live=true;
   void(async()=>{try{
    const [o,a]=await Promise.all([
-    request<{years:Year[];branches:Branch[];correctedInvoices:CorrectedInvoice[]}>(token,"/api/finance-accounting/invoices/options"),
+    request<{years:Year[];branches:Branch[];allBranches:boolean;correctedInvoices:CorrectedInvoice[]}>(token,"/api/finance-accounting/invoices/options"),
     request<{accounts:Account[]}>(token,"/api/finance-accounting/invoices/posting-accounts")]);
    if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
+    setAllowFoundation(o.allBranches===true);
     setCorrectedInvoices(o.correctedInvoices??[]);}
   }catch(e){if(live)setError(problem(e));expire(e);}})();
   return()=>{live=false;};
@@ -342,7 +344,8 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        options={years.filter(x=>x.status==="OPEN").map(y=>({ref:y.yearRef,label:y.name}))}
        onChange={v=>change("financialYearRef",v)}/>
       <Options label="Foundation / active branch" value={form.branchRef}
-       options={[{ref:"",label:"Foundation (no branch)"},...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
+       options={[{ref:"",label:allowFoundation?"Foundation (no branch)":"Select assigned branch"},
+       ...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
        onChange={v=>{const b=branches.find(x=>x.branchRef===v);setForm(f=>({
         ...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null,
         replacesInvoiceRef:""}));}}/>
