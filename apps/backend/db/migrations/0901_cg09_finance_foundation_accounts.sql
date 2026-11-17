@@ -90,6 +90,17 @@ CREATE TABLE finance_command(
 );
 CREATE INDEX ix_cg09_command_root ON finance_command(root_realm_id,created_at DESC,id);
 
+-- A direct SQL writer cannot post into a CLOSED/foreign/out-of-period year.
+-- FOR SHARE serializes this check against the year-closing UPDATE.
+CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+ PERFORM 1 FROM financial_year fy
+  WHERE fy.id=NEW.financial_year_id AND fy.root_realm_id=NEW.root_realm_id
+    AND fy.status='OPEN' AND NEW.posting_date BETWEEN fy.start_on AND fy.end_on
+  FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting period is not open'; END IF;
+ RETURN NEW;
+END $;
 CREATE TABLE journal(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -109,6 +120,8 @@ CREATE TABLE journal(
  FOREIGN KEY(reversal_of_id,root_realm_id) REFERENCES journal(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
+CREATE TRIGGER cg09_guard_new_posting BEFORE INSERT ON journal FOR EACH ROW
+ EXECUTE FUNCTION cg09_guard_posting_period();
 CREATE INDEX ix_cg09_journal_root_date ON journal(root_realm_id,posting_date DESC,id DESC);
 
 CREATE TABLE journal_line(
@@ -122,6 +135,19 @@ CREATE TABLE journal_line(
  FOREIGN KEY(account_id,root_realm_id) REFERENCES finance_account(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(branch_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT
 );
+-- A direct SQL writer cannot bypass current active account/scope eligibility.
+CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+ PERFORM 1 FROM finance_account a
+  WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
+    AND a.status='ACTIVE'
+    AND (a.scope_kind='FOUNDATION' OR a.branch_id=NEW.branch_id)
+  FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting account is unavailable'; END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
+ EXECUTE FUNCTION cg09_guard_posting_account();
 CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id,journal_id);
 
 -- Check both the journal and its lines at transaction COMMIT, never expose
