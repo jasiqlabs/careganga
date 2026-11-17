@@ -437,4 +437,72 @@ export class FinanceReportsService{
     explanation:"A separate reviewer checked the uploaded scanned statement and exact bank line. This does not confirm gateway or outgoing settlement."};
   }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"bank");}finally{tx.release();}
  }
+ /** Complete small V1 CSV export: same source read guards as on-screen
+  * reports. 2000-line cap prevents unbounded financial/data exports.
+  */
+ async exportCsv(bearer:string,raw:Options&{view?:string}):Promise<string>{
+  const allowed=["summary","general-ledger","trial-balance","day-book","cash-book",
+   "bank-book","receivables"] as const;
+  if(!raw.view||!allowed.some(x=>x===raw.view))
+   throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"view"});
+  const {view,...filters}=raw;
+  this.filters(filters);
+  const actor=await this.actor(bearer);
+  await this.verifyFilterScope(bearer,actor.realmId,{
+   fy:filters.yearRef??null,branch:filters.branchRef??null,
+   account:filters.accountRef??null});
+  type CsvRecord=Record<string,unknown>;
+  let columns:string[]=[];
+  let records:CsvRecord[]=[];
+  if(view==="summary"){
+   const result=await this.summary(bearer,filters.yearRef,filters.branchRef);
+   columns=["metric","amountMinor"];
+   records=["incomeMinor","expenseMinor","surplusMinor","fundsMinor","cashBankMinor"]
+    .map(metric=>({metric,amountMinor:(result as unknown as CsvRecord)[metric]??"0"}));
+  }else if(view==="trial-balance"){
+   if(!filters.yearRef)
+    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"yearRef"});
+   const result=await this.trialBalance(bearer,filters.yearRef,filters.branchRef);
+   columns=["code","accountName","category","netDebitMinor","netCreditMinor"];
+   records=result.accounts as unknown as CsvRecord[];
+  }else{
+   columns=view==="general-ledger"?
+    ["postingDate","accountCode","accountName","category","description",
+     "postingKind","debitMinor","creditMinor"]:
+    view==="receivables"?
+    ["invoiceNumber","invoiceDate","dueDate","counterpartyName",
+     "status","totalMinor","verifiedMinor","outstandingMinor"]:
+    ["postingDate","account","kind","description","postingKind",
+     "debitMinor","creditMinor"];
+   let offset=0;
+   do{
+    const paging={...filters,offset:String(offset)};
+    const result=view==="general-ledger"?await this.ledger(bearer,paging):
+     view==="receivables"?await this.receivables(bearer,paging):
+     await this.books(bearer,view==="cash-book"?"CASH":
+      view==="bank-book"?"BANK":"DAY",paging);
+    const page=("items" in result?result.items:result.lines) as CsvRecord[];
+    records.push(...page);
+    const next=result.nextOffset;
+    if(next!==null&&records.length>=2000)
+     throw new ConflictException({code:"FINANCE_REPORT_TOO_LARGE",
+      message:"Narrow the year, branch or date range to export up to 2,000 records."});
+    if(next===null)break;
+    if(next<=offset)throw new ConflictException({code:"FINANCE_REPORT_FILTER_INVALID"});
+    offset=next;
+   }while(records.length<2000);
+  }
+  const csv=(x:unknown)=>{
+   const str=String(x??"").replace(/[\r\n]/g," ").replace(/"/g,'""');
+   const guarded=/^\s*[=+\-@]/.test(str)?"'"+str:str;
+   return '"'+guarded+'"';
+  };
+  const output=[columns.map(csv).join(","),...records.map(row=>columns.map(k=>
+   csv(row[k])).join(","))].join("\r\n");
+  if(Buffer.byteLength(output,"utf8")>1024*1024)
+   throw new ConflictException({code:"FINANCE_REPORT_TOO_LARGE",
+    message:"Reduce the report range before exporting."});
+  return "\uFEFF"+output;
+ }
+
 }
