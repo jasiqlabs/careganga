@@ -7,6 +7,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceBankStatementSourceFacade} from "../../cg-09-finance-accounting/application/finance-bank-statement-source.facade";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
@@ -46,7 +47,8 @@ export class FinanceBankStatementEvidenceService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly source:FinanceBankStatementSourceFacade,
-  private readonly storage:PrivateObjectStorage){}
+  private readonly storage:PrivateObjectStorage,
+  private readonly identity:FoundationStructureIdentityFacade){}
  private async uploader(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.reconciliation.manage");
   await this.sessions.requireAction(bearer,"documents.files.manage");
@@ -54,6 +56,7 @@ export class FinanceBankStatementEvidenceService{
  }
  private async reviewer(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.reconciliation.review");
+  await this.sessions.requireAction(bearer,"approvals.review");
   await this.sessions.requireAction(bearer,"documents.files.view");
   return actor;
  }
@@ -66,6 +69,7 @@ export class FinanceBankStatementEvidenceService{
   try{
    await tx.query("BEGIN");
    await this.source.guardPending(tx,actor,v.reconciliationRef);
+   await this.identity.assertCurrent(tx,actor,"documents.files.manage");
    const result=await tx.query<Intent>(
     "INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,"+
     "requested_by,request_key,mime,size_bytes,expected_sha256,request_digest,"+
@@ -172,6 +176,7 @@ export class FinanceBankStatementEvidenceService{
   try{
    await tx.query("BEGIN");
    await this.source.guardPending(tx,actor,intent.reconciliation_id);
+   await this.identity.assertCurrent(tx,actor,"documents.files.manage");
    const current=await tx.query<Intent>(
     "SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 "+
     "AND requested_by=$3 AND owner_kind='CG09_BANK_STATEMENT' FOR UPDATE",
