@@ -99,9 +99,9 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ["approvals.review","finance.claims.review","documents.files.view"]
       .every(k=>currentActions.has(k)):canReviewClaims;
   const claimsAccess=currentActions?["finance.claims.view","finance.claims.create","finance.claims.manage"].some(k=>currentActions.has(k)):canViewClaims;
-  const invoiceAccess=currentActions?["finance.invoices.view","finance.invoices.manage"].some(k=>currentActions.has(k)):canViewInvoices;
+  const invoiceAccess=currentActions?currentActions.has("finance.invoices.view"):canViewInvoices;
   const reportAccess=currentActions?currentActions.has("finance.reports.view"):canViewFinanceReports;
-  const budgetAccess=currentActions?["finance.budgets.view","finance.budgets.manage"].some(k=>currentActions.has(k)):canViewBudgets;
+  const budgetAccess=currentActions?currentActions.has("finance.budgets.view"):canViewBudgets;
   const budgetReviewAccess=currentActions?["finance.budgets.review","approvals.review"].every(k=>currentActions.has(k)):canReviewBudgets;
   const invoiceReviewAccess=currentActions?["finance.invoices.review","approvals.review"].every(k=>currentActions.has(k)):canReviewInvoices;
   const reviewerAccess=currentActions?
