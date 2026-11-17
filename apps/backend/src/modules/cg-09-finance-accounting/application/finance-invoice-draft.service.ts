@@ -178,8 +178,8 @@ export class FinanceInvoiceDraftService{
   data:Draft){
   const info=data.info,payment=data.payment;
   if(!payment||!info)return;
-  const rows=await tx.query<{id:string;category:string;branch_id:string|null}>(
-   "SELECT a.id,g.category,a.branch_id FROM finance_account a "+
+  const rows=await tx.query<{id:string;category:string;account_kind:string;branch_id:string|null}>(
+   "SELECT a.id,g.category,a.account_kind,a.branch_id FROM finance_account a "+
    "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
    "WHERE a.root_realm_id=$1 AND a.status='ACTIVE' "+
    "AND a.id=ANY($2::uuid[]) FOR SHARE OF a,g",
@@ -188,7 +188,7 @@ export class FinanceInvoiceDraftService{
   const found=new Map(rows.rows.map(r=>[r.id,r]));
   const eligible=(ref:string,cat:string)=>{
    const account=found.get(ref);
-   return account?.category===cat&&
+   return account?.category===cat&&(cat!=="ASSET"||account.account_kind==="GENERAL")&&
     (account.branch_id===null||account.branch_id===info.branchRef);
   };
   if(!eligible(payment.receivableAccountRef,"ASSET")||
