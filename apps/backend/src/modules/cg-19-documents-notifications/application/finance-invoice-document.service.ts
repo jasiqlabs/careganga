@@ -14,7 +14,8 @@ const id=(v:unknown)=>{
 };
 type Document={id:string;root_realm_id:string;invoice_id:string;source_version:number;
  source_digest:string;status:string;issue_key:string;object_key:string;object_version:string|null;
- content_sha256:string|null;content_length:number|null;issued_at:Date|null;revoked_at:Date|null};
+ content_sha256:string|null;content_length:number|null;issued_at:Date|null;
+ created_at:Date;revoked_at:Date|null};
 @Injectable()
 export class FinanceInvoiceDocumentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -71,8 +72,39 @@ export class FinanceInvoiceDocumentService{
    }
    await tx.query("COMMIT");
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
-  if(!first)return {status:row.status,documentRef:row.id,
-   confirmed:row.status==="ISSUED"};
+  if(!first&&row.status==="ISSUED")
+   return {status:"ISSUED",documentRef:row.id,confirmed:true,replayed:true};
+  if(!first&&row.status!=="PENDING"&&row.status!=="UNKNOWN")
+   return {status:row.status,documentRef:row.id,confirmed:false};
+  if(!first){
+   // The provider may have committed its create-only write before the DB
+   // response was lost. Inspect actual version-pinned scanned bytes first,
+   // without silently issuing a replacement document.
+   try{
+    const stored=await this.storage.reconcileIssuedPrivateDocument({
+     objectKey:row.object_key,maxBytes:10*1024*1024});
+    await this.sessions.requireAction(bearer,"finance.invoices.issue");
+    const recovered=await this.db.query(
+     "UPDATE cg19_finance_invoice_document SET status='ISSUED',object_version=$3,"+
+     "content_sha256=$4,content_length=$5,issued_at=$6,updated_at=now() "+
+     "WHERE id=$1 AND root_realm_id=$2 AND status IN ('PENDING','UNKNOWN') "+
+     "AND object_version IS NULL RETURNING id",
+     [row.id,actor.realmId,stored.objectVersion,stored.sha256,
+      stored.sizeBytes,row.created_at]);
+    if(recovered.rowCount)
+     return {status:"ISSUED",confirmed:true,documentRef:row.id,recovered:true};
+    const latest=await this.db.query<{status:string}>(
+     "SELECT status FROM cg19_finance_invoice_document WHERE id=$1 AND root_realm_id=$2",
+     [row.id,actor.realmId]);
+    if(latest.rows[0]?.status==="ISSUED")
+     return {status:"ISSUED",confirmed:true,documentRef:row.id,replayed:true};
+    return {status:"UNKNOWN",confirmed:false,documentRef:row.id};
+   }catch{
+    // Not found, unavailable or unverified means we must not assert issued.
+    // The original private object key is immutable and create-only, so it is
+    // safe to attempt the original write; providers reject a second object.
+   }
+  }
   try{
    const draft=source.draft as {info?:Record<string,unknown>;
     items?:Record<string,unknown>;payment?:Record<string,unknown>};
@@ -81,7 +113,7 @@ export class FinanceInvoiceDocumentService{
     throw Error("Invalid original invoice snapshot");
    const itemRows=items.rows as Array<{description:string;quantity:number;
     lineTotalMinor:string;unitRateMinor:string}>;
-   const issuedAt=new Date().toISOString();
+   const issuedAt=row.created_at.toISOString();
    const bytes=await renderOriginalFinanceInvoice({
     invoiceNumber:source.invoiceNumber,date:String(info.invoiceDate),
     due:String(info.dueDate),counterparty:String(info.counterpartyName),
@@ -99,13 +131,21 @@ export class FinanceInvoiceDocumentService{
    if(!stored.objectVersion||stored.objectVersion.length>160||
       stored.sha256!==digest)
     throw Error("Unconfirmed private storage version");
+   await this.sessions.requireAction(bearer,"finance.invoices.issue");
    const done=await this.db.query(
     "UPDATE cg19_finance_invoice_document SET status='ISSUED',object_version=$3,"+
-    "content_sha256=$4,content_length=$5,issued_at=now(),updated_at=now() "+
-    "WHERE id=$1 AND root_realm_id=$2 AND status='PENDING' "+
+    "content_sha256=$4,content_length=$5,issued_at=$6,updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2 AND status IN ('PENDING','UNKNOWN') "+
     "AND object_version IS NULL RETURNING id",
-    [row.id,actor.realmId,stored.objectVersion,digest,bytes.length]);
-   if(!done.rowCount)throw Error("Unconfirmed issue state");
+    [row.id,actor.realmId,stored.objectVersion,digest,bytes.length,row.created_at]);
+   if(!done.rowCount){
+    const latest=await this.db.query<{status:string}>(
+     "SELECT status FROM cg19_finance_invoice_document WHERE id=$1 AND root_realm_id=$2",
+     [row.id,actor.realmId]);
+    if(latest.rows[0]?.status==="ISSUED")
+     return {status:"ISSUED",confirmed:true,documentRef:row.id,replayed:true};
+    throw Error("Unconfirmed issue state");
+   }
    return {status:"ISSUED",confirmed:true,documentRef:row.id};
   }catch{
    await this.db.query(
