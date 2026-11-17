@@ -8,7 +8,7 @@ import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
  formatFinanceMoney as money,minorToRupees} from "./finance-native-source-kit";
-type Stage="INFO"|"ITEMS"|"PAYMENT";
+type Stage="INFO"|"ITEMS"|"PAYMENT"|"REVIEW";
 type Invoice={invoiceRef:string;invoiceNumber:string;status:string;version:number;
  counterpartyName:string|null;invoiceDate:string|null;totalMinor:string|null};
 type Detail={invoiceRef:string;invoiceNumber:string;status:string;version:number;
@@ -182,7 +182,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   finally{setBusy(false);}
  }
  function saveStage(){
-  if(busy||pending)return;
+  if(busy||pending||stage==="REVIEW")return;
   const path=current?"/api/finance-accounting/invoices/drafts/"+current.ref+"/stages":
    "/api/finance-accounting/invoices/drafts";
   const command:Pending={key:key(),path,method:current?"PATCH":"POST",
@@ -275,7 +275,8 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
     {(!current||["DRAFT","RETURNED"].includes(current.status))&&<>
      <Options label="Invoice wizard stage" value={stage}
       options={[{ref:"INFO",label:"1. Information"},{ref:"ITEMS",label:"2. Items"},
-       {ref:"PAYMENT",label:"3. Accounts & Tax"}]}
+       {ref:"PAYMENT",label:"3. Accounts & Tax"},
+       {ref:"REVIEW",label:"4. Review & Submit"}]}
       onChange={v=>setStage(v as Stage)}/>
      {stage==="INFO"&&<>
       <Options label="Open financial year" value={form.financialYearRef}
@@ -320,10 +321,21 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
       <Field label="Payment terms" value={form.terms} onChange={v=>change("terms",v)}/>
       <Field label="Invoice notes" value={form.notes} multiline onChange={v=>change("notes",v)}/>
      </>}
-     <Action label="Save original invoice draft stage" disabled={busy||Boolean(pending)}
-      onPress={saveStage}/>
+     {stage==="REVIEW"&&<Card title="Review original invoice before submission">
+      <Text style={s.text}>Customer: {form.counterpartyName||"Not entered"}</Text>
+      <Text style={s.text}>Category: {form.category||"Not entered"}</Text>
+      <Text style={s.text}>Purpose: {form.purpose||"Not entered"}</Text>
+      <Text style={s.text}>Invoice date: {form.invoiceDate||"Not entered"} · Due date: {form.dueDate||"Not entered"}</Text>
+      <Text style={s.text}>Original item lines: {form.lines.length}</Text>
+      <Text style={s.text}>Payment terms: {form.terms||"Not entered"}</Text>
+      <Text style={s.muted}>Save the first three stages before submission.
+       Actual totals are independently calculated by the Finance service.
+       Review, posting, document issue and bank payment are separate.</Text>
+     </Card>}
+     {stage!=="REVIEW"&&<Action label="Save original invoice draft stage" disabled={busy||Boolean(pending)}
+      onPress={saveStage}/>}
     </>}
-    {current?.status==="DRAFT"&&<Action label="Review & Submit to protected reviewer"
+    {current?.status==="DRAFT"&&stage==="REVIEW"&&<Action label="Review & Submit to protected reviewer"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("submit")}/>}
     {current?.status==="SUBMITTED"&&<Action label="Check original reviewer decision"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("reconcile")}/>}
