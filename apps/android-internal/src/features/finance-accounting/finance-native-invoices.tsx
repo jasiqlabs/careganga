@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import {identityRequest} from "../identity-access/http-client";
 import {FinanceNativeManualReversal} from "./finance-native-manual-reversal";
+import {FinanceNativeAdjustments} from "./finance-native-adjustments";
 import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard as Card,
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
@@ -409,6 +410,9 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        onPress={()=>void receiptRefresh(current.ref)}/>}
      <Text style={s.muted}>Issuance is not verified payment or cash received.</Text>
     </Card>}
+    {current?.status==="ISSUED"&&<FinanceNativeAdjustments
+     token={token} invoiceRef={current.ref} canReview={canCancelPosted} canManage={canManage}
+     onExpired={onExpired} onPdf={pdf}/>}
     {current?.status==="ISSUED"&&<Card title="Verified bank collections and partial receipts">
      <Text style={s.muted}>An invoice issued is not paid. A genuine balanced bank collection
       journal must be independently reconciled with a bank statement.</Text>
