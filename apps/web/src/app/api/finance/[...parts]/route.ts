@@ -8,9 +8,15 @@ const financeErrors=new Set([
  "FINANCE_DUPLICATE","FINANCE_GROUP_INVALID","FINANCE_SCOPE_INVALID","FINANCE_BRANCH_INACTIVE",
  "FINANCE_BRANCH_STALE","FINANCE_YEAR_CLOSED","FINANCE_ACCOUNT_INACTIVE","FINANCE_ACCOUNT_SCOPE",
  "FINANCE_OPENING_AMOUNT","FINANCE_DEBITS_CREDITS","FINANCE_OPENING_DATE",
- "FINANCE_REQUEST_CONFLICT","FINANCE_PERMISSION","FINANCE_UNAVAILABLE"
+ "FINANCE_REQUEST_CONFLICT","FINANCE_PERMISSION","FINANCE_UNAVAILABLE",
+ "FINANCE_CLAIM_FORM_INVALID","FINANCE_CLAIM_REQUEST_KEY_INVALID","FINANCE_CLAIM_PURPOSE_INVALID",
+ "FINANCE_CLAIM_CATEGORY_INVALID","FINANCE_CLAIM_DATE_INVALID","FINANCE_CLAIM_AMOUNT_INVALID",
+ "FINANCE_CLAIM_REPLAY_CONFLICT","FINANCE_CLAIM_FILTER_INVALID"
 ]);
 function allowed(parts:string[],method:string):boolean{
+ if(parts.length===2&&parts[0]==="claims"&&parts[1]==="drafts")return method==="POST";
+ if(parts.length===2&&parts[0]==="claims"&&parts[1]==="mine")return method==="GET";
+ if(parts.length===3&&parts[0]==="claims"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="options")return method==="GET";
@@ -64,6 +70,12 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="claims"&&parts[1]==="mine"){
+  const offset=request.nextUrl.searchParams.get("offset")??"0";
+  if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+   return NextResponse.json({message:"Choose a valid claim list page and try again."},{status:400});
+  target.searchParams.set("offset",offset);
+ }
  if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="drafts"&&parts.length===2){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
@@ -113,7 +125,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "expenseDate","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
