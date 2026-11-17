@@ -27,10 +27,11 @@ export class CmsDraftMediaController{
 export class CmsPublicMediaController{
  constructor(private readonly media:CmsDraftMediaService){}
  @Get("media/:fileRef")
- @Header("Cache-Control","public, max-age=0, must-revalidate")
+ @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")
  async originalImage(@Param("fileRef")ref:string){
   const x=await this.media.publicBytes(ref);
-  return new StreamableFile(x.bytes,{type:x.mime,disposition:"inline"});
+  return new StreamableFile(x.bytes,{type:x.mime,
+   disposition:x.mime==="application/pdf"?"attachment":"inline"});
  }
 }
