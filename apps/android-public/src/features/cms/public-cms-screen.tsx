@@ -158,11 +158,32 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  return <View style={styles.container}>
   <View style={styles.nav}>
    <CmsButton title="Home" onPress={()=>setSlug("home")} secondary={slug!=="home"}/>
-   <CmsButton title="About" onPress={()=>setSlug("about")} secondary={slug!=="about"}/>
+   {publishedPaths.includes("/about")&&<CmsButton title="About"
+    onPress={()=>setSlug("about")} secondary={slug!=="about"}/>}
+   {([["/impact","Impact","impact"],["/80g","80G","80g"],
+     ["/gallery","Gallery","gallery"],["/healthcare","Healthcare","healthcare"]] as const)
+      .filter(([path])=>publishedPaths.includes(path)).map(([,label,name])=>
+       <CmsButton key={name} title={label} secondary={slug!==name}
+        onPress={()=>setSlug(name)}/>)}
+   {publishedPaths.some(p=>p.startsWith("/blog/"))&&
+    <CmsButton title="News" secondary={slug!=="articles"}
+     onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Contact" onPress={onContact} secondary/>
   </View>
   {loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
-   result.state==="NOT_PUBLISHED"?<View style={styles.card}>
+   slug==="articles"?<View style={styles.card}>
+    <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
+    {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
+     Current news could not be verified.</Text>:articleFeed.posts.length===0?
+     <Text style={styles.muted}>No currently approved articles.</Text>:
+     articleFeed.posts.map(item=><View key={item.slug} style={styles.person}>
+      <Text style={styles.eyebrow}>{item.category}</Text>
+      <Text style={styles.heading}>{item.title}</Text>
+      <Text style={styles.body}>{item.excerpt}</Text>
+      <CmsButton title="Read full article" onPress={()=>setSlug(item.slug)}/>
+     </View>)}
+    <CmsButton title="Refresh approved news" secondary onPress={()=>void load("articles")}/>
+   </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
     <Text style={styles.heading}>{slug==="home"?"Foundation homepage":"About the Foundation"}</Text>
     <Text style={styles.muted}>This page has not yet been published.</Text>
    </View>:result.state==="UNAVAILABLE"?<View style={styles.card}>
