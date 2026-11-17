@@ -783,7 +783,7 @@ export class CmsEditorialService{
  async publicArticles(categoryInput?:string,cursorInput?:string){
   const category=categoryInput?.trim()??"";
   const cursor=cursorInput?.trim()??"";
-  if(category.length>80||!/^[-\\p{L}0-9 &]*$/u.test(category)||
+  if(category.length>80||!/^[\p{L}0-9 &-]*$/u.test(category)||
     (cursor&&!/^[a-z0-9][a-z0-9-]{0,69}$/.test(cursor)))
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"category"});
   const rows=await this.db.query<{slug:string;title:string;category:string;
