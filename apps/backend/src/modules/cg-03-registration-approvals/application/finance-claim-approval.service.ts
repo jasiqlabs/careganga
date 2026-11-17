@@ -158,8 +158,9 @@ export class FinanceClaimApprovalService{
     input.fileRef,input.fileVersion,previous.rows[0]?.id??null]);
   await tx.query(
    "INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
-   "step_ordinal,correlation_ref) VALUES($1,$2,$3,'SUBMITTED',1,$4)",
-   [actor.realmId,inserted.rows[0].id,actor.accountId,randomUUID()]);
+   "step_ordinal,correlation_ref) VALUES($1,$2,$3,$4,1,$5)",
+   [actor.realmId,inserted.rows[0].id,actor.accountId,
+    previous.rows[0]?"CORRECTED":"SUBMITTED",randomUUID()]);
   return {caseRef:inserted.rows[0].id,status:"SUBMITTED",
    reference:inserted.rows[0].case_number,revision:1};
  }
