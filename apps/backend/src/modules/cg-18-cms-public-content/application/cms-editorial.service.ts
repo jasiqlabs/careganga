@@ -444,7 +444,7 @@ export class CmsEditorialService{
   let future:Date|null=null;
   if(v.publishAt!==undefined&&v.publishAt!==null&&v.publishAt!==""){
    if(typeof v.publishAt!=="string"||
-      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(v.publishAt))
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(v.publishAt))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
    const due=new Date(v.publishAt);
    const diff=due.getTime()-Date.now();
