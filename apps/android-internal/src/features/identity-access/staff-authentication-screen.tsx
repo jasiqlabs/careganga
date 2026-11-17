@@ -16,6 +16,7 @@ import { BranchRegistrationScreen } from "../foundation-structure/branch-registr
 import { FinanceAccountsScreen } from "../finance-accounting/finance-accounts-screen";
 import { FinanceVoucherOnlyScreen } from "../finance-accounting/finance-voucher-only-screen";
 import { FinanceVoucherNativeReviewer } from "../finance-accounting/finance-voucher-native-reviewer";
+import { FinanceExpenseClaimsScreen } from "../finance-accounting/finance-expense-claims-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -70,6 +71,7 @@ export function StaffAuthenticationScreen(){
   const [financeOpen,setFinanceOpen]=useState(false);
   const [voucherOnlyOpen,setVoucherOnlyOpen]=useState(false);
   const [financeReviewOpen,setFinanceReviewOpen]=useState(false);
+  const [financeClaimsOpen,setFinanceClaimsOpen]=useState(false);
   const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [supportOpen,setSupportOpen]=useState(false);
@@ -81,8 +83,9 @@ export function StaffAuthenticationScreen(){
   const closeFinance=useCallback(()=>setFinanceOpen(false),[]);
   const closeVouchers=useCallback(()=>setVoucherOnlyOpen(false),[]);
   const closeFinanceReview=useCallback(()=>setFinanceReviewOpen(false),[]);
+  const closeFinanceClaims=useCallback(()=>setFinanceClaimsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceClaimsOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -219,6 +222,12 @@ export function StaffAuthenticationScreen(){
     return <PrivateCaseEvidenceScreen token={token}
       canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+  if(financeClaimsOpen&&token&&actor&&
+    (roleActions.includes("finance.claims.view")||roleActions.includes("finance.claims.create")))
+    return <FinanceExpenseClaimsScreen token={token}
+      canView={roleActions.includes("finance.claims.view")}
+      canCreate={roleActions.includes("finance.claims.create")}
+      onExit={closeFinanceClaims} onExpired={expireSession}/>;
   if(financeReviewOpen&&token&&actor&&roleActions.includes("approvals.review")&&
     roleActions.includes("finance.vouchers.view")&&roleActions.includes("documents.files.view"))
     return <FinanceVoucherNativeReviewer token={token}
@@ -331,6 +340,12 @@ export function StaffAuthenticationScreen(){
               style={styles.button} onPress={()=>setVoucherOnlyOpen(true)}>
               <Text style={styles.buttonText}>Finance Voucher Drafts</Text>
             </Pressable>}
+            {(roleActions.includes("finance.claims.view")||
+               roleActions.includes("finance.claims.create"))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setFinanceClaimsOpen(true)}>
+               <Text style={styles.buttonText}>Expense Claims</Text>
+              </Pressable>}
             {roleActions.includes("finance.accounts.view")&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setFinanceOpen(true)}>
               <Text style={styles.buttonText}>Finance Accounts & Years</Text>
