@@ -380,6 +380,27 @@ export class CmsEditorialService{
    throw new BadRequestException({code:"CMS_INPUT_INVALID"});
   return this.withTx(async tx=>{
    await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   const previous=await tx.query<{actor_ref:string;page_or_nav_ref:string;
+    action:string;revision_ref:string}>(
+    "SELECT actor_ref,page_or_nav_ref,action,revision_ref "+
+    "FROM cms_change_audit WHERE foundation_root_id=$1 AND event_key=$2 FOR SHARE",
+    [actor.realmId,key]);
+   if(previous.rows[0]){
+    const x=previous.rows[0];
+    if(x.actor_ref!==actor.accountId||x.page_or_nav_ref!==pageRef||
+       x.action!=="SUBMIT")throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
+    const accepted=await tx.query<{caseRef:string;caseNumber:string;version:string}>(
+     'SELECT c.id AS "caseRef",c.case_number AS "caseNumber",p.version FROM '+
+     'cms_page_revision v JOIN cms_page p ON p.id=v.page_id '+
+     'AND p.foundation_root_id=v.foundation_root_id '+
+     'JOIN cg03_case c ON c.id=v.approval_case_ref AND c.realm_id=v.foundation_root_id '+
+     'WHERE v.foundation_root_id=$1 AND v.id=$2 AND p.id=$3',
+     [actor.realmId,x.revision_ref,pageRef]);
+    if(!accepted.rows[0])throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+    return {confirmed:true,status:"AWAITING_APPROVAL",
+     caseRef:accepted.rows[0].caseRef,caseNumber:accepted.rows[0].caseNumber,
+     version:Number(accepted.rows[0].version),replayed:true};
+   }
    const page=await this.row(tx,actor,pageRef,true),rev=await this.revision(tx,actor,page);
    if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT")
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
@@ -423,8 +444,8 @@ export class CmsEditorialService{
   return this.withTx(async tx=>{
    await this.identity.assertCurrent(tx,actor,"cms.content.publish");
    const page=await this.row(tx,actor,pageRef,true);
-   const old=await tx.query<{id:string;source_content_digest:string}>(
-    "SELECT id,source_content_digest FROM cms_publication WHERE "+
+   const old=await tx.query<{id:string;source_content_digest:string;state:string}>(
+    "SELECT id,source_content_digest,state FROM cms_publication WHERE "+
     "foundation_root_id=$1 AND page_id=$2 AND publication_key=$3 FOR SHARE",
     [actor.realmId,page.id,key]);
    if(old.rows[0]){
@@ -435,7 +456,8 @@ export class CmsEditorialService{
     if(rev.rows[0]?.approval_case_ref!==caseRef||
        rev.rows[0]?.content_digest!==old.rows[0].source_content_digest)
      throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
-    return {confirmed:true,status:"PUBLISHED",replayed:true};
+    return {confirmed:true,status:old.rows[0].state==="EFFECTIVE"?
+     "PUBLISHED":old.rows[0].state==="WITHDRAWN"?"HIDDEN":"SUPERSEDED",replayed:true};
    }
    if(Number(page.version)!==v.expectedVersion)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
