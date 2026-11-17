@@ -130,6 +130,9 @@ CREATE TRIGGER cg09_account_category_guard BEFORE INSERT OR UPDATE ON finance_ac
 
 CREATE INDEX ix_cg09_account_list
  ON finance_account(root_realm_id,scope_kind,branch_id,status,name,id);
+-- Bound account page lookup before joining millions of posting lines.
+CREATE INDEX ix_cg09_account_root_name ON finance_account(root_realm_id,name,id);
+CREATE INDEX ix_cg09_account_root_group ON finance_account(root_realm_id,group_id,status,name,id);
 
 CREATE TABLE cash_bank_account(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
