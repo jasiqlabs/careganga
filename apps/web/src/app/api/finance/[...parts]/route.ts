@@ -14,6 +14,7 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===1&&["setup","account-options"].includes(parts[0]))return method==="GET";
  if(parts.length===1&&parts[0]==="manual-journals")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="options")return method==="GET";
+ if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="payment-accounts")return method==="GET";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="drafts")return method==="GET"||method==="POST";
  if(parts.length===3&&parts[0]==="vouchers"&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET"||method==="PATCH";
  if(parts.length===5&&parts[0]==="vouchers"&&parts[1]==="drafts"
@@ -58,6 +59,12 @@ async function handler(request:NextRequest,parts:string[],method:string){
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
    return NextResponse.json({message:"Choose a valid voucher list page and try again."},{status:400});
   target.searchParams.set("offset",offset);
+ }
+ if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="payment-accounts"){
+  const query=request.nextUrl.searchParams.get("q")??"";
+  if(query.length>80)
+   return NextResponse.json({message:"Use a shorter account name or code (up to 80 characters)."}, {status:400});
+  target.searchParams.set("q",query);
  }
  if(method==="GET"&&parts[0]==="account-options"){
   const query=request.nextUrl.searchParams.get("q")??"";
