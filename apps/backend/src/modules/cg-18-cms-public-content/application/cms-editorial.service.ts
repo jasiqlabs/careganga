@@ -75,7 +75,7 @@ function parseContent(raw:unknown):Content{
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
   const fields=input(sec.fields,sec.kind==="HERO"?
-   ["heading","subtitle","description","eyebrow","tags",
+   ["heading","subtitle","description","eyebrow","tags","visible",
     "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
     "primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
    sec.kind==="TEAM"?["heading","members"]:
@@ -98,6 +98,9 @@ function parseContent(raw:unknown):Content{
    out.description=text(fields.description??"","description",400);
    out.eyebrow=text(fields.eyebrow??"","eyebrow",100);
    out.tags=array(fields.tags??[],"tags",4,36);
+   if(fields.visible!==undefined&&typeof fields.visible!=="boolean")
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"visible"});
+   out.visible=fields.visible!==false;
    const heroStyle=(field:string,raw:unknown,allowed:string[],fallback:string)=>{
     if(raw===undefined)return fallback;
     const candidate=text(raw,field,30,1);
@@ -504,6 +507,7 @@ export class CmsEditorialService{
     const slides=await tx.query<{order_no:number}>(
      "SELECT order_no FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='HERO' "+
+     "AND structured_fields->>'visible' IS DISTINCT FROM 'false' "+
      "ORDER BY order_no",[actor.realmId,rev.id]);
     if(!slides.rows.length||slides.rows.some(slide=>!assets.rows.some(asset=>
       asset.role==="HERO"&&asset.sort_order===slide.order_no)))
@@ -774,13 +778,18 @@ export class CmsEditorialService{
    "WHERE pub.id=$1 AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
    "AND (pub.expires_at IS NULL OR pub.expires_at>now())",[x.publication_id]);
   if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
+   sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
+   .map(sec=>sec.order_no));
   return {schemaVersion:1,effectiveGeneration:x.publication_id,
    kind:x.kind,slug:x.slug,title:x.title,seoTitle:x.seo_title,
    seoDescription:x.seo_description,canonicalPath:x.seo_canonical_path,
    lastPublishedAt:x.changed_at.toISOString(),
-   sections:sections.rows.map(v=>({kind:v.section_kind,order:v.order_no,
+   sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
+     !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
     fields:v.structured_fields})),
-   assets:assets.rows.map(v=>({role:v.role,altText:v.alt_text,
+   assets:assets.rows.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
+     !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
  }
 }
