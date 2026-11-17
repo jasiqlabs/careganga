@@ -138,6 +138,12 @@ BEGIN
  SELECT count(*),coalesce(sum(debit_minor),0),coalesce(sum(credit_minor),0)
  INTO line_count,total_debit,total_credit
  FROM journal_line WHERE journal_id=j AND root_realm_id=r;
+ IF NOT EXISTS (
+   SELECT 1 FROM journal j JOIN financial_year fy
+    ON fy.id=j.financial_year_id AND fy.root_realm_id=j.root_realm_id
+   WHERE j.id=cg09_check_balanced_posting.j AND j.root_realm_id=r
+    AND j.posting_date BETWEEN fy.start_on AND fy.end_on
+ ) THEN RAISE EXCEPTION 'Posting date outside financial year'; END IF;
  IF EXISTS (
    SELECT 1 FROM journal_line l JOIN finance_account a
     ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
