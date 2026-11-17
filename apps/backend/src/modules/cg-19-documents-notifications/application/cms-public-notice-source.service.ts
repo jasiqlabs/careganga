@@ -27,6 +27,10 @@ export class CmsPublicNoticeSource{
   return {noticeRef:n.id,title:n.title,body:n.body,
    expiresAt:n.expires_at.toISOString(),asOfDate:n.approved_at.toISOString().slice(0,10)};
  }
+ async requireSelectionAccess(bearer:string){
+  await this.sessions.requireAction(bearer,"cms.content.manage");
+  await this.sessions.requireAction(bearer,"communications.notices.manage");
+ }
  async candidates(bearer:string){
   // An editor must have BOTH the original CG19 notice visibility/manage action
   // and CG18 publication-edit permission; other editors get no notice list.
