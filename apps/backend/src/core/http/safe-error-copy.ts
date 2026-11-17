@@ -37,6 +37,12 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_POSTED_IMMUTABLE:"This financial entry has already been posted and cannot be edited. Ask an authorized Finance Administrator to record a correction.",
       FINANCE_BANK_LAST_FOUR:"Enter only the final four digits of the bank account number, or leave the field empty.",
       FINANCE_NAME_REQUIRED:"Enter a name using at least 2 characters.",
+      FINANCE_YEAR_NAME_TOO_LONG:"Enter a financial year name containing no more than 80 characters.",
+      FINANCE_GROUP_NAME_TOO_LONG:"Enter a group name containing no more than 120 characters.",
+      FINANCE_ACCOUNT_NAME_TOO_LONG:"Enter an account name containing no more than 140 characters.",
+      FINANCE_BANK_LABEL_TOO_LONG:"Enter a cash or bank display name containing no more than 120 characters.",
+      FINANCE_GROUP_CATEGORY_INVALID:"Choose an account category: Assets, Liabilities, Funds, Income or Expenses.",
+      FINANCE_REQUEST_KEY_INVALID:"This save request could not be verified. Refresh the form and review any earlier result before submitting again."
       FINANCE_CODE_INVALID:"Enter a code using 2–20 letters, numbers, underscores or hyphens.",
       FINANCE_YEAR_DATE_INVALID:"Enter valid start and end dates. The end date must not be before the start date.",
       FINANCE_YEAR_OVERLAP:"This financial year overlaps an existing one. Choose dates outside the existing year.",
