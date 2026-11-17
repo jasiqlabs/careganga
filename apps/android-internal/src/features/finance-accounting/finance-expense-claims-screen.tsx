@@ -4,8 +4,9 @@ import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextI
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {FinanceClaimNativeBill} from "./finance-claim-native-bill";
 
-type Claim={claimRef:string;category:string;purpose:string;expenseDate:string;
+type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
  amountMinor:string;status:string;version:number};
 type Draft={category:string;purpose:string;expenseDate:string;amount:string};
 type Problem={message?:string;field?:string};
@@ -27,11 +28,12 @@ async function failure(response:Response):Promise<Problem>{
   response.status===409?"This claim changed. Check the original record before retrying.":
   "The result could not be confirmed. Check your saved claims before retrying."};
 }
-export function FinanceExpenseClaimsScreen({token,canCreate,canView,onExit,onExpired}:{
- token:string;canCreate:boolean;canView:boolean;onExit:()=>void;onExpired:()=>void
+export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBill=false,onExit,onExpired}:{
+ token:string;canCreate:boolean;canView:boolean;canUploadBill?:boolean;onExit:()=>void;onExpired:()=>void
 }){
  const [claims,setClaims]=useState<Claim[]>([]);
  const [form,setForm]=useState<Draft>(clear());
+ const [openedBill,setOpenedBill]=useState<string|null>(null);
  const [key,setKey]=useState<string|null>(null);
  const [fieldError,setFieldError]=useState<{field:string;message:string}|null>(null);
  const [message,setMessage]=useState("");
@@ -141,9 +143,22 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,onExit,onExp
     {!!error&&<Text style={s.alert} accessibilityRole="alert">{error}</Text>}
     {!loading&&!error&&claims.length===0&&<Text style={s.muted}>No saved claims yet.</Text>}
     {claims.map(c=><View key={c.claimRef} style={s.claim}>
-     <Text style={s.heading}>{c.category} · {inr(c.amountMinor)}</Text>
+     <Text style={s.heading}>{c.claimNumber} · {c.category} · {inr(c.amountMinor)}</Text>
      <Text style={s.muted}>{c.expenseDate} · {c.purpose}</Text>
-     <Text style={s.pending}>Draft — bill and approval required</Text>
+     <Text style={s.pending}>{c.status==="DRAFT"?"Draft — verified bill required":
+      c.status==="SUBMITTED"?"Awaiting protected review":
+      c.status==="APPROVED"?"Approved — posting/payment separate":
+      c.status==="RETURNED"?"Returned for correction":
+      c.status==="REJECTED"?"Rejected":"Check current source"}</Text>
+     {c.status==="DRAFT"&&canCreate&&canUploadBill&&
+      <Pressable accessibilityRole="button" style={s.action}
+       onPress={()=>setOpenedBill(x=>x===c.claimRef?null:c.claimRef)}>
+       <Text style={s.actionText}>{openedBill===c.claimRef?"Hide bill":"Attach verified bill"}</Text>
+      </Pressable>}
+     {c.status==="DRAFT"&&c.claimRef===openedBill&&canUploadBill&&
+      <FinanceClaimNativeBill token={token} claim={c} canUpload={canUploadBill}
+       onUpdated={()=>{setOpenedBill(null);void refresh();}} onExpired={onExpired}/>}
+
     </View>)}
     <Text style={s.muted}>Showing your most recent claims only.</Text>
    </View>}
