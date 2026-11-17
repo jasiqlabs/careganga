@@ -87,14 +87,14 @@ export class FinanceInvoiceSourceFacade{
    const source=await this.original(tx,actor,reference,version,"finance.invoices.issue");
    if(source.status!=="POSTED"&&source.status!=="ISSUED")
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
-   const link=await tx.query<{journal_id:string}>(
-    "SELECT journal_id FROM finance_invoice_posting WHERE root_realm_id=$1 "+
+   const link=await tx.query<{journal_id:string;posted_at:Date}>(
+    "SELECT journal_id,posted_at FROM finance_invoice_posting WHERE root_realm_id=$1 "+
     "AND invoice_id=$2 AND invoice_version=$3",
     [actor.realmId,source.invoiceRef,version]);
    if(!link.rows[0])
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
    await tx.query("COMMIT");
-   return {...source,journalPosted:true};
+   return {...source,journalPosted:true,postedAt:link.rows[0].posted_at.toISOString()};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 }
