@@ -35,8 +35,8 @@ async function errorFor(r:Response){
 const format=(v:string|null)=>{if(!v)return "Not calculated";
  try{const n=BigInt(v);return "₹"+(n/100n).toLocaleString("en-IN")+"."+
   (n%100n).toString().padStart(2,"0");}catch{return "Not calculated";}};
-export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
- canManage:boolean;canIssue:boolean;canPost:boolean}){
+export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
+ canManage:boolean;canIssue:boolean;canPost:boolean;canCancel:boolean}){
  const [rows,setRows]=useState<Invoice[]>([]);
  const [dashboard,setDashboard]=useState<Dashboard|null>(null);
  const [filter,setFilter]=useState("ALL");
@@ -53,6 +53,13 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
  const [offset,setOffset]=useState(0);
  const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [pending,setPending]=useState<{key:string;url:string;method:string;body:unknown}|null>(null);
+ const [cancelOpen,setCancelOpen]=useState(false);
+ const [cancelYear,setCancelYear]=useState("");
+ const [cancelDate,setCancelDate]=useState("");
+ const [cancelReason,setCancelReason]=useState("");
+ const [cancelPassword,setCancelPassword]=useState("");
+ const [cancelPending,setCancelPending]=useState<{
+  invoiceRef:string;key:string;body:Record<string,unknown>}|null>(null);
  const load=useCallback(async()=>{
   setError("");
   setRefreshVersion(n=>n+1);
@@ -174,6 +181,40 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
    "/api/finance/invoices/drafts",ref?"PATCH":"POST",{
    stage,data:payload(),...(ref?{expectedVersion:active?.version}:{})
   },"SAVE");
+ }
+ async function cancelPosted(command:{invoiceRef:string;key:string;body:Record<string,unknown>}){
+  if(busy)return;
+  setBusy(true);setError("");setNotice("");setCancelPending(command);
+  try{
+   const r=await fetch("/api/finance/invoices/"+command.invoiceRef+"/cancel-posted",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...command.body,requestKey:command.key})});
+   if(!r.ok)throw Error(await errorFor(r));
+   const data=await r.json() as {confirmed?:boolean;status?:string};
+   if(!data.confirmed||data.status!=="REVERSED")
+    throw Error("The original invoice cancellation could not be confirmed.");
+   setCancelPending(null);setCancelOpen(false);setCancelPassword("");
+   setActive(old=>old&&old.ref===command.invoiceRef?{...old,status:"REVERSED"}:old);
+   setNotice("Posted but unissued invoice corrected by one immutable linked reversal.");
+   void load();
+  }catch(e){setError(errorMessage(e));}
+  finally{setBusy(false);}
+ }
+ async function checkCancellation(){
+  if(!cancelPending||busy)return;
+  setBusy(true);setError("");
+  try{
+   const r=await fetch("/api/finance/invoices/cancel-commands/"+cancelPending.key,
+    {cache:"no-store"});
+   if(!r.ok)throw Error(await errorFor(r));
+   const status=await r.json() as {confirmed?:boolean;status?:string};
+   if(status.confirmed&&status.status==="REVERSED"){
+    setCancelPending(null);setCancelOpen(false);setCancelPassword("");
+    setActive(old=>old&&old.ref===cancelPending.invoiceRef?{...old,status:"REVERSED"}:old);
+    setNotice("Original invoice offset was confirmed.");void load();
+   }else setNotice("No completed original cancellation found. Retry its same request only.");
+  }catch(e){setError(errorMessage(e));}
+  finally{setBusy(false);}
  }
  function workflow(name:"submit"|"reconcile"|"post"|"issue"){
   if(!active)return;
@@ -318,16 +359,64 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost}:{
     {active?.status==="APPROVED"&&canPost&&<button className="primary" type="button"
       disabled={busy||Boolean(pending)} onClick={()=>workflow("post")}>Post balanced invoice accrual</button>}
     {active?.status==="POSTED"&&canIssue&&<button className="primary" type="button"
-      disabled={busy||Boolean(pending)} onClick={()=>workflow("issue")}>Issue protected PDF</button>}
+      disabled={busy||Boolean(pending)||Boolean(cancelPending)} onClick={()=>workflow("issue")}>Issue protected PDF</button>}
+    {active?.status==="POSTED"&&canCancel&&<button type="button"
+      disabled={busy||Boolean(pending)||Boolean(cancelPending)}
+      onClick={()=>{setCancelOpen(true);setCancelYear("");setCancelDate("");
+       setCancelReason("");setCancelPassword("");}}>
+     Reverse unissued posted invoice</button>
    </div>
-   {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
+   {active?.status==="REVERSED"&&<p role="status" className="cg-fin-notice">
+     This posted invoice was reversed before issue. The original journal remains in the audit ledger.
+    </p>}
+    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>
    {active?.status==="ISSUED"&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost} canIssue={canIssue}/>}
   </section>}
+  {cancelOpen&&active?.status==="POSTED"&&canCancel&&<div className="drawer-backdrop" role="presentation">
+   <section role="dialog" aria-modal="true" aria-labelledby="cg-invoice-cancel-title"
+    className="role-drawer cg-fin-drawer">
+    <div className="cg-fin-drawer-header"><div><p>Finance / Protected Invoice Correction</p>
+     <h2 id="cg-invoice-cancel-title">Reverse posted, unissued invoice</h2></div>
+     <button type="button" disabled={busy||Boolean(cancelPending)}
+      onClick={()=>setCancelOpen(false)}>Close</button></div>
+    <p className="cg-fin-description">Only an independently approved posted invoice with no PDF
+     issue or bank collection can be corrected here. This leaves the original journal immutable;
+     issued credit notes and refunds require a different authorized workflow.</p>
+    <label className="cg-fin-field">Correction financial year
+     <select value={cancelYear} onChange={e=>setCancelYear(e.target.value)}>
+      <option value="">Choose open financial year</option>
+      {years.filter(y=>y.status==="OPEN").map(y=><option key={y.yearRef}
+       value={y.yearRef}>{y.name}</option>)}
+     </select></label>
+    <label className="cg-fin-field">Correction posting date
+     <input type="date" value={cancelDate} onChange={e=>setCancelDate(e.target.value)}/></label>
+    <label className="cg-fin-field">Business reason (12–300 characters)
+     <textarea minLength={12} maxLength={300} rows={3} value={cancelReason}
+      onChange={e=>setCancelReason(e.target.value)}/></label>
+    <label className="cg-fin-field">Current independent reviewer password
+     <input type="password" autoComplete="current-password" value={cancelPassword}
+      onChange={e=>setCancelPassword(e.target.value)}/></label>
+    <button type="button" className="primary" disabled={busy||Boolean(cancelPending)||
+      !cancelYear||!cancelDate||cancelReason.trim().length<12||cancelPassword.length<8}
+     onClick={()=>void cancelPosted({invoiceRef:active.ref,key:crypto.randomUUID(),
+      body:{financialYearRef:cancelYear,postingDate:cancelDate,
+       reason:cancelReason,currentPassword:cancelPassword}})}>
+     Post protected exact invoice reversal</button>
+    {cancelPending&&<div className="cg-fin-pending" role="status">
+     <p>Correction result uncertain. Check the original request before retrying.</p>
+     <button type="button" disabled={busy} onClick={()=>void checkCancellation()}>
+      Check original cancellation</button>
+     <button type="button" disabled={busy}
+      onClick={()=>void cancelPosted(cancelPending)}>Retry same request</button>
+    </div>}
+   </section>
+  </div>}
   <div className="cg-fin-toolbar-actions" role="group" aria-label="Invoice status tabs">
    {[
     ["ALL","All"],["DRAFT","Drafts"],["SUBMITTED","Pending Verification"],
     ["APPROVED","Approved"],["POSTED","Posted"],
-    ["ISSUED","Approved & Issued"],["REJECTED","Rejected"],["RETURNED","Returned"]
+    ["ISSUED","Approved & Issued"],["REVERSED","Reversed before issue"],
+    ["REJECTED","Rejected"],["RETURNED","Returned"]
    ].map(([key,label])=><button type="button" key={key}
      aria-current={filter===key?"page":undefined}
      onClick={()=>{setFilter(key);setOffset(0);}}>{label}</button>)}
