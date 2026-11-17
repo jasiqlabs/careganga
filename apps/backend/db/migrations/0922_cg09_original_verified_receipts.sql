@@ -17,7 +17,7 @@ CREATE TABLE finance_invoice_receipt(
  request_key uuid NOT NULL,
  immutable_digest char(64) NOT NULL CHECK(immutable_digest~'^[a-f0-9]{64}$'),
  created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,receipt_number),UNIQUE(root_realm_id,invoice_id),
+ UNIQUE(root_realm_id,receipt_number),
  UNIQUE(root_realm_id,journal_id),UNIQUE(root_realm_id,reconciliation_id),
  UNIQUE(root_realm_id,recorded_by,request_key),UNIQUE(id,root_realm_id),
  FOREIGN KEY(invoice_id,root_realm_id)
@@ -30,19 +30,25 @@ CREATE TABLE finance_invoice_receipt(
   REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg09_receipt_invoice ON finance_invoice_receipt
- (root_realm_id,invoice_id,created_at DESC);
+ (root_realm_id,invoice_id,created_at DESC,id DESC);
 CREATE TRIGGER cg09_receipt_immutable BEFORE UPDATE OR DELETE ON finance_invoice_receipt
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 
 CREATE FUNCTION cg09_receipt_verified_posting_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE inv record; r record; posted record; journal_date date;
+DECLARE inv record; r record; posted record; journal_date date; already_paid numeric;
 BEGIN
  SELECT status,version,total_minor,receivable_account_id,branch_id INTO inv
  FROM finance_invoice WHERE id=NEW.invoice_id AND root_realm_id=NEW.root_realm_id
- FOR SHARE;
+ FOR UPDATE;
  IF NOT FOUND OR inv.status<>'ISSUED' OR inv.version<>NEW.source_invoice_version OR
-    inv.total_minor<>NEW.amount_minor THEN
-  RAISE EXCEPTION 'Issued original invoice and equal receipt are required' USING ERRCODE='P0927';
+    NEW.amount_minor>inv.total_minor THEN
+  RAISE EXCEPTION 'Valid issued original invoice and receipt required' USING ERRCODE='P0927';
+ END IF;
+ SELECT COALESCE(SUM(amount_minor),0) INTO already_paid
+ FROM finance_invoice_receipt WHERE invoice_id=NEW.invoice_id
+  AND root_realm_id=NEW.root_realm_id;
+ IF already_paid+NEW.amount_minor>inv.total_minor THEN
+  RAISE EXCEPTION 'Receipt exceeds original invoice outstanding amount' USING ERRCODE='P0927';
  END IF;
  SELECT bank_account_id,journal_id,statement_date,statement_amount_minor,
   posted_amount_minor,variance_minor,status INTO r
