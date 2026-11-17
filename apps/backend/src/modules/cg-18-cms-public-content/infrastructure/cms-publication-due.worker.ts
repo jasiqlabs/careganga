@@ -4,6 +4,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
+import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
 import {complianceEligible} from "../application/cms-compliance-eligibility";
 
 type Due={id:string;foundation_root_id:string;page_publication_ref:string};
@@ -22,7 +23,8 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
  private running=false;private stopped=false;
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly decisions:CmsPublicationApprovalService,
-  private readonly media:CmsDraftMediaService){}
+  private readonly media:CmsDraftMediaService,
+  private readonly notices:CmsPublicNoticeSource){}
  onModuleInit(){
   this.stopped=false;
   void this.tick();
@@ -97,7 +99,8 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    this.media.validateScheduledPlacements(tx,item.foundation_root_id,item.page_revision_id)
   ]);
   if(!approved||!mediaValid||
-    !(await complianceEligible(tx,item.foundation_root_id,item.page_revision_id))){
+    !(await complianceEligible(tx,item.foundation_root_id,item.page_revision_id))||
+    !(await this.notices.revisionEligible(tx,item.foundation_root_id,item.page_revision_id))){
    await this.cancel(tx,due,item);return;
   }
   const active=await tx.query<{publication_id:string}>(
