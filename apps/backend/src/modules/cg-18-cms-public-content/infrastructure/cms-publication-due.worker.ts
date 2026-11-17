@@ -48,6 +48,17 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    [due.id,due.foundation_root_id]);
  }
  private async apply(tx:PoolClient,due:Due){
+  // Always lock the CMS page before its publication and due row. Other CMS
+  // writes/withdrawals lock the page first; a joined FOR UPDATE OF p,pub
+  // has no guaranteed row-lock acquisition order under a changing query plan.
+  const owningPage=await tx.query(
+   "SELECT p.id FROM cms_page p JOIN cms_publication pub "+
+   "ON pub.page_id=p.id AND pub.foundation_root_id=p.foundation_root_id "+
+   "WHERE pub.id=$1 AND pub.foundation_root_id=$2 FOR UPDATE OF p",
+   [due.page_publication_ref,due.foundation_root_id]);
+  if(!owningPage.rowCount){
+   await this.cancel(tx,due,null);return;
+  }
   const rows=await tx.query<Original>(
    "SELECT pub.id,pub.page_id,pub.page_revision_id,pub.foundation_root_id,"+
    "pub.source_content_digest,pub.created_by,pub.state,pub.effective_at,"+
@@ -59,7 +70,7 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    "JOIN cms_page_revision v ON v.id=pub.page_revision_id "+
    "AND v.page_id=pub.page_id AND v.foundation_root_id=pub.foundation_root_id "+
    "WHERE pub.id=$1 AND pub.foundation_root_id=$2 "+
-   "AND p.archived_at IS NULL FOR UPDATE OF p,pub",
+   "AND p.archived_at IS NULL FOR UPDATE OF pub",
    [due.page_publication_ref,due.foundation_root_id]);
   const item=rows.rows[0]??null;
   // Withdraw locks page -> publication -> due; use the same order here.
@@ -67,7 +78,9 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
   // lock and then the durable due lock while mutating its publication.
   const ready=await tx.query(
    "SELECT 1 FROM cms_publication_due WHERE id=$1 "+
-   "AND foundation_root_id=$2 AND status='READY' FOR UPDATE",
+   "AND foundation_root_id=$2 AND status='READY' "+
+   "AND due_at<=now() AND (next_attempt_at IS NULL OR next_attempt_at<=now()) "+
+   "FOR UPDATE",
    [due.id,due.foundation_root_id]);
   if(!ready.rowCount)return;
   if(!item||item.state!=="SCHEDULED"||
