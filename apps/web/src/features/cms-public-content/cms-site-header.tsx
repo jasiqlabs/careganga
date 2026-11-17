@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import {useState} from "react";
+import {usePathname} from "next/navigation";
 import type {PublicCmsNavigation} from "./cms-public-source";
 
 type Contact={address?:string;email?:string;phone?:string};
@@ -21,6 +22,7 @@ function Menu({label,items}:{label:string;items:{text:string;href?:string}[]}){
 export function CmsSiteHeader({navigation,contact}:{
  navigation?:PublicCmsNavigation|null;contact?:Contact}){
  const [expanded,setExpanded]=useState(false);
+ const pathname=usePathname();
  const member=navigation?.memberJoin?.visible&&navigation.memberJoin.path?
   navigation.memberJoin.path:undefined;
  const volunteer=navigation?.volunteerJoin?.visible&&navigation.volunteerJoin.path?
@@ -47,8 +49,8 @@ export function CmsSiteHeader({navigation,contact}:{
     onClick={()=>setExpanded(x=>!x)}>{expanded?"Close":"Menu"} <span aria-hidden="true">☰</span></button>
    <nav id="cg-site-navigation" aria-label="CareGanga public website"
     className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"}>
-    <Link href="/" className="cg-site-active">Home</Link>
-    <Link href="/about">About Us</Link>
+    <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
+    <Link href="/about" className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>
     <Menu label="Our Work" items={work.map(text=>({text}))}/>
     <span className="cg-site-unavailable">NGO Information</span>
     <span className="cg-site-unavailable">Campaigns</span>
