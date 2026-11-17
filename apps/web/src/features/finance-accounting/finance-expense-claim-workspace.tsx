@@ -1,7 +1,8 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useState} from "react";
+import {FinanceClaimBillTools} from "./finance-claim-bill-tools";
 
-type Claim={claimRef:string;category:string;purpose:string;expenseDate:string;
+type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
  amountMinor:string;status:string;version:number;createdAt:string};
 type Draft={category:string;purpose:string;expenseDate:string;amount:string};
 const empty=():Draft=>({category:"",purpose:"",expenseDate:"",amount:""});
@@ -31,6 +32,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
  const [form,setForm]=useState<Draft>(empty());
  const [pendingKey,setPendingKey]=useState<string|null>(null);
  const [fieldError,setFieldError]=useState<{name:string;message:string}|null>(null);
+ const [openClaim,setOpenClaim]=useState<string|null>(null);
  const [loading,setLoading]=useState(false);
  const [saving,setSaving]=useState(false);
  const [notice,setNotice]=useState("");
@@ -127,13 +129,25 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
    <h3>My expense claims</h3>
    {loading&&<p role="status">Loading current claim records…</p>}
    {!loading&&<table className="cg-fin-table"><thead><tr>
-    <th>Expense date</th><th>Category</th><th>Purpose</th>
-    <th>Amount</th><th>Status</th></tr></thead><tbody>
-    {claims.map(c=><tr key={c.claimRef}><td>{c.expenseDate}</td>
-     <td>{c.category}</td><td>{c.purpose}</td>
+    <th>Claim No.</th><th>Expense date</th><th>Category</th><th>Purpose</th>
+    <th>Amount</th><th>Status</th>{canCreate&&<th>Action</th>}</tr></thead><tbody>
+    {claims.map(c=><tr key={c.claimRef}><td><strong>{c.claimNumber}</strong></td>
+     <td>{c.expenseDate}</td><td>{c.category}</td><td>{c.purpose}</td>
      <td className="cg-fin-money">{money(c.amountMinor)}</td>
-     <td><span className="cg-fin-status">Draft — bill and approval required</span></td></tr>)}
+     <td><span className="cg-fin-status">{c.status==="DRAFT"?"Draft — scanned bill required":
+      c.status==="SUBMITTED"?"Awaiting protected review":
+      c.status==="APPROVED"?"Approved — payable/payment separately verified":
+      c.status==="RETURNED"?"Returned for correction":
+      c.status==="REJECTED"?"Rejected":"Check original status"}</span></td>
+     {canCreate&&<td>{c.status==="DRAFT"&&
+      <button type="button" aria-expanded={openClaim===c.claimRef}
+       onClick={()=>setOpenClaim(v=>v===c.claimRef?null:c.claimRef)}>
+       {openClaim===c.claimRef?"Hide bill upload":"Upload verified bill"}</button>}
+     </td>}</tr>)}
    </tbody></table>}
+   {canCreate&&claims.filter(c=>c.status==="DRAFT"&&c.claimRef===openClaim)
+    .map(c=><FinanceClaimBillTools key={c.claimRef} claimRef={c.claimRef}
+      version={c.version} onSubmitted={()=>{setOpenClaim(null);void refresh();}}/>)}
    {!loading&&!claims.length&&!notice&&<p className="cg-fin-empty">No saved claims yet.</p>}
    <div className="cg-fin-paging"><button type="button" disabled={offset===0||loading}
      onClick={()=>setOffset(v=>Math.max(0,v-30))}>Previous</button>
