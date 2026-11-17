@@ -33,7 +33,7 @@ export default async function AdminSecurityPolicy(){
       !keys.includes("identity.security-policy.view"))
       return <main className="page main"><h1>Access denied</h1><Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} active="policy" displayName={person.displayName} roleName={person.roleName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="policy" displayName={person.displayName} roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")} canViewAccounts={keys.includes("accounts.view")||
           (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy canViewSettings={keys.includes("platform.settings.view")}
