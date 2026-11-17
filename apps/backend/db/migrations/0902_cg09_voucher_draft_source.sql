@@ -96,6 +96,12 @@ CREATE TRIGGER cg09_voucher_draft_guard BEFORE INSERT OR UPDATE ON finance_vouch
 CREATE FUNCTION cg09_verify_voucher_draft_revision() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE item jsonb; qty numeric; rate numeric; subtotal numeric; total numeric:=0;
 BEGIN
+ PERFORM 1 FROM finance_voucher v
+  WHERE v.id=NEW.voucher_id AND v.root_realm_id=NEW.root_realm_id
+   AND v.version=NEW.version AND v.status='DRAFT' FOR SHARE;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Voucher revision must match the current draft' USING ERRCODE='P0913';
+ END IF;
  FOR item IN SELECT value FROM jsonb_array_elements(NEW.line_snapshot) LOOP
   IF jsonb_typeof(item)<>'object'
    OR (item->>'description') IS NULL
