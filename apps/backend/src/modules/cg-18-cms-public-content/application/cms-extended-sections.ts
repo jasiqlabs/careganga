@@ -80,7 +80,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   ["group","heading","intro","source","asOfDate","items","claimsFullBreakdown","ctaLabel","ctaPath"]:
   kind==="COMPLIANCE_FACTS"?
   ["heading","summary","issuer","pan","registrationNumber","approvalNumber",
-   "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer"]:
+   "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer","documents"]:
   kind==="GALLERY_GRID"?
   ["heading","description","items"]:
   kind==="ARTICLE_BODY"?
@@ -136,7 +136,20 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    verifiedAsOf:date(x.verifiedAsOf,"verifiedAsOf"),
    source:str(x.source,"source",180,3),verification,
    disclaimer:str(x.disclaimer??"Check current official records before claiming a tax benefit.",
-    "disclaimer",400,10)
+    "disclaimer",400,10),
+   documents:(()=>{
+    if(x.documents===undefined)return [];
+    if(!Array.isArray(x.documents)||x.documents.length>6)return error("documents");
+    return x.documents.map((raw:unknown,i:number)=>{
+     const field="documents["+i+"]",v=obj(raw,field,["type","title","asOfDate"]);
+     const type=str(v.type,field+".type",18,3);
+     if(!["80G","REGISTRATION","ANNUAL_REPORT","OTHER"].includes(type))
+      return error(field+".type");
+     const asOfDate=date(v.asOfDate,field+".asOfDate");
+     if(asOfDate>new Date().toISOString().slice(0,10))return error(field+".asOfDate");
+     return {type,title:str(v.title,field+".title",140,3),asOfDate};
+    });
+   })()
   };
   if(out.verifiedAsOf>new Date().toISOString().slice(0,10))
    return error("verifiedAsOf");
@@ -229,7 +242,12 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   const fact=sections[0].fields;
   // A claim of currently verified 80G has to show an independently scanned
   // public-rights validated document placement, not merely unchecked fields.
-  if(requireMedia&&fact.verification==="VERIFIED"&&!assets.some(a=>a.role==="DOCUMENT"))
+  const docs=Array.isArray(fact.documents)?fact.documents:[];
+   if(requireMedia&&docs.some((_,i)=>
+     !assets.some(a=>a.role==="DOCUMENT"&&a.order===i)))return error("documents");
+   if(requireMedia&&fact.verification==="VERIFIED"&&
+     (docs.length===0||(docs[0] as Record<string,unknown>).type!=="80G"||
+      !assets.some(a=>a.role==="DOCUMENT"&&a.order===0)))
    return error("document");
  }
  if(kind==="GALLERY"&&(types.length!==1||types[0]!=="GALLERY_GRID"||
