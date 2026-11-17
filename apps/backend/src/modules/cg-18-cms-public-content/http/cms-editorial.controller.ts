@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,Put,Res} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Put,Query,Res} from "@nestjs/common";
 import type {Response} from "express";
 import {createHash} from "node:crypto";
 import {CmsEditorialService} from "../application/cms-editorial.service";
@@ -42,6 +42,11 @@ export class CmsPublicPagesController{
  @Get("navigation")
  @Header("Cache-Control","no-store")
  navigation(){return this.cms.publicNavigation();}
+ @Get("articles")
+ @Header("Cache-Control","no-store")
+ articles(@Query("category")category?:string,@Query("cursor")cursor?:string){
+  return this.cms.publicArticles(category,cursor);
+ }
  @Get("pages/:slug")
  @Header("Cache-Control","public, max-age=0, must-revalidate")
  async publicPage(@Param("slug")slug:string,
