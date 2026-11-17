@@ -1,5 +1,5 @@
 "use client";
-import {FormEvent,useCallback,useEffect,useMemo,useState} from "react";
+import {FormEvent,useCallback,useEffect,useMemo,useState,type ReactNode} from "react";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Group={groupRef:string;name:string;code:string;category:string};
@@ -47,7 +47,7 @@ async function parseFailure(res:Response):Promise<SafeFailure>{
 }
 function Field({name,label,form,onChange,type="text",required=false,children}:{
  name:string;label:string;form:Record<string,string>;onChange:(k:string,v:string)=>void;
- type?:string;required?:boolean;children?:React.ReactNode
+ type?:string;required?:boolean;children?:ReactNode
 }){
  return <label className="cg-fin-field"><span>{label}{required?" *":""}</span>
   {children??<input type={type} value={form[name]??""} required={required}
@@ -383,7 +383,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
      {failure&&<div className="cg-fin-notice" role="alert"><p>{failure.message}</p>
       {failure.field&&<p>Review the indicated {failure.field==="groupRef"?"account group":
         failure.field==="branchRef"?"branch":failure.field==="postingDate"?"posting date":
-        failure.field==="amount"?"amount":"form"} field.</p>}</div>}
+        failure.field==="amount"?"amount":failure.field==="bankLastFour"?"bank account last four digits":"form"} field.</p>}</div>}
      {pending&&<div className="cg-fin-pending" role="status">
        <p>The earlier request has an unconfirmed result. Check it before attempting another change.</p>
        <button type="button" onClick={()=>void checkPending()} disabled={busy}>Check original request</button>
