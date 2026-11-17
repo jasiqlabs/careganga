@@ -51,3 +51,30 @@ export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>
   return data as PublicCmsNavigation;
  }catch{return null;}
 }
+
+export type CmsArticleSummary={slug:string;title:string;category:string;
+ excerpt:string;asOfDate:string;path:string};
+export async function publishedCmsArticles(category="",cursor=""):
+ Promise<{posts:CmsArticleSummary[];nextCursor:string|null;available:boolean}>{
+ const backend=process.env.BACKEND_URL;
+ if(!backend)return {posts:[],nextCursor:null,available:false};
+ try{
+  const url=new URL("/api/public/content/articles",backend);
+  if(category)url.searchParams.set("category",category);
+  if(cursor)url.searchParams.set("cursor",cursor);
+  const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(7000)});
+  if(!res.ok)throw Error();
+  const data:unknown=await res.json();
+  if(!data||typeof data!=="object"||Array.isArray(data)||
+    !("posts" in data)||!Array.isArray(data.posts))throw Error();
+  const x=data as {posts:unknown[];nextCursor?:unknown};
+  const posts=x.posts.filter(p=>p&&typeof p==="object"&&
+   "slug" in p&&typeof p.slug==="string"&&
+   "title" in p&&typeof p.title==="string"&&
+   "path" in p&&typeof p.path==="string"&&
+   /^\/blog\/[a-z0-9-]{1,70}$/.test(p.path))
+   .slice(0,20) as CmsArticleSummary[];
+  return {posts,nextCursor:typeof x.nextCursor==="string"?x.nextCursor:null,
+   available:true};
+ }catch{return {posts:[],nextCursor:null,available:false};}
+}
