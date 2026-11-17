@@ -229,6 +229,34 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
   }catch(e){setError(e instanceof Error?e.message:"Original statement upload result uncertain. Check its status.");}
   finally{setBusy(false);}
  }
+ async function exportFull(){
+  if(busy||view==="reconciliation")return;
+  if(view==="trial-balance"&&!year){
+   setError("Choose a financial year to export the trial balance.");return;
+  }
+  setBusy(true);setError("");setNotice("");
+  try{
+   const q=new URLSearchParams({view});
+   if(year)q.set("yearRef",year);
+   if(branch)q.set("branchRef",branch);
+   if(account&&["general-ledger","bank-book","cash-book","day-book","receivables"].includes(view))
+    q.set("accountRef",account);
+   if(from&&!["summary","trial-balance"].includes(view))q.set("from",from);
+   if(to&&!["summary","trial-balance"].includes(view))q.set("to",to);
+   const res=await fetch("/api/finance/reports/export/csv?"+q,{cache:"no-store"});
+   if(!res.ok)throw Error(await message(res));
+   if(!res.headers.get("content-type")?.startsWith("text/csv"))
+    throw Error("The financial export format could not be confirmed.");
+   const blob=await res.blob();
+   if(blob.size<4||blob.size>1048576)throw Error("Choose a narrower date or account range.");
+   const url=URL.createObjectURL(blob),a=document.createElement("a");
+   a.href=url;a.download="CareGanga-"+view+"-filtered.csv";
+   document.body.appendChild(a);a.click();a.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+   setNotice("All filtered report rows downloaded (up to 2,000).");
+  }catch(e){setError(e instanceof Error?e.message:"Finance export could not be confirmed.");}
+  finally{setBusy(false);}
+ }
  function exportCurrent(){
   const cols=view==="trial-balance"?["accountName","code","category","netDebitMinor","netCreditMinor"]:
    view==="general-ledger"?["accountName","postingDate","description","debitMinor","creditMinor"]:
@@ -282,6 +310,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
       onChange={e=>{if(k==="from")setFrom(e.target.value);else setTo(e.target.value);setOffset(0);}}/>
     </label>)}
   </div>}
+  {view==="summary"&&summary&&<button type="button" disabled={busy} onClick={()=>void exportFull()}>Export summary (CSV)</button>}
   {view==="summary"&&summary&&<div className="cg-fin-voucher-tiles">
    {([["Posted income",summary.incomeMinor],["Posted expenses",summary.expenseMinor],
     ["Recognized surplus",summary.surplusMinor],["Fund balances",summary.fundsMinor],
@@ -295,7 +324,9 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
   </p>}
   {!["summary","reconciliation"].includes(view)&&<div className="cg-fin-table-wrap">
    <div className="cg-fin-toolbar"><h3>{view.replaceAll("-"," ").toUpperCase()}</h3>
-    <button type="button" disabled={!rows.length} onClick={exportCurrent}>
+    <button type="button" disabled={busy} onClick={()=>void exportFull()}>
+     Export all filtered rows (CSV)</button>
+    <button type="button" disabled={!rows.length||busy} onClick={exportCurrent}>
      Export visible page (CSV)</button></div>
    <table className="cg-fin-table"><thead><tr>
     <th>{view==="trial-balance"?"Account":"Date / Account"}</th>
