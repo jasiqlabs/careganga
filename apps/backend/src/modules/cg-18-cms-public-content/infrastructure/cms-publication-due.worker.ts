@@ -12,7 +12,8 @@ type Original={id:string;page_id:string;page_revision_id:string;
  revision_digest:string;revision_status:string;case_ref:string|null};
 /** No generic scheduler/Redis or tenant-wide poll. One due-index lookup per
  * minute, ten due rows max per wake; original CG03/CG19 owner guards stay live.
- * Transactional SKIP LOCKED makes restart and multiple instances idempotent.
+ * Page-first transactional locks and READY recheck keep worker/withdrawal
+ * lock order consistent; a duplicate poll never publishes twice.
  */
 @Injectable()
 export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
@@ -61,8 +62,15 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    "AND p.archived_at IS NULL FOR UPDATE OF p,pub",
    [due.page_publication_ref,due.foundation_root_id]);
   const item=rows.rows[0]??null;
+  // Withdraw locks page -> publication -> due; use the same order here.
+  // Multiple workers can select this candidate, but only one holds the page
+  // lock and then the durable due lock while mutating its publication.
+  const ready=await tx.query(
+   "SELECT 1 FROM cms_publication_due WHERE id=$1 "+
+   "AND foundation_root_id=$2 AND status='READY' FOR UPDATE",
+   [due.id,due.foundation_root_id]);
+  if(!ready.rowCount)return;
   if(!item||item.state!=="SCHEDULED"||
-   item.effective_at.getTime()>Date.now()||
    item.current_revision!==item.revision_no||
    item.revision_status!=="SUBMITTED"||
    item.revision_digest!==item.source_content_digest||!item.case_ref){
@@ -132,7 +140,7 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
       "FROM cms_publication_due WHERE status='READY' AND "+
       "page_publication_ref IS NOT NULL AND due_at<=now() "+
       "AND (next_attempt_at IS NULL OR next_attempt_at<=now()) "+
-      "ORDER BY due_at,id FOR UPDATE SKIP LOCKED LIMIT 1");
+      "ORDER BY due_at,id LIMIT 1");
      due=rows.rows[0]??null;
      if(due)await this.apply(tx,due);
      await tx.query("COMMIT");committed=true;
