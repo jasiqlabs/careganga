@@ -194,7 +194,9 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
       onChange={v=>{
        const b=branches.find(x=>x.branchRef===v);
        setForm(f=>({...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}/>
-     <Field label="Budget category" value={form.category} onChange={v=>change("category",v)}/>
+     <Options label="Real expense group category" value={form.category}
+      options={categories.map(v=>({ref:v,label:v}))}
+      onChange={v=>change("category",v)}/>
      <Field label="Period starts (YYYY-MM-DD)" value={form.periodStart} onChange={v=>change("periodStart",v)}/>
      <Field label="Period ends (YYYY-MM-DD)" value={form.periodEnd} onChange={v=>change("periodEnd",v)}/>
      <Field label="Approved ceiling requested (₹)" value={form.ceiling} keyboardType="decimal-pad"
@@ -226,6 +228,10 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
       onPress={movement}/>
      <Text style={s.muted}>Utilization is accepted only if the selected voucher was actually
       approved, balanced, posted, belongs to this category and has not been used before.</Text>
+     <Action label="Archive approved budget (retain all history)" secondary
+      disabled={busy||Boolean(pending)} onPress={()=>submit(
+       "/api/finance-accounting/budgets/"+selected.budgetRef+"/archive","POST",
+       {expectedVersion:selected.version})}/>
     </>}
    </Card>}
   </ScrollView>
