@@ -18,6 +18,10 @@ export class FinanceBudgetController{
  command(@Headers("authorization")a:string,@Param("requestKey")key:string){
   return this.budgets.commandStatus(a,key);
  }
+ @Get(":budgetRef/eligible-expenses")
+ eligible(@Headers("authorization")a:string,@Param("budgetRef")ref:string){
+  return this.budgets.eligibleExpenses(a,ref);
+ }
  @Get(":budgetRef") detail(@Headers("authorization")a:string,
   @Param("budgetRef")ref:string){return this.budgets.detail(a,ref);}
  @Post(":budgetRef/submit") submit(@Headers("authorization")a:string,
