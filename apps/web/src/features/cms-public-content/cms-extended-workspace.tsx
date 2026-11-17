@@ -218,7 +218,9 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
   kind:draft.kind,slug:draft.slug,title:draft.title,seoTitle:draft.seoTitle,
   seoDescription:draft.seoDescription,canonicalPath:pathFor(draft.kind,draft.slug),
   lastPublishedAt:"",sections:draft.sections,
-  assets:draft.assets.map(a=>({...a,src:"/api/cms-image-preview/"+a.fileRef}))};
+  assets:draft.assets.map(a=>({...a,
+   src:(a.role==="GALLERY"||a.role==="DOCUMENT"?
+    "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef}))};
  const unsaved=selected&&JSON.stringify(content(draft))!==JSON.stringify({
   kind:selected.kind,slug:selected.slug,title:selected.title,seoTitle:selected.seoTitle,
   seoDescription:selected.seoDescription,canonicalPath:pathFor(selected.kind,selected.slug),
