@@ -43,7 +43,15 @@ const checks=[
   files.admin.includes("if(r.status>=400&&r.status<500)throw new CmsRequestRejected")&&
   (files.admin.match(/if\(e instanceof CmsRequestRejected\)setPending\(null\)/g)||[]).length===2],
  ["Uncertain CMS writes retain their original idempotency key",
-  files.admin.includes("setPending(c)")&&files.admin.includes("Retry original action")]
+  files.admin.includes("setPending(c)")&&files.admin.includes("Retry original action")],
+ ["Authored media section/index validation is shared with public projection",
+  files.backend.includes("function placementFits(")&&
+  files.backend.includes("if(!placementFits(sections,a))")&&
+  files.backend.includes("visibleAssets.filter(")],
+ ["Direct CMS media URLs recheck allowed placements before and after storage fetch",
+  files.media.includes("const PUBLIC_MEDIA_SECTION_ALLOWED=")&&
+  files.media.split("   PUBLIC_MEDIA_SECTION_ALLOWED+").length===3&&
+  !files.media.includes("a.role NOT IN('HERO','MOBILE_HERO')")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
