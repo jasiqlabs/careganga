@@ -75,6 +75,11 @@ export class FinanceVoucherWorkflowService{
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
    [actor.realmId,input.voucherRef,actor.accountId,input.action,input.key,
     input.digest,input.version,input.caseRef,input.status]);
+  await client.query(`
+    INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key)
+    VALUES($1,$2,'VOUCHER',$3,$4,$5)`,
+   [actor.realmId,actor.accountId,input.voucherRef,
+    input.action==="SUBMIT"?"VOUCHER_SUBMITTED":"VOUCHER_REVIEW_"+input.status,input.key]);
  }
  async submit(bearer:string,voucherInput:string,payload:unknown):Promise<CommandResult>{
   const actor=await this.actor(bearer);
