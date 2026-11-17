@@ -344,10 +344,13 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
       <Options label="Foundation / active branch" value={form.branchRef}
        options={[{ref:"",label:"Foundation (no branch)"},...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
        onChange={v=>{const b=branches.find(x=>x.branchRef===v);setForm(f=>({
-        ...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}/>
-      {correctedInvoices.some(x=>x.branchRef===(form.branchRef||null))&&
+        ...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null,
+        replacesInvoiceRef:""}));}}/>
+      {(Boolean(form.replacesInvoiceRef)||correctedInvoices.some(x=>x.branchRef===(form.branchRef||null)))&&
        <Options label="Replaces credited invoice (optional)" value={form.replacesInvoiceRef}
         options={[{ref:"",label:"New invoice — not a correction"},
+         ...(form.replacesInvoiceRef&&!correctedInvoices.some(x=>x.invoiceRef===form.replacesInvoiceRef)?
+          [{ref:form.replacesInvoiceRef,label:"Previously linked corrected invoice"}]:[]),
          ...correctedInvoices.filter(x=>x.branchRef===(form.branchRef||null))
          .map(x=>({ref:x.invoiceRef,label:x.invoiceNumber+" · "+x.counterpartyName}))]}
         onChange={v=>change("replacesInvoiceRef",v)}/>}
