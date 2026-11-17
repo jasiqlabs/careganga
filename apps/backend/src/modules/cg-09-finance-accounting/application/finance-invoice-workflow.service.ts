@@ -534,7 +534,7 @@ export class FinanceInvoiceWorkflowService{
   const row=await this.db.query<Command>(
    "SELECT request_digest,invoice_id,source_version,result_status "+
    "FROM finance_invoice_command WHERE root_realm_id=$1 AND actor_ref=$2 "+
-   "AND request_key=$3",[actor.realmId,ident(requestKey)]);
+   "AND request_key=$3",[actor.realmId,actor.accountId,ident(requestKey)]);
   return {confirmed:!!row.rows[0],status:row.rows[0]?.result_status??"NOT_FOUND"};
  }
 }
