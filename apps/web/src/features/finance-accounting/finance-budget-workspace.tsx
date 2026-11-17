@@ -32,6 +32,7 @@ async function failure(res:Response){
 export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+ const [categories,setCategories]=useState<string[]>([]);
  const [budgets,setBudgets]=useState<Budget[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [expenses,setExpenses]=useState<Expense[]>([]);
@@ -61,9 +62,9 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    try{
     const r=await fetch("/api/finance/budgets/options",{cache:"no-store"});
     if(!r.ok)throw Error(await failure(r));
-    const d=await r.json() as {years?:Year[];branches?:Branch[]};
-    if(!Array.isArray(d.years)||!Array.isArray(d.branches))throw Error("Invalid budget options");
-    if(mounted){setYears(d.years);setBranches(d.branches);}
+    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:string[]};
+    if(!Array.isArray(d.years)||!Array.isArray(d.branches)||!Array.isArray(d.categories))throw Error("Invalid budget options");
+    if(mounted){setYears(d.years);setBranches(d.branches);setCategories(d.categories);}
    }catch(e){if(mounted)setError(e instanceof Error?e.message:"Budget scope unavailable.");}
   })();return()=>{mounted=false;};
  },[]);
@@ -188,8 +189,11 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
        <option value="">Foundation root — no branch</option>
        {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
       </select></label>
-     <label className="cg-fin-field">Category
-      <input maxLength={80} value={form.category} onChange={e=>update("category",e.target.value)}/></label>
+     <label className="cg-fin-field">Actual expense account category
+      <select value={form.category} onChange={e=>update("category",e.target.value)}>
+       <option value="">Select an existing expense group</option>
+       {categories.map(c=><option key={c} value={c}>{c}</option>)}
+      </select></label>
      {(["periodStart","periodEnd"] as const).map(k=><label className="cg-fin-field" key={k}>
       {k==="periodStart"?"Period begins":"Period ends"}
       <input type="date" value={form[k]} onChange={e=>update(k,e.target.value)}/></label>)}
