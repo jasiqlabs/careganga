@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
+import * as Crypto from "expo-crypto";
 import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -64,7 +65,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,onExit,onExp
  }
  async function save(){
   if(!canCreate||busy)return;
-  const requestKey=key??crypto.randomUUID();setKey(requestKey);
+  const requestKey=key??Crypto.randomUUID();setKey(requestKey);
   setBusy(true);setFieldError(null);setMessage("");
   try{
    const res=await identityRequest("/api/finance-accounting/claims/drafts",{
