@@ -87,7 +87,7 @@ export async function renderOriginalFinanceInvoice(input:InvoicePdfSource):Promi
   for(let i=0;i<input.items.length;i++){
    const line=input.items[i];
    write(String(i+1)+". "+line.description,10,17);
-   write("Qty "+String(line.quantity)+"  |  Rate "+currency(line.unitRateMinor)+
+   write("Qty "+String(line.quantity)+"  |  Agreed net rate "+currency(line.unitRateMinor)+
     "  |  Total "+currency(line.lineTotalMinor),9,16);
   }
   y-=10;
