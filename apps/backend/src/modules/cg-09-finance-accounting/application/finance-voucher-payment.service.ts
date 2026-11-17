@@ -32,6 +32,21 @@ const number=(v:unknown)=>{
  return Number(v);
 };
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+const safePaymentFailure=(failure:unknown):never=>{
+ const code=failure&&typeof failure==="object"&&"code" in failure?failure.code:null;
+ if(code==="23505")
+  throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
+ if(code==="P0917"||code==="23503")
+  throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
+ if(code==="P0916")
+  throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
+ if(code==="P0913")
+  throw new ConflictException({code:"FINANCE_VOUCHER_POSTING_NOT_READY"});
+ if(code==="P0901")throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
+ if(code==="P0904")throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE"});
+ if(code==="P0902")throw new ConflictException({code:"FINANCE_ACCOUNT_INACTIVE"});
+ throw failure;
+};
 type Voucher={id:string;root_realm_id:string;version:number;status:string;
  voucher_number:string;voucher_type:string;financial_year_id:string;
  posting_date:string;branch_id:string|null;debit_account_id:string;credit_account_id:string;
@@ -125,7 +140,7 @@ export class FinanceVoucherPaymentService{
     status:"PAYMENT_REQUESTED"});
    await client.query("COMMIT");
    return {confirmed:true,status:"PAYMENT_REQUESTED",replayed:false};
-  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+  }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
  async submitProof(bearer:string,refInput:string,value:unknown){
   const actor=await this.operator(bearer),voucherRef=reference(refInput);
@@ -185,7 +200,7 @@ export class FinanceVoucherPaymentService{
    await client.query("COMMIT");
    return {confirmed:true,paymentProofRef:result.rows[0].id,
     status:"PENDING_REVIEW",replayed:false};
-  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+  }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
  async paymentStatus(bearer:string,refInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.view");
@@ -264,7 +279,7 @@ export class FinanceVoucherPaymentService{
     [actor.realmId,actor.accountId,voucherRef,
      next==="VERIFIED"?"VOUCHER_PAYMENT_INDEPENDENTLY_VERIFIED":"VOUCHER_PAYMENT_PROOF_REJECTED",key]);
    await client.query("COMMIT");return {confirmed:true,status:next,replayed:false};
-  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+  }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
  /** One immutable double-entry journal, never a second voucher balance. */
  async post(bearer:string,refInput:string,value:unknown){
@@ -343,13 +358,7 @@ export class FinanceVoucherPaymentService{
    return {confirmed:true,status:"POSTED",voucherNumber:v.voucher_number,
     journalPosted:true,paidVerified:v.status==="PAID_VERIFIED",replayed:false};
   }catch(e){await client.query("ROLLBACK");
-   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0901")
-    throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
-   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0904")
-    throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE"});
-   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0902")
-    throw new ConflictException({code:"FINANCE_ACCOUNT_INACTIVE"});
-   throw e;
+   safePaymentFailure(e);
   }finally{client.release();}
  }
 }
