@@ -12,7 +12,40 @@ CREATE TABLE expense_claim (
  status text NOT NULL DEFAULT 'DRAFT' CHECK(status='DRAFT'),
  version integer NOT NULL DEFAULT 1 CHECK(version=1),
  create_request_key uuid NOT NULL,
- create_digest char(64) NOT NULL CHECK(create_digest ~ '^[0-9a-f]{64}$'),
+ create_digest char(64) NOT NULL CHECK(create_digest ~ '^[0-9a-f]{64}
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(id,root_realm_id),
+ UNIQUE(root_realm_id,requested_by,create_request_key),
+ FOREIGN KEY(requested_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg09_claim_requester_created ON
+ expense_claim(root_realm_id,requested_by,created_at DESC,id DESC);
+-- The later CG-19 / CG-03 controlled submission stage will replace this
+-- temporary draft-only guard. No bypass to paid or posted states is permitted.
+CREATE TRIGGER cg09_claim_draft_immutable BEFORE UPDATE OR DELETE ON expense_claim
+ FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
+
+ALTER TABLE finance_event DROP CONSTRAINT cg09_finance_event_voucher_kind;
+ALTER TABLE finance_event ADD CONSTRAINT cg09_finance_event_voucher_kind
+ CHECK(entity_kind IN('YEAR','GROUP','ACCOUNT','JOURNAL','VOUCHER','CLAIM'));
+),
+ current_digest char(64) NOT NULL CHECK(current_digest ~ '^[0-9a-f]{64}
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(id,root_realm_id),
+ UNIQUE(root_realm_id,requested_by,create_request_key),
+ FOREIGN KEY(requested_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg09_claim_requester_created ON
+ expense_claim(root_realm_id,requested_by,created_at DESC,id DESC);
+-- The later CG-19 / CG-03 controlled submission stage will replace this
+-- temporary draft-only guard. No bypass to paid or posted states is permitted.
+CREATE TRIGGER cg09_claim_draft_immutable BEFORE UPDATE OR DELETE ON expense_claim
+ FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
+
+ALTER TABLE finance_event DROP CONSTRAINT cg09_finance_event_voucher_kind;
+ALTER TABLE finance_event ADD CONSTRAINT cg09_finance_event_voucher_kind
+ CHECK(entity_kind IN('YEAR','GROUP','ACCOUNT','JOURNAL','VOUCHER','CLAIM'));
+),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(id,root_realm_id),
  UNIQUE(root_realm_id,requested_by,create_request_key),
