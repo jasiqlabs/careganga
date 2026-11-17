@@ -26,6 +26,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void}){
  const [list,setList]=useState<Budget[]>([]);
  const [year,setYear]=useState<Year[]>([]),[branches,setBranches]=useState<Branch[]>([]);
+ const [categories,setCategories]=useState<string[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [form,setForm]=useState<Form>(clear());
  const [expenses,setExpenses]=useState<Expense[]>([]);
@@ -47,9 +48,9 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
-   const x=await request<{years:Year[];branches:Branch[]}>(token,
+   const x=await request<{years:Year[];branches:Branch[];categories:string[]}>(token,
     "/api/finance-accounting/budgets/options");
-   if(alive){setYear(x.years);setBranches(x.branches);}
+   if(alive){setYear(x.years);setBranches(x.branches);setCategories(x.categories);}
   }catch(e){if(alive)fail(e);}})();return()=>{alive=false;};
  },[token,onExpired]);
  useEffect(()=>{const back=BackHandler.addEventListener("hardwareBackPress",()=>{
