@@ -4,7 +4,8 @@ import {FormEvent,useCallback,useEffect,useMemo,useState} from "react";
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
 type Option={accountRef:string;name:string;code:string;branchRef:string|null;
  branchName:string|null;branchVersion:number|null};
-type LedgerRow={journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string};
+type LedgerRow={journalRef:string;description:string;postingDate:string;yearName:string;
+ debitMinor:string;reversed:boolean;differentCreator:boolean};
 type DraftLine={accountRef:string;debit:string;credit:string};
 type Pending={requestKey:string;body:Record<string,unknown>};
 type Problem={message:string;field:string|null};
@@ -28,8 +29,8 @@ async function issueText(res:Response):Promise<Problem>{
   field:known&&typeof body.field==="string"?body.field:null};
 }
 const emptyLine=():DraftLine=>({accountRef:"",debit:"",credit:""});
-export function FinanceManualJournalWorkspace({years,canPost,onUpdated}:{
- years:readonly Year[];canPost:boolean;onUpdated:()=>void
+export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdated}:{
+ years:readonly Year[];canPost:boolean;canReverse:boolean;onUpdated:()=>void
 }){
  const [items,setItems]=useState<LedgerRow[]>([]);
  const [loading,setLoading]=useState(false);
@@ -51,6 +52,13 @@ export function FinanceManualJournalWorkspace({years,canPost,onUpdated}:{
  const [pending,setPending]=useState<Pending|null>(null);
  const [confirmedMissing,setConfirmedMissing]=useState(false);
  const [problem,setProblem]=useState<Problem|null>(null);
+ const [correction,setCorrection]=useState<string>("");
+ const [correctionYear,setCorrectionYear]=useState("");
+ const [correctionDate,setCorrectionDate]=useState("");
+ const [correctionReason,setCorrectionReason]=useState("");
+ const [correctionPassword,setCorrectionPassword]=useState("");
+ const [correctionPending,setCorrectionPending]=useState<{
+  journalRef:string;requestKey:string;body:Record<string,unknown>}|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{
@@ -133,6 +141,42 @@ export function FinanceManualJournalWorkspace({years,canPost,onUpdated}:{
     "The save result could not be confirmed. Check the original request before trying again.",field:null});
   }finally{setBusy(false);}
  }
+ async function applyCorrection(command:{journalRef:string;requestKey:string;
+  body:Record<string,unknown>}){
+  if(busy)return;
+  setBusy(true);setError("");setInfo("");
+  setCorrectionPending(command);
+  try{
+   const res=await fetch(endpoint+"/manual-journals/"+command.journalRef+"/reverse",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...command.body,requestKey:command.requestKey})});
+   if(!res.ok)throw Error((await issueText(res)).message);
+   const data=await res.json() as {confirmed?:boolean;status?:string};
+   if(data.confirmed!==true||data.status!=="REVERSED")
+    throw Error("The exact financial correction is not confirmed.");
+   setCorrectionPending(null);setCorrection("");
+   setCorrectionPassword("");setInfo("Protected original journal reversal posted. History is preserved.");
+   await refresh();onUpdated();
+  }catch(e){setError(e instanceof Error?e.message:
+   "Original correction outcome uncertain. Check this request before retrying.");}
+  finally{setBusy(false);}
+ }
+ async function checkCorrection(){
+  if(!correctionPending||busy)return;
+  setBusy(true);setError("");
+  try{
+   const r=await fetch(endpoint+"/manual-journals/reversal-commands/"+
+    correctionPending.requestKey,{cache:"no-store"});
+   if(!r.ok)throw Error((await issueText(r)).message);
+   const d=await r.json() as {confirmed?:boolean;status?:string};
+   if(d.confirmed===true&&d.status==="REVERSED"){
+    setCorrectionPending(null);setCorrection("");setCorrectionPassword("");
+    setInfo("The original protected correction is confirmed.");
+    await refresh();onUpdated();
+   }else setInfo("No final correction found. Retry the SAME original request only.");
+  }catch(e){setError(e instanceof Error?e.message:"Original correction status unavailable.");}
+  finally{setBusy(false);}
+ }
  function submit(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(busy||pending||!canPost)return;
   void submitOriginal({requestKey:crypto.randomUUID(),body:body()});
@@ -171,14 +215,63 @@ export function FinanceManualJournalWorkspace({years,canPost,onUpdated}:{
   {!loading&&!error&&<div className="cg-fin-table-wrap">
    <table className="cg-fin-table"><thead><tr><th>Posting Date</th>
     <th>Journal Description</th><th>Financial Year</th><th>Total Debits / Credits</th>
-    <th>Status</th></tr></thead><tbody>
+    <th>Status</th>{canReverse&&<th>Correction</th>}</tr></thead><tbody>
     {items.map(j=><tr key={j.journalRef}><td>{j.postingDate}</td>
      <td><strong>{j.description}</strong></td><td>{j.yearName}</td>
      <td className="cg-fin-money">{money(j.debitMinor)}</td>
-     <td><span className="cg-fin-status is-active">Posted (not paid)</span></td></tr>)}
+     <td><span className="cg-fin-status is-active">{j.reversed?
+      "Reversed — historical entry":"Posted (not paid)"}</span></td>
+     {canReverse&&<td>{j.differentCreator&&!j.reversed&&
+      <button type="button" disabled={busy||Boolean(correctionPending)} onClick={()=>{
+       setCorrection(j.journalRef);setCorrectionYear("");setCorrectionDate("");
+       setCorrectionReason("");setCorrectionPassword("");setError("");}}>Correct posted journal</button>}</td>}</tr>)}
    </tbody></table>
    {!items.length&&<p className="cg-fin-empty">No manual journals have been posted.
     {canPost?" Choose New Journal to record a balanced entry.":""}</p>}
+  </div>}
+  {correction&&canReverse&&<div className="drawer-backdrop" role="presentation">
+   <section role="dialog" aria-modal="true" aria-labelledby="cg-journal-correction-title"
+    className="role-drawer cg-fin-drawer">
+    <div className="cg-fin-drawer-header"><div>
+     <p>Finance Management / Protected Correction</p>
+     <h2 id="cg-journal-correction-title">Reverse original manual journal</h2>
+    </div><button type="button" disabled={busy||Boolean(correctionPending)}
+     onClick={()=>setCorrection("")}>Close</button></div>
+    <p className="cg-fin-description">The original entry stays immutable. A different authorized
+     reviewer posts one exact balancing reversal in an open financial year.
+     This does not reverse an issued invoice or settle a payment.</p>
+    <label className="cg-fin-field">Open correction year
+     <select value={correctionYear} onChange={e=>setCorrectionYear(e.target.value)}>
+      <option value="">Choose year</option>
+      {years.filter(y=>y.status==="OPEN").map(y=><option key={y.yearRef} value={y.yearRef}>
+       {y.name}</option>)}
+     </select></label>
+    <label className="cg-fin-field">Correction posting date
+     <input type="date" value={correctionDate}
+      onChange={e=>setCorrectionDate(e.target.value)}/></label>
+    <label className="cg-fin-field">Business reason for correction
+     <textarea rows={3} minLength={12} maxLength={300} value={correctionReason}
+      onChange={e=>setCorrectionReason(e.target.value)}/></label>
+    <label className="cg-fin-field">Current reviewer password
+     <input type="password" value={correctionPassword} autoComplete="current-password"
+      onChange={e=>setCorrectionPassword(e.target.value)}/></label>
+    <div className="cg-fin-toolbar-actions">
+     <button type="button" disabled={busy||Boolean(correctionPending)||
+      !correctionYear||!correctionDate||correctionReason.trim().length<12||
+      correctionPassword.length<8} onClick={()=>void applyCorrection({
+       journalRef:correction,requestKey:crypto.randomUUID(),body:{
+        financialYearRef:correctionYear,postingDate:correctionDate,
+        reason:correctionReason,currentPassword:correctionPassword}})}>
+      Post exact protected reversal</button>
+    </div>
+    {correctionPending&&<div className="cg-fin-pending" role="status">
+     <p>Original correction result uncertain. Check that request before trying again.</p>
+     <button type="button" disabled={busy} onClick={()=>void checkCorrection()}>
+      Check original correction</button>
+     <button type="button" disabled={busy}
+      onClick={()=>void applyCorrection(correctionPending)}>Retry SAME request</button>
+    </div>}
+   </section>
   </div>}
   {editing&&<div className="drawer-backdrop" role="presentation">
    <section role="dialog" aria-modal="true" aria-labelledby="cg-journal-title"
