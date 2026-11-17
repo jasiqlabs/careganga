@@ -80,7 +80,8 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
    Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
   if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;
   if(a.role==="IMPACT")return s.kind==="IMPACT_GROUP"&&a.order===s.order;
-  if(a.role==="DOCUMENT")return s.kind==="COMPLIANCE_FACTS"&&a.order===0;
+  if(a.role==="DOCUMENT")return s.kind==="COMPLIANCE_FACTS"&&
+    Array.isArray(s.fields.documents)&&a.order<s.fields.documents.length;
   return false;
  });
 }
