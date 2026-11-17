@@ -3,6 +3,7 @@ import {BackHandler,Pressable,ScrollView,Text,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
+import {identityRequest} from "../identity-access/http-client";
 import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard as Card,
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
@@ -15,7 +16,9 @@ type Detail={invoiceRef:string;invoiceNumber:string;status:string;version:number
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
 type Account={accountRef:string;code:string;name:string;category:string;branchRef:string|null};
-type Receipt={paymentVerified:boolean;receiptRef?:string;receiptNumber?:string;amountMinor?:string};
+type ReceiptRow={receiptRef:string;receiptNumber:string;amountMinor:string;paidDate:string};
+type Receipt={paymentVerified:boolean;status:string;totalMinor:string;paidMinor:string;
+ outstandingMinor:string;receipts:ReceiptRow[]};
 type ReceiptOption={reconciliationRef:string;bankName:string;statementDate:string;
  amountMinor:string;statementHint:string};
 type DocumentState={status:string;canDownload?:boolean;documentRef?:string};
@@ -46,7 +49,11 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
  const [receiptOptions,setReceiptOptions]=useState<ReceiptOption[]>([]);
  const [receiptChoice,setReceiptChoice]=useState("");
  const [document,setDocument]=useState<DocumentState|null>(null);
- const [receiptDocument,setReceiptDocument]=useState<DocumentState|null>(null);
+ const [receiptDocs,setReceiptDocs]=useState<Record<string,DocumentState>>({});
+ const [collection,setCollection]=useState<{banks:{accountRef:string;code:string;name:string}[];
+  years:{yearRef:string;name:string;startOn:string;endOn:string}[]}|null>(null);
+ const [bank,setBank]=useState(""),[collectionYear,setCollectionYear]=useState("");
+ const [collectionDate,setCollectionDate]=useState(""),[collectionAmount,setCollectionAmount]=useState("");
  const [pending,setPending]=useState<Pending|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),
   [notice,setNotice]=useState("");
@@ -79,20 +86,29 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   setForm(old=>({...old,[field]:value}));setNotice("");
  };
  async function receiptRefresh(invoiceRef:string){
-  if(!canIssue)return;
+  if(!canIssue)return null;
   try{
    const result=await request<Receipt>(token,
     "/api/finance-accounting/invoices/"+invoiceRef+"/receipt");
    setReceipt(result);
-   if(result.paymentVerified&&result.receiptRef){
-    const r=await request<DocumentState>(token,
-     "/api/documents/finance-receipts/receipts/"+result.receiptRef+"/status");
-    setReceiptDocument(r);setReceiptOptions([]);
-   }else{
+   if(BigInt(result.outstandingMinor)>0n){
     const r=await request<{matches:ReceiptOption[]}>(token,
      "/api/finance-accounting/invoices/"+invoiceRef+"/receipt-options");
-    setReceiptOptions(r.matches);setReceiptDocument(null);
+    setReceiptOptions(r.matches??[]);
+    if(canPost){
+     const eligible=await request<{banks:{accountRef:string;code:string;name:string}[];
+      years:{yearRef:string;name:string;startOn:string;endOn:string}[]}>(token,
+      "/api/finance-accounting/invoices/"+invoiceRef+"/collection-options");
+     setCollection(eligible);
+    }
+   }else{setReceiptOptions([]);setCollection(null);}
+   const docs:Record<string,DocumentState>={};
+   for(const item of result.receipts.slice(0,20)){
+    try{docs[item.receiptRef]=await request<DocumentState>(token,
+     "/api/documents/finance-receipts/receipts/"+item.receiptRef+"/status");
+    }catch{docs[item.receiptRef]={status:"UNKNOWN"};}
    }
+   setReceiptDocs(docs);
    const d=await request<DocumentState>(token,
     "/api/documents/finance-invoice/invoices/"+invoiceRef+"/status");
    setDocument(d);
@@ -123,7 +139,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
     incomeAccountRef:String(p.incomeAccountRef??""),
     taxAccountRef:String(p.taxAccountRef??""),
     terms:String(p.terms??"Payment due per invoice"),notes:String(p.notes??"")});
-   setReceipt(null);setDocument(null);setReceiptOptions([]);
+   setReceipt(null);setDocument(null);setReceiptOptions([]);setReceiptDocs({});
    if(["ISSUED","POSTED"].includes(detail.status))void receiptRefresh(detail.invoiceRef);
   }catch(e){setError(problem(e));expire(e);}
   finally{setBusy(false);}
@@ -160,7 +176,8 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
     setCurrent({...current,status:result.status});
    void load();
    const ref=result.invoiceRef??current?.ref;
-   if(ref&&(result.status==="ISSUED"||result.status==="PAID_VERIFIED"))
+   if(ref&&(result.status==="ISSUED"||result.status==="PAID_VERIFIED"||
+      result.status==="PARTIALLY_PAID"||result.status==="POSTED_UNVERIFIED"))
     void receiptRefresh(ref);
   }catch(e){setPending(command);setError(problem(e));expire(e);}
   finally{setBusy(false);}
