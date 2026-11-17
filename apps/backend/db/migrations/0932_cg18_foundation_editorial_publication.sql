@@ -238,8 +238,12 @@ BEGIN
   RAISE EXCEPTION 'Submitted CMS content cannot be changed' USING ERRCODE='P1831';
  END IF;
  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ IF TG_OP='UPDATE' AND (NEW.foundation_root_id IS DISTINCT FROM OLD.foundation_root_id OR
+    NEW.page_revision_id IS DISTINCT FROM OLD.page_revision_id) THEN
+  RAISE EXCEPTION 'CMS revision source cannot be moved to another draft' USING ERRCODE='P1831';
+ END IF;
  RETURN NEW;
-END; $$;
+END; $;
 CREATE TRIGGER cg18_revision_edit_guard BEFORE UPDATE OR DELETE
  ON cms_page_revision FOR EACH ROW EXECUTE FUNCTION cg18_guard_revision_mutation();
 CREATE TRIGGER cg18_section_edit_guard BEFORE INSERT OR UPDATE OR DELETE
