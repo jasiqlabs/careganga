@@ -5,6 +5,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 import {identityRequest} from "../identity-access/http-client";
 import {FinanceSetupEditor,type FinanceKind,type FinanceSetup} from "./finance-setup-editor";
 import {FinanceVoucherDraftScreen} from "./finance-voucher-draft-screen";
+import {FinanceNativeManualReversal} from "./finance-native-manual-reversal";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Account={accountRef:string;name:string;code:string;groupName:string;kind:string;
@@ -13,7 +14,7 @@ type Account={accountRef:string;name:string;code:string;groupName:string;kind:st
 type Setup=FinanceSetup & {accounts:Account[];years:Year[];
   openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
   nextOffset:number|null};
-type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean;canReverse:boolean;onExit:()=>void;onExpired:()=>void};
 function inr(minor:string):string{
  try{
   const n=BigInt(minor),abs=n<0n?-n:n;
@@ -31,15 +32,17 @@ function viewError(status:number):string{
 /** US-001 native read-only counterpart to the original U35/U36 Admin Web
  * account overview; no second finance editor and no raw technical identifiers.
  */
-export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment,onExit,onExpired}:Props){
+export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment,canReverse,onExit,onExpired}:Props){
  const [data,setData]=useState<Setup|null>(null);
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
  const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING"|"JOURNALS">("ACCOUNTS");
  const [voucherOpen,setVoucherOpen]=useState(false);
+ const [reversingJournal,setReversingJournal]=useState("");
  const [manualJournals,setManualJournals]=useState<Array<{
-  journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string}>>([]);
+  journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string;
+  reversed:boolean;differentCreator:boolean}>>([]);
  const [manualError,setManualError]=useState("");
  const [manualLoading,setManualLoading]=useState(false);
  const [manualRefresh,setManualRefresh]=useState(0);
@@ -96,6 +99,10 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
    years={data.years} branches={data.branches} canManage={canManageVouchers} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
    canPost={canPost} canVerifyPayment={canVerifyPayment}
    onClose={()=>setVoucherOpen(false)} onExpired={onExpired}/>;
+ if(reversingJournal&&data)return <FinanceNativeManualReversal token={token}
+   journalRef={reversingJournal} years={data.years} onExit={()=>setReversingJournal("")}
+   onDone={()=>{setReversingJournal("");setManualRefresh(v=>v+1);void reload();}}
+   onExpired={onExpired}/>;
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
     onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
@@ -198,7 +205,13 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
       <Text style={s.cardTitle}>{j.description}</Text>
       <Text style={s.meta}>{j.yearName} · {j.postingDate}</Text>
       <Text style={s.amount}>{inr(j.debitMinor)}</Text>
-      <Text style={s.meta}>Posted to ledger — not a verified payment</Text>
+      <Text style={s.meta}>{j.reversed?"Original reversed by an offsetting journal":
+       "Posted to ledger — not a verified payment"}</Text>
+      {canReverse&&j.differentCreator&&!j.reversed&&
+       <Pressable accessibilityRole="button" style={s.create}
+        onPress={()=>setReversingJournal(j.journalRef)}>
+        <Text style={s.createText}>Correct original journal</Text>
+       </Pressable>}
      </View>))}
    </>}
   </ScrollView>
