@@ -49,6 +49,7 @@ export default function PublicHome(){
   const [message,setMessage]=useState("");
   const [noticeOpen,setNoticeOpen]=useState(false);
   const [contactOpen,setContactOpen]=useState(false);
+  const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
     void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
@@ -140,7 +141,8 @@ export default function PublicHome(){
               accessibilityLabel="CareGanga Foundation" style={styles.brandImage}/>
             <Text accessibilityRole="header" style={styles.title}>CareGanga Foundation</Text>
           </View>
-          <PublicCmsContent onContact={()=>setContactOpen(true)}/>
+          <PublicCmsContent onContact={()=>setContactOpen(true)}
+            onLoginVisibility={setPublicLoginVisible}/>
           <View style={styles.card}>
             <Text style={styles.heading}>Contact & Help</Text>
             <Text>Send a private Foundation request without signing in,
@@ -151,7 +153,7 @@ export default function PublicHome(){
             </Pressable>
           </View>
           {!!message&&<Text accessibilityRole="alert" style={styles.alert}>{message}</Text>}
-          {checking?<ActivityIndicator accessibilityLabel="Verifying access"/>:
+          {publicLoginVisible&&(checking?<ActivityIndicator accessibilityLabel="Verifying access"/>:
             token&&person?<View style={styles.card}>
               <Text style={styles.heading}>Signed in: {person}</Text>
               <Text>Only your own verified notices are available here.
@@ -183,7 +185,7 @@ export default function PublicHome(){
                 <Text style={styles.primaryText}>
                   {busy?"Verifying…":"Sign in to my notices"}</Text>
               </Pressable>
-            </View>}
+            </View>)}
           <Text style={styles.muted}>Public contact does not require a staff account
             and never exposes a private support case to unauthenticated visitors.</Text>
         </ScrollView>}
