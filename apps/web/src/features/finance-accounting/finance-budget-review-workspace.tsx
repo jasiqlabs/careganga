@@ -14,6 +14,7 @@ const rupees=(raw:string)=>{try{const amount=BigInt(raw);
 }catch{return "Amount unavailable";}};
 export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolean}){
  const [list,setList]=useState<Case[]>([]);
+ const [offset,setOffset]=useState(0),[nextOffset,setNextOffset]=useState<number|null>(null);
  const [current,setCurrent]=useState<Detail|null>(null);
  const [configured,setConfigured]=useState<boolean|null>(null);
  const [password,setPassword]=useState("");
@@ -28,16 +29,16 @@ export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolea
   try{
    const [p,r]=await Promise.all([
     fetch("/api/finance-budget-review/process",{cache:"no-store"}),
-    fetch("/api/finance-budget-review/cases?offset=0",{cache:"no-store"})]);
+    fetch("/api/finance-budget-review/cases?offset="+offset,{cache:"no-store"})]);
    if(!p.ok||!r.ok)throw Error(await message(!p.ok?p:r));
    const a=await p.json() as {configured?:boolean};
-   const b=await r.json() as {cases?:Case[]};
+   const b=await r.json() as {cases?:Case[];nextOffset?:number|null};
    if(typeof a.configured!=="boolean"||!Array.isArray(b.cases))
     throw Error("Cannot verify the original review process.");
-   setConfigured(a.configured);setList(b.cases);
+   setConfigured(a.configured);setList(b.cases);setNextOffset(b.nextOffset??null);
   }catch(e){setError(e instanceof Error?e.message:"Protected review is unavailable.");}
  }
- useEffect(()=>{void load();},[]);
+ useEffect(()=>{void load();},[offset]);
  async function detail(id:string){
   setBusy(true);setError("");
   try{
@@ -100,6 +101,12 @@ export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolea
     <td><button type="button" disabled={busy} onClick={()=>void detail(v.caseRef)}>Review budget</button></td>
    </tr>)}</tbody></table>
    {!list.length&&<p className="cg-fin-empty">No original budget review cases.</p>}
+   <div className="cg-fin-paging">
+    <button type="button" disabled={busy||offset===0}
+     onClick={()=>setOffset(v=>Math.max(0,v-40))}>Previous</button>
+    <button type="button" disabled={busy||nextOffset===null}
+     onClick={()=>setOffset(nextOffset??0)}>Next</button>
+   </div>
   </div>
   {current&&<div className="drawer-backdrop"><div role="dialog" aria-modal="true"
     aria-labelledby="cg-budget-review-heading" className="role-drawer cg-fin-drawer">
