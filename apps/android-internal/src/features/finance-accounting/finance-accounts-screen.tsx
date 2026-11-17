@@ -35,7 +35,12 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
- const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING">("ACCOUNTS");
+ const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING"|"JOURNALS">("ACCOUNTS");
+ const [manualJournals,setManualJournals]=useState<Array<{
+  journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string}>>([]);
+ const [manualError,setManualError]=useState("");
+ const [manualLoading,setManualLoading]=useState(false);
+ const [manualRefresh,setManualRefresh]=useState(0);
  const [editor,setEditor]=useState<{kind:FinanceKind;target?:{
    ref:string;name:string;status:string;version:number}}|null>(null);
  const reload=useCallback(async()=>{
@@ -66,7 +71,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
  },[onExit,editor]);
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
-    onSaved={()=>{setEditor(null);setOffset(0);void reload();}} onExpired={onExpired}/>;
+    onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
  return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" accessibilityLabel="Back to Foundation"
@@ -74,16 +79,16 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
    <View style={s.headerTitle}><Text style={s.eyebrow}>FOUNDATION / FINANCE</Text>
     <Text style={s.title} accessibilityRole="header">Accounts & Years</Text></View>
    <Pressable accessibilityRole="button" accessibilityLabel="Refresh finance records"
-    disabled={busy} style={s.back} onPress={()=>void reload()}>
+    disabled={busy} style={s.back} onPress={()=>{void reload();setManualRefresh(n=>n+1);}}>
     <Text style={s.backText}>Refresh</Text></Pressable>
   </View>
-  <View style={s.tabs}>
-   {([["ACCOUNTS","Accounts"],["GROUPS","Groups"],["YEARS","Financial Years"],["OPENING","Opening Entries"]] as const)
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs}>
+   {([["ACCOUNTS","Accounts"],["GROUPS","Groups"],["YEARS","Financial Years"],["OPENING","Opening Entries"],["JOURNALS","Journals"]] as const)
     .map(([key,label])=><Pressable key={key} accessibilityRole="tab"
      accessibilityState={{selected:category===key}} style={[s.tab,category===key&&s.selectedTab]}
      onPress={()=>setCategory(key)}><Text style={[s.tabText,category===key&&s.selectedTabText]}>
        {label}</Text></Pressable>)}
-  </View>
+  </ScrollView>
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.subtext}>Only confirmed financial data for your permitted Foundation role is shown.</Text>
    <View style={s.actionRow}>
@@ -166,7 +171,7 @@ const s=StyleSheet.create({
  back:{paddingHorizontal:8,minHeight:48,justifyContent:"center"},
  backText:{fontSize:14,fontWeight:"600",color:theme.primary},
  tabs:{flexDirection:"row",backgroundColor:theme.surface,borderBottomWidth:1,borderBottomColor:theme.border},
- tab:{flex:1,minHeight:50,justifyContent:"center",alignItems:"center",paddingHorizontal:6,borderBottomWidth:3,borderBottomColor:"transparent"},
+ tab:{minWidth:105,minHeight:50,justifyContent:"center",alignItems:"center",paddingHorizontal:10,borderBottomWidth:3,borderBottomColor:"transparent"},
  selectedTab:{borderBottomColor:theme.primary},
  tabText:{fontSize:12,fontWeight:"500",color:theme.mutedText,textAlign:"center"},
  selectedTabText:{color:theme.primary,fontWeight:"700"},
