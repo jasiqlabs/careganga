@@ -33,6 +33,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
 }){
  const [claims,setClaims]=useState<Claim[]>([]);
  const [form,setForm]=useState<Draft>(clear());
+ const [correction,setCorrection]=useState<{ref:string;version:number;number:string}|null>(null);
  const [openedBill,setOpenedBill]=useState<string|null>(null);
  const [key,setKey]=useState<string|null>(null);
  const [fieldError,setFieldError]=useState<{field:string;message:string}|null>(null);
@@ -70,9 +71,9 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   const requestKey=key??Crypto.randomUUID();setKey(requestKey);
   setBusy(true);setFieldError(null);setMessage("");
   try{
-   const res=await identityRequest("/api/finance-accounting/claims/drafts",{
+   const res=await identityRequest(correction?"/api/finance-accounting/claims/"+correction.ref+"/correct":"/api/finance-accounting/claims/drafts",{
     method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({...form,requestKey})});
+    body:JSON.stringify({...form,requestKey,...(correction?{expectedVersion:correction.version}:{})})});
    if(res.status===401){onExpired();return;}
    if(!res.ok){
     const x=await failure(res);
@@ -83,19 +84,19 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
    if(!raw||typeof raw!=="object"||!("confirmed" in raw)||raw.confirmed!==true||
      !("status" in raw)||raw.status!=="DRAFT")
     throw Error("Could not confirm the claim. Check its status before retrying.");
-   setForm(clear());setKey(null);
-   setMessage("Draft saved. A verified bill and separate approval are required before payment.");
+   setForm(clear());setKey(null);setCorrection(null);
+   setMessage(correction?"Corrected draft saved under the original claim number. Reattach a freshly scanned bill.":"Draft saved. A verified bill and separate approval are required before payment.");
    void refresh();
   }catch(e){
    try{
     const status=await identityRequest(
-     "/api/finance-accounting/claims/draft-commands/"+requestKey,{
+     "/api/finance-accounting/claims/"+(correction?"workflow-commands/":"draft-commands/")+requestKey,{
       headers:{Authorization:"Bearer "+token},cache:"no-store"});
     if(status.status===401){onExpired();return;}
     if(status.ok){
      const raw:unknown=await status.json();
      if(raw&&typeof raw==="object"&&"confirmed" in raw&&raw.confirmed===true){
-      setForm(clear());setKey(null);
+      setForm(clear());setKey(null);setCorrection(null);
       setMessage("Your existing draft was saved. It has not been approved or paid.");
       void refresh();return;
      }
@@ -118,7 +119,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.muted}>Submit a draft as an existing Foundation account. Drafts are not approved expenses or payments.</Text>
    {canCreate&&<View style={s.card}>
-    <Text style={s.heading}>New claim draft</Text>
+    <Text style={s.heading}>{correction?"Correct "+correction.number:"New claim draft"}</Text>
     {fields.map(([field,label,placeholder])=><View key={field}>
      <Text style={s.label}>{label} *</Text>
      <TextInput accessibilityLabel={label} value={form[field]}
@@ -131,7 +132,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
     <Text style={s.muted}>A securely verified bill and protected review must be completed separately before approval or payout.</Text>
     <Pressable accessibilityRole="button" disabled={busy} style={[s.action,busy&&s.disabled]}
      onPress={()=>void save()}>
-     <Text style={s.actionText}>{busy?"Checking draft…":"Save claim draft"}</Text>
+     <Text style={s.actionText}>{busy?"Checking draft…":correction?"Save corrected draft":"Save claim draft"}</Text>
     </Pressable>
    </View>}
    {!!message&&<Text style={s.muted} accessibilityRole="alert">{message}</Text>}
@@ -150,6 +151,14 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
       c.status==="APPROVED"?"Approved — posting/payment separate":
       c.status==="RETURNED"?"Returned for correction":
       c.status==="REJECTED"?"Rejected":"Check current source"}</Text>
+     {c.status==="RETURNED"&&canCreate&&
+      <Pressable accessibilityRole="button" style={s.action}
+       onPress={()=>{
+        setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
+        setForm({category:c.category,purpose:c.purpose,expenseDate:c.expenseDate,
+         amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});
+        setMessage("");setKey(null);setFieldError(null);
+       }}><Text style={s.actionText}>Correct returned claim</Text></Pressable>}
      {c.status==="DRAFT"&&canCreate&&canUploadBill&&
       <Pressable accessibilityRole="button" style={s.action}
        onPress={()=>setOpenedBill(x=>x===c.claimRef?null:c.claimRef)}>
