@@ -6,7 +6,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Original={id:string;title:string;body:string;approved_at:Date;
  expires_at:Date};
-const safe=(value:string)=>value.length<=480&&!/[<>\u0000-\u001f\u007f]/.test(value);
+const safe=(value:string)=>value.length<=480&&!/[<>\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
 /** CG19 remains the ORIGINAL notice and recipient master.
  * CMS receives only a deliberately hand-selected, independently reviewed,
  * de-identified public title/body projection. No recipient/outbox fields.
