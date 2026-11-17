@@ -28,6 +28,14 @@ export class FinanceAccountsController{
  account(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.createAccount(bearer,body);
  }
+ @Get("manual-journals")
+ manualJournals(@Headers("authorization")bearer:string){
+  return this.service.manualJournalHistory(bearer);
+ }
+ @Post("manual-journals")
+ manualJournalPost(@Headers("authorization")bearer:string,@Body()body:unknown){
+  return this.service.postGeneral(bearer,body);
+ }
  @Post("opening-journals")
  opening(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.postOpening(bearer,body);
