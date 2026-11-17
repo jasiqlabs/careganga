@@ -51,6 +51,19 @@ export class BranchSourceFacade{
     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
   if(!row.rows[0])throw new ConflictException("This branch is not active. Choose an active branch before using its finance account.");
  }
+ /** Owner-controlled permitted branch labels for past ACTIVE/INACTIVE finance accounts. */
+ async financeBranchLabels(bearer:string,branchRefs:readonly string[]):Promise<Record<string,string>>{
+  if(branchRefs.length>60||branchRefs.some(r=>!UUID.test(r)))
+   throw new BadRequestException("The finance branch selection is invalid. Refresh the list.");
+  const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+  const unique=[...new Set(branchRefs)];
+  if(unique.length===0)return {};
+  const labels=await this.db.query<{id:string;name:string}>(`
+    SELECT id,name FROM branch
+    WHERE root_realm_id=$1 AND id=ANY($2::uuid[])
+    ORDER BY name,id LIMIT 60`,[actor.realmId,unique]);
+  return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
+ }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
