@@ -1,7 +1,7 @@
 import {useEffect,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as DocumentPicker from "expo-document-picker";
-import {File,UploadType} from "expo-file-system";
+import {File,Paths,UploadType} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
@@ -179,6 +179,28 @@ export function FinanceVoucherNativePayment({token,voucher,canManage,canPost,
    if(e instanceof Error&&e.message==="EXPIRED")onExpired();}
   finally{setBusy(false);}
  }
+ async function viewOriginalProof(){
+  if(!payment||busy)return;
+  setBusy(true);setNotice("");
+  let temp:File|null=null;
+  try{
+   const response=await identityRequest("/api/documents/finance-voucher-evidence/files/"+
+    payment.fileRef+"/download",{cache:"no-store",
+    headers:{Authorization:"Bearer "+token}});
+   if(response.status===401){onExpired();return;}
+   if(!response.ok)throw Error(response.status===403?"DENIED":"UNKNOWN");
+   const mime=response.headers.get("content-type")?.split(";")[0]??"";
+   if(!MIME.has(mime))throw Error("UNKNOWN");
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(bytes.length<1||bytes.length>10485760)throw Error("UNKNOWN");
+   const ext=mime==="application/pdf"?".pdf":mime==="image/jpeg"?".jpg":
+    mime==="image/png"?".png":".webp";
+   temp=new File(Paths.cache,"careganga-private-finance-proof-"+Crypto.randomUUID()+ext);
+   temp.create();await temp.write(bytes);
+   await temp.preview({title:"Private Finance payment proof"});
+  }catch(e){setNotice(friendly(e));}
+  finally{try{temp?.delete();}catch{}setBusy(false);}
+ }
  async function checkOriginal(){
   if(!pending||busy)return;setBusy(true);setNotice("");
   try{
@@ -248,6 +270,7 @@ export function FinanceVoucherNativePayment({token,voucher,canManage,canPost,
     "Bank statement":"Cash receipt"}</Text>
    {payment.bankReference&&<Text style={styles.hint}>
     Bank transaction reference: {payment.bankReference}</Text>}
+   {button("Review original private statement/receipt",()=>void viewOriginalProof())}
    {canVerifyPayment&&payment.status==="PENDING_REVIEW"&&<>
     <Text style={styles.hint}>Compare this transaction with its original private statement
      or cash receipt before verifying. Self-verification is prohibited.</Text>
