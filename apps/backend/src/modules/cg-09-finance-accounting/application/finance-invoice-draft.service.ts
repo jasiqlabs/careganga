@@ -285,10 +285,46 @@ export class FinanceInvoiceDraftService{
     version,status:"DRAFT",replayed:false};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
- async list(bearer:string,offsetInput?:string){
+ async dashboard(bearer:string){
+  const actor=await this.owner(bearer);
+  const rows=await this.db.query<{total:number;drafts:number;pending:number;
+   approved:number;issued:number;rejected:number;returned:number;
+   paidVerified:number;faceValueMinor:string;issuedMinor:string;
+   receivedVerifiedMinor:string}>(
+   "SELECT COUNT(*)::int AS total,"+
+   "COUNT(*) FILTER(WHERE i.status='DRAFT')::int AS drafts,"+
+   "COUNT(*) FILTER(WHERE i.status='SUBMITTED')::int AS pending,"+
+   "COUNT(*) FILTER(WHERE i.status IN('APPROVED','POSTED'))::int AS approved,"+
+   "COUNT(*) FILTER(WHERE i.status='ISSUED')::int AS issued,"+
+   "COUNT(*) FILTER(WHERE i.status='REJECTED')::int AS rejected,"+
+   "COUNT(*) FILTER(WHERE i.status='RETURNED')::int AS returned,"+
+   "COUNT(r.id)::int AS \"paidVerified\","+
+   "COALESCE(SUM(i.total_minor),0)::text AS \"faceValueMinor\","+
+   "COALESCE(SUM(i.total_minor) FILTER(WHERE i.status='ISSUED'),0)::text AS \"issuedMinor\","+
+   "COALESCE(SUM(r.amount_minor),0)::text AS \"receivedVerifiedMinor\" "+
+   "FROM finance_invoice i LEFT JOIN finance_invoice_receipt r "+
+   "ON r.invoice_id=i.id AND r.root_realm_id=i.root_realm_id "+
+   "WHERE i.root_realm_id=$1",[actor.realmId]);
+  const monthly=await this.db.query<{month:string;count:number;issuedMinor:string}>(
+   "SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,"+
+   "COUNT(*)::int AS count,"+
+   "COALESCE(SUM(total_minor) FILTER(WHERE status='ISSUED'),0)::text AS \"issuedMinor\" "+
+   "FROM finance_invoice WHERE root_realm_id=$1 "+
+   "AND created_at>=date_trunc('month',now())-interval '11 months' "+
+   "GROUP BY date_trunc('month',created_at) "+
+   "ORDER BY date_trunc('month',created_at) LIMIT 12",[actor.realmId]);
+  return {cards:rows.rows[0],monthly:monthly.rows,
+   explanation:"Invoice face value is not paid income. Verified receipts are separately linked to original reconciled bank journals."};
+ }
+ async list(bearer:string,offsetInput?:string,statusInput?:string){
   const actor=await this.owner(bearer);
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return reject("FINANCE_INVOICE_FILTER_INVALID","offset");
+  const validStatus=new Set(["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED",
+   "APPROVED","POSTED","ISSUED"]);
+  if(statusInput!==undefined&&!validStatus.has(statusInput))
+   return reject("FINANCE_INVOICE_FILTER_INVALID","status");
+  const chosen=statusInput&&statusInput!=="ALL"?statusInput:null;
   const offset=Number(offsetInput??"0");
   const rows=await this.db.query<{invoiceRef:string;invoiceNumber:string;
    createdAt:Date;invoiceDate:string|null;dueDate:string|null;category:string|null;
@@ -298,8 +334,9 @@ export class FinanceInvoiceDraftService{
    "due_date::text AS \"dueDate\",category_label AS category,"+
    "counterparty_name AS \"counterpartyName\",total_minor::text AS \"totalMinor\","+
    "status,version FROM finance_invoice WHERE root_realm_id=$1 "+
+   "AND ($3::text IS NULL OR status=$3) "+
    "ORDER BY created_at DESC,id DESC LIMIT 41 OFFSET $2",
-   [actor.realmId,offset]);
+   [actor.realmId,offset,chosen]);
   return {invoices:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
  async detail(bearer:string,invoiceInput:string){
