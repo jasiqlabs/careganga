@@ -182,12 +182,13 @@ export class FinanceVoucherDraftService{
    throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
   const rows=await this.db.query<{voucherRef:string;voucherNumber:string;type:string;
-    postingDate:string;payeeName:string;purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null}>(`
-    SELECT id AS "voucherRef",voucher_number AS "voucherNumber",voucher_type AS type,
-     posting_date::text AS "postingDate",payee_name AS "payeeName",
-     purpose,total_minor::text AS "totalMinor",version,status,
-      approval_case_id AS "approvalCaseRef"
-    FROM finance_voucher WHERE root_realm_id=$1
+    postingDate:string;payeeName:string;purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null;paymentAccountKind:"CASH"|"BANK"|null}>(`
+    SELECT v.id AS "voucherRef",v.voucher_number AS "voucherNumber",v.voucher_type AS type,
+     v.posting_date::text AS "postingDate",v.payee_name AS "payeeName",
+     v.purpose,v.total_minor::text AS "totalMinor",v.version,v.status,
+      v.approval_case_id AS "approvalCaseRef",b.kind AS "paymentAccountKind"
+    FROM finance_voucher v LEFT JOIN cash_bank_account b ON b.account_id=v.payment_account_id
+      AND b.root_realm_id=v.root_realm_id WHERE v.root_realm_id=$1
     ORDER BY updated_at DESC,id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
   return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
    status:"SOURCE_BACKED_VOUCHER_STATUS"};
