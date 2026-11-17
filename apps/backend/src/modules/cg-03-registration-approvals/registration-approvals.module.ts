@@ -2,6 +2,7 @@ import {Module} from "@nestjs/common";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {BranchApprovalService} from "./application/branch-approval.service";
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
+import {FinanceEvidenceSourceModule} from "../cg-19-documents-notifications/finance-evidence-source.module";
 import {FinanceVoucherApprovalService} from "./application/finance-voucher-approval.service";
 import {FinanceVoucherApprovalController} from "./http/finance-voucher-approval.controller";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
@@ -14,7 +15,7 @@ import {ApprovalFinalizationController} from "./http/finalization.controller";
 import {ApprovalDocumentSource} from "./application/approval-document-source.service";
 import {CommittedDecisionSource} from "./application/committed-decision-source.service";
 @Module({
-  imports:[IdentityAccessModule,FoundationStructureModule,FinanceSourceModule],
+  imports:[IdentityAccessModule,FoundationStructureModule,FinanceSourceModule,FinanceEvidenceSourceModule],
   providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService],
   controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController,FinanceVoucherApprovalController],
   exports:[ApprovalProposalService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService]
