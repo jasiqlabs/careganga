@@ -227,6 +227,8 @@ export class FinanceReportsService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.reconciliation.manage");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":"+actor.accountId+":"+key]);
    const previous=await tx.query<{id:string;content_digest:string;status:string}>(
     "SELECT id,content_digest,status FROM finance_bank_reconciliation "+
     "WHERE root_realm_id=$1 AND recorded_by=$2 AND request_key=$3 FOR SHARE",
@@ -293,6 +295,8 @@ export class FinanceReportsService{
    await tx.query("BEGIN");
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
    await this.identity.assertCurrent(tx,actor,"finance.reconciliation.review");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":"+actor.accountId+":"+key]);
    const old=await tx.query<{id:string;actor_ref:string;action:string}>(
     "SELECT id,actor_ref,action FROM finance_reconciliation_decision "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
