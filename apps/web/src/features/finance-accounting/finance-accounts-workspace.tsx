@@ -1,5 +1,6 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useMemo,useState,type ReactNode} from "react";
+import {FinanceManualJournalWorkspace} from "./finance-manual-journal-workspace";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Group={groupRef:string;name:string;code:string;category:string};
@@ -72,7 +73,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [filters,setFilters]=useState(emptyFilters);
  const [appliedFilters,setAppliedFilters]=useState(emptyFilters);
  const [offset,setOffset]=useState(0);
- const [tab,setTab]=useState<"accounts"|"groups"|"years"|"opening">("accounts");
+ const [tab,setTab]=useState<"accounts"|"groups"|"years"|"opening"|"journals">("accounts");
  const [drawer,setDrawer]=useState<FormKind|null>(null);
  const [form,setForm]=useState<Record<string,string>>(blank());
  const [failure,setFailure]=useState<SafeFailure|null>(null);
@@ -293,15 +294,15 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    </div>
    <div className="cg-fin-content-grid"><section className="cg-fin-panel">
     <div className="cg-fin-toolbar">
-     <div><h2>Financial accounts & opening setup</h2>
-      <p>Amounts are shown only from confirmed, posted finance records.</p></div>
+     <div><h2>{tab==="journals"?"General Journal Entries":"Financial accounts & opening setup"}</h2>
+      <p>{tab==="journals"?"Posted journal is not proof of a payment or voucher approval.":"Amounts are shown only from confirmed, posted finance records."}</p></div>
      <div className="cg-fin-toolbar-actions">
       {canManage&&<button type="button" onClick={()=>open("year")}>+ Financial Year</button>}
       {canManage&&<button type="button" onClick={()=>open("group")}>+ Account Group</button>}
       {canPost&&<button type="button" onClick={()=>open("opening")}>+ Opening Entry</button>}
      </div>
     </div>
-    <form className="cg-fin-advanced" onSubmit={e=>{
+    {tab==="accounts"&&<form className="cg-fin-advanced" onSubmit={e=>{
       e.preventDefault();setOffset(0);setAppliedSearch(search.trim());setAppliedFilters({...filters});
      }}>
      <strong>Advanced Search & Filters</strong>
@@ -348,10 +349,10 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
        }}>Reset</button>
       <button className="primary" type="submit">Apply Filters</button>
      </div>
-    </form>
+    </form>}
     <div className="cg-fin-tabs" role="tablist" aria-label="Financial setup sections">
      {([
-      ["accounts","Accounts"],["groups","Account Groups"],["years","Financial Years"],["opening","Opening Entries"]
+      ["accounts","Accounts"],["groups","Account Groups"],["years","Financial Years"],["opening","Opening Entries"],["journals","General Journal"]
      ] as const).map(([key,title])=><button role="tab" aria-selected={tab===key}
       className={tab===key?"is-active":""} key={key} onClick={()=>setTab(key)}
       type="button">{title}</button>)}
@@ -395,6 +396,8 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
         onClick={()=>setStatusConfirm({type:"year",ref:y.yearRef,name:y.name,
          expectedVersion:y.version,nextStatus:"CLOSED"})}>Close year</button>:"Closed"}</td>}</tr>)}
      </tbody></table>{!data.years.length&&<p className="cg-fin-empty">No financial year exists. Add a financial year to begin.</p>}</div>}
+    {tab==="journals"&&<FinanceManualJournalWorkspace years={data.years} canPost={canPost}
+      onUpdated={()=>void load()}/>}
     {tab==="opening"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
      <thead><tr><th>Date</th><th>Financial year</th><th>Balanced opening amount</th><th>Status</th></tr></thead><tbody>
       {data.openingJournals.map(j=><tr key={j.journalRef}><td>{j.postingDate}</td>
