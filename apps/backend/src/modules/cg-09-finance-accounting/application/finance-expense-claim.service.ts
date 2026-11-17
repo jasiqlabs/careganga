@@ -388,4 +388,26 @@ export class FinanceExpenseClaimService{
   return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
  }
 
+
+ /** Business-labelled claim options, for finance operator linking a new voucher
+  * to the approved source. No unrestricted staff/volunteer directory. */
+ async approvedOptions(bearer:string,queryInput?:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  await this.sessions.requireAction(bearer,"finance.vouchers.manage");
+  if(queryInput!==undefined&&(typeof queryInput!=="string"||queryInput.length>80))
+   return invalid("FINANCE_CLAIM_FILTER_INVALID","search");
+  const query=(queryInput??"").trim();
+  const pattern="%"+query.replace(/[\\%_]/g,v=>"\\"+v)+"%";
+  const rows=await this.db.query<{claimRef:string;claimNumber:string;version:number;
+   category:string;purpose:string;amountMinor:string}>(
+   "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",version,"+
+   "category_label AS category,purpose,amount_minor::text AS \"amountMinor\" "+
+   "FROM expense_claim WHERE root_realm_id=$1 AND status='APPROVED' "+
+   "AND (claim_number ILIKE $2 ESCAPE '\\' OR category_label ILIKE $2 ESCAPE '\\' "+
+   "OR purpose ILIKE $2 ESCAPE '\\') "+
+   "ORDER BY created_at DESC,id DESC LIMIT 31",
+   [actor.realmId,pattern]);
+  return {claims:rows.rows.slice(0,30),hasMore:rows.rows.length>30};
+ }
+
 }
