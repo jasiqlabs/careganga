@@ -231,6 +231,7 @@ export class FinanceReportsService{
  }
  async recordBankMatch(bearer:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.reconciliation.manage");
+  await this.sessions.requireAction(bearer,"documents.files.manage");
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID"});
   const data=raw as Record<string,unknown>;
@@ -248,6 +249,7 @@ export class FinanceReportsService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.reconciliation.manage");
+   await this.identity.assertCurrent(tx,actor,"documents.files.manage");
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [actor.realmId+":"+actor.accountId+":"+key]);
    const previous=await tx.query<{id:string;content_digest:string;status:string}>(
