@@ -128,7 +128,10 @@ export class FinanceBudgetService{
   const fingerprint=sha(["CG09_BUDGET_SAVE",budgetInput??"NEW",expected,p]);
   const tx=await this.db.connect();
   try{
-   await tx.query("BEGIN");await this.validScope(tx,actor,p);
+   await tx.query("BEGIN");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":"+actor.accountId+":"+key]);
+   await this.validScope(tx,actor,p);
    const old=await this.existing(tx,actor,key);
    if(old){
     if(old.digest!==fingerprint)
