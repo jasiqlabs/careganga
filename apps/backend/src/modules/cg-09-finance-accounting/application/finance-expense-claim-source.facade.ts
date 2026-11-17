@@ -50,6 +50,23 @@ export class FinanceExpenseClaimSourceFacade{
   if(c.status!=="DRAFT")throw new ConflictException({code:"FINANCE_CLAIM_NOT_EDITABLE"});
   return {claimRef:c.id,revision:c.version,sourceDigest:c.create_digest};
  }
+ async guardForReviewer(client:PoolClient,actor:VerifiedFoundationActor,reference:string,
+  version:number,expectedDigest:string){
+  if(typeof reference!=="string"||!UUID.test(reference)||!Number.isSafeInteger(version)||
+     version<1)
+   throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+  await this.identity.assertCurrent(client,actor,"finance.claims.review");
+  await this.identity.assertCurrent(client,actor,"approvals.review");
+  const result=await client.query<Original>(
+   "SELECT id,root_realm_id,requested_by,version,status,create_digest "+
+   "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 AND version=$3 FOR SHARE",
+   [reference,actor.realmId,version]);
+  const claim=result.rows[0];
+  if(!claim||claim.create_digest!==expectedDigest||
+     claim.status!=="SUBMITTED"||claim.requested_by===actor.accountId)
+   throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+  return {claimRef:claim.id,revision:claim.version,sourceDigest:claim.create_digest};
+ }
  async guardFrozen(client:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,expectedDigest:string){
   const c=await this.lock(client,actor,reference,version,"read");
