@@ -1,6 +1,7 @@
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FinanceExpenseClaimSourceFacade} from "./application/finance-expense-claim-source.facade";
+import {FinanceReceiptSourceFacade} from "./application/finance-receipt-source.facade";
 import {FinanceBudgetSourceFacade} from "./application/finance-budget-source.facade";
 import {FinanceInvoiceSourceFacade} from "./application/finance-invoice-source.facade";
 import {FinanceVoucherSourceFacade} from "./application/finance-voucher-source.facade";
@@ -9,7 +10,7 @@ import {FinanceVoucherSourceFacade} from "./application/finance-voucher-source.f
  */
 @Module({
  imports:[IdentityAccessModule],
- providers:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade],
+ providers:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade],
  exports:[FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade]
 })
 export class FinanceSourceModule{}
