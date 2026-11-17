@@ -30,8 +30,8 @@ function csvCell(s:string){
  const clean=s.replace(/[\r\n]/g," ").replace(/"/g,'""');
  return '"'+(/^\s*[=+\-@]/.test(clean)?"'"+clean:clean)+'"';
 }
-export function FinanceReportsWorkspace({canReconcile,canVerify}:{
- canReconcile:boolean;canVerify:boolean}){
+export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStatement}:{
+ canReconcile:boolean;canVerify:boolean;canUploadStatement:boolean}){
  const [view,setView]=useState<View>("summary");
  const [years,setYears]=useState<Year[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
@@ -345,14 +345,14 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
      <td>{format(m.statementAmountMinor)}</td><td>{format(m.varianceMinor)}</td>
      <td>{m.status==="VERIFIED"?"Statement reviewed":m.status}</td>
      <td>{m.status==="PENDING"&&<>
-      {m.canUpload&&canReconcile&&<button type="button"
+      {m.canUpload&&canUploadStatement&&<button type="button"
        onClick={()=>{setUploadMatch(m.reconciliationRef);setChosenFile(null);
         setUploadKey("");setUploadRef("");}}>Attach original bank statement</button>}
       {canVerify&&<button type="button"
        onClick={()=>setReviewMatch(m.reconciliationRef)}>Review</button>}
      </>}</td></tr>)}
    </tbody></table></div>
-   {uploadMatch&&canReconcile&&<div className="cg-fin-card">
+   {uploadMatch&&canUploadStatement&&<div className="cg-fin-card">
     <h4>Attach genuine bank statement</h4>
     <p>This file is private. A source/checksum/malware scan must succeed before review.</p>
     <label className="cg-fin-field">Bank statement PDF or image
