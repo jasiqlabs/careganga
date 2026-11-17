@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -163,7 +164,7 @@ export class FinanceInvoiceWorkflowService{
    await tx.query("COMMIT");
    return {confirmed:true,status:"SUBMITTED",invoiceNumber:x.invoice_number,
     caseNumber:caseRow.caseNumber,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  async reconcile(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
@@ -196,7 +197,7 @@ export class FinanceInvoiceWorkflowService{
    await this.record(tx,actor,ref,x.version,key,digest,"RECONCILE",status);
    await tx.query("COMMIT");
    return {confirmed:true,status,invoiceNumber:x.invoice_number,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  async post(bearer:string,invoiceInput:string,payload:unknown):Promise<JournalReply>{
   const actor=await this.actor(bearer,"finance.invoices.manage");
@@ -260,7 +261,7 @@ export class FinanceInvoiceWorkflowService{
    await this.record(tx,actor,ref,x.version,key,digest,"ACCRUAL_POST","POSTED");
    await tx.query("COMMIT");
    return {confirmed:true,status:"POSTED",invoiceNumber:x.invoice_number,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  /** CG19 stores and verifies real PDF bytes first. This is a separate
   * idempotent command; a failed provider never marks an invoice ISSUED.
@@ -294,7 +295,7 @@ export class FinanceInvoiceWorkflowService{
    await this.record(tx,actor,ref,x.version,key,digest,"ISSUE","ISSUED");
    await tx.query("COMMIT");
    return {confirmed:true,status:"ISSUED",invoiceNumber:x.invoice_number,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  /** Bank-statement verification is a real separate source. A receipt link
   * references exactly one existing journal, never posts income a second time.
@@ -399,7 +400,7 @@ export class FinanceInvoiceWorkflowService{
    await tx.query("COMMIT");
    return {confirmed:true,status:"POSTED_UNVERIFIED",journalRecorded:true,
     journalRef,replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  async receiptOptions(bearer:string,invoiceInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
@@ -498,7 +499,7 @@ export class FinanceInvoiceWorkflowService{
    if(e&&typeof e==="object"&&"code" in e&&
       ["23505","23514","P0927"].includes(String(e.code)))
     throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
-   throw e;
+   financeSqlFailure(e,"invoice");
   }finally{tx.release();}
  }
  async receiptStatus(bearer:string,invoiceInput:string){
