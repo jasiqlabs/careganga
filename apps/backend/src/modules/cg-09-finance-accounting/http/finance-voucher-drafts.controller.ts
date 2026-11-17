@@ -9,6 +9,10 @@ export class FinanceVoucherDraftController{
  constructor(private readonly service:FinanceVoucherDraftService){}
  @Get("drafts")
  drafts(@Headers("authorization")bearer:string){return this.service.list(bearer);}
+ @Get("drafts/:voucherRef")
+ detail(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string){
+  return this.service.detail(bearer,ref);
+ }
  @Post("drafts")
  create(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.save(bearer,body);
