@@ -90,6 +90,12 @@ export class FinanceBudgetService{
   if(p.branchRef)
    await this.branches.requireFinanceBranchVersion(tx,actor,p.branchRef,
     p.branchVersion!,"finance.budgets.manage");
+  const groups=await tx.query(
+   "SELECT id FROM account_group WHERE root_realm_id=$1 "+
+   "AND category='EXPENSE' AND name=$2 ORDER BY id LIMIT 1 FOR SHARE",
+   [actor.realmId,p.category]);
+  if(!groups.rowCount)
+   throw new ConflictException({code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});
  }
  private async existing(tx:PoolClient,actor:VerifiedFoundationActor,key:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
