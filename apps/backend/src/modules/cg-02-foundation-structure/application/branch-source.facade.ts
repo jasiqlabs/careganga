@@ -49,7 +49,7 @@ export class BranchSourceFacade{
   const row=await client.query<{id:string}>(`
     SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
-  if(!row.rows[0])throw new ConflictException("This branch is not active. Choose an active branch before using its finance account.");
+  if(!row.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
  }
  /** Owner-controlled permitted branch labels for past ACTIVE/INACTIVE finance accounts. */
  async financeBranchLabels(bearer:string,branchRefs:readonly string[]):Promise<Record<string,string>>{
@@ -82,9 +82,9 @@ export class BranchSourceFacade{
    const rows=await client.query<{version:number}>(`
      SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
      FOR SHARE`,[ensureId(branchRef),actor.realmId]);
-   if(!rows.rows[0])throw new ConflictException("The selected branch is not active. Choose an active branch.");
+   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
    if(rows.rows[0].version!==expectedVersion)
-     throw new ConflictException("This branch changed. Refresh the list and select it again.");
+     throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
  }
  private async admin(bearer:string):Promise<boolean>{
    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
