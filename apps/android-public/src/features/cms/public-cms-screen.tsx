@@ -11,6 +11,7 @@ type CmsSource={schemaVersion:number;effectiveGeneration:string;kind:string;
 type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";page:CmsSource|null};
 const base=process.env.EXPO_PUBLIC_API_URL;
 const text=(v:unknown)=>typeof v==="string"?v:"";
+const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
  return ["/","/about","/contact"].includes(route)?route:null;
@@ -124,9 +125,15 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
      const tags=Array.isArray(fields.tags)?fields.tags.filter(v=>typeof v==="string").slice(0,4):[];
      return <View key={i} style={styles.hero}>
       {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
-      <Text accessibilityRole="header" style={styles.bigHeading}>
+      <Text accessibilityRole="header" style={[styles.bigHeading,{
+       fontFamily:fields.headingFont==="SANS"?"sans-serif":"serif",
+       fontWeight:fields.headingWeight==="REGULAR"?"400":"800",
+       fontSize:fields.headingSize==="STANDARD"?24:28,
+       color:safeColor(fields.headingColor,"#FFE34A")
+      }]}>
        {text(fields.heading)||page.title}</Text>
-      {!!text(fields.subtitle)&&<Text style={styles.heroSubtitle}>{text(fields.subtitle)}</Text>}
+      {!!text(fields.subtitle)&&<Text style={[styles.heroSubtitle,{
+       color:safeColor(fields.subtitleColor,"#8CF442")}]}>{text(fields.subtitle)}</Text>}
       {!!text(fields.description)&&<Text style={styles.heroBody}>{text(fields.description)}</Text>}
       {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation initiative"}
        resizeMode="cover" style={styles.image}/>}
