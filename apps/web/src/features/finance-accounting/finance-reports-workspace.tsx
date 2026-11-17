@@ -7,6 +7,9 @@ type Ledger={accountName:string;accountCode:string;category:string;postingDate:s
 type Trial={accountName:string;code:string;category:string;netDebitMinor:string;netCreditMinor:string};
 type Book={postingDate:string;account:string;kind:string;debitMinor:string;creditMinor:string;
  description:string;postingKind:string};
+type Receivable={invoiceNumber:string;invoiceDate:string;dueDate:string;
+ counterpartyName:string;status:string;totalMinor:string;verifiedMinor:string;
+ outstandingMinor:string};
 type Bank={accountRef:string;name:string;code:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
@@ -15,7 +18,7 @@ type Match={reconciliationRef:string;accountName:string;statementDate:string;
 type StatementFile={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
 type UploadResult={status:string;uploadRef:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;
  cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
-type View="summary"|"general-ledger"|"trial-balance"|"day-book"|"cash-book"|"bank-book"|"reconciliation";
+type View="summary"|"general-ledger"|"trial-balance"|"day-book"|"cash-book"|"bank-book"|"receivables"|"reconciliation";
 const format=(n:string)=>{try{const v=BigInt(n),sign=v<0n?"-":"",a=v<0n?-v:v;
  return sign+"₹"+(a/100n).toLocaleString("en-IN")+"."+
   (a%100n).toString().padStart(2,"0");}catch{return "Unavailable";}};
@@ -44,7 +47,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
  const [to,setTo]=useState("");
  const [offset,setOffset]=useState(0);
  const [next,setNext]=useState<number|null>(null);
- const [rows,setRows]=useState<Ledger[]|Trial[]|Book[]>([]);
+ const [rows,setRows]=useState<Ledger[]|Trial[]|Book[]|Receivable[]>([]);
  const [summary,setSummary]=useState<Record<string,string>|null>(null);
  const [trialTotal,setTrialTotal]=useState<{debit:string;credit:string;balanced:boolean}|null>(null);
  const [banks,setBanks]=useState<Bank[]>([]);
@@ -109,15 +112,16 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
     const q=new URLSearchParams();
     if(year)q.set("yearRef",year);
     if(branch)q.set("branchRef",branch);
-    if(account&&["general-ledger","bank-book","cash-book","day-book"].includes(view))q.set("accountRef",account);
+    if(account&&["general-ledger","bank-book","cash-book","day-book","receivables"].includes(view))q.set("accountRef",account);
     if(from&&view!=="trial-balance")q.set("from",from);
     if(to&&view!=="trial-balance")q.set("to",to);
     if(view!=="trial-balance")q.set("offset",String(offset));
     const res=await fetch("/api/finance/reports/"+view+"?"+q,{cache:"no-store"});
     if(!res.ok)throw Error(await message(res));
     const data=await res.json() as {lines?:Ledger[]|Book[];accounts?:Trial[];
-     nextOffset?:number|null;totalDebitMinor?:string;totalCreditMinor?:string;balanced?:boolean};
-    const records=data.lines??data.accounts;
+     items?:Receivable[];nextOffset?:number|null;totalDebitMinor?:string;
+     totalCreditMinor?:string;balanced?:boolean};
+    const records=data.lines??data.accounts??data.items;
     if(!Array.isArray(records))throw Error("Cannot verify posted ledger lines.");
     setRows(records);setNext(data.nextOffset??null);
     if(view==="trial-balance")setTrialTotal({
@@ -224,6 +228,8 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
  function exportCurrent(){
   const cols=view==="trial-balance"?["accountName","code","category","netDebitMinor","netCreditMinor"]:
    view==="general-ledger"?["accountName","postingDate","description","debitMinor","creditMinor"]:
+   view==="receivables"?["invoiceNumber","invoiceDate","dueDate","counterpartyName",
+    "status","totalMinor","verifiedMinor","outstandingMinor"]:
    ["postingDate","account","description","debitMinor","creditMinor"];
   const lines=[cols.join(","),...rows.map(x=>cols.map(k=>csvCell(String(
    (x as unknown as Record<string,unknown>)[k]??""))).join(","))];
@@ -244,7 +250,8 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
    {([
     ["summary","Finance Dashboard"],["general-ledger","General Ledger"],
     ["day-book","Day Book"],["cash-book","Cash Book"],["bank-book","Bank Book"],
-    ["trial-balance","Trial Balance"],["reconciliation","Bank Reconciliation"]
+    ["trial-balance","Trial Balance"],["receivables","Invoice Receivables"],
+    ["reconciliation","Bank Reconciliation"]
    ] as [View,string][]).map(([key,name])=><button type="button" key={key}
     aria-current={key===view?"page":undefined} onClick={()=>{setView(key);setOffset(0);}}>
     {name}</button>)}
@@ -260,7 +267,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
      {branches.map(b=><option key={b.branchRef} value={b.branchRef}>
       {b.code} · {b.name}</option>)}
     </select></label>
-   {["general-ledger","bank-book","cash-book","day-book"].includes(view)&&<label className="cg-fin-field">Account
+   {["general-ledger","bank-book","cash-book","day-book","receivables"].includes(view)&&<label className="cg-fin-field">Account
     <select value={account} onChange={e=>{setAccount(e.target.value);setOffset(0);}}>
      <option value="">All permitted accounts</option>
      {accounts.map(a=><option key={a.ref} value={a.ref}>{a.code} · {a.name}</option>)}
@@ -291,6 +298,13 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
     <th>{view==="trial-balance"?"Category":"Original journal detail"}</th>
     <th>Debit</th><th>Credit</th></tr></thead><tbody>
     {rows.map((entry,i)=>{
+     if(view==="receivables"){
+      const x=entry as Receivable;
+      return <tr key={i}><td>{x.invoiceNumber} · {x.invoiceDate}</td>
+       <td>{x.counterpartyName} · {x.status==="ISSUED"?"Issued":"Posted, not yet issued"}
+        {" · Due "+x.dueDate}</td><td>{format(x.verifiedMinor)} verified</td>
+       <td>{format(x.outstandingMinor)} outstanding</td></tr>;
+     }
      if(view==="trial-balance"){
       const x=entry as Trial;
       return <tr key={i}><td>{x.code} · {x.accountName}</td><td>{x.category}</td>
