@@ -238,6 +238,9 @@ export class FinanceAccountsService{
    throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID"});
   const q=query?.trim()??"";
   const escaped="%"+q.replace(/[\\%_]/g,"\\$&")+"%";
+  const activeBranches=await this.branches.financeBranches(bearer);
+  const labels=new Map(activeBranches.map(b=>[b.branchRef,b]));
+  const activeBranchRefs=activeBranches.map(b=>b.branchRef);
   const rows=await this.db.query<{
     accountRef:string;name:string;code:string;scopeKind:string;branchRef:string|null
   }>(`
@@ -245,10 +248,9 @@ export class FinanceAccountsService{
     a.branch_id AS "branchRef"
    FROM finance_account a
    WHERE a.root_realm_id=$1 AND a.status='ACTIVE'
+     AND (a.branch_id IS NULL OR a.branch_id=ANY($3::uuid[]))
      AND (a.name ILIKE $2 ESCAPE '\\' OR a.code ILIKE $2 ESCAPE '\\')
-   ORDER BY a.name,a.id LIMIT 51`,[actor.realmId,escaped]);
-  const activeBranches=await this.branches.financeBranches(bearer);
-  const labels=new Map(activeBranches.map(b=>[b.branchRef,b]));
+   ORDER BY a.name,a.id LIMIT 51`,[actor.realmId,escaped,activeBranchRefs]);
   return {accounts:rows.rows.filter(a=>!a.branchRef||labels.has(a.branchRef))
     .slice(0,50).map(a=>({...a,
       branchName:a.branchRef?labels.get(a.branchRef)?.name??null:null,
