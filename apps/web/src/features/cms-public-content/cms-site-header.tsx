@@ -27,6 +27,9 @@ export function CmsSiteHeader({navigation,contact}:{
   navigation.memberJoin.path:undefined;
  const volunteer=navigation?.volunteerJoin?.visible&&navigation.volunteerJoin.path?
   navigation.volunteerJoin.path:undefined;
+ const routes=navigation?.publishedRoutes??[];
+ const isPublished=(path:string)=>routes.some(x=>x.path===path);
+ const anyArticles=routes.some(x=>x.kind==="ARTICLE"&&/^\/blog\/[a-z0-9-]+$/.test(x.path));
  return <header className="cg-site-header">
   <div className="cg-site-contact-strip">
    <div className="cg-site-strip-inner">
@@ -50,17 +53,26 @@ export function CmsSiteHeader({navigation,contact}:{
    <nav id="cg-site-navigation" aria-label="CareGanga public website"
     className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"}>
     <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
-    <Link href="/about" className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>
+    {isPublished("/about")?<Link href="/about"
+     className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>:
+     <span className="cg-site-unavailable">About Us</span>}
     <Menu label="Our Work" items={work.map(text=>({text}))}/>
-    <span className="cg-site-unavailable">NGO Information</span>
+    {isPublished("/impact")?<Link href="/impact"
+     className={pathname==="/impact"?"cg-site-active":undefined}>NGO Information</Link>:
+     <span className="cg-site-unavailable">NGO Information</span>}
     <span className="cg-site-unavailable">Campaigns</span>
     <span className="cg-site-unavailable">Upcoming Projects</span>
     <span className="cg-site-unavailable">Partnerships</span>
     <span className="cg-site-unavailable">Events</span>
-    <Menu label="Media & Resources" items={media.map(text=>({text}))}/>
+    <Menu label="Media & Resources" items={media.map(text=>({text,
+     href:text==="Gallery"&&isPublished("/gallery")?"/gallery":
+      (text==="News & Updates"||text==="Blog")&&anyArticles?"/blog":undefined}))}/>
     <Menu label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
-    <span className="cg-site-unavailable">Healthcare Assistance</span>
+    {isPublished("/healthcare")?<Link href="/healthcare"
+     className={pathname==="/healthcare"?"cg-site-active":undefined}>
+     Healthcare Assistance</Link>:
+     <span className="cg-site-unavailable">Healthcare Assistance</span>}
     <Link href="/contact">Contact Us</Link>
     {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
      <Link className="cg-site-staff" href="/admin/login">Staff login</Link>}
