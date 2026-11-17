@@ -37,6 +37,9 @@ export class CmsEditorialController{
 @Controller("api/public/content")
 export class CmsPublicPagesController{
  constructor(private readonly cms:CmsEditorialService){}
+ @Get("navigation")
+ @Header("Cache-Control","no-store")
+ navigation(){return this.cms.publicNavigation();}
  @Get("pages/:slug")
  @Header("Cache-Control","public, max-age=0, must-revalidate")
  publicPage(@Param("slug")slug:string){return this.cms.publicPage(slug);}
