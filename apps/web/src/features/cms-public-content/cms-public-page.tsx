@@ -151,7 +151,7 @@ export function CmsPublicPage({page,navigation,siteFooter}:{
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
  const footer=ownFooter??siteFooter??{};
- const heroes=sections.filter(x=>x.kind==="HERO").map(section=>({
+ const heroes=sections.filter(x=>x.kind==="HERO"&&x.fields.visible!==false).map(section=>({
   section,hero:assets.find(x=>x.role==="HERO"&&x.order===section.order),
   mobile:assets.find(x=>x.role==="MOBILE_HERO"&&x.order===section.order)
  }));
