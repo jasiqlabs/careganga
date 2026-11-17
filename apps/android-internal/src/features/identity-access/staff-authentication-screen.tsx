@@ -256,6 +256,8 @@ export function StaffAuthenticationScreen(){
       canManage={roleActions.includes("finance.invoices.manage")}
       canIssue={roleActions.includes("finance.invoices.issue")}
       canPost={roleActions.includes("finance.journals.post")}
+      canCancel={roleActions.includes("finance.invoices.review")&&
+       roleActions.includes("finance.journals.post")&&roleActions.includes("approvals.review")}
       onExit={closeInvoices} onExpired={expireSession}/>;
   if(budgetOpen&&token&&actor&&
     roleActions.includes("finance.budgets.view"))
