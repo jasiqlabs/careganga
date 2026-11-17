@@ -18,6 +18,14 @@ const asForm=(input:unknown):Record<string,unknown>=>{
   throw new BadRequestException({code:"FINANCE_FORM_INVALID"});
  return input as Record<string,unknown>;
 };
+/** Accept only the current story contract. Future owner keys (project/supplier) are
+ * rejected, never silently accepted or treated as a valid finance selector. */
+function fields(input:unknown,allowed:readonly string[]):Record<string,unknown>{
+ const body=asForm(input);
+ if(Object.keys(body).some(k=>!allowed.includes(k)))
+  throw new BadRequestException({code:"FINANCE_FORM_INVALID"});
+ return body;
+}
 function label(value:unknown,field:string,max:number):string{
  if(typeof value!=="string"||value.trim().length<2||value.trim().length>max)
   return fieldError("FINANCE_NAME_REQUIRED",field);
@@ -170,7 +178,7 @@ export class FinanceAccountsService{
    openingJournals:opening.rows,branches,nextOffset:hasMore?offset+50:null};
  }
  async createYear(bearer:string,input:unknown):Promise<CommandResult>{
-  const body=asForm(input);
+  const body=fields(input,["name","startOn","endOn","requestKey"]);
   const name=label(body.name,"name",80),start=dateOnly(body.startOn,"startOn"),
    end=dateOnly(body.endOn,"endOn"),key=ref(body.requestKey,"requestKey");
   if(end<start)fieldError("FINANCE_YEAR_DATE_INVALID","endOn");
@@ -188,7 +196,7 @@ export class FinanceAccountsService{
   });
  }
  async createGroup(bearer:string,input:unknown):Promise<CommandResult>{
-  const body=asForm(input),name=label(body.name,"name",120),
+  const body=fields(input,["name","code","category","parentRef","requestKey"]),name=label(body.name,"name",120),
    code=businessCode(body.code),category=body.category,
    parent=body.parentRef?ref(body.parentRef,"groupRef"):null,
    key=ref(body.requestKey,"requestKey");
@@ -215,7 +223,7 @@ export class FinanceAccountsService{
   });
  }
  async createAccount(bearer:string,input:unknown):Promise<CommandResult>{
-  const body=asForm(input),name=label(body.name,"name",140),
+  const body=fields(input,["name","code","groupRef","accountKind","scopeKind","branchRef","branchVersion","bankLabel","bankLastFour","requestKey"]),name=label(body.name,"name",140),
    code=businessCode(body.code),group=ref(body.groupRef,"groupRef"),
    kind=body.accountKind,scope=body.scopeKind,
    branch=scope==="BRANCH"?ref(body.branchRef,"branchRef","FINANCE_SCOPE_INVALID"):null,
@@ -227,8 +235,8 @@ export class FinanceAccountsService{
   if(scope==="BRANCH"&&(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1))
    fieldError("FINANCE_BRANCH_STALE","branchRef");
   const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"name",120);
-  const lastFour=kind==="BANK"&&body.bankLastFour?String(body.bankLastFour):"";
-  if(lastFour&&!/^[0-9]{4}$/.test(lastFour))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
+  const lastFour=kind==="BANK"&&body.bankLastFour?body.bankLastFour:"";
+  if(typeof lastFour!=="string"||(lastFour&&!/^[0-9]{4}$/.test(lastFour)))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
    branchVersion:String(branchVersion??""),bankLabel,lastFour};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
@@ -258,7 +266,7 @@ export class FinanceAccountsService{
   });
  }
  async postOpening(bearer:string,input:unknown):Promise<CommandResult>{
-  const body=asForm(input);
+  const body=fields(input,["financialYearRef","debitAccountRef","creditAccountRef","postingDate","amount","branchVersion","requestKey"]);
   const year=ref(body.financialYearRef,"startOn","FINANCE_YEAR_CLOSED"),
    debit=ref(body.debitAccountRef,"debitAccountRef","FINANCE_DEBITS_CREDITS"),
    credit=ref(body.creditAccountRef,"creditAccountRef","FINANCE_DEBITS_CREDITS"),
@@ -308,7 +316,7 @@ export class FinanceAccountsService{
   });
  }
  async changeYearStatus(bearer:string,yearInput:string,input:unknown):Promise<CommandResult>{
-  const year=ref(yearInput,"startOn","FINANCE_YEAR_CLOSED"),body=asForm(input);
+  const year=ref(yearInput,"startOn","FINANCE_YEAR_CLOSED"),body=fields(input,["status","expectedVersion","requestKey"]);
   const key=ref(body.requestKey,"requestKey");
   if(body.status!=="CLOSED"||!Number.isSafeInteger(body.expectedVersion)||
     Number(body.expectedVersion)<1)
@@ -333,7 +341,7 @@ export class FinanceAccountsService{
   });
  }
  async changeAccountStatus(bearer:string,accountInput:string,input:unknown):Promise<CommandResult>{
-  const account=ref(accountInput,"code","FINANCE_ACCOUNT_INACTIVE"),body=asForm(input);
+  const account=ref(accountInput,"code","FINANCE_ACCOUNT_INACTIVE"),body=fields(input,["status","expectedVersion","requestKey"]);
   const key=ref(body.requestKey,"requestKey"),status=body.status;
   if(!["ACTIVE","INACTIVE"].includes(String(status))||
     !Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
