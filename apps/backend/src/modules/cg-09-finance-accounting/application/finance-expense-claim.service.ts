@@ -1,6 +1,9 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {Pool} from "pg";
+import {FinanceClaimApprovalService} from "../../cg-03-registration-approvals/application/finance-claim-approval.service";
+import {FinanceClaimEvidenceService} from "../../cg-19-documents-notifications/application/finance-claim-evidence.service";
+import {FinanceClaimBillSourceFacade} from "../../cg-19-documents-notifications/application/finance-claim-bill-source.facade";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
@@ -52,7 +55,10 @@ type Claim={id:string;status:string;version:number;create_digest:string};
 export class FinanceExpenseClaimService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly approvals:FinanceClaimApprovalService,
+  private readonly evidence:FinanceClaimEvidenceService,
+  private readonly billSource:FinanceClaimBillSourceFacade){}
  /** Real CG-01 Foundation requester; never invent an HR employee/volunteer. */
  async create(bearer:string,input:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
@@ -132,4 +138,254 @@ export class FinanceExpenseClaimService{
     {confirmed:false,status:"NOT_FOUND"};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
+
+ /** Every original claim transition is keyed by the authenticated actor and
+  * request digest. The result is persisted in the SAME transaction as the source.
+  */
+ async submit(bearer:string,claimInput:string,payload:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
+  await this.sessions.requireAction(bearer,"documents.files.view");
+  const claimRef=keyOf(claimInput);
+  if(!payload||typeof payload!=="object"||Array.isArray(payload))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const body=payload as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","billFileRef","billVersion"].includes(k)))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const requestKey=keyOf(body.requestKey),fileRef=keyOf(body.billFileRef);
+  if(!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1||
+     !Number.isSafeInteger(body.billVersion)||Number(body.billVersion)<1)
+   return invalid("FINANCE_CLAIM_STALE","expectedVersion");
+  const version=Number(body.expectedVersion),fileVersion=Number(body.billVersion);
+  const digest=createHash("sha256").update(JSON.stringify([
+   "CG09_CLAIM_SUBMIT_V1",claimRef,version,fileRef,fileVersion
+  ])).digest("hex");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   const existing=await tx.query<{request_digest:string;result_status:string;case_id:string}>(
+    "SELECT request_digest,result_status,case_id FROM expense_claim_command "+
+    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
+    [actor.realmId,actor.accountId,requestKey]);
+   if(existing.rows[0]){
+    if(existing.rows[0].request_digest!==digest)
+     throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,claimRef,caseRef:existing.rows[0].case_id,
+     status:existing.rows[0].result_status,replayed:true};
+   }
+   const found=await tx.query<{
+    id:string;requested_by:string;version:number;status:string;create_digest:string;
+    category_label:string}>(
+    "SELECT id,requested_by,version,status,create_digest,category_label "+
+    "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
+    [claimRef,actor.realmId]);
+   const claim=found.rows[0];
+   if(!claim||claim.requested_by!==actor.accountId||claim.version!==version||
+      claim.status!=="DRAFT")
+    throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   await this.evidence.guardVerifiedBill(tx,actor,claimRef,version,fileRef,fileVersion);
+   const created=await this.approvals.createCase(tx,actor,{
+    claimRef,version,digest:claim.create_digest,fileRef,fileVersion,
+    requestKey,categoryLabel:claim.category_label
+   });
+   const change=await tx.query(
+    "UPDATE expense_claim SET status='SUBMITTED',bill_file_id=$3,bill_file_version=$4,"+
+    "approval_case_id=$5 WHERE id=$1 AND root_realm_id=$2 AND status='DRAFT' "+
+    "AND version=$6 RETURNING id",
+    [claimRef,actor.realmId,fileRef,fileVersion,created.caseRef,version]);
+   if(change.rowCount!==1)throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   await tx.query(
+    "INSERT INTO expense_claim_command(root_realm_id,claim_id,actor_ref,request_key,"+
+    "action,request_digest,result_status,case_id) "+
+    "VALUES($1,$2,$3,$4,'SUBMIT',$5,'SUBMITTED',$6)",
+    [actor.realmId,claimRef,actor.accountId,requestKey,digest,created.caseRef]);
+   await tx.query(
+    "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
+    "VALUES($1,$2,'CLAIM',$3,'CLAIM_SUBMITTED',$4)",
+    [actor.realmId,actor.accountId,claimRef,requestKey]);
+   await tx.query("COMMIT");
+   return {confirmed:true,claimRef,caseRef:created.caseRef,
+    status:"SUBMITTED",replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="P0919")
+    throw new ConflictException({code:"FINANCE_CLAIM_BILL_CONFLICT"});
+   throw e;
+  }finally{tx.release();}
+ }
+ /** Independently reconcile a protected CG03 decision. No posting or payment. */
+ async reconcile(bearer:string,claimInput:string,payload:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  await this.sessions.requireAction(bearer,"documents.files.view");
+  const claimRef=keyOf(claimInput);
+  if(!payload||typeof payload!=="object"||Array.isArray(payload))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const body=payload as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["caseRef","requestKey"].includes(k)))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const caseRef=keyOf(body.caseRef),requestKey=keyOf(body.requestKey);
+  const digest=createHash("sha256").update(JSON.stringify([
+   "CG09_RECONCILE_CLAIM",claimRef,caseRef
+  ])).digest("hex");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.manage");
+   const previous=await tx.query<{request_digest:string;result_status:string}>(
+    "SELECT request_digest,result_status FROM expense_claim_command "+
+    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
+    [actor.realmId,actor.accountId,requestKey]);
+   if(previous.rows[0]){
+    if(previous.rows[0].request_digest!==digest)
+     throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,claimRef,status:previous.rows[0].result_status,replayed:true};
+   }
+   const result=await tx.query<{status:string;version:number;create_digest:string;
+    bill_file_id:string|null;bill_file_version:number|null;approval_case_id:string|null}>(
+    "SELECT status,version,create_digest,bill_file_id,bill_file_version,"+
+    "approval_case_id FROM expense_claim WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
+    [claimRef,actor.realmId]);
+   const claim=result.rows[0];
+   if(!claim||claim.approval_case_id!==caseRef||!claim.bill_file_id||
+      !claim.bill_file_version)
+    throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   const outcome=await this.approvals.outcome(tx,actor,claimRef,claim.version,
+    claim.create_digest,claim.bill_file_id,claim.bill_file_version,caseRef);
+   const status=["PENDING_OWNER","OWNER_COMPLETED"].includes(outcome.status)?
+    "APPROVED":outcome.status;
+   if(status==="APPROVED"){
+    await this.billSource.guardForReviewer(tx,actor,{
+     claimRef,claimVersion:claim.version,fileRef:claim.bill_file_id,
+     fileVersion:claim.bill_file_version});
+   }
+   if(claim.status==="SUBMITTED"){
+    const changed=await tx.query(
+     "UPDATE expense_claim SET status=$3 WHERE id=$1 AND root_realm_id=$2 "+
+     "AND status='SUBMITTED' RETURNING id",[claimRef,actor.realmId,status]);
+    if(changed.rowCount!==1)throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   }else if(claim.status!==status)
+    throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
+   if(status==="APPROVED")await this.approvals.finish(tx,actor,caseRef);
+   await tx.query(
+    "INSERT INTO expense_claim_command(root_realm_id,claim_id,actor_ref,"+
+    "request_key,action,request_digest,result_status,case_id) "+
+    "VALUES($1,$2,$3,$4,'RECONCILE',$5,$6,$7)",
+    [actor.realmId,claimRef,actor.accountId,requestKey,digest,status,caseRef]);
+   await tx.query(
+    "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
+    "VALUES($1,$2,'CLAIM',$3,$4,$5)",
+    [actor.realmId,actor.accountId,claimRef,"CLAIM_REVIEW_"+status,requestKey]);
+   await tx.query("COMMIT");
+   return {confirmed:true,claimRef,status,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ /** An original expense voucher posts once. A separate paid-verified PAYMENT
+  * voucher relieves that same liability. No second expense or shadow ledger.
+  */
+ async linkVoucher(bearer:string,claimInput:string,payload:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.manage");
+  await this.sessions.requireAction(bearer,"finance.vouchers.view");
+  const claimRef=keyOf(claimInput);
+  if(!payload||typeof payload!=="object"||Array.isArray(payload))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const body=payload as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["voucherRef","linkKind","requestKey"].includes(k)))
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const voucherRef=keyOf(body.voucherRef),requestKey=keyOf(body.requestKey),
+   kind=body.linkKind;
+  if(kind!=="PAYABLE"&&kind!=="PAYOUT")
+   return invalid("FINANCE_CLAIM_FORM_INVALID");
+  const digest=createHash("sha256").update(JSON.stringify([
+   "CG09_CLAIM_VOUCHER_LINK",claimRef,voucherRef,kind
+  ])).digest("hex");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.manage");
+   const existing=await tx.query<{request_digest:string;result_status:string}>(
+    "SELECT request_digest,result_status FROM expense_claim_command "+
+    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
+    [actor.realmId,actor.accountId,requestKey]);
+   if(existing.rows[0]){
+    if(existing.rows[0].request_digest!==digest)
+     throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT"});
+    await tx.query("COMMIT");
+    return {confirmed:true,claimRef,voucherRef,linkKind:kind,replayed:true};
+   }
+   const claim=await tx.query(
+    "SELECT id FROM expense_claim WHERE root_realm_id=$1 AND id=$2 "+
+    "AND status='APPROVED' FOR UPDATE",[actor.realmId,claimRef]);
+   if(!claim.rowCount)
+    throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
+   const voucher=await tx.query<{id:string;journal_id:string}>(
+    "SELECT v.id,p.journal_id FROM finance_voucher v "+
+    "JOIN finance_voucher_posting p ON p.root_realm_id=v.root_realm_id "+
+    "AND p.voucher_id=v.id WHERE v.root_realm_id=$1 AND v.id=$2 "+
+    "AND v.status='POSTED' FOR SHARE OF v,p",
+    [actor.realmId,voucherRef]);
+   if(!voucher.rows[0])
+    throw new ConflictException({code:"FINANCE_CLAIM_VOUCHER_INVALID"});
+   await tx.query(
+    "INSERT INTO expense_claim_voucher_link(root_realm_id,claim_id,voucher_id,"+
+    "link_kind,ledger_journal_id,actor_ref,request_key) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [actor.realmId,claimRef,voucherRef,kind,voucher.rows[0].journal_id,
+     actor.accountId,requestKey]);
+   await tx.query(
+    "INSERT INTO expense_claim_command(root_realm_id,claim_id,actor_ref,request_key,"+
+    "action,request_digest,result_status,voucher_id) "+
+    "VALUES($1,$2,$3,$4,$5,$6,'CONFIRMED',$7)",
+    [actor.realmId,claimRef,actor.accountId,requestKey,
+     kind==="PAYABLE"?"LINK_PAYABLE":"LINK_PAYMENT",digest,voucherRef]);
+   await tx.query(
+    "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,"+
+    "action,request_key) VALUES($1,$2,'CLAIM',$3,$4,$5)",
+    [actor.realmId,actor.accountId,claimRef,
+     kind==="PAYABLE"?"CLAIM_PAYABLE_POSTED":"CLAIM_PAYMENT_VERIFIED",requestKey]);
+   await tx.query("COMMIT");
+   return {confirmed:true,claimRef,voucherRef,linkKind:kind,replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&
+       ["23505","P0920","23503"].includes(String(e.code)))
+    throw new ConflictException({code:"FINANCE_CLAIM_VOUCHER_INVALID"});
+   throw e;
+  }finally{tx.release();}
+ }
+ async detail(bearer:string,claimInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
+  const claimRef=keyOf(claimInput);
+  const rows=await this.db.query<{
+   claimRef:string;category:string;purpose:string;expenseDate:string;amountMinor:string;
+   status:string;version:number;caseRef:string|null;billFileRef:string|null;
+   billVersion:number|null;payableVoucherNumber:string|null;
+   payoutVoucherNumber:string|null}>(
+   "SELECT c.id AS \"claimRef\",c.category_label AS category,c.purpose,"+
+   "c.expense_date::text AS \"expenseDate\",c.amount_minor::text AS \"amountMinor\","+
+   "c.status,c.version,c.approval_case_id AS \"caseRef\",c.bill_file_id AS \"billFileRef\","+
+   "c.bill_file_version AS \"billVersion\",pv.voucher_number AS \"payableVoucherNumber\","+
+   "mv.voucher_number AS \"payoutVoucherNumber\" FROM expense_claim c "+
+   "LEFT JOIN expense_claim_voucher_link pl ON pl.root_realm_id=c.root_realm_id "+
+   "AND pl.claim_id=c.id AND pl.link_kind='PAYABLE' "+
+   "LEFT JOIN finance_voucher pv ON pv.id=pl.voucher_id AND pv.root_realm_id=c.root_realm_id "+
+   "LEFT JOIN expense_claim_voucher_link ml ON ml.root_realm_id=c.root_realm_id "+
+   "AND ml.claim_id=c.id AND ml.link_kind='PAYOUT' "+
+   "LEFT JOIN finance_voucher mv ON mv.id=ml.voucher_id AND mv.root_realm_id=c.root_realm_id "+
+   "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.requested_by=$3",
+   [actor.realmId,claimRef,actor.accountId]);
+  if(!rows.rows[0])throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+  return rows.rows[0];
+ }
+ async workflowCommand(bearer:string,requestInput:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
+  const key=keyOf(requestInput);
+  const rows=await this.db.query<{result_status:string}>(
+   "SELECT result_status FROM expense_claim_command "+
+   "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
+   [actor.realmId,actor.accountId,key]);
+  return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
+ }
+
 }
