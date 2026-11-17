@@ -57,8 +57,18 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    {(["issuer","pan","registrationNumber","approvalNumber","validFrom","validUntil",
      "source","verifiedAsOf"] as const).map(key=>text(f[key])?<Text key={key} style={styles.source}>
       {key.replace(/([A-Z])/g," $1")}: {text(f[key])}</Text>:null)}
-   {f.verification==="VERIFIED"&&url&&<Action title="Open approved proof"
-    onPress={()=>open(url)}/>}
+   {rows(f.documents).map((document,i)=>{
+    const original=asset("DOCUMENT",i),link=mediaUrl(original);
+    if(!link)return null;
+    return <View style={styles.item} key={i}>
+     <Text style={styles.eyebrow}>{text(document.type).replaceAll("_"," ")}</Text>
+     <Text style={styles.itemTitle}>{text(document.title)}</Text>
+     <Text style={styles.source}>Document date: {text(document.asOfDate)}</Text>
+     <Action title="Open approved source document" onPress={()=>open(link)}/>
+    </View>;
+   })}
+   {f.verification==="VERIFIED"&&url&&!rows(f.documents).length&&
+    <Action title="Open approved proof" onPress={()=>open(url)}/>}
    <Text style={styles.body}>{text(f.disclaimer)}</Text>
   </View>;
  }
