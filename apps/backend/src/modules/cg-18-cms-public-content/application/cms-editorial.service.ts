@@ -9,6 +9,7 @@ import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {extendedKinds,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
+import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
 const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"]);
@@ -633,6 +634,8 @@ export class CmsEditorialService{
    const rev=await this.revision(tx,actor,page);
    if(rev.status!=="SUBMITTED"||rev.approval_case_ref!==caseRef)
     throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
+   if(!(await complianceEligible(tx,actor.realmId,rev.id)))
+    throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
    const final=await this.approvals.approved(tx,actor,{
     caseRef,pageRef:page.id,revisionRef:rev.id,
     revisionNo:rev.revision_no,digest:rev.content_digest});
@@ -793,10 +796,10 @@ export class CmsEditorialService{
  async publicPage(slugInput:string){
   const slug=text(slugInput,"slug",70,1);
   if(!/^[a-z0-9-]+$/.test(slug))throw new NotFoundException();
-  const rows=await this.db.query<{id:string;kind:string;slug:string;title:string;
+  const rows=await this.db.query<{id:string;foundation_root_id:string;kind:string;slug:string;title:string;
    seo_title:string;seo_description:string;seo_canonical_path:string;
    publication_id:string;revision_id:string;changed_at:Date}>(
-   "SELECT p.id,p.kind,p.slug,v.title,v.seo_title,v.seo_description,"+
+   "SELECT p.id,p.foundation_root_id,p.kind,p.slug,v.title,v.seo_title,v.seo_description,"+
    "v.seo_canonical_path,pub.id AS publication_id,v.id AS revision_id,"+
    "e.changed_at FROM cms_page p JOIN cms_page_effective e "+
    "ON e.foundation_root_id=p.foundation_root_id AND e.page_id=p.id "+
@@ -830,6 +833,8 @@ export class CmsEditorialService{
    "WHERE pub.id=$1 AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
    "AND (pub.expires_at IS NULL OR pub.expires_at>now())",[x.publication_id]);
   if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  if(!(await complianceEligible(this.db,x.foundation_root_id,x.revision_id)))
+   throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
   fields:sec.structured_fields}));
