@@ -22,6 +22,14 @@ export class FinanceClaimEvidenceController{
    throw new BadRequestException({code:"FINANCE_CLAIM_BILL_INVALID",field:"claimRef"});
   return this.service.list(bearer,ref,Number(version));
  }
+ @Get("review/files/:fileRef/download")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async reviewerDownload(@Headers("authorization")bearer:string,@Param("fileRef")ref:string){
+  const result=await this.service.download(bearer,ref,true);
+  return new StreamableFile(result.data,{type:result.mime,
+   disposition:'attachment; filename="CareGanga-protected-review-bill"'});
+ }
  @Get("files/:fileRef/download")
  @Header("Cache-Control","private, no-store")
  @Header("X-Content-Type-Options","nosniff")
