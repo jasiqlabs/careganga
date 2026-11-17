@@ -176,7 +176,7 @@ CREATE TRIGGER cg09_bank_kind_guard BEFORE INSERT OR UPDATE ON cash_bank_account
 CREATE TABLE finance_command(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
- command_kind text NOT NULL CHECK(command_kind IN('YEAR_CREATE','YEAR_STATUS','GROUP_CREATE','ACCOUNT_CREATE','ACCOUNT_STATUS','OPENING_POST')),
+ command_kind text NOT NULL CHECK(command_kind IN('YEAR_CREATE','YEAR_STATUS','GROUP_CREATE','ACCOUNT_CREATE','ACCOUNT_STATUS','OPENING_POST','GENERAL_POST')),
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
  entity_ref uuid,actor_ref uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
@@ -227,6 +227,7 @@ CREATE TABLE journal(
  immutable_source_event_key uuid NOT NULL,
  immutable_payload_digest char(64) NOT NULL CHECK(immutable_payload_digest ~ '^[0-9a-f]{64}$'),
  posting_date date NOT NULL,currency text NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
+ description text NOT NULL DEFAULT 'Opening balance' CHECK(char_length(btrim(description)) BETWEEN 3 AND 500),
  status text NOT NULL DEFAULT 'POSTED' CHECK(status='POSTED'),
  reversal_of_id uuid,created_by uuid NOT NULL,posted_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(id,root_realm_id),
