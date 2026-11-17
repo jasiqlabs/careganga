@@ -19,6 +19,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_ACCOUNT_KIND_INVALID:"Choose an available account type: General, Cash or Bank.",
       FINANCE_ACCOUNT_STATUS_INVALID:"Select Active or Inactive status and try again.",
       FINANCE_STALE_RECORD:"This financial record changed while you were editing. Refresh the page and review the new details before saving.",
+      FINANCE_POSTED_IMMUTABLE:"This financial entry has already been posted and cannot be edited. Ask an authorized Finance Administrator to record a correction.",
       FINANCE_BANK_LAST_FOUR:"Enter only the final four digits of the bank account number, or leave the field empty.",
       FINANCE_NAME_REQUIRED:"Enter a name using at least 2 characters.",
       FINANCE_CODE_INVALID:"Enter a code using 2–20 letters, numbers, underscores or hyphens.",
