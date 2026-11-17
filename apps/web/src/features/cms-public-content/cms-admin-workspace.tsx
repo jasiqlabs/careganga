@@ -4,25 +4,27 @@ import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 type Kind="HOME"|"ABOUT";
 type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM";altText:string;order:number};
+type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type PageItem={pageRef:string;kind:Kind;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
 type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:string;
  revisionNo:number;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
  sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:Asset[];publicationStatus:string};
+ assets:Asset[];navigation:NavDesired|null;publicationStatus:string};
 type Review={caseRef:string;number:string;title:string;status:string;revision:number};
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
- seoDescription:string;sections:{kind:string;order:number;fields:Record<string,unknown>}[]}};
+ seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",heroHeading:"",
  heroSubtitle:"",heroPrimaryLabel:"",heroPrimaryPath:"",heroSecondaryLabel:"",
  heroSecondaryPath:"",bodyHeading:"",body:"",teamHeading:"Our team",
- team:[],assets:[]});
+ team:[],assets:[],loginDesired:true,memberJoinDesired:false,volunteerJoinDesired:false});
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  heroHeading:string;heroSubtitle:string;heroPrimaryLabel:string;heroPrimaryPath:string;
  heroSecondaryLabel:string;heroSecondaryPath:string;bodyHeading:string;body:string;
- teamHeading:string;team:Team[];assets:Asset[]};
+ teamHeading:string;team:Team[];assets:Asset[];
+ loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 function val(v:unknown):string{return typeof v==="string"?v:"";}
 function section(d:PageDetail,kind:string){return d.sections.find(x=>x.kind===kind)?.fields??{};}
 function fromPage(p:PageDetail):Draft{
@@ -35,7 +37,10 @@ function fromPage(p:PageDetail):Draft{
  team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
   .map(v=>{const person=v as Record<string,unknown>;return {
    name:val(person.name),designation:val(person.designation),bio:val(person.bio),
-   consentConfirmed:person.consentConfirmed===true};}):[],assets:p.assets};
+   consentConfirmed:person.consentConfirmed===true};}):[],assets:p.assets,
+  loginDesired:p.navigation?.loginDesired??true,
+  memberJoinDesired:p.navigation?.memberJoinDesired??false,
+  volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
 function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
@@ -57,7 +62,9 @@ function payload(d:Draft){
   fields:{heading:d.title||"About the Foundation",body:d.body}});
  return {kind:d.kind,slug:d.kind==="HOME"?"home":"about",title:d.title,
   seoTitle:d.seoTitle||d.title,seoDescription:d.seoDescription,
-  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets};
+  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets,
+  ...(d.kind==="HOME"?{navigation:{loginDesired:d.loginDesired,
+   memberJoinDesired:d.memberJoinDesired,volunteerJoinDesired:d.volunteerJoinDesired}}:{})};
 }
 async function serverMessage(r:Response){
  const result:unknown=await r.json().catch(()=>null);
@@ -228,6 +235,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    {review&&<section className="cg-cms-form" aria-label="Review original page">
     <h4>{review.source.title} — original draft</h4>
     <p>{review.source.kind==="HOME"?"Homepage":"About page"} · {review.status}</p>
+    {review.source.navigation&&<div className="cg-cms-notice">
+     <p>Reviewed navigation: Staff login {review.source.navigation.loginDesired?"requested":"hidden"};
+      member registration {review.source.navigation.memberJoinDesired?"requested, unavailable until delivered":"hidden"};
+      volunteer registration {review.source.navigation.volunteerJoinDesired?"requested, unavailable until delivered":"hidden"}.</p>
+    </div>}
     {review.source.sections.map((sec,i)=><article key={i}><strong>{sec.kind.replaceAll("_"," ")}</strong>
      <pre className="cg-cms-review-text">{JSON.stringify(sec.fields,null,2)}</pre>
     </article>)}
@@ -273,6 +285,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       onChange={e=>edit("seoTitle",e.target.value)} placeholder="Optional — uses page title"/></label>
      <label>Search description<textarea disabled={!canManage} value={draft.seoDescription}
       maxLength={300} onChange={e=>edit("seoDescription",e.target.value)}/></label>
+     {draft.kind==="HOME"&&<fieldset><legend>Public navigation (original C50)</legend>
+      <p>These choices are reviewed with the homepage. Member and volunteer links
+       remain hidden until registration is genuinely delivered.</p>
+      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+       checked={draft.loginDesired} onChange={e=>edit("loginDesired",e.target.checked)}/>
+       Show Foundation staff login</label>
+      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+       checked={draft.memberJoinDesired} onChange={e=>edit("memberJoinDesired",e.target.checked)}/>
+       Request member registration link when available</label>
+      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
+       checked={draft.volunteerJoinDesired} onChange={e=>edit("volunteerJoinDesired",e.target.checked)}/>
+       Request volunteer registration link when available</label>
+     </fieldset>}
      <div className="cg-cms-editor-grid">
       <fieldset><legend>Hero banner</legend>
        <label>Heading<input disabled={!canManage} value={draft.heroHeading}
