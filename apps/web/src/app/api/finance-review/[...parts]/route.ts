@@ -47,7 +47,7 @@ async function handle(req:NextRequest,parts:string[],method:string){
   const obj=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
   const status=[400,401,403,404,409,429].includes(response.status)?response.status:503;
   const known=typeof obj.code==="string"&&[
-    "FINANCE_VOUCHER_REVIEW_INVALID","FINANCE_VOUCHER_REVIEW_UNAVAILABLE",
+    "FINANCE_VOUCHER_REVIEW_SOURCE_CHANGED","FINANCE_VOUCHER_REVIEW_INVALID","FINANCE_VOUCHER_REVIEW_UNAVAILABLE",
     "FINANCE_VOUCHER_STALE","FINANCE_VOUCHER_REPLAY_CONFLICT"
   ].includes(obj.code)?obj.code:null;
   return NextResponse.json({message:known&&typeof obj.message==="string"&&obj.message.length<301?
