@@ -52,6 +52,8 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
  const [pending,setPending]=useState<Pending|null>(null);
  const [confirmedMissing,setConfirmedMissing]=useState(false);
  const [problem,setProblem]=useState<Problem|null>(null);
+ const [protectedEligible,setProtectedEligible]=useState(false);
+ const canCorrect=canReverse&&protectedEligible;
  const [correction,setCorrection]=useState<string>("");
  const [correctionYear,setCorrectionYear]=useState("");
  const [correctionDate,setCorrectionDate]=useState("");
@@ -59,6 +61,19 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
  const [correctionPassword,setCorrectionPassword]=useState("");
  const [correctionPending,setCorrectionPending]=useState<{
   journalRef:string;requestKey:string;body:Record<string,unknown>}|null>(null);
+ useEffect(()=>{
+  if(!canReverse){setProtectedEligible(false);return;}
+  let live=true;
+  void (async()=>{
+   try{
+    const r=await fetch(endpoint+"/manual-journals/reversal-eligibility",{cache:"no-store"});
+    if(!r.ok)throw Error("Eligibility not confirmed");
+    const p=await r.json() as {canReverse?:boolean};
+    if(live)setProtectedEligible(p.canReverse===true);
+   }catch{if(live)setProtectedEligible(false);}
+  })();
+  return()=>{live=false;};
+ },[canReverse]);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{
@@ -215,13 +230,13 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
   {!loading&&!error&&<div className="cg-fin-table-wrap">
    <table className="cg-fin-table"><thead><tr><th>Posting Date</th>
     <th>Journal Description</th><th>Financial Year</th><th>Total Debits / Credits</th>
-    <th>Status</th>{canReverse&&<th>Correction</th>}</tr></thead><tbody>
+    <th>Status</th>{canCorrect&&<th>Correction</th>}</tr></thead><tbody>
     {items.map(j=><tr key={j.journalRef}><td>{j.postingDate}</td>
      <td><strong>{j.description}</strong></td><td>{j.yearName}</td>
      <td className="cg-fin-money">{money(j.debitMinor)}</td>
      <td><span className="cg-fin-status is-active">{j.reversed?
       "Reversed — historical entry":"Posted (not paid)"}</span></td>
-     {canReverse&&<td>{j.differentCreator&&!j.reversed&&
+     {canCorrect&&<td>{j.differentCreator&&!j.reversed&&
       <button type="button" disabled={busy||Boolean(correctionPending)} onClick={()=>{
        setCorrection(j.journalRef);setCorrectionYear("");setCorrectionDate("");
        setCorrectionReason("");setCorrectionPassword("");setError("");}}>Correct posted journal</button>}</td>}</tr>)}
@@ -229,7 +244,7 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
    {!items.length&&<p className="cg-fin-empty">No manual journals have been posted.
     {canPost?" Choose New Journal to record a balanced entry.":""}</p>}
   </div>}
-  {correction&&canReverse&&<div className="drawer-backdrop" role="presentation">
+  {correction&&canCorrect&&<div className="drawer-backdrop" role="presentation">
    <section role="dialog" aria-modal="true" aria-labelledby="cg-journal-correction-title"
     className="role-drawer cg-fin-drawer">
     <div className="cg-fin-drawer-header"><div>
