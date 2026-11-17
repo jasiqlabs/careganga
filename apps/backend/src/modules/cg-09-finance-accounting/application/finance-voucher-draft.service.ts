@@ -117,7 +117,7 @@ export class FinanceVoucherDraftService{
   if(queryInput!==undefined&&(typeof queryInput!=="string"||queryInput.length>80))
    throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID",field:"search"});
   const search=(queryInput??"").trim();
-  const pattern="%"+search.replace(/[\\%_]/g,"\\ async options(bearer:string){")+"%";
+  const pattern="%"+search.replace(/[\\%_]/g,character=>"\\"+character)+"%";
   const branches=await this.branches.financeBranches(bearer,"finance.vouchers.view");
   const allowed=branches.map(b=>b.branchRef);
   const labels=new Map(branches.map(b=>[b.branchRef,b.name]));
