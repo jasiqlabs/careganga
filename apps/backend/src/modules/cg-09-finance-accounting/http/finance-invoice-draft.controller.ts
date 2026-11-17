@@ -9,10 +9,12 @@ export class FinanceInvoiceDraftController{
  postingAccounts(@Headers("authorization")bearer:string,@Query("q")q?:string){
   return this.service.accounts(bearer,q);
  }
+ @Get("dashboard")
+ dashboard(@Headers("authorization")bearer:string){return this.service.dashboard(bearer);}
  @Get("drafts")
- list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
-  return this.service.list(bearer,offset);
- }
+ list(@Headers("authorization")bearer:string,@Query("offset")offset?:string,
+  @Query("status")status?:string){return this.service.list(bearer,offset,status);}
+
  @Post("drafts")
  create(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.save(bearer,body);
