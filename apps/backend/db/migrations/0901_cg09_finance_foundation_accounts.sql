@@ -52,12 +52,14 @@ CREATE TABLE account_group(
 CREATE FUNCTION cg09_guard_group_structure() RETURNS trigger LANGUAGE plpgsql AS $
 DECLARE parent_category text;
 BEGIN
- IF TG_OP='UPDATE' AND (
-  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
-  NEW.category IS DISTINCT FROM OLD.category OR
-  NEW.code IS DISTINCT FROM OLD.code OR
-  NEW.parent_id IS DISTINCT FROM OLD.parent_id
- ) THEN RAISE EXCEPTION 'Financial account group hierarchy is immutable'; END IF;
+ IF TG_OP='UPDATE' THEN
+  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+    NEW.category IS DISTINCT FROM OLD.category OR
+    NEW.code IS DISTINCT FROM OLD.code OR
+    NEW.parent_id IS DISTINCT FROM OLD.parent_id THEN
+   RAISE EXCEPTION 'Financial account group hierarchy is immutable';
+  END IF;
+ END IF;
  IF NEW.parent_id IS NOT NULL THEN
   SELECT category INTO parent_category FROM account_group
     WHERE id=NEW.parent_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
@@ -102,19 +104,21 @@ BEGIN
  IF NEW.normal_side<>expected_side OR
   (NEW.account_kind IN('CASH','BANK') AND group_category<>'ASSET') THEN
   RAISE EXCEPTION 'Invalid finance account category and balance side'; END IF;
- IF TG_OP='UPDATE' AND (
-  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
-  NEW.group_id IS DISTINCT FROM OLD.group_id OR
-  NEW.code IS DISTINCT FROM OLD.code OR
-  NEW.normal_side IS DISTINCT FROM OLD.normal_side OR
-  NEW.account_kind IS DISTINCT FROM OLD.account_kind OR
-  NEW.scope_kind IS DISTINCT FROM OLD.scope_kind OR
-  NEW.branch_id IS DISTINCT FROM OLD.branch_id OR
-  NEW.created_by IS DISTINCT FROM OLD.created_by OR
-  NEW.created_at IS DISTINCT FROM OLD.created_at OR
-  NEW.version<>OLD.version+1 OR
-  NEW.status IS NOT DISTINCT FROM OLD.status
- ) THEN RAISE EXCEPTION 'Account identity cannot change during a status update'; END IF;
+ IF TG_OP='UPDATE' THEN
+  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+    NEW.group_id IS DISTINCT FROM OLD.group_id OR
+    NEW.code IS DISTINCT FROM OLD.code OR
+    NEW.normal_side IS DISTINCT FROM OLD.normal_side OR
+    NEW.account_kind IS DISTINCT FROM OLD.account_kind OR
+    NEW.scope_kind IS DISTINCT FROM OLD.scope_kind OR
+    NEW.branch_id IS DISTINCT FROM OLD.branch_id OR
+    NEW.created_by IS DISTINCT FROM OLD.created_by OR
+    NEW.created_at IS DISTINCT FROM OLD.created_at OR
+    NEW.version<>OLD.version+1 OR
+    NEW.status IS NOT DISTINCT FROM OLD.status THEN
+   RAISE EXCEPTION 'Account identity cannot change during a status update';
+  END IF;
+ END IF;
  RETURN NEW;
 END $;
 CREATE TRIGGER cg09_account_category_guard BEFORE INSERT OR UPDATE ON finance_account
