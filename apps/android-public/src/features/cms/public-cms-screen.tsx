@@ -62,6 +62,7 @@ function CmsButton({title,onPress,secondary=false}:{
 export function PublicCmsContent({onContact,onLoginVisibility}: {
  onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState<"home"|"about">("home");
+ const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
  const refreshNavigation=useCallback(async()=>{
@@ -69,7 +70,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   onLoginVisibility(await approvedLoginFlag());
  },[onLoginVisibility]);
  const load=useCallback(async(target:"home"|"about")=>{
-  setLoading(true);setResult(await published(target));setLoading(false);
+  setLoading(true);setActiveSlide(0);setResult(await published(target));setLoading(false);
  },[]);
  useEffect(()=>{void load(slug);},[slug,load]);
  useEffect(()=>{void refreshNavigation();},[refreshNavigation]);
@@ -92,6 +93,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   else if(route==="/contact")onContact();
  };
  const page=result.page;
+ const slides=page?.sections.filter(s=>s.kind==="HERO").sort((a,b)=>a.order-b.order)??[];
  const safeImage=(asset:Asset|undefined)=>{
   if(!asset||!base||!asset.src.startsWith("/api/public/content/media/")||
     !/^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(asset.src))return null;
@@ -115,16 +117,21 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    {page.sections.map((section,i)=>{
     const fields=section.fields??{};
     if(section.kind==="HERO"){
-     const media=page.assets.find(v=>v.role==="MOBILE_HERO")||
-      page.assets.find(v=>v.role==="HERO");
+     if(slides[Math.min(activeSlide,slides.length-1)]!==section)return null;
+     const media=page.assets.find(v=>v.role==="MOBILE_HERO"&&v.order===section.order)||
+      page.assets.find(v=>v.role==="HERO"&&v.order===section.order);
      const src=safeImage(media);
+     const tags=Array.isArray(fields.tags)?fields.tags.filter(v=>typeof v==="string").slice(0,4):[];
      return <View key={i} style={styles.hero}>
-      <Text style={styles.eyebrow}>CareGanga Foundation</Text>
+      {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
       <Text accessibilityRole="header" style={styles.bigHeading}>
        {text(fields.heading)||page.title}</Text>
-      {!!text(fields.subtitle)&&<Text style={styles.body}>{text(fields.subtitle)}</Text>}
-      {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation image"}
+      {!!text(fields.subtitle)&&<Text style={styles.heroSubtitle}>{text(fields.subtitle)}</Text>}
+      {!!text(fields.description)&&<Text style={styles.heroBody}>{text(fields.description)}</Text>}
+      {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation initiative"}
        resizeMode="cover" style={styles.image}/>}
+      {tags.length>0&&<View style={styles.actions}>{tags.map((tag,j)=>
+       <Text key={j} style={styles.tag}>{String(tag)}</Text>)}</View>}
       <View style={styles.actions}>
        {!!text(fields.primaryLabel)&&local(fields.primaryPath)&&
         <CmsButton title={text(fields.primaryLabel)} onPress={()=>navigate(fields.primaryPath)}/>}
@@ -132,12 +139,72 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
         <CmsButton title={text(fields.secondaryLabel)} secondary
          onPress={()=>navigate(fields.secondaryPath)}/>}
       </View>
+      {slides.length>1&&<View style={styles.actions}>
+       <CmsButton title="Previous" secondary onPress={()=>
+        setActiveSlide(v=>(v-1+slides.length)%slides.length)}/>
+       <Text style={styles.counter}>{activeSlide+1} of {slides.length}</Text>
+       <CmsButton title="Next" secondary onPress={()=>
+        setActiveSlide(v=>(v+1)%slides.length)}/>
+      </View>}
      </View>;
     }
-    if(section.kind==="RICH_TEXT")return <View style={styles.card} key={i}>
-     <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)}</Text>
-     <Text style={styles.body}>{text(fields.body)}</Text>
+    if(section.kind==="RICH_TEXT"){
+     const aboutImage=page.assets.find(v=>v.role==="ABOUT"&&v.order===section.order);
+     const aboutSrc=safeImage(aboutImage);
+     const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,4):[];
+     return <View style={styles.card} key={i}>
+      {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
+      <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)}</Text>
+      {fields.variant==="SPLIT"&&aboutSrc&&<Image source={{uri:aboutSrc}}
+       style={styles.image} accessibilityLabel={aboutImage?.altText||"Foundation story"}/>}
+      <Text style={styles.body}>{text(fields.body)}</Text>
+      {highlights.map((line,j)=><Text style={styles.highlight} key={j}>
+       ✓ {text(line)}</Text>)}
+     </View>;
+    }
+    if(section.kind==="FEATURE_CARDS"){
+     const cards=Array.isArray(fields.cards)?fields.cards.slice(0,3):[];
+     return <View style={styles.featureSection} key={i}>
+      {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
+      <Text accessibilityRole="header" style={styles.featureHeading}>{text(fields.heading)}</Text>
+      {!!text(fields.body)&&<Text style={styles.heroBody}>{text(fields.body)}</Text>}
+      {cards.map((value,j)=>{
+       if(!value||typeof value!=="object")return null;
+       const item=value as Fields,asset=page.assets.find(x=>x.role==="FEATURE"&&x.order===j);
+       const uri=safeImage(asset);
+       return <View style={styles.card} key={j}>
+        {!!uri&&<Image source={{uri}} style={styles.image}
+         accessibilityLabel={asset?.altText||"Foundation program"}/>}
+        <Text style={styles.eyebrow}>{text(item.label)}</Text>
+        <Text style={styles.heading}>{text(item.title)}</Text>
+        <Text style={styles.body}>{text(item.body)}</Text>
+       </View>;
+      })}
+     </View>;
+    }
+    if(section.kind==="JOIN_CARDS")return <View key={i} style={styles.card}>
+     <Text accessibilityRole="header" style={styles.heading}>{text(fields.volunteerTitle)}</Text>
+     <Text style={styles.body}>{text(fields.volunteerBody)}</Text>
+     {(Array.isArray(fields.volunteerBenefits)?fields.volunteerBenefits:[]).map((v,j)=>
+      <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
+     <Text accessibilityRole="header" style={styles.heading}>{text(fields.memberTitle)}</Text>
+     <Text style={styles.body}>{text(fields.memberBody)}</Text>
+     {(Array.isArray(fields.memberBenefits)?fields.memberBenefits:[]).map((v,j)=>
+      <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
     </View>;
+    if(section.kind==="CTA"){
+     const image=page.assets.find(x=>x.role==="PROMO"&&x.order===section.order);
+     const uri=safeImage(image);
+     return <View style={styles.featureSection} key={i}>
+      {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
+      {!!text(fields.heading)&&<Text style={styles.featureHeading}>{text(fields.heading)}</Text>}
+      {!!text(fields.body)&&<Text style={styles.heroBody}>{text(fields.body)}</Text>}
+      {!!uri&&<Image style={styles.image} source={{uri}}
+       accessibilityLabel={image?.altText||"Foundation volunteers"}/>}
+      {local(fields.path)&&text(fields.label)&&
+       <CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
+     </View>;
+    }
     if(section.kind==="TEAM"){
      const members=Array.isArray(fields.members)?fields.members:[];
      return <View style={styles.card} key={i}>
@@ -158,32 +225,38 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
       })}
      </View>;
     }
-    if(section.kind==="CTA"&&local(fields.path)&&text(fields.label))
-     return <CmsButton key={i} title={text(fields.label)}
-      onPress={()=>navigate(fields.path)}/>;
     // Project teasers require CG05 original owner and cannot be invented.
     return null;
    })}
   </View>}
  </View>;
 }
+const publicColors={green:"#194a3a",gold:"#ecc65b",amber:"#ffa337"};
 const styles=StyleSheet.create({
  container:{gap:12,width:"100%"},
- nav:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:7},
+ nav:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:7,
+  backgroundColor:publicColors.gold,padding:8,borderRadius:9},
  sections:{gap:12},
  card:{borderWidth:1,borderColor:t.border,borderRadius:12,padding:16,
   backgroundColor:t.surface,gap:9},
- hero:{borderRadius:15,backgroundColor:"#eaf1ff",padding:20,gap:12},
- eyebrow:{color:t.primary,fontSize:12,fontWeight:"700",letterSpacing:1.2},
+ hero:{borderRadius:15,backgroundColor:publicColors.green,padding:20,gap:12},
+ eyebrow:{color:publicColors.gold,fontSize:12,fontWeight:"700",letterSpacing:1.2},
  heading:{fontSize:19,fontWeight:"700",color:t.sidebar},
- bigHeading:{fontSize:28,fontWeight:"800",color:t.sidebar,lineHeight:34},
+ bigHeading:{fontSize:28,fontWeight:"800",color:publicColors.gold,lineHeight:34},
+ heroSubtitle:{fontSize:20,fontWeight:"700",color:"#a5ed83"},
+ heroBody:{fontSize:16,color:"#f1f9f4",lineHeight:24},
+ tag:{color:"#fff",fontSize:11,padding:7,borderRadius:14,borderWidth:1,borderColor:"#c0d3c7"},
+ counter:{color:publicColors.gold,fontWeight:"700"},
+ highlight:{fontSize:15,color:publicColors.green,fontWeight:"700",lineHeight:25},
+ featureSection:{backgroundColor:publicColors.green,borderRadius:12,padding:18,gap:12},
+ featureHeading:{fontSize:27,fontWeight:"700",color:"#fff"},
  muted:{color:t.mutedText,fontSize:14},
  body:{fontSize:16,lineHeight:25,color:t.text},
  image:{width:"100%",height:225,borderRadius:9},
  actions:{flexDirection:"row",flexWrap:"wrap",gap:8},
- action:{backgroundColor:t.primary,borderRadius:8,alignItems:"center",
+ action:{backgroundColor:publicColors.amber,borderRadius:8,alignItems:"center",
   justifyContent:"center",minHeight:48,paddingVertical:10,paddingHorizontal:16},
- actionText:{color:t.primaryText,fontWeight:"700",fontSize:15},
+ actionText:{color:"#17263c",fontWeight:"700",fontSize:15},
  secondary:{backgroundColor:t.surface,borderWidth:1,borderColor:t.border},
  secondaryText:{color:t.text},
  person:{borderWidth:1,borderColor:t.border,borderRadius:8,
