@@ -9,7 +9,7 @@ CREATE INDEX ix_cg09_voucher_bank_scope
  WHERE payment_account_id IS NOT NULL;
 
 CREATE FUNCTION cg09_guard_voucher_payment_source() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE a record;
+DECLARE selected_account record;
 BEGIN
  IF NEW.voucher_type IN ('PAYMENT','CONTRA') AND NEW.payment_account_id IS NULL THEN
   RAISE EXCEPTION 'Choose an active cash or bank account for this voucher'
@@ -20,15 +20,15 @@ BEGIN
   RAISE EXCEPTION 'Submitted account selection is immutable'
    USING ERRCODE='P0907';
  END IF;
- IF NEW.payment_account_id IS NOT NULL THEN
+ IF NEW.payment_account_id IS NOT NULL AND NEW.status IN('DRAFT','SUBMITTED') THEN
   SELECT a.status,a.branch_id,a.scope_kind,c.status AS cash_status
-    INTO a FROM finance_account a
+    INTO selected_account FROM finance_account a
    JOIN cash_bank_account c ON c.account_id=a.id
     AND c.root_realm_id=a.root_realm_id
    WHERE a.id=NEW.payment_account_id AND a.root_realm_id=NEW.root_realm_id
     AND a.account_kind IN('CASH','BANK') FOR SHARE OF a,c;
-  IF NOT FOUND OR a.status<>'ACTIVE' OR a.cash_status<>'ACTIVE'
-    OR (a.scope_kind='BRANCH' AND a.branch_id IS DISTINCT FROM NEW.branch_id) THEN
+  IF NOT FOUND OR selected_account.status<>'ACTIVE' OR selected_account.cash_status<>'ACTIVE'
+    OR (selected_account.scope_kind='BRANCH' AND selected_account.branch_id IS DISTINCT FROM NEW.branch_id) THEN
    RAISE EXCEPTION 'Selected cash or bank account is not available in this branch'
     USING ERRCODE='P0914';
   END IF;
