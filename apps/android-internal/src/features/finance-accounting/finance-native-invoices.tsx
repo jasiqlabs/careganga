@@ -96,7 +96,8 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
    const d=await request<DocumentState>(token,
     "/api/documents/finance-invoice/invoices/"+invoiceRef+"/status");
    setDocument(d);
-  }catch(e){setError(problem(e));expire(e);}
+   return result;
+  }catch(e){setError(problem(e));expire(e);return null;}
  }
  async function open(inv:Invoice){
   setBusy(true);setError("");setNotice("");
@@ -154,7 +155,9 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
    if(result.invoiceRef&&result.invoiceNumber&&result.version){
     setCurrent({ref:result.invoiceRef,number:result.invoiceNumber,
      version:result.version,status:result.status});
-   }else if(current)setCurrent({...current,status:result.status});
+   }else if(current&&!command.path.endsWith("/link-receipt")&&
+     !command.path.includes("/finance-receipts/"))
+    setCurrent({...current,status:result.status});
    void load();
    const ref=result.invoiceRef??current?.ref;
    if(ref&&(result.status==="ISSUED"||result.status==="PAID_VERIFIED"))
@@ -187,14 +190,14 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
    if(pending.path.includes("/finance-receipts/")&&receipt?.receiptRef){
     const state=await request<DocumentState>(token,
       "/api/documents/finance-receipts/receipts/"+receipt.receiptRef+"/status");
-    if(state.status==="ISSUED"){setDocument(state);setPending(null);
+    if(state.status==="ISSUED"){setReceiptDocument(state);setPending(null);
       setNotice("Original verified receipt PDF confirmed.");
     }else setNotice("Private receipt issue is not confirmed; retry only the same request.");
     return;
    }
    if(pending.path.endsWith("/link-receipt")&&current){
-    await receiptRefresh(current.ref);
-    if(receipt?.paymentVerified){setPending(null);setNotice("Original verified receipt is recorded.");}
+    const actual=await receiptRefresh(current.ref);
+    if(actual?.paymentVerified){setPending(null);setNotice("Original verified receipt is recorded.");}
     else setNotice("The original bank receipt is not yet confirmed.");
     return;
    }
