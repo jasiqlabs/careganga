@@ -564,8 +564,14 @@ export class CmsEditorialService{
    'AND c.realm_id=v.foundation_root_id AND c.cms_page_revision_id=v.id '+
    'JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
    'AND d.realm_id=c.realm_id '+
+   'JOIN cms_page_effective active ON active.foundation_root_id=n.foundation_root_id '+
+   'JOIN cms_publication publication ON publication.id=active.publication_id '+
+   'AND publication.foundation_root_id=active.foundation_root_id '+
+   'AND publication.page_revision_id=n.home_revision_id '+
    'JOIN access_realm realm ON realm.id=n.foundation_root_id '+
    "WHERE realm.realm_key='FOUNDATION_ROOT' AND n.status='APPROVED' "+
+   "AND publication.state='EFFECTIVE' AND publication.effective_at<=now() "+
+   "AND (publication.expires_at IS NULL OR publication.expires_at>now()) "+
    "AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' "+
    'AND d.fresh_password_verified_at IS NOT NULL '+
    'AND n.source_digest=v.content_digest AND n.effective_at<=now() LIMIT 1');
