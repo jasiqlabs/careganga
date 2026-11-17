@@ -20,6 +20,8 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="approved-options")return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&parts[1]==="workflow-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===3&&parts[0]==="claims"&&UUID.test(parts[1])&&
+   parts[2]==="eligible-vouchers")return method==="GET";
+ if(parts.length===3&&parts[0]==="claims"&&UUID.test(parts[1])&&
    ["submit","reconcile","link-voucher"].includes(parts[2]))return method==="POST";
  if(parts.length===2&&parts[0]==="claims"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===2&&parts[0]==="claims"&&parts[1]==="drafts")return method==="POST";
