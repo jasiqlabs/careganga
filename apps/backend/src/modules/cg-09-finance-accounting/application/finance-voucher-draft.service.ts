@@ -111,6 +111,31 @@ export class FinanceVoucherDraftService{
  private async actor(bearer:string,capability:"finance.vouchers.manage"|"finance.vouchers.view"){
   return this.sessions.requireAction(bearer,capability);
  }
+ /** Minimal masked selector scoped to current voucher access, not general ledger. */
+ async paymentAccounts(bearer:string,queryInput?:string){
+  const actor=await this.actor(bearer,"finance.vouchers.view");
+  if(queryInput!==undefined&&(typeof queryInput!=="string"||queryInput.length>80))
+   throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID",field:"search"});
+  const search=(queryInput??"").trim();
+  const pattern="%"+search.replace(/[\\%_]/g,"\\ async options(bearer:string){")+"%";
+  const branches=await this.branches.financeBranches(bearer,"finance.vouchers.view");
+  const allowed=branches.map(b=>b.branchRef);
+  const labels=new Map(branches.map(b=>[b.branchRef,b.name]));
+  const rows=await this.db.query<{accountRef:string;name:string;code:string;
+   kind:string;branchRef:string|null}>(`
+    SELECT a.id AS "accountRef",b.display_label AS name,a.code,
+      b.kind,a.branch_id AS "branchRef"
+    FROM cash_bank_account b JOIN finance_account a
+      ON a.id=b.account_id AND a.root_realm_id=b.root_realm_id
+    WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND b.status='ACTIVE'
+      AND (a.branch_id IS NULL OR a.branch_id=ANY($3::uuid[]))
+      AND (a.name ILIKE $2 ESCAPE '\\' OR b.display_label ILIKE $2 ESCAPE '\\'
+       OR a.code ILIKE $2 ESCAPE '\\')
+    ORDER BY b.display_label,a.id LIMIT 51`,[actor.realmId,pattern,allowed]);
+  return {accounts:rows.rows.slice(0,50).map(row=>({
+   ...row,branchName:row.branchRef?labels.get(row.branchRef)??null:null})),
+   hasMore:rows.rows.length>50};
+ }
  async options(bearer:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
   const years=await this.db.query<{yearRef:string;name:string;startOn:string;
