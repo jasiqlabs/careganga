@@ -132,9 +132,12 @@ function parseContent(raw:unknown):Content{
   if(typeof sec.kind!=="string"||!SECTION.has(sec.kind)||
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
-  if(extendedKinds.has(String(sec.kind)))return {
-   kind:sec.kind as Section["kind"],order:Number(sec.order),
-   fields:parseExtendedSection(String(sec.kind),sec.fields)};
+  if(extendedKinds.has(String(sec.kind))){
+   const parsed=parseExtendedSection(String(sec.kind),sec.fields);
+   if(Buffer.byteLength(JSON.stringify(parsed),"utf8")>8192)
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"].fields"});
+   return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:parsed};
+  }
   const fields=input(sec.fields,sec.kind==="HERO"?
    ["heading","subtitle","description","eyebrow","tags","visible",
     "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
