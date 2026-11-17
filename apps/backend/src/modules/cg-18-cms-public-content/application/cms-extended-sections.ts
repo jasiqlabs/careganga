@@ -56,7 +56,7 @@ const groupItem=(raw:unknown,i:number,group:string)=>{
  if(x.unit!==undefined)out.unit=str(x.unit,f+".unit",40,1);
  if(x.year!==undefined){
   out.year=num(x.year,f+".year",1900,new Date().getUTCFullYear());
-  if(!Number.isSafeInteger(out.year))return error(f+".year");
+  if(!Number.isSafeInteger(Number(out.year)))return error(f+".year");
  }
  if(x.percentage!==undefined)out.percentage=num(x.percentage,f+".percentage",0,100);
  if(x.latitude!==undefined||x.longitude!==undefined){
@@ -101,7 +101,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    source:str(x.source,"source",180,3),
    asOfDate:date(x.asOfDate,"asOfDate"),items
   };
-  if(out.asOfDate>new Date().toISOString().slice(0,10))return error("asOfDate");
+  if(String(out.asOfDate)>new Date().toISOString().slice(0,10))return error("asOfDate");
   if(x.claimsFullBreakdown!==undefined){
    if(group!=="BREAKDOWN"||typeof x.claimsFullBreakdown!=="boolean")
     return error("claimsFullBreakdown");
