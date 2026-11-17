@@ -251,6 +251,7 @@ export class FinanceVoucherDraftService{
      if(e.code==="P0911")throw new BadRequestException({code:"FINANCE_VOUCHER_DATE_INVALID",field:"postingDate"});
      if(e.code==="P0904")throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
      if(e.code==="P0907")throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+     if(e.code==="P0913")throw new BadRequestException({code:"FINANCE_VOUCHER_LINES_INVALID",field:"lines"});
     }
     throw e;
    }
