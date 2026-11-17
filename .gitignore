@@ -66,6 +66,9 @@ tmp/
 .cache/
 scratch/
 
+# Private, read-only CLIENT website capture (not source-controlled)
+.reference/
+
 # Local-only Harness checkout / installed discovery
 jasiq-harness/
 .agents/skills/
