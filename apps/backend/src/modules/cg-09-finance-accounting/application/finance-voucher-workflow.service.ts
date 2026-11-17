@@ -11,7 +11,7 @@ import {FinanceVoucherApprovalService} from "../../cg-03-registration-approvals/
 import {FinanceVoucherEvidenceService} from "../../cg-19-documents-notifications/application/finance-voucher-evidence.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const valid=(value:unknown,field:string):string=>{
  if(typeof value!=="string"||!UUID.test(value))
   throw new BadRequestException({code:"FINANCE_VOUCHER_SOURCE_INVALID",field});
