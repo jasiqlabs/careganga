@@ -65,6 +65,15 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
   const status=[200,201,202,400,401,403,404,409,413,429].includes(res.status)?
    res.status:503;
   if(!res.ok){
+   // CG21 controls safe, editable server error copy; do not overwrite it
+   // with a fixed Web-only message. Reject malformed/private error payloads.
+   const original:unknown=await res.json().catch(()=>null);
+   const safe=original&&typeof original==="object"&&!Array.isArray(original)&&
+    "message" in original&&typeof original.message==="string"&&
+    original.message.length>=8&&original.message.length<=240&&
+    !/[<>\\u0000-\\u001f\\u007f]/.test(original.message)
+     ?original.message:null;
+   if(safe)return fail(status,safe);
    return fail(status,status===401?"Sign in again to continue.":
     status===403?"Your current role cannot perform that website action.":
     status===404?"The page or review is unavailable.":
