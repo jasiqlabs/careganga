@@ -3,6 +3,10 @@ import {useCallback,useEffect,useState} from "react";
 type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;
  expenseDate:string;amountMinor:string;status:string;version:number;
  approvalCaseRef:string|null;payableVoucherNumber:string|null;payoutVoucherNumber:string|null};
+type ClaimDashboard={cards:{total:number;draft:number;pending:number;approved:number;
+ returned:number;rejected:number;claimedMinor:string;approvedMinor:string};
+ monthly:{month:string;count:number;amountMinor:string}[];
+ categories:{category:string;count:number;amountMinor:string}[];explanation:string};
 type Voucher={voucherRef:string;voucherNumber:string;type:string;
  totalMinor:string;kind:string|null};
 async function failure(res:Response):Promise<string>{
@@ -17,6 +21,9 @@ const money=(x:string)=>{try{let n=BigInt(x);return "₹"+(n/100n).toLocaleStrin
  "."+(n%100n).toString().padStart(2,"0");}catch{return "Amount unavailable";}};
 export function FinanceClaimManagementWorkspace(){
  const [claims,setClaims]=useState<Claim[]>([]);
+ const [dashboard,setDashboard]=useState<ClaimDashboard|null>(null);
+ const [dashboardError,setDashboardError]=useState("");
+ const [dashboardTick,setDashboardTick]=useState(0);
  const [offset,setOffset]=useState(0);
  const [next,setNext]=useState<number|null>(null);
  const [focused,setFocused]=useState<Claim|null>(null);
@@ -29,6 +36,7 @@ export function FinanceClaimManagementWorkspace(){
  const [error,setError]=useState("");
  const [feedback,setFeedback]=useState("");
  const refresh=useCallback(async()=>{
+  setDashboardTick(v=>v+1);
   setLoading(true);setError("");
   try{
    const res=await fetch("/api/finance/claims/managed?offset="+offset,{cache:"no-store"});
@@ -43,6 +51,25 @@ export function FinanceClaimManagementWorkspace(){
   finally{setLoading(false);}
  },[offset]);
  useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+  let active=true;
+  void(async()=>{
+   try{
+    const response=await fetch("/api/finance/claims/dashboard",{cache:"no-store"});
+    if(!response.ok)throw Error(await failure(response));
+    const raw:unknown=await response.json();
+    if(!raw||typeof raw!=="object"||!("cards" in raw)||
+      !raw.cards||typeof raw.cards!=="object"||
+      !("monthly" in raw)||!Array.isArray(raw.monthly)||
+      !("categories" in raw)||!Array.isArray(raw.categories))
+     throw Error("Original claim trends are not available. Refresh.");
+    if(active){setDashboard(raw as ClaimDashboard);setDashboardError("");}
+   }catch(e){if(active){setDashboard(null);setDashboardError(e instanceof Error?e.message:
+     "Original reimbursement totals are unavailable.");}}
+  })();
+  return()=>{active=false;};
+ },[dashboardTick]);
+
  async function open(c:Claim){
   setFocused(c);setVouchers([]);setSelection("");setFeedback("");
   try{
@@ -102,6 +129,42 @@ export function FinanceClaimManagementWorkspace(){
   <div className="cg-fin-toolbar"><div><h2>Reimbursement Finance Register</h2>
    <p>Link only original approved claims to the matching posted expense payable and separately verified payout.</p>
   </div><button type="button" disabled={loading} onClick={()=>void refresh()}>Refresh</button></div>
+  {dashboardError&&<p role="alert" className="cg-fin-notice">{dashboardError}</p>}
+  {dashboard&&<div className="cg-fin-voucher-dashboard" aria-label="Actual reimbursement request trends">
+   <div className="cg-fin-dashboard-title"><div><h3>Expenses overview</h3>
+    <p>{dashboard.explanation}</p></div></div>
+   <div className="cg-fin-dashboard-cards">
+    {[
+     {label:"Total claims",value:String(dashboard.cards.total)},
+     {label:"Draft",value:String(dashboard.cards.draft)},
+     {label:"Awaiting approval",value:String(dashboard.cards.pending)},
+     {label:"Approved requests",value:String(dashboard.cards.approved)},
+     {label:"Returned / Rejected",value:String(dashboard.cards.returned+dashboard.cards.rejected)},
+     {label:"Requested amount (not posted)",value:money(dashboard.cards.claimedMinor)}
+    ].map(card=><article className="cg-fin-dashboard-card" key={card.label}>
+      <h4>{card.label}</h4><strong>{card.value}</strong></article>)}
+   </div>
+   <div className="cg-fin-dashboard-charts">
+    <section><h4>Monthly reimbursement requests</h4>
+     {!dashboard.monthly.length?<p>No requests in the last 12 months.</p>:
+      <div className="cg-fin-trend">
+       {dashboard.monthly.map(m=><div key={m.month} className="cg-fin-trend-row">
+        <span>{m.month}</span>
+        <meter min={0} max={Math.max(1,...dashboard.monthly.map(v=>v.count))}
+         value={m.count} aria-label={m.month+" requests"}>{m.count}</meter>
+        <span>{m.count}</span></div>)}
+      </div>}
+    </section>
+    <section><h4>Requested categories — not ledger expenses</h4>
+     {!dashboard.categories.length?<p>No claim categories recorded.</p>:
+      <table className="cg-fin-table"><thead><tr><th>Category</th><th>Claims</th>
+       <th>Requested value</th></tr></thead><tbody>
+       {dashboard.categories.map(v=><tr key={v.category}><td>{v.category}</td>
+        <td>{v.count}</td><td>{money(v.amountMinor)}</td></tr>)}
+      </tbody></table>}
+    </section>
+   </div>
+  </div>}
   {error&&<p role="alert" className="cg-fin-notice">{error}</p>}
   {feedback&&<p role="status" className="cg-fin-notice">{feedback}</p>}
   {loading&&<p role="status">Checking current reimbursement records…</p>}
