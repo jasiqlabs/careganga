@@ -162,7 +162,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
     {list.map(x=><Pressable accessibilityRole="button" key={x.budgetRef} style={s.card}
       onPress={()=>void open(x.budgetRef)}>
      <Text style={s.heading}>{x.budgetNumber} · {x.name}</Text>
-     <Text style={s.text}>{x.category} · {money(x.ceilingMinor)}</Text>
+     <Text style={s.text}>{categories.find(c=>c.code===x.category)?.name??x.category} · {money(x.ceilingMinor)}</Text>
      <Text style={s.muted}>{x.periodStart} to {x.periodEnd} · {x.status}</Text>
     </Pressable>)}
     {!list.length&&<Text style={s.muted}>No original Foundation budgets.</Text>}
