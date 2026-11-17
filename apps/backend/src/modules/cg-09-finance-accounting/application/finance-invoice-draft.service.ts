@@ -12,7 +12,7 @@ type Stage="INFO"|"ITEMS"|"PAYMENT";
 type Draft={info?:{
  financialYearRef:string;branchRef:string|null;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string|null};
+ counterpartyName:string;counterpartyAddress:string|null;replacesInvoiceRef?:string|null};
  items?:{rows:{description:string;quantity:number;unitRateMinor:string;
   lineTotalMinor:string}[];grossMinor:string;taxMinor:string;chargesMinor:string;
   totalMinor:string};
@@ -61,7 +61,8 @@ const valid=(body:unknown,keys:string[]):Record<string,unknown>=>{
 function parseStage(stage:Stage,input:unknown):Draft[keyof Draft]{
  if(stage==="INFO"){
   const v=valid(input,["financialYearRef","branchRef","branchVersion",
-   "invoiceDate","dueDate","category","purpose","counterpartyName","counterpartyAddress"]);
+   "invoiceDate","dueDate","category","purpose","counterpartyName","counterpartyAddress",
+   "replacesInvoiceRef"]);
   const branch=v.branchRef?ref(v.branchRef,"branchRef"):null;
   const version=branch?v.branchVersion:null;
   if(branch&&(!Number.isSafeInteger(version)||Number(version)<1))
@@ -71,6 +72,7 @@ function parseStage(stage:Stage,input:unknown):Draft[keyof Draft]{
   return {financialYearRef:ref(v.financialYearRef,"financialYearRef"),
    branchRef:branch,branchVersion:branch?Number(version):null,
    invoiceDate:date,dueDate:due,
+   replacesInvoiceRef:v.replacesInvoiceRef?ref(v.replacesInvoiceRef,"replacesInvoiceRef"):null,
    category:text(v.category,"category",2,80),purpose:text(v.purpose,"purpose",3,500),
    counterpartyName:text(v.counterpartyName,"counterpartyName",2,150),
    counterpartyAddress:v.counterpartyAddress?text(v.counterpartyAddress,
@@ -133,7 +135,24 @@ export class FinanceInvoiceDraftService{
    "end_on::text AS \"endOn\",status FROM financial_year "+
    "WHERE root_realm_id=$1 ORDER BY start_on DESC,id DESC LIMIT 30",[actor.realmId]);
   const branches=await this.branches.financeBranches(bearer,"finance.invoices.view");
-  return {years:years.rows,branches};
+  const scope=await this.branches.financeReportScope(bearer,"finance.invoices.view");
+  const corrected=await this.db.query<{invoiceRef:string;invoiceNumber:string;
+   counterpartyName:string;branchRef:string|null}>(
+   "SELECT i.id AS \"invoiceRef\",i.invoice_number AS \"invoiceNumber\","+
+   "i.counterparty_name AS \"counterpartyName\",i.branch_id AS \"branchRef\" "+
+   "FROM finance_invoice_credit_note c JOIN finance_invoice i "+
+   "ON i.id=c.invoice_id AND i.root_realm_id=c.root_realm_id "+
+   "WHERE c.root_realm_id=$1 "+
+   "AND ($2::boolean OR i.branch_id=ANY($3::uuid[]) "+
+   "OR (i.branch_id IS NULL AND i.created_by=$4::uuid)) "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_invoice_reissue_link l "+
+   "JOIN finance_invoice replacement ON replacement.id=l.replacement_invoice_id "+
+   "AND replacement.root_realm_id=l.root_realm_id "+
+   "WHERE l.root_realm_id=c.root_realm_id AND l.original_invoice_id=i.id "+
+   "AND replacement.status<>'REJECTED') "+
+   "ORDER BY c.created_at DESC LIMIT 50",
+   [actor.realmId,scope.all,scope.branchRefs,actor.accountId]);
+  return {years:years.rows,branches,correctedInvoices:corrected.rows};
  }
  async accounts(bearer:string,searchInput?:string){
   const actor=await this.owner(bearer);
@@ -174,6 +193,19 @@ export class FinanceInvoiceDraftService{
   if(info.branchRef)
    await this.branches.requireFinanceBranchVersion(tx,actor,info.branchRef,
     info.branchVersion??0,"finance.invoices.manage");
+  if(info.replacesInvoiceRef){
+   const referenced=await tx.query(
+    "SELECT c.id FROM finance_invoice_credit_note c "+
+    "JOIN finance_invoice original ON original.id=c.invoice_id "+
+    "AND original.root_realm_id=c.root_realm_id "+
+    "WHERE original.id=$1 AND original.root_realm_id=$2 "+
+    "AND original.status='ISSUED' "+
+    "AND original.branch_id IS NOT DISTINCT FROM $3::uuid FOR SHARE OF c,original",
+    [info.replacesInvoiceRef,actor.realmId,info.branchRef]);
+   if(!referenced.rows[0])
+    throw new ConflictException({code:"FINANCE_INVOICE_REISSUE_CONFLICT",
+     field:"replacesInvoiceRef"});
+  }
  }
  private async validatePayment(tx:PoolClient,actor:VerifiedFoundationActor,
   data:Draft){
