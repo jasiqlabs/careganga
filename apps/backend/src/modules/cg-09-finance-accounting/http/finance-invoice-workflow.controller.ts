@@ -1,8 +1,17 @@
 import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
 import {FinanceInvoiceWorkflowService} from "../application/finance-invoice-workflow.service";
+import {FinanceInvoiceCancellationService} from "../application/finance-invoice-cancellation.service";
 @Controller("api/finance-accounting/invoices")
 export class FinanceInvoiceWorkflowController{
- constructor(private readonly service:FinanceInvoiceWorkflowService){}
+ constructor(private readonly service:FinanceInvoiceWorkflowService,
+  private readonly corrections:FinanceInvoiceCancellationService){}
+ @Get("cancel-commands/:requestKey")
+ cancelStatus(@Headers("authorization")auth:string,@Param("requestKey")key:string){
+  return this.corrections.status(auth,key);
+ }
+ @Post(":invoiceRef/cancel-posted")
+ cancelPosted(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
+  @Body()body:unknown){return this.corrections.cancelUnissued(auth,ref,body);}
  @Post(":invoiceRef/submit")
  submit(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
   @Body()body:unknown){return this.service.submit(auth,ref,body);}
