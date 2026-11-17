@@ -45,13 +45,19 @@ async function parseFailure(res:Response):Promise<SafeFailure>{
   uncertain:res.status>=500
  };
 }
-function Field({name,label,form,onChange,type="text",required=false,children}:{
+function Field({name,label,form,onChange,type="text",required=false,children,failure}:{
  name:string;label:string;form:Record<string,string>;onChange:(k:string,v:string)=>void;
- type?:string;required?:boolean;children?:ReactNode
+ type?:string;required?:boolean;children?:ReactNode;failure:SafeFailure|null
 }){
- return <label className="cg-fin-field"><span>{label}{required?" *":""}</span>
+ const invalid=Boolean(failure?.field===name);
+ const messageId="cg-fin-"+name+"-error";
+ return <label className="cg-fin-field" data-invalid={invalid?"true":undefined}>
+  <span>{label}{required?" *":""}</span>
   {children??<input type={type} value={form[name]??""} required={required}
+   aria-invalid={invalid} aria-describedby={invalid?messageId:undefined}
    onChange={e=>onChange(name,e.target.value)} autoComplete="off"/>}
+  {invalid&&<small className="cg-fin-inline-error" id={messageId} role="alert">
+    {failure?.message}</small>}
  </label>;
 }
 export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;canPost:boolean}){
@@ -299,20 +305,20 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     <p className="cg-fin-description">Complete only the details needed for this record. Required fields are marked *.</p>
     <form className="cg-fin-form" onSubmit={submit}>
      {drawer==="year"&&<>
-      <Field name="name" label="Financial year name" form={form} onChange={change} required/>
-      <Field name="startOn" label="Start date" form={form} onChange={change} type="date" required/>
-      <Field name="endOn" label="End date" form={form} onChange={change} type="date" required/>
+      <Field failure={failure} name="name" label="Financial year name" form={form} onChange={change} required/>
+      <Field failure={failure} name="startOn" label="Start date" form={form} onChange={change} type="date" required/>
+      <Field failure={failure} name="endOn" label="End date" form={form} onChange={change} type="date" required/>
      </>}
      {drawer==="group"&&<>
-      <Field name="name" label="Group name" form={form} onChange={change} required/>
-      <Field name="code" label="Group code" form={form} onChange={change} required/>
-      <Field name="category" label="Account category" form={form} onChange={change} required>
+      <Field failure={failure} name="name" label="Group name" form={form} onChange={change} required/>
+      <Field failure={failure} name="code" label="Group code" form={form} onChange={change} required/>
+      <Field failure={failure} name="category" label="Account category" form={form} onChange={change} required>
        <select value={form.category} onChange={e=>change("category",e.target.value)}>
         {(["ASSET","LIABILITY","FUND","INCOME","EXPENSE"] as const).map(x=>
           <option key={x} value={x}>{x.charAt(0)+x.slice(1).toLowerCase()}</option>)}
        </select>
       </Field>
-      <Field name="parentRef" label="Parent group (optional)" form={form} onChange={change}>
+      <Field failure={failure} name="parentRef" label="Parent group (optional)" form={form} onChange={change}>
        <select value={form.parentRef} onChange={e=>change("parentRef",e.target.value)}>
         <option value="">No parent group</option>
         {data?.groups.filter(g=>g.category===form.category).map(g=>
@@ -321,54 +327,54 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
       </Field>
      </>}
      {drawer==="account"&&<>
-      <Field name="name" label="Account name" form={form} onChange={change} required/>
-      <Field name="code" label="Account code" form={form} onChange={change} required/>
-      <Field name="groupRef" label="Account group" form={form} onChange={change} required>
+      <Field failure={failure} name="name" label="Account name" form={form} onChange={change} required/>
+      <Field failure={failure} name="code" label="Account code" form={form} onChange={change} required/>
+      <Field failure={failure} name="groupRef" label="Account group" form={form} onChange={change} required>
        <select required value={form.groupRef} onChange={e=>change("groupRef",e.target.value)}>
         <option value="">Select a current group</option>
         {data?.groups.map(g=><option value={g.groupRef} key={g.groupRef}>{g.name} — {g.code}</option>)}
        </select>
       </Field>
-      <Field name="accountKind" label="Account type" form={form} onChange={change}>
+      <Field failure={failure} name="accountKind" label="Account type" form={form} onChange={change}>
        <select value={form.accountKind} onChange={e=>change("accountKind",e.target.value)}>
         <option value="GENERAL">General account</option><option value="CASH">Cash</option>
         <option value="BANK">Bank</option>
        </select>
       </Field>
-      <Field name="scopeKind" label="Account scope" form={form} onChange={change}>
+      <Field failure={failure} name="scopeKind" label="Account scope" form={form} onChange={change}>
        <select value={form.scopeKind} onChange={e=>change("scopeKind",e.target.value)}>
         <option value="FOUNDATION">Foundation</option><option value="BRANCH">Branch</option>
        </select>
       </Field>
-      {form.scopeKind==="BRANCH"&&<Field name="branchRef" label="Active branch" form={form} onChange={change} required>
+      {form.scopeKind==="BRANCH"&&<Field failure={failure} name="branchRef" label="Active branch" form={form} onChange={change} required>
        <select required value={form.branchRef} onChange={e=>change("branchRef",e.target.value)}>
         <option value="">Select an active branch</option>
         {data?.branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name} — {b.code}</option>)}
        </select>
       </Field>}
-      {form.accountKind!=="GENERAL"&&<Field name="bankLabel" label={form.accountKind==="BANK"?"Bank account display name":"Cash account label"}
+      {form.accountKind!=="GENERAL"&&<Field failure={failure} name="bankLabel" label={form.accountKind==="BANK"?"Bank account display name":"Cash account label"}
        form={form} onChange={change} required/>}
-      {form.accountKind==="BANK"&&<Field name="bankLastFour" label="Last 4 digits (optional, do not enter full account number)"
+      {form.accountKind==="BANK"&&<Field failure={failure} name="bankLastFour" label="Last 4 digits (optional, do not enter full account number)"
        form={form} onChange={change}/>}
       {!data?.groups.length&&<p role="note">Create an account group before adding accounts.</p>}
      </>}
      {drawer==="opening"&&<>
-      <Field name="financialYearRef" label="Open financial year" form={form} onChange={change} required>
+      <Field failure={failure} name="financialYearRef" label="Open financial year" form={form} onChange={change} required>
        <select required value={form.financialYearRef} onChange={e=>change("financialYearRef",e.target.value)}>
         <option value="">Select financial year</option>
         {data?.years.filter(y=>y.status==="OPEN").map(y=><option value={y.yearRef} key={y.yearRef}>
          {y.name} ({y.startOn} to {y.endOn})</option>)}
        </select>
       </Field>
-      <Field name="postingDate" label="Posting date" form={form} onChange={change} type="date" required/>
-      <Field name="debitAccountRef" label="Debit account" form={form} onChange={change} required>
+      <Field failure={failure} name="postingDate" label="Posting date" form={form} onChange={change} type="date" required/>
+      <Field failure={failure} name="debitAccountRef" label="Debit account" form={form} onChange={change} required>
        <select required value={form.debitAccountRef} onChange={e=>change("debitAccountRef",e.target.value)}>
         <option value="">Choose debit account</option>
         {activeAccounts.map(a=><option key={a.accountRef} value={a.accountRef}>
          {a.name} — {a.code}{a.branchName?" ("+a.branchName+")":""}</option>)}
        </select>
       </Field>
-      <Field name="creditAccountRef" label="Credit account" form={form} onChange={change} required>
+      <Field failure={failure} name="creditAccountRef" label="Credit account" form={form} onChange={change} required>
        <select required value={form.creditAccountRef} onChange={e=>change("creditAccountRef",e.target.value)}>
         <option value="">Choose credit account</option>
         {activeAccounts.filter(a=>a.accountRef!==form.debitAccountRef).map(a=>
@@ -376,11 +382,11 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
           {a.name} — {a.code}{a.branchName?" ("+a.branchName+")":""}</option>)}
        </select>
       </Field>
-      <Field name="amount" label="Balanced amount (INR)" form={form} onChange={change}
+      <Field failure={failure} name="amount" label="Balanced amount (INR)" form={form} onChange={change}
        required type="text"/>
       <p className="cg-fin-help">Both accounts receive the same amount on opposite sides. This creates one immutable posted opening entry, not a cash payment.</p>
      </>}
-     {failure&&<div className="cg-fin-notice" role="alert"><p>{failure.message}</p>
+     {failure&&!failure.field&&<div className="cg-fin-notice" role="alert"><p>{failure.message}</p>
       {failure.field&&<p>Review the indicated {failure.field==="groupRef"?"account group":
         failure.field==="branchRef"?"branch":failure.field==="postingDate"?"posting date":
         failure.field==="amount"?"amount":failure.field==="bankLastFour"?"bank account last four digits":"form"} field.</p>}</div>}
