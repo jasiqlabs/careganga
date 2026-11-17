@@ -33,8 +33,9 @@ function fromPage(p:PageDetail):Draft{
  heroSecondaryLabel:val(hero.secondaryLabel),heroSecondaryPath:val(hero.secondaryPath),
  bodyHeading:val(body.heading),body:val(body.body),teamHeading:val(team.heading)||"Our team",
  team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
-  .map(v=>({name:val(v.name),designation:val(v.designation),bio:val(v.bio),
-   consentConfirmed:v.consentConfirmed===true})):[],assets:p.assets};
+  .map(v=>{const person=v as Record<string,unknown>;return {
+   name:val(person.name),designation:val(person.designation),bio:val(person.bio),
+   consentConfirmed:person.consentConfirmed===true};}):[],assets:p.assets};
 }
 function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
