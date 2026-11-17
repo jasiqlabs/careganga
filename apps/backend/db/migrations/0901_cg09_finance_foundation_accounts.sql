@@ -17,6 +17,24 @@ CREATE TABLE financial_year(
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg09_year_root ON financial_year(root_realm_id,start_on DESC,id);
+-- Year dates/identity never change after creation: it would rewrite the
+-- meaning of immutable journal history. Closing is a versioned one-way action.
+CREATE FUNCTION cg09_guard_year_update() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+ IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
+   OR NEW.name IS DISTINCT FROM OLD.name
+   OR NEW.start_on IS DISTINCT FROM OLD.start_on
+   OR NEW.end_on IS DISTINCT FROM OLD.end_on
+   OR NEW.created_by IS DISTINCT FROM OLD.created_by
+   OR NEW.created_at IS DISTINCT FROM OLD.created_at
+   OR NEW.version<>OLD.version+1
+   OR NEW.status<>'CLOSED' OR OLD.status<>'OPEN'
+ THEN RAISE EXCEPTION 'Financial year identity is immutable; only a reviewed close is allowed'; END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER cg09_year_guard_update BEFORE UPDATE ON financial_year
+ FOR EACH ROW EXECUTE FUNCTION cg09_guard_year_update();
+
 
 CREATE TABLE account_group(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
