@@ -15,6 +15,13 @@ export class FinanceInvoiceWorkflowController{
  @Post(":invoiceRef/issue")
  issue(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
   @Body()body:unknown){return this.service.issue(auth,ref,body);}
+ @Get(":invoiceRef/collection-options")
+ collectionOptions(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return this.service.collectionOptions(auth,ref);
+ }
+ @Post(":invoiceRef/record-collection")
+ collection(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
+  @Body()body:unknown){return this.service.recordCollection(auth,ref,body);}
  @Get(":invoiceRef/receipt-options")
  receiptOptions(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
   return this.service.receiptOptions(auth,ref);
