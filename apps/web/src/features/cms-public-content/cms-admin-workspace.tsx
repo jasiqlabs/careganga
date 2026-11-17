@@ -178,9 +178,18 @@ async function serverMessage(r:Response){
   r.status===409?"Someone changed this page. Refresh before continuing.":
   "The request could not be confirmed. Check its status before retrying.";
 }
+// Rejected 4xx actions never committed. For network/5xx uncertainty,
+// retain the original idempotency key until the action is reconciled.
+class CmsRequestRejected extends Error {
+ constructor(readonly status:number,message:string){super(message);this.name="CmsRequestRejected";}
+}
 async function read<T>(path:string,init?:RequestInit):Promise<T>{
  const r=await fetch("/api/cms/"+path,{cache:"no-store",...init});
- if(!r.ok)throw Error(await serverMessage(r));
+ if(!r.ok){
+  const message=await serverMessage(r);
+  if(r.status>=400&&r.status<500)throw new CmsRequestRejected(r.status,message);
+  throw Error(message);
+ }
  return r.json() as Promise<T>;
 }
 export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
@@ -317,7 +326,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    }catch{
     setError("Your change was confirmed, but the latest page could not be loaded. Refresh to see it.");
    }
-  }catch(e){setError(e instanceof Error?e.message:"Action not confirmed. Retry the same request key.");}
+  }catch(e){
+   if(e instanceof CmsRequestRejected)setPending(null);
+   setError(e instanceof Error?e.message:"Action not confirmed. Retry the same request key.");
+  }
   finally{setBusy(false);}
  }
  const command=(label:string,path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>
@@ -353,7 +365,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    setNotice(action==="APPROVE"?"The page is approved. A publisher must still publish it.":
     "The author can now correct or review this page.");
    await showInbox();await refresh();
-  }catch(e){setError(e instanceof Error?e.message:"Review was not confirmed.");}
+  }catch(e){
+   if(e instanceof CmsRequestRejected)setPending(null);
+   setError(e instanceof Error?e.message:"Review was not confirmed.");
+  }
   finally{setBusy(false);}
  }
  async function upload(file:File,placement?:{role:Asset["role"];order:number}){
