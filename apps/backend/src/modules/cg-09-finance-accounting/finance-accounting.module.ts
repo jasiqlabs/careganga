@@ -24,6 +24,7 @@ import {FinanceBudgetController} from "./http/finance-budget.controller";
 import {FinanceInvoiceDraftService} from "./application/finance-invoice-draft.service";
 import {FinanceInvoiceDraftController} from "./http/finance-invoice-draft.controller";
 import {FinanceInvoiceWorkflowService} from "./application/finance-invoice-workflow.service";
+import {FinanceInvoiceCancellationService} from "./application/finance-invoice-cancellation.service";
 import {FinanceInvoiceWorkflowController} from "./http/finance-invoice-workflow.controller";
 import {FinanceExpenseClaimService} from "./application/finance-expense-claim.service";
 import {FinanceExpenseClaimController} from "./http/finance-expense-claim.controller";
@@ -31,7 +32,7 @@ import {FinanceExpenseClaimController} from "./http/finance-expense-claim.contro
 /** CG-09 owns a single ledger and finance setup; never duplicates CG-01/02 masters. */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule,FinanceEvidenceSourceModule],
- providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceJournalReversalService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService,FinanceBudgetService,FinanceReportsService],
+ providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceJournalReversalService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService,FinanceInvoiceCancellationService,FinanceBudgetService,FinanceReportsService],
  controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController,FinanceInvoiceDraftController,FinanceInvoiceWorkflowController,FinanceBudgetController,FinanceReportsController],
  exports:[FinanceAccountsService]
 })
