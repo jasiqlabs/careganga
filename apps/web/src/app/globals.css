@@ -641,3 +641,32 @@ button:disabled { cursor:wait; opacity:.65; }
 .cg-fin-manual .cg-fin-form>button{border:1px solid var(--cg-border);border-radius:.4rem;
  min-height:2.65rem;padding:.55rem .8rem;background:var(--cg-surface);font-weight:600}
 @media(max-width:28rem){.cg-fin-journal-amounts{grid-template-columns:minmax(0,1fr)}}
+
+/* CG-09: original CareGanga Finance reviewer/evidence visual language. */
+.cg-fin-voucher-actions{display:flex;flex-direction:column;align-items:stretch;gap:.55rem;
+ min-width:14rem;max-width:23rem}
+.cg-fin-voucher-actions>button{border:1px solid var(--cg-border);
+ background:var(--cg-surface);color:var(--cg-text);border-radius:.4rem;
+ font-size:.78rem;font-weight:600;min-height:2.6rem;padding:.5rem .7rem}
+.cg-fin-voucher-actions>button:disabled{opacity:.5;cursor:not-allowed}
+.cg-fin-voucher-attach{display:flex;flex-direction:column;gap:.3rem;
+ font-size:.76rem;font-weight:600;color:var(--cg-text)}
+.cg-fin-voucher-attach input[type=file],.cg-fin-voucher-attach select{
+ border:1px solid var(--cg-border);border-radius:.35rem;padding:.5rem;
+ min-height:2.6rem;max-width:100%;font:inherit;background:var(--cg-surface)}
+.cg-fin-voucher-attach input[type=file]::file-selector-button{
+ background:var(--cg-surface);border:1px solid var(--cg-border);
+ border-radius:.3rem;padding:.45rem;cursor:pointer}
+.cg-fin-paging{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.65rem;
+ align-items:center;padding:1rem;font-size:.78rem;color:var(--cg-text)}
+.cg-fin-paging button{border:1px solid var(--cg-border);background:var(--cg-surface);
+ border-radius:.4rem;min-height:2.6rem;padding:.45rem .8rem;font-weight:600}
+.cg-fin-paging button:disabled{opacity:.4;cursor:not-allowed}
+.cg-fin-review-summary{background:var(--cg-surface);border:1px solid var(--cg-border);
+ border-radius:.55rem;padding:.85rem;display:grid;gap:.45rem;font-size:.84rem}
+.cg-fin-review-summary p{margin:0;overflow-wrap:anywhere}
+.cg-fin-review-summary a{color:var(--cg-primary);font-weight:650;overflow-wrap:anywhere}
+@media(max-width:47rem){
+ .cg-fin-voucher-actions{min-width:12rem;max-width:100%}
+ .cg-fin-paging{justify-content:center}
+}
