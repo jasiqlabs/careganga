@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsSiteHeader} from "./cms-site-header";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
+import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare} from "./cms-public-extended";
 
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
 export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
@@ -173,6 +174,16 @@ export function CmsPublicPage({page,navigation,siteFooter}:{
       fields={section.fields} navigation={navigation}/>;
      if(section.kind==="TEAM")return <Team key={key}
       fields={section.fields} assets={assets}/>;
+     if(section.kind==="IMPACT_GROUP")return <CmsImpactGroup key={key}
+      section={section} assets={assets}/>;
+     if(section.kind==="COMPLIANCE_FACTS")return <CmsCompliance key={key}
+      section={section} assets={assets}/>;
+     if(section.kind==="GALLERY_GRID")return <CmsGallery key={key}
+      section={section} assets={assets}/>;
+     if(section.kind==="ARTICLE_BODY")return <CmsArticle key={key}
+      section={section} assets={assets}/>;
+     if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
+      section={section}/>;
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
