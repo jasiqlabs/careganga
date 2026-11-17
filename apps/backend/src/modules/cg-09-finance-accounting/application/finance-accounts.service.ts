@@ -134,7 +134,7 @@ export class FinanceAccountsService{
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,5})$/.test(offsetInput))
    throw new BadRequestException({code:"FINANCE_SCOPE_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
-  const [years,groups,accounts,opening,branches]=await Promise.all([
+  const [years,groups,accounts,opening,branches,categorySummary]=await Promise.all([
    this.db.query<{yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number}>(`
     SELECT id AS "yearRef",name,start_on::text AS "startOn",end_on::text AS "endOn",status,version
     FROM financial_year WHERE root_realm_id=$1
@@ -150,7 +150,8 @@ export class FinanceAccountsService{
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
      a.account_kind AS kind,a.scope_kind AS "scopeKind",a.branch_id AS "branchRef",
      NULL::text AS "branchName",g.name AS "groupName",g.category,a.status,a.version,
-     COALESCE(SUM(l.debit_minor-l.credit_minor),0)::text AS "balanceMinor",
+     COALESCE(SUM(CASE WHEN a.normal_side='DEBIT'
+      THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS "balanceMinor",
      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
     FROM finance_account a JOIN account_group g ON g.id=a.group_id
     LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
@@ -167,7 +168,17 @@ export class FinanceAccountsService{
     JOIN journal_line l ON l.journal_id=j.id
     WHERE j.root_realm_id=$1 AND j.posting_kind='OPENING'
     GROUP BY j.id,fy.name ORDER BY j.posting_date DESC,j.id DESC LIMIT 10`,[actor.realmId]),
-   this.branches.financeBranches(bearer)
+   this.branches.financeBranches(bearer),
+   this.db.query<{category:string;balanceMinor:string;accountCount:string}>(`
+    SELECT g.category,
+      COALESCE(SUM(CASE WHEN a.normal_side='DEBIT'
+       THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text
+        AS "balanceMinor",
+      COUNT(DISTINCT a.id)::text AS "accountCount"
+    FROM account_group g
+    JOIN finance_account a ON a.group_id=g.id AND a.root_realm_id=g.root_realm_id
+    LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
+    WHERE g.root_realm_id=$1 GROUP BY g.category ORDER BY g.category`,[actor.realmId])
   ]);
   const hasMore=accounts.rows.length>50;
   const accountRows=accounts.rows.slice(0,50);
@@ -177,7 +188,7 @@ export class FinanceAccountsService{
     ...a,branchName:a.branchRef?(branchLabels[a.branchRef]??"Branch unavailable"):null
   }));
   return {years:years.rows,groups:groups.rows,accounts:safeAccounts,
-   openingJournals:opening.rows,branches,nextOffset:hasMore?offset+50:null};
+   openingJournals:opening.rows,branches,categorySummary:categorySummary.rows,nextOffset:hasMore?offset+50:null};
  }
  async createYear(bearer:string,input:unknown):Promise<CommandResult>{
   const body=fields(input,["name","startOn","endOn","requestKey"]);
