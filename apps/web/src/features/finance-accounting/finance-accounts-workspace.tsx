@@ -48,15 +48,15 @@ async function parseFailure(res:Response):Promise<SafeFailure>{
   uncertain:res.status>=500
  };
 }
-function Field({name,label,form,onChange,type="text",required=false,children,failure}:{
+function Field({name,label,form,onChange,type="text",required=false,children,failure,maxLength}:{
  name:string;label:string;form:Record<string,string>;onChange:(k:string,v:string)=>void;
- type?:string;required?:boolean;children?:ReactNode;failure:SafeFailure|null
+ type?:string;required?:boolean;children?:ReactNode;failure:SafeFailure|null;maxLength?:number
 }){
  const invalid=Boolean(failure?.field===name);
  const messageId="cg-fin-"+name+"-error";
  return <label className="cg-fin-field" data-invalid={invalid?"true":undefined}>
   <span>{label}{required?" *":""}</span>
-  {children??<input type={type} value={form[name]??""} required={required}
+  {children??<input type={type} value={form[name]??""} required={required} maxLength={maxLength}
    aria-invalid={invalid} aria-describedby={invalid?messageId:undefined}
    onChange={e=>onChange(name,e.target.value)} autoComplete="off"/>}
   {invalid&&<small className="cg-fin-inline-error" id={messageId} role="alert">
@@ -88,7 +88,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [postingLoading,setPostingLoading]=useState(false);
  const [postingError,setPostingError]=useState("");
  const [statusConfirm,setStatusConfirm]=useState<{type:"year"|"account";ref:string;name:string;expectedVersion:number;nextStatus:string}|null>(null);
- const change=(name:string,value:string)=>setForm(v=>({...v,[name]:value}));
+ const change=(name:string,value:string)=>{setForm(v=>({...v,[name]:value}));setFailure(f=>f?.field===name?null:f);};
  const load=useCallback(async()=>{
   setLoading(true);setError("");
   try{
@@ -473,13 +473,13 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     <p className="cg-fin-description">Complete only the details needed for this record. Required fields are marked *.</p>
     <form className="cg-fin-form" onSubmit={submit}>
      {drawer==="year"&&<>
-      <Field failure={failure} name="name" label="Financial year name" form={form} onChange={change} required/>
+      <Field failure={failure} name="name" label="Financial year name" maxLength={80} form={form} onChange={change} required/>
       <Field failure={failure} name="startOn" label="Start date" form={form} onChange={change} type="date" required/>
       <Field failure={failure} name="endOn" label="End date" form={form} onChange={change} type="date" required/>
      </>}
      {drawer==="group"&&<>
-      <Field failure={failure} name="name" label="Group name" form={form} onChange={change} required/>
-      <Field failure={failure} name="code" label="Group code" form={form} onChange={change} required/>
+      <Field failure={failure} name="name" label="Group name" maxLength={120} form={form} onChange={change} required/>
+      <Field failure={failure} name="code" label="Group code" maxLength={20} form={form} onChange={change} required/>
       <Field failure={failure} name="category" label="Account category" form={form} onChange={change} required>
        <select value={form.category} onChange={e=>change("category",e.target.value)}>
         {(["ASSET","LIABILITY","FUND","INCOME","EXPENSE"] as const).map(x=>
@@ -495,8 +495,8 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
       </Field>
      </>}
      {drawer==="account"&&<>
-      <Field failure={failure} name="name" label="Account name" form={form} onChange={change} required/>
-      <Field failure={failure} name="code" label="Account code" form={form} onChange={change} required/>
+      <Field failure={failure} name="name" label="Account name" maxLength={140} form={form} onChange={change} required/>
+      <Field failure={failure} name="code" label="Account code" maxLength={20} form={form} onChange={change} required/>
       <Field failure={failure} name="groupRef" label="Account group" form={form} onChange={change} required>
        <select required value={form.groupRef} onChange={e=>change("groupRef",e.target.value)}>
         <option value="">Select a current group</option>
@@ -520,9 +520,9 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
         {data?.branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name} — {b.code}</option>)}
        </select>
       </Field>}
-      {form.accountKind!=="GENERAL"&&<Field failure={failure} name="bankLabel" label={form.accountKind==="BANK"?"Bank account display name":"Cash account label"}
+      {form.accountKind!=="GENERAL"&&<Field failure={failure} name="bankLabel" maxLength={120} label={form.accountKind==="BANK"?"Bank account display name":"Cash account label"}
        form={form} onChange={change} required/>}
-      {form.accountKind==="BANK"&&<Field failure={failure} name="bankLastFour" label="Last 4 digits (optional, do not enter full account number)"
+      {form.accountKind==="BANK"&&<Field failure={failure} name="bankLastFour" maxLength={4} label="Last 4 digits (optional, do not enter full account number)"
        form={form} onChange={change}/>}
       {!data?.groups.length&&<p role="note">Create an account group before adding accounts.</p>}
      </>}
@@ -560,7 +560,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
           {a.name} — {a.code}{a.branchName?" ("+a.branchName+")":""}</option>)}
        </select>
       </Field>
-      <Field failure={failure} name="amount" label="Balanced amount (INR)" form={form} onChange={change}
+      <Field failure={failure} name="amount" maxLength={16} label="Balanced amount (INR)" form={form} onChange={change}
        required type="text"/>
       <p className="cg-fin-help">Both accounts receive the same amount on opposite sides. This creates one immutable posted opening entry, not a cash payment.</p>
      </>}
