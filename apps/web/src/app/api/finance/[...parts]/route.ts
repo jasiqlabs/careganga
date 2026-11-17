@@ -45,6 +45,19 @@ async function handler(request:NextRequest,parts:string[],method:string){
   if(search.length>80||!/^(0|[1-9][0-9]{0,5})$/.test(offset))
    return NextResponse.json({message:"Check the account search or page number."},{status:400});
   target.searchParams.set("search",search);target.searchParams.set("offset",offset);
+  const kinds=new Set(["ALL","GENERAL","CASH","BANK"]);
+  const statuses=new Set(["ALL","ACTIVE","INACTIVE"]);
+  const kind=request.nextUrl.searchParams.get("kind")??"ALL";
+  const status=request.nextUrl.searchParams.get("status")??"ALL";
+  const groupRef=request.nextUrl.searchParams.get("groupRef")??"";
+  const branchRef=request.nextUrl.searchParams.get("branchRef")??"";
+  const yearRef=request.nextUrl.searchParams.get("yearRef")??"";
+  if(!kinds.has(kind)||!statuses.has(status)||
+    (groupRef&&!UUID.test(groupRef))||(branchRef&&!UUID.test(branchRef))||
+    (yearRef&&!UUID.test(yearRef)))
+   return NextResponse.json({message:"Choose a valid financial year, account type, status, group or branch before searching."},{status:400});
+  for(const [key,value] of Object.entries({kind,status,groupRef,branchRef,yearRef}))
+   if(value)target.searchParams.set(key,value);
  }
  try{
   const res=await fetch(target,{method,body,cache:"no-store",
