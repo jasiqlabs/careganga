@@ -133,7 +133,7 @@ export function FinanceClaimManagementWorkspace(){
   {dashboard&&<div className="cg-fin-voucher-dashboard" aria-label="Actual reimbursement request trends">
    <div className="cg-fin-dashboard-title"><div><h3>Expenses overview</h3>
     <p>{dashboard.explanation}</p></div></div>
-   <div className="cg-fin-dashboard-cards">
+   <div className="cg-fin-voucher-tiles">
     {[
      {label:"Total claims",value:String(dashboard.cards.total)},
      {label:"Draft",value:String(dashboard.cards.draft)},
@@ -141,28 +141,27 @@ export function FinanceClaimManagementWorkspace(){
      {label:"Approved requests",value:String(dashboard.cards.approved)},
      {label:"Returned / Rejected",value:String(dashboard.cards.returned+dashboard.cards.rejected)},
      {label:"Requested amount (not posted)",value:money(dashboard.cards.claimedMinor)}
-    ].map(card=><article className="cg-fin-dashboard-card" key={card.label}>
+    ].map(card=><article className="cg-fin-voucher-tile" key={card.label}>
       <h4>{card.label}</h4><strong>{card.value}</strong></article>)}
    </div>
-   <div className="cg-fin-dashboard-charts">
-    <section><h4>Monthly reimbursement requests</h4>
+   <div className="cg-fin-voucher-charts">
+    <article className="cg-fin-voucher-chart"><h4>Monthly reimbursement requests</h4>
      {!dashboard.monthly.length?<p>No requests in the last 12 months.</p>:
-      <div className="cg-fin-trend">
-       {dashboard.monthly.map(m=><div key={m.month} className="cg-fin-trend-row">
-        <span>{m.month}</span>
-        <meter min={0} max={Math.max(1,...dashboard.monthly.map(v=>v.count))}
-         value={m.count} aria-label={m.month+" requests"}>{m.count}</meter>
-        <span>{m.count}</span></div>)}
+      <div className="cg-fin-month-bars" role="img" aria-label="Monthly original expense claim counts">
+       {dashboard.monthly.map(m=><div key={m.month} className="cg-fin-month">
+        <span title={m.month+": "+m.count+" claim(s)"} style={{height:
+         Math.max(4,100*m.count/Math.max(1,...dashboard.monthly.map(v=>v.count)))+"%"}}/>
+        <small>{m.month.slice(5)}</small></div>)}
       </div>}
-    </section>
-    <section><h4>Requested categories — not ledger expenses</h4>
+    </article>
+    <article className="cg-fin-voucher-chart"><h4>Requested categories — not ledger expenses</h4>
      {!dashboard.categories.length?<p>No claim categories recorded.</p>:
       <table className="cg-fin-table"><thead><tr><th>Category</th><th>Claims</th>
        <th>Requested value</th></tr></thead><tbody>
        {dashboard.categories.map(v=><tr key={v.category}><td>{v.category}</td>
         <td>{v.count}</td><td>{money(v.amountMinor)}</td></tr>)}
       </tbody></table>}
-    </section>
+    </article>
    </div>
   </div>}
   {error&&<p role="alert" className="cg-fin-notice">{error}</p>}
