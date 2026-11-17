@@ -11,6 +11,13 @@ export class CmsDraftMediaController{
  status(@Headers("authorization")auth:string,@Param("uploadRef")ref:string){
   return this.media.status(auth,ref);
  }
+ @Get("preview/:fileRef")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async preview(@Headers("authorization")auth:string,@Param("fileRef")ref:string){
+  const file=await this.media.previewBytes(auth,ref);
+  return new StreamableFile(file.bytes,{type:file.mime,disposition:"inline"});
+ }
  @Post(":uploadRef/confirm")
  confirm(@Headers("authorization")auth:string,@Param("uploadRef")ref:string){
   return this.media.confirm(auth,ref);
