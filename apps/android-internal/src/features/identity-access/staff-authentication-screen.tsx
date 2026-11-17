@@ -219,9 +219,11 @@ export function StaffAuthenticationScreen(){
   if(voucherOnlyOpen&&token&&actor&&roleActions.includes("finance.vouchers.view"))
     return <FinanceVoucherOnlyScreen token={token}
       canManage={roleActions.includes("finance.vouchers.manage")}
+      canViewEvidence={roleActions.includes("documents.files.view")}
+      canUploadEvidence={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
       onExit={closeVouchers} onExpired={expireSession}/>;
   if(financeOpen&&token&&actor&&roleActions.includes("finance.accounts.view"))
-    return <FinanceAccountsScreen token={token} canManage={roleActions.includes("finance.accounts.manage")} canPost={roleActions.includes("finance.journals.post")} canViewVouchers={roleActions.includes("finance.vouchers.view")} canManageVouchers={roleActions.includes("finance.vouchers.manage")} onExit={closeFinance} onExpired={expireSession}/>;
+    return <FinanceAccountsScreen token={token} canManage={roleActions.includes("finance.accounts.manage")} canPost={roleActions.includes("finance.journals.post")} canViewVouchers={roleActions.includes("finance.vouchers.view")} canManageVouchers={roleActions.includes("finance.vouchers.manage")} canViewEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} onExit={closeFinance} onExpired={expireSession}/>;
   if(branchesOpen&&token&&actor&&roleActions.includes("foundation.branches.view"))
     return <BranchRegistrationScreen token={token}
       canManage={roleActions.includes("foundation.branches.manage")}
