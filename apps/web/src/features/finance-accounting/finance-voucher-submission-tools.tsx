@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 
 export type VoucherWorkflowRow={voucherRef:string;voucherNumber:string;version:number;
- status:string;approvalCaseRef:string|null};
+ status:string;approvalCaseRef:string|null;type:string;paymentAccountKind:"CASH"|"BANK"|null};
 type Proof={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
 type Unconfirmed={requestKey:string;method:"submit"|"settle";payload:Record<string,unknown>};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
