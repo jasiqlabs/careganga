@@ -71,12 +71,12 @@ export class FinanceExpenseClaimService{
    await this.identity.assertCurrent(client,actor,"finance.claims.create");
    const created=await client.query<Claim>(
     "INSERT INTO expense_claim(root_realm_id,requested_by,category_label,purpose,"+
-    " expense_date,amount_minor,create_request_key,create_digest) "+
-    " VALUES($1,$2,$3,$4,$5,$6,$7,$8) "+
+    " expense_date,amount_minor,create_request_key,create_digest,current_digest) "+
+    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) "+
     " ON CONFLICT(root_realm_id,requested_by,create_request_key) DO NOTHING "+
     " RETURNING id,status,version,create_digest",
     [actor.realmId,actor.accountId,v.category,v.purpose,v.expenseDate,
-     v.amountMinor,v.key,digest]);
+     v.amountMinor,v.key,digest,digest]);
    let row=created.rows[0],replayed=false;
    if(!row){
     const found=await client.query<Claim>(
