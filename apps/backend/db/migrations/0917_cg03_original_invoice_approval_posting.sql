@@ -212,7 +212,7 @@ BEGIN
    JOIN account_group g ON g.id=f.group_id AND g.root_realm_id=f.root_realm_id
    WHERE f.id=NEW.receivable_account_id AND f.root_realm_id=NEW.root_realm_id
    FOR SHARE OF f,g;
-  IF NOT FOUND OR a.status<>'ACTIVE' OR a.category<>'ASSET' OR
+  IF NOT FOUND OR a.status<>'ACTIVE' OR a.category<>'ASSET' OR a.account_kind<>'GENERAL' OR
      (a.branch_id IS NOT NULL AND a.branch_id IS DISTINCT FROM NEW.branch_id) THEN
    RAISE EXCEPTION 'Original receivable account not eligible' USING ERRCODE='P0922';
   END IF;
