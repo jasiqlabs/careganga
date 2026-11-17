@@ -16,14 +16,18 @@ import {FinanceVoucherPaymentService} from "./application/finance-voucher-paymen
 import {FinanceVoucherPaymentController} from "./http/finance-voucher-payment.controller";
 import {FinanceVoucherDashboardService} from "./application/finance-voucher-dashboard.service";
 import {FinanceVoucherDashboardController} from "./http/finance-voucher-dashboard.controller";
+import {FinanceInvoiceDraftService} from "./application/finance-invoice-draft.service";
+import {FinanceInvoiceDraftController} from "./http/finance-invoice-draft.controller";
+import {FinanceInvoiceWorkflowService} from "./application/finance-invoice-workflow.service";
+import {FinanceInvoiceWorkflowController} from "./http/finance-invoice-workflow.controller";
 import {FinanceExpenseClaimService} from "./application/finance-expense-claim.service";
 import {FinanceExpenseClaimController} from "./http/finance-expense-claim.controller";
 
 /** CG-09 owns a single ledger and finance setup; never duplicates CG-01/02 masters. */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule,FinanceEvidenceSourceModule],
- providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService],
- controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController],
+ providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService],
+ controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController,FinanceInvoiceDraftController,FinanceInvoiceWorkflowController],
  exports:[FinanceAccountsService]
 })
 export class FinanceAccountingModule {}
