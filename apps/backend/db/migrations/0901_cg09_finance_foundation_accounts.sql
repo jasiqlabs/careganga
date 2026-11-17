@@ -129,8 +129,12 @@ CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id
 CREATE FUNCTION cg09_check_balanced_posting() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE j uuid; r uuid; line_count int; total_debit numeric; total_credit numeric;
 BEGIN
- j:=COALESCE(NEW.journal_id,NEW.id);
- r:=COALESCE(NEW.root_realm_id,OLD.root_realm_id);
+ IF TG_TABLE_NAME='journal' THEN
+  j:=NEW.id;
+ ELSE
+  j:=NEW.journal_id;
+ END IF;
+ r:=NEW.root_realm_id;
  SELECT count(*),coalesce(sum(debit_minor),0),coalesce(sum(credit_minor),0)
  INTO line_count,total_debit,total_credit
  FROM journal_line WHERE journal_id=j AND root_realm_id=r;
