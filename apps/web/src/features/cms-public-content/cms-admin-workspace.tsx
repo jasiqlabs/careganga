@@ -490,8 +490,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <fieldset><legend>Hero banners — original C22–C24</legend>
         <p>Each slide has independent text, buttons and approved desktop/mobile images.
          The current slide order is saved with the draft and subject to independent review.</p>
-        {draft.slides.map((slide,index)=><div className="cg-cms-team" key={index}>
+        <div className="cg-cms-tabs" role="tablist" aria-label="Hero banner editor">
+         {([["BASIC","Basic Information"],["IMAGES","Images"],
+           ["BUTTONS","Button Settings"],["PREVIEW","Preview"]] as const)
+          .map(([value,label])=><button key={value} type="button" role="tab"
+           aria-selected={heroEditorTab===value} className={heroEditorTab===value?"is-active":""}
+           onClick={()=>setHeroEditorTab(value)}>{label}</button>)}
+        </div>
+        {heroEditorTab==="PREVIEW"&&<div className="cg-cms-preview">
+         <CmsPublicPage page={previewPage}/>
+        </div>}
+        {heroEditorTab!=="PREVIEW"&&draft.slides.map((slide,index)=><div className="cg-cms-team" key={index}>
          <h4>Slide {index+1}</h4>
+         {heroEditorTab==="BASIC"&&<>
          <label className="cg-cms-consent"><input type="checkbox"
           disabled={!canManage} checked={slide.visible}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>
@@ -524,6 +535,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingColor:e.target.value.toUpperCase()}:x))}/></label>
          <label>Subtitle colour<input disabled={!canManage} type="color" value={slide.subtitleColor}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,subtitleColor:e.target.value.toUpperCase()}:x))}/></label>
+         </>}
+         {heroEditorTab==="BUTTONS"&&<>
          <label>Primary button label<input disabled={!canManage} maxLength={60} value={slide.primaryLabel}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryLabel:e.target.value}:x))}/></label>
          <label>Primary route<input disabled={!canManage} value={slide.primaryPath} placeholder="/about"
@@ -532,6 +545,36 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryLabel:e.target.value}:x))}/></label>
          <label>Secondary route<input disabled={!canManage} value={slide.secondaryPath} placeholder="/contact"
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,secondaryPath:e.target.value}:x))}/></label>
+         </>}
+         {heroEditorTab==="IMAGES"&&<>
+          <p>Upload an approved desktop image and optionally a separate mobile image for this banner.
+           Both images use the Foundation's existing secure file scanner.</p>
+          {draft.assets.filter(asset=>
+           (asset.role==="HERO"||asset.role==="MOBILE_HERO")&&asset.order===index)
+           .map(asset=><div className="cg-cms-asset" key={asset.fileRef}>
+            <strong>{asset.role==="HERO"?"Desktop":"Mobile"} image:</strong> {asset.altText}
+            <img loading="lazy" className="cg-cms-review-image"
+             src={"/api/cms-image-preview/"+asset.fileRef} alt={asset.altText}/>
+           </div>)}
+          {selected?.status==="DRAFT"&&canManage&&<>
+           <label>Image description<input maxLength={300} value={uploadAlt}
+            onChange={e=>setUploadAlt(e.target.value)}/></label>
+           <label className="cg-cms-consent"><input type="checkbox"
+            checked={rights} onChange={e=>setRights(e.target.checked)}/>
+            The Foundation has permission to publish this photograph</label>
+           <label>Desktop banner image<input type="file" accept="image/jpeg,image/png,image/webp"
+            disabled={busy||!rights||uploadAlt.trim().length<3}
+            onChange={e=>{const file=e.target.files?.[0];
+             if(file)void upload(file,{role:"HERO",order:index});
+             e.currentTarget.value="";}}/></label>
+           <label>Optional mobile image<input type="file" accept="image/jpeg,image/png,image/webp"
+            disabled={busy||!rights||uploadAlt.trim().length<3}
+            onChange={e=>{const file=e.target.files?.[0];
+             if(file)void upload(file,{role:"MOBILE_HERO",order:index});
+             e.currentTarget.value="";}}/></label>
+          </>}
+          {!selected&&<p>Save a draft first to attach validated photographs.</p>}
+         </>}
          {canManage&&<div className="cg-cms-actions">
           <button type="button" disabled={index===0} onClick={()=>moveSlide(index,-1)}>Move up</button>
           <button type="button" disabled={index===draft.slides.length-1}
