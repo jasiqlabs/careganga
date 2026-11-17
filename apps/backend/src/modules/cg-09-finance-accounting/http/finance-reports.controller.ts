@@ -10,6 +10,10 @@ export class FinanceReportsController{
   @Query("yearRef")year?:string,@Query("branchRef")branch?:string){
   return this.reports.summary(auth,year,branch);
  }
+ @Get("receivables")
+ receivables(@Headers("authorization")auth:string,@Query()q:Record<string,string>){
+  return this.reports.receivables(auth,q);
+ }
  @Get("general-ledger")
  ledger(@Headers("authorization")auth:string,@Query()q:Record<string,string>){
   return this.reports.ledger(auth,q);
