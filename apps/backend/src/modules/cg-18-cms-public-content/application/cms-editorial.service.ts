@@ -222,6 +222,24 @@ function parseContent(raw:unknown):Content{
  });
  if(new Set(assets.map(a=>a.role+":"+a.order)).size!==assets.length)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
+ // Every image must point to an authored section, card or person. Otherwise
+ // authorized but unused media could be exposed in the public page payload.
+ for(let i=0;i<assets.length;i++){
+  const a=assets[i];
+  const matches=sections.some(s=>{
+   if(a.role==="HERO"||a.role==="MOBILE_HERO")
+    return s.kind==="HERO"&&s.order===a.order;
+   if(a.role==="ABOUT")
+    return s.kind==="RICH_TEXT"&&s.order===a.order&&s.fields.variant==="SPLIT";
+   if(a.role==="PROMO")return s.kind==="CTA"&&s.order===a.order;
+   if(a.role==="TEAM")return s.kind==="TEAM"&&
+    Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
+   if(a.role==="FEATURE")return s.kind==="FEATURE_CARDS"&&
+    Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length;
+   return false;
+  });
+  if(!matches)throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+ }
  return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets,navigation};
 }
 type Page={id:string;kind:string;slug:string;version:string;created_by:string;
