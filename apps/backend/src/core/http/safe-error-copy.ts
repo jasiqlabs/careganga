@@ -57,6 +57,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_VOUCHER_STALE:"This voucher changed since you opened it. Refresh and review the latest version before saving.",
       FINANCE_JOURNAL_MEMO_INVALID:"Enter a journal description between 3 and 500 characters.",
       FINANCE_JOURNAL_LINES_INVALID:"Add 2–40 journal lines. Choose a valid account and enter a positive debit or credit amount on each line, with balanced totals.",
+      FINANCE_JOURNAL_REVERSAL_INVALID:"Choose a posted manual journal, open correction year, date, reason and your current password.",
+      FINANCE_JOURNAL_REVERSAL_CONFLICT:"This manual journal was already corrected or its current accounts/period changed. Refresh the original journal.",
       FINANCE_FORM_INVALID:"Review the required finance fields, correct any missing information and submit again.",
       FINANCE_ACCOUNT_KIND_INVALID:"Choose an available account type: General, Cash or Bank.",
       FINANCE_ACCOUNT_STATUS_INVALID:"Select Active or Inactive status and try again.",
