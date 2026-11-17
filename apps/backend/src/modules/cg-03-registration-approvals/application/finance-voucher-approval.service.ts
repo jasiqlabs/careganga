@@ -37,7 +37,7 @@ type CaseRow={id:string;realm_id:string;case_number:string;proposer_id:string;
  process_id:string;process_version:number;proposal_revision:number;proposal_digest:string;
  finance_voucher_id:string;finance_voucher_revision:number;finance_voucher_digest:string;
  finance_proof_file_id:string;finance_proof_revision:number;current_step:number;
- status:string;revision:number;request_key:string;request_digest:string;previous_case_id:string|null};
+ status:string;revision:number;request_key:string;request_digest:string;previous_case_id:string|null;submitted_at:Date};
 @Injectable()
 export class FinanceVoucherApprovalService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
