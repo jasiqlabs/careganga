@@ -9,6 +9,8 @@ import {BranchPrivateEvidenceController} from "./http/branch-private-evidence.co
 import {BranchWorkflowController} from "./http/branch-workflow.controller";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
+import {FinanceReceiptDocumentService} from "./application/finance-receipt-document.service";
+import {FinanceReceiptDocumentController} from "./http/finance-receipt-document.controller";
 import {FinanceInvoiceDocumentService} from "./application/finance-invoice-document.service";
 import {FinanceInvoiceDocumentController} from "./http/finance-invoice-document.controller";
 import {FinanceClaimEvidenceService} from "./application/finance-claim-evidence.service";
@@ -38,12 +40,12 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
  */
 @Module({
   imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule,FinanceSourceModule],
-  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,
+  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
-  providers:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,
+  providers:[PrivateEvidenceService,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,
     NotificationService,NoticeService,DeliveryService,
     CommunicationProviders,CommunicationWorker,SupportService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService]
+  exports:[PrivateEvidenceService,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService]
 })
 export class DocumentsNotificationsModule{}
