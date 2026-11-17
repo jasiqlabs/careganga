@@ -16,6 +16,9 @@ function allowed(parts:string[],method:string):boolean{
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="options")return method==="GET";
  if(parts.length===2&&parts[0]==="vouchers"&&parts[1]==="drafts")return method==="GET"||method==="POST";
  if(parts.length===3&&parts[0]==="vouchers"&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="GET"||method==="PATCH";
+ if(parts.length===5&&parts[0]==="vouchers"&&parts[1]==="drafts"
+   &&UUID.test(parts[2])&&parts[3]==="revisions"&&/^[1-9][0-9]{0,5}$/.test(parts[4]))
+  return method==="GET";
  if(parts.length===3&&parts[0]==="vouchers"&&parts[1]==="draft-commands"&&UUID.test(parts[2]))return method==="GET";
  if(parts.length===4&&parts[0]==="vouchers"&&parts[1]==="drafts"
    &&UUID.test(parts[2])&&parts[3]==="submit")return method==="POST";
