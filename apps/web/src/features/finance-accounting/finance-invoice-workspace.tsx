@@ -385,9 +385,9 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    {active?.status==="REVERSED"&&<p role="status" className="cg-fin-notice">
      This posted invoice was reversed before issue. The original journal remains in the audit ledger.
     </p>}
-    {active?.status==="ISSUED"&&<InvoiceDocumentLink refId={active.ref}/>}
-   {active?.status==="ISSUED"&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost} canIssue={canIssue}/>}
-   {active?.status==="ISSUED"&&<FinanceInvoiceAdjustmentTools invoiceRef={active.ref} canManage={canManage} canReview={canCancelPosted}/>}
+    {active&&["ISSUED","CREDITED"].includes(active.status)&&<InvoiceDocumentLink refId={active.ref}/>}
+   {active&&["ISSUED","CREDITED"].includes(active.status)&&<FinanceInvoiceReceiptTools invoiceRef={active.ref} canPost={canPost&&active.status==="ISSUED"} canIssue={canIssue&&active.status==="ISSUED"}/>}
+   {active&&["ISSUED","CREDITED"].includes(active.status)&&<FinanceInvoiceAdjustmentTools invoiceRef={active.ref} canManage={canManage} canReview={canCancelPosted} onCredited={()=>{setActive(v=>v?{...v,status:"CREDITED"}:v);void load();}}/>}
   </section>}
   {cancelOpen&&active?.status==="POSTED"&&canCancelPosted&&<div className="drawer-backdrop" role="presentation">
    <section role="dialog" aria-modal="true" aria-labelledby="cg-invoice-cancel-title"
@@ -432,7 +432,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    {[
     ["ALL","All"],["DRAFT","Drafts"],["SUBMITTED","Pending Verification"],
     ["APPROVED","Approved"],["POSTED","Posted"],
-    ["ISSUED","Approved & Issued"],["REVERSED","Reversed before issue"],
+    ["ISSUED","Issued"],["CREDITED","Credited"],["REVERSED","Reversed before issue"],
     ["REJECTED","Rejected"],["RETURNED","Returned"]
    ].map(([key,label])=><button type="button" key={key}
      aria-current={filter===key?"page":undefined}
@@ -443,7 +443,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     <th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>
     {rows.map(v=><tr key={v.invoiceRef}><td>{v.invoiceNumber}</td><td>{v.invoiceDate??"Draft"}</td>
      <td>{v.counterpartyName??"Not yet submitted"}</td>
-     <td>{format(v.totalMinor)}</td><td>{v.status==="ISSUED"?"Issued — not proof of payment":v.status}</td>
+     <td>{format(v.totalMinor)}</td><td>{v.status==="ISSUED"?"Issued — not proof of payment":v.status==="CREDITED"?"Credited — history kept":v.status}</td>
      <td><button type="button" onClick={()=>void openInvoice(v)}>Open</button></td></tr>)}
    </tbody></table>
    {!rows.length&&!error&&<p className="cg-fin-empty">No invoices yet.</p>}
