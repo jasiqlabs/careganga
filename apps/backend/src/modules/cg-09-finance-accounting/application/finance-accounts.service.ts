@@ -140,9 +140,11 @@ export class FinanceAccountsService{
  }
  async setup(bearer:string,searchInput?:string,offsetInput?:string,filters:AccountFilters={}){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
-  const search=typeof searchInput==="string"?searchInput.trim().slice(0,80):"";
+  if(searchInput!==undefined&&(typeof searchInput!=="string"||searchInput.length>80))
+   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"search"});
+  const search=searchInput?.trim()??"";
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,5})$/.test(offsetInput))
-   throw new BadRequestException({code:"FINANCE_SCOPE_INVALID",field:"offset"});
+   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
   const kind=filters.kind||"ALL",status=filters.status||"ALL";
   if(!["ALL","GENERAL","CASH","BANK"].includes(kind)||
