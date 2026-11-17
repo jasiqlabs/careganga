@@ -55,8 +55,7 @@ export class FinanceInvoiceWorkflowService{
   branchRef:string|null,createdBy:string){
   const actor=await this.sessions.requireAction(bearer,capability);
   const scope=await this.branches.financeReportScope(bearer,capability);
-  if(!scope.all&&(!branchRef||!scope.branchRefs.includes(branchRef))&&
-    !(branchRef===null&&createdBy===actor.accountId))
+  if(!scope.all&&(!branchRef||!scope.branchRefs.includes(branchRef)))
    throw new ForbiddenException("This invoice is not available to your assigned branch");
  }
  private async load(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
