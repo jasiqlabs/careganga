@@ -124,10 +124,11 @@ export class FinanceVoucherDraftService{
    throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
   const rows=await this.db.query<{voucherRef:string;voucherNumber:string;type:string;
-    postingDate:string;payeeName:string;purpose:string;totalMinor:string;version:number;status:string}>(`
+    postingDate:string;payeeName:string;purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null}>(`
     SELECT id AS "voucherRef",voucher_number AS "voucherNumber",voucher_type AS type,
      posting_date::text AS "postingDate",payee_name AS "payeeName",
-     purpose,total_minor::text AS "totalMinor",version,status
+     purpose,total_minor::text AS "totalMinor",version,status,
+      approval_case_id AS "approvalCaseRef"
     FROM finance_voucher WHERE root_realm_id=$1
     ORDER BY updated_at DESC,id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
   return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
