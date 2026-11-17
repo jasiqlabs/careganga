@@ -161,6 +161,22 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_RECONCILIATION_CONFLICT:"This bank statement item was already recorded or the independent review has changed.",
       FINANCE_RECONCILIATION_VARIANCE:"Statement amount and original bank journal amount must match before verification.",
       FINANCE_RECONCILIATION_EVIDENCE_INVALID:"Upload and scan the original bank statement, then select the exact file and version for independent review.",
+      CMS_INPUT_INVALID:"Review the page title, text, images, navigation and links. Correct the highlighted field before saving.",
+      CMS_SOURCE_INVALID:"Choose a valid current Foundation website page or revision.",
+      CMS_SOURCE_CHANGED:"This page was edited or submitted elsewhere. Refresh before continuing.",
+      CMS_PAGE_EXISTS:"This Foundation page already exists. Open and edit its current draft.",
+      CMS_NOT_FOUND:"This website page is unavailable or you do not have access.",
+      CMS_NOT_PUBLISHED:"This page has not been approved for public display.",
+      CMS_UNAVAILABLE_ROUTE:"Choose a real CareGanga public destination. Unavailable registration or booking links cannot be published.",
+      CMS_REPLAY_CONFLICT:"This website request was already used for a different change. Refresh before retrying.",
+      CMS_REVIEW_INVALID:"Choose a valid review decision and enter your current password.",
+      CMS_REVIEW_UNAVAILABLE:"An original independent website publication decision is not available. Review the submitted draft.",
+      CMS_REVIEW_CONFLICT:"This review has changed. Refresh the original approval before retrying.",
+      CMS_MEDIA_INVALID:"Choose a JPEG, PNG or WebP image under 10 MB and confirm permission to publish it.",
+      CMS_MEDIA_NOT_FOUND:"The original uploaded image is unavailable to this Foundation editor.",
+      CMS_MEDIA_REPLAY_CONFLICT:"The upload request was already used for another image. Check the existing upload.",
+      CMS_MEDIA_REVISION_CHANGED:"The image belongs to an older or submitted draft. Refresh the original page.",
+      CMS_MEDIA_NOT_VALIDATED:"Wait for the real image and malware scan to be verified before publication.",
       FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status."
 
 });
