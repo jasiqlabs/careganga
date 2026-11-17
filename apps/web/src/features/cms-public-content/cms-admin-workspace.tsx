@@ -66,6 +66,26 @@ function payload(d:Draft){
   ...(d.kind==="HOME"?{navigation:{loginDesired:d.loginDesired,
    memberJoinDesired:d.memberJoinDesired,volunteerJoinDesired:d.volunteerJoinDesired}}:{})};
 }
+function CmsReviewSection({kind,fields}:{kind:string;fields:Record<string,unknown>}){
+ const heading=val(fields.heading);
+ const labels=kind==="HERO"?
+  [["Subtitle",fields.subtitle],["Primary button",fields.primaryLabel],
+   ["Primary destination",fields.primaryPath],["Secondary button",fields.secondaryLabel],
+   ["Secondary destination",fields.secondaryPath]]:
+  kind==="RICH_TEXT"?[["Page text",fields.body]]:
+  kind==="CTA"?[["Button",fields.label],["Destination",fields.path]]:[];
+ return <div className="cg-cms-review-text">
+  {!!heading&&<h5>{heading}</h5>}
+  {labels.filter(([,value])=>val(value)).map(([label,value],i)=>
+   <p key={i}><strong>{val(label)}:</strong> {val(value)}</p>)}
+  {kind==="TEAM"&&Array.isArray(fields.members)&&fields.members.map((member,i)=>{
+   const x=member as Record<string,unknown>;
+   return <p key={i}><strong>{val(x.name)}</strong> · {val(x.designation)}
+    {val(x.bio)?": "+val(x.bio):""}
+    {x.consentConfirmed===true?" · Public-use consent confirmed":""}</p>;
+  })}
+ </div>;
+}
 async function serverMessage(r:Response){
  const result:unknown=await r.json().catch(()=>null);
  if(result&&typeof result==="object"&&"message" in result&&
@@ -241,7 +261,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       volunteer registration {review.source.navigation.volunteerJoinDesired?"requested, unavailable until delivered":"hidden"}.</p>
     </div>}
     {review.source.sections.map((sec,i)=><article key={i}><strong>{sec.kind.replaceAll("_"," ")}</strong>
-     <pre className="cg-cms-review-text">{JSON.stringify(sec.fields,null,2)}</pre>
+     <CmsReviewSection kind={sec.kind} fields={sec.fields}/>
     </article>)}
     {["SUBMITTED","IN_REVIEW"].includes(review.status)&&<>
      <label>Review comments<textarea value={remark} maxLength={500}
