@@ -1,17 +1,17 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useMemo,useState} from "react";
 
-type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
+type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Group={groupRef:string;name:string;code:string;category:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
 type Account={accountRef:string;code:string;name:string;groupName:string;kind:string;
  normalSide:string;scopeKind:string;branchRef:string|null;branchName:string|null;
- status:string;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null};
+ status:string;version:number;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null};
 type Opening={journalRef:string;postingDate:string;yearName:string;amountMinor:string};
 type Setup={years:Year[];groups:Group[];branches:Branch[];accounts:Account[];
  openingJournals:Opening[];nextOffset:number|null};
 type FormKind="year"|"group"|"account"|"opening";
-type Pending={key:string;kind:string;path:string;payload:Record<string,unknown>};
+type Pending={key:string;kind:string;path:string;payload:Record<string,unknown>;method?:"POST"|"PATCH"};
 type SafeFailure={message:string;field:string|null;uncertain:boolean};
 const base="/api/finance";
 const validAction:Record<FormKind,{path:string;kind:string}>={
@@ -69,6 +69,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [busy,setBusy]=useState(false);
  const [pending,setPending]=useState<Pending|null>(null);
  const [pendingNotFound,setPendingNotFound]=useState(false);
+ const [statusConfirm,setStatusConfirm]=useState<{type:"year"|"account";ref:string;name:string;expectedVersion:number;nextStatus:string}|null>(null);
  const change=(name:string,value:string)=>setForm(v=>({...v,[name]:value}));
  const load=useCallback(async()=>{
   setLoading(true);setError("");
@@ -89,7 +90,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  useEffect(()=>{void load();},[load]);
  function open(kind:FormKind){
   setDrawer(kind);setFailure(null);setSuccess("");setPending(null);setPendingNotFound(false);
-  setForm({...blank(),postingDate:new Date().toISOString().slice(0,10)});
+  setForm(blank());
  }
  const activeAccounts=useMemo(()=>data?.accounts.filter(a=>a.status==="ACTIVE")??[],[data]);
  const summary=[
@@ -123,7 +124,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
   setBusy(true);setFailure(null);setPendingNotFound(false);
   try{
    const res=await fetch(base+"/"+request.path,{
-    method:"POST",headers:{"Content-Type":"application/json"},
+    method:request.method??"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({...request.payload,requestKey:request.key})});
    if(!res.ok){
     const f=await parseFailure(res);
@@ -132,7 +133,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     else{setPending(null);}
     return;
    }
-   setPending(null);setDrawer(null);
+   setPending(null);setDrawer(null);setStatusConfirm(null);
    setSuccess("The "+(drawer?friendlyKind[drawer].toLowerCase():"finance request")+
     " was saved successfully.");
    setOffset(0);void load();
@@ -146,6 +147,14 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
   event.preventDefault();if(!drawer||busy)return;
   const action=validAction[drawer];
   void issue({path:action.path,kind:action.kind,payload:payloadFor(drawer),key:crypto.randomUUID()});
+ }
+ function statusChange(){
+  if(!statusConfirm||busy)return;
+  const item=statusConfirm;
+  const path=item.type==="year"?"years/"+item.ref+"/status":"accounts/"+item.ref+"/status";
+  const kind=item.type==="year"?"YEAR_STATUS":"ACCOUNT_STATUS";
+  void issue({path,kind,method:"PATCH",key:crypto.randomUUID(),
+   payload:{status:item.nextStatus,expectedVersion:item.expectedVersion}});
  }
  async function checkPending(){
   if(!pending||busy)return;
@@ -214,13 +223,17 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
      </form>
      <div className="cg-fin-table-wrap"><table className="cg-fin-table">
       <thead><tr><th>Account Name</th><th>Code</th><th>Group</th><th>Scope</th>
-       <th>Type</th><th>Status</th><th>Posted balance</th></tr></thead>
+       <th>Type</th><th>Status</th><th>Posted balance</th>{canManage&&<th>Action</th>}</tr></thead>
       <tbody>{data.accounts.map(a=><tr key={a.accountRef}>
        <td><strong>{a.name}</strong>{a.bankLabel&&<small>{a.bankLabel}{a.maskedDetails?" — "+a.maskedDetails:""}</small>}</td>
        <td>{a.code}</td><td>{a.groupName}</td><td>{a.branchName??"Foundation"}</td>
        <td>{a.kind==="GENERAL"?"General":a.kind==="CASH"?"Cash":"Bank"}</td>
        <td><span className={"cg-fin-status "+(a.status==="ACTIVE"?"is-active":"")}>{a.status==="ACTIVE"?"Active":"Inactive"}</span></td>
        <td className="cg-fin-money">{rupees(a.balanceMinor)}</td>
+       {canManage&&<td><button type="button" disabled={busy}
+        onClick={()=>setStatusConfirm({type:"account",ref:a.accountRef,name:a.name,
+         expectedVersion:a.version,nextStatus:a.status==="ACTIVE"?"INACTIVE":"ACTIVE"})}>
+        {a.status==="ACTIVE"?"Deactivate":"Reactivate"}</button></td>}
       </tr>)}</tbody>
      </table>{!data.accounts.length&&!loading&&<p className="cg-fin-empty">No matching financial accounts. {canManage?"Choose Add Account to create your first account.":"Ask your Finance Administrator to create accounts."}</p>}</div>
      <div className="cg-fin-paging">
@@ -237,10 +250,13 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
        <td>{g.code}</td><td>{g.category.charAt(0)+g.category.slice(1).toLowerCase()}</td></tr>)}
      </tbody></table>{!data.groups.length&&<p className="cg-fin-empty">No account groups yet. Create one before adding accounts.</p>}</div>}
     {tab==="years"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
-     <thead><tr><th>Financial year</th><th>Start</th><th>End</th><th>Status</th></tr></thead><tbody>
+     <thead><tr><th>Financial year</th><th>Start</th><th>End</th><th>Status</th>{canManage&&<th>Action</th>}</tr></thead><tbody>
       {data.years.map(y=><tr key={y.yearRef}><td><strong>{y.name}</strong></td>
        <td>{y.startOn}</td><td>{y.endOn}</td>
-       <td><span className={"cg-fin-status "+(y.status==="OPEN"?"is-active":"")}>{y.status==="OPEN"?"Open":"Closed"}</span></td></tr>)}
+       <td><span className={"cg-fin-status "+(y.status==="OPEN"?"is-active":"")}>{y.status==="OPEN"?"Open":"Closed"}</span></td>
+       {canManage&&<td>{y.status==="OPEN"?<button type="button" disabled={busy}
+        onClick={()=>setStatusConfirm({type:"year",ref:y.yearRef,name:y.name,
+         expectedVersion:y.version,nextStatus:"CLOSED"})}>Close year</button>:"Closed"}</td>}</tr>)}
      </tbody></table>{!data.years.length&&<p className="cg-fin-empty">No financial year exists. Add a financial year to begin.</p>}</div>}
     {tab==="opening"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
      <thead><tr><th>Date</th><th>Financial year</th><th>Balanced opening amount</th><th>Status</th></tr></thead><tbody>
@@ -250,6 +266,28 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
      </tbody></table>{!data.openingJournals.length&&<p className="cg-fin-empty">No opening entries posted. Select two eligible accounts and an open financial year.</p>}</div>}
    </section>
   </>}
+  {statusConfirm&&<div className="drawer-backdrop" role="presentation">
+   <section className="role-drawer cg-fin-drawer" role="dialog" aria-modal="true"
+    aria-labelledby="cg-fin-confirm-title">
+    <div className="cg-fin-drawer-header"><h2 id="cg-fin-confirm-title">Confirm finance status change</h2>
+     <button type="button" disabled={busy||Boolean(pending)} onClick={()=>setStatusConfirm(null)}>×</button></div>
+    <p>{statusConfirm.type==="year"?
+     "Close the financial year “"+statusConfirm.name+"”? New postings will be blocked for this period.":
+     (statusConfirm.nextStatus==="INACTIVE"?"Deactivate":"Reactivate")+" the account “"+
+      statusConfirm.name+"”? "+(statusConfirm.nextStatus==="INACTIVE"?
+      "New postings to this account will be blocked; historical balances remain visible.":
+      "The account may be used for new authorized postings if its branch is active.")}</p>
+    {failure&&<p role="alert" className="cg-fin-notice">{failure.message}</p>}
+    {pending&&<div className="cg-fin-pending"><p>Check the earlier request outcome before retrying.</p>
+      <button type="button" disabled={busy} onClick={()=>void checkPending()}>Check original request</button>
+      {pendingNotFound&&<button type="button" disabled={busy} onClick={()=>void issue(pending)}>Retry same request</button>}
+     </div>}
+    <div className="cg-fin-form-actions"><button type="button" disabled={busy||Boolean(pending)}
+      onClick={()=>setStatusConfirm(null)}>Cancel</button>
+     <button type="button" className="primary" disabled={busy||Boolean(pending)}
+      onClick={statusChange}>{busy?"Saving…":"Confirm change"}</button></div>
+   </section>
+  </div>}
   {drawer&&<div className="drawer-backdrop" role="presentation" onMouseDown={e=>{
     if(e.target===e.currentTarget&&!busy&&!pending)setDrawer(null);}}>
    <div role="dialog" aria-modal="true" aria-labelledby="cg-fin-drawer-title"
