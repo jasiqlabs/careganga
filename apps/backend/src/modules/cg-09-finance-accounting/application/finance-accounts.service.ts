@@ -194,10 +194,9 @@ export class FinanceAccountsService{
       AND ($8::text='ALL' OR a.status=$8)
     GROUP BY a.id,g.name,g.category,cb.display_label,cb.masked_details
     ORDER BY a.name,a.id LIMIT 51 OFFSET $3`,
-    [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\[actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\[actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset]),")+"%":"",offset,
-     year,kind,group,branch,status]),")+"%":"",offset,
-     year,kind,group,branch,status]),
-   this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
+     [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset,
+      year,kind,group,branch,status]),
+    this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
     SELECT j.id AS "journalRef",j.posting_date::text AS "postingDate",fy.name AS "yearName",
      MAX(l.debit_minor)::text AS "amountMinor"
     FROM journal j JOIN financial_year fy ON fy.id=j.financial_year_id
