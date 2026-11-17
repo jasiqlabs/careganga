@@ -134,7 +134,7 @@ export function FinanceVoucherSubmissionTools({voucher,canViewEvidence,canUpload
       result.confirmed!==true||!("status" in result)||typeof result.status!=="string")
     throw Error("UNKNOWN");
    setPending(null);setNotice(
-    result.status==="SUBMITTED"?"Voucher submitted for genuine CG-03 review. Not posted or paid.":
+    result.status==="SUBMITTED"?"Voucher submitted for authorized review. No payment has been recorded.":
     "Confirmed Finance reviewer outcome: "+result.status+". No payment has been made.");
    onUpdated();
   }catch{setPending(action);
