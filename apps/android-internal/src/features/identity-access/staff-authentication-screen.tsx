@@ -265,8 +265,11 @@ export function StaffAuthenticationScreen(){
   if(reportsOpen&&token&&actor&&roleActions.includes("finance.reports.view"))
     return <FinanceNativeReports token={token}
       canReconcile={roleActions.includes("finance.reconciliation.manage")}
+      canUploadStatement={roleActions.includes("finance.reconciliation.manage")&&
+        roleActions.includes("documents.files.manage")}
       canReview={roleActions.includes("finance.reconciliation.review")&&
-        roleActions.includes("approvals.review")}
+        roleActions.includes("approvals.review")&&
+        roleActions.includes("documents.files.view")}
       onExit={closeReports} onExpired={expireSession}/>;
   if(financeClaimReviewsOpen&&token&&actor&&
     ["finance.claims.review","approvals.review","documents.files.view"]
