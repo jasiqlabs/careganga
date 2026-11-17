@@ -7,6 +7,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import {FinanceBankStatementProofFacade} from "../../cg-19-documents-notifications/application/finance-bank-statement-proof.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid=(v:unknown,field:string)=>{
  if(typeof v!=="string"||!UUID.test(v))
@@ -42,7 +43,8 @@ export class FinanceReportsService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
-  private readonly statementProof:FinanceBankStatementProofFacade){}
+  private readonly statementProof:FinanceBankStatementProofFacade,
+   private readonly branches:BranchSourceFacade){}
  private actor(bearer:string,write=false){
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
@@ -77,16 +79,17 @@ export class FinanceReportsService{
  }
  async options(bearer:string){
   const actor=await this.actor(bearer);
-  const [years,accounts]=await Promise.all([
+  const [years,accounts,branches]=await Promise.all([
    this.db.query<{ref:string;name:string;startOn:string;endOn:string}>(
     "SELECT id AS ref,name,start_on::text AS \"startOn\",end_on::text AS \"endOn\" "+
     "FROM financial_year WHERE root_realm_id=$1 ORDER BY start_on DESC LIMIT 30",
     [actor.realmId]),
    this.db.query<{ref:string;name:string;code:string;kind:string}>(
     "SELECT id AS ref,name,code,account_kind AS kind FROM finance_account "+
-    "WHERE root_realm_id=$1 ORDER BY name,id LIMIT 200",[actor.realmId])
+    "WHERE root_realm_id=$1 ORDER BY name,id LIMIT 200",[actor.realmId]),
+    this.branches.financeBranches(bearer,"finance.reports.view")
   ]);
-  return {years:years.rows,accounts:accounts.rows};
+  return {years:years.rows,accounts:accounts.rows,branches};
  }
  async ledger(bearer:string,raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
@@ -173,10 +176,11 @@ export class FinanceReportsService{
    [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,kind,v.offset]);
   return {kind,lines:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?v.offset+50:null};
  }
- async summary(bearer:string,yearInput?:string){
+ async summary(bearer:string,yearInput?:string,branchInput?:string){
   const actor=await this.actor(bearer),
-   year=yearInput?uuid(yearInput,"yearRef"):null;
-  await this.verifyFilterScope(actor.realmId,{fy:year,branch:null,account:null});
+   year=yearInput?uuid(yearInput,"yearRef"):null,
+   branch=branchInput?uuid(branchInput,"branchRef"):null;
+  await this.verifyFilterScope(actor.realmId,{fy:year,branch,account:null});
   const result=await this.db.query<{category:string;amountDebit:string;amountCredit:string}>(
    "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
    "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
@@ -184,8 +188,9 @@ export class FinanceReportsService{
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
-   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) GROUP BY g.category",
-   [actor.realmId,year]);
+   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+   "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
+   [actor.realmId,year,branch]);
   const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
   const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
   const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
@@ -198,7 +203,8 @@ export class FinanceReportsService{
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-   "AND a.account_kind IN('CASH','BANK')",[actor.realmId,year]);
+   "AND a.account_kind IN('CASH','BANK') "+
+   "AND ($3::uuid IS NULL OR l.branch_id=$3)",[actor.realmId,year,branch]);
   return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
    surplusMinor:(income-expense).toString(),
    fundsMinor:funds.toString(),cashBankMinor:cash.rows[0]?.balance??"0",
