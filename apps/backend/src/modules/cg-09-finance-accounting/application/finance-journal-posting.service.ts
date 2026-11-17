@@ -8,6 +8,7 @@ type AccountingLine=Readonly<{
 type FinancePosting=Readonly<{
  financialYearRef:string;postingDate:string;sourceRef:string;eventKey:string;
  immutableDigest:string;kind:"OPENING"|"GENERAL"|"VOUCHER"|"REVERSAL";
+ description?:string;
  reversalOfRef?:string|null;lines:readonly AccountingLine[];
 }>;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,6 +33,10 @@ export class FinanceJournalPostingService{
      !UUID.test(event.eventKey)||!event.lines||
      event.lines.length<2||event.lines.length>40)
    throw new BadRequestException({code:"FINANCE_DEBITS_CREDITS",field:"debitAccountRef"});
+  const description=event.description??"Opening balance";
+  if(typeof description!=="string"||description.trim().length<3||
+     description.trim().length>500)
+   throw new BadRequestException({code:"FINANCE_JOURNAL_MEMO_INVALID",field:"description"});
   let debits=0n,credits=0n;
   for(const line of event.lines){
    if(!UUID.test(line.accountRef)||line.branchRef!==null&&!UUID.test(line.branchRef))
@@ -46,11 +51,11 @@ export class FinanceJournalPostingService{
   const result=await client.query<{id:string}>(`
     INSERT INTO journal(root_realm_id,financial_year_id,source_owner,source_ref,
       posting_kind,immutable_source_event_key,immutable_payload_digest,
-      posting_date,reversal_of_id,created_by)
-    VALUES($1,$2,'CG-09',$3,$4,$5,$6,$7,$8,$9) RETURNING id`,[
+      posting_date,reversal_of_id,created_by,description)
+    VALUES($1,$2,'CG-09',$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,[
      actor.realmId,event.financialYearRef,event.sourceRef,event.kind,
      event.eventKey,event.immutableDigest,event.postingDate,event.reversalOfRef??null,
-     actor.accountId
+     actor.accountId,description.trim()
     ]);
   const journalRef=result.rows[0].id;
   const params:unknown[]=[];
