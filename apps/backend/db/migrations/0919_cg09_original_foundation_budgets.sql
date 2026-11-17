@@ -117,7 +117,7 @@ ALTER TABLE finance_event ADD CONSTRAINT cg09_finance_event_voucher_kind
 -- locking in service serializes spend; enforce available ceiling again in DB.
 CREATE FUNCTION cg09_budget_event_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE b record; used bigint; committed bigint; released bigint; allocated bigint;
-DECLARE original_amount bigint; journal_total bigint;
+ journal_total bigint;
 BEGIN
  SELECT status,approved_ceiling_minor,financial_year_id,branch_id INTO b
   FROM finance_budget WHERE id=NEW.budget_id AND root_realm_id=NEW.root_realm_id FOR UPDATE;
@@ -131,7 +131,7 @@ BEGIN
  INTO used,committed,released,allocated
  FROM finance_budget_event WHERE root_realm_id=NEW.root_realm_id AND budget_id=NEW.budget_id;
  IF NEW.kind='UTILIZE' THEN
-  SELECT j.id INTO original_amount FROM journal j
+  PERFORM 1 FROM journal j
    WHERE j.id=NEW.source_journal_id AND j.root_realm_id=NEW.root_realm_id
     AND j.status='POSTED' AND j.financial_year_id=b.financial_year_id
     AND j.posting_kind IN('VOUCHER','GENERAL')
