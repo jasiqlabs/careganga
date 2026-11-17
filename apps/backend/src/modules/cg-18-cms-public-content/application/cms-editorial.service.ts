@@ -777,6 +777,47 @@ export class CmsEditorialService{
    return {confirmed:true,status:"HIDDEN",replayed:false};
   });
  }
+ /** Only current effective, original-reviewed article source; bounded cursor,
+  * no CMS draft, patient, notice recipients or CG19 object credentials.
+  */
+ async publicArticles(categoryInput?:string,cursorInput?:string){
+  const category=categoryInput?.trim()??"";
+  const cursor=cursorInput?.trim()??"";
+  if(category.length>80||!/^[-\\p{L}0-9 &]*$/u.test(category)||
+    (cursor&&!/^[a-z0-9][a-z0-9-]{0,69}$/.test(cursor)))
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"category"});
+  const rows=await this.db.query<{slug:string;title:string;category:string;
+   excerpt:string;as_of_date:string}>(
+   "SELECT p.slug,v.title,body.structured_fields->>'category' AS category, "+
+   "body.structured_fields->>'excerpt' AS excerpt, "+
+   "body.structured_fields->>'asOfDate' AS as_of_date "+
+   "FROM cms_page p JOIN cms_page_effective e ON e.page_id=p.id "+
+   "AND e.foundation_root_id=p.foundation_root_id "+
+   "JOIN cms_publication pub ON pub.id=e.publication_id "+
+   "AND pub.foundation_root_id=e.foundation_root_id "+
+   "JOIN cms_page_revision v ON v.id=pub.page_revision_id "+
+   "AND v.foundation_root_id=p.foundation_root_id "+
+   "JOIN cms_section_revision body ON body.page_revision_id=v.id "+
+   "AND body.foundation_root_id=p.foundation_root_id AND body.section_kind='ARTICLE_BODY' "+
+   "JOIN access_realm root ON root.id=p.foundation_root_id "+
+   "WHERE root.realm_key='FOUNDATION_ROOT' AND p.kind='ARTICLE' "+
+   "AND p.archived_at IS NULL AND pub.state='EFFECTIVE' "+
+   "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
+   "AND ($1::text='' OR lower(body.structured_fields->>'category')=lower($1)) "+
+   "AND ($2::text='' OR p.slug>$2) "+
+   "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
+   "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
+   "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
+   "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
+   "OR f.revision<>a.cg19_validated_version)) "+
+   "ORDER BY p.slug LIMIT 21",[category,cursor]);
+  return {schemaVersion:1,posts:rows.rows.slice(0,20).map(x=>({
+   slug:x.slug,title:x.title,category:x.category,excerpt:x.excerpt,
+   asOfDate:x.as_of_date,path:"/blog/"+x.slug})),
+   nextCursor:rows.rows.length>20?rows.rows[19].slug:null};
+ }
  async publicNavigation(){
   const response=await this.db.query<{effective_generation:string;login_desired:boolean}>(
    'SELECT n.id AS "effective_generation",n.login_desired '+
