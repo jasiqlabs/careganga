@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
+import {PDFDocument} from "pdf-lib";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -83,6 +84,14 @@ export class FinanceInvoiceDocumentService{
    try{
     const stored=await this.storage.reconcileIssuedPrivateDocument({
      objectKey:row.object_key,maxBytes:10*1024*1024});
+    const actual=await this.storage.readVerifiedPrivateObject({
+     objectKey:row.object_key,objectVersion:stored.objectVersion,maxBytes:stored.sizeBytes});
+    if(actual.length!==stored.sizeBytes||
+      createHash("sha256").update(actual).digest("hex")!==stored.sha256)
+     throw new Error("Original invoice private bytes changed");
+    const decoded=await PDFDocument.load(actual,{updateMetadata:false});
+    if(decoded.getSubject()!=="CG09-INVOICE:"+source.version+":"+source.sourceDigest)
+     throw new Error("Original invoice private bytes are not source-bound");
     await this.sessions.requireAction(bearer,"finance.invoices.issue");
     const recovered=await this.db.query(
      "UPDATE cg19_finance_invoice_document SET status='ISSUED',object_version=$3,"+
@@ -123,7 +132,8 @@ export class FinanceInvoiceDocumentService{
     chargesMinor:String(items.chargesMinor),totalMinor:String(items.totalMinor),
     terms:String(payment.terms??"Payment due per invoice"),
     notes:typeof payment.notes==="string"?payment.notes:null,
-    postedAt:source.postedAt,issueAt:issuedAt
+    postedAt:source.postedAt,issueAt:issuedAt,
+    sourceDigest:source.sourceDigest,sourceVersion:source.version
    });
    const digest=createHash("sha256").update(bytes).digest("hex");
    const stored=await this.storage.writeVerifiedPrivateDocument({
