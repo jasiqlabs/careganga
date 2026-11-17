@@ -4,6 +4,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {FinanceSetupEditor,type FinanceKind,type FinanceSetup} from "./finance-setup-editor";
+import {FinanceVoucherDraftScreen} from "./finance-voucher-draft-screen";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Account={accountRef:string;name:string;code:string;groupName:string;kind:string;
@@ -12,7 +13,7 @@ type Account={accountRef:string;name:string;code:string;groupName:string;kind:st
 type Setup=FinanceSetup & {accounts:Account[];years:Year[];
   openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
   nextOffset:number|null};
-type Props={token:string;canManage:boolean;canPost:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;onExit:()=>void;onExpired:()=>void};
 function inr(minor:string):string{
  try{
   const n=BigInt(minor),abs=n<0n?-n:n;
@@ -30,12 +31,13 @@ function viewError(status:number):string{
 /** US-001 native read-only counterpart to the original U35/U36 Admin Web
  * account overview; no second finance editor and no raw technical identifiers.
  */
-export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}:Props){
+export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,onExit,onExpired}:Props){
  const [data,setData]=useState<Setup|null>(null);
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
  const [category,setCategory]=useState<"ACCOUNTS"|"GROUPS"|"YEARS"|"OPENING"|"JOURNALS">("ACCOUNTS");
+ const [voucherOpen,setVoucherOpen]=useState(false);
  const [manualJournals,setManualJournals]=useState<Array<{
   journalRef:string;description:string;postingDate:string;yearName:string;debitMinor:string}>>([]);
  const [manualError,setManualError]=useState("");
@@ -66,9 +68,9 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
  },[token,offset,onExpired]);
  useEffect(()=>{void reload();},[reload]);
  useEffect(()=>{
-  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{if(editor)setEditor(null);else onExit();return true;});
+  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{if(editor)setEditor(null);else if(voucherOpen)setVoucherOpen(false);else onExit();return true;});
   return()=>sub.remove();
- },[onExit,editor]);
+ },[onExit,editor,voucherOpen]);
  useEffect(()=>{
   if(category!=="JOURNALS")return;
   let active=true;
@@ -90,6 +92,9 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
   })();
   return()=>{active=false;};
  },[category,token,manualRefresh,onExpired]);
+ if(voucherOpen&&data)return <FinanceVoucherDraftScreen token={token}
+   years={data.years} branches={data.branches} canManage={canManageVouchers}
+   onClose={()=>setVoucherOpen(false)} onExpired={onExpired}/>;
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
     onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
@@ -123,6 +128,8 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
      onPress={()=>setEditor({kind:"opening"})}><Text style={s.createText}>+ Opening Entry</Text></Pressable>}
     {canPost&&<Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"manual"})}><Text style={s.createText}>+ General Journal</Text></Pressable>}
+    {canViewVouchers&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setVoucherOpen(true)}><Text style={s.createText}>Voucher Drafts</Text></Pressable>}
    </View>
    {busy&&<View style={s.state}><ActivityIndicator color={theme.primary}/>
     <Text style={s.subtext}>Checking current finance records…</Text></View>}
