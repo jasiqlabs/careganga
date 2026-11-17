@@ -89,7 +89,7 @@ export class FinanceInvoiceDocumentService{
     chargesMinor:String(items.chargesMinor),totalMinor:String(items.totalMinor),
     terms:String(payment.terms??"Payment due per invoice"),
     notes:typeof payment.notes==="string"?payment.notes:null,
-    postedAt:issuedAt,issueAt:issuedAt
+    postedAt:source.postedAt,issueAt:issuedAt
    });
    const digest=createHash("sha256").update(bytes).digest("hex");
    const stored=await this.storage.writeVerifiedPrivateDocument({
