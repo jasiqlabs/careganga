@@ -53,15 +53,17 @@ export class CmsPublicationApprovalService{
    throw new BadRequestException({code:"CMS_REVIEW_INVALID"});
   const frozen=await this.source.original(tx,actor,source.pageRef,source.revisionRef,
    source.revisionNo,source.digest);
-  if(frozen.createdBy!==actor.accountId)
-   throw new ForbiddenException("Only the page author may submit this revision");
+// A currently authorized editor may submit a revision. The proposal binds the
+  // actual submitting actor; the reviewer must be a distinct current account.
   await this.protectedOwner.requireDistinctFinalReviewer(tx,actor.realmId,actor.accountId);
-  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
-   ["CG03-CMS-PROCESS:"+actor.realmId]);
-  let current=await tx.query<{process_id:string}>(
+  const lockedRoot=await tx.query("SELECT id FROM access_realm WHERE id=$1 "+
+   "AND realm_key=\'FOUNDATION_ROOT\' FOR UPDATE",[actor.realmId]);
+  if(!lockedRoot.rowCount)throw new ForbiddenException("Foundation access unavailable");
+  const current=await tx.query<{process_id:string}>(
    "SELECT process_id FROM cg03_cms_process_current WHERE realm_id=$1 FOR SHARE",
    [actor.realmId]);
-  if(!current.rows[0]){
+  let processRef=current.rows[0]?.process_id;
+  if(!processRef){
    const next=await tx.query<{v:number}>(
     "SELECT COALESCE(MAX(version),0)+1 AS v FROM cg03_process WHERE realm_id=$1",
     [actor.realmId]);
@@ -73,7 +75,7 @@ export class CmsPublicationApprovalService{
     "protected_root_required) VALUES($1,1,'approvals.review',true)",[process.rows[0].id]);
    await tx.query("INSERT INTO cg03_cms_process_current(realm_id,process_id) VALUES($1,$2)",
     [actor.realmId,process.rows[0].id]);
-   current={rows:[{process_id:process.rows[0].id}]} as typeof current;
+   processRef=process.rows[0].id;
   }
   const prior=await tx.query<CaseRow>(
    "SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='CMS_PUBLICATION' "+
@@ -99,7 +101,7 @@ export class CmsPublicationApprovalService{
    "'CMS_PUBLICATION',$8,$9,$10,$11 FROM cg03_process p WHERE p.id=$12 RETURNING *",
    [actor.realmId,actor.accountId,frozen.title.slice(0,160),source.revisionNo,
     source.digest,requestDigest,source.requestKey,source.pageRef,source.revisionRef,
-    source.revisionNo,source.digest,current.rows[0].process_id]);
+    source.revisionNo,source.digest,processRef]);
   await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
    "step_ordinal,correlation_ref) VALUES($1,$2,$3,'SUBMITTED',1,$4)",
    [actor.realmId,caseRow.rows[0].id,actor.accountId,randomUUID()]);
@@ -227,6 +229,12 @@ export class CmsPublicationApprovalService{
    "AND c.cms_content_digest=$6 AND c.status IN('PENDING_OWNER','OWNER_COMPLETED') "+
    "AND c.proposer_id<>d.actor_id AND d.action='APPROVE' "+
    "AND d.fresh_password_verified_at IS NOT NULL "+
+   "AND EXISTS(SELECT 1 FROM account reviewer "+
+   "JOIN account_role ar ON ar.account_id=reviewer.id AND ar.realm_id=reviewer.realm_id "+
+   "AND ar.revoked_at IS NULL "+
+   "JOIN role rr ON rr.id=ar.role_id AND rr.realm_id=reviewer.realm_id "+
+   "WHERE reviewer.id=d.actor_id AND reviewer.realm_id=c.realm_id "+
+   "AND reviewer.status=\'ACTIVE\' AND rr.active=true AND rr.is_protected=true) "+
    "ORDER BY d.created_at DESC,d.id DESC LIMIT 1 FOR SHARE OF c,d",
    [input.caseRef,actor.realmId,input.pageRef,input.revisionRef,
     input.revisionNo,input.digest]);
