@@ -29,7 +29,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
   totalCeilingMinor:string;committedOutstandingMinor:string;allocatedMinor:string;
   utilizedMinor:string;availableMinor:string;overBudgetMinor:string}|null>(null);
  const [year,setYear]=useState<Year[]>([]),[branches,setBranches]=useState<Branch[]>([]);
- const [categories,setCategories]=useState<string[]>([]);
+ const [categories,setCategories]=useState<{code:string;name:string}[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [form,setForm]=useState<Form>(clear());
  const [expenses,setExpenses]=useState<Expense[]>([]);
@@ -59,7 +59,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  useEffect(()=>{void loadOverview();},[loadOverview]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
-   const x=await request<{years:Year[];branches:Branch[];categories:string[]}>(token,
+   const x=await request<{years:Year[];branches:Branch[];categories:{code:string;name:string}[]}>(token,
     "/api/finance-accounting/budgets/options");
    if(alive){setYear(x.years);setBranches(x.branches);setCategories(x.categories);}
   }catch(e){if(alive)fail(e);}})();return()=>{alive=false;};
@@ -195,8 +195,8 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
       onChange={v=>{
        const b=branches.find(x=>x.branchRef===v);
        setForm(f=>({...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}/>
-     <Options label="Real expense group category" value={form.category}
-      options={categories.map(v=>({ref:v,label:v}))}
+     <Options label="Expense account group" value={form.category}
+      options={categories.map(v=>({ref:v.code,label:v.name+" ("+v.code+")"}))}
       onChange={v=>change("category",v)}/>
      <Field label="Period starts (YYYY-MM-DD)" value={form.periodStart} onChange={v=>change("periodStart",v)}/>
      <Field label="Period ends (YYYY-MM-DD)" value={form.periodEnd} onChange={v=>change("periodEnd",v)}/>
