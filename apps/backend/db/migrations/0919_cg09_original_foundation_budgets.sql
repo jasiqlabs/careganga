@@ -143,7 +143,7 @@ BEGIN
    WHERE j.id=NEW.source_journal_id AND j.root_realm_id=NEW.root_realm_id
     AND j.status='POSTED' AND j.financial_year_id=b.financial_year_id
     AND j.posting_kind='VOUCHER' AND j.posting_date BETWEEN b.period_start AND b.period_end
-    AND v.voucher_type='EXPENSE' AND g.category='EXPENSE' AND g.name=b.category_label
+    AND v.voucher_type='EXPENSE' AND g.category='EXPENSE' AND g.code=b.category_label
     AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED')
    FOR SHARE OF j,v,a,g;
   IF NOT FOUND THEN RAISE EXCEPTION 'Real posted journal required' USING ERRCODE='P0924'; END IF;
