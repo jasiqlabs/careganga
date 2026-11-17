@@ -10,7 +10,7 @@ export const clientScreenshotHome = {
   subtitle:"Free Health Camp | বিনামূল্যে স্বাস্থ্য পরীক্ষা শিবির",
   description:"Bringing quality healthcare to underprivileged communities.",
   tags:"FREE CHECKUP, MEDICINE SUPPORT, COMMUNITY HEALTH",
-  headingFont:"SERIF" as const,headingWeight:"BOLD" as const,
+  visible:true,headingFont:"SERIF" as const,headingWeight:"BOLD" as const,
   headingSize:"LARGE" as const,headingColor:"#FFE34A",subtitleColor:"#8CF442",
   primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""
  }],
