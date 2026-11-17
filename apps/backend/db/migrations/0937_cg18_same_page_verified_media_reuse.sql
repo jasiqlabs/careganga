@@ -8,10 +8,17 @@
 -- It is backfilled exclusively from the already-owned page revision.
 ALTER TABLE cms_asset_placement ADD COLUMN page_id uuid;
 
+-- One trusted transactional backfill may touch formerly submitted
+-- immutable revisions. Normal CMS edits remain protected afterwards.
+-- The migration runner wraps this SQL in a single rollback-safe transaction.
+ALTER TABLE cms_asset_placement DISABLE TRIGGER cg18_asset_edit_guard;
+
 UPDATE cms_asset_placement a
  SET page_id=v.page_id
  FROM cms_page_revision v
  WHERE a.page_revision_id=v.id AND a.foundation_root_id=v.foundation_root_id;
+
+ALTER TABLE cms_asset_placement ENABLE TRIGGER cg18_asset_edit_guard;
 
 ALTER TABLE cms_asset_placement ALTER COLUMN page_id SET NOT NULL;
 
