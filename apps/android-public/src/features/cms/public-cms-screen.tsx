@@ -145,7 +145,12 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
        {text(fields.heading)||"Our team"}</Text>
       {members.map((member,j)=>{
        if(!member||typeof member!=="object"||member.consentConfirmed!==true)return null;
+       const photo=page.assets.find(x=>x.role==="TEAM"&&x.order===j);
+       const photoUri=safeImage(photo);
        return <View key={j} style={styles.person}>
+        {!!photoUri&&<Image source={{uri:photoUri}}
+         accessibilityLabel={photo?.altText||"Foundation team member"}
+         resizeMode="cover" style={styles.teamPhoto}/>}
         <Text style={styles.heading}>{text(member.name)}</Text>
         <Text style={styles.role}>{text(member.designation)}</Text>
         {!!text(member.bio)&&<Text>{text(member.bio)}</Text>}
@@ -183,5 +188,6 @@ const styles=StyleSheet.create({
  secondaryText:{color:t.text},
  person:{borderWidth:1,borderColor:t.border,borderRadius:8,
   padding:12,gap:5,backgroundColor:"#f8fafc"},
+ teamPhoto:{width:"100%",height:180,borderRadius:8},
  role:{fontWeight:"700",color:t.primary,fontSize:14}
 });
