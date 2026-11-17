@@ -841,7 +841,35 @@ export class CmsEditorialService{
    'AND d.fresh_password_verified_at IS NOT NULL '+
    'AND n.source_digest=v.content_digest AND n.effective_at<=now() LIMIT 1');
   const x=response.rows[0];
+  const routes=await this.db.query<{kind:string;slug:string}>(
+   "SELECT p.kind,p.slug FROM cms_page p JOIN cms_page_effective e "+
+   "ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id "+
+   "JOIN cms_publication pub ON pub.id=e.publication_id "+
+   "AND pub.foundation_root_id=e.foundation_root_id "+
+   "JOIN access_realm r ON r.id=p.foundation_root_id "+
+   "WHERE r.realm_key='FOUNDATION_ROOT' AND p.archived_at IS NULL "+
+   "AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
+   "AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
+   "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
+   "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "WHERE a.foundation_root_id=p.foundation_root_id "+
+   "AND a.page_revision_id=pub.page_revision_id "+
+   "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
+   "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
+   "OR a.cg19_validated_version<>f.revision)) "+
+   "AND NOT EXISTS (SELECT 1 FROM cms_section_revision cs "+
+   "WHERE cs.foundation_root_id=p.foundation_root_id "+
+   "AND cs.page_revision_id=pub.page_revision_id "+
+   "AND cs.section_kind='COMPLIANCE_FACTS' "+
+   "AND cs.structured_fields->>'verification'='VERIFIED' "+
+   "AND cs.structured_fields->>'validUntil'<to_char(current_date,'YYYY-MM-DD')) "+
+   "ORDER BY p.slug LIMIT 100");
+  const publishedRoutes=routes.rows.map(p=>({kind:p.kind,slug:p.slug,
+   path:p.kind==="ARTICLE"?"/blog/"+p.slug:
+    p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/80g":"/"+p.slug}));
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
+   publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
     path:x?.login_desired?"/admin/login":null},
    memberJoin:{visible:false,label:"Member registration",path:null},
