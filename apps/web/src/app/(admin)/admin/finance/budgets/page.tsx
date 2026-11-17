@@ -33,7 +33,7 @@ export default async function FinanceBudgetsPage(){
   const canCreate=actions.includes("finance.budgets.manage");
   const canView=actions.includes("finance.budgets.view");
   const canManage=canCreate;
-  if(!canCreate&&!canView&&!canManage)return <main className="page main">
+  if(!canViewreturn <main className="page main">
    <h1>Budgets access restricted</h1>
    <p>Your role cannot create or view Foundation budgets. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
