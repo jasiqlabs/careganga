@@ -325,7 +325,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   kind:draft.kind,slug:previewData.slug,title:draft.title,
   seoTitle:draft.seoTitle||draft.title,seoDescription:draft.seoDescription,
   canonicalPath:previewData.canonicalPath,lastPublishedAt:"",
-  sections:previewData.sections,assets:[]};
+  sections:previewData.sections,assets:selected?draft.assets.map(a=>({
+   role:a.role,order:a.order,altText:a.altText,
+   src:"/api/cms-image-preview/"+a.fileRef})):[]};
  return <div className="cg-cms-workspace">
   <header className="cg-cms-toolbar"><div>
    <h2>Website content</h2><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
