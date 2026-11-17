@@ -3,15 +3,16 @@ import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,View}
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {FinanceSetupEditor,type FinanceKind,type FinanceSetup} from "./finance-setup-editor";
 
-type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
+type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Account={accountRef:string;name:string;code:string;groupName:string;kind:string;
   scopeKind:string;branchName:string|null;status:string;balanceMinor:string;
-  bankLabel:string|null;maskedDetails:string|null};
-type Setup={accounts:Account[];years:Year[];
+  bankLabel:string|null;maskedDetails:string|null;version:number};
+type Setup=FinanceSetup & {accounts:Account[];years:Year[];
   openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
   nextOffset:number|null};
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canPost:boolean;onExit:()=>void;onExpired:()=>void};
 function inr(minor:string):string{
  try{
   const n=BigInt(minor),abs=n<0n?-n:n;
@@ -29,12 +30,14 @@ function viewError(status:number):string{
 /** US-001 native read-only counterpart to the original U35/U36 Admin Web
  * account overview; no second finance editor and no raw technical identifiers.
  */
-export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
+export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}:Props){
  const [data,setData]=useState<Setup|null>(null);
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
  const [category,setCategory]=useState<"ACCOUNTS"|"YEARS"|"OPENING">("ACCOUNTS");
+ const [editor,setEditor]=useState<{kind:FinanceKind;target?:{
+   ref:string;name:string;status:string;version:number}}|null>(null);
  const reload=useCallback(async()=>{
   setBusy(true);setNotice("");
   try{
@@ -58,9 +61,12 @@ export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
  },[token,offset,onExpired]);
  useEffect(()=>{void reload();},[reload]);
  useEffect(()=>{
-  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});
+  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{if(editor)setEditor(null);else onExit();return true;});
   return()=>sub.remove();
- },[onExit]);
+ },[onExit,editor]);
+ if(editor&&data)return <FinanceSetupEditor token={token} data={data}
+    kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
+    onSaved={()=>{setEditor(null);setOffset(0);void reload();}} onExpired={onExpired}/>;
  return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" accessibilityLabel="Back to Foundation"
@@ -80,6 +86,16 @@ export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
   </View>
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.subtext}>Only confirmed financial data for your permitted Foundation role is shown.</Text>
+   <View style={s.actionRow}>
+    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setEditor({kind:"year"})}><Text style={s.createText}>+ Financial Year</Text></Pressable>}
+    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setEditor({kind:"group"})}><Text style={s.createText}>+ Account Group</Text></Pressable>}
+    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setEditor({kind:"account"})}><Text style={s.createText}>+ Account</Text></Pressable>}
+    {canPost&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setEditor({kind:"opening"})}><Text style={s.createText}>+ Opening Entry</Text></Pressable>}
+   </View>
    {busy&&<View style={s.state}><ActivityIndicator color={theme.primary}/>
     <Text style={s.subtext}>Checking current finance records…</Text></View>}
    {!!notice&&<View style={s.error} accessibilityRole="alert"><Text style={s.errorText}>{notice}</Text>
@@ -94,6 +110,11 @@ export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
       <Text style={s.meta}>{a.branchName??"Foundation"} · {a.kind==="BANK"?"Bank":a.kind==="CASH"?"Cash":"General"}</Text>
       {!!a.bankLabel&&<Text style={s.meta}>{a.bankLabel}{a.maskedDetails?" · "+a.maskedDetails:""}</Text>}
       <Text style={s.amount}>{inr(a.balanceMinor)}</Text>
+      {canManage&&<Pressable accessibilityRole="button" style={s.create}
+       onPress={()=>setEditor({kind:"accountStatus",
+        target:{ref:a.accountRef,name:a.name,status:a.status,version:a.version}})}>
+       <Text style={s.createText}>{a.status==="ACTIVE"?"Deactivate account":"Reactivate account"}</Text>
+      </Pressable>}
      </View>)}
     <View style={s.pager}><Pressable accessibilityRole="button" disabled={offset===0||busy}
       style={[s.pagerButton,offset===0&&s.disabled]} onPress={()=>setOffset(x=>Math.max(0,x-50))}>
@@ -109,6 +130,11 @@ export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
        <View style={s.line}><Text style={s.cardTitle}>{y.name}</Text>
         <Text style={[s.status,y.status==="OPEN"&&s.active]}>{y.status==="OPEN"?"Open":"Closed"}</Text></View>
        <Text style={s.meta}>{y.startOn} to {y.endOn}</Text>
+       {canManage&&y.status==="OPEN"&&<Pressable accessibilityRole="button"
+         style={s.create} onPress={()=>setEditor({kind:"yearStatus",
+           target:{ref:y.yearRef,name:y.name,status:y.status,version:y.version}})}>
+        <Text style={s.createText}>Close financial year</Text>
+       </Pressable>
       </View>))}
    {!busy&&data&&category==="OPENING"&&
     (!data.openingJournals.length?<Text style={s.empty}>No opening entries are posted yet. New opening entries are created in the authorized Finance Web Admin.</Text>:
@@ -120,6 +146,11 @@ export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
+ actionRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ create:{borderWidth:1,borderColor:theme.primary,borderRadius:7,paddingHorizontal:12,
+  justifyContent:"center",minHeight:48,backgroundColor:theme.surface,alignSelf:"flex-start"},
+ createText:{color:theme.primary,fontSize:13,fontWeight:"650"},
+
  safe:{flex:1,backgroundColor:theme.background},
  header:{backgroundColor:theme.surface,borderBottomColor:theme.border,borderBottomWidth:1,
   paddingHorizontal:14,paddingVertical:12,flexDirection:"row",alignItems:"center",gap:8},
