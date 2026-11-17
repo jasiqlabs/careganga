@@ -140,22 +140,24 @@ export class FinanceInvoiceDraftService{
    return reject("FINANCE_INVOICE_FILTER_INVALID","search");
   const allowed=await this.branches.financeBranches(bearer,"finance.invoices.view");
   const branches=allowed.map(b=>b.branchRef);
+  const labels=new Map(allowed.map(b=>[b.branchRef,b.name]));
   const q=(searchInput??"").trim();
   const pattern="%"+q.replace(/[\\%_]/g,x=>"\\"+x)+"%";
   const rows=await this.db.query<{accountRef:string;name:string;code:string;
    category:string;branchRef:string|null;branchName:string|null}>(
    "SELECT a.id AS \"accountRef\",a.name,a.code,g.category,"+
-   "a.branch_id AS \"branchRef\",br.name AS \"branchName\" "+
+   "a.branch_id AS \"branchRef\" "+
    "FROM finance_account a JOIN account_group g ON g.id=a.group_id "+
-   "AND g.root_realm_id=a.root_realm_id LEFT JOIN branch br "+
-   "ON br.id=a.branch_id AND br.root_realm_id=a.root_realm_id "+
+   "AND g.root_realm_id=a.root_realm_id "+
    "WHERE a.root_realm_id=$1 AND a.status='ACTIVE' "+
    "AND g.category IN('ASSET','INCOME','LIABILITY') "+
    "AND (a.branch_id IS NULL OR a.branch_id=ANY($3::uuid[])) "+
    "AND (a.name ILIKE $2 ESCAPE '\\' OR a.code ILIKE $2 ESCAPE '\\') "+
    "ORDER BY a.name,a.id LIMIT 51",
    [actor.realmId,pattern,branches]);
-  return {accounts:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
+  return {accounts:rows.rows.slice(0,50).map(a=>({...a,
+    branchName:a.branchRef?labels.get(a.branchRef)??null:null})),
+    hasMore:rows.rows.length>50};
  }
  private async validateInfo(tx:PoolClient,actor:VerifiedFoundationActor,
   info:NonNullable<Draft["info"]>){
