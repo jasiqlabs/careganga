@@ -58,7 +58,9 @@ export default async function VoucherDraftsPage(){
     canViewVouchers={true}/>
    <main className="workspace">
     <FinanceVoucherDraftWorkspace years={data.years} branches={data.branches}
-      canManage={actions.includes("finance.vouchers.manage")}/>
+      canManage={actions.includes("finance.vouchers.manage")}
+      canViewEvidence={actions.includes("documents.files.view")}
+      canUploadEvidence={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
    </main>
   </div>;
  }catch(e){
