@@ -50,7 +50,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
     const code=status>=400&&status<500&&typeof rawCode==="string"&&Object.hasOwn(safeCodes,rawCode)
       ?rawCode:null;
     const rawField=payload&&typeof payload==="object"&&"field" in payload?payload.field:null;
-    const field=typeof rawField==="string"&&["identifier","password","currentPassword","newPassword","name","code","category","startOn","endOn","scopeKind",
+    const field=typeof rawField==="string"&&["identifier","password","currentPassword","newPassword","search","offset","name","code","category","startOn","endOn","scopeKind",
       "branchRef","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
       "creditAccountRef"].includes(rawField)?rawField:null;
     if(status>=500){
