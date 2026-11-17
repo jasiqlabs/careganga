@@ -43,6 +43,12 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="drafts"&&parts.length===2){
+  const offset=request.nextUrl.searchParams.get("offset")??"0";
+  if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+   return NextResponse.json({message:"Choose a valid voucher list page and try again."},{status:400});
+  target.searchParams.set("offset",offset);
+ }
  if(method==="GET"&&parts[0]==="account-options"){
   const query=request.nextUrl.searchParams.get("q")??"";
   if(query.length>80)
