@@ -16,7 +16,7 @@ type Review={caseRef:string;number:string;title:string;status:string;revision:nu
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:{fileRef:string;role:string;altText:string;order:number;current:boolean}[]}};
+ assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
@@ -471,8 +471,16 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       <ul>{review.source.assets.map((asset,i)=><li key={i}>
        {asset.role.replaceAll("_"," ")}: {asset.altText} (position {asset.order+1})
        {asset.current?" — verified":" — source no longer verified; do not approve"}
-       {asset.current&&<img src={"/api/cms-image-preview/"+asset.fileRef}
-        alt={asset.altText} loading="lazy" className="cg-cms-review-image"/>}
+       {asset.current&&asset.mime?.startsWith("image/")&&
+        <img src={"/api/cms-image-preview/"+asset.fileRef}
+         alt={asset.altText} loading="lazy" className="cg-cms-review-image"/>}
+       {asset.current&&asset.mime==="video/mp4"&&
+        <video controls preload="none" aria-label={asset.altText}
+         className="cg-cms-review-image"
+         src={"/api/cms-file-preview/"+asset.fileRef}/>}
+       {asset.current&&asset.mime==="application/pdf"&&
+        <a href={"/api/cms-file-preview/"+asset.fileRef} download>
+         Review original scanned PDF proof</a>}
       </li>)}</ul>}
      {["SUBMITTED","IN_REVIEW"].includes(review.status)&&<>
      <label>Review comments<textarea value={remark} maxLength={500}
