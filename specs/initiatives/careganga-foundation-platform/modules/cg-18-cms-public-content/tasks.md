@@ -130,7 +130,7 @@ Verification: On actual implementation source-trace US-004-QA01–QA18 UI→requ
 Dependencies: US-001
 
 ## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: SOURCE_DEVELOPMENT_PREPARED | owner_instruction=17-Nov-2026 move to next canonical module after CG09 simplified V1 source-content checkpoint; branch=feature/careganga-cg18-cms-public-website-dev-20261117 cut from latest main after simple-V1 rule merge; prerequisite_source=CG01/CG03/CG19 integrated in main; latest CG18 delegated design accepted AS_DRAFT_SOURCE_ONLY for future coding, formal current-hash Harness approval NOT_RUN and product pin stale; implementation NOT_STARTED; source/live/visual QA NOT_RUN; must follow simple V1 and Implement→Review→Fix→Re-review→20 original QA source traces before progress; do not claim READY or pass. No future CG04/CG05 fake join/project source.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
