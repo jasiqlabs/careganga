@@ -292,7 +292,7 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
       keyboard="numeric" onChange={v=>change("postingDate",v)}
       error={notice?.field==="postingDate"?notice.message:undefined}/>
      <Field label="Find posting account by name or code" value={search}
-      onChange={setSearch} placeholder="Search your eligible accounts"/>
+      onChange={v=>setSearch(v.slice(0,80))} placeholder="Search your eligible accounts"/>
      {choiceBusy&&<ActivityIndicator color={theme.primary}/>}
      {!!choiceError&&<View style={styles.warn}><Text style={styles.notice}>{choiceError}</Text>
       <Pressable style={styles.button} onPress={()=>setSearchReload(x=>x+1)}>
@@ -351,7 +351,7 @@ const styles=StyleSheet.create({
  heading:{flex:1},eyebrow:{fontSize:10,color:theme.mutedText},
  title:{fontSize:18,fontWeight:"700",color:theme.text},
  body:{padding:16,paddingBottom:48,gap:14},
- label:{fontSize:13,fontWeight:"650",color:theme.text,marginBottom:5},
+ label:{fontSize:13,fontWeight:"600",color:theme.text,marginBottom:5},
  field:{gap:4},
  input:{borderWidth:1,borderColor:theme.border,borderRadius:8,minHeight:48,
   paddingHorizontal:12,paddingVertical:10,color:theme.text,
@@ -362,7 +362,7 @@ const styles=StyleSheet.create({
  chip:{borderWidth:1,borderColor:theme.border,borderRadius:8,paddingHorizontal:12,
   paddingVertical:11,minHeight:46,justifyContent:"center",backgroundColor:theme.surface},
  selectedChip:{borderColor:theme.primary,backgroundColor:"#EEF4FF"},
- chipText:{color:theme.text,fontSize:13,fontWeight:"550"},
+ chipText:{color:theme.text,fontSize:13,fontWeight:"500"},
  selectedChipText:{color:theme.primary,fontWeight:"700"},
  hint:{color:theme.mutedText,fontSize:13,lineHeight:20},
  warn:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,gap:9,
@@ -372,7 +372,7 @@ const styles=StyleSheet.create({
  actions:{flexDirection:"row",justifyContent:"flex-end",gap:10,paddingTop:14},
  button:{borderWidth:1,borderColor:theme.border,borderRadius:7,paddingHorizontal:16,
   minHeight:48,justifyContent:"center",backgroundColor:theme.surface},
- buttonText:{color:theme.text,fontWeight:"650",fontSize:14},
+ buttonText:{color:theme.text,fontWeight:"600",fontSize:14},
  primary:{backgroundColor:theme.primary,borderColor:theme.primary},
  primaryText:{color:theme.primaryText,fontWeight:"700"}
 });
