@@ -27,7 +27,8 @@ export default async function VoucherApprovalsPage(){
   const rights=info.actions.filter((v:unknown):v is {key:string}=>
     v!==null&&typeof v==="object"&&"key" in v&&typeof (v as {key:unknown}).key==="string")
     .map(v=>v.key);
-  if(!rights.includes("approvals.review")||!rights.includes("finance.vouchers.view"))
+  if(!rights.includes("approvals.review")||!rights.includes("finance.vouchers.view")||
+     !rights.includes("documents.files.view"))
    return <main className="page main"><h1>Finance review restricted</h1>
     <p>Your current role cannot review Finance vouchers.</p>
     <Link href="/admin">Return to my account</Link></main>;
