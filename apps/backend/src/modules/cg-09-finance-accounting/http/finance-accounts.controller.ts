@@ -6,8 +6,11 @@ export class FinanceAccountsController{
  constructor(private readonly service:FinanceAccountsService){}
  @Get("setup")
  setup(@Headers("authorization")bearer:string,
-  @Query("search")search?:string,@Query("offset")offset?:string){
-  return this.service.setup(bearer,search,offset);
+  @Query("search")search?:string,@Query("offset")offset?:string,
+  @Query("kind")kind?:string,@Query("groupRef")groupRef?:string,
+  @Query("branchRef")branchRef?:string,@Query("status")status?:string,
+  @Query("yearRef")yearRef?:string){
+  return this.service.setup(bearer,search,offset,{kind,groupRef,branchRef,status,yearRef});
  }
  @Post("years")
  year(@Headers("authorization")bearer:string,@Body()body:unknown){
