@@ -17,9 +17,10 @@ type Invoice={id:string;version:number;current_digest:string;status:string;invoi
  income_account_id:string|null;tax_account_id:string|null;gross_minor:string|null;
  tax_minor:string|null;charges_minor:string|null;total_minor:string|null};
 type JournalReply={confirmed:true;status:string;invoiceNumber:string;replayed:boolean};
-const ident=(v:unknown):string=>{
+const ident=(v:unknown,field="invoiceRef"):string=>{
  if(typeof v!=="string"||!UUID.test(v))
-  throw new BadRequestException({code:"FINANCE_INVOICE_SOURCE_INVALID",field:"invoiceRef"});
+  throw new BadRequestException({code:field==="invoiceRef"?
+    "FINANCE_INVOICE_SOURCE_INVALID":"FINANCE_INVOICE_FORM_INVALID",field});
  return v;
 };
 const revision=(v:unknown):number=>{
@@ -129,7 +130,7 @@ export class FinanceInvoiceWorkflowService{
  async submit(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
    v=input(payload,["requestKey","expectedVersion"]),
-   key=ident(v.requestKey),version=revision(v.expectedVersion),
+   key=ident(v.requestKey,"requestKey"),version=revision(v.expectedVersion),
    digest=hash(["INVOICE_SUBMIT_V1",ref,version]);
   const tx=await this.db.connect();
   try{
@@ -168,7 +169,7 @@ export class FinanceInvoiceWorkflowService{
  }
  async reconcile(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.actor(bearer,"finance.invoices.manage"),ref=ident(invoiceInput),
-   v=input(payload,["requestKey"]),key=ident(v.requestKey),
+   v=input(payload,["requestKey"]),key=ident(v.requestKey,"requestKey"),
    digest=hash(["INVOICE_RECONCILE_V1",ref]);
   const tx=await this.db.connect();
   try{
@@ -202,7 +203,7 @@ export class FinanceInvoiceWorkflowService{
  async post(bearer:string,invoiceInput:string,payload:unknown):Promise<JournalReply>{
   const actor=await this.actor(bearer,"finance.invoices.manage");
   await this.sessions.requireAction(bearer,"finance.journals.post");
-  const ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey),
+  const ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey,"requestKey"),
    digest=hash(["INVOICE_ACCRUAL_POST_V1",ref]);
   const tx=await this.db.connect();
   try{
@@ -268,7 +269,7 @@ export class FinanceInvoiceWorkflowService{
   */
  async issue(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.actor(bearer,"finance.invoices.issue"),
-   ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey);
+   ref=ident(invoiceInput),v=input(payload,["requestKey"]),key=ident(v.requestKey,"requestKey");
   const digest=hash(["INVOICE_ISSUE_V1",ref]);
   // External PDF issuance cannot be inside the transaction. CG19 uses the same
   // original source key and document-status lookup for any uncertain result.
@@ -334,7 +335,7 @@ export class FinanceInvoiceWorkflowService{
   await this.sessions.requireAction(bearer,"finance.journals.post");
   const ref=ident(invoiceInput);
   const v=input(raw,["requestKey","bankAccountRef","financialYearRef","postingDate","amount"]);
-  const key=ident(v.requestKey),bank=ident(v.bankAccountRef),fy=ident(v.financialYearRef);
+  const key=ident(v.requestKey,"requestKey"),bank=ident(v.bankAccountRef,"bankAccountRef"),fy=ident(v.financialYearRef,"financialYearRef");
   const date=String(v.postingDate??"");
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+"T00:00:00Z"))||
      new Date(date+"T00:00:00Z").toISOString().slice(0,10)!==date)
@@ -449,7 +450,7 @@ export class FinanceInvoiceWorkflowService{
  async linkReceipt(bearer:string,invoiceInput:string,payload:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
   const ref=ident(invoiceInput),v=input(payload,["requestKey","reconciliationRef"]),
-   key=ident(v.requestKey),matchRef=ident(v.reconciliationRef);
+   key=ident(v.requestKey,"requestKey"),matchRef=ident(v.reconciliationRef,"reconciliationRef");
   const fingerprint=hash(["CG09_REAL_INVOICE_RECEIPT_LINK",ref,matchRef]);
   const tx=await this.db.connect();
   try{
