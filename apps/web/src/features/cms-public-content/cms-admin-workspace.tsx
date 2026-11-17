@@ -19,6 +19,8 @@ type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:numbe
  assets:{fileRef:string;role:string;altText:string;order:number;current:boolean}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;
+ headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
+ headingColor:string;subtitleColor:string;
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
 type FeatureCard={label:string;title:string;body:string};
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
@@ -32,7 +34,8 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",
- primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
+ headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
+ headingColor:"#FFE34A",subtitleColor:"#8CF442",primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
 const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  slides:kind==="HOME"?[blankSlide()]:[],bodyHeading:"",body:"",bodyEyebrow:"",
  bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",
@@ -57,6 +60,11 @@ function fromPage(p:PageDetail):Draft{
    .map(x=>({heading:val(x.fields.heading),subtitle:val(x.fields.subtitle),
     description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),
     tags:Array.isArray(x.fields.tags)?x.fields.tags.filter(y=>typeof y==="string").join(", "):"",
+    headingFont:x.fields.headingFont==="SANS"?"SANS":"SERIF",
+    headingWeight:x.fields.headingWeight==="REGULAR"?"REGULAR":"BOLD",
+    headingSize:x.fields.headingSize==="STANDARD"?"STANDARD":"LARGE",
+    headingColor:val(x.fields.headingColor)||"#FFE34A",
+    subtitleColor:val(x.fields.subtitleColor)||"#8CF442",
     primaryLabel:val(x.fields.primaryLabel),primaryPath:val(x.fields.primaryPath),
     secondaryLabel:val(x.fields.secondaryLabel),secondaryPath:val(x.fields.secondaryPath)})),
   bodyHeading:val(body.heading),body:val(body.body),
@@ -90,6 +98,9 @@ function payload(d:Draft){
  d.slides.forEach((slide,index)=>{
   const fields:Record<string,unknown>={heading:slide.heading,subtitle:slide.subtitle,
    description:slide.description,eyebrow:slide.eyebrow,
+   headingFont:slide.headingFont,headingWeight:slide.headingWeight,
+   headingSize:slide.headingSize,headingColor:slide.headingColor,
+   subtitleColor:slide.subtitleColor,
    tags:slide.tags.split(",").map(x=>x.trim()).filter(Boolean).slice(0,4)};
   if(slide.primaryLabel.trim()&&slide.primaryPath.trim()){
    fields.primaryLabel=slide.primaryLabel;fields.primaryPath=slide.primaryPath;
@@ -454,6 +465,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,description:e.target.value}:x))}/></label>
          <label>Badges (up to four, comma-separated)<input disabled={!canManage} value={slide.tags}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,tags:e.target.value}:x))}/></label>
+         <label>Heading typeface<select disabled={!canManage} value={slide.headingFont}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingFont:e.target.value as Slide["headingFont"]}:x))}>
+          <option value="SERIF">Original serif heading</option>
+          <option value="SANS">Sans-serif heading</option>
+         </select></label>
+         <label>Heading weight<select disabled={!canManage} value={slide.headingWeight}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingWeight:e.target.value as Slide["headingWeight"]}:x))}>
+          <option value="BOLD">Bold</option><option value="REGULAR">Regular</option>
+         </select></label>
+         <label>Heading size<select disabled={!canManage} value={slide.headingSize}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingSize:e.target.value as Slide["headingSize"]}:x))}>
+          <option value="LARGE">Original large heading</option><option value="STANDARD">Standard</option>
+         </select></label>
+         <label>Heading colour<input disabled={!canManage} type="color" value={slide.headingColor}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,headingColor:e.target.value.toUpperCase()}:x))}/></label>
+         <label>Subtitle colour<input disabled={!canManage} type="color" value={slide.subtitleColor}
+          onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,subtitleColor:e.target.value.toUpperCase()}:x))}/></label>
          <label>Primary button label<input disabled={!canManage} maxLength={60} value={slide.primaryLabel}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,primaryLabel:e.target.value}:x))}/></label>
          <label>Primary route<input disabled={!canManage} value={slide.primaryPath} placeholder="/about"
