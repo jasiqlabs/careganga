@@ -1,13 +1,14 @@
-import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type InvoiceSource=Readonly<{
  invoiceRef:string;version:number;status:string;sourceDigest:string;
- invoiceNumber:string;createdBy:string;draft:Record<string,unknown>;
+ invoiceNumber:string;createdBy:string;branchRef:string|null;draft:Record<string,unknown>;
 }>;
 const valid=(id:unknown):string=>{
  if(typeof id!=="string"||!UUID.test(id))
@@ -18,23 +19,24 @@ const valid=(id:unknown):string=>{
 export class FinanceInvoiceSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  private async original(tx:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,action:string):Promise<InvoiceSource>{
   await this.identity.assertCurrent(tx,actor,action);
   if(!Number.isSafeInteger(version)||version<1)
    throw new ConflictException({code:"FINANCE_INVOICE_STALE"});
   const rows=await tx.query<{id:string;version:number;status:string;
-   current_digest:string;invoice_number:string;created_by:string;
+   current_digest:string;invoice_number:string;created_by:string;branch_id:string|null;
    draft_payload:Record<string,unknown>}>(
-   "SELECT id,version,status,current_digest,invoice_number,created_by,draft_payload "+
+   "SELECT id,version,status,current_digest,invoice_number,created_by,branch_id,draft_payload "+
    "FROM finance_invoice WHERE id=$1 AND root_realm_id=$2 AND version=$3 FOR SHARE",
    [valid(reference),actor.realmId,version]);
   const row=rows.rows[0];
   if(!row)throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID"});
   return {invoiceRef:row.id,version:row.version,status:row.status,
    sourceDigest:row.current_digest,invoiceNumber:row.invoice_number,
-   createdBy:row.created_by,draft:row.draft_payload};
+   createdBy:row.created_by,branchRef:row.branch_id,draft:row.draft_payload};
  }
  async guardDraft(tx:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,digest:string){
@@ -60,9 +62,9 @@ export class FinanceInvoiceSourceFacade{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.invoices.review");
-   const result=await tx.query<{invoice_number:string;created_by:string;
-    status:string;draft_payload:Record<string,unknown>}>(
-    "SELECT i.invoice_number,i.created_by,c.status,r.draft_payload "+
+   const result=await tx.query<{invoice_number:string;created_by:string;branch_id:string|null;
+    status:string;draft_payload:Record<string,unknown>}>( 
+    "SELECT i.invoice_number,i.created_by,i.branch_id,c.status,r.draft_payload "+
     "FROM finance_invoice_revision r JOIN finance_invoice i "+
     "ON i.id=r.invoice_id AND i.root_realm_id=r.root_realm_id "+
     "JOIN cg03_case c ON c.finance_invoice_id=i.id AND c.realm_id=i.root_realm_id "+
@@ -73,6 +75,9 @@ export class FinanceInvoiceSourceFacade{
    const row=result.rows[0];
    if(!row||row.created_by===actor.accountId)
     throw new ConflictException({code:"FINANCE_INVOICE_REVIEW_UNAVAILABLE"});
+   const scope=await this.branches.financeReportScope(bearer,"finance.invoices.review");
+   if(!scope.all&&(!row.branch_id||!scope.branchRefs.includes(row.branch_id)))
+    throw new ForbiddenException("This invoice review belongs to another branch");
    await tx.query("COMMIT");
    return {invoiceNumber:row.invoice_number,version,status:row.status,
     draft:row.draft_payload};
@@ -85,6 +90,10 @@ export class FinanceInvoiceSourceFacade{
   try{
    await tx.query("BEGIN");
    const source=await this.original(tx,actor,reference,version,"finance.invoices.issue");
+   const scope=await this.branches.financeReportScope(bearer,"finance.invoices.issue");
+   if(!scope.all&&(!source.branchRef||!scope.branchRefs.includes(source.branchRef))&&
+      !(source.branchRef===null&&source.createdBy===actor.accountId))
+    throw new ForbiddenException("This invoice document belongs to another branch");
    if(source.status!=="POSTED"&&source.status!=="ISSUED")
     throw new ConflictException({code:"FINANCE_INVOICE_NOT_ISSUABLE"});
    const cancelled=await tx.query(
