@@ -87,9 +87,14 @@ export function FinanceInvoiceReceiptTools({invoiceRef}:{invoiceRef:string}){
      setPending(null);setNotice("Original verified receipt link confirmed.");void refresh();
     }else setNotice("Original receipt payment has not been confirmed. Retry only this original request.");
    }else{
-    await refresh();
-    if(doc?.status==="ISSUED"){setPending(null);setNotice("Original receipt PDF has been issued.");}
-    else setNotice("Original private receipt PDF is still not confirmed; do not issue another reference.");
+    if(!paid?.receiptRef)throw Error("Original verified receipt is unavailable.");
+    const r=await fetch("/api/finance-receipts/receipts/"+paid.receiptRef+"/status",{cache:"no-store"});
+    if(!r.ok)throw Error(await explanation(r));
+    const current=await r.json() as Doc;
+    setDoc(current);
+    if(current.status==="ISSUED"&&current.canDownload){
+     setPending(null);setNotice("Original receipt PDF has been issued.");
+    }else setNotice("Original receipt issue remains unconfirmed. Do not create a new issue key.");
    }
   }catch(e){setNotice(e instanceof Error?e.message:"Original receipt outcome unknown.");}
   finally{setBusy(false);}
