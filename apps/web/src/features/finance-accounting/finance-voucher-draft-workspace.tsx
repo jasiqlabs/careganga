@@ -1,6 +1,7 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useState} from "react";
 import {FinanceVoucherSubmissionTools,type VoucherWorkflowRow} from "./finance-voucher-submission-tools";
+import {FinanceVoucherPaymentTools} from "./finance-voucher-payment-tools";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
@@ -40,9 +41,9 @@ const item=():Item=>({description:"",quantity:"1",unitRate:""});
 const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",
  postingDate:"",payeeName:"",purpose:"",paymentAccountRef:"",
  debitAccountRef:"",creditAccountRef:"",tax:"0",charges:"0"});
-export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEvidence=false,canUploadEvidence=false}:{
+export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEvidence=false,canUploadEvidence=false,canPost=false,canVerifyPayment=false}:{
  years:readonly Year[];branches:readonly Branch[];canManage:boolean;
- canViewEvidence?:boolean;canUploadEvidence?:boolean
+ canViewEvidence?:boolean;canUploadEvidence?:boolean;canPost?:boolean;canVerifyPayment?:boolean
 }){
  const [data,setData]=useState<Voucher[]>([]);
  const [offset,setOffset]=useState(0);
@@ -257,7 +258,10 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
       {["DRAFT","SUBMITTED"].includes(v.status)&&<FinanceVoucherSubmissionTools
        voucher={v} canViewEvidence={canViewEvidence}
        canUploadEvidence={canUploadEvidence} onUpdated={()=>void refresh()}/>}
-      {!["DRAFT","RETURNED","SUBMITTED"].includes(v.status)&&
+      {["APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&
+       <FinanceVoucherPaymentTools voucher={v} canUploadProof={canUploadEvidence}
+        canPost={canPost} canVerify={canVerifyPayment} onUpdated={()=>void refresh()}/>}
+      {!["DRAFT","RETURNED","SUBMITTED","APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&
        <span className="cg-fin-help">Read-only review outcome</span>}
      </td>}
     </tr>)}</tbody>
