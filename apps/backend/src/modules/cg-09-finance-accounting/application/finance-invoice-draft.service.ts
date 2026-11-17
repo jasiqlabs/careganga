@@ -303,7 +303,8 @@ export class FinanceInvoiceDraftService{
    "SELECT COUNT(i.id)::int AS total,"+
    "COUNT(i.id) FILTER(WHERE i.status='DRAFT')::int AS drafts,"+
    "COUNT(i.id) FILTER(WHERE i.status='SUBMITTED')::int AS pending,"+
-   "COUNT(i.id) FILTER(WHERE i.status IN('APPROVED','POSTED'))::int AS approved,"+
+   "COUNT(i.id) FILTER(WHERE i.status IN('APPROVED','POSTED') "+
+   "AND c.invoice_id IS NULL)::int AS approved,"+
    "COUNT(i.id) FILTER(WHERE i.status='ISSUED')::int AS issued,"+
    "COUNT(i.id) FILTER(WHERE i.status='REJECTED')::int AS rejected,"+
    "COUNT(i.id) FILTER(WHERE i.status='RETURNED')::int AS returned,"+
@@ -311,11 +312,13 @@ export class FinanceInvoiceDraftService{
    "AND COALESCE(r.paid_minor,0)=i.total_minor)::int AS \"paidVerified\","+
    "COUNT(i.id) FILTER(WHERE i.status='ISSUED' "+
    "AND COALESCE(r.paid_minor,0)>0 AND r.paid_minor<i.total_minor)::int AS \"partiallyPaid\","+
-   "COALESCE(SUM(i.total_minor),0)::text AS \"faceValueMinor\","+
+   "COALESCE(SUM(i.total_minor) FILTER(WHERE c.invoice_id IS NULL),0)::text AS \"faceValueMinor\","+
    "COALESCE(SUM(i.total_minor) FILTER(WHERE i.status='ISSUED'),0)::text AS \"issuedMinor\","+
    "COALESCE(SUM(r.paid_minor),0)::text AS \"receivedVerifiedMinor\" "+
    "FROM finance_invoice i LEFT JOIN receipt_sums r "+
    "ON r.invoice_id=i.id AND r.root_realm_id=i.root_realm_id "+
+   "LEFT JOIN finance_invoice_posted_cancellation c "+
+   "ON c.invoice_id=i.id AND c.root_realm_id=i.root_realm_id "+
    "WHERE i.root_realm_id=$1",[actor.realmId]);
   const monthly=await this.db.query<{month:string;count:number;issuedMinor:string}>(
    "SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,"+
