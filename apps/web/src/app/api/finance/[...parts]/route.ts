@@ -45,6 +45,7 @@ const financeErrors=new Set([
 ]);
 function allowed(parts:string[],method:string):boolean{
  if(parts[0]==="reports"){
+  if(parts.length===3&&parts[1]==="export"&&parts[2]==="csv")return method==="GET";
   if(parts.length===2&&["options","summary","general-ledger","trial-balance",
      "day-book","cash-book","bank-book","receivables"].includes(parts[1]))return method==="GET";
   if(parts.length===3&&parts[1]==="reconciliation"&&
@@ -152,7 +153,8 @@ async function handler(request:NextRequest,parts:string[],method:string){
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
  if(method==="GET"&&parts[0]==="reports"){
-  const keys=new Set(["yearRef","branchRef","accountRef","from","to","offset"]);
+  const keys=new Set(["yearRef","branchRef","accountRef","from","to","offset",
+   ...(parts[1]==="export"?["view"]:[])]);
   for(const [k,value] of request.nextUrl.searchParams){
    if(!keys.has(k)||value.length>80||(k.endsWith("Ref")&&value&&!UUID.test(value))||
      (k==="offset"&&!/^(0|[1-9][0-9]{0,4})$/.test(value))||
@@ -245,6 +247,17 @@ async function handler(request:NextRequest,parts:string[],method:string){
    return new NextResponse(file,{status:200,headers:{"Content-Type":"application/pdf",
     "Content-Disposition":"attachment; filename=CareGanga-Credit-Note.pdf",
     "Cache-Control":"private, no-store"}});
+  }
+  if(res.ok&&parts[0]==="reports"&&parts[1]==="export"&&parts[2]==="csv"){
+   const type=res.headers.get("content-type")??"";
+   if(!type.startsWith("text/csv"))
+    return NextResponse.json({message:"The exported statement could not be verified."},{status:503});
+   const csv=await res.text();
+   if(csv.length<4||new TextEncoder().encode(csv).byteLength>1048576)
+    return NextResponse.json({message:"The report export exceeded the safe file size."},{status:409});
+   return new NextResponse(csv,{status:200,headers:{"Content-Type":"text/csv; charset=utf-8",
+    "Content-Disposition":"attachment; filename=CareGanga-Finance-Report.csv",
+    "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
   }
   const data:unknown=await res.json().catch(()=>null);
   if(res.ok)return NextResponse.json(data,{status:res.status,headers:{"Cache-Control":"no-store"}});
