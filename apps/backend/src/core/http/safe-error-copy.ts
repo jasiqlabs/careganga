@@ -69,7 +69,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_ACCOUNT_NAME_TOO_LONG:"Enter an account name containing no more than 140 characters.",
       FINANCE_BANK_LABEL_TOO_LONG:"Enter a cash or bank display name containing no more than 120 characters.",
       FINANCE_GROUP_CATEGORY_INVALID:"Choose an account category: Assets, Liabilities, Funds, Income or Expenses.",
-      FINANCE_REQUEST_KEY_INVALID:"This save request could not be verified. Refresh the form and review any earlier result before submitting again."
+      FINANCE_REQUEST_KEY_INVALID:"This save request could not be verified. Refresh the form and review any earlier result before submitting again.",
       FINANCE_CODE_INVALID:"Enter a code using 2–20 letters, numbers, underscores or hyphens.",
       FINANCE_YEAR_DATE_INVALID:"Enter valid start and end dates. The end date must not be before the start date.",
       FINANCE_YEAR_OVERLAP:"This financial year overlaps an existing one. Choose dates outside the existing year.",
@@ -88,6 +88,14 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_OPENING_DATE:"Choose a valid posting date inside the selected open financial year.",
       FINANCE_REQUEST_CONFLICT:"This request was already used for different details. Refresh before submitting again.",
       FINANCE_PERMISSION:"Your role cannot perform this finance action. Ask a Foundation Administrator for access.",
-      FINANCE_UNAVAILABLE:"Finance data is temporarily unavailable. Check the request status before submitting again."
+      FINANCE_UNAVAILABLE:"Finance data is temporarily unavailable. Check the request status before submitting again.",
+      FINANCE_CLAIM_FORM_INVALID:"Review the expense claim form. Complete all required fields and remove unsupported information.",
+      FINANCE_CLAIM_REQUEST_KEY_INVALID:"The claim request could not be verified. Refresh the form and check its earlier result before retrying.",
+      FINANCE_CLAIM_PURPOSE_INVALID:"Describe the expense purpose in 3–500 characters.",
+      FINANCE_CLAIM_CATEGORY_INVALID:"Enter an expense category containing 2–80 characters.",
+      FINANCE_CLAIM_DATE_INVALID:"Choose a real calendar date when the expense occurred.",
+      FINANCE_CLAIM_AMOUNT_INVALID:"Enter an expense amount greater than zero, in rupees with no more than two decimal places.",
+      FINANCE_CLAIM_REPLAY_CONFLICT:"This claim request was already used with different details. Check your saved claims before retrying.",
+      FINANCE_CLAIM_FILTER_INVALID:"Refresh your expense claim list and choose a valid page."
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
