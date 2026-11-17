@@ -46,41 +46,41 @@ CREATE TRIGGER cg09_claim_link_immutable BEFORE UPDATE OR DELETE ON expense_clai
 -- The matching primary journal is immutable. The original submitted expense,
 -- not the later payout, is the only debit to an expense-category account.
 CREATE FUNCTION cg09_claim_voucher_link_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE c record; v record; d record; k text;
+DECLARE claim_record record; voucher_record record; other_record record; debit_kind text;
 BEGIN
- SELECT status,amount_minor,requested_by INTO c FROM expense_claim
+ SELECT status,amount_minor,requested_by INTO claim_record FROM expense_claim
  WHERE id=NEW.claim_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
- IF NOT FOUND OR c.status<>'APPROVED' THEN
+ IF NOT FOUND OR claim_record.status<>'APPROVED' THEN
   RAISE EXCEPTION 'Only approved claims may link posted vouchers' USING ERRCODE='P0920';
  END IF;
  SELECT v.id,v.root_realm_id,v.status,v.voucher_type,v.total_minor,
     v.debit_account_id,v.credit_account_id,v.created_by,
-    p.journal_id INTO v
+    p.journal_id INTO voucher_record
  FROM finance_voucher v JOIN finance_voucher_posting p
    ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id
  WHERE v.id=NEW.voucher_id AND v.root_realm_id=NEW.root_realm_id
  FOR SHARE OF v,p;
- IF NOT FOUND OR v.status<>'POSTED' OR v.total_minor<>c.amount_minor OR
-    v.journal_id IS DISTINCT FROM NEW.ledger_journal_id THEN
+ IF NOT FOUND OR voucher_record.status<>'POSTED' OR voucher_record.total_minor<>claim_record.amount_minor OR
+    voucher_record.journal_id IS DISTINCT FROM NEW.ledger_journal_id THEN
   RAISE EXCEPTION 'An original equal posted voucher is required' USING ERRCODE='P0920';
  END IF;
  IF NEW.link_kind='PAYABLE' THEN
-  SELECT category INTO k FROM finance_account a JOIN account_group g
+  SELECT g.category INTO debit_kind FROM finance_account a JOIN account_group g
     ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id
-   WHERE a.id=v.debit_account_id AND a.root_realm_id=NEW.root_realm_id;
-  SELECT category INTO d FROM finance_account a JOIN account_group g
+   WHERE a.id=voucher_record.debit_account_id AND a.root_realm_id=NEW.root_realm_id;
+  SELECT g.category AS category INTO other_record FROM finance_account a JOIN account_group g
     ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id
-   WHERE a.id=v.credit_account_id AND a.root_realm_id=NEW.root_realm_id;
-  IF v.voucher_type<>'EXPENSE' OR k<>'EXPENSE' OR d.category<>'LIABILITY' THEN
+   WHERE a.id=voucher_record.credit_account_id AND a.root_realm_id=NEW.root_realm_id;
+  IF voucher_record.voucher_type<>'EXPENSE' OR debit_kind<>'EXPENSE' OR other_record.category<>'LIABILITY' THEN
    RAISE EXCEPTION 'Payable must be one posted expense to liability' USING ERRCODE='P0920';
   END IF;
  ELSE
-  SELECT credit_account_id INTO d FROM finance_voucher
+  SELECT credit_account_id INTO other_record FROM finance_voucher
    WHERE id=(SELECT voucher_id FROM expense_claim_voucher_link
              WHERE root_realm_id=NEW.root_realm_id AND claim_id=NEW.claim_id
               AND link_kind='PAYABLE');
-  IF NOT FOUND OR v.voucher_type<>'PAYMENT' OR
-     v.debit_account_id IS DISTINCT FROM d.credit_account_id THEN
+  IF NOT FOUND OR voucher_record.voucher_type<>'PAYMENT' OR
+     voucher_record.debit_account_id IS DISTINCT FROM other_record.credit_account_id THEN
    RAISE EXCEPTION 'Payout must settle the original payable liability' USING ERRCODE='P0920';
   END IF;
   PERFORM 1 FROM finance_voucher_payment_verification
