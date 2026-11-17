@@ -41,6 +41,8 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
  years:readonly Year[];branches:readonly Branch[];canManage:boolean
 }){
  const [data,setData]=useState<Voucher[]>([]);
+ const [offset,setOffset]=useState(0);
+ const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const [success,setSuccess]=useState("");
@@ -56,16 +58,17 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{
-   const res=await fetch("/api/finance/vouchers/drafts",{cache:"no-store"});
+   const res=await fetch("/api/finance/vouchers/drafts?offset="+offset,{cache:"no-store"});
    if(!res.ok)throw Error(await failure(res));
    const raw:unknown=await res.json();
-   if(!raw||typeof raw!=="object"||!("vouchers" in raw)||!Array.isArray(raw.vouchers))
+   if(!raw||typeof raw!=="object"||!("vouchers" in raw)||!Array.isArray(raw.vouchers)||
+     !("nextOffset" in raw)||!(raw.nextOffset===null||typeof raw.nextOffset==="number"))
     throw Error("Voucher records could not be verified. Refresh and try again.");
-   setData(raw.vouchers as Voucher[]);
-  }catch(e){setData([]);setError(e instanceof Error?e.message:
+   setData(raw.vouchers as Voucher[]);setNextOffset(raw.nextOffset);
+  }catch(e){setData([]);setNextOffset(null);setError(e instanceof Error?e.message:
    "Cannot load voucher drafts. Check your connection and retry.");}
   finally{setLoading(false);}
- },[]);
+ },[offset]);
  useEffect(()=>{void refresh();},[refresh]);
  function start(){
   if(!canManage)return;
@@ -189,6 +192,12 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage}:{
     </tr>)}</tbody>
    </table>{!data.length&&<p className="cg-fin-empty">No vouchers have been drafted.
     {canManage?" Choose New Voucher to start a genuine draft.":""}</p>}
+   <div className="cg-fin-paging"><span>{data.length} voucher drafts displayed</span>
+    <button type="button" disabled={offset===0||loading}
+      onClick={()=>setOffset(v=>Math.max(0,v-40))}>Previous</button>
+    <button type="button" disabled={nextOffset===null||loading}
+      onClick={()=>setOffset(nextOffset??0)}>Next</button>
+   </div>
   </div>}
   {editing&&<div className="drawer-backdrop" role="presentation">
    <div role="dialog" aria-modal="true" aria-labelledby="cg-fin-voucher-title"
