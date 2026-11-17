@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Patch,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {FinanceVoucherDraftService} from "../application/finance-voucher-draft.service";
 
 /** Voucher source is DRAFT only. CG-03/19 approval/evidence route is introduced next,
@@ -8,7 +8,7 @@ import {FinanceVoucherDraftService} from "../application/finance-voucher-draft.s
 export class FinanceVoucherDraftController{
  constructor(private readonly service:FinanceVoucherDraftService){}
  @Get("drafts")
- drafts(@Headers("authorization")bearer:string){return this.service.list(bearer);}
+ drafts(@Headers("authorization")bearer:string,@Query("offset")offset?:string){return this.service.list(bearer,offset);}
  @Get("drafts/:voucherRef")
  detail(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string){
   return this.service.detail(bearer,ref);
