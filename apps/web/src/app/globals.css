@@ -502,7 +502,7 @@ button:disabled { cursor:wait; opacity:.65; }
 .cg-fin-header button.primary,.cg-fin-form-actions button.primary{
  background:var(--cg-accent);color:var(--cg-accent-text);border-color:var(--cg-accent)
 }
-.cg-fin-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.75rem}
+.cg-fin-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.65rem}
 .cg-fin-kpi{display:flex;align-items:center;gap:.8rem;min-width:0;
  background:var(--cg-surface);border:1px solid var(--cg-border);
  border-radius:.55rem;padding:.85rem .9rem;box-shadow:0 2px 12px rgba(10,31,68,.035)}
@@ -568,3 +568,43 @@ button:disabled { cursor:wait; opacity:.65; }
 .cg-fin-field textarea{width:100%;min-height:6rem;padding:.65rem .75rem;
  border:1px solid var(--cg-border);border-radius:.4rem;
  background:var(--cg-surface);color:var(--cg-text);font:inherit;font-weight:400;resize:vertical}
+
+/* Original U36 Accounts: two-column table/overview rail and six factual KPI cards. */
+.cg-fin-content-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(14rem,16.5rem);
+ gap:.75rem;align-items:start;min-width:0}
+.cg-fin-content-grid .cg-fin-panel{min-width:0}
+.cg-fin-side{display:grid;gap:.75rem;min-width:0}
+.cg-fin-rail-card{background:var(--cg-surface);border:1px solid var(--cg-border);
+ border-radius:.65rem;padding:1rem;box-shadow:0 3px 18px rgba(10,31,68,.035)}
+.cg-fin-rail-card h2{font-size:.88rem;font-weight:750;margin:0 0 .4rem}
+.cg-fin-rail-card>p{color:var(--cg-muted);font-size:.74rem;margin:.15rem 0 .75rem}
+.cg-fin-overview-visual{display:grid;justify-items:center;gap:1rem}
+.cg-fin-donut{width:min(10rem,90%);aspect-ratio:1;border-radius:50%;
+ display:grid;place-items:center;position:relative}
+.cg-fin-donut::before{content:"";position:absolute;inset:22%;background:var(--cg-surface);border-radius:50%}
+.cg-fin-donut>div{position:relative;z-index:1;display:grid;text-align:center;line-height:1.35}
+.cg-fin-donut small{font-size:.67rem;color:var(--cg-muted)}
+.cg-fin-donut strong{font-size:1rem;color:var(--cg-text)}
+.cg-fin-legend{list-style:none;padding:0;margin:0;width:100%;display:grid;gap:.45rem}
+.cg-fin-legend li{display:flex;align-items:center;gap:.45rem;font-size:.73rem;color:var(--cg-muted)}
+.cg-fin-legend li span:nth-child(2){flex:1}
+.cg-fin-legend li b{font-variant-numeric:tabular-nums;color:var(--cg-text)}
+.cg-fin-legend-marker{width:.55rem;height:.55rem;border-radius:50%;display:inline-block;flex:none}
+.cg-fin-recent-list{list-style:none;padding:0;margin:0;display:grid}
+.cg-fin-recent-list li{display:flex;align-items:center;justify-content:space-between;gap:.45rem;
+ border-bottom:1px solid var(--cg-border);padding:.55rem 0;font-size:.71rem}
+.cg-fin-recent-list li:last-child{border-bottom:0}
+.cg-fin-recent-list li>div{display:grid;min-width:0;gap:.15rem}
+.cg-fin-recent-list b{font-weight:600;overflow-wrap:anywhere}
+.cg-fin-recent-list small{color:var(--cg-muted)}
+.cg-fin-recent-list strong{font-variant-numeric:tabular-nums;font-size:.7rem;white-space:nowrap}
+.cg-fin-field[data-invalid="true"] input,
+.cg-fin-field[data-invalid="true"] select{border-color:var(--cg-error,#C43740)}
+.cg-fin-inline-error{color:#C43740;font-size:.78rem;line-height:1.45}
+@media(max-width:88rem){.cg-fin-content-grid{grid-template-columns:minmax(0,1fr) 14rem}
+ .cg-fin-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:63rem){.cg-fin-content-grid{grid-template-columns:minmax(0,1fr)}
+ .cg-fin-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:48rem){.cg-fin-side{grid-template-columns:1fr}
+ .cg-fin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:28rem){.cg-fin-kpis{grid-template-columns:1fr}}
