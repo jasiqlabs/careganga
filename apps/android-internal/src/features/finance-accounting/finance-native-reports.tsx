@@ -249,6 +249,38 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
   }catch(e){problemView(e);}finally{try{local?.delete();}catch{}setBusy(false);}
  }
 
+ async function exportFull(){
+  if(busy||view==="reconciliation")return;
+  if(view==="trial-balance"&&!year){
+   setError("Select a financial year before exporting.");return;
+  }
+  setBusy(true);setError("");
+  let file:File|null=null;
+  try{
+   const params=new URLSearchParams({view});
+   if(year)params.set("yearRef",year);
+   if(branch)params.set("branchRef",branch);
+   if(account&&["general-ledger","day-book","cash-book","bank-book","receivables"].includes(view))
+    params.set("accountRef",account);
+   if(from&&!["summary","trial-balance"].includes(view))params.set("from",from);
+   if(to&&!["summary","trial-balance"].includes(view))params.set("to",to);
+   const res=await identityRequest("/api/finance-accounting/reports/export/csv?"+params,{
+    headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(res.status===401){onExpired();return;}
+   if(!res.ok)throw Error(res.status===403?"This report is outside your branch permissions.":
+    "Export could not be confirmed. Select a narrower period.");
+   if(!res.headers.get("content-type")?.startsWith("text/csv"))
+    throw Error("The financial export format is invalid.");
+   const csv=await res.text();
+   if(csv.length<4||csv.length>1048576)throw Error("Export exceeds the safe file limit.");
+   file=new File(Paths.cache,"careganga-"+view+"-filtered-"+Crypto.randomUUID()+".csv");
+   file.create();await file.write(csv);
+   await file.preview({title:"CareGanga full filtered finance report"});
+   setNotice("All filtered financial source rows exported; limit 2,000.");
+  }catch(e){setError(e instanceof Error?e.message:
+   "The full finance report could not be exported.");}
+  finally{try{file?.delete();}catch{}setBusy(false);}
+ }
  async function exportVisible(){
   if(!rows.length||busy)return;
   setBusy(true);setError("");
@@ -333,6 +365,8 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
      </>}
     </View>)}
     {!rows.length&&<Text style={s.muted}>No matching posted lines.</Text>}
+    <Action label="Export all filtered rows (CSV)" secondary disabled={busy}
+     onPress={()=>void exportFull()}/>
     <Action label="Export visible report page" secondary disabled={!rows.length||busy}
      onPress={()=>void exportVisible()}/>
     <View style={s.row}>
