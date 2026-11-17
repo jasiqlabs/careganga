@@ -102,12 +102,12 @@ function payload(d:Draft){
    headingSize:slide.headingSize,headingColor:slide.headingColor,
    subtitleColor:slide.subtitleColor,
    tags:slide.tags.split(",").map(x=>x.trim()).filter(Boolean).slice(0,4)};
-  if(slide.primaryLabel.trim()&&slide.primaryPath.trim()){
-   fields.primaryLabel=slide.primaryLabel;fields.primaryPath=slide.primaryPath;
-  }
-  if(slide.secondaryLabel.trim()&&slide.secondaryPath.trim()){
-   fields.secondaryLabel=slide.secondaryLabel;fields.secondaryPath=slide.secondaryPath;
-  }
+  // Never discard a half-entered CTA. Backend validation and the authorized
+  // error-copy catalogue explain which label or real destination is missing.
+  if(slide.primaryLabel.trim())fields.primaryLabel=slide.primaryLabel;
+  if(slide.primaryPath.trim())fields.primaryPath=slide.primaryPath;
+  if(slide.secondaryLabel.trim())fields.secondaryLabel=slide.secondaryLabel;
+  if(slide.secondaryPath.trim())fields.secondaryPath=slide.secondaryPath;
   sections.push({kind:"HERO",order:index,fields});
  });
  if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
@@ -115,8 +115,8 @@ function payload(d:Draft){
    eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights)}});
  if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
   fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
-   ...(d.promoLabel.trim()&&d.promoPath.trim()?
-    {label:d.promoLabel,path:d.promoPath}:{})}});
+   ...(d.promoLabel.trim()?{label:d.promoLabel}:{}),
+   ...(d.promoPath.trim()?{path:d.promoPath}:{})}});
  if(d.featuresHeading.trim()&&d.featureCards.length)sections.push({
   kind:"FEATURE_CARDS",order:40,
   fields:{heading:d.featuresHeading,eyebrow:d.featuresEyebrow,
@@ -236,6 +236,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
+  draft.slides.every(x=>
+   Boolean(x.primaryLabel.trim())===Boolean(x.primaryPath.trim())&&
+   Boolean(x.secondaryLabel.trim())===Boolean(x.secondaryPath.trim())&&
+   (!x.primaryPath.trim()||["/","/about","/contact"].includes(x.primaryPath.trim()))&&
+   (!x.secondaryPath.trim()||["/","/about","/contact"].includes(x.secondaryPath.trim())))&&
   (!draft.promoHeading||Boolean(draft.promoLabel)===Boolean(draft.promoPath))&&
   (!draft.featureCards.length||draft.featuresHeading.trim().length>=3)&&
   (!draft.featuresHeading||draft.featureCards.length>0&&draft.featureCards.every(x=>
@@ -282,6 +287,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  }
  async function decide(action:"APPROVE"|"RETURN"|"REJECT"){
   if(!review||reviewPassword.length<8)return;
+  if(action==="APPROVE"&&review.source.assets.some(asset=>!asset.current)){
+   setError("One or more images are no longer approved. Return this page to its editor.");
+   return;
+  }
   setBusy(true);setError("");
   const c:Command={label:"Reviewer decision",path:"reviews/"+review.caseRef+"/decide",
    method:"POST",body:{requestKey:crypto.randomUUID(),
@@ -401,7 +410,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <label>Current reviewer password<input type="password" autoComplete="current-password"
       value={reviewPassword} onChange={e=>setReviewPassword(e.target.value)}/></label>
      <div className="cg-cms-actions">
-      <button disabled={busy||reviewPassword.length<8} onClick={()=>void decide("APPROVE")}>
+      <button disabled={busy||reviewPassword.length<8||
+       review.source.assets.some(asset=>!asset.current)} onClick={()=>void decide("APPROVE")}>
        Approve original content</button>
       <button disabled={busy||reviewPassword.length<8} onClick={()=>void decide("RETURN")}>
        Return for changes</button>
