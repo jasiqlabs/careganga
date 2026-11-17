@@ -195,6 +195,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [remark,setRemark]=useState("");
  const [withdrawReason,setWithdrawReason]=useState("");
  const [publishWhen,setPublishWhen]=useState("");
+ const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
@@ -329,7 +330,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   }catch(e){setError(e instanceof Error?e.message:"Review was not confirmed.");}
   finally{setBusy(false);}
  }
- async function upload(file:File){
+ async function upload(file:File,placement?:{role:Asset["role"];order:number}){
   if(!selected||selected.status!=="DRAFT"||busy)return;
   if(!rights){setError("Confirm that the Foundation may publish this image.");return;}
   if(!uploadAlt.trim()||file.size<1||file.size>10485760||
@@ -356,9 +357,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      body:"{}"});
    if(!confirmed.cleanVerified||!confirmed.fileRef||!confirmed.validatedVersion)
     throw Error("The image is awaiting secure validation. Check before uploading again.");
+   const role=placement?.role??uploadRole,order=placement?.order??uploadOrder;
    const next:Asset={fileRef:confirmed.fileRef,version:confirmed.validatedVersion,
-    role:uploadRole,altText:uploadAlt.trim(),order:uploadRole==="ABOUT"?20:
-      uploadRole==="PROMO"?30:uploadOrder};
+    role,altText:uploadAlt.trim(),order:role==="ABOUT"?20:
+      role==="PROMO"?30:order};
    setDraft(v=>({...v,assets:[...v.assets.filter(x=>x.role!==next.role||x.order!==next.order),next]}));
    setUploadAlt("");setRights(false);
    setNotice("Image verified. Save the draft to attach it to the page.");
