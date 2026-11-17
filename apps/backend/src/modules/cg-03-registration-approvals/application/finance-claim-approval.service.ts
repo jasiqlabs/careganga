@@ -269,9 +269,10 @@ export class FinanceClaimApprovalService{
   sourceVersion:number,sourceDigest:string,fileRef:string,fileVersion:number,
   caseRef:string){
   const found=await tx.query<{status:string;effect_key:string|null}>(
-   "SELECT c.status,e.effect_key FROM cg03_case c "+
+   "SELECT c.status,(SELECT effect_key FROM cg03_finance_owner_effect e "+
+   "WHERE e.case_id=c.id AND e.realm_id=c.realm_id) AS effect_key "+
+   "FROM cg03_case c "+
    "JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id "+
-   "LEFT JOIN cg03_finance_owner_effect e ON e.case_id=c.id AND e.realm_id=c.realm_id "+
    "WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='FINANCE_REIMBURSEMENT' "+
    "AND c.finance_claim_id=$3 AND c.finance_claim_revision=$4 "+
    "AND c.finance_claim_digest=$5 AND c.finance_claim_bill_id=$6 "+
@@ -279,7 +280,7 @@ export class FinanceClaimApprovalService{
    "AND ((c.status IN('PENDING_OWNER','OWNER_COMPLETED') AND d.action='APPROVE') "+
    "OR (c.status='RETURNED' AND d.action='RETURN') "+
    "OR (c.status='REJECTED' AND d.action='REJECT')) "+
-   "ORDER BY d.created_at DESC,d.id DESC LIMIT 1 FOR SHARE OF c,d,e",
+   "ORDER BY d.created_at DESC,d.id DESC LIMIT 1 FOR SHARE OF c,d",
    [caseRef,actor.realmId,claimRef,sourceVersion,sourceDigest,fileRef,fileVersion]);
   const result=found.rows[0];
   if(!result||(["PENDING_OWNER","OWNER_COMPLETED"].includes(result.status)&&!result.effect_key))
