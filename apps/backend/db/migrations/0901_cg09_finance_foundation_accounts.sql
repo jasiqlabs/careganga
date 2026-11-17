@@ -19,7 +19,7 @@ CREATE TABLE financial_year(
 CREATE INDEX ix_cg09_year_root ON financial_year(root_realm_id,start_on DESC,id);
 -- Year dates/identity never change after creation: it would rewrite the
 -- meaning of immutable journal history. Closing is a versioned one-way action.
-CREATE FUNCTION cg09_guard_year_update() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_year_update() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
    OR NEW.name IS DISTINCT FROM OLD.name
@@ -31,7 +31,7 @@ BEGIN
    OR NEW.status<>'CLOSED' OR OLD.status<>'OPEN'
  THEN RAISE EXCEPTION 'Financial year identity is immutable; only a reviewed close is allowed'; END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg09_year_guard_update BEFORE UPDATE ON financial_year
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_year_update();
 
@@ -49,7 +49,7 @@ CREATE TABLE account_group(
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 -- A group cannot silently change meaning and a child must inherit its category.
-CREATE FUNCTION cg09_guard_group_structure() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_group_structure() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE parent_category text;
 BEGIN
  IF TG_OP='UPDATE' THEN
@@ -67,7 +67,7 @@ BEGIN
    RAISE EXCEPTION 'Financial group must use its parent category'; END IF;
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg09_group_category_guard BEFORE INSERT OR UPDATE ON account_group
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_group_structure();
 CREATE INDEX ix_cg09_group_list ON account_group(root_realm_id,category,name,id);
@@ -93,7 +93,7 @@ CREATE TABLE finance_account(
 );
 -- Normal balances derive from category; direct writes cannot create bank
 -- liabilities or an inverted asset account.
-CREATE FUNCTION cg09_guard_account_category() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_account_category() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE group_category text; expected_side text;
 BEGIN
  SELECT category INTO group_category FROM account_group
@@ -120,7 +120,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg09_account_category_guard BEFORE INSERT OR UPDATE ON finance_account
  FOR EACH ROW EXECUTE FUNCTION cg09_guard_account_category();
 
@@ -165,7 +165,7 @@ CREATE INDEX ix_cg09_command_root ON finance_command(root_realm_id,created_at DE
 
 -- A direct SQL writer cannot post into a CLOSED/foreign/out-of-period year.
 -- FOR SHARE serializes this check against the year-closing UPDATE.
-CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  PERFORM 1 FROM financial_year fy
   WHERE fy.id=NEW.financial_year_id AND fy.root_realm_id=NEW.root_realm_id
@@ -173,7 +173,7 @@ BEGIN
   FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting period is not open'; END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TABLE journal(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -209,7 +209,7 @@ CREATE TABLE journal_line(
  FOREIGN KEY(branch_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT
 );
 -- A direct SQL writer cannot bypass current active account/scope eligibility.
-CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  PERFORM 1 FROM finance_account a
   WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
@@ -218,7 +218,7 @@ BEGIN
   FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting account is unavailable'; END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
  EXECUTE FUNCTION cg09_guard_posting_account();
 CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id,journal_id);
