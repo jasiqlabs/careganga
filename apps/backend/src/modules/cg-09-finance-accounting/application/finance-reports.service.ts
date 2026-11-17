@@ -210,6 +210,39 @@ export class FinanceReportsService{
    fundsMinor:funds.toString(),cashBankMinor:cash.rows[0]?.balance??"0",
    explanation:"Recognized income/expense from posted GL only. Cash/bank is not the same as approved claims or invoices."};
  }
+ /** Invoice receivables are a projection of original POSTED/ISSUED accruals
+  * minus the source-linked verified CG-09 receipt. No sample supplier or
+  * future donor/client master and no shadow balance table.
+  */
+ async receivables(bearer:string,raw:Options){
+  const actor=await this.actor(bearer),v=this.filters(raw);
+  await this.verifyFilterScope(actor.realmId,v);
+  const rows=await this.db.query<{invoiceNumber:string;invoiceDate:string;
+   dueDate:string;counterpartyName:string;status:string;
+   totalMinor:string;verifiedMinor:string;outstandingMinor:string}>(
+   "SELECT i.invoice_number AS \"invoiceNumber\","+
+   "i.invoice_date::text AS \"invoiceDate\","+
+   "i.due_date::text AS \"dueDate\",i.counterparty_name AS \"counterpartyName\","+
+   "i.status,i.total_minor::text AS \"totalMinor\","+
+   "COALESCE(r.verified,0)::text AS \"verifiedMinor\","+
+   "(i.total_minor-COALESCE(r.verified,0))::text AS \"outstandingMinor\" "+
+   "FROM finance_invoice i LEFT JOIN LATERAL "+
+   "(SELECT COALESCE(SUM(amount_minor),0) AS verified FROM finance_invoice_receipt "+
+   "WHERE root_realm_id=i.root_realm_id AND invoice_id=i.id) r ON TRUE "+
+   "WHERE i.root_realm_id=$1 AND i.status IN('POSTED','ISSUED') "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_invoice_posted_cancellation c "+
+   "WHERE c.root_realm_id=i.root_realm_id AND c.invoice_id=i.id) "+
+   "AND ($2::uuid IS NULL OR i.financial_year_id=$2) "+
+   "AND ($3::uuid IS NULL OR i.branch_id=$3) "+
+   "AND ($4::uuid IS NULL OR i.receivable_account_id=$4) "+
+   "AND ($5::date IS NULL OR i.invoice_date>=$5) "+
+   "AND ($6::date IS NULL OR i.invoice_date<=$6) "+
+   "AND i.total_minor>COALESCE(r.verified,0) "+
+   "ORDER BY i.invoice_date DESC,i.id DESC LIMIT 51 OFFSET $7",
+   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,v.offset]);
+  return {items:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?v.offset+50:null,
+   explanation:"An accrued/issued invoice is not cash. Only original source-linked verified receipt amounts reduce the receivable; protected issue and payment states remain separate."};
+ }
  async reconciliationOptions(bearer:string){
   const actor=await this.actor(bearer);
   const r=await this.db.query<{accountRef:string;name:string;code:string}>(
