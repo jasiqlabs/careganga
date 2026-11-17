@@ -3,6 +3,7 @@ import {useEffect,useState} from "react";
 import Link from "next/link";
 type Faq={faqRef:string;question:string;answer:string};
 type Receipt={receipt:string;expiresAt:string;status:string;result:string};
+type EditorialContact={title:string;heading:string;body:string};
 async function call<T>(path:string,body:object){
   let response:Response;
   try{response=await fetch("/api/support/"+path,{method:"POST",
@@ -22,6 +23,24 @@ export default function FoundationContactPage(){
   const [proof,setProof]=useState(""),[proofState,setProofState]=useState("");
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]);
+  const [editorial,setEditorial]=useState<EditorialContact|null>(null);
+  useEffect(()=>{
+    const controller=new AbortController();
+    void fetch("/api/public/content/pages/contact",{cache:"no-store",
+     signal:controller.signal}).then(r=>r.ok?r.json():null).then((source:unknown)=>{
+      if(controller.signal.aborted||!source||typeof source!=="object"||
+         Array.isArray(source))return;
+      const v=source as Record<string,unknown>;
+      if(v.kind!=="CONTACT"||v.slug!=="contact"||typeof v.title!=="string"||
+         !Array.isArray(v.sections)||typeof v.effectiveGeneration!=="string")return;
+      const sec=v.sections.find((row:unknown)=>row&&typeof row==="object"&&
+         "kind" in row&&row.kind==="RICH_TEXT") as {fields?:Record<string,unknown>}|undefined;
+      const f=sec?.fields;
+      if(typeof f?.heading==="string"&&typeof f.body==="string")
+       setEditorial({title:v.title,heading:f.heading,body:f.body});
+    }).catch(()=>undefined);
+    return()=>controller.abort();
+  },[]);
   useEffect(()=>{
     const controller=new AbortController();
     void fetch("/api/support/public/faqs",{cache:"no-store",
@@ -71,8 +90,8 @@ export default function FoundationContactPage(){
         <p>Contact & Help</p></div>
     </div><Link href="/">Home</Link></header>
     <section className="role-workspace" style={{paddingBlock:"2rem"}}>
-      <div><h1>Contact the Foundation</h1>
-        <p>Send a private request to the Foundation support team. You do not need an account.</p></div>
+      <div><h1>{editorial?.heading||"Contact the Foundation"}</h1>
+        <p>{editorial?.body||"Send a private request to the Foundation support team. You do not need an account."}</p></div>
       <div className="role-pane" style={{padding:"1.4rem"}}>
         {receipt?<section aria-live="polite">
           <h2>Request received</h2>
