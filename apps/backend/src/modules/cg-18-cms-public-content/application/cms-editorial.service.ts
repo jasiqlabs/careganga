@@ -20,6 +20,19 @@ const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
  "GALLERY","ARTICLE","DOCUMENT","IMPACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
+const NOTICE_CURRENT_SQL=
+ "AND NOT EXISTS(SELECT 1 FROM cms_section_revision ns "+
+ "WHERE ns.foundation_root_id=pub.foundation_root_id "+
+ "AND ns.page_revision_id=pub.page_revision_id "+
+ "AND ns.section_kind='ARTICLE_BODY' "+
+ "AND ns.structured_fields ? 'sourceNoticeRef' "+
+ "AND NOT EXISTS (SELECT 1 FROM cg19_notice n "+
+ "WHERE n.realm_id=ns.foundation_root_id "+
+ "AND n.id::text=ns.structured_fields->>'sourceNoticeRef' "+
+ "AND n.audience_kind='ALL_ACTIVE' AND n.approved_by IS NOT NULL "+
+ "AND n.approved_at IS NOT NULL AND n.state='ACTIVE' AND n.expires_at>now() "+
+ "AND n.title=ns.structured_fields->>'heading' "+
+ "AND n.body=ns.structured_fields->>'body')) ";
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function uuid(v:unknown,field:string){
  if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
@@ -826,6 +839,7 @@ export class CmsEditorialService{
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
    "OR f.revision<>a.cg19_validated_version)) "+
+   NOTICE_CURRENT_SQL+
    "ORDER BY p.slug LIMIT 21",[category,cursor]);
   return {schemaVersion:1,posts:rows.rows.slice(0,20).map(x=>({
    slug:x.slug,title:x.title,category:x.category,excerpt:x.excerpt,
@@ -878,6 +892,7 @@ export class CmsEditorialService{
    "AND cs.section_kind='COMPLIANCE_FACTS' "+
    "AND cs.structured_fields->>'verification'='VERIFIED' "+
    "AND cs.structured_fields->>'validUntil'<to_char(current_date,'YYYY-MM-DD')) "+
+   NOTICE_CURRENT_SQL+
    "ORDER BY p.slug LIMIT 100");
   const publishedRoutes=routes.rows.map(p=>({kind:p.kind,slug:p.slug,
    path:p.kind==="ARTICLE"?"/blog/"+p.slug:
