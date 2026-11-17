@@ -205,6 +205,15 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
        <CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
      </View>;
     }
+    if(section.kind==="SITE_FOOTER")return <View style={styles.card} key={i}>
+     <Text accessibilityRole="header" style={styles.heading}>CareGanga Foundation</Text>
+     {!!text(fields.mission)&&<Text style={styles.body}>{text(fields.mission)}</Text>}
+     {!!text(fields.address)&&<Text style={styles.muted}>Address: {text(fields.address)}</Text>}
+     {!!text(fields.phone)&&<Text style={styles.muted}>Phone: {text(fields.phone)}</Text>}
+     {!!text(fields.email)&&<Text style={styles.muted}>Email: {text(fields.email)}</Text>}
+     {!!text(fields.newsletterText)&&<Text style={styles.body}>{text(fields.newsletterText)}</Text>}
+     <CmsButton title="Contact CareGanga" secondary onPress={onContact}/>
+    </View>;
     if(section.kind==="TEAM"){
      const members=Array.isArray(fields.members)?fields.members:[];
      return <View style={styles.card} key={i}>
