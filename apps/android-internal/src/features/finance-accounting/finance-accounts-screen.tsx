@@ -1,0 +1,159 @@
+import {useCallback,useEffect,useState} from "react";
+import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {SafeAreaView} from "react-native-safe-area-context";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {identityRequest} from "../identity-access/http-client";
+
+type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
+type Account={accountRef:string;name:string;code:string;groupName:string;kind:string;
+  scopeKind:string;branchName:string|null;status:string;balanceMinor:string;
+  bankLabel:string|null;maskedDetails:string|null};
+type Setup={accounts:Account[];years:Year[];
+  openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
+  nextOffset:number|null};
+type Props={token:string;onExit:()=>void;onExpired:()=>void};
+function inr(minor:string):string{
+ try{
+  const n=BigInt(minor),abs=n<0n?-n:n;
+  return (n<0n?"−":"")+"₹"+(abs/100n).toLocaleString("en-IN")+"."+
+   (abs%100n).toString().padStart(2,"0");
+ }catch{return "Balance unavailable";}
+}
+function viewError(status:number):string{
+ if(status===401)return "Your session expired. Sign in again.";
+ if(status===403)return "Your role does not allow you to view finance accounts. Ask the Foundation Administrator for access.";
+ if(status===429)return "Too many finance requests. Please try again after a short break.";
+ if(status===400)return "The requested finance list could not be loaded. Refresh and try again.";
+ return "Finance information is temporarily unavailable. Check your connection and try again.";
+}
+/** US-001 native read-only counterpart to the original U35/U36 Admin Web
+ * account overview; no second finance editor and no raw technical identifiers.
+ */
+export function FinanceAccountsScreen({token,onExit,onExpired}:Props){
+ const [data,setData]=useState<Setup|null>(null);
+ const [offset,setOffset]=useState(0);
+ const [busy,setBusy]=useState(false);
+ const [notice,setNotice]=useState("");
+ const [category,setCategory]=useState<"ACCOUNTS"|"YEARS"|"OPENING">("ACCOUNTS");
+ const reload=useCallback(async()=>{
+  setBusy(true);setNotice("");
+  try{
+   const response=await identityRequest("/api/finance-accounting/setup?offset="+offset,{
+    headers:{Authorization:"Bearer "+token},cache:"no-store"
+   });
+   if(response.status===401){onExpired();return;}
+   if(!response.ok){setData(null);setNotice(viewError(response.status));return;}
+   const result:unknown=await response.json();
+   if(!result||typeof result!=="object"||Array.isArray(result)||
+      !("accounts" in result)||!Array.isArray(result.accounts)||
+      !("years" in result)||!Array.isArray(result.years)||
+      !("openingJournals" in result)||!Array.isArray(result.openingJournals)||
+      !("nextOffset" in result)||(result.nextOffset!==null&&
+       !(typeof result.nextOffset==="number"&&Number.isSafeInteger(result.nextOffset)))){
+    setData(null);setNotice("The finance list could not be verified. Refresh and try again.");return;
+   }
+   setData(result as Setup);
+  }catch{setData(null);setNotice("Cannot reach the finance service. Check your connection and try again.");}
+  finally{setBusy(false);}
+ },[token,offset,onExpired]);
+ useEffect(()=>{void reload();},[reload]);
+ useEffect(()=>{
+  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});
+  return()=>sub.remove();
+ },[onExit]);
+ return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+  <View style={s.header}>
+   <Pressable accessibilityRole="button" accessibilityLabel="Back to Foundation"
+    hitSlop={12} style={s.back} onPress={onExit}><Text style={s.backText}>‹ Back</Text></Pressable>
+   <View style={s.headerTitle}><Text style={s.eyebrow}>FOUNDATION / FINANCE</Text>
+    <Text style={s.title} accessibilityRole="header">Accounts & Years</Text></View>
+   <Pressable accessibilityRole="button" accessibilityLabel="Refresh finance records"
+    disabled={busy} style={s.back} onPress={()=>void reload()}>
+    <Text style={s.backText}>Refresh</Text></Pressable>
+  </View>
+  <View style={s.tabs}>
+   {([["ACCOUNTS","Accounts"],["YEARS","Financial Years"],["OPENING","Opening Entries"]] as const)
+    .map(([key,label])=><Pressable key={key} accessibilityRole="tab"
+     accessibilityState={{selected:category===key}} style={[s.tab,category===key&&s.selectedTab]}
+     onPress={()=>setCategory(key)}><Text style={[s.tabText,category===key&&s.selectedTabText]}>
+       {label}</Text></Pressable>)}
+  </View>
+  <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+   <Text style={s.subtext}>Only confirmed financial data for your permitted Foundation role is shown.</Text>
+   {busy&&<View style={s.state}><ActivityIndicator color={theme.primary}/>
+    <Text style={s.subtext}>Checking current finance records…</Text></View>}
+   {!!notice&&<View style={s.error} accessibilityRole="alert"><Text style={s.errorText}>{notice}</Text>
+    <Pressable onPress={()=>void reload()} style={s.retry} accessibilityRole="button">
+     <Text style={s.retryText}>Try again</Text></Pressable></View>}
+   {!busy&&data&&category==="ACCOUNTS"&&<>
+    {!data.accounts.length?<Text style={s.empty}>There are no financial accounts on this page. Ask your Finance Administrator to create accounts in CareGanga Admin.</Text>:
+     data.accounts.map(a=><View style={s.card} key={a.accountRef}>
+      <View style={s.line}><Text style={s.cardTitle} numberOfLines={2}>{a.name}</Text>
+       <Text style={[s.status,a.status==="ACTIVE"&&s.active]}>{a.status==="ACTIVE"?"Active":"Inactive"}</Text></View>
+      <Text style={s.meta}>{a.code} · {a.groupName}</Text>
+      <Text style={s.meta}>{a.branchName??"Foundation"} · {a.kind==="BANK"?"Bank":a.kind==="CASH"?"Cash":"General"}</Text>
+      {!!a.bankLabel&&<Text style={s.meta}>{a.bankLabel}{a.maskedDetails?" · "+a.maskedDetails:""}</Text>}
+      <Text style={s.amount}>{inr(a.balanceMinor)}</Text>
+     </View>)}
+    <View style={s.pager}><Pressable accessibilityRole="button" disabled={offset===0||busy}
+      style={[s.pagerButton,offset===0&&s.disabled]} onPress={()=>setOffset(x=>Math.max(0,x-50))}>
+       <Text style={s.pagerText}>Previous</Text></Pressable>
+      <Text style={s.meta}>Accounts on this page: {data.accounts.length}</Text>
+      <Pressable accessibilityRole="button" disabled={data.nextOffset===null||busy}
+       style={[s.pagerButton,data.nextOffset===null&&s.disabled]}
+       onPress={()=>setOffset(data.nextOffset??0)}><Text style={s.pagerText}>Next</Text></Pressable></View>
+   </>}
+   {!busy&&data&&category==="YEARS"&&
+    (!data.years.length?<Text style={s.empty}>No financial year exists. An authorized Finance Administrator can create one from the Web Admin.</Text>:
+     data.years.map(y=><View style={s.card} key={y.yearRef}>
+       <View style={s.line}><Text style={s.cardTitle}>{y.name}</Text>
+        <Text style={[s.status,y.status==="OPEN"&&s.active]}>{y.status==="OPEN"?"Open":"Closed"}</Text></View>
+       <Text style={s.meta}>{y.startOn} to {y.endOn}</Text>
+      </View>))}
+   {!busy&&data&&category==="OPENING"&&
+    (!data.openingJournals.length?<Text style={s.empty}>No opening entries are posted yet. New opening entries are created in the authorized Finance Web Admin.</Text>:
+     data.openingJournals.map(j=><View style={s.card} key={j.journalRef}>
+       <Text style={s.cardTitle}>{j.yearName}</Text><Text style={s.meta}>{j.postingDate} · Posted</Text>
+       <Text style={s.amount}>{inr(j.amountMinor)}</Text>
+      </View>))}
+  </ScrollView>
+ </SafeAreaView>;
+}
+const s=StyleSheet.create({
+ safe:{flex:1,backgroundColor:theme.background},
+ header:{backgroundColor:theme.surface,borderBottomColor:theme.border,borderBottomWidth:1,
+  paddingHorizontal:14,paddingVertical:12,flexDirection:"row",alignItems:"center",gap:8},
+ headerTitle:{flex:1,minWidth:0},
+ eyebrow:{fontSize:10,color:theme.mutedText,letterSpacing:.5},
+ title:{fontSize:19,fontWeight:"750",color:theme.text},
+ back:{paddingHorizontal:8,minHeight:48,justifyContent:"center"},
+ backText:{fontSize:14,fontWeight:"650",color:theme.primary},
+ tabs:{flexDirection:"row",backgroundColor:theme.surface,borderBottomWidth:1,borderBottomColor:theme.border},
+ tab:{flex:1,minHeight:50,justifyContent:"center",alignItems:"center",paddingHorizontal:6,borderBottomWidth:3,borderBottomColor:"transparent"},
+ selectedTab:{borderBottomColor:theme.primary},
+ tabText:{fontSize:12,fontWeight:"550",color:theme.mutedText,textAlign:"center"},
+ selectedTabText:{color:theme.primary,fontWeight:"700"},
+ content:{padding:14,paddingBottom:32,gap:12},
+ subtext:{fontSize:13,lineHeight:19,color:theme.mutedText},
+ state:{flexDirection:"row",gap:12,alignItems:"center",padding:14},
+ error:{backgroundColor:"#FFF3F3",borderRadius:8,borderWidth:1,borderColor:"#F7CBCB",padding:14,gap:10},
+ errorText:{color:theme.error,fontSize:14,lineHeight:21},
+ retry:{backgroundColor:theme.primary,alignSelf:"flex-start",paddingVertical:11,paddingHorizontal:15,borderRadius:6},
+ retryText:{color:theme.primaryText,fontWeight:"650"},
+ empty:{padding:22,backgroundColor:theme.surface,borderRadius:9,borderWidth:1,
+  borderColor:theme.border,color:theme.mutedText,textAlign:"center",lineHeight:21},
+ card:{padding:15,borderWidth:1,borderColor:theme.border,borderRadius:9,
+  backgroundColor:theme.surface,gap:5},
+ line:{flexDirection:"row",gap:10,alignItems:"center",justifyContent:"space-between"},
+ cardTitle:{fontWeight:"700",fontSize:16,color:theme.text,flexShrink:1},
+ meta:{fontSize:12,color:theme.mutedText},
+ status:{fontSize:11,fontWeight:"650",paddingVertical:4,paddingHorizontal:9,
+  backgroundColor:"#F1F3F6",color:theme.mutedText,borderRadius:20,overflow:"hidden"},
+ active:{backgroundColor:"#E8F8EF",color:"#23794A"},
+ amount:{fontSize:18,fontWeight:"750",color:theme.text,marginTop:5},
+ pager:{flexDirection:"row",justifyContent:"space-between",gap:6,alignItems:"center"},
+ pagerButton:{minHeight:48,justifyContent:"center",paddingHorizontal:10,borderRadius:6,
+  backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border},
+ pagerText:{fontWeight:"600",color:theme.text},
+ disabled:{opacity:.4}
+});
