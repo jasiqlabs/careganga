@@ -5,8 +5,7 @@ import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceReportsWorkspace} from "../../../../../features/finance-accounting/finance-reports-workspace";
 export const dynamic="force-dynamic";
 
-/** Dedicated U41 expense intake for existing CG-01 Foundation users.
- * No employee/volunteer future-module selector is required. */
+/** Original U35-U38 Foundation-only posted finance ledger and reconciliation. */
 export default async function FinanceReportsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
@@ -36,7 +35,7 @@ export default async function FinanceReportsPage(){
   const canManage=canCreate;
   if(!canCreate&&!canView&&!canManage)return <main className="page main">
    <h1>Reports access restricted</h1>
-   <p>Your role cannot create or view Foundation reports. Ask an Administrator for access.</p>
+   <p>Your role cannot open Foundation financial statements. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
   return <div className="shell">
    <FoundationAdminNav active="financeReports" displayName={actor.displayName}
@@ -55,16 +54,16 @@ export default async function FinanceReportsPage(){
     canViewFinance={actions.includes("finance.accounts.view")}
     canViewVouchers={actions.includes("finance.vouchers.view")}
     canViewClaims={actions.includes("finance.claims.view")}
-    canViewReports={true}/>
-   <main className="workspace"><FinanceInvoiceWorkspace canManage={canManage}
-     canIssue={actions.includes("finance.reports.issue")}
-     canPost={actions.includes("finance.journals.post")}/></main>
+    canViewFinanceReports={true}/>
+   <main className="workspace"><FinanceReportsWorkspace
+     canReconcile={actions.includes("finance.reconciliation.manage")}
+     canVerify={actions.includes("finance.reconciliation.review")&&actions.includes("approvals.review")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
   return <main className="page main"><h1>Cannot verify budget access</h1>
-   <p>The claim page remains protected until the current Foundation role can be checked.</p>
+   <p>Financial statements remain inaccessible until the current Foundation role can be verified.</p>
    <Link href="/admin">Return to my account</Link></main>;
  }
 }
