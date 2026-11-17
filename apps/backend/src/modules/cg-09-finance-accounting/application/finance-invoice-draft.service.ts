@@ -295,20 +295,26 @@ export class FinanceInvoiceDraftService{
   const actor=await this.owner(bearer);
   const rows=await this.db.query<{total:number;drafts:number;pending:number;
    approved:number;issued:number;rejected:number;returned:number;
-   paidVerified:number;faceValueMinor:string;issuedMinor:string;
+   paidVerified:number;partiallyPaid:number;faceValueMinor:string;issuedMinor:string;
    receivedVerifiedMinor:string}>(
-   "SELECT COUNT(*)::int AS total,"+
-   "COUNT(*) FILTER(WHERE i.status='DRAFT')::int AS drafts,"+
-   "COUNT(*) FILTER(WHERE i.status='SUBMITTED')::int AS pending,"+
-   "COUNT(*) FILTER(WHERE i.status IN('APPROVED','POSTED'))::int AS approved,"+
-   "COUNT(*) FILTER(WHERE i.status='ISSUED')::int AS issued,"+
-   "COUNT(*) FILTER(WHERE i.status='REJECTED')::int AS rejected,"+
-   "COUNT(*) FILTER(WHERE i.status='RETURNED')::int AS returned,"+
-   "COUNT(r.id)::int AS \"paidVerified\","+
+   "WITH receipt_sums AS (SELECT invoice_id,root_realm_id,"+
+   "SUM(amount_minor) AS paid_minor FROM finance_invoice_receipt "+
+   "WHERE root_realm_id=$1 GROUP BY invoice_id,root_realm_id) "+
+   "SELECT COUNT(i.id)::int AS total,"+
+   "COUNT(i.id) FILTER(WHERE i.status='DRAFT')::int AS drafts,"+
+   "COUNT(i.id) FILTER(WHERE i.status='SUBMITTED')::int AS pending,"+
+   "COUNT(i.id) FILTER(WHERE i.status IN('APPROVED','POSTED'))::int AS approved,"+
+   "COUNT(i.id) FILTER(WHERE i.status='ISSUED')::int AS issued,"+
+   "COUNT(i.id) FILTER(WHERE i.status='REJECTED')::int AS rejected,"+
+   "COUNT(i.id) FILTER(WHERE i.status='RETURNED')::int AS returned,"+
+   "COUNT(i.id) FILTER(WHERE i.status='ISSUED' AND i.total_minor>0 "+
+   "AND COALESCE(r.paid_minor,0)=i.total_minor)::int AS \"paidVerified\","+
+   "COUNT(i.id) FILTER(WHERE i.status='ISSUED' "+
+   "AND COALESCE(r.paid_minor,0)>0 AND r.paid_minor<i.total_minor)::int AS \"partiallyPaid\","+
    "COALESCE(SUM(i.total_minor),0)::text AS \"faceValueMinor\","+
    "COALESCE(SUM(i.total_minor) FILTER(WHERE i.status='ISSUED'),0)::text AS \"issuedMinor\","+
-   "COALESCE(SUM(r.amount_minor),0)::text AS \"receivedVerifiedMinor\" "+
-   "FROM finance_invoice i LEFT JOIN finance_invoice_receipt r "+
+   "COALESCE(SUM(r.paid_minor),0)::text AS \"receivedVerifiedMinor\" "+
+   "FROM finance_invoice i LEFT JOIN receipt_sums r "+
    "ON r.invoice_id=i.id AND r.root_realm_id=i.root_realm_id "+
    "WHERE i.root_realm_id=$1",[actor.realmId]);
   const monthly=await this.db.query<{month:string;count:number;issuedMinor:string}>(
