@@ -117,6 +117,7 @@ BEGIN
     NEW.version<>OLD.version OR
     NEW.create_request_key IS DISTINCT FROM OLD.create_request_key OR
     NEW.create_digest IS DISTINCT FROM OLD.create_digest OR
+    NEW.current_digest IS DISTINCT FROM OLD.current_digest OR
     NEW.created_at IS DISTINCT FROM OLD.created_at OR
     NEW.bill_file_id IS DISTINCT FROM OLD.bill_file_id AND OLD.status<>'DRAFT' OR
     NEW.bill_file_version IS DISTINCT FROM OLD.bill_file_version AND OLD.status<>'DRAFT' OR
@@ -132,7 +133,7 @@ BEGIN
    WHERE ac.id=NEW.approval_case_id AND ac.realm_id=NEW.root_realm_id
     AND ac.case_kind='FINANCE_REIMBURSEMENT' AND ac.finance_claim_id=NEW.id
     AND ac.finance_claim_revision=NEW.version AND
-    ac.finance_claim_digest=NEW.create_digest AND
+    ac.finance_claim_digest=NEW.current_digest AND
     ac.finance_claim_bill_id=NEW.bill_file_id AND
     ac.finance_claim_bill_version=NEW.bill_file_version
     AND ac.status IN('SUBMITTED','IN_REVIEW') AND f.revoked_at IS NULL
