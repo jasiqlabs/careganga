@@ -1,4 +1,4 @@
-import {BadRequestException,Inject,Injectable} from "@nestjs/common";
+import {Inject,Injectable} from "@nestjs/common";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -8,11 +8,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 @Injectable()
 export class FinanceVoucherDashboardService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService){}
- async summary(bearer:string,filterInput?:string){
+ async summary(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.view");
-  const status=filterInput??"ALL";
-  if(!["ALL","DRAFT","SUBMITTED","APPROVED","REJECTED","RETURNED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(status))
-   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"status"});
   const totals=await this.db.query<{total:number;pending:number;approved:number;
    rejected:number;paid:number;posted:number;totalMinor:string;pendingMinor:string;
    approvedMinor:string;paidMinor:string}>(`
@@ -45,6 +42,6 @@ export class FinanceVoucherDashboardService{
    GROUP BY g.id,g.name ORDER BY sum(v.total_minor) DESC,g.name LIMIT 8`,
    [actor.realmId]);
   return {cards:totals.rows[0],monthly:months.rows,categories:expense.rows,
-   filterApplied:status,updatedFrom:"ORIGINAL_FINANCE_VOUCHERS"};
+   updatedFrom:"ORIGINAL_FINANCE_VOUCHERS"};
  }
 }
