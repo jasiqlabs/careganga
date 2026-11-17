@@ -33,6 +33,8 @@ function input(v:unknown,keys:string[]){
 }
 function path(v:unknown,field:string){
  const x=text(v,field,140,1);
+ if(!["/","/about","/contact"].includes(x))
+  throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  if(!/^\/(?:[a-z0-9-]+\/?)*$/.test(x)||x.startsWith("//")||
   /(^|\/)(admin|api|auth|internal|_next)(\/|$)/.test(x)||
   /^\/(join|volunteer|book)(\/|$)/.test(x))
