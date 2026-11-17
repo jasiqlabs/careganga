@@ -19,6 +19,10 @@ async function handle(req:NextRequest,parts:string[],method:string){
   return NextResponse.json({message:"Use the protected Finance review form."},{status:403});
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)return NextResponse.json({message:"Session expired. Sign in again."},{status:401});
+ const offset=req.nextUrl.searchParams.get("offset")??"0";
+ if(method==="GET"&&parts[0]==="cases"&&
+    !/^(0|[1-9][0-9]{0,4})$/.test(offset))
+  return NextResponse.json({message:"Choose a valid approval inbox page."},{status:400});
  const backend=process.env.BACKEND_URL;
  if(!backend)return NextResponse.json({message:"Finance reviewer service is unavailable."},{status:503});
  let body:string|undefined;
@@ -31,8 +35,10 @@ async function handle(req:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Check the reviewer decision and current password."},{status:400});}
  }
  try{
-  const response=await fetch(new URL("/api/registration-approvals/finance-vouchers"+
-   (suffix?"/"+suffix:""),backend),{method,body,cache:"no-store",
+  const target=new URL("/api/registration-approvals/finance-vouchers"+
+   (suffix?"/"+suffix:""),backend);
+  if(method==="GET"&&parts[0]==="cases")target.searchParams.set("offset",offset);
+  const response=await fetch(target,{method,body,cache:"no-store",
     signal:AbortSignal.timeout(14000),
     headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   const raw:unknown=await response.json().catch(()=>null);
