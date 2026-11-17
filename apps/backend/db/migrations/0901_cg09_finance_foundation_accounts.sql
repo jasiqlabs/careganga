@@ -127,27 +127,27 @@ CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id
 -- Check both the journal and its lines at transaction COMMIT, never expose
 -- an unbalanced POSTED journal even if application services are bypassed.
 CREATE FUNCTION cg09_check_balanced_posting() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE j uuid; r uuid; line_count int; total_debit numeric; total_credit numeric;
+DECLARE v_journal uuid; r uuid; line_count int; total_debit numeric; total_credit numeric;
 BEGIN
  IF TG_TABLE_NAME='journal' THEN
-  j:=NEW.id;
+  v_journal:=NEW.id;
  ELSE
-  j:=NEW.journal_id;
+  v_journal:=NEW.journal_id;
  END IF;
  r:=NEW.root_realm_id;
  SELECT count(*),coalesce(sum(debit_minor),0),coalesce(sum(credit_minor),0)
  INTO line_count,total_debit,total_credit
- FROM journal_line WHERE journal_id=j AND root_realm_id=r;
+ FROM journal_line WHERE journal_id=v_journal AND root_realm_id=r;
  IF NOT EXISTS (
    SELECT 1 FROM journal j JOIN financial_year fy
     ON fy.id=j.financial_year_id AND fy.root_realm_id=j.root_realm_id
-   WHERE j.id=cg09_check_balanced_posting.j AND j.root_realm_id=r
+   WHERE j.id=v_journal AND j.root_realm_id=r
     AND j.posting_date BETWEEN fy.start_on AND fy.end_on
  ) THEN RAISE EXCEPTION 'Posting date outside financial year'; END IF;
  IF EXISTS (
    SELECT 1 FROM journal_line l JOIN finance_account a
     ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
-   WHERE l.journal_id=j AND l.root_realm_id=r
+   WHERE l.journal_id=v_journal AND l.root_realm_id=r
     AND (a.scope_kind='BRANCH' AND a.branch_id IS DISTINCT FROM l.branch_id)
  ) THEN
   RAISE EXCEPTION 'Finance journal branch and account scope do not match';
