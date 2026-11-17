@@ -31,8 +31,8 @@ async function jsonPost(path:string,value:unknown){
  if(!response.ok)throw Error(await explanation(response));
  return response.json() as Promise<Record<string,unknown>>;
 }
-export function FinanceVoucherPaymentTools({voucher,canUploadProof,canPost,canVerify,onUpdated}:{
- voucher:VoucherWorkflowRow;canUploadProof:boolean;canPost:boolean;canVerify:boolean;
+export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,canPost,canVerify,onUpdated}:{
+ voucher:VoucherWorkflowRow;canManage:boolean;canUploadProof:boolean;canPost:boolean;canVerify:boolean;
  onUpdated:()=>void
 }){
  const [busy,setBusy]=useState(false);
@@ -196,13 +196,13 @@ export function FinanceVoucherPaymentTools({voucher,canUploadProof,canPost,canVe
     voucher.status==="PAID_VERIFIED"?"Independently verified money movement. Posting remains a separate action.":
     voucher.status==="APPROVED"?"Approved by a separate reviewer; no payment has been confirmed.":
     "No bank or cash movement is considered verified until independently reviewed."}</p>
-  {paymentStage&&<button type="button" disabled={busy||!!pending} onClick={()=>void execute({
+  {paymentStage&&canManage&&<button type="button" disabled={busy||!!pending} onClick={()=>void execute({
    path:base+"/request-payment",key:crypto.randomUUID(),kind:"REQUEST",
    body:{expectedVersion:voucher.version}
   })}>Request payment verification</button>}
   {readyForProof&&<button type="button" disabled={busy} onClick={()=>void refresh()}>
    Check independent payment review</button>}
-  {readyForProof&&canUploadProof&&<>
+  {readyForProof&&canManage&&canUploadProof&&<>
    <label className="cg-fin-voucher-attach">Original {method==="BANK_STATEMENT"?
     "bank statement":"cash receipt"} (privately scanned)
     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={busy}
