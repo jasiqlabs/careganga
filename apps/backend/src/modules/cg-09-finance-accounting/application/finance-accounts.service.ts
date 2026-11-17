@@ -64,6 +64,23 @@ function digest(payload:Normalized):string{
 }
 function dbError(error:unknown):never{
  if(error&&typeof error==="object"&&"code" in error){
+  const rules:Record<string,{code:string;field?:string}>={
+    Z9101:{code:"FINANCE_STALE_RECORD"},
+    Z9102:{code:"FINANCE_GROUP_INVALID",field:"parentRef"},
+    Z9103:{code:"FINANCE_GROUP_INVALID",field:"parentRef"},
+    Z9104:{code:"FINANCE_GROUP_INVALID",field:"groupRef"},
+    Z9105:{code:"FINANCE_GROUP_INVALID",field:"groupRef"},
+    Z9106:{code:"FINANCE_STALE_RECORD"},
+    Z9107:{code:"FINANCE_ACCOUNT_KIND_INVALID",field:"accountKind"},
+    Z9108:{code:"FINANCE_YEAR_CLOSED",field:"financialYearRef"},
+    Z9109:{code:"FINANCE_ACCOUNT_INACTIVE",field:"debitAccountRef"},
+    Z9110:{code:"FINANCE_OPENING_DATE",field:"postingDate"},
+    Z9111:{code:"FINANCE_ACCOUNT_SCOPE",field:"branchRef"},
+    Z9112:{code:"FINANCE_DEBITS_CREDITS",field:"amount"},
+    Z9113:{code:"FINANCE_STALE_RECORD"}
+  };
+  const rule=typeof error.code==="string"?rules[error.code]:undefined;
+  if(rule)throw new ConflictException(rule);
   if(error.code==="23P01")throw new ConflictException({code:"FINANCE_YEAR_OVERLAP"});
   if(error.code==="23505")throw new ConflictException({code:"FINANCE_DUPLICATE"});
   if(error.code==="23503"||error.code==="23514"||error.code==="22P02")
