@@ -14,7 +14,7 @@ async function handle(req:NextRequest,parts:string[],method:string){
  if(!valid(parts,method))return NextResponse.json(
   {message:"This budget review action is unavailable."},{status:404});
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
-  return NextResponse.json({message:"Open the original CareGanga claim reviewer form."},{status:403});
+  return NextResponse.json({message:"Open the original CareGanga budget reviewer form."},{status:403});
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)return NextResponse.json({message:"Session expired. Sign in again."},{status:401});
  const backend=process.env.BACKEND_URL;
@@ -47,13 +47,13 @@ async function handle(req:NextRequest,parts:string[],method:string){
   const known=typeof obj.code==="string"&&[
    "FINANCE_BUDGET_REVIEW_INVALID","FINANCE_BUDGET_REVIEW_UNAVAILABLE",
    "FINANCE_BUDGET_STALE","FINANCE_BUDGET_REPLAY_CONFLICT",
-   "FINANCE_BUDGET_BILL_INVALID","FINANCE_BUDGET_SOURCE_INVALID"
+   "FINANCE_BUDGET_SOURCE_INVALID","FINANCE_BUDGET_SOURCE_INVALID"
   ].includes(obj.code)?obj.code:null;
   const message=known&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:status===401?"Session expired. Sign in again.":
    status===403?"Only a different authorized protected Foundation reviewer can decide.":
    status===429?"Too many confirmation attempts. Try again later.":
-   status===409?"The claim or its verified bill has changed. Refresh before deciding.":
+   status===409?"The original budget or its protected review changed. Refresh before deciding.":
    status===400?"Check the current review revision, action and password.":
    "The decision result cannot be confirmed. Refresh this original case before retrying.";
   return NextResponse.json({message,...(known?{code:known}:{})},
