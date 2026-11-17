@@ -6,6 +6,9 @@ export class FinanceBudgetController{
  @Get("options") options(@Headers("authorization")a:string){
   return this.budgets.options(a);
  }
+ @Get("dashboard") dashboard(@Headers("authorization")a:string){
+  return this.budgets.dashboard(a);
+ }
  @Get("list") list(@Headers("authorization")a:string,@Query("offset")offset?:string){
   return this.budgets.list(a,offset);
  }
