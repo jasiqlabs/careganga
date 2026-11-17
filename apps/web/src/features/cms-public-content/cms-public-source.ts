@@ -22,3 +22,23 @@ export async function publishedCmsPage(slug:"home"|"about"):Promise<CmsPageResul
   return {state:"PUBLISHED",page:p as PublicCmsPage};
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
+
+export type PublicCmsNavigation={schemaVersion:number;effectiveGeneration:string|null;
+ login:{visible:boolean;label:string;path:string|null};
+ memberJoin:{visible:boolean;label:string;path:string|null};
+ volunteerJoin:{visible:boolean;label:string;path:string|null}};
+export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>{
+ const backend=process.env.BACKEND_URL;
+ if(!backend)return null;
+ try{
+  const res=await fetch(new URL("/api/public/content/navigation",backend),{
+   cache:"no-store",signal:AbortSignal.timeout(7000)});
+  if(!res.ok)return null;
+  const data:unknown=await res.json();
+  if(!data||typeof data!=="object"||Array.isArray(data))return null;
+  const nav=data as Record<string,unknown>,login=nav.login;
+  if(nav.schemaVersion!==1||!login||typeof login!=="object"||
+   !("visible" in login)||typeof login.visible!=="boolean")return null;
+  return data as PublicCmsNavigation;
+ }catch{return null;}
+}
