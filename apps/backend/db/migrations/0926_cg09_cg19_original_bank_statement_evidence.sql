@@ -130,7 +130,10 @@ BEGIN
  IF NEW.action='VERIFY' THEN
   PERFORM 1 FROM cg19_stored_file f JOIN cg19_upload_intent i
    ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+   JOIN finance_bank_reconciliation r
+    ON r.id=f.reconciliation_id AND r.root_realm_id=f.realm_id
    WHERE f.id=NEW.statement_file_id AND f.realm_id=NEW.root_realm_id
+    AND r.recorded_by=i.requested_by AND r.recorded_by=f.created_by
     AND f.reconciliation_id=NEW.reconciliation_id
     AND f.revision=NEW.statement_file_version
     AND f.owner_kind='CG09_BANK_STATEMENT' AND i.owner_kind='CG09_BANK_STATEMENT'
