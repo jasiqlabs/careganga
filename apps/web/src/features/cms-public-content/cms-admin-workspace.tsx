@@ -111,6 +111,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [remark,setRemark]=useState("");
  const [withdrawReason,setWithdrawReason]=useState("");
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
+ const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
@@ -214,8 +215,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    if(!confirmed.cleanVerified||!confirmed.fileRef||!confirmed.validatedVersion)
     throw Error("The image is awaiting secure validation. Check before uploading again.");
    const next:Asset={fileRef:confirmed.fileRef,version:confirmed.validatedVersion,
-    role:uploadRole,altText:uploadAlt.trim(),order:0};
-   setDraft(v=>({...v,assets:[...v.assets.filter(x=>x.role!==next.role),next]}));
+    role:uploadRole,altText:uploadAlt.trim(),order:uploadRole==="TEAM"?uploadOrder:0};
+   setDraft(v=>({...v,assets:[...v.assets.filter(x=>x.role!==next.role||x.order!==next.order),next]}));
    setUploadAlt("");setRights(false);
    setNotice("Image verified. Save the draft to attach it to the page.");
   }catch(e){setError(e instanceof Error?e.message:"Image could not be verified.");}
@@ -370,16 +371,21 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        onChange={e=>setUploadRole(e.target.value as Asset["role"])}>
        <option value="HERO">Desktop hero image</option>
        <option value="MOBILE_HERO">Mobile hero image</option>
-       <option value="TEAM">Team image</option></select></label>
+       <option value="TEAM">Team member photograph</option></select></label>
+      {uploadRole==="TEAM"&&<label>Team member
+       <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
+        {draft.team.map((m,i)=><option key={i} value={i}>{m.name||"Team member "+(i+1)}</option>)}
+       </select></label>}
       <label>Describe the image<input value={uploadAlt} maxLength={300}
        onChange={e=>setUploadAlt(e.target.value)}/></label>
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>I confirm public image rights and consent</label>
       <label>Select original image<input type="file" accept="image/png,image/jpeg,image/webp"
-       disabled={busy||!rights||uploadAlt.trim().length<3}
+       disabled={busy||!rights||uploadAlt.trim().length<3||(uploadRole==="TEAM"&&draft.team.length===0)}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.currentTarget.value="";}}/></label>
       {draft.assets.map(x=><div className="cg-cms-asset" key={x.fileRef}>
-       <span>{x.role.replaceAll("_"," ")} · {x.altText}</span>
+       <span>{x.role==="TEAM"?(draft.team[x.order]?.name||"Team member "+(x.order+1)):
+        x.role.replaceAll("_"," ")} · {x.altText}</span>
        <button type="button" onClick={()=>edit("assets",draft.assets.filter(v=>v!==x))}>
         Remove from draft</button></div>)}
      </fieldset>}
