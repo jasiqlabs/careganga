@@ -18,6 +18,13 @@ export class FinanceVoucherEvidenceController{
  confirm(@Headers("authorization")bearer:string,@Param("intentRef")ref:string){
   return this.service.confirm(bearer,ref);
  }
+ @Get("vouchers/:voucherRef/payment-files")
+ paymentFiles(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string,
+  @Query("version")version?:string){
+  if(!version||!/^([1-9][0-9]{0,5})$/.test(version))
+   throw new BadRequestException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
+  return this.service.listPayment(bearer,ref,Number(version));
+ }
  @Get("vouchers/:voucherRef/files")
  files(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string,
   @Query("version")version?:string){
