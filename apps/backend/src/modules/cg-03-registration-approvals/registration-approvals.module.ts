@@ -3,6 +3,8 @@ import {FoundationStructureModule} from "../cg-02-foundation-structure/foundatio
 import {BranchApprovalService} from "./application/branch-approval.service";
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
 import {FinanceEvidenceSourceModule} from "../cg-19-documents-notifications/finance-evidence-source.module";
+import {FinanceBudgetApprovalService} from "./application/finance-budget-approval.service";
+import {FinanceBudgetApprovalController} from "./http/finance-budget-approval.controller";
 import {FinanceInvoiceApprovalService} from "./application/finance-invoice-approval.service";
 import {FinanceInvoiceApprovalController} from "./http/finance-invoice-approval.controller";
 import {FinanceClaimApprovalService} from "./application/finance-claim-approval.service";
@@ -20,8 +22,8 @@ import {ApprovalDocumentSource} from "./application/approval-document-source.ser
 import {CommittedDecisionSource} from "./application/committed-decision-source.service";
 @Module({
   imports:[IdentityAccessModule,FoundationStructureModule,FinanceSourceModule,FinanceEvidenceSourceModule],
-  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService],
-  controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController,FinanceVoucherApprovalController,FinanceClaimApprovalController,FinanceInvoiceApprovalController],
+  providers:[ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService,FinanceBudgetApprovalService],
+  controllers:[ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController,FinanceVoucherApprovalController,FinanceClaimApprovalController,FinanceInvoiceApprovalController,FinanceBudgetApprovalController],
   exports:[ApprovalProposalService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService]
 })
 export class RegistrationApprovalsModule {}
