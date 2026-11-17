@@ -11,7 +11,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {FinanceVoucherSourceFacade} from "../../cg-09-finance-accounting/application/finance-voucher-source.facade";
 import {FinanceVoucherProofSourceFacade} from "../../cg-19-documents-notifications/application/finance-voucher-proof-source.facade";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const requireId=(v:unknown):string=>{
  if(typeof v!=="string"||!UUID.test(v))
   throw new BadRequestException({code:"FINANCE_VOUCHER_SOURCE_INVALID"});
