@@ -4,12 +4,14 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-type Year={yearRef:string;name:string;status:string;startOn:string;endOn:string};
+type Year={yearRef:string;name:string;status:string;startOn?:string;endOn?:string};
 type Pending={key:string;body:Record<string,unknown>};
 type Result={confirmed:boolean;status:string;reversalRef?:string};
-export function FinanceNativeManualReversal({token,journalRef,years,onDone,onExit,onExpired}:{
- token:string;journalRef:string;years:Year[];onDone:()=>void;onExit:()=>void;onExpired:()=>void
+export function FinanceNativeManualReversal({token,journalRef,years,kind="JOURNAL",onDone,onExit,onExpired}:{
+ token:string;journalRef:string;years:Year[];kind?:"JOURNAL"|"UNISSUED_INVOICE";
+ onDone:()=>void;onExit:()=>void;onExpired:()=>void
 }){
+ const isInvoice=kind==="UNISSUED_INVOICE";
  const [year,setYear]=useState("");
  const [date,setDate]=useState("");
  const [reason,setReason]=useState("");
@@ -38,8 +40,9 @@ export function FinanceNativeManualReversal({token,journalRef,years,onDone,onExi
   if(busy)return;
   setBusy(true);setNotice("");setPending(cmd);setKnownAbsent(false);
   try{
-   const result=await request("/api/finance-accounting/manual-journals/"+
-    journalRef+"/reverse","POST",{...cmd.body,requestKey:cmd.key});
+   const path=isInvoice?"/api/finance-accounting/invoices/"+journalRef+"/cancel-posted":
+    "/api/finance-accounting/manual-journals/"+journalRef+"/reverse";
+   const result=await request(path,"POST",{...cmd.body,requestKey:cmd.key});
    if(!result.confirmed||result.status!=="REVERSED")throw Error("Correction not confirmed.");
    setPending(null);setPassword("");setNotice("Original offsetting journal posted.");
    onDone();
@@ -50,8 +53,9 @@ export function FinanceNativeManualReversal({token,journalRef,years,onDone,onExi
   if(!pending||busy)return;
   setBusy(true);setNotice("");
   try{
-   const r=await request("/api/finance-accounting/manual-journals/reversal-commands/"+
-    pending.key,"GET");
+   const path=isInvoice?"/api/finance-accounting/invoices/cancel-commands/":
+    "/api/finance-accounting/manual-journals/reversal-commands/";
+   const r=await request(path+pending.key,"GET");
    if(r.confirmed&&r.status==="REVERSED"){
     setPending(null);setPassword("");onDone();
    }else{setKnownAbsent(true);setNotice(
@@ -63,18 +67,19 @@ export function FinanceNativeManualReversal({token,journalRef,years,onDone,onExi
   <View style={s.header}>
    <Pressable accessibilityRole="button" onPress={onExit}
     disabled={busy||!!pending}><Text style={s.link}>‹ Back</Text></Pressable>
-   <Text accessibilityRole="header" style={s.title}>Protected journal correction</Text>
+   <Text accessibilityRole="header" style={s.title}>{isInvoice?
+    "Protected invoice cancellation":"Protected journal correction"}</Text>
   </View>
   <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-   <Text style={s.info}>Only an independent current-password reviewer may reverse an
-    original manually posted journal. The original debit/credit lines are immutable.
-    This action never reverses an invoice or proves a payment.</Text>
+   <Text style={s.info}>{isInvoice?
+    "Only a posted, never-issued invoice without a collection can be cancelled. A separate current-password reviewer creates one exact reversal, leaving the original ledger unchanged. This is not a legal credit note for an issued invoice.":
+    "Only an independent current-password reviewer may reverse a manually posted journal. The original debit/credit lines stay immutable. This does not reverse an invoice or prove a payment."}</Text>
    <Text style={s.label}>Open financial year</Text>
    {years.filter(y=>y.status==="OPEN").map(y=>
     <Pressable key={y.yearRef} accessibilityRole="radio"
      accessibilityState={{checked:year===y.yearRef}}
      style={[s.choice,year===y.yearRef&&s.selected]} onPress={()=>setYear(y.yearRef)}>
-     <Text style={s.info}>{y.name} · {y.startOn} – {y.endOn}</Text>
+     <Text style={s.info}>{y.name}{y.startOn&&y.endOn?" · "+y.startOn+" – "+y.endOn:""}</Text>
     </Pressable>)}
    <Text style={s.label}>Correction date (YYYY-MM-DD)</Text>
    <TextInput style={s.input} value={date} onChangeText={setDate}
@@ -88,7 +93,7 @@ export function FinanceNativeManualReversal({token,journalRef,years,onDone,onExi
     onChangeText={setPassword} placeholder="Current password" placeholderTextColor={t.mutedText}/>
    {!!notice&&<Text accessibilityRole="alert" style={s.info}>{notice}</Text>}
    {!!pending?<View style={s.card}>
-    <Text style={s.info}>Correction outcome unknown. Check original source first.</Text>
+    <Text style={s.info}>Correction outcome unknown. Check the original source first.</Text>
     <Pressable accessibilityRole="button" disabled={busy} style={s.choice}
      onPress={()=>void check()}><Text style={s.link}>Check original request</Text></Pressable>
     {knownAbsent&&<Pressable accessibilityRole="button" disabled={busy}
