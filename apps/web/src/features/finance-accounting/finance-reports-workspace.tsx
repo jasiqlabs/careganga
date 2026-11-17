@@ -10,7 +10,10 @@ type Book={postingDate:string;account:string;kind:string;debitMinor:string;credi
 type Bank={accountRef:string;name:string;code:string};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
 type Match={reconciliationRef:string;accountName:string;statementDate:string;
- bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string};
+ bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean};
+type StatementFile={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
+type UploadResult={status:string;uploadRef:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;
+ cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type View="summary"|"general-ledger"|"trial-balance"|"day-book"|"cash-book"|"bank-book"|"reconciliation";
 const format=(n:string)=>{try{const v=BigInt(n),sign=v<0n?"-":"",a=v<0n?-v:v;
  return sign+"₹"+(a/100n).toLocaleString("en-IN")+"."+
@@ -51,6 +54,13 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
  const [statementReference,setStatementReference]=useState("");
  const [reviewMatch,setReviewMatch]=useState("");
  const [password,setPassword]=useState("");
+ const [statementFiles,setStatementFiles]=useState<StatementFile[]>([]);
+ const [statementFileRef,setStatementFileRef]=useState("");
+ const [inspectedStatement,setInspectedStatement]=useState(false);
+ const [uploadMatch,setUploadMatch]=useState("");
+ const [chosenFile,setChosenFile]=useState<File|null>(null);
+ const [uploadKey,setUploadKey]=useState("");
+ const [uploadRef,setUploadRef]=useState("");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
@@ -112,6 +122,19 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
  },[view,year,account,from,to,offset]);
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{
+  let live=true;setStatementFiles([]);setStatementFileRef("");setInspectedStatement(false);
+  if(!reviewMatch||!canVerify)return;
+  void(async()=>{try{
+   const result=await fetch("/api/finance-bank-statements/matches/"+reviewMatch+"/files",{cache:"no-store"});
+   if(!result.ok)throw Error(await message(result));
+   const data=await result.json() as {files?:StatementFile[]};
+   if(!Array.isArray(data.files))throw Error("No confirmed private statement files.");
+   if(live)setStatementFiles(data.files);
+  }catch(e){if(live)setError(e instanceof Error?e.message:"Bank proof is unavailable.");}
+  })();
+  return()=>{live=false;};
+ },[reviewMatch,canVerify]);
+ useEffect(()=>{
   let current=true;if(view!=="reconciliation"||!bank){setBankLines([]);return;}
   void(async()=>{
    try{
@@ -132,9 +155,63 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
    if(!res.ok)throw Error(await message(res));
    const state=await res.json() as {confirmed?:boolean;status?:string};
    if(!state.confirmed)throw Error("Original bank match cannot be confirmed.");
-   setPending(null);setPassword("");setNotice("Bank statement match: "+state.status+
+   setPending(null);setPassword("");setReviewMatch("");setInspectedStatement(false);
+   setNotice("Bank statement match: "+state.status+
     ". This is not a provider payment confirmation.");void load();
   }catch(e){setError(e instanceof Error?e.message:"Original bank reconciliation is unconfirmed.");}
+  finally{setBusy(false);}
+ }
+ async function checkUploadedStatement(){
+  if(!uploadRef||busy)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const res=await fetch("/api/finance-bank-statements/intents/"+uploadRef,{cache:"no-store"});
+   if(!res.ok)throw Error(await message(res));
+   const data=await res.json() as UploadResult;
+   setNotice(data.cleanVerified?"The original scanned bank statement is confirmed.":
+    "Statement not verified yet: "+String(data.status).replaceAll("_"," ")+".");
+  }catch(e){setError(e instanceof Error?e.message:"Original statement status unavailable.");}
+  finally{setBusy(false);}
+ }
+ async function uploadStatement(){
+  if(!uploadMatch||!chosenFile||busy)return;
+  if(chosenFile.size<1||chosenFile.size>10485760||
+   !["application/pdf","image/jpeg","image/png","image/webp"].includes(chosenFile.type)){
+   setError("Choose a PDF, JPG, PNG or WebP bank statement under 10 MB.");return;
+  }
+  const key=uploadKey||crypto.randomUUID();setUploadKey(key);
+  setBusy(true);setError("");setNotice("");
+  try{
+   const buffer=await chosenFile.arrayBuffer();
+   const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)))
+    .map(x=>x.toString(16).padStart(2,"0")).join("");
+   const init=await fetch("/api/finance-bank-statements/intents",{method:"POST",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify({
+     reconciliationRef:uploadMatch,requestKey:key,mime:chosenFile.type,
+     sizeBytes:chosenFile.size,sha256:digest})});
+   if(!init.ok)throw Error(await message(init));
+   const started=await init.json() as UploadResult;
+   if(!started.uploadRef)throw Error("The original upload request is unconfirmed.");
+   setUploadRef(started.uploadRef);
+   if(started.status==="UPLOAD_READY"&&started.uploadUrl&&started.uploadHeaders&&
+     started.uploadUrl.startsWith("https://")&&started.uploadHeaders["Content-Type"]===chosenFile.type){
+    const sent=await fetch(started.uploadUrl,{method:"PUT",body:chosenFile,
+     headers:started.uploadHeaders});
+    // An immutable object already written during a lost response may return
+    // precondition failure; only provider byte/checksum verification can accept it.
+    if(!sent.ok&&sent.status!==412)throw Error("Bank statement upload unconfirmed. Check original request.");
+   }else if(started.status!=="VALIDATED")throw Error(
+    "Secure statement storage is not ready. Check original request.");
+   const confirm=await fetch("/api/finance-bank-statements/intents/"+
+    started.uploadRef+"/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:"{}"});
+   if(!confirm.ok)throw Error(await message(confirm));
+   const result=await confirm.json() as UploadResult;
+   if(!result.cleanVerified||!result.fileRef||!result.fileVersion)
+    throw Error("The private statement has not passed file and malware verification.");
+   setNotice("Scanned statement uploaded. A different reviewer must inspect and approve the exact match.");
+   setUploadMatch("");setChosenFile(null);setUploadRef("");setUploadKey("");
+  }catch(e){setError(e instanceof Error?e.message:"Original statement upload result uncertain. Check its status.");}
   finally{setBusy(false);}
  }
  function exportCurrent(){
@@ -225,8 +302,9 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
   </div>}
   {view==="reconciliation"&&<div className="cg-fin-card">
    <h3>Real Bank Statement Matching</h3>
-   <p>Enter the actual bank statement item and compare its amount with one original posted bank line.
-    An independent protected reviewer must verify a zero variance. This does not release payments.</p>
+   <p>Enter the original bank item and compare it with one posted bank line.
+    Attach the real private bank-statement PDF/image. A different authorized reviewer
+    must inspect that document and confirm a zero variance; this does not release payments.</p>
    {canReconcile&&<>
     <label className="cg-fin-field">Bank account
      <select value={bank} onChange={e=>{setBank(e.target.value);setSelectedBankLine("");}}>
@@ -265,19 +343,55 @@ export function FinanceReportsWorkspace({canReconcile,canVerify}:{
     {matches.map(m=><tr key={m.reconciliationRef}>
      <td>{m.accountName} · {m.statementDate}</td><td>{m.bankItemReference}</td>
      <td>{format(m.statementAmountMinor)}</td><td>{format(m.varianceMinor)}</td>
-     <td>{m.status==="VERIFIED"?"Independently matched":m.status}</td>
-     <td>{m.status==="PENDING"&&canVerify&&<button type="button"
-      onClick={()=>setReviewMatch(m.reconciliationRef)}>Verify</button>}</td></tr>)}
+     <td>{m.status==="VERIFIED"?"Statement reviewed":m.status}</td>
+     <td>{m.status==="PENDING"&&<>
+      {m.canUpload&&canReconcile&&<button type="button"
+       onClick={()=>{setUploadMatch(m.reconciliationRef);setChosenFile(null);
+        setUploadKey("");setUploadRef("");}}>Attach original bank statement</button>}
+      {canVerify&&<button type="button"
+       onClick={()=>setReviewMatch(m.reconciliationRef)}>Review</button>}
+     </>}</td></tr>)}
    </tbody></table></div>
+   {uploadMatch&&canReconcile&&<div className="cg-fin-card">
+    <h4>Attach genuine bank statement</h4>
+    <p>This file is private. A source/checksum/malware scan must succeed before review.</p>
+    <label className="cg-fin-field">Bank statement PDF or image
+     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+      onChange={e=>{setChosenFile(e.target.files?.[0]??null);
+       setUploadRef("");setUploadKey("");}}/></label>
+    <button type="button" disabled={busy||!chosenFile} onClick={()=>void uploadStatement()}>
+     Upload and scan bank statement</button>
+    {uploadRef&&<button type="button" disabled={busy}
+     onClick={()=>void checkUploadedStatement()}>Check existing upload status</button>}
+    <button type="button" disabled={busy} onClick={()=>setUploadMatch("")}>Close</button>
+   </div>}
    {reviewMatch&&canVerify&&<div className="cg-fin-card">
     <h4>Independent protected bank statement review</h4>
+    <p>Open the original document, compare the statement date, item reference and signed amount,
+     then select the specific scanned file used for this decision.</p>
+    <label className="cg-fin-field">Verified private bank statement
+     <select value={statementFileRef} onChange={e=>{setStatementFileRef(e.target.value);
+      setInspectedStatement(false);}}>
+      <option value="">Select inspected document</option>
+      {statementFiles.map((file,i)=><option key={file.fileRef} value={file.fileRef}>
+       Statement document {i+1} · {file.mime.replace("application/","").replace("image/","").toUpperCase()}
+      </option>)}
+     </select></label>
+    {statementFileRef&&<a href={"/api/finance-bank-statements/files/"+statementFileRef+"/download"}
+     target="_blank" rel="noopener noreferrer">Open the private statement document for review</a>}
+    <label className="cg-fin-field"><input type="checkbox" checked={inspectedStatement}
+     onChange={e=>setInspectedStatement(e.target.checked)} disabled={!statementFileRef}/>
+     I inspected this statement and checked the exact bank item and amount.</label>
     <label className="cg-fin-field">Current reviewer password
      <input type="password" value={password} autoComplete="current-password"
       onChange={e=>setPassword(e.target.value)}/></label>
     <div className="cg-fin-toolbar-actions">
-     <button type="button" disabled={busy||password.length<8||Boolean(pending)}
-      onClick={()=>void action("reconciliation/matches/"+reviewMatch+"/decision",{
-       action:"VERIFY",currentPassword:password})}>Confirm exact bank match</button>
+     <button type="button" disabled={busy||password.length<8||Boolean(pending)||
+      !inspectedStatement||!statementFiles.some(f=>f.fileRef===statementFileRef)}
+      onClick={()=>{const file=statementFiles.find(f=>f.fileRef===statementFileRef);
+       if(file)void action("reconciliation/matches/"+reviewMatch+"/decision",{
+        action:"VERIFY",currentPassword:password,statementFileRef:file.fileRef,
+        statementFileVersion:file.fileVersion});}}>Confirm reviewed bank match</button>
      <button type="button" disabled={busy||password.length<8||Boolean(pending)}
       onClick={()=>void action("reconciliation/matches/"+reviewMatch+"/decision",{
        action:"REJECT",currentPassword:password})}>Reject mismatch</button>
