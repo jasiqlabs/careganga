@@ -11,8 +11,9 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
 const KINDS=new Set(["HOME","ABOUT"]);
-const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER"]);
-const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM"]);
+const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
+ "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER"]);
+const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function uuid(v:unknown,field:string){
@@ -41,9 +42,11 @@ function path(v:unknown,field:string){
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  return x;
 }
-type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER";order:number;
+type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
+ "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER";order:number;
  fields:Record<string,unknown>};
-type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM";
+type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
+ "ABOUT"|"PROMO"|"FEATURE";
  altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type Content={kind:"HOME"|"ABOUT";slug:string;title:string;seoTitle:string;
@@ -72,14 +75,28 @@ function parseContent(raw:unknown):Content{
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
   const fields=input(sec.fields,sec.kind==="HERO"?
-   ["heading","subtitle","primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
+   ["heading","subtitle","description","eyebrow","tags",
+    "primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
    sec.kind==="TEAM"?["heading","members"]:
-   sec.kind==="CTA"?["label","path"]:
-   sec.kind==="PROJECT_TEASER"?["heading"]:["heading","body"]);
+   sec.kind==="CTA"?["heading","eyebrow","body","label","path"]:
+   sec.kind==="FEATURE_CARDS"?["heading","eyebrow","body","cards"]:
+   sec.kind==="JOIN_CARDS"?["volunteerTitle","volunteerBody","volunteerBenefits",
+    "memberTitle","memberBody","memberBenefits"]:
+   sec.kind==="SITE_FOOTER"?["mission","address","email","phone","newsletterText"]:
+   sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
+   ["heading"]);
   const out:Record<string,unknown>={};
+  const array=(raw:unknown,field:string,limit:number,max:number)=>{
+   if(!Array.isArray(raw)||raw.length>limit)
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
+   return raw.map(item=>text(item,field,max,2));
+  };
   if(sec.kind==="HERO"){
    out.heading=text(fields.heading,"heading",180,3);
    out.subtitle=text(fields.subtitle??"","subtitle",700);
+   out.description=text(fields.description??"","description",400);
+   out.eyebrow=text(fields.eyebrow??"","eyebrow",100);
+   out.tags=array(fields.tags??[],"tags",4,36);
    if(fields.primaryLabel!==undefined)out.primaryLabel=text(fields.primaryLabel,"primaryLabel",60,2);
    if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath");
    if(Boolean(fields.primaryLabel)!==Boolean(fields.primaryPath))
@@ -91,9 +108,21 @@ function parseContent(raw:unknown):Content{
   }else if(sec.kind==="RICH_TEXT"){
    out.heading=text(fields.heading,"heading",160,3);
    out.body=text(fields.body,"body",4000,5);
+   out.eyebrow=text(fields.eyebrow??"","eyebrow",100);
+   if(fields.variant!==undefined){
+    if(!["STANDARD","SPLIT"].includes(String(fields.variant)))
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"variant"});
+    out.variant=fields.variant;
+   }
+   out.highlights=array(fields.highlights??[],"highlights",4,200);
   }else if(sec.kind==="CTA"){
-   out.label=text(fields.label,"label",80,2);
-   out.path=path(fields.path,"path");
+   out.heading=text(fields.heading??"","heading",160);
+   out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
+   out.body=text(fields.body??"","body",400);
+   if(fields.label!==undefined)out.label=text(fields.label,"label",80,2);
+   if(fields.path!==undefined)out.path=path(fields.path,"path");
+   if(Boolean(fields.label)!==Boolean(fields.path))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"path"});
   }else if(sec.kind==="TEAM"){
    out.heading=text(fields.heading??"Our team","heading",160,3);
    if(!Array.isArray(fields.members)||fields.members.length>15)
@@ -104,9 +133,37 @@ function parseContent(raw:unknown):Content{
      throw new BadRequestException({code:"CMS_TEAM_CONSENT_REQUIRED"});
     return {name:text(m.name,"name",100,2),
      designation:text(m.designation,"designation",100,2),
-     bio:text(m.bio??"","bio",600),
-     consentConfirmed:true};
+     bio:text(m.bio??"","bio",600),consentConfirmed:true};
    });
+  }else if(sec.kind==="FEATURE_CARDS"){
+   out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
+   out.heading=text(fields.heading,"heading",160,3);
+   out.body=text(fields.body??"","body",500);
+   if(!Array.isArray(fields.cards)||fields.cards.length<1||fields.cards.length>3)
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"cards"});
+   out.cards=fields.cards.map((candidate:unknown)=>{
+    const card=input(candidate,["label","title","body"]);
+    return {label:text(card.label,"label",50,2),
+     title:text(card.title,"title",110,3),
+     body:text(card.body,"body",350,5)};
+   });
+  }else if(sec.kind==="JOIN_CARDS"){
+   out.volunteerTitle=text(fields.volunteerTitle,"volunteerTitle",120,3);
+   out.volunteerBody=text(fields.volunteerBody,"volunteerBody",500,5);
+   out.memberTitle=text(fields.memberTitle,"memberTitle",120,3);
+   out.memberBody=text(fields.memberBody,"memberBody",500,5);
+   out.volunteerBenefits=array(fields.volunteerBenefits??[],"volunteerBenefits",3,170);
+   out.memberBenefits=array(fields.memberBenefits??[],"memberBenefits",3,170);
+  }else if(sec.kind==="SITE_FOOTER"){
+   out.mission=text(fields.mission??"","mission",600);
+   out.address=text(fields.address??"","address",300);
+   out.phone=text(fields.phone??"","phone",32);
+   out.email=text(fields.email??"","email",150);
+   out.newsletterText=text(fields.newsletterText??"","newsletterText",250);
+   if(out.phone&&!/^\+?[0-9 ()-]{7,32}$/.test(String(out.phone)))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"phone"});
+   if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(out.email)))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"email"});
   }else out.heading=text(fields.heading??"","heading",160);
   if(JSON.stringify(out).length>8192)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
@@ -114,9 +171,11 @@ function parseContent(raw:unknown):Content{
  });
  if(new Set(sections.map(s=>s.kind+":"+s.order)).size!==sections.length)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+ if(sections.filter(s=>s.kind==="HERO").length>6)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"heroSlides"});
  if(!sections.some(s=>s.kind==="HERO")&&kind==="HOME")
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
- if(!Array.isArray(v.assets??[])||(v.assets as unknown[]).length>20)
+ if(!Array.isArray(v.assets??[])||(v.assets as unknown[]).length>30)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
  const navigation=kind==="HOME"?(()=>{
   const candidate=v.navigation??{loginDesired:true,memberJoinDesired:false,volunteerJoinDesired:false};
