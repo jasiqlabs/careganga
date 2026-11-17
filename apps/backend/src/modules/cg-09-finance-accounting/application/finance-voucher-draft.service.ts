@@ -252,6 +252,11 @@ export class FinanceVoucherDraftService{
    [actor.realmId,voucherRef,version,JSON.stringify(header),JSON.stringify(safe.lines),
     safe.grossMinor,safe.taxMinor,safe.chargesMinor,safe.totalMinor,
     actor.accountId,key,hash]);
+  await client.query(`
+   INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key)
+   VALUES($1,$2,'VOUCHER',$3,$4,$5)`,
+   [actor.realmId,actor.accountId,voucherRef,
+    reference?"VOUCHER_DRAFT_REVISED":"VOUCHER_DRAFT_CREATED",key]);
   return {voucherRef,voucherNumber,version,confirmed:true as const,replayed:false};
  }
  async save(bearer:string,payload:unknown,voucherInput?:string){
