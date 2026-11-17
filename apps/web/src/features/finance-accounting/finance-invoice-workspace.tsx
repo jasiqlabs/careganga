@@ -12,15 +12,18 @@ type Dashboard={cards:{total:number;drafts:number;pending:number;approved:number
  monthly:{month:string;count:number;issuedMinor:string}[];explanation:string};
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
+type CorrectedInvoice={invoiceRef:string;invoiceNumber:string;counterpartyName:string;branchRef:string|null};
 type Detail={invoiceRef:string;invoiceNumber:string;version:number;status:string;
  draft:{info?:Record<string,unknown>;items?:Record<string,unknown>;payment?:Record<string,unknown>}};
 type Form={financialYearRef:string;branchRef:string;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string;rows:{description:string;quantity:number;unitRate:string}[];
+ counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;
+ rows:{description:string;quantity:number;unitRate:string}[];
  tax:string;charges:string;receivableAccountRef:string;incomeAccountRef:string;
  taxAccountRef:string;terms:string;notes:string};
 const empty=():Form=>({financialYearRef:"",branchRef:"",branchVersion:null,
  invoiceDate:"",dueDate:"",category:"",purpose:"",counterpartyName:"",counterpartyAddress:"",
+ replacesInvoiceRef:"",
  rows:[{description:"",quantity:1,unitRate:"0.00"}],tax:"0.00",charges:"0.00",
  receivableAccountRef:"",incomeAccountRef:"",taxAccountRef:"",terms:"Payment due per invoice",notes:""});
 type Active={ref:string;number:string;version:number;status:string};
@@ -44,6 +47,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
  const [refreshVersion,setRefreshVersion]=useState(0);
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+ const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [active,setActive]=useState<Active|null>(null);
  const [stage,setStage]=useState<Stage>("INFO");
@@ -96,11 +100,12 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     const [op,ac]=await Promise.all([fetch("/api/finance/invoices/options",{cache:"no-store"}),
       fetch("/api/finance/invoices/posting-accounts",{cache:"no-store"})]);
     if(!op.ok||!ac.ok)throw Error(await errorFor(!op.ok?op:ac));
-    const o=await op.json() as {years?:Year[];branches?:Branch[]};
+    const o=await op.json() as {years?:Year[];branches?:Branch[];correctedInvoices?:CorrectedInvoice[]};
     const a=await ac.json() as {accounts?:Account[]};
     if(!Array.isArray(o.years)||!Array.isArray(o.branches)||!Array.isArray(a.accounts))
      throw Error("Current account/branch choices are unavailable.");
-    if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);}
+    if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
+     setCorrectedInvoices(o.correctedInvoices??[]);}
    }catch(e){if(live)setError(errorMessage(e));}
   })();return()=>{live=false;};
  },[]);
@@ -131,6 +136,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     category:String(i.category??""),purpose:String(i.purpose??""),
     counterpartyName:String(i.counterpartyName??""),
     counterpartyAddress:String(i.counterpartyAddress??""),
+    replacesInvoiceRef:String(i.replacesInvoiceRef??""),
     rows:Array.isArray(j.rows)?j.rows.map((r:Record<string,unknown>)=>({
      description:String(r.description??""),quantity:Number(r.quantity??1),
      unitRate:typeof r.unitRateMinor==="string"?(BigInt(r.unitRateMinor)/100n).toString()+
@@ -151,7 +157,8 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    financialYearRef:form.financialYearRef,branchRef:form.branchRef||null,
    branchVersion:form.branchRef?form.branchVersion:null,invoiceDate:form.invoiceDate,
    dueDate:form.dueDate,category:form.category,purpose:form.purpose,
-   counterpartyName:form.counterpartyName,counterpartyAddress:form.counterpartyAddress||null};
+   counterpartyName:form.counterpartyName,counterpartyAddress:form.counterpartyAddress||null,
+   replacesInvoiceRef:form.replacesInvoiceRef||null};
   if(stage==="ITEMS")return {rows:form.rows,tax:form.tax,charges:form.charges};
   return {receivableAccountRef:form.receivableAccountRef,
    incomeAccountRef:form.incomeAccountRef,taxAccountRef:form.taxAccountRef||null,
@@ -302,6 +309,15 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
       <option value="">Foundation (no branch)</option>
       {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
      </select></label>
+     {correctedInvoices.some(v=>v.branchRef===(form.branchRef||null))&&
+      <label className="cg-fin-field">Replaces credited invoice (optional)
+       <select value={form.replacesInvoiceRef} onChange={e=>
+        setForm(v=>({...v,replacesInvoiceRef:e.target.value}))}>
+        <option value="">New invoice — not a correction</option>
+        {correctedInvoices.filter(v=>v.branchRef===(form.branchRef||null))
+         .map(v=><option key={v.invoiceRef} value={v.invoiceRef}>
+          {v.invoiceNumber} · {v.counterpartyName}</option>)}
+       </select></label>}
      {([["invoiceDate","Invoice date"],["dueDate","Due date"]] as const)
       .map(([field,label])=><label className="cg-fin-field" key={field}>{label}
        <input type="date" value={form[field]}
