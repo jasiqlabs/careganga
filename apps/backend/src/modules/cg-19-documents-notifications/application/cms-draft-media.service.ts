@@ -42,10 +42,10 @@ export class CmsDraftMediaService{
   const found=await tx.query(
    "SELECT v.id FROM cms_page_revision v JOIN cms_page p "+
    "ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id "+
-   "WHERE p.id=$1 AND p.foundation_root_id=$2 AND p.created_by=$3 "+
-   "AND p.draft_revision_no=v.revision_no AND v.id=$4 AND v.status='DRAFT' "+
+   "WHERE p.id=$1 AND p.foundation_root_id=$2 "+
+   "AND p.draft_revision_no=v.revision_no AND v.id=$3 AND v.status='DRAFT' "+
    "AND p.archived_at IS NULL FOR SHARE OF v,p",
-   [pageRef,actor.realmId,actor.accountId,revisionRef]);
+   [pageRef,actor.realmId,revisionRef]);
   if(!found.rowCount)throw new ConflictException({code:"CMS_MEDIA_REVISION_CHANGED"});
  }
  async initiate(bearer:string,body:unknown){
