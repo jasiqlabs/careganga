@@ -165,7 +165,7 @@ CREATE INDEX ix_cg09_command_root ON finance_command(root_realm_id,created_at DE
 
 -- A direct SQL writer cannot post into a CLOSED/foreign/out-of-period year.
 -- FOR SHARE serializes this check against the year-closing UPDATE.
-CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_posting_period() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE v_start date; v_end date; v_status text;
 BEGIN
  SELECT fy.start_on,fy.end_on,fy.status INTO v_start,v_end,v_status
@@ -178,7 +178,7 @@ BEGIN
   RAISE EXCEPTION 'Finance posting date is outside selected year' USING ERRCODE='P0911';
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TABLE journal(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
@@ -214,7 +214,7 @@ CREATE TABLE journal_line(
  FOREIGN KEY(branch_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT
 );
 -- A direct SQL writer cannot bypass current active account/scope eligibility.
-CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg09_guard_posting_account() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE v_status text; v_scope text; v_branch uuid;
 BEGIN
  SELECT a.status,a.scope_kind,a.branch_id INTO v_status,v_scope,v_branch
@@ -227,7 +227,7 @@ BEGIN
   RAISE EXCEPTION 'Finance posting account is in another branch' USING ERRCODE='P0904';
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
  EXECUTE FUNCTION cg09_guard_posting_account();
 CREATE INDEX ix_cg09_lines_root_account ON journal_line(root_realm_id,account_id,journal_id);
