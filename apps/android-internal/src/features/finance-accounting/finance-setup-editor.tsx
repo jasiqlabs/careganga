@@ -317,7 +317,9 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
        "Deactivation blocks new postings. Historical balances remain visible.":
        "Reactivation permits new authorized postings only while the linked branch remains active."}</Text>
      </View>}
-    {notice&&(!notice.field||kind.endsWith("Status"))&&
+    {notice&&(!notice.field||kind.endsWith("Status")||
+      !["name","code","startOn","endOn","bankLabel","bankLastFour",
+        "postingDate","amount"].includes(notice.field))&&
       <View style={styles.warn} accessibilityRole="alert">
        <Text style={styles.notice}>{notice.message}</Text></View>}
     {pending&&<View style={styles.warn}>
