@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 
 export type VoucherWorkflowRow={voucherRef:string;voucherNumber:string;version:number;
  status:string;approvalCaseRef:string|null};
@@ -37,8 +37,12 @@ export function FinanceVoucherSubmissionTools({voucher,canViewEvidence,canUpload
  const [pending,setPending]=useState<Unconfirmed|null>(null);
  const [confirmNoResult,setConfirmNoResult]=useState(false);
  const [intentRef,setIntentRef]=useState("");
+ const [uploadKey,setUploadKey]=useState("");
  const [file,setFile]=useState<File|null>(null);
  const selectable=files.find(f=>f.fileRef===selected);
+ useEffect(()=>{setFiles([]);setSelected("");setFile(null);setIntentRef("");setUploadKey("");
+  setPending(null);setNotice("");setConfirmNoResult(false);},
+  [voucher.voucherRef,voucher.version]);
  async function checkFiles(){
   if(!canViewEvidence||busy)return;
   setBusy(true);setNotice("");
@@ -79,10 +83,11 @@ export function FinanceVoucherSubmissionTools({voucher,canViewEvidence,canUpload
    const content=await file.arrayBuffer();
    const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",content)))
     .map(byte=>byte.toString(16).padStart(2,"0")).join("");
+   const requestKey=uploadKey||crypto.randomUUID();setUploadKey(requestKey);
    const r=await fetch("/api/finance-evidence/intents",{
     method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",
     body:JSON.stringify({voucherRef:voucher.voucherRef,voucherVersion:voucher.version,
-     mime:file.type,sizeBytes:file.size,sha256:sha,requestKey:crypto.randomUUID()})});
+     mime:file.type,sizeBytes:file.size,sha256:sha,requestKey})});
    if(!r.ok)throw Error(await message(r));
    const request=typedUpload(await r.json());
    if(!request)throw Error("Secure file upload is not available. No attachment was verified.");
@@ -91,7 +96,7 @@ export function FinanceVoucherSubmissionTools({voucher,canViewEvidence,canUpload
     body:content,cache:"no-store"});
    if(!sent.ok)throw Error("Private file storage did not confirm the upload. Check the original file verification.");
    const verified=await confirm(request.uploadRef);
-   setSelected(verified.fileRef);setFile(null);
+   setSelected(verified.fileRef);setFile(null);setUploadKey("");
    setFiles([{
     fileRef:verified.fileRef,fileVersion:verified.fileVersion,mime:file.type,
     sizeBytes:String(file.size)}]);
@@ -172,7 +177,7 @@ export function FinanceVoucherSubmissionTools({voucher,canViewEvidence,canUpload
   {editable&&canUploadEvidence&&<label className="cg-fin-voucher-attach">
    Add private voucher evidence (PDF or image)
    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-    disabled={busy} onChange={e=>setFile(e.target.files?.[0]??null)}/>
+    disabled={busy} onChange={e=>{setFile(e.target.files?.[0]??null);setUploadKey("");setIntentRef("");}}/>
   </label>}
   {editable&&canUploadEvidence&&file&&<button type="button"
     disabled={busy} onClick={()=>void upload()}>Upload & verify attachment</button>}
