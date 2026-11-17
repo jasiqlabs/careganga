@@ -30,6 +30,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
  const [offset,setOffset]=useState(0);
  const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [form,setForm]=useState<Draft>(empty());
+ const [correction,setCorrection]=useState<{ref:string;version:number;number:string}|null>(null);
  const [pendingKey,setPendingKey]=useState<string|null>(null);
  const [fieldError,setFieldError]=useState<{name:string;message:string}|null>(null);
  const [openClaim,setOpenClaim]=useState<string|null>(null);
@@ -63,9 +64,9 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
   const key=pendingKey??crypto.randomUUID();setPendingKey(key);
   setSaving(true);setFeedback("");setFieldError(null);
   try{
-   const res=await fetch("/api/finance/claims/drafts",{
+   const res=await fetch(correction?"/api/finance/claims/"+correction.ref+"/correct":"/api/finance/claims/drafts",{
     method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({...form,requestKey:key})});
+    body:JSON.stringify({...form,requestKey:key,...(correction?{expectedVersion:correction.version}:{})})});
    if(!res.ok){
     const p=await problem(res);
     if(p.field)setFieldError({name:p.field,message:p.message??"Check this value."});
@@ -75,16 +76,16 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
    if(!result||typeof result!=="object"||!("confirmed" in result)||
       result.confirmed!==true||!("status" in result)||result.status!=="DRAFT")
     throw Error("The claim save could not be verified. Check its status before retrying.");
-   setForm(empty());setPendingKey(null);setOffset(0);
-   setFeedback("Expense claim draft saved. A verified bill and separate review are required before any payment or posting.");
+   setForm(empty());setPendingKey(null);setCorrection(null);setOffset(0);
+   setFeedback(correction?"Returned claim corrected as a new original revision. Upload a fresh scanned bill before resubmitting.":"Expense claim draft saved. A verified bill and separate review are required before any payment or posting.");
    void refresh();
   }catch(e){
    try{
-    const status=await fetch("/api/finance/claims/draft-commands/"+key,{cache:"no-store"});
+    const status=await fetch("/api/finance/claims/"+(correction?"workflow-commands":"draft-commands")+"/"+key,{cache:"no-store"});
     if(status.ok){
      const result:unknown=await status.json();
      if(result&&typeof result==="object"&&"confirmed" in result&&result.confirmed===true){
-      setForm(empty());setPendingKey(null);setOffset(0);
+      setForm(empty());setPendingKey(null);setCorrection(null);setOffset(0);
       setFeedback("Your original claim draft was saved. It is not submitted, approved or paid.");
       void refresh();return;
      }
@@ -101,7 +102,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
   {feedback&&<p role="status" className="cg-fin-notice">{feedback}</p>}
   {notice&&<p role="alert" className="cg-fin-notice">{notice}</p>}
   {canCreate&&<div className="cg-fin-drawer">
-   <h3>New expense claim draft</h3>
+   <h3>{correction?"Correct "+correction.number+" (new revision)":"New expense claim draft"}</h3>
    <form className="cg-fin-form" onSubmit={e=>void save(e)}>
     <label className="cg-fin-field">Expense category *
      <input required minLength={2} maxLength={80} value={form.category}
@@ -122,7 +123,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
      {fieldError?.name==="purpose"&&<span role="alert">{fieldError.message}</span>}</label>
     <p className="cg-fin-help">A private verified bill, approval and payout steps are not yet available in this draft-only screen.</p>
     <button className="primary" type="submit" disabled={saving}>
-     {saving?"Checking the draft…":"Save claim draft"}</button>
+     {saving?"Checking the draft…":correction?"Save corrected claim draft":"Save claim draft"}</button>
    </form>
   </div>}
   {canView&&<div className="cg-fin-table-wrap">
@@ -139,7 +140,14 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
       c.status==="APPROVED"?"Approved — payable/payment separately verified":
       c.status==="RETURNED"?"Returned for correction":
       c.status==="REJECTED"?"Rejected":"Check original status"}</span></td>
-     {canCreate&&<td>{c.status==="DRAFT"&&
+     {canCreate&&<td>{c.status==="RETURNED"&&
+       <button type="button" onClick={()=>{
+        setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
+        setForm({purpose:c.purpose,category:c.category,expenseDate:c.expenseDate,
+         amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});
+        setPendingKey(null);setFeedback("");setFieldError(null);
+       }}>Correct returned claim</button>}
+      {c.status==="DRAFT"&&
       <button type="button" aria-expanded={openClaim===c.claimRef}
        onClick={()=>setOpenClaim(v=>v===c.claimRef?null:c.claimRef)}>
        {openClaim===c.claimRef?"Hide bill upload":"Upload verified bill"}</button>}
