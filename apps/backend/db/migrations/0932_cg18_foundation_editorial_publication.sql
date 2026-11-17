@@ -212,7 +212,7 @@ CREATE INDEX ix_cg18_recent_audit
 -- Submitted page/sections/assets are immutable. DRAFT editing is an explicit
 -- versioned operation in the CMS service; proof never changes a submitted page.
 CREATE FUNCTION cg18_guard_revision_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE src text;
+DECLARE target_rev uuid; target_root uuid;
 BEGIN
  IF TG_TABLE_NAME='cms_page_revision' THEN
   IF TG_OP='DELETE' OR OLD.status IN('SUBMITTED','RETURNED') THEN
@@ -226,12 +226,14 @@ BEGIN
   END IF;
   RETURN NEW;
  END IF;
- IF TG_TABLE_NAME='cms_section_revision' THEN
-  src:='cms_section_revision';
- ELSE src:='cms_asset_placement'; END IF;
+ IF TG_OP='INSERT' THEN
+  target_rev:=NEW.page_revision_id; target_root:=NEW.foundation_root_id;
+ ELSE
+  target_rev:=OLD.page_revision_id; target_root:=OLD.foundation_root_id;
+ END IF;
  PERFORM 1 FROM cms_page_revision rev
-  WHERE rev.id=OLD.page_revision_id AND
-   rev.foundation_root_id=OLD.foundation_root_id AND rev.status='DRAFT' FOR SHARE;
+  WHERE rev.id=target_rev AND
+   rev.foundation_root_id=target_root AND rev.status='DRAFT' FOR SHARE;
  IF NOT FOUND THEN
   RAISE EXCEPTION 'Submitted CMS content cannot be changed' USING ERRCODE='P1831';
  END IF;
@@ -240,9 +242,9 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg18_revision_edit_guard BEFORE UPDATE OR DELETE
  ON cms_page_revision FOR EACH ROW EXECUTE FUNCTION cg18_guard_revision_mutation();
-CREATE TRIGGER cg18_section_edit_guard BEFORE UPDATE OR DELETE
+CREATE TRIGGER cg18_section_edit_guard BEFORE INSERT OR UPDATE OR DELETE
  ON cms_section_revision FOR EACH ROW EXECUTE FUNCTION cg18_guard_revision_mutation();
-CREATE TRIGGER cg18_asset_edit_guard BEFORE UPDATE OR DELETE
+CREATE TRIGGER cg18_asset_edit_guard BEFORE INSERT OR UPDATE OR DELETE
  ON cms_asset_placement FOR EACH ROW EXECUTE FUNCTION cg18_guard_revision_mutation();
 CREATE TRIGGER cg18_audit_immutable BEFORE UPDATE OR DELETE
  ON cms_change_audit FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
