@@ -218,3 +218,5 @@
 @media(prefers-reduced-motion:reduce){
  .cg-site *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+.cg-cms-review-image{display:block;max-width:22rem;width:100%;height:auto;max-height:15rem;object-fit:contain;border-radius:.7rem;border:1px solid #dce5dc;margin:.6rem 0}
