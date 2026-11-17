@@ -242,7 +242,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   {!loading&&!error&&<div className="cg-fin-table-wrap">
    <table className="cg-fin-table"><thead><tr>
     <th>Voucher No.</th><th>Type</th><th>Posting Date</th><th>Payee</th>
-    <th>Purpose</th><th>Total (₹)</th><th>Status</th>{canManage&&<th>Action</th>}</tr></thead>
+    <th>Purpose</th><th>Total (₹)</th><th>Status</th>{(canManage||canVerifyPayment||canPost)&&<th>Action</th>}</tr></thead>
     <tbody>{data.map(v=><tr key={v.voucherRef}>
      <td><strong>{v.voucherNumber}</strong></td><td>{v.type}</td>
      <td>{v.postingDate}</td><td>{v.payeeName}</td><td>{v.purpose}</td>
@@ -250,16 +250,19 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
      <td><span className="cg-fin-status">{v.status==="DRAFT"?"Draft — not posted":
       v.status==="SUBMITTED"?"Awaiting real approval":v.status==="APPROVED"?
       "Approved — not paid":v.status==="RETURNED"?"Returned for correction":
-      v.status==="REJECTED"?"Rejected":"Review status unavailable"}</span></td>
-     {canManage&&<td>
-      {["DRAFT","RETURNED"].includes(v.status)&&<button type="button"
+      v.status==="REJECTED"?"Rejected":v.status==="PAYMENT_REQUESTED"?
+      "Payment proof requested — not paid":v.status==="PAID_VERIFIED"?
+      "Money verification confirmed — not posted":v.status==="POSTED"?
+      "Posted in balanced ledger":"Review status unavailable"}</span></td>
+     {(canManage||canVerifyPayment||canPost)&&<td>
+      {canManage&&["DRAFT","RETURNED"].includes(v.status)&&<button type="button"
        disabled={loadingDraft||busy} onClick={()=>void edit(v)}>
        {v.status==="RETURNED"?"Correct returned voucher":"Edit draft"}</button>}
-      {["DRAFT","SUBMITTED"].includes(v.status)&&<FinanceVoucherSubmissionTools
+      {canManage&&["DRAFT","SUBMITTED"].includes(v.status)&&<FinanceVoucherSubmissionTools
        voucher={v} canViewEvidence={canViewEvidence}
        canUploadEvidence={canUploadEvidence} onUpdated={()=>void refresh()}/>}
       {["APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&
-       <FinanceVoucherPaymentTools voucher={v} canUploadProof={canUploadEvidence}
+       <FinanceVoucherPaymentTools voucher={v} canManage={canManage} canUploadProof={canUploadEvidence}
         canPost={canPost} canVerify={canVerifyPayment} onUpdated={()=>void refresh()}/>}
       {!["DRAFT","RETURNED","SUBMITTED","APPROVED","PAYMENT_REQUESTED","PAID_VERIFIED","POSTED"].includes(v.status)&&
        <span className="cg-fin-help">Read-only review outcome</span>}
