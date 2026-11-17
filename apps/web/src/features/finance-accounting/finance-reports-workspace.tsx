@@ -40,6 +40,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
  const [years,setYears]=useState<Year[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
+  const [allBranches,setAllBranches]=useState(true);
  const [branch,setBranch]=useState("");
  const [year,setYear]=useState("");
  const [account,setAccount]=useState("");
@@ -76,10 +77,13 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
    try{
     const r=await fetch("/api/finance/reports/options",{cache:"no-store"});
     if(!r.ok)throw Error(await message(r));
-    const data=await r.json() as {years?:Year[];accounts?:Account[];branches?:Branch[]};
+    const data=await r.json() as {years?:Year[];accounts?:Account[];branches?:Branch[];allBranches?:boolean};
     if(!Array.isArray(data.years)||!Array.isArray(data.accounts)||!Array.isArray(data.branches))
      throw Error("Current report options unavailable.");
-    if(live){setYears(data.years);setAccounts(data.accounts);setBranches(data.branches);}
+    if(live){setYears(data.years);setAccounts(data.accounts);setBranches(data.branches);
+      setAllBranches(data.allBranches===true);
+      if(data.allBranches!==true)setBranch(current=>data.branches!.some(x=>x.branchRef===current)?current:(data.branches![0]?.branchRef??""));
+     }
    }catch(e){if(live)setError(e instanceof Error?e.message:"Financial period options unavailable.");}
   })();return()=>{live=false;};
  },[]);
@@ -263,7 +267,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
     </select></label>
    <label className="cg-fin-field">Foundation / branch
     <select value={branch} onChange={e=>{setBranch(e.target.value);setOffset(0);}}>
-     <option value="">All permitted Foundation branches</option>
+     {allBranches&&<option value="">All Foundation branches</option>}
      {branches.map(b=><option key={b.branchRef} value={b.branchRef}>
       {b.code} · {b.name}</option>)}
     </select></label>
