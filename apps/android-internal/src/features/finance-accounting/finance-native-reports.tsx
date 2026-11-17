@@ -2,7 +2,9 @@ import {useCallback,useEffect,useState} from "react";
 import {BackHandler,Pressable,ScrollView,Text,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import {File,Paths} from "expo-file-system";
+import {File,Paths,UploadType} from "expo-file-system";
+import * as DocumentPicker from "expo-document-picker";
+import {identityRequest} from "../identity-access/http-client";
 import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard as Card,
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
@@ -15,7 +17,11 @@ type Year={ref:string;name:string},Account={ref:string;code:string;name:string;k
 type Bank={accountRef:string;name:string;code:string};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
 type Match={reconciliationRef:string;accountName:string;statementDate:string;
- bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string};
+ bankItemReference:string;statementAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean};
+type StatementFile={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
+type Picked={uri:string;name:string;mime:string;size:number};
+type UploadState={status:string;uploadRef:string;uploadUrl?:string;
+ uploadHeaders?:Record<string,string>;cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Pending={path:string;key:string;body:Record<string,unknown>};
 const viewChoices:{ref:ViewKind;label:string}[]=[
  {ref:"summary",label:"Dashboard"},{ref:"general-ledger",label:"General Ledger"},
@@ -41,6 +47,12 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
  const [statementRef,setStatementRef]=useState(""),[statementDate,setStatementDate]=useState(""),
   [amount,setAmount]=useState("");
  const [matches,setMatches]=useState<Match[]>([]),[review,setReview]=useState("");
+ const [statementFiles,setStatementFiles]=useState<StatementFile[]>([]);
+ const [statementFileRef,setStatementFileRef]=useState("");
+ const [inspected,setInspected]=useState(false);
+ const [uploadMatch,setUploadMatch]=useState("");
+ const [picked,setPicked]=useState<Picked|null>(null);
+ const [uploadRef,setUploadRef]=useState(""),[uploadKey,setUploadKey]=useState("");
  const [password,setPassword]=useState(""),[decision,setDecision]=useState<"VERIFY"|"REJECT">("VERIFY");
  const [pending,setPending]=useState<Pending|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -101,6 +113,16 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
   }catch(e){if(alive)problemView(e);}})();
   return()=>{alive=false;};
  },[token,view,bank,onExpired]);
+ useEffect(()=>{let live=true;
+  setStatementFiles([]);setStatementFileRef("");setInspected(false);
+  if(!review||!canReview)return;
+  void(async()=>{try{
+   const source=await request<{files:StatementFile[]}>(token,
+    "/api/documents/finance-bank-statements/matches/"+review+"/files");
+   if(live)setStatementFiles(source.files);
+  }catch(e){if(live)problemView(e);}})();
+  return()=>{live=false;};
+ },[token,review,canReview,onExpired]);
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
   onExit();return true;});return()=>sub.remove();
  },[onExit]);
@@ -125,11 +147,96 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
     bankItemReference:statementRef,statementAmount:amount}});
  }
  function verify(){
-  if(!review||!password||pending)return;
+  if(!review||password.length<8||pending)return;
+  const file=statementFiles.find(x=>x.fileRef===statementFileRef);
+  if(decision==="VERIFY"&&(!inspected||!file)){
+   setError("Inspect and select the scanned bank statement before verification.");return;
+  }
   const k=Crypto.randomUUID();
   void post({key:k,path:"/api/finance-accounting/reports/reconciliation/matches/"+
-   review+"/decision",body:{requestKey:k,currentPassword:password,action:decision}});
+   review+"/decision",body:{requestKey:k,currentPassword:password,action:decision,
+    ...(decision==="VERIFY"&&file?{statementFileRef:file.fileRef,
+     statementFileVersion:file.fileVersion}:{})}});
  }
+ async function chooseStatement(){
+  if(busy||!canReconcile||!uploadMatch)return;
+  try{
+   const result=await DocumentPicker.getDocumentAsync({multiple:false,
+    type:["application/pdf","image/jpeg","image/png","image/webp"],copyToCacheDirectory:true});
+   if(result.canceled)return;
+   const file=result.assets?.[0];
+   if(!file||!file.mimeType||!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.mimeType)||
+    !file.size||file.size<1||file.size>10485760)
+    throw Error("Select a PDF or image under 10 MB.");
+   setPicked({uri:file.uri,name:file.name,mime:file.mimeType,size:file.size});
+   setUploadKey("");setUploadRef("");setNotice("Selected private statement: "+file.name);
+  }catch(e){problemView(e);}
+ }
+ async function checkStatement(){
+  if(!uploadRef||busy)return;
+  setBusy(true);setError("");
+  try{
+   const value=await request<UploadState>(token,
+    "/api/documents/finance-bank-statements/intents/"+uploadRef);
+   setNotice(value.cleanVerified?"Original private statement scanned and verified.":
+    "Original statement not confirmed: "+value.status.replaceAll("_"," ")+".");
+  }catch(e){problemView(e);}finally{setBusy(false);}
+ }
+ async function uploadStatement(){
+  if(!picked||!uploadMatch||busy||!canReconcile)return;
+  const key=uploadKey||Crypto.randomUUID();setUploadKey(key);
+  setBusy(true);setError("");setNotice("");
+  try{
+   const file=new File(picked.uri),digest=await file.digest("SHA-256");
+   if(!/^[a-f0-9]{64}$/.test(digest))throw Error("UNKNOWN");
+   const init=await request<UploadState>(token,
+    "/api/documents/finance-bank-statements/intents","POST",{
+     reconciliationRef:uploadMatch,requestKey:key,mime:picked.mime,
+     sizeBytes:picked.size,sha256:digest});
+   if(!init.uploadRef)throw Error("UNKNOWN");
+   setUploadRef(init.uploadRef);
+   if(init.status==="UPLOAD_READY"&&init.uploadUrl?.startsWith("https://")&&
+      init.uploadHeaders?.["Content-Type"]===picked.mime){
+    const task=file.createUploadTask(init.uploadUrl,{
+     httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,
+     mimeType:picked.mime,headers:init.uploadHeaders,sessionType:"foreground"});
+    let result;
+    try{result=await task.uploadAsync();}finally{task.release();}
+    // Create-only object keys can return precondition failure on uncertain retry.
+    if((result.status<200||result.status>=300)&&result.status!==412)
+     throw Error("UNKNOWN");
+   }else if(init.status!=="VALIDATED")throw Error("UNKNOWN");
+   const verified=await request<UploadState>(token,
+    "/api/documents/finance-bank-statements/intents/"+init.uploadRef+"/confirm","POST",{});
+   if(!verified.cleanVerified||!verified.fileRef||!verified.fileVersion)throw Error("UNKNOWN");
+   setNotice("Bank statement privately scanned. A different finance reviewer must inspect it.");
+   setUploadMatch("");setPicked(null);setUploadKey("");setUploadRef("");
+  }catch(e){problemView(e);}finally{setBusy(false);}
+ }
+ async function openStatement(){
+  const current=statementFiles.find(x=>x.fileRef===statementFileRef);
+  if(!current||busy)return;
+  setBusy(true);setError("");setInspected(false);
+  let local:File|null=null;
+  try{
+   const res=await identityRequest(
+    "/api/documents/finance-bank-statements/files/"+current.fileRef+"/download",{
+    method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(res.status===401){onExpired();throw Error("SESSION_EXPIRED");}
+   if(!res.ok)throw Error("The original statement is unavailable to your role.");
+   const type=(res.headers.get("content-type")??"").split(";")[0];
+   if(type!==current.mime)throw Error("The private file type changed.");
+   const bytes=new Uint8Array(await res.arrayBuffer());
+   if(bytes.length<1||bytes.length>10485760)throw Error("Invalid original statement.");
+   const ext=type==="application/pdf"?"pdf":type==="image/jpeg"?"jpg":
+    type==="image/png"?"png":"webp";
+   local=new File(Paths.cache,"careganga-private-bank-statement-"+Crypto.randomUUID()+"."+ext);
+   local.create();await local.write(bytes);
+   await local.preview({title:"CareGanga private bank statement"});
+   setNotice("Compare the document with the recorded bank item, then explicitly confirm inspection.");
+  }catch(e){problemView(e);}finally{try{local?.delete();}catch{}setBusy(false);}
+ }
+
  async function exportVisible(){
   if(!rows.length||busy)return;
   setBusy(true);setError("");
@@ -231,17 +338,41 @@ export function FinanceNativeReports({token,canReconcile,canReview,onExit,onExpi
      <Text style={s.text}>Bank item: {x.bankItemReference}</Text>
      <Text style={s.text}>Statement: {money(x.statementAmountMinor)}
       · Difference: {money(x.varianceMinor)}</Text>
-     <Text style={s.muted}>{x.status==="VERIFIED"?"Independently verified":x.status}</Text>
+     <Text style={s.muted}>{x.status==="VERIFIED"?"Bank statement reviewed":x.status}</Text>
+     {x.status==="PENDING"&&x.canUpload&&canReconcile&&
+      <Action label="Attach original bank statement" secondary onPress={()=>{
+       setUploadMatch(x.reconciliationRef);setPicked(null);setUploadKey("");setUploadRef("");}}/>}
      {x.status==="PENDING"&&canReview&&<Action label="Review original bank item"
       secondary onPress={()=>{setReview(x.reconciliationRef);setPassword("");}}/>}
     </View>)}
+    {uploadMatch&&canReconcile&&<Card title="Original private bank statement">
+     <Text style={s.muted}>Only the genuine PDF or image can proceed to an independent review.</Text>
+     <Action label="Choose bank statement" secondary disabled={busy} onPress={()=>void chooseStatement()}/>
+     {picked&&<Text style={s.text}>{picked.name}</Text>}
+     {picked&&<Action label="Upload and scan original" disabled={busy}
+      onPress={()=>void uploadStatement()}/>}
+     {!!uploadRef&&<Action label="Check existing upload status" secondary disabled={busy}
+      onPress={()=>void checkStatement()}/>}
+     <Action label="Close upload" secondary disabled={busy} onPress={()=>setUploadMatch("")}/>
+    </Card>}
     {review&&canReview&&<Card title="Independent bank verifier">
+     <Text style={s.muted}>Open and inspect the actual protected statement document before signing.</Text>
+     <Options label="Scanned bank statement" value={statementFileRef}
+      options={statementFiles.map((f,i)=>({ref:f.fileRef,label:
+       "Statement document "+(i+1)+" · "+f.mime.replace("application/","").replace("image/","")}))}
+      onChange={v=>{setStatementFileRef(v);setInspected(false);}}/>
+     {!!statementFileRef&&<Action label="Open private statement" secondary
+      disabled={busy} onPress={()=>void openStatement()}/>}
+     {!!statementFileRef&&<Action label={inspected?
+      "Statement inspection acknowledged":"I inspected the bank item, date and amount"}
+      secondary disabled={busy} onPress={()=>setInspected(v=>!v)}/>
      <Options label="Protected decision" value={decision}
       options={[{ref:"VERIFY",label:"Verify exact match"},{ref:"REJECT",label:"Reject mismatch"}]}
       onChange={v=>setDecision(v as typeof decision)}/>
      <Field label="Current reviewer password" value={password} secure onChange={setPassword}/>
      <Action label="Confirm independent bank decision" disabled={busy||Boolean(pending)||
-      password.length<8} onPress={verify}/>
+      password.length<8||(decision==="VERIFY"&&(!inspected||!statementFileRef))}
+      onPress={verify}/>
     </Card>}
    </Card>}
   </ScrollView>
