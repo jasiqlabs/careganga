@@ -18,6 +18,10 @@ import { FinanceVoucherOnlyScreen } from "../finance-accounting/finance-voucher-
 import { FinanceVoucherNativeReviewer } from "../finance-accounting/finance-voucher-native-reviewer";
 import { FinanceExpenseClaimsScreen } from "../finance-accounting/finance-expense-claims-screen";
 import { FinanceClaimNativeReviewer } from "../finance-accounting/finance-claim-native-reviewer";
+import { FinanceNativeInvoices } from "../finance-accounting/finance-native-invoices";
+import { FinanceNativeBudgets } from "../finance-accounting/finance-native-budgets";
+import { FinanceNativeReports } from "../finance-accounting/finance-native-reports";
+import { FinanceNativeProtectedReview } from "../finance-accounting/finance-native-protected-review";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -74,6 +78,11 @@ export function StaffAuthenticationScreen(){
   const [financeReviewOpen,setFinanceReviewOpen]=useState(false);
   const [financeClaimsOpen,setFinanceClaimsOpen]=useState(false);
   const [financeClaimReviewsOpen,setFinanceClaimReviewsOpen]=useState(false);
+  const [invoiceOpen,setInvoiceOpen]=useState(false);
+  const [invoiceReviewOpen,setInvoiceReviewOpen]=useState(false);
+  const [budgetOpen,setBudgetOpen]=useState(false);
+  const [budgetReviewOpen,setBudgetReviewOpen]=useState(false);
+  const [reportsOpen,setReportsOpen]=useState(false);
   const [communicationsOpen,setCommunicationsOpen]=useState(false);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [supportOpen,setSupportOpen]=useState(false);
@@ -87,8 +96,14 @@ export function StaffAuthenticationScreen(){
   const closeFinanceReview=useCallback(()=>setFinanceReviewOpen(false),[]);
   const closeFinanceClaims=useCallback(()=>setFinanceClaimsOpen(false),[]);
   const closeFinanceClaimReviews=useCallback(()=>setFinanceClaimReviewsOpen(false),[]);
+  const closeInvoices=useCallback(()=>setInvoiceOpen(false),[]);
+  const closeInvoiceReviews=useCallback(()=>setInvoiceReviewOpen(false),[]);
+  const closeBudgets=useCallback(()=>setBudgetOpen(false),[]);
+  const closeBudgetReviews=useCallback(()=>setBudgetReviewOpen(false),[]);
+  const closeReports=useCallback(()=>setReportsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);setInvoiceOpen(false);setInvoiceReviewOpen(false);
+    setBudgetOpen(false);setBudgetReviewOpen(false);setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
   useEffect(()=>{
@@ -225,6 +240,34 @@ export function StaffAuthenticationScreen(){
     return <PrivateCaseEvidenceScreen token={token}
       canViewLetters={roleActions.includes("documents.letters.issue")}
       onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+  if(invoiceReviewOpen&&token&&actor&&
+    roleActions.includes("approvals.review")&&roleActions.includes("finance.invoices.review"))
+    return <FinanceNativeProtectedReview token={token} kind="INVOICE"
+      canConfigure={roleActions.includes("approvals.process.manage")}
+      onExit={closeInvoiceReviews} onExpired={expireSession}/>;
+  if(budgetReviewOpen&&token&&actor&&
+    roleActions.includes("approvals.review")&&roleActions.includes("finance.budgets.review"))
+    return <FinanceNativeProtectedReview token={token} kind="BUDGET"
+      canConfigure={roleActions.includes("approvals.process.manage")}
+      onExit={closeBudgetReviews} onExpired={expireSession}/>;
+  if(invoiceOpen&&token&&actor&&
+    (roleActions.includes("finance.invoices.view")||roleActions.includes("finance.invoices.manage")))
+    return <FinanceNativeInvoices token={token}
+      canManage={roleActions.includes("finance.invoices.manage")}
+      canIssue={roleActions.includes("finance.invoices.issue")}
+      canPost={roleActions.includes("finance.journals.post")}
+      onExit={closeInvoices} onExpired={expireSession}/>;
+  if(budgetOpen&&token&&actor&&
+    (roleActions.includes("finance.budgets.view")||roleActions.includes("finance.budgets.manage")))
+    return <FinanceNativeBudgets token={token}
+      canManage={roleActions.includes("finance.budgets.manage")}
+      onExit={closeBudgets} onExpired={expireSession}/>;
+  if(reportsOpen&&token&&actor&&roleActions.includes("finance.reports.view"))
+    return <FinanceNativeReports token={token}
+      canReconcile={roleActions.includes("finance.reconciliation.manage")}
+      canReview={roleActions.includes("finance.reconciliation.review")&&
+        roleActions.includes("approvals.review")}
+      onExit={closeReports} onExpired={expireSession}/>;
   if(financeClaimReviewsOpen&&token&&actor&&
     ["finance.claims.review","approvals.review","documents.files.view"]
       .every(x=>roleActions.includes(x)))
@@ -361,6 +404,26 @@ export function StaffAuthenticationScreen(){
                onPress={()=>setFinanceClaimsOpen(true)}>
                <Text style={styles.buttonText}>Expense Claims</Text>
               </Pressable>}
+            {["finance.invoices.view","finance.invoices.manage"].some(x=>roleActions.includes(x))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setInvoiceOpen(true)}>
+               <Text style={styles.buttonText}>Invoices & Receipts</Text></Pressable>}
+            {roleActions.includes("finance.invoices.review")&&roleActions.includes("approvals.review")&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setInvoiceReviewOpen(true)}>
+               <Text style={styles.buttonText}>Protected Invoice Reviews</Text></Pressable>}
+            {["finance.budgets.view","finance.budgets.manage"].some(x=>roleActions.includes(x))&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setBudgetOpen(true)}>
+               <Text style={styles.buttonText}>Foundation Budgets</Text></Pressable>}
+            {roleActions.includes("finance.budgets.review")&&roleActions.includes("approvals.review")&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setBudgetReviewOpen(true)}>
+               <Text style={styles.buttonText}>Protected Budget Reviews</Text></Pressable>}
+            {roleActions.includes("finance.reports.view")&&
+              <Pressable accessibilityRole="button" style={styles.button}
+               onPress={()=>setReportsOpen(true)}>
+               <Text style={styles.buttonText}>Finance Ledger & Reports</Text></Pressable>}
             {roleActions.includes("finance.accounts.view")&&<Pressable accessibilityRole="button"
               style={styles.button} onPress={()=>setFinanceOpen(true)}>
               <Text style={styles.buttonText}>Finance Accounts & Years</Text>
