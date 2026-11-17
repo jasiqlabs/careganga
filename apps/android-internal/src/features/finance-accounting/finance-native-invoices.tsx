@@ -204,18 +204,15 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   if(!pending||busy)return;
   setBusy(true);setError("");
   try{
-   if(pending.path.includes("/finance-receipts/")&&receipt?.receiptRef){
+   if(pending.path.includes("/finance-receipts/")){
+    const original=receipt?.receipts.find(r=>pending.path.includes("/"+r.receiptRef+"/"));
+    if(!original){setNotice("Refresh the original receipt before checking.");return;}
     const state=await request<DocumentState>(token,
-      "/api/documents/finance-receipts/receipts/"+receipt.receiptRef+"/status");
-    if(state.status==="ISSUED"){setReceiptDocument(state);setPending(null);
-      setNotice("Original verified receipt PDF confirmed.");
-    }else setNotice("Private receipt issue is not confirmed; retry only the same request.");
-    return;
-   }
-   if(pending.path.endsWith("/link-receipt")&&current){
-    const actual=await receiptRefresh(current.ref);
-    if(actual?.paymentVerified){setPending(null);setNotice("Original verified receipt is recorded.");}
-    else setNotice("The original bank receipt is not yet confirmed.");
+     "/api/documents/finance-receipts/receipts/"+original.receiptRef+"/status");
+    setReceiptDocs(d=>({...d,[original.receiptRef]:state}));
+    if(state.status==="ISSUED"&&state.canDownload){
+     setPending(null);setNotice("Original private receipt PDF confirmed.");
+    }else setNotice("Original receipt issue remains unconfirmed. Do not use a new key.");
     return;
    }
    const draft=pending.path.includes("/drafts");
