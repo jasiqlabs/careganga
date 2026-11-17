@@ -5,6 +5,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {FinanceJournalPostingService} from "./finance-journal-posting.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 type CommandKind="YEAR_CREATE"|"YEAR_STATUS"|"GROUP_CREATE"|"ACCOUNT_CREATE"|"ACCOUNT_STATUS"|"OPENING_POST";
@@ -76,7 +77,8 @@ export class FinanceAccountsService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
-  private readonly branches:BranchSourceFacade){}
+  private readonly branches:BranchSourceFacade,
+  private readonly postings:FinanceJournalPostingService){}
 
  private async transact<T>(bearer:string,capability:string,
   task:(client:PoolClient,actor:VerifiedFoundationActor)=>Promise<T>):Promise<T>{
@@ -301,16 +303,14 @@ export class FinanceAccountsService{
     await this.branches.financeActiveBranch(client,actor,branch,
      Number(branchVersion),"finance.journals.post");
    }
-   const inserted=await client.query<{id:string}>(`
-    INSERT INTO journal(root_realm_id,financial_year_id,source_owner,source_ref,posting_kind,
-      immutable_source_event_key,immutable_payload_digest,posting_date,created_by)
-    VALUES($1,$2,'CG-09',$3,'OPENING',$3,$4,$5,$6) RETURNING id`,
-    [actor.realmId,year,key,digest(data),date,actor.accountId]);
-   const id=inserted.rows[0].id;
-   await client.query(`
-    INSERT INTO journal_line(root_realm_id,journal_id,account_id,branch_id,debit_minor,credit_minor)
-    VALUES($1,$2,$3,$5,$6,0),($1,$2,$4,$5,0,$6)`,
-    [actor.realmId,id,debit,credit,branch,amount]);
+   const id=await this.postings.postBalanced(client,actor,{
+    financialYearRef:year,postingDate:date,sourceRef:key,eventKey:key,
+    immutableDigest:digest(data),kind:"OPENING",
+    lines:[
+     {accountRef:debit,branchRef:branch,debitMinor:amount,creditMinor:"0"},
+     {accountRef:credit,branchRef:branch,debitMinor:"0",creditMinor:amount}
+    ]
+   });
    await this.finish(client,actor,"OPENING_POST",key,id,"OPENING_POSTED");
    return {recordRef:id,confirmed:true,replayed:false};
   });
