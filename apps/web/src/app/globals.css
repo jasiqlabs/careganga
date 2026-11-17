@@ -627,3 +627,17 @@ button:disabled { cursor:wait; opacity:.65; }
 @media(max-width:88rem){.cg-fin-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:48rem){.cg-fin-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:28rem){.cg-fin-filter-grid{grid-template-columns:1fr}}
+
+/* CG-09 U33/U34 manual journal: shared original CareGanga finance table/drawer styling. */
+.cg-fin-manual{min-width:0}
+.cg-fin-journal-line{display:grid;gap:.7rem;padding:.75rem;
+ border:1px solid var(--cg-border);border-radius:.45rem;background:#FBFCFF}
+.cg-fin-journal-line-head{display:flex;align-items:center;justify-content:space-between;gap:.65rem}
+.cg-fin-journal-line-head strong{font-size:.8rem}
+.cg-fin-journal-line-head button{border:1px solid var(--cg-border);border-radius:.35rem;
+ color:var(--cg-text);background:var(--cg-surface);padding:.4rem .55rem;min-height:2.5rem}
+.cg-fin-journal-amounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.cg-fin-manual .cg-fin-toolbar{border-bottom:1px solid var(--cg-border)}
+.cg-fin-manual .cg-fin-form>button{border:1px solid var(--cg-border);border-radius:.4rem;
+ min-height:2.65rem;padding:.55rem .8rem;background:var(--cg-surface);font-weight:600}
+@media(max-width:28rem){.cg-fin-journal-amounts{grid-template-columns:minmax(0,1fr)}}
