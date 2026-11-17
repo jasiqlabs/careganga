@@ -1,10 +1,35 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {FinanceInvoiceWorkflowService} from "../application/finance-invoice-workflow.service";
 import {FinanceInvoiceCancellationService} from "../application/finance-invoice-cancellation.service";
+import {FinanceInvoiceAdjustmentService} from "../application/finance-invoice-adjustment.service";
 @Controller("api/finance-accounting/invoices")
 export class FinanceInvoiceWorkflowController{
  constructor(private readonly service:FinanceInvoiceWorkflowService,
-  private readonly corrections:FinanceInvoiceCancellationService){}
+  private readonly corrections:FinanceInvoiceCancellationService,
+  private readonly adjustments:FinanceInvoiceAdjustmentService){}
+ @Get(":invoiceRef/adjustment")
+ adjustment(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return this.adjustments.detail(auth,ref);
+ }
+ @Get(":invoiceRef/adjustment-options")
+ adjustmentOptions(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return this.adjustments.options(auth,ref);
+ }
+ @Post(":invoiceRef/credit-note")
+ creditNote(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
+  @Body()body:unknown){return this.adjustments.credit(auth,ref,body);}
+ @Get(":invoiceRef/credit-note/pdf")
+ @Header("Content-Type","application/pdf")
+ @Header("Content-Disposition","attachment; filename=CareGanga-Credit-Note.pdf")
+ async creditPdf(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return new StreamableFile(await this.adjustments.creditPdf(auth,ref));
+ }
+ @Post(":invoiceRef/refunds")
+ refundRequest(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
+  @Body()body:unknown){return this.adjustments.requestRefund(auth,ref,body);}
+ @Post("refunds/:refundRef/approve")
+ refundApprove(@Headers("authorization")auth:string,@Param("refundRef")ref:string,
+  @Body()body:unknown){return this.adjustments.approveRefund(auth,ref,body);}
  @Get("cancel-eligibility")
  cancelEligibility(@Headers("authorization")auth:string){
   return this.corrections.eligibility(auth);
