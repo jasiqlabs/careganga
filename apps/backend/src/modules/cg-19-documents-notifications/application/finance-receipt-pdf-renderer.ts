@@ -21,6 +21,7 @@ export async function renderFinanceReceipt(source:OriginalReceipt,issuedAt:strin
   const font=await pdf.embedFont(fontBytes,{subset:true});
   const title="CareGanga Foundation — Payment Receipt "+source.receiptNumber;
   pdf.setTitle(title);pdf.setProducer("CareGanga CG-19 Private Documents");
+  pdf.setSubject("CG09-RECEIPT:"+source.sourceDigest);
   pdf.setCreationDate(new Date(issuedAt));
   const page=pdf.addPage([595,842]),blue=rgb(0.14,0.3,0.67),gray=rgb(0.32,0.36,0.43);
   page.drawRectangle({x:0,y:816,width:595,height:26,color:blue});
