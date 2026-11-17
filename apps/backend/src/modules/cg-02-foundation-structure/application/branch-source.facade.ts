@@ -65,8 +65,8 @@ export class BranchSourceFacade{
   return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
  }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
- async financeBranches(bearer:string):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
-   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+ async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
+   const actor=await this.sessions.requireAction(bearer,capability);
    const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
      SELECT id,name,branch_code,version FROM branch
      WHERE root_realm_id=$1 AND status='ACTIVE'
