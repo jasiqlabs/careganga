@@ -4,6 +4,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import {identityRequest} from "../identity-access/http-client";
+import {FinanceNativeManualReversal} from "./finance-native-manual-reversal";
 import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard as Card,
  NativeFinanceField as Field,NativeFinanceOptions as Options,
  financeNativeRequest as request,financeNativeProblem as problem,
@@ -38,12 +39,13 @@ const empty=():Form=>({financialYearRef:"",branchRef:"",branchVersion:null,invoi
  terms:"Payment due per invoice",notes:""});
 type Pending={key:string;path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const key=()=>Crypto.randomUUID();
-export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,onExpired}:{
- token:string;canManage:boolean;canPost:boolean;canIssue:boolean;
+export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCancel,onExit,onExpired}:{
+ token:string;canManage:boolean;canPost:boolean;canIssue:boolean;canCancel:boolean;
  onExit:()=>void;onExpired:()=>void}){
  const [list,setList]=useState<Invoice[]>([]);
  const [dashboard,setDashboard]=useState<InvoiceDashboard|null>(null);
  const [current,setCurrent]=useState<{ref:string;number:string;version:number;status:string}|null>(null);
+ const [cancelSource,setCancelSource]=useState("");
  const [form,setForm]=useState<Form>(empty());
  const [stage,setStage]=useState<Stage>("INFO");
  const [years,setYears]=useState<Year[]>([]);
@@ -257,6 +259,11 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
    file.create();await file.write(bytes);await file.preview({title:"CareGanga private financial document"});
   }catch(e){setError(problem(e));}finally{try{file?.delete();}catch{}setBusy(false);}
  }
+ if(cancelSource)return <FinanceNativeManualReversal kind="UNISSUED_INVOICE"
+   token={token} journalRef={cancelSource} years={years} onExpired={onExpired}
+   onExit={()=>setCancelSource("")} onDone={()=>{
+    setCurrent(v=>v&&v.ref===cancelSource?{...v,status:"REVERSED"}:v);
+    setCancelSource("");void load();void loadDashboard();}}/>;
  return <SafeAreaView style={s.screen} edges={["top","bottom"]}>
   <View style={s.header}><Pressable accessibilityRole="button"
    onPress={()=>current?setCurrent(null):onExit()}>
@@ -371,7 +378,13 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
      disabled={busy||Boolean(pending)} onPress={()=>workflow("reconcile")}/>}
     {current?.status==="APPROVED"&&canPost&&<Action label="Post approved balanced receivable"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("post")}/>}
-    {current?.status==="POSTED"&&canIssue&&<Action label="Issue approved invoice PDF"
+    {current?.status==="POSTED"&&canCancel&&<Action label="Reverse unissued posted invoice"
+      secondary disabled={busy||Boolean(pending)}
+      onPress={()=>setCancelSource(current.ref)}/>}
+     {current?.status==="REVERSED"&&<Card title="Invoice reversed before issue">
+      <Text style={s.muted}>The approved original posting remains in the audit ledger,
+       offset by one independent protected financial correction.</Text></Card>}
+     {current?.status==="POSTED"&&canIssue&&<Action label="Issue approved invoice PDF"
      disabled={busy||Boolean(pending)} onPress={()=>workflow("issue")}/>}
     {current?.status==="ISSUED"&&<Card title="Private invoice document">
      {document?.status==="ISSUED"&&document.documentRef?
