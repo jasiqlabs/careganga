@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type {PublicCmsNavigation} from "./cms-public-source";
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
 export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
  kind:string;slug:string;title:string;seoTitle:string;seoDescription:string;
@@ -17,7 +18,7 @@ function Action({label,href}:{label:unknown;href:unknown}){
 /** Renders original published structured text only. No dangerouslySetInnerHTML,
  * no private author/case fields, no guessed future CG05 project items.
  */
-export function CmsPublicPage({page}:{page:PublicCmsPage}){
+export function CmsPublicPage({page,navigation}:{page:PublicCmsPage;navigation?:PublicCmsNavigation|null}){
  const assets=page.assets??[];
  return <main className="cg-public-main">
   <header className="cg-public-header">
@@ -26,7 +27,8 @@ export function CmsPublicPage({page}:{page:PublicCmsPage}){
    <nav aria-label="Public website">
     <Link href="/">Home</Link><Link href="/about">About</Link>
     <Link href="/contact">Contact</Link>
-    <Link href="/admin/login">Staff login</Link>
+    {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
+     <Link href="/admin/login">Staff login</Link>}
    </nav>
   </header>
   <div className="cg-public-sections">
