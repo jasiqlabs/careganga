@@ -341,6 +341,12 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
     Use client screenshot text in a new editable draft</button>}
   </div></header>
+  {!reviewing&&<section className="cg-cms-dashboard" aria-label="Current website publishing summary">
+   <div><span>Website pages</span><strong>{pages.length}</strong></div>
+   <div><span>Published</span><strong>{pages.filter(p=>p.publicStatus==="EFFECTIVE").length}</strong></div>
+   <div><span>Working drafts</span><strong>{pages.filter(p=>p.draftStatus==="DRAFT").length}</strong></div>
+   <div><span>Submitted for review</span><strong>{pages.filter(p=>p.draftStatus==="SUBMITTED").length}</strong></div>
+  </section>}
   {!!error&&<p role="alert" className="cg-cms-error">{error}</p>}
   {!!notice&&<p role="status" className="cg-cms-notice">{notice}</p>}
   {pending&&<div className="cg-cms-notice" role="status"><p>Result not confirmed.
