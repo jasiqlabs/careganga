@@ -33,7 +33,10 @@ export class SafeErrorsFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const status = error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const requestId = request.cgRequestId??randomUUID();
-    const message = status >= 500 ? "Service temporarily unavailable. Please try again."
+    const isReadOnly=request.method==="GET"||request.method==="HEAD";
+    const message = status >= 500 ? (isReadOnly
+      ? "The information is temporarily unavailable. Refresh this page or try again later."
+      : "We could not confirm whether your change was saved. Check its status before submitting again.")
       : status === 401 ? "Sign in is required."
       : status === 403 ? "You do not have access to this action."
       : status === 429 ? "Too many attempts. Please try again later."
