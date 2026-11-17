@@ -109,10 +109,13 @@ export class BranchSourceFacade{
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"|"finance.budgets.view"|"finance.budgets.manage"|"finance.reports.view"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,capability);
+   const scope=capability==="finance.reports.view"
+      ?await this.financeReportScope(bearer):{all:true,branchRefs:[] as string[]};
    const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
      SELECT id,name,branch_code,version FROM branch
      WHERE root_realm_id=$1 AND status='ACTIVE'
-     ORDER BY name,id LIMIT 100`,[actor.realmId]);
+       AND ($2::boolean OR id=ANY($3::uuid[]))
+     ORDER BY name,id LIMIT 100`,[actor.realmId,scope.all,scope.branchRefs]);
    return rows.rows.map(b=>({branchRef:b.id,name:b.name,code:b.branch_code,version:b.version}));
  }
  /** Finance transaction must recheck real CG-02 branch and current CG-01 action. */
