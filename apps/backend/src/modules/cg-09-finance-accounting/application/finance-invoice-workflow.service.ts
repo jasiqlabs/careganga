@@ -106,14 +106,15 @@ export class FinanceInvoiceWorkflowService{
    ...(p.taxAccountRef?[p.taxAccountRef]:[])];
   if(new Set(refs).size!==refs.length)
    throw new ConflictException({code:"FINANCE_INVOICE_ACCOUNT_INVALID"});
-  const acc=await tx.query<{id:string;category:string;branch_id:string|null}>(
-   "SELECT a.id,g.category,a.branch_id FROM finance_account a JOIN account_group g "+
+  const acc=await tx.query<{id:string;category:string;account_kind:string;branch_id:string|null}>(
+   "SELECT a.id,g.category,a.account_kind,a.branch_id FROM finance_account a JOIN account_group g "+
    "ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
    "WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND "+
    "a.id=ANY($2::uuid[]) FOR SHARE OF a,g",
    [actor.realmId,refs]);
   const map=new Map(acc.rows.map(a=>[a.id,a]));
   const good=(ref:string,c:string)=>map.get(ref)?.category===c&&
+   (c!=="ASSET"||map.get(ref)?.account_kind==="GENERAL")&&
    (map.get(ref)?.branch_id===null||map.get(ref)?.branch_id===branch);
   if(!good(String(p.receivableAccountRef),"ASSET")||
      !good(String(p.incomeAccountRef),"INCOME")||
