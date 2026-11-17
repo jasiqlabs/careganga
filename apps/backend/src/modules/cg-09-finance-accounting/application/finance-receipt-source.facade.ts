@@ -3,6 +3,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {FinanceInvoiceSourceFacade} from "./finance-invoice-source.facade";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type OriginalReceipt=Readonly<{
  receiptRef:string;receiptNumber:string;invoiceNumber:string;
@@ -13,10 +14,22 @@ export type OriginalReceipt=Readonly<{
 export class FinanceReceiptSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly invoices:FinanceInvoiceSourceFacade){}
+ async authorizedView(bearer:string,ref:string,
+     action:"finance.invoices.view"|"finance.invoices.issue"="finance.invoices.view"){
+  const actor=await this.sessions.requireAction(bearer,action);
+  if(!UUID.test(ref))throw new BadRequestException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+  const rows=await this.db.query<{invoice_id:string}>(
+   "SELECT invoice_id FROM finance_invoice_receipt "+
+   "WHERE id=$1 AND root_realm_id=$2",[ref,actor.realmId]);
+  if(!rows.rows[0])throw new ConflictException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+  await this.invoices.authorizedView(bearer,rows.rows[0].invoice_id,action);
+ }
  async original(bearer:string,ref:string):Promise<OriginalReceipt>{
   const actor=await this.sessions.requireAction(bearer,"finance.invoices.issue");
   if(!UUID.test(ref))throw new BadRequestException({code:"FINANCE_INVOICE_RECEIPT_NOT_READY"});
+  await this.authorizedView(bearer,ref,"finance.invoices.issue");
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
