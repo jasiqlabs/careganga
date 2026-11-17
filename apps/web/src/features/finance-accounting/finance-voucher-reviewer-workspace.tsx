@@ -70,7 +70,8 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
      typeof detail.voucherRef!=="string"||!("proofFileRef" in detail))
     throw Error("The original submitted Finance source could not be verified.");
    const d=detail as CaseDetail;
-   const v=await fetch("/api/finance/vouchers/drafts/"+d.voucherRef,{cache:"no-store"});
+   const v=await fetch("/api/finance/vouchers/drafts/"+d.voucherRef+
+    "/revisions/"+d.sourceVersion,{cache:"no-store"});
    if(!v.ok)throw Error(await failure(v));
    const source:unknown=await v.json();
    if(!source||typeof source!=="object"||!("lines" in source)||
