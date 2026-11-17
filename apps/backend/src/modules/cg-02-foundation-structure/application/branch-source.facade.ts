@@ -76,7 +76,7 @@ export class BranchSourceFacade{
  /** Finance transaction must recheck real CG-02 branch and current CG-01 action. */
  async financeActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
      branchRef:string,expectedVersion:number,action:string):Promise<void>{
-   if(!["finance.accounts.manage","finance.journals.post"].includes(action))
+   if(!["finance.accounts.manage","finance.journals.post","finance.vouchers.manage"].includes(action))
      throw new ForbiddenException("You do not have permission to use this branch for finance");
    await this.identity.assertCurrent(client,actor,action);
    const rows=await client.query<{version:number}>(`
