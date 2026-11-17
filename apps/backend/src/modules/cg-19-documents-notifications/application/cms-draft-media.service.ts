@@ -32,6 +32,7 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'items')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END) OR "+
  "(a.role='ARTICLE' AND sec.section_kind='ARTICLE_BODY' AND a.sort_order=0) OR "+
+ "(a.role='IMPACT' AND sec.section_kind='IMPACT_GROUP' AND sec.order_no=a.sort_order) OR "+
  "(a.role='DOCUMENT' AND sec.section_kind='COMPLIANCE_FACTS' AND a.sort_order=0 "+
  "AND (sec.structured_fields->>'verification'<>'VERIFIED' OR "+
  "sec.structured_fields->>'validUntil'>=to_char(current_date,'YYYY-MM-DD')))"+
@@ -40,7 +41,7 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
 // Videos and PDFs must match the specific approved gallery item type.
 const PUBLIC_MEDIA_MIME_ALLOWED=
  "AND (("+
- "a.role IN('HERO','MOBILE_HERO','TEAM','ABOUT','PROMO','FEATURE','ARTICLE') "+
+ "a.role IN('HERO','MOBILE_HERO','TEAM','ABOUT','PROMO','FEATURE','ARTICLE','IMPACT') "+
  "AND f.original_mime IN('image/jpeg','image/png','image/webp')) OR "+
  "(a.role='DOCUMENT' AND f.original_mime IN("+
  "'image/jpeg','image/png','image/webp','application/pdf')) OR "+
