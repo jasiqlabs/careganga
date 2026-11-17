@@ -7,6 +7,8 @@ export interface VerifiedScan {
 }
 
 /** Only a real ClamAV INSTREAM OK response is accepted.
+ * 25 MiB is the upper bound of a vetted CG19 private CMS video; issuing
+ * documents and all other source types retain their smaller storage bounds.
  * All timeouts, missing configuration, partial replies and FOUND responses
  * fail closed. The receipt is an internal event correlation, not a public attestation.
  */
@@ -14,7 +16,7 @@ export class ClamAvScanner{
   constructor(private readonly host:string,private readonly port:number){}
   async scan(bytes:Buffer):Promise<VerifiedScan>{
     if(!this.host||!Number.isSafeInteger(this.port)||this.port<1||this.port>65535||
-      !Buffer.isBuffer(bytes)||bytes.length<1||bytes.length>10*1024*1024)
+      !Buffer.isBuffer(bytes)||bytes.length<1||bytes.length>25*1024*1024)
       throw new ServiceUnavailableException("The private malware scanner is unavailable");
     const reply=await new Promise<string>((resolve,reject)=>{
       const connection=createConnection({host:this.host,port:this.port});
