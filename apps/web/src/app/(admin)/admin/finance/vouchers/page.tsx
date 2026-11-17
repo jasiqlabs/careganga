@@ -60,7 +60,9 @@ export default async function VoucherDraftsPage(){
     <FinanceVoucherDraftWorkspace years={data.years} branches={data.branches}
       canManage={actions.includes("finance.vouchers.manage")}
       canViewEvidence={actions.includes("documents.files.view")}
-      canUploadEvidence={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
+      canUploadEvidence={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}
+      canPost={actions.includes("finance.journals.post")}
+      canVerifyPayment={actions.includes("approvals.review")&&actions.includes("documents.files.view")}/>
    </main>
   </div>;
  }catch(e){
