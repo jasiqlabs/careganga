@@ -121,8 +121,16 @@ export class FinanceInvoiceAdjustmentService{
    "AND m.variance_minor=0) AS verified "+
    "FROM finance_invoice_refund r WHERE r.root_realm_id=$1 AND r.invoice_id=$2",
    [actor.realmId,ref]);
+  const replacement=await this.db.query<{invoiceNumber:string;status:string}>(
+   "SELECT i.invoice_number AS \"invoiceNumber\",i.status "+
+   "FROM finance_invoice_reissue_link l JOIN finance_invoice i "+
+   "ON i.id=l.replacement_invoice_id AND i.root_realm_id=l.root_realm_id "+
+   "WHERE l.root_realm_id=$1 AND l.original_invoice_id=$2 "+
+   "ORDER BY (i.status<>'REJECTED') DESC,l.created_at DESC LIMIT 1",
+   [actor.realmId,ref]);
   const refund=refunds.rows[0];
-  return {invoiceNumber:original.rows[0].invoice_number,invoiceStatus:original.rows[0].status,
+  return {invoiceNumber:original.rows[0].invoice_number,
+   invoiceStatus:original.rows[0].status,replacementInvoice:replacement.rows[0]??null,
    creditNote:note.rows[0]??null,
    refund:refund?{refundRef:refund.id,amountMinor:refund.amount_minor,
     status:refund.status==="REQUESTED"?"PENDING_APPROVAL":
