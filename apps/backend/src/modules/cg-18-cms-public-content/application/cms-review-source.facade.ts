@@ -67,7 +67,8 @@ export class CmsReviewSourceFacade{
    'AND f.public_rights_confirmed=true) AS current '+
    'FROM cms_asset_placement a LEFT JOIN cg19_cms_media_file f '+
    'ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id '+
-   'AND f.page_revision_id=a.page_revision_id '+
+   'AND f.page_id=(SELECT target.page_id FROM cms_page_revision target '+
+   'WHERE target.id=a.page_revision_id AND target.foundation_root_id=a.foundation_root_id) '+
    'WHERE a.foundation_root_id=$1 AND a.page_revision_id=$2 '+
    'ORDER BY a.role,a.sort_order LIMIT 31',
    [bearerRealm,revisionRef]);
