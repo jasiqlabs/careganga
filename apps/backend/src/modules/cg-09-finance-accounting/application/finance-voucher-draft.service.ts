@@ -189,7 +189,7 @@ export class FinanceVoucherDraftService{
       v.approval_case_id AS "approvalCaseRef",b.kind AS "paymentAccountKind"
     FROM finance_voucher v LEFT JOIN cash_bank_account b ON b.account_id=v.payment_account_id
       AND b.root_realm_id=v.root_realm_id WHERE v.root_realm_id=$1
-    ORDER BY updated_at DESC,id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
+    ORDER BY v.updated_at DESC,v.id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
   return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
    status:"SOURCE_BACKED_VOUCHER_STATUS"};
  }
