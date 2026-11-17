@@ -291,6 +291,11 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
     <p className="cg-fin-help">Utilization requires an actual posted and matching expense voucher.
      Approval and commitments do not transfer bank funds.</p>
    </div>}
+   {selected?.status==="APPROVED"&&<div className="cg-fin-toolbar-actions">
+    <button type="button" disabled={busy||Boolean(pending)}
+     onClick={()=>void execute(selected.budgetRef+"/archive","POST",
+      {expectedVersion:selected.version})}>Archive approved budget (retain history)</button>
+   </div>}
    {selected&&<div className="cg-fin-table-wrap"><h4>Immutable budget history</h4>
     <table className="cg-fin-table"><thead><tr><th>Date</th><th>Event</th><th>Amount</th></tr></thead>
      <tbody>{selected.events.map((e,i)=><tr key={i}><td>{e.recordedAt.slice(0,10)}</td>
