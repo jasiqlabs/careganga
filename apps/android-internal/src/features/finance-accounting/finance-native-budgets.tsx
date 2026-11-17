@@ -49,13 +49,14 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
   }catch(e){fail(e);}
  },[token,offset,onExpired]);
  useEffect(()=>{void load();},[load]);
- useEffect(()=>{let live=true;
-  void(async()=>{try{
+ const loadOverview=useCallback(async()=>{
+  try{
    const result=await request<{cards:NonNullable<typeof overview>}>(token,
     "/api/finance-accounting/budgets/dashboard");
-   if(live)setOverview(result.cards);
-  }catch(e){if(live)fail(e);}})();return()=>{live=false;};
+   setOverview(result.cards);
+  }catch(e){fail(e);}
  },[token,onExpired]);
+ useEffect(()=>{void loadOverview();},[loadOverview]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
    const x=await request<{years:Year[];branches:Branch[];categories:string[]}>(token,
@@ -97,7 +98,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
    setPending(null);
    setNotice("Original budget action confirmed: "+data.status+
     ". Allocation is not cash received or spent.");
-   void load();
+   void load();void loadOverview();
    const ref=data.budgetRef??selected?.budgetRef;
    if(ref)void open(ref);
   }catch(e){setPending(cmd);fail(e);}finally{setBusy(false);}
@@ -114,7 +115,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
    const row=await request<{confirmed:boolean;status:string}>(token,
     "/api/finance-accounting/budgets/commands/"+pending.key);
    if(row.confirmed){setPending(null);setNotice("Original budget command confirmed: "+row.status);
-    void load();if(selected)void open(selected.budgetRef);
+    void load();void loadOverview();if(selected)void open(selected.budgetRef);
    }else setNotice("Previous command not confirmed. Only retry the same request.");
   }catch(e){fail(e);}finally{setBusy(false);}
  }
