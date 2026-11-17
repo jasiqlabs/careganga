@@ -1,0 +1,29 @@
+# CG-09 Finance — Local runtime verification handoff (NOT YET EXECUTED)
+
+**Source branch:** `feature/careganga-cg09-finance-accounting-dev-20261117`  
+**System of record:** [CG-09 tasks and QA source traces](./tasks.md). This is an execution guide, NOT a second tracker or any approval.
+**Status:** No local backend/Web/Internal Android builds, live PostgreSQL migration, storage/scanner or independently witnessed manual QA pass has been reported. Source-only GitHub commits must not be called a deployable release.
+
+## Sequence — JASIQ `jasiq-dev` (local IDE operator)
+
+1. Checkout this exact branch and record HEAD. Preserve a safe source/database backup and read the latest module `prd.md`, `hld.md`, `dld.md`, `uiux.md`, `tasks.md`, and the original screenshot audit before running builds. Do not run CI/GitHub Actions.
+2. With Node >=22.13 and the project lockfile, install project dependencies. Run `npm run build -w apps/backend` and `npm run build -w apps/web`. For native, use `npm run start:android-internal` and follow its local platform build/device instructions; capture any TypeScript/Metro errors. Never mark a build PASS from static inspection alone.
+3. Create an **isolated temporary PostgreSQL database**, not the production/staging accounting database, and set `DATABASE_MIGRATION_URL` to its **direct** connection. Run `npm run db:migrate` on fresh schema and on a populated same-version snapshot; check every migration through 0924, applied hash consistency, foreign keys, migration rollback on failure, backup/restore and repeated idempotent invocation. Never edit an already-applied migration; write a new forward migration if required.
+4. Create real **test-only** CG-01 Foundation actor, separate protected reviewer and distinct verifier, open financial year, ACTIVE CG-02 branch, real Expense/Asset/Income/Liability groups and permitted Cash/Bank accounts. Test role-revocation, protected action, foreign Foundation/branch and unauthorized deep links. Screens and options must hide unauthorized actions across Web and Internal Android.
+5. Follow **all original US-001–US-006 QA cases in the canonical `tasks.md`** (including the 37 US-004–006 case traces), recording the actual command, affected file/function, persisted PG result, Web/native result and whether the case passed, failed or was blocked. Do not invent screen data.
+
+## Mandatory high-risk CG-09 runtime cases
+
+- Submit complete original invoice (INFO → ITEMS → PAYMENT → REVIEW); different CG-03 reviewer approves with fresh password; one exact balanced receivable accrual journal; CG-19 issues original private invoice PDF from posted source. Returned correction must create a new revision, not mutate the old case.
+- For **one issued invoice**, post a real balanced partial bank collection → manually enter authentic test bank statement reference → a different authorized reviewer verifies the actual matching journal with fresh password → link the partial receipt once → repeat with a second partial receipt; compare total issued, verified paid and outstanding in every dashboard, register and account ledger. Two parallel attempts must never double-post, double-count or exceed the original invoice ceiling.
+- Confirm no bank match, uncertain private storage, revoked file, wrong actor, forged proof, wrong branch, incorrect account, stale invoice version and foreign realm can ever create a `PAID_VERIFIED` receipt or private download.
+- Create, review, correct, approve and archive a Foundation budget and an independently scoped ACTIVE-branch budget. Check allocation → commitment → release → utilization of only one genuine posted expense voucher with same category/period; repeated and concurrent utilization must not double-count or exceed approved ceiling. Preserve archive history; funds authorization must never become bank money automatically.
+- Reconcile actual CG-09 GL/Day Book/Cash Book/Bank Book/Trial Balance against `journal` and `journal_line` after opening, voucher, invoice accrual, verified collection and reversal. Compare Web with Internal Android, status filters, CSV escape/scope and masked bank statement reference. Measure page-load latency and PostgreSQL `EXPLAIN (ANALYZE, BUFFERS)` under representative data volume.
+- Configure CG-19 **real** S3 or Firebase private storage and required ClamAV scanner, private Unicode PDF font, versioning/checksum/revocation; compare actual invoice/receipt PDFs with the client-supplied references and U39/U40 originals. Verify the `UNKNOWN` provider recovery/reissue design explicitly; never treat an uncertain write as issued.
+- Compare original CareGanga Finance screenshots A19, B01, B02, U33–U42 to rendered Web and Internal Android pages for palette, shell, data density, KPI cards, tables, four-step invoice flow, status labels, drawers, access states, keyboard, device and responsive layout. Still images do **not** prove animation timing.
+
+## Known source gaps — must be resolved before calling CG-09 complete
+
+Original invoice credit-note/reversal and legally versioned reissue; recovery from uncertain CG-19 storage/provider states; actual verified bank-statement evidence versus a manually entered reference; full reconciliation mismatch/correction history; policy/executed check for per-branch report/export visibility; exact client PDF template verification; concrete CG05/CG12 source integration only when those owner modules are delivered (no speculative selectors). These are documented in `tasks.md`; do not silently waive any gate.
+
+**Work policy:** Implement → independent source/security/database/NFR review → fix → re-review → trace all affected QA scenarios → update **existing `tasks.md`** with exact branch HEAD and actual test evidence. Only then request an explicit source-integration decision. No production deployment, no unsupported CI/GitHub Actions, no claim that runtime QA passed.
