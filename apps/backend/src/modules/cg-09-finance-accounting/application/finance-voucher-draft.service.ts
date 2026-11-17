@@ -108,6 +108,16 @@ export class FinanceVoucherDraftService{
  private async actor(bearer:string,capability:"finance.vouchers.manage"|"finance.vouchers.view"){
   return this.sessions.requireAction(bearer,capability);
  }
+ async options(bearer:string){
+  const actor=await this.actor(bearer,"finance.vouchers.view");
+  const years=await this.db.query<{yearRef:string;name:string;startOn:string;
+    endOn:string;status:string}>(`
+    SELECT id AS "yearRef",name,start_on::text AS "startOn",
+     end_on::text AS "endOn",status FROM financial_year WHERE root_realm_id=$1
+     ORDER BY start_on DESC,id DESC LIMIT 30`,[actor.realmId]);
+  const branches=await this.branches.financeBranches(bearer,"finance.vouchers.view");
+  return {years:years.rows,branches};
+ }
  async list(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
