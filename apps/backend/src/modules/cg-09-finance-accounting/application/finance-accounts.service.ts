@@ -145,16 +145,21 @@ export class FinanceAccountsService{
    this.db.query<{
     accountRef:string;code:string;name:string;normalSide:string;kind:string;
     scopeKind:string;branchRef:string|null;branchName:string|null;groupName:string;category:string;
-    status:string;version:number;balanceMinor:string;bankLabel:string|null;maskedDetails:string|null;
+    status:string;version:number;balanceMinor:string;openingMinor:string;bankLabel:string|null;maskedDetails:string|null;
    }>(`
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
      a.account_kind AS kind,a.scope_kind AS "scopeKind",a.branch_id AS "branchRef",
      NULL::text AS "branchName",g.name AS "groupName",g.category,a.status,a.version,
      COALESCE(SUM(CASE WHEN a.normal_side='DEBIT'
       THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS "balanceMinor",
+     COALESCE(SUM(CASE WHEN j.posting_kind='OPENING'
+      THEN CASE WHEN a.normal_side='DEBIT'
+       THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END
+      ELSE 0 END),0)::text AS "openingMinor",
      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
     FROM finance_account a JOIN account_group g ON g.id=a.group_id
     LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
+    LEFT JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id
     LEFT JOIN cash_bank_account cb ON cb.account_id=a.id AND cb.root_realm_id=a.root_realm_id
     WHERE a.root_realm_id=$1 AND ($2='' OR a.name ILIKE $2 ESCAPE '\\'
       OR a.code ILIKE $2 ESCAPE '\\')
@@ -162,7 +167,7 @@ export class FinanceAccountsService{
     ORDER BY a.name,a.id LIMIT 51 OFFSET $3`,
     [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset]),
    this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
-    SELECT j.id AS "journalRef",j.posting_date AS "postingDate",fy.name AS "yearName",
+    SELECT j.id AS "journalRef",j.posting_date::text AS "postingDate",fy.name AS "yearName",
      MAX(l.debit_minor)::text AS "amountMinor"
     FROM journal j JOIN financial_year fy ON fy.id=j.financial_year_id
     JOIN journal_line l ON l.journal_id=j.id
