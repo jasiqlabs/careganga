@@ -275,6 +275,12 @@ export class FinanceInvoiceAdjustmentService{
     "AND (branch_id IS NULL OR branch_id=$3::uuid) FOR SHARE",
     [actor.realmId,bank,c.branch_id]);
    if(!bankValid.rowCount)throw new ConflictException({code:"FINANCE_REFUND_BANK_INVALID"});
+   const open=await tx.query(
+    "SELECT id FROM financial_year WHERE id=$1 AND root_realm_id=$2 "+
+    "AND status='OPEN' AND $3::date BETWEEN start_on AND end_on FOR SHARE",
+    [fy,actor.realmId,date]);
+   if(!open.rowCount)
+    throw new ConflictException({code:"FINANCE_YEAR_CLOSED"});
    const saved=await tx.query<{id:string}>(
     "INSERT INTO finance_invoice_refund(root_realm_id,credit_note_id,invoice_id,"+
     "amount_minor,bank_account_id,financial_year_id,posting_date,requested_by,"+
