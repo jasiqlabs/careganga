@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from "react";
-import {ActivityIndicator,KeyboardAvoidingView,Platform,Pressable,ScrollView,
+import {ActivityIndicator,BackHandler,KeyboardAvoidingView,Platform,Pressable,ScrollView,
  StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -227,6 +227,14 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
    "The original result cannot be verified right now. Check again before retrying."});}
   finally{setBusy(false);}
  }
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(busy||pending)return true;
+   onClose();
+   return true;
+  });
+  return()=>subscription.remove();
+ },[busy,pending,onClose]);
  const relatedGroups=data.groups.filter(g=>form.accountKind==="GENERAL"||g.category==="ASSET");
  const debit=options.find(x=>x.accountRef===form.debitAccountRef);
  const eligibleCredit=options.filter(x=>x.accountRef!==form.debitAccountRef&&
