@@ -415,6 +415,22 @@ export class FinanceAccountsService{
   * not a voucher, approval, receivable or verified cash/bank payment.
   * No CG-03/CG-19 case or future project is assumed by this first subflow.
   */
+ /** Read immutable genuine posted manual journals; never label them paid. */
+ async manualJournalHistory(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+  const rows=await this.db.query<{journalRef:string;description:string;
+    postingDate:string;yearName:string;debitMinor:string}>(`
+   SELECT j.id AS "journalRef",j.description,j.posting_date::text AS "postingDate",
+     fy.name AS "yearName",SUM(l.debit_minor)::text AS "debitMinor"
+   FROM journal j
+   JOIN financial_year fy ON fy.id=j.financial_year_id
+    AND fy.root_realm_id=j.root_realm_id
+   JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id
+   WHERE j.root_realm_id=$1 AND j.posting_kind='GENERAL'
+   GROUP BY j.id,fy.name
+   ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,[actor.realmId]);
+  return {journals:rows.rows,status:"POSTED_NOT_PAYMENT"};
+ }
  async postGeneral(bearer:string,input:unknown):Promise<CommandResult>{
   const body=fields(input,["financialYearRef","postingDate","description",
     "lines","branchVersion","requestKey"]);
