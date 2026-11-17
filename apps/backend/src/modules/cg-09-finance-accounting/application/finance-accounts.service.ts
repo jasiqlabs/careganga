@@ -148,7 +148,7 @@ export class FinanceAccountsService{
     LEFT JOIN cash_bank_account cb ON cb.account_id=a.id AND cb.root_realm_id=a.root_realm_id
     WHERE a.root_realm_id=$1 AND ($2='' OR a.name ILIKE $2 ESCAPE '\\'
       OR a.code ILIKE $2 ESCAPE '\\')
-    GROUP BY a.id,b.name,g.name,cb.display_label,cb.masked_details
+    GROUP BY a.id,b.name,g.name,g.category,cb.display_label,cb.masked_details
     ORDER BY a.name,a.id LIMIT 51 OFFSET $3`,
     [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset]),
    this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
