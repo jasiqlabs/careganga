@@ -89,6 +89,11 @@ export class FinanceExpenseClaimService{
     replayed=true;
    }else{
     await client.query(
+     "INSERT INTO expense_claim_revision(root_realm_id,claim_id,version,current_digest,"+
+     "category_label,purpose,expense_date,amount_minor,recorded_by) "+
+     "VALUES($1,$2,1,$3,$4,$5,$6,$7,$8)",
+     [actor.realmId,row.id,digest,v.category,v.purpose,v.expenseDate,v.amountMinor,actor.accountId]);
+    await client.query(
      "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
      "VALUES($1,$2,'CLAIM',$3,'CLAIM_DRAFT_CREATED',$4)",
      [actor.realmId,actor.accountId,row.id,v.key]);
@@ -177,7 +182,7 @@ export class FinanceExpenseClaimService{
    const found=await tx.query<{
     id:string;requested_by:string;version:number;status:string;create_digest:string;
     category_label:string}>(
-    "SELECT id,requested_by,version,status,create_digest,category_label "+
+    "SELECT id,requested_by,version,status,current_digest,category_label "+
     "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
     [claimRef,actor.realmId]);
    const claim=found.rows[0];
@@ -186,7 +191,7 @@ export class FinanceExpenseClaimService{
     throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
    await this.evidence.guardVerifiedBill(tx,actor,claimRef,version,fileRef,fileVersion);
    const created=await this.approvals.createCase(tx,actor,{
-    claimRef,version,digest:claim.create_digest,fileRef,fileVersion,
+    claimRef,version,digest:claim.current_digest,fileRef,fileVersion,
     requestKey,categoryLabel:claim.category_label
    });
    const change=await tx.query(
@@ -242,9 +247,9 @@ export class FinanceExpenseClaimService{
     await tx.query("COMMIT");
     return {confirmed:true,claimRef,status:previous.rows[0].result_status,replayed:true};
    }
-   const result=await tx.query<{status:string;version:number;create_digest:string;
+   const result=await tx.query<{status:string;version:number;current_digest:string;
     bill_file_id:string|null;bill_file_version:number|null;approval_case_id:string|null}>(
-    "SELECT status,version,create_digest,bill_file_id,bill_file_version,"+
+    "SELECT status,version,current_digest,bill_file_id,bill_file_version,"+
     "approval_case_id FROM expense_claim WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
     [claimRef,actor.realmId]);
    const claim=result.rows[0];
@@ -252,7 +257,7 @@ export class FinanceExpenseClaimService{
       !claim.bill_file_version)
     throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
    const outcome=await this.approvals.outcome(tx,actor,claimRef,claim.version,
-    claim.create_digest,claim.bill_file_id,claim.bill_file_version,caseRef);
+    claim.current_digest,claim.bill_file_id,claim.bill_file_version,caseRef);
    const status=["PENDING_OWNER","OWNER_COMPLETED"].includes(outcome.status)?
     "APPROVED":outcome.status;
    if(status==="APPROVED"){
