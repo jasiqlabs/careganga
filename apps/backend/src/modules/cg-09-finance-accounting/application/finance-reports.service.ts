@@ -150,6 +150,7 @@ export class FinanceReportsService{
  }
  async books(bearer:string,kind:"DAY"|"CASH"|"BANK",raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
+  await this.verifyFilterScope(actor.realmId,v);
   const rows=await this.db.query<{postingDate:string;account:string;kind:string;
    debitMinor:string;creditMinor:string;description:string;postingKind:string}>(
    "SELECT j.posting_date::text AS \"postingDate\",a.name AS account,"+
