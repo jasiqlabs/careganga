@@ -256,7 +256,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
    {canManage&&<Card title={current?current.number:"Create an invoice"}>
     <Action label="Create new invoice" secondary onPress={()=>{setCurrent(null);setForm(empty());
      setStage("INFO");setPending(null);}}/>
-    {(!current||current.status==="DRAFT")&&<>
+    {(!current||["DRAFT","RETURNED"].includes(current.status))&&<>
      <Options label="Invoice wizard stage" value={stage}
       options={[{ref:"INFO",label:"1. Information"},{ref:"ITEMS",label:"2. Items"},
        {ref:"PAYMENT",label:"3. Accounts & Tax"}]}
