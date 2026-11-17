@@ -138,9 +138,7 @@ export class FinanceBudgetService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
-   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
-    [actor.realmId+":"+actor.accountId+":"+key]);
-   await this.validScope(tx,actor,p);
+   await this.identity.assertCurrent(tx,actor,"finance.budgets.manage");
    const old=await this.existing(tx,actor,key);
    if(old){
     if(old.digest!==fingerprint)
@@ -149,6 +147,7 @@ export class FinanceBudgetService{
     return {confirmed:true,budgetRef:old.budget_id,version:old.version,
      status:old.result_status,replayed:true};
    }
+   await this.validScope(tx,actor,p);
    let next=1,action="CREATE",oldBudget:Budget|null=null;
    if(budgetInput){
     oldBudget=await this.load(tx,actor,budgetRef);
