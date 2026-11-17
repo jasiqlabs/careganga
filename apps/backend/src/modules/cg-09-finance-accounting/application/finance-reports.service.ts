@@ -95,22 +95,29 @@ export class FinanceReportsService{
  async trialBalance(bearer:string,yearInput:string,branchInput?:string){
   const actor=await this.actor(bearer),yearRef=uuid(yearInput,"yearRef"),
    branch=branchInput?uuid(branchInput,"branchRef"):null;
+  const present=await this.db.query(
+   "SELECT id FROM financial_year WHERE root_realm_id=$1 AND id=$2",
+   [actor.realmId,yearRef]);
+  if(!present.rowCount)
+   throw new ConflictException({code:"FINANCE_REPORT_FILTER_INVALID",field:"yearRef"});
   const row=await this.db.query<{accountName:string;code:string;category:string;
    debitMinor:string;creditMinor:string;normalSide:string}>(
    "SELECT a.name AS \"accountName\",a.code,g.category,a.normal_side AS \"normalSide\","+
-   "COALESCE(SUM(CASE WHEN j.id IS NOT NULL THEN l.debit_minor ELSE 0 END),0)::text AS \"debitMinor\","+
-   "COALESCE(SUM(CASE WHEN j.id IS NOT NULL THEN l.credit_minor ELSE 0 END),0)::text AS \"creditMinor\" "+
-   "FROM finance_account a JOIN account_group g ON g.id=a.group_id "+
-   "AND g.root_realm_id=a.root_realm_id "+
-   "LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id "+
+   "COALESCE(x.debit,0)::text AS \"debitMinor\","+
+   "COALESCE(x.credit,0)::text AS \"creditMinor\" "+
+   "FROM finance_account a JOIN account_group g "+
+   "ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
+   "LEFT JOIN (SELECT l.account_id,SUM(l.debit_minor) AS debit,"+
+   "SUM(l.credit_minor) AS credit "+
+   "FROM journal j JOIN journal_line l ON l.journal_id=j.id "+
+   "AND l.root_realm_id=j.root_realm_id "+
+   "WHERE j.root_realm_id=$1 AND j.financial_year_id=$2 AND j.status='POSTED' "+
    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
-   "LEFT JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
-   "AND j.financial_year_id=$2 AND j.status='POSTED' "+
+   "GROUP BY l.account_id) x ON x.account_id=a.id "+
    "WHERE a.root_realm_id=$1 "+
-   "GROUP BY a.id,a.name,a.code,a.normal_side,g.category ORDER BY a.code,a.id LIMIT 1001",
+   "ORDER BY a.code,a.id LIMIT 1001",
    [actor.realmId,yearRef,branch]);
-  // Calculate year-only totals in the SUM conditional; unrelated journal rows
-  // must not be counted merely because the account exists in another year.
+  // Use only posted, year-scoped ledger lines; no cross-year account row scans.
   if(row.rows.length>1000)
    throw new ConflictException({code:"FINANCE_REPORT_TOO_LARGE",
     message:"Select a branch or narrower financial-year account set."});
