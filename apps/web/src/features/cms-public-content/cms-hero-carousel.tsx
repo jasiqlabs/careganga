@@ -6,6 +6,7 @@ type Asset=PublicCmsPage["assets"][number];
 type Slide={section:PublicCmsSection;hero?:Asset;mobile?:Asset};
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const isSafeRoute=(v:unknown)=>["/","/about","/contact"].includes(text(v));
+const safeColor=(v:unknown)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):undefined;
 function Button({label,href,secondary=false}:{label:unknown;href:unknown;secondary?:boolean}){
  return isSafeRoute(href)&&text(label)?
   <Link className={secondary?"cg-site-hero-cta is-secondary":"cg-site-hero-cta"}
@@ -25,8 +26,13 @@ export function CmsHeroCarousel({slides}:{slides:Slide[]}){
   <div className="cg-site-hero-gradient" aria-hidden="true"/>
   <div className="cg-site-hero-content" key={slide.section.order}>
    {!!text(v.eyebrow)&&<p className="cg-site-hero-eyebrow">{text(v.eyebrow)}</p>}
-   <h1>{text(v.heading)}</h1>
-   {!!text(v.subtitle)&&<h2>{text(v.subtitle)}</h2>}
+   <h1 style={{
+    fontFamily:v.headingFont==="SANS"?"Arial, Helvetica, sans-serif":"Georgia, serif",
+    fontWeight:v.headingWeight==="REGULAR"?400:900,
+    ...(v.headingSize==="STANDARD"?{fontSize:"clamp(1.75rem, 2.7vw, 3rem)"}:{}),
+    color:safeColor(v.headingColor)
+   }}>{text(v.heading)}</h1>
+   {!!text(v.subtitle)&&<h2 style={{color:safeColor(v.subtitleColor)}}>{text(v.subtitle)}</h2>}
    {!!text(v.description)&&<p className="cg-site-hero-description">{text(v.description)}</p>}
    {chips.length>0&&<div className="cg-site-hero-chips">{chips.map((chip,i)=>
     <span key={i}>{chip as string}</span>)}</div>}
