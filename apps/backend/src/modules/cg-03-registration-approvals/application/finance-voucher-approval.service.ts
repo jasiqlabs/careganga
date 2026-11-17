@@ -162,7 +162,10 @@ export class FinanceVoucherApprovalService{
   await this.sessions.requireAction(bearer,"finance.vouchers.view");
   return actor;
  }
- async list(bearer:string){
+ async list(bearer:string,offsetInput?:string){
+  if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
+   throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
+  const offset=Number(offsetInput??"0");
   const actor=await this.reviewActor(bearer);
   const client=await this.db.connect();
   try{
@@ -175,8 +178,8 @@ export class FinanceVoucherApprovalService{
       c.submitted_at AS "submittedAt"
     FROM cg03_case c WHERE c.realm_id=$1 AND c.case_kind='FINANCE_VOUCHER'
      AND c.status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','PENDING_OWNER','OWNER_COMPLETED')
-    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 50`,[actor.realmId]);
-   await client.query("COMMIT");return {cases:result.rows};
+    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 51 OFFSET $2`,[actor.realmId,offset]);
+   await client.query("COMMIT");return {cases:result.rows.slice(0,50),nextOffset:result.rows.length>50?offset+50:null};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async detail(bearer:string,refInput:string){
