@@ -103,6 +103,9 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
+   setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
+    detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":"HERO");
+   setUploadOrder(0);setRights(false);setUploadAlt("");
    setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
     seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
     sections:detail.sections,assets:detail.assets});
@@ -177,7 +180,11 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
   if(!selected||selected.status!=="DRAFT"||busy)return;
   if(!rights||uploadAlt.trim().length<3){setError("Confirm publication rights and image description.");return;}
   const cap=file.type==="video/mp4"?26214400:10485760;
-  if(!["image/jpeg","image/png","image/webp","video/mp4","application/pdf"].includes(file.type)||
+  const allowed=uploadRole==="GALLERY"?["image/jpeg","image/png","image/webp",
+   "video/mp4","application/pdf"]:
+   uploadRole==="DOCUMENT"?["image/jpeg","image/png","image/webp","application/pdf"]:
+   ["image/jpeg","image/png","image/webp"];
+  if(!allowed.includes(file.type)||
      file.size<1||file.size>cap){setError("Select an allowed image/PDF (10 MB) or video (25 MB).");return;}
   setBusy(true);setError("");
   try{
@@ -425,7 +432,9 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
     {selected?.status==="SUBMITTED"&&selected.approvalCaseRef&&canPublish&&<>
      <label>Schedule (optional)<input type="datetime-local" value={publishWhen}
       onChange={e=>setPublishWhen(e.target.value)}/></label>
-     <button type="button" disabled={busy||!!pending||!!unsaved}
+     <button type="button" disabled={busy||!!pending||!!unsaved||
+       (Boolean(publishWhen)&&(!Number.isFinite(Date.parse(publishWhen))||
+         Date.parse(publishWhen)-Date.now()<60000))}
       onClick={()=>act("pages/"+selected.pageRef+"/publish","POST",{
        expectedVersion:selected.version,caseRef:selected.approvalCaseRef,
        ...(publishWhen?{publishAt:new Date(publishWhen).toISOString()}:{})})}>
