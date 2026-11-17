@@ -6,7 +6,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-export type FinanceKind="year"|"group"|"account"|"opening"|"yearStatus"|"accountStatus";
+export type FinanceKind="year"|"group"|"account"|"opening"|"manual"|"yearStatus"|"accountStatus";
 export type FinanceYear={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 export type FinanceGroup={groupRef:string;name:string;code:string;category:string};
 export type FinanceBranch={branchRef:string;name:string;code:string;version:number};
@@ -29,7 +29,7 @@ type Failed={message:string;field?:string;unknown:boolean};
 type Pending={key:string;command:string;path:string;method:"POST"|"PATCH";payload:Record<string,unknown>};
 const titles:Record<FinanceKind,string>={
  year:"New Financial Year",group:"New Account Group",account:"New Account",
- opening:"Post Opening Balance",yearStatus:"Close Financial Year",
+ opening:"Post Opening Balance",manual:"Post General Journal",yearStatus:"Close Financial Year",
  accountStatus:"Change Account Status"
 };
 const kinds=["ASSET","LIABILITY","FUND","INCOME","EXPENSE"];
@@ -60,9 +60,9 @@ function ChoiceRow({title,value,options,onChange}:{
       value===o.value&&styles.selectedChipText]}>{o.label}</Text></Pressable>)}</View>}
  </View>;
 }
-function Field({label,value,onChange,placeholder,keyboard="default",error}:{
+function Field({label,value,onChange,placeholder,keyboard="default",error,maxLength=140}:{
  label:string;value:string;onChange:(next:string)=>void;placeholder?:string;
- keyboard?:"default"|"numeric";error?:string
+ keyboard?:"default"|"numeric";error?:string;maxLength?:number
 }){
  return <View style={styles.field}>
   <Text style={styles.label}>{label}</Text>
@@ -70,7 +70,7 @@ function Field({label,value,onChange,placeholder,keyboard="default",error}:{
    onChangeText={onChange} placeholder={placeholder} placeholderTextColor={theme.mutedText}
    keyboardType={keyboard} autoCorrect={false} autoCapitalize="none"
    accessibilityLabel={label} accessibilityHint={error}
-   maxLength={140}/>
+   maxLength={maxLength}/>
   {!!error&&<Text style={styles.fieldError}>{error}</Text>}
  </View>;
 }
@@ -79,13 +79,14 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
   name:"",code:"",startOn:"",endOn:"",category:"ASSET",parentRef:"",
   groupRef:"",accountKind:"GENERAL",scopeKind:"FOUNDATION",branchRef:"",
   bankLabel:"",bankLastFour:"",financialYearRef:"",postingDate:"",
-  debitAccountRef:"",creditAccountRef:"",amount:""
+  debitAccountRef:"",creditAccountRef:"",amount:"",description:""
  });
  const [notice,setNotice]=useState<Failed|null>(null);
  const [busy,setBusy]=useState(false);
  const [pending,setPending]=useState<Pending|null>(null);
  const [unconfirmedNotFound,setUnconfirmedNotFound]=useState(false);
  const [search,setSearch]=useState("");
+ const [manualLines,setManualLines]=useState<Array<{accountRef:string;debit:string;credit:string}>>([{accountRef:"",debit:"",credit:""},{accountRef:"",debit:"",credit:""}]);
  const [choices,setChoices]=useState<PostingChoice[]>([]);
  const [selectedChoices,setSelectedChoices]=useState<Record<string,PostingChoice>>({});
  const [choiceBusy,setChoiceBusy]=useState(false);
@@ -94,7 +95,7 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
  const [searchReload,setSearchReload]=useState(0);
  const change=(key:string,value:string)=>{setForm(f=>({...f,[key]:value}));setNotice(null);};
  useEffect(()=>{
-  if(kind!=="opening")return;
+  if(kind!=="opening"&&kind!=="manual")return;
   let active=true;
   const timer=setTimeout(async()=>{
    if(!active)return;
@@ -126,6 +127,14 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
   if(item)setSelectedChoices(v=>({...v,[reference]:item}));
   change(field,reference);
  }
+ function editManualLine(index:number,field:"accountRef"|"debit"|"credit",value:string){
+  if(field==="accountRef"){
+   const choice=options.find(x=>x.accountRef===value);
+   if(choice)setSelectedChoices(v=>({...v,[value]:choice}));
+  }
+  setManualLines(old=>old.map((row,i)=>i===index?{...row,[field]:value}:row));
+  setNotice(null);
+ }
  function intent():{path:string;method:"POST"|"PATCH";command:string;payload:Record<string,unknown>}{
   if(kind==="year")return {path:"years",method:"POST",command:"YEAR_CREATE",
    payload:{name:form.name,startOn:form.startOn,endOn:form.endOn}};
@@ -149,6 +158,14 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
     payload:{financialYearRef:form.financialYearRef,postingDate:form.postingDate,
      debitAccountRef:form.debitAccountRef,creditAccountRef:form.creditAccountRef,
      amount:form.amount,...(version?{branchVersion:version}:{})}};
+  }
+  if(kind==="manual"){
+   const refs=manualLines.map(l=>options.find(x=>x.accountRef===l.accountRef));
+   const version=refs.find(x=>x?.branchRef)?.branchVersion;
+   return {path:"manual-journals",method:"POST",command:"GENERAL_POST",
+    payload:{financialYearRef:form.financialYearRef,postingDate:form.postingDate,
+     description:form.description,lines:manualLines.map(l=>({...l})),
+     ...(version?{branchVersion:version}:{})}};
   }
   if(!target||!uuid.test(target.ref))throw Error("INVALID_TARGET");
   return {
@@ -215,7 +232,7 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
  const eligibleCredit=options.filter(x=>x.accountRef!==form.debitAccountRef&&
     (!debit?.branchRef||!x.branchRef||x.branchRef===debit.branchRef));
  const noManageData=(kind==="account"&&!data.groups.length)||
-  (kind==="opening"&&(!data.years.some(y=>y.status==="OPEN")||!options.length));
+  ((kind==="opening"||kind==="manual")&&(!data.years.some(y=>y.status==="OPEN")||!options.length));
  return <SafeAreaView style={styles.safe} edges={["top","bottom"]}>
   <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.safe}>
    <View style={styles.header}><Pressable accessibilityRole="button"
@@ -336,7 +353,7 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
      <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
        disabled={busy||!!pending||noManageData} onPress={submit}>
        <Text style={styles.primaryText}>{busy?"Saving…":
-         kind==="opening"?"Post balanced entry":kind==="yearStatus"?"Close year":
+         kind==="opening"?"Post balanced entry":kind==="manual"?"Post balanced journal":kind==="yearStatus"?"Close year":
          kind==="accountStatus"?"Confirm change":"Save"}</Text></Pressable>
     </View>
    </ScrollView>
