@@ -25,6 +25,9 @@ const key=()=>Crypto.randomUUID();
 export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void}){
  const [list,setList]=useState<Budget[]>([]);
+ const [overview,setOverview]=useState<{total:number;approved:number;submitted:number;
+  totalCeilingMinor:string;committedOutstandingMinor:string;allocatedMinor:string;
+  utilizedMinor:string;availableMinor:string;overBudgetMinor:string}|null>(null);
  const [year,setYear]=useState<Year[]>([]),[branches,setBranches]=useState<Branch[]>([]);
  const [categories,setCategories]=useState<string[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -46,6 +49,13 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
   }catch(e){fail(e);}
  },[token,offset,onExpired]);
  useEffect(()=>{void load();},[load]);
+ useEffect(()=>{let live=true;
+  void(async()=>{try{
+   const result=await request<{cards:NonNullable<typeof overview>}>(token,
+    "/api/finance-accounting/budgets/dashboard");
+   if(live)setOverview(result.cards);
+  }catch(e){if(live)fail(e);}})();return()=>{live=false;};
+ },[token,onExpired]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
    const x=await request<{years:Year[];branches:Branch[];categories:string[]}>(token,
@@ -132,6 +142,19 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
    {pending&&<Card title="Original request result not confirmed">
     <Action label="Check same request" secondary disabled={busy} onPress={()=>void status()}/>
     <Action label="Retry exactly this request" disabled={busy} onPress={()=>void execute(pending)}/>
+   </Card>}
+   {overview&&<Card title="Foundation budget overview">
+    {([
+     ["All budgets",String(overview.total)],["Submitted",String(overview.submitted)],
+     ["Approved",String(overview.approved)],
+     ["Approved ceiling",money(overview.totalCeilingMinor)],
+     ["Allocated",money(overview.allocatedMinor)],
+     ["Committed",money(overview.committedOutstandingMinor)],
+     ["Utilized",money(overview.utilizedMinor)],
+     ["Available",money(overview.availableMinor)],
+     ["Over-budget",money(overview.overBudgetMinor)]
+    ] as [string,string][]).map(([label,value])=>
+     <Text key={label} style={s.text}>{label}: {value}</Text>)}
    </Card>}
    <Card title="Existing budgets">
     <Action label="Refresh budgets" secondary onPress={()=>void load()}/>
