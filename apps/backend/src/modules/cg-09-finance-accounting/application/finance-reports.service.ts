@@ -60,13 +60,14 @@ export class FinanceReportsService{
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"date"});
   return {fy,branch,account,from,to,offset:position(raw.offset)};
  }
- private async verifyFilterScope(realm:string,v:{
+ private async verifyFilterScope(bearer:string,realm:string,v:{
   fy:string|null;branch:string|null;account:string|null}){
   const tests:{ref:string|null;field:string;table:string}[]=[
    {ref:v.fy,field:"yearRef",table:"financial_year"},
    {ref:v.branch,field:"branchRef",table:"branch"},
    {ref:v.account,field:"accountRef",table:"finance_account"}
   ];
+  await this.branches.requireFinanceReportBranch(bearer,v.branch);
   for(const t of tests){
    if(!t.ref)continue;
    // Whitelisted table names only: no request values interpolated into SQL.
@@ -79,6 +80,7 @@ export class FinanceReportsService{
  }
  async options(bearer:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer);
   const [years,accounts,branches]=await Promise.all([
    this.db.query<{ref:string;name:string;startOn:string;endOn:string}>(
     "SELECT id AS ref,name,start_on::text AS \"startOn\",end_on::text AS \"endOn\" "+
@@ -86,14 +88,16 @@ export class FinanceReportsService{
     [actor.realmId]),
    this.db.query<{ref:string;name:string;code:string;kind:string}>(
     "SELECT id AS ref,name,code,account_kind AS kind FROM finance_account "+
-    "WHERE root_realm_id=$1 ORDER BY name,id LIMIT 200",[actor.realmId]),
+    "WHERE root_realm_id=$1 AND ($2::boolean OR "+
+    "(branch_id IS NOT NULL AND branch_id=ANY($3::uuid[]))) "+
+    "ORDER BY name,id LIMIT 200",[actor.realmId,scope.all,scope.branchRefs]),
     this.branches.financeBranches(bearer,"finance.reports.view")
   ]);
-  return {years:years.rows,accounts:accounts.rows,branches};
+  return {years:years.rows,accounts:accounts.rows,branches,allBranches:scope.all};
  }
  async ledger(bearer:string,raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
-  await this.verifyFilterScope(actor.realmId,v);
+  await this.verifyFilterScope(bearer,actor.realmId,v);
   const rows=await this.db.query<{accountName:string;accountCode:string;category:string;
    postingDate:string;description:string;postingKind:string;debitMinor:string;
    creditMinor:string;normalSide:string;journalRef:string;lineRef:string}>(
@@ -119,7 +123,7 @@ export class FinanceReportsService{
  async trialBalance(bearer:string,yearInput:string,branchInput?:string){
   const actor=await this.actor(bearer),yearRef=uuid(yearInput,"yearRef"),
    branch=branchInput?uuid(branchInput,"branchRef"):null;
-  await this.verifyFilterScope(actor.realmId,{fy:yearRef,branch,account:null});
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:yearRef,branch,account:null});
   const row=await this.db.query<{accountName:string;code:string;category:string;
    debitMinor:string;creditMinor:string;normalSide:string}>(
    "SELECT a.name AS \"accountName\",a.code,g.category,a.normal_side AS \"normalSide\","+
@@ -156,7 +160,7 @@ export class FinanceReportsService{
  }
  async books(bearer:string,kind:"DAY"|"CASH"|"BANK",raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
-  await this.verifyFilterScope(actor.realmId,v);
+  await this.verifyFilterScope(bearer,actor.realmId,v);
   const rows=await this.db.query<{postingDate:string;account:string;kind:string;
    debitMinor:string;creditMinor:string;description:string;postingKind:string}>(
    "SELECT j.posting_date::text AS \"postingDate\",a.name AS account,"+
@@ -180,7 +184,7 @@ export class FinanceReportsService{
   const actor=await this.actor(bearer),
    year=yearInput?uuid(yearInput,"yearRef"):null,
    branch=branchInput?uuid(branchInput,"branchRef"):null;
-  await this.verifyFilterScope(actor.realmId,{fy:year,branch,account:null});
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
   const result=await this.db.query<{category:string;amountDebit:string;amountCredit:string}>(
    "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
    "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
@@ -216,7 +220,7 @@ export class FinanceReportsService{
   */
  async receivables(bearer:string,raw:Options){
   const actor=await this.actor(bearer),v=this.filters(raw);
-  await this.verifyFilterScope(actor.realmId,v);
+  await this.verifyFilterScope(bearer,actor.realmId,v);
   const rows=await this.db.query<{invoiceNumber:string;invoiceDate:string;
    dueDate:string;counterpartyName:string;status:string;
    totalMinor:string;verifiedMinor:string;outstandingMinor:string}>(
@@ -245,14 +249,17 @@ export class FinanceReportsService{
  }
  async reconciliationOptions(bearer:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer);
   const r=await this.db.query<{accountRef:string;name:string;code:string}>(
    "SELECT id AS \"accountRef\",name,code FROM finance_account "+
    "WHERE root_realm_id=$1 AND account_kind='BANK' AND status='ACTIVE' "+
-   "ORDER BY name,id LIMIT 50",[actor.realmId]);
+   "AND ($2::boolean OR (branch_id IS NOT NULL AND branch_id=ANY($3::uuid[]))) "+
+   "ORDER BY name,id LIMIT 50",[actor.realmId,scope.all,scope.branchRefs]);
   return {banks:r.rows};
  }
  async bankLines(bearer:string,bankInput:string){
   const actor=await this.actor(bearer),bank=uuid(bankInput,"bankRef");
+  const scope=await this.branches.financeReportScope(bearer);
   const rows=await this.db.query<{journalRef:string;financialYearRef:string;postingDate:string;
    description:string;amountMinor:string}>(
    "SELECT j.id AS \"journalRef\",j.financial_year_id AS \"financialYearRef\","+
@@ -262,10 +269,12 @@ export class FinanceReportsService{
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND l.account_id=$2 AND a.account_kind='BANK' "+
    "AND j.status='POSTED' "+
+   "AND ($3::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($4::uuid[]) "+
+   "AND l.branch_id=ANY($4::uuid[]))) "+
    "AND NOT EXISTS(SELECT 1 FROM finance_bank_reconciliation r "+
    "WHERE r.root_realm_id=l.root_realm_id AND r.bank_account_id=l.account_id "+
    "AND r.journal_id=j.id) ORDER BY j.posting_date DESC,j.id DESC LIMIT 51",
-   [actor.realmId,bank]);
+   [actor.realmId,bank,scope.all,scope.branchRefs]);
   return {lines:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
  }
  async recordBankMatch(bearer:string,raw:unknown){
@@ -285,6 +294,7 @@ export class FinanceReportsService{
    throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID",field:"bankItemReference"});
   const amount=amountMinor(data.statementAmount);
   const digest=sha([bankRef,journalRef,financialYearRef,date,data.bankItemReference,amount]);
+  const scope=await this.branches.financeReportScope(bearer,"finance.reconciliation.manage");
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.reconciliation.manage");
@@ -306,8 +316,10 @@ export class FinanceReportsService{
     "AND j.root_realm_id=l.root_realm_id JOIN finance_account a "+
     "ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
     "WHERE j.id=$1 AND j.root_realm_id=$2 AND j.financial_year_id=$3 "+
-    "AND l.account_id=$4 AND a.account_kind='BANK' AND j.status='POSTED' FOR SHARE OF j,l,a",
-    [journalRef,actor.realmId,financialYearRef,bankRef]);
+    "AND l.account_id=$4 AND a.account_kind='BANK' AND j.status='POSTED' "+
+    "AND ($5::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($6::uuid[]) "+
+    "AND l.branch_id=ANY($6::uuid[]))) FOR SHARE OF j,l,a",
+    [journalRef,actor.realmId,financialYearRef,bankRef,scope.all,scope.branchRefs]);
    if(line.rows.length!==1)
     throw new ConflictException({code:"FINANCE_RECONCILIATION_INVALID"});
    const posted=BigInt(line.rows[0].amount_minor),variance=BigInt(amount)-posted;
@@ -324,6 +336,7 @@ export class FinanceReportsService{
  }
  async reconciliationList(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer),offset=position(offsetInput);
+  const scope=await this.branches.financeReportScope(bearer);
   const rows=await this.db.query<{reconciliationRef:string;accountName:string;
    statementDate:string;bankItemReference:string;statementAmountMinor:string;
    postedAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean}>(
@@ -336,8 +349,10 @@ export class FinanceReportsService{
    "(r.recorded_by=$2::uuid) AS \"canUpload\" "+
    "FROM finance_bank_reconciliation r JOIN finance_account a "+
    "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
-   "WHERE r.root_realm_id=$1 ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $3",
-   [actor.realmId,actor.accountId,offset]);
+   "WHERE r.root_realm_id=$1 "+
+   "AND ($4::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($5::uuid[]))) "+
+   "ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $3",
+   [actor.realmId,actor.accountId,offset,scope.all,scope.branchRefs]);
   return {items:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?offset+50:null};
  }
  async verifyBankMatch(bearer:string,refInput:string,raw:unknown){
@@ -362,6 +377,7 @@ export class FinanceReportsService{
        v.statementFileVersion!==undefined)))
    throw new BadRequestException({code:"FINANCE_RECONCILIATION_EVIDENCE_INVALID"});
   await this.sessions.limitFoundationRootProof(actor);
+  const scope=await this.branches.financeReportScope(bearer,"finance.reconciliation.review");
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
@@ -384,9 +400,13 @@ export class FinanceReportsService{
    }
    const row=await tx.query<{status:string;recorded_by:string;content_digest:string;
     variance_minor:string}>(
-    "SELECT status,recorded_by,content_digest,variance_minor::text "+
-    "FROM finance_bank_reconciliation WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
-    [ref,actor.realmId]);
+    "SELECT r.status,r.recorded_by,r.content_digest,r.variance_minor::text "+
+    "FROM finance_bank_reconciliation r JOIN finance_account a "+
+    "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
+    "WHERE r.id=$1 AND r.root_realm_id=$2 "+
+    "AND ($3::boolean OR (a.branch_id IS NOT NULL AND a.branch_id=ANY($4::uuid[]))) "+
+    "FOR UPDATE OF r",
+    [ref,actor.realmId,scope.all,scope.branchRefs]);
    const rec=row.rows[0];
    if(!rec||rec.status!=="PENDING"||rec.recorded_by===actor.accountId)
     throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
