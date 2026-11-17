@@ -267,7 +267,8 @@ export class FinanceReportsService{
    statementDate:string;bankItemReference:string;statementAmountMinor:string;
    postedAmountMinor:string;varianceMinor:string;status:string}>(
    "SELECT r.id AS \"reconciliationRef\",a.name AS \"accountName\","+
-   "r.statement_date::text AS \"statementDate\",r.bank_item_ref AS \"bankItemReference\","+
+   "r.statement_date::text AS \"statementDate\","+
+   "('•••• '||right(r.bank_item_ref,4)) AS \"bankItemReference\","+
    "r.statement_amount_minor::text AS \"statementAmountMinor\","+
    "r.posted_amount_minor::text AS \"postedAmountMinor\","+
    "r.variance_minor::text AS \"varianceMinor\",r.status "+
