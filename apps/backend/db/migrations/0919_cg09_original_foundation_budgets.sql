@@ -88,6 +88,8 @@ CREATE TABLE finance_budget_event(
  budget_id uuid NOT NULL,
  kind text NOT NULL CHECK(kind IN('ALLOCATE','COMMIT','RELEASE','UTILIZE')),
  amount_minor bigint NOT NULL CHECK(amount_minor BETWEEN 1 AND 99999999999999),
+ commitment_applied_minor bigint NOT NULL DEFAULT 0 CHECK(
+   commitment_applied_minor>=0 AND commitment_applied_minor<=amount_minor),
  event_key uuid NOT NULL,
  source_digest char(64) NOT NULL CHECK(source_digest~'^[a-f0-9]{64}$'),
  source_journal_id uuid,
@@ -118,7 +120,7 @@ ALTER TABLE finance_event ADD CONSTRAINT cg09_finance_event_voucher_kind
 -- A protected reviewer must approve before effects are inserted. Short row
 -- locking in service serializes spend; enforce available ceiling again in DB.
 CREATE FUNCTION cg09_budget_event_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE b record; used bigint; committed bigint; released bigint; allocated bigint;
+DECLARE b record; used bigint; committed bigint; released bigint; allocated bigint; applied bigint; outstanding bigint;
  journal_total bigint;
 BEGIN
  SELECT status,approved_ceiling_minor,financial_year_id,branch_id,category_label,period_start,period_end INTO b
@@ -129,8 +131,9 @@ BEGIN
  SELECT COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0),
-  COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)
- INTO used,committed,released,allocated
+  COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0),
+  COALESCE(SUM(commitment_applied_minor),0)
+ INTO used,committed,released,allocated,applied
  FROM finance_budget_event WHERE root_realm_id=NEW.root_realm_id AND budget_id=NEW.budget_id;
  IF NEW.kind='UTILIZE' THEN
   PERFORM 1 FROM journal j JOIN finance_voucher v
@@ -154,14 +157,26 @@ BEGIN
    RAISE EXCEPTION 'Budget utilization must match original actual posted expense' USING ERRCODE='P0924';
   END IF;
  END IF;
- IF NEW.kind='RELEASE' AND released+NEW.amount_minor>committed THEN
-  RAISE EXCEPTION 'Cannot release more than outstanding commitment' USING ERRCODE='P0924';
+ -- Consumption of a real posted expense fulfills an existing obligation
+ -- first. Do not double count a committed amount AND its later utilization.
+ outstanding=committed-released-applied;
+ IF outstanding<0 THEN
+  RAISE EXCEPTION 'Original budget commitments are inconsistent' USING ERRCODE='P0924';
+ END IF;
+ IF NEW.kind='UTILIZE' THEN
+  NEW.commitment_applied_minor=LEAST(outstanding,NEW.amount_minor);
+ ELSE
+  NEW.commitment_applied_minor=0;
+ END IF;
+ IF NEW.kind='RELEASE' AND NEW.amount_minor>outstanding THEN
+  RAISE EXCEPTION 'Cannot release more than unmatched outstanding commitment' USING ERRCODE='P0924';
  END IF;
  IF NEW.kind='ALLOCATE' AND allocated+NEW.amount_minor>b.approved_ceiling_minor THEN
   RAISE EXCEPTION 'Cannot allocate beyond approved budget' USING ERRCODE='P0924';
  END IF;
  IF NEW.kind IN('COMMIT','UTILIZE') AND
-    used+committed-released+NEW.amount_minor>b.approved_ceiling_minor THEN
+    used+outstanding+NEW.amount_minor-NEW.commitment_applied_minor>
+     b.approved_ceiling_minor THEN
   RAISE EXCEPTION 'Budget remaining amount is insufficient' USING ERRCODE='P0924';
  END IF;
  RETURN NEW;
