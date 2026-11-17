@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
- ScrollView,StyleSheet,Text,View} from "react-native";
+ StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
