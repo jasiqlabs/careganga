@@ -7,11 +7,11 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
-type SafeDraft={year:string;branch:string|null;branchVersion:number|null;
+type SafeDraft={year:string;branch:string|null;branchVersion:number|null;paymentAccount:string|null;
  kind:"PAYMENT"|"EXPENSE"|"CONTRA"|"GENERAL";date:string;payee:string;
  purpose:string;lines:{description:string;quantity:number;unitRateMinor:string;
  lineTotalMinor:string}[];grossMinor:string;taxMinor:string;chargesMinor:string;totalMinor:string};
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(code:string,field?:string):never=>{throw new BadRequestException({code,...(field?{field}:{})});};
 const uid=(v:unknown,field:string):string=>{
  if(typeof v!=="string"||!UUID.test(v))return fail("FINANCE_VOUCHER_SOURCE_INVALID",field);
@@ -52,7 +52,7 @@ function normalize(input:unknown):SafeDraft{
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const value=input as Record<string,unknown>;
  const fields=["financialYearRef","branchRef","branchVersion","voucherType","postingDate",
-  "payeeName","purpose","lines","tax","charges","requestKey","expectedVersion"];
+  "payeeName","purpose","paymentAccountRef","lines","tax","charges","requestKey","expectedVersion"];
  if(Object.keys(value).some(k=>!fields.includes(k)))
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const year=uid(value.financialYearRef,"financialYearRef");
@@ -63,6 +63,9 @@ function normalize(input:unknown):SafeDraft{
  const kind=value.voucherType;
  if(!["PAYMENT","EXPENSE","CONTRA","GENERAL"].includes(String(kind)))
   return fail("FINANCE_VOUCHER_TYPE_INVALID","voucherType");
+ const paymentAccount=value.paymentAccountRef?uid(value.paymentAccountRef,"paymentAccountRef"):null;
+ if((kind==="PAYMENT"||kind==="CONTRA")&&!paymentAccount)
+  return fail("FINANCE_VOUCHER_PAYMENT_ACCOUNT_REQUIRED","paymentAccountRef");
  if(!Array.isArray(value.lines)||!value.lines.length||value.lines.length>40)
   return fail("FINANCE_VOUCHER_LINES_INVALID","lines");
  let gross=0n;
@@ -89,7 +92,7 @@ function normalize(input:unknown):SafeDraft{
  const total=gross+tax+charges;
  if(gross<=0n||total>99999999999999n)
   return fail("FINANCE_VOUCHER_AMOUNT_INVALID","lines");
- return {year,branch,branchVersion:branch?Number(branchVersion):null,
+ return {year,branch,branchVersion:branch?Number(branchVersion):null,paymentAccount,
   kind:kind as SafeDraft["kind"],date:date(value.postingDate),
   payee:name(value.payeeName,"payeeName",150),purpose:purpose(value.purpose),
   lines,grossMinor:gross.toString(),taxMinor:tax.toString(),
@@ -193,6 +196,17 @@ export class FinanceVoucherDraftService{
    return fail("FINANCE_VOUCHER_DATE_INVALID","postingDate");
   if(safe.branch)await this.branches.financeActiveBranch(client,actor,safe.branch,
    safe.branchVersion??0,"finance.vouchers.manage");
+  if(safe.paymentAccount){
+   const found=await client.query<{scope_kind:string;branch_id:string|null}>(`
+    SELECT a.scope_kind,a.branch_id FROM finance_account a
+    JOIN cash_bank_account b ON b.account_id=a.id AND b.root_realm_id=a.root_realm_id
+    WHERE a.root_realm_id=$1 AND a.id=$2 AND a.status=\'ACTIVE\'
+     AND b.status=\'ACTIVE\' AND a.account_kind IN (\'CASH\',\'BANK\')
+    FOR SHARE OF a,b`,[actor.realmId,safe.paymentAccount]);
+   if(!found.rows[0]||(found.rows[0].scope_kind==="BRANCH"&&
+      found.rows[0].branch_id!==safe.branch))
+    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
+  }
  }
  private async commitDraft(client:PoolClient,actor:VerifiedFoundationActor,
   key:string,safe:SafeDraft,reference:string|null,expectedVersion:number|null){
@@ -224,25 +238,25 @@ export class FinanceVoucherDraftService{
      UPDATE finance_voucher
      SET financial_year_id=$1,branch_id=$2,voucher_type=$3,posting_date=$4,
        payee_name=$5,purpose=$6,gross_minor=$7,tax_minor=$8,charges_minor=$9,
-       total_minor=$10,version=$11,status='DRAFT',approval_case_id=NULL,
+       total_minor=$10,version=$11,payment_account_id=$14,status='DRAFT',approval_case_id=NULL,
        proof_file_id=NULL,proof_file_revision=NULL,updated_at=now()
      WHERE id=$12 AND root_realm_id=$13`,
     [safe.year,safe.branch,safe.kind,safe.date,safe.payee,safe.purpose,
      safe.grossMinor,safe.taxMinor,safe.chargesMinor,safe.totalMinor,version,
-     reference,actor.realmId]);
+     reference,actor.realmId,safe.paymentAccount]);
   }else{
    const out=await client.query<{id:string;voucher_number:string}>(`
      INSERT INTO finance_voucher(root_realm_id,financial_year_id,branch_id,voucher_type,
-      posting_date,payee_name,purpose,gross_minor,tax_minor,charges_minor,total_minor,created_by)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      posting_date,payee_name,purpose,gross_minor,tax_minor,charges_minor,total_minor,created_by,payment_account_id)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING id,voucher_number`,[actor.realmId,safe.year,safe.branch,safe.kind,
       safe.date,safe.payee,safe.purpose,safe.grossMinor,safe.taxMinor,
-      safe.chargesMinor,safe.totalMinor,actor.accountId]);
+      safe.chargesMinor,safe.totalMinor,actor.accountId,safe.paymentAccount]);
    voucherRef=out.rows[0].id;
    voucherNumber=out.rows[0].voucher_number;
    version=1;
   }
-  const header={financialYearRef:safe.year,branchRef:safe.branch,type:safe.kind,
+  const header={financialYearRef:safe.year,branchRef:safe.branch,type:safe.kind,paymentAccountRef:safe.paymentAccount,
     postingDate:safe.date,payeeName:safe.payee,purpose:safe.purpose};
   await client.query(`
     INSERT INTO finance_voucher_draft_revision(root_realm_id,voucher_id,version,
