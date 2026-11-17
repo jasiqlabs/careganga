@@ -30,6 +30,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       PLATFORM_COPY_PASSWORD_REQUIRED:"Enter your current password to confirm this change.",
       PLATFORM_COPY_NO_CHANGE:"The replacement wording is unchanged. Edit the message before saving.",
       PLATFORM_COPY_REPLAY_CONFLICT:"This save request was already used for different wording. Refresh and try again.",
+      FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID:"Choose two different, active debit and credit accounts in the permitted branch. For expenses, use an expense and payable account; for transfers, use cash or bank accounts.",
       FINANCE_VOUCHER_PAYMENT_ACCOUNT_REQUIRED:"Choose an active Foundation cash or bank account before saving a payment or contra voucher.",
       FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE:"The chosen cash or bank account is inactive or belongs to another branch. Select a permitted account.",
       FINANCE_VOUCHER_EVIDENCE_INVALID:"Select a currently verified, unrevoked private PDF or image for this voucher revision.",
