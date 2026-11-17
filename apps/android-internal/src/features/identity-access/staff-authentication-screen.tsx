@@ -56,6 +56,7 @@ export function StaffAuthenticationScreen(){
   const [actor,setActor]=useState<CG01SessionView|null>(null);
   const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
   const [message,setMessage]=useState("");
+  const [loginFieldError,setLoginFieldError]=useState<"identifier"|"password"|null>(null);
   const [recover,setRecover]=useState(false);
   const [changePasswordOpen,setChangePasswordOpen]=useState(false);
   const [accountsOpen,setAccountsOpen]=useState(false);
@@ -122,7 +123,7 @@ export function StaffAuthenticationScreen(){
   },[token,expireSession]);
   async function signIn(){
     if(state==="busy")return;
-    setState("busy");setMessage("");
+    setState("busy");setMessage("");setLoginFieldError(null);
     const request:CG01SignInRequest={identifier:email.trim(),password,deviceLabel:"Internal Android"};
     let issuedToken:string|null=null;
     try{
@@ -130,7 +131,19 @@ export function StaffAuthenticationScreen(){
         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
       });
       if(!response.ok){
-        setMessage(response.status===429?"Too many attempts. Please try later.":response.status===401?"Mobile number/email or password is incorrect.":"Sign-in unavailable. Please try again.");
+        const payload:unknown=response.status===400?await response.json().catch(()=>null):null;
+        const data=payload&&typeof payload==="object"&&!Array.isArray(payload)?
+          payload as Record<string,unknown>:{};
+        const codes=new Set(["IDENTITY_IDENTIFIER_REQUIRED","IDENTITY_IDENTIFIER_INVALID",
+          "IDENTITY_PASSWORD_REQUIRED","IDENTITY_PASSWORD_TOO_LONG"]);
+        const isSafe=response.status===400&&typeof data.code==="string"&&codes.has(data.code);
+        const field=isSafe&&(data.field==="identifier"||data.field==="password")?data.field:null;
+        setLoginFieldError(field);
+        setMessage(isSafe&&typeof data.message==="string"&&data.message.length<=220?
+          data.message:response.status===429?"Too many login attempts. Please try later.":
+          response.status===401?"Mobile number/email or password is incorrect.":
+          response.status===400?"Check your mobile/email and password details.":
+          "Sign-in could not be confirmed. Check your connection and retry.");
         return;
       }
       const data:CG01SessionCreated=await response.json();
@@ -308,9 +321,11 @@ export function StaffAuthenticationScreen(){
           <View style={styles.formCard}>
             <Text style={styles.helper}>Sign in with your registered mobile number or email.</Text>
             <Text style={styles.label}>Mobile number or email</Text>
-            <TextInput accessibilityLabel="Mobile number or email" autoCapitalize="none" autoComplete="username" keyboardType="default" value={email} onChangeText={setEmail} style={styles.input}/>
+            <TextInput accessibilityLabel="Mobile number or email" autoCapitalize="none" autoComplete="username" keyboardType="default" value={email} onChangeText={v=>{setEmail(v);if(loginFieldError==="identifier"){setLoginFieldError(null);setMessage("");}}} style={[styles.input,loginFieldError==="identifier"&&styles.invalidInput]}/>
+            {loginFieldError==="identifier"&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
             <Text style={styles.label}>Password</Text>
-            <TextInput accessibilityLabel="Password" secureTextEntry autoComplete="current-password" value={password} onChangeText={setPassword} style={styles.input}/>
+            <TextInput accessibilityLabel="Password" secureTextEntry autoComplete="current-password" value={password} onChangeText={v=>{setPassword(v);if(loginFieldError==="password"){setLoginFieldError(null);setMessage("");}}} style={[styles.input,loginFieldError==="password"&&styles.invalidInput]}/>
+            {loginFieldError==="password"&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
             <Pressable accessibilityRole="button" disabled={state==="busy"||!email.trim()||!password} onPress={()=>void signIn()} style={[styles.button,styles.primaryButton]}>
               <Text style={styles.primaryButtonText}>{state==="busy"?"Verifying…":"Sign in"}</Text>
             </Pressable>
@@ -318,12 +333,13 @@ export function StaffAuthenticationScreen(){
               <Text style={styles.buttonText}>Recover account</Text>
             </Pressable>
           </View>}
-        {!!message&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
+        {!!message&&!loginFieldError&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
+  invalidInput:{borderColor:careGangaTheme.error},
   page:{flex:1,backgroundColor:careGangaTheme.background},
   content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
   brandBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:8},
