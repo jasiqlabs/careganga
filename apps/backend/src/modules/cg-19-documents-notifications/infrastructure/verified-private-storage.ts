@@ -51,7 +51,9 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
 
   async reservePrivateUpload(request:UploadInput):Promise<PrivateUploadReservation>{
     const expiry=Date.parse(request.expiresAt);
-    if(!validKey(request.objectKey)||!allowedMime.has(request.mime)||
+    // Only the server-side PDF issuer may write these create-only keys.
+    if(!validKey(request.objectKey)||/\/(?:invoices|receipts)\//.test(request.objectKey)||
+      !allowedMime.has(request.mime)||
       !Number.isSafeInteger(request.sizeBytes)||request.sizeBytes<1||
       request.sizeBytes>10*1024*1024||!SHA.test(request.sha256)||
       !Number.isFinite(expiry)||expiry<=Date.now()||expiry>Date.now()+16*60*1000)
@@ -89,6 +91,24 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
     if(file.objectVersion!==request.objectVersion||file.bytes.length>request.maxBytes)
       throw new ServiceUnavailableException("Stored file version no longer matches");
     return file.bytes;
+  }
+
+  async reconcileIssuedPrivateDocument(request:{
+    objectKey:string;maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{
+    // An invoice/receipt key is server-created, random and never signed for upload.
+    if(!/^careganga\/private\/cg19\/[0-9a-f-]{36}\/(invoices|receipts)\/[0-9a-f-]{36}$/.test(request.objectKey)||
+      !Number.isSafeInteger(request.maxBytes)||request.maxBytes<100||
+      request.maxBytes>10*1024*1024)
+      throw new BadRequestException("Invalid private document recovery request");
+    const stored=await this.loadLatest(request.objectKey,request.maxBytes);
+    if(stored.mime!=="application/pdf"||stored.bytes.length<100||
+      !byteSignatureMatches(stored.bytes,"application/pdf")||
+      stored.objectVersion.length>160)
+      throw new ServiceUnavailableException("The original private PDF is not verified");
+    await this.scanner.scan(stored.bytes);
+    return {objectVersion:stored.objectVersion,sha256:digest(stored.bytes),
+      sizeBytes:stored.bytes.length};
   }
 
   async writeVerifiedPrivateDocument(request:{
