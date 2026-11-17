@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceExpenseClaimWorkspace} from "../../../../../features/finance-accounting/finance-expense-claim-workspace";
+import {FinanceClaimManagementWorkspace} from "../../../../../features/finance-accounting/finance-claim-management-workspace";
 export const dynamic="force-dynamic";
 
 /** Dedicated U41 expense intake for existing CG-01 Foundation users.
@@ -33,7 +34,8 @@ export default async function FinanceExpenseClaimsPage(){
     typeof (v as {key:unknown}).key==="string").map(v=>v.key);
   const canCreate=actions.includes("finance.claims.create");
   const canView=actions.includes("finance.claims.view");
-  if(!canCreate&&!canView)return <main className="page main">
+  const canManage=actions.includes("finance.claims.manage");
+  if(!canCreate&&!canView&&!canManage)return <main className="page main">
    <h1>Expense claims access restricted</h1>
    <p>Your role cannot create or view Foundation expense claims. Ask an Administrator for access.</p>
    <Link href="/admin">Return to my account</Link></main>;
@@ -54,8 +56,10 @@ export default async function FinanceExpenseClaimsPage(){
     canViewFinance={actions.includes("finance.accounts.view")}
     canViewVouchers={actions.includes("finance.vouchers.view")}
     canViewClaims={true}/>
-   <main className="workspace"><FinanceExpenseClaimWorkspace
-     canCreate={canCreate} canView={canView}/></main>
+   <main className="workspace">
+    {(canCreate||canView)&&<FinanceExpenseClaimWorkspace canCreate={canCreate} canView={canView}/>}
+    {canManage&&<FinanceClaimManagementWorkspace/>}
+   </main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
