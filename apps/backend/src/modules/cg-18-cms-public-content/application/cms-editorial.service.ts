@@ -720,7 +720,7 @@ export class CmsEditorialService{
     "SELECT a.cg19_file_ref,a.role,a.alt_text,a.sort_order "+
     "FROM cms_asset_placement a JOIN cg19_cms_media_file f "+
     "ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id "+
-    "AND f.page_revision_id=a.page_revision_id "+
+    "AND f.page_id=p.id "+
     "WHERE a.page_revision_id=$1 AND a.public_rights_status='VALIDATED' "+
     "AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL "+
     "AND f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
