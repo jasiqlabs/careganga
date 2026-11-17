@@ -7,7 +7,7 @@ type AccountingLine=Readonly<{
 }>;
 type FinancePosting=Readonly<{
  financialYearRef:string;postingDate:string;sourceRef:string;eventKey:string;
- immutableDigest:string;kind:"OPENING"|"GENERAL"|"VOUCHER"|"REVERSAL"|"INVOICE";
+ immutableDigest:string;kind:"OPENING"|"GENERAL"|"VOUCHER"|"REVERSAL"|"INVOICE"|"CREDIT_NOTE"|"REFUND";
  description?:string;
  reversalOfRef?:string|null;lines:readonly AccountingLine[];
 }>;
