@@ -25,14 +25,23 @@ async function request<T>(token:string,path:string,method:"GET"|"POST"="GET",bod
    ...(body?{body:JSON.stringify(body)}:{})});}
  catch{throw Error("UNKNOWN");}
  if(r.status===401)throw Error("EXPIRED");
- if(r.status===403)throw Error("DENIED");
- if(r.status===409)throw Error("CHANGED");
- if(r.status===400)throw Error("INVALID");
- if(!r.ok)throw Error(method==="POST"?"UNKNOWN":"OFFLINE");
+ if(!r.ok){
+  const details:unknown=await r.json().catch(()=>null);
+  const data=details&&typeof details==="object"&&!Array.isArray(details)?
+    details as Record<string,unknown>:{};
+  if(typeof data.code==="string"&&data.code.startsWith("FINANCE_")&&
+    typeof data.message==="string"&&data.message.length<=220)
+    throw Error("USER:"+data.message);
+  if(r.status===403)throw Error("DENIED");
+  if(r.status===409)throw Error("CHANGED");
+  if(r.status===400)throw Error("INVALID");
+  throw Error(method==="POST"?"UNKNOWN":"OFFLINE");
+ }
  try{return await r.json() as T;}catch{throw Error("UNKNOWN");}
 }
 const msg=(e:unknown)=>{
  const x=e instanceof Error?e.message:"UNKNOWN";
+ if(x.startsWith("USER:"))return x.slice(5);
  return x==="EXPIRED"?"Session expired. Sign in again.":
  x==="DENIED"?"Current protected Foundation reviewer and document access is required.":
  x==="CHANGED"?"Original review version changed. Refresh before deciding.":
