@@ -52,8 +52,8 @@ export class FinanceInvoiceWorkflowService{
  }
  private async requireBranch(bearer:string,capability:
   "finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.issue",
-  branchRef:string|null,createdBy:string){
-  const actor=await this.sessions.requireAction(bearer,capability);
+  branchRef:string|null,_createdBy:string){
+  await this.sessions.requireAction(bearer,capability);
   const scope=await this.branches.financeReportScope(bearer,capability);
   if(!scope.all&&(!branchRef||!scope.branchRefs.includes(branchRef)))
    throw new ForbiddenException("This invoice is not available to your assigned branch");
