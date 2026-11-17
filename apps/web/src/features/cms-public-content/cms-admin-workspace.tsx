@@ -131,15 +131,21 @@ function payload(d:Draft){
 function CmsReviewSection({kind,fields}:{kind:string;fields:Record<string,unknown>}){
  const heading=val(fields.heading);
  const labels=kind==="HERO"?
-  [["Subtitle",fields.subtitle],["Primary button",fields.primaryLabel],
-   ["Primary destination",fields.primaryPath],["Secondary button",fields.secondaryLabel],
-   ["Secondary destination",fields.secondaryPath]]:
-  kind==="RICH_TEXT"?[["Page text",fields.body]]:
-  kind==="CTA"?[["Button",fields.label],["Destination",fields.path]]:[];
+  [["Eyebrow",fields.eyebrow],
+   ["Badges",Array.isArray(fields.tags)?fields.tags.join(", "):""],
+   ["Description",fields.description],["Subtitle",fields.subtitle],
+   ["Primary button",fields.primaryLabel],["Primary destination",fields.primaryPath],
+   ["Secondary button",fields.secondaryLabel],["Secondary destination",fields.secondaryPath]]:
+  kind==="RICH_TEXT"?[["Eyebrow",fields.eyebrow],["Page text",fields.body],
+   ["Highlights",Array.isArray(fields.highlights)?fields.highlights.join("; "):""]]:
+  kind==="CTA"?[["Heading",fields.heading],["Eyebrow",fields.eyebrow],
+   ["Description",fields.body],["Button",fields.label],["Destination",fields.path]]:[];
  return <div className="cg-cms-review-text">
   {!!heading&&<h5>{heading}</h5>}
   {labels.filter(([,value])=>val(value)).map(([label,value],i)=>
    <p key={i}><strong>{val(label)}:</strong> {val(value)}</p>)}
+  {["FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER"].includes(kind)&&
+   <pre className="cg-cms-review-text">{JSON.stringify(fields,null,2).slice(0,7000)}</pre>}
   {kind==="TEAM"&&Array.isArray(fields.members)&&fields.members.map((member,i)=>{
    const x=member as Record<string,unknown>;
    return <p key={i}><strong>{val(x.name)}</strong> · {val(x.designation)}
