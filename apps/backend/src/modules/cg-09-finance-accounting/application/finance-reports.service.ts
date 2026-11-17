@@ -6,6 +6,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
+import {FinanceBankStatementProofFacade} from "../../cg-19-documents-notifications/application/finance-bank-statement-proof.facade";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid=(v:unknown,field:string)=>{
  if(typeof v!=="string"||!UUID.test(v))
@@ -40,7 +41,8 @@ export class FinanceReportsService{
  constructor(@Inject(DATABASE) private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
-  private readonly protectedOwner:ProtectedAccessOwnerService){}
+  private readonly protectedOwner:ProtectedAccessOwnerService,
+  private readonly statementProof:FinanceBankStatementProofFacade){}
  private actor(bearer:string,write=false){
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
@@ -283,17 +285,18 @@ export class FinanceReportsService{
   const actor=await this.actor(bearer),offset=position(offsetInput);
   const rows=await this.db.query<{reconciliationRef:string;accountName:string;
    statementDate:string;bankItemReference:string;statementAmountMinor:string;
-   postedAmountMinor:string;varianceMinor:string;status:string}>(
+   postedAmountMinor:string;varianceMinor:string;status:string;canUpload:boolean}>(
    "SELECT r.id AS \"reconciliationRef\",a.name AS \"accountName\","+
    "r.statement_date::text AS \"statementDate\","+
    "('•••• '||right(r.bank_item_ref,4)) AS \"bankItemReference\","+
    "r.statement_amount_minor::text AS \"statementAmountMinor\","+
    "r.posted_amount_minor::text AS \"postedAmountMinor\","+
-   "r.variance_minor::text AS \"varianceMinor\",r.status "+
+   "r.variance_minor::text AS \"varianceMinor\",r.status,"+
+   "(r.recorded_by=$2::uuid) AS \"canUpload\" "+
    "FROM finance_bank_reconciliation r JOIN finance_account a "+
    "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
-   "WHERE r.root_realm_id=$1 ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $2",
-   [actor.realmId,offset]);
+   "WHERE r.root_realm_id=$1 ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $3",
+   [actor.realmId,actor.accountId,offset]);
   return {items:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?offset+50:null};
  }
  async verifyBankMatch(bearer:string,refInput:string,raw:unknown){
@@ -303,12 +306,20 @@ export class FinanceReportsService{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID"});
   const v=raw as Record<string,unknown>;
-  if(Object.keys(v).some(k=>!["action","requestKey","currentPassword"].includes(k))||
+  if(Object.keys(v).some(k=>!["action","requestKey","currentPassword",
+      "statementFileRef","statementFileVersion"].includes(k))||
      !["VERIFY","REJECT"].includes(String(v.action))||
      typeof v.currentPassword!=="string"||v.currentPassword.length<8||
      Buffer.byteLength(v.currentPassword,"utf8")>1024)
    throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID"});
   const key=uuid(v.requestKey,"requestKey");
+  const file=v.action==="VERIFY"?uuid(v.statementFileRef,"statementFileRef"):null;
+  const fileVersion=v.action==="VERIFY"?v.statementFileVersion:null;
+  if((v.action==="VERIFY"&&(!Number.isSafeInteger(fileVersion)||
+       Number(fileVersion)<1))||
+     (v.action==="REJECT"&&(v.statementFileRef!==undefined||
+       v.statementFileVersion!==undefined)))
+   throw new BadRequestException({code:"FINANCE_RECONCILIATION_EVIDENCE_INVALID"});
   await this.sessions.limitFoundationRootProof(actor);
   const tx=await this.db.connect();
   try{
@@ -317,12 +328,16 @@ export class FinanceReportsService{
    await this.identity.assertCurrent(tx,actor,"finance.reconciliation.review");
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [actor.realmId+":"+actor.accountId+":"+key]);
-   const old=await tx.query<{id:string;actor_ref:string;action:string;reconciliation_id:string}>(
-    "SELECT id,actor_ref,action,reconciliation_id FROM finance_reconciliation_decision "+
+   const old=await tx.query<{id:string;actor_ref:string;action:string;
+    reconciliation_id:string;statement_file_id:string|null;statement_file_version:number|null}>(
+    "SELECT id,actor_ref,action,reconciliation_id,statement_file_id,statement_file_version "+
+    "FROM finance_reconciliation_decision "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
     [actor.realmId,actor.accountId,key]);
    if(old.rows[0]){
-    if(old.rows[0].reconciliation_id!==ref||old.rows[0].action!==v.action)
+    if(old.rows[0].reconciliation_id!==ref||old.rows[0].action!==v.action||
+       old.rows[0].statement_file_id!==file||
+       old.rows[0].statement_file_version!==(fileVersion??null))
      throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:"PREVIOUSLY_CONFIRMED",replayed:true};
    }
@@ -336,19 +351,23 @@ export class FinanceReportsService{
     throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
    if(v.action==="VERIFY"&&BigInt(rec.variance_minor)!==0n)
     throw new ConflictException({code:"FINANCE_RECONCILIATION_VARIANCE"});
+   if(file)await this.statementProof.guardForReviewer(tx,actor,{
+    reconciliationRef:ref,fileRef:file,fileVersion:Number(fileVersion)});
    await this.sessions.requireFreshFoundationRootProof(tx,actor,v.currentPassword as string);
    await tx.query(
     "INSERT INTO finance_reconciliation_decision(root_realm_id,reconciliation_id,"+
-    "actor_ref,request_key,action,original_digest,password_verified_at) "+
-    "VALUES($1,$2,$3,$4,$5,$6,now())",
-    [actor.realmId,ref,actor.accountId,key,v.action,rec.content_digest]);
+    "actor_ref,request_key,action,original_digest,password_verified_at,"+
+    "statement_file_id,statement_file_version) "+
+    "VALUES($1,$2,$3,$4,$5,$6,now(),$7,$8)",
+    [actor.realmId,ref,actor.accountId,key,v.action,rec.content_digest,
+     file,fileVersion]);
    await tx.query(
     "UPDATE finance_bank_reconciliation SET status=$3,verified_by=$4,verified_at=now() "+
     "WHERE id=$1 AND root_realm_id=$2 AND status='PENDING'",
     [ref,actor.realmId,v.action==="VERIFY"?"VERIFIED":"REJECTED",actor.accountId]);
    await tx.query("COMMIT");
    return {confirmed:true,status:v.action==="VERIFY"?"VERIFIED":"REJECTED",replayed:false,
-    explanation:"Manual independent reconciliation does not verify an outgoing vendor payment."};
+    explanation:"A separate reviewer checked the uploaded scanned statement and exact bank line. This does not confirm gateway or outgoing settlement."};
   }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"bank");}finally{tx.release();}
  }
 }
