@@ -180,7 +180,14 @@ export class FinanceInvoiceWorkflowService{
      [actor.realmId,i.replacesInvoiceRef]);
     if(!prior.rows[0])
      throw new ConflictException({code:"FINANCE_INVOICE_REISSUE_CONFLICT"});
-    await tx.query(
+    const existing=await tx.query<{original_invoice_id:string}>(
+     "SELECT original_invoice_id FROM finance_invoice_reissue_link "+
+     "WHERE root_realm_id=$1 AND replacement_invoice_id=$2 FOR SHARE",
+     [actor.realmId,ref]);
+    if(existing.rows[0]){
+     if(existing.rows[0].original_invoice_id!==i.replacesInvoiceRef)
+      throw new ConflictException({code:"FINANCE_INVOICE_REISSUE_CONFLICT"});
+    }else await tx.query(
      "INSERT INTO finance_invoice_reissue_link(root_realm_id,original_invoice_id,"+
      "replacement_invoice_id,original_credit_note_id,recorded_by) "+
      "VALUES($1,$2,$3,$4,$5)",
