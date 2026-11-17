@@ -186,9 +186,10 @@ export class FinanceReportsService{
  }
  async bankLines(bearer:string,bankInput:string){
   const actor=await this.actor(bearer),bank=uuid(bankInput,"bankRef");
-  const rows=await this.db.query<{journalRef:string;postingDate:string;
+  const rows=await this.db.query<{journalRef:string;financialYearRef:string;postingDate:string;
    description:string;amountMinor:string}>(
-   "SELECT j.id AS \"journalRef\",j.posting_date::text AS \"postingDate\",j.description,"+
+   "SELECT j.id AS \"journalRef\",j.financial_year_id AS \"financialYearRef\","+
+   "j.posting_date::text AS \"postingDate\",j.description,"+
    "(l.debit_minor-l.credit_minor)::text AS \"amountMinor\" "+
    "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
