@@ -75,7 +75,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,onExit,o
   if(current){setCurrent(null);return true;}onExit();return true;});
   return()=>back.remove();
  },[current,onExit]);
- const change=<K extends keyof Form>(field:K,value:Form[K])=>{
+ const change=<K extends keyof Form,>(field:K,value:Form[K])=>{
   setForm(old=>({...old,[field]:value}));setNotice("");
  };
  async function receiptRefresh(invoiceRef:string){
