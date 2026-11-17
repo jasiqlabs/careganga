@@ -134,6 +134,11 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_BUDGET_NOT_APPROVED:"A budget must be independently approved before an allocation or spending event.",
       FINANCE_BUDGET_EVENT_INVALID:"Check the available budget, existing commitments and original posted expense reference.",
       FINANCE_BUDGET_FILTER_INVALID:"Choose a valid budget list page.",
+      FINANCE_REPORT_FILTER_INVALID:"Choose a valid financial year, account, branch or date range.",
+      FINANCE_REPORT_TOO_LARGE:"The trial balance is too large. Choose a narrower branch or financial-year account set.",
+      FINANCE_RECONCILIATION_INVALID:"Choose a real posted bank entry and enter the matching bank statement reference and amount.",
+      FINANCE_RECONCILIATION_CONFLICT:"This bank statement item was already recorded or the independent review has changed.",
+      FINANCE_RECONCILIATION_VARIANCE:"Statement amount and original bank journal amount must match before verification."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
