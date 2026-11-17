@@ -23,9 +23,25 @@ const financeErrors=new Set([
  "FINANCE_INVOICE_REVIEW_UNAVAILABLE","FINANCE_INVOICE_REVIEW_INVALID",
  "FINANCE_INVOICE_INCOMPLETE","FINANCE_INVOICE_POSTING_NOT_READY",
  "FINANCE_INVOICE_NOT_ISSUABLE","FINANCE_INVOICE_DOCUMENT_UNAVAILABLE",
- "FINANCE_INVOICE_ISSUE_CONFLICT","FINANCE_INVOICE_FILTER_INVALID"
+ "FINANCE_INVOICE_ISSUE_CONFLICT","FINANCE_INVOICE_FILTER_INVALID",
+ "FINANCE_BUDGET_SOURCE_INVALID","FINANCE_BUDGET_STALE",
+ "FINANCE_BUDGET_FORM_INVALID","FINANCE_BUDGET_AMOUNT_INVALID",
+ "FINANCE_BUDGET_PERIOD_INVALID","FINANCE_BUDGET_REPLAY_CONFLICT",
+ "FINANCE_BUDGET_REVIEW_INVALID","FINANCE_BUDGET_REVIEW_UNAVAILABLE",
+ "FINANCE_BUDGET_NOT_APPROVED","FINANCE_BUDGET_EVENT_INVALID",
+ "FINANCE_BUDGET_FILTER_INVALID"
 ]);
 function allowed(parts:string[],method:string):boolean{
+ if(parts[0]==="budgets"){
+  if(parts.length===2&&["options","list"].includes(parts[1]))return method==="GET";
+  if(parts.length===2&&parts[1]==="drafts")return method==="POST";
+  if(parts.length===3&&parts[1]==="drafts"&&UUID.test(parts[2]))return method==="PATCH";
+  if(parts.length===3&&parts[1]==="commands"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===2&&UUID.test(parts[1]))return method==="GET";
+  if(parts.length===3&&UUID.test(parts[1])&&["submit","reconcile","events"].includes(parts[2]))
+   return method==="POST";
+  return false;
+ }
  if(parts[0]==="invoices"){
   if(parts.length===2&&["options","posting-accounts","draft-commands","workflow-commands","drafts"].includes(parts[1])){
    if(["draft-commands","workflow-commands"].includes(parts[1]))return false;
@@ -101,6 +117,12 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return NextResponse.json({message:"Review the finance form and complete the required details."},{status:400});}
  }
  const target=new URL("/api/finance-accounting/"+parts.join("/"),backend);
+ if(method==="GET"&&parts[0]==="budgets"&&parts[1]==="list"){
+  const offset=request.nextUrl.searchParams.get("offset")??"0";
+  if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+   return NextResponse.json({message:"Choose a valid budget list page."},{status:400});
+  target.searchParams.set("offset",offset);
+ }
  if(method==="GET"&&parts[0]==="invoices"&&parts[1]==="drafts"){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
@@ -172,7 +194,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   const obj=data&&typeof data==="object"&&!Array.isArray(data)?data as Record<string,unknown>:{};
   const code=typeof obj.code==="string"&&financeErrors.has(obj.code)?obj.code:null;
   const fields=new Set(["fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherRef","purpose","payeeName","voucherType","postingDate","quantity","unitRate","tax","charges","expectedVersion","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind","branchRef",
-   "invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
+   "budgetRef","budgetName","periodStart","periodEnd","fundingNote","kind","journalRef","invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","expectedVersion","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef","creditAccountRef"]);
   const field=code&&typeof obj.field==="string"&&fields.has(obj.field)?obj.field:null;
   const explanation=code&&typeof obj.message==="string"&&obj.message.length<=300?
    obj.message:safeStatus===401?"Your session expired. Sign in again.":
