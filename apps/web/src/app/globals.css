@@ -868,3 +868,15 @@ button:disabled { cursor:wait; opacity:.65; }
 .cg-cms-dashboard strong{font-size:1.75rem;line-height:1.2;color:var(--cg-text);font-variant-numeric:tabular-nums}
 @media(max-width:50rem){.cg-cms-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:23rem){.cg-cms-dashboard{grid-template-columns:1fr}}
+
+/* CG-18 original C22–C24 editor tabs, using the shared Admin palette. */
+.cg-cms-tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin:.65rem 0 1rem;
+ border-bottom:1px solid var(--cg-border);padding-bottom:.5rem}
+.cg-cms-tabs button{border:1px solid transparent;border-radius:.45rem;
+ background:transparent;color:var(--cg-text);font-weight:650;
+ min-height:2.75rem;padding:.55rem .85rem;cursor:pointer}
+.cg-cms-tabs button.is-active,.cg-cms-tabs button[aria-selected="true"]{
+ border-color:var(--cg-border);background:var(--cg-surface);
+ color:var(--cg-accent)}
+.cg-cms-tabs button:focus-visible{outline:2px solid var(--cg-focus);outline-offset:2px}
+@media(max-width:36rem){.cg-cms-tabs button{flex:1 1 45%;font-size:.86rem}}
