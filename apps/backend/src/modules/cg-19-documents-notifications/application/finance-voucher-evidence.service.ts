@@ -18,9 +18,10 @@ const id=(v:unknown):string=>{
   throw new BadRequestException({code:"FINANCE_VOUCHER_SOURCE_INVALID",field:"voucherRef"});
  return v;
 };
-type Input={voucherRef:string;voucherVersion:number;requestKey:string;mime:string;
+type Input={voucherRef:string;voucherVersion:number;requestKey:string;proofPurpose:"VOUCHER"|"PAYMENT";mime:string;
  sizeBytes:number;sha256:string};
 type Intent={id:string;realm_id:string;voucher_id:string;voucher_version:number;
+ owner_kind:"CG09_VOUCHER"|"CG09_PAYMENT";
  requested_by:string;request_key:string;mime:string;size_bytes:string;
  expected_sha256:string;request_digest:string;object_key:string;
  status:string;reserved_until:Date};
@@ -30,18 +31,19 @@ const parse=(value:unknown):Input=>{
  if(!value||typeof value!=="object"||Array.isArray(value))
   throw new BadRequestException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
  const v=value as Record<string,unknown>;
- if(Object.keys(v).some(k=>!["voucherRef","voucherVersion","requestKey","mime","sizeBytes","sha256"].includes(k))||
+ if(Object.keys(v).some(k=>!["voucherRef","voucherVersion","requestKey","proofPurpose","mime","sizeBytes","sha256"].includes(k))||
    typeof v.voucherRef!=="string"||!UUID.test(v.voucherRef)||
+   !["VOUCHER","PAYMENT",undefined].includes(v.proofPurpose)||
    !Number.isSafeInteger(v.voucherVersion)||Number(v.voucherVersion)<1||
    typeof v.requestKey!=="string"||!UUID.test(v.requestKey)||
    typeof v.mime!=="string"||!MIME.has(v.mime)||
    !Number.isSafeInteger(v.sizeBytes)||Number(v.sizeBytes)<1||
    Number(v.sizeBytes)>10485760||typeof v.sha256!=="string"||!SHA.test(v.sha256))
   throw new BadRequestException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
- return v as Input;
+ return {...v,proofPurpose:v.proofPurpose==="PAYMENT"?"PAYMENT":"VOUCHER"} as Input;
 };
 const digest=(x:Input)=>createHash("sha256").update(JSON.stringify([
- "CG19_FINANCE_VOUCHER_PROOF_V1",x.voucherRef,x.voucherVersion,
+ "CG19_FINANCE_VOUCHER_PROOF_V2",x.proofPurpose,x.voucherRef,x.voucherVersion,
  x.mime,x.sizeBytes,x.sha256])).digest("hex");
 const scanMatches=(verified:{state:string;sha256:string;sizeBytes:number;mime:string;
  objectVersion:string;scanProofRef:string;verifiedAt:string},source:Intent)=>{
@@ -71,24 +73,30 @@ export class FinanceVoucherEvidenceService{
  async initiate(bearer:string,value:unknown){
   const request=parse(value);
   const actor=await this.authority(bearer,true);
-  await this.source.current(bearer,request.voucherRef,request.voucherVersion,true);
+  if(request.proofPurpose==="PAYMENT")
+   await this.source.currentForPayment(bearer,request.voucherRef,request.voucherVersion);
+  else await this.source.current(bearer,request.voucherRef,request.voucherVersion,true);
   const key="careganga/private/cg19/"+actor.realmId+"/"+randomUUID();
   const requestDigest=digest(request);
   let intent:Intent;
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
-   await this.source.guardDraft(client,actor,request.voucherRef,request.voucherVersion);
+   if(request.proofPurpose==="PAYMENT")
+    await this.source.guardPayment(client,actor,request.voucherRef,request.voucherVersion);
+   else await this.source.guardDraft(client,actor,request.voucherRef,request.voucherVersion);
    const inserted=await client.query<Intent>(`
     INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,
      request_key,mime,size_bytes,expected_sha256,request_digest,classification,
      object_key,reserved_until,owner_kind,voucher_id,voucher_version)
-    VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,'FINANCE_VOUCHER_PROOF',
-     $9,now()+interval '15 minutes','CG09_VOUCHER',$10,$11)
+    VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,$12,
+     $9,now()+interval '15 minutes',$13,$10,$11)
     ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *
    `,[actor.realmId,request.voucherVersion,actor.accountId,request.requestKey,
     request.mime,request.sizeBytes,request.sha256,requestDigest,key,
-    request.voucherRef,request.voucherVersion]);
+    request.voucherRef,request.voucherVersion,
+    request.proofPurpose==="PAYMENT"?"FINANCE_PAYMENT_PROOF":"FINANCE_VOUCHER_PROOF",
+    request.proofPurpose==="PAYMENT"?"CG09_PAYMENT":"CG09_VOUCHER"]);
    if(inserted.rows[0]){
     intent=inserted.rows[0];
     await client.query(`
@@ -98,8 +106,9 @@ export class FinanceVoucherEvidenceService{
    }else{
     const earlier=await client.query<Intent>(`
      SELECT * FROM cg19_upload_intent WHERE realm_id=$1
-      AND requested_by=$2 AND request_key=$3 AND owner_kind='CG09_VOUCHER' FOR SHARE`,
-     [actor.realmId,actor.accountId,request.requestKey]);
+      AND requested_by=$2 AND request_key=$3 AND owner_kind=$4 FOR SHARE`,
+     [actor.realmId,actor.accountId,request.requestKey,
+     request.proofPurpose==="PAYMENT"?"CG09_PAYMENT":"CG09_VOUCHER"]);
     if(!earlier.rows[0]||earlier.rows[0].request_digest!==requestDigest)
      throw new ConflictException({code:"FINANCE_VOUCHER_EVIDENCE_CONFLICT"});
     intent=earlier.rows[0];
@@ -145,10 +154,12 @@ export class FinanceVoucherEvidenceService{
   const actor=await this.authority(bearer,write);
   const result=await this.db.query<Intent>(`
    SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2
-    AND owner_kind='CG09_VOUCHER'`,[id(reference),actor.realmId]);
+    AND owner_kind IN('CG09_VOUCHER','CG09_PAYMENT')`,[id(reference),actor.realmId]);
   const row=result.rows[0];
   if(!row)throw new NotFoundException({code:"FINANCE_VOUCHER_EVIDENCE_INVALID"});
-  if(write)await this.source.current(bearer,row.voucher_id,row.voucher_version,true);
+  if(write&&row.owner_kind==="CG09_PAYMENT")
+   await this.source.currentForPayment(bearer,row.voucher_id,row.voucher_version);
+  else if(write)await this.source.current(bearer,row.voucher_id,row.voucher_version,true);
   else await this.source.historical(bearer,row.voucher_id,row.voucher_version);
   return {actor,row};
  }
@@ -156,8 +167,8 @@ export class FinanceVoucherEvidenceService{
   const {actor,row}=await this.intent(bearer,reference);
   const found=await this.db.query<{id:string;revision:number}>(`
    SELECT id,revision FROM cg19_stored_file
-   WHERE realm_id=$1 AND upload_intent_id=$2 AND owner_kind='CG09_VOUCHER'
-    AND revoked_at IS NULL`,[actor.realmId,row.id]);
+   WHERE realm_id=$1 AND upload_intent_id=$2 AND owner_kind=$3
+    AND revoked_at IS NULL`,[actor.realmId,row.id,row.owner_kind]);
   return {uploadRef:row.id,status:row.status,cleanVerified:row.status==="VALIDATED"&&!!found.rows[0],
    fileRef:row.status==="VALIDATED"?found.rows[0]?.id??null:null,
    fileVersion:row.status==="VALIDATED"?found.rows[0]?.revision??null:null};
@@ -184,10 +195,12 @@ export class FinanceVoucherEvidenceService{
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
-   await this.source.guardDraft(client,actor,row.voucher_id,row.voucher_version);
+   if(row.owner_kind==="CG09_PAYMENT")
+    await this.source.guardPayment(client,actor,row.voucher_id,row.voucher_version);
+   else await this.source.guardDraft(client,actor,row.voucher_id,row.voucher_version);
    const locked=await client.query<Intent>(`
     SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2
-     AND owner_kind='CG09_VOUCHER' FOR UPDATE`,[row.id,actor.realmId]);
+     AND owner_kind=$3 FOR UPDATE`,[row.id,actor.realmId,row.owner_kind]);
    const now=locked.rows[0];
    if(!now||now.reserved_until.getTime()<=Date.now()||
      ["REJECTED","EXPIRED"].includes(now.status))
@@ -202,10 +215,10 @@ export class FinanceVoucherEvidenceService{
        original_mime,verified_sha256,verified_size_bytes,object_key,object_version,
        scan_status,scan_proof_ref,scanned_at,created_by,owner_kind,voucher_id,voucher_version)
       VALUES($1,$2,NULL,$3,$4,$5,$6,$7,$8,'CLEAN_VERIFIED',$9,$10,$11,
-       'CG09_VOUCHER',$12,$13) RETURNING id`,
+       $14,$12,$13) RETURNING id`,
       [actor.realmId,row.id,row.voucher_version,row.mime,row.expected_sha256,
        row.size_bytes,row.object_key,verified.objectVersion,verified.scanProofRef,
-       verified.verifiedAt,actor.accountId,row.voucher_id,row.voucher_version]);
+       verified.verifiedAt,actor.accountId,row.voucher_id,row.voucher_version,row.owner_kind]);
      await client.query(`
       INSERT INTO cg19_document_event(realm_id,voucher_id,actor_id,intent_id,file_id,event_key)
       VALUES($1,$2,$3,$4,$5,'UPLOAD_VERIFIED')`,
@@ -220,6 +233,38 @@ export class FinanceVoucherEvidenceService{
    await client.query("COMMIT");
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
   return this.status(bearer,row.id);
+ }
+ async listPayment(bearer:string,voucherRef:string,voucherVersion:number){
+  const actor=await this.authority(bearer);
+  await this.source.historical(bearer,id(voucherRef),voucherVersion);
+  const found=await this.db.query<{fileRef:string;fileVersion:number;mime:string;sizeBytes:string}>(`
+   SELECT f.id AS "fileRef",f.revision AS "fileVersion",
+    f.original_mime AS mime,f.verified_size_bytes::text AS "sizeBytes"
+   FROM cg19_stored_file f JOIN cg19_upload_intent i
+    ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+   WHERE f.realm_id=$1 AND f.voucher_id=$2 AND f.voucher_version=$3
+    AND f.owner_kind='CG09_PAYMENT' AND i.owner_kind='CG09_PAYMENT'
+    AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+    AND i.status='VALIDATED'
+   ORDER BY f.created_at DESC,f.id DESC LIMIT 16`,
+   [actor.realmId,voucherRef,voucherVersion]);
+  return {files:found.rows};
+ }
+ /** Validated private payment proof; no public URL, checksum bypass or fake scan. */
+ async guardPaymentProof(client:PoolClient,actor:VerifiedFoundationActor,
+  voucherRef:string,voucherVersion:number,fileRef:string,fileVersion:number){
+  if(!UUID.test(fileRef)||!Number.isSafeInteger(fileVersion)||fileVersion<1)
+   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_INVALID"});
+  const found=await client.query<{id:string}>(`
+    SELECT f.id FROM cg19_stored_file f JOIN cg19_upload_intent i
+     ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+    WHERE f.id=$1 AND f.realm_id=$2 AND f.voucher_id=$3 AND f.voucher_version=$4
+     AND f.revision=$5 AND f.owner_kind='CG09_PAYMENT'
+     AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+     AND i.owner_kind='CG09_PAYMENT' AND i.status='VALIDATED'
+    FOR SHARE OF f,i`,[fileRef,actor.realmId,voucherRef,voucherVersion,fileVersion]);
+  if(!found.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_INVALID"});
+  return {fileRef,fileVersion};
  }
  async list(bearer:string,voucherRef:string,voucherVersion:number){
   const actor=await this.authority(bearer);
@@ -315,8 +360,8 @@ export class FinanceVoucherEvidenceService{
     f.original_mime,f.verified_sha256,f.verified_size_bytes,f.revoked_at
    FROM cg19_stored_file f JOIN cg19_upload_intent i
     ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
-   WHERE f.id=$1 AND f.realm_id=$2 AND f.owner_kind='CG09_VOUCHER'
-    AND i.owner_kind='CG09_VOUCHER' AND i.status='VALIDATED'
+   WHERE f.id=$1 AND f.realm_id=$2 AND f.owner_kind IN('CG09_VOUCHER','CG09_PAYMENT')
+    AND i.owner_kind=f.owner_kind AND i.status='VALIDATED'
     AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'`,
    [id(fileRef),actor.realmId]);
   const file=row.rows[0];
