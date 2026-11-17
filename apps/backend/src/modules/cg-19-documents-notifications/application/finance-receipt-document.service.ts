@@ -40,6 +40,8 @@ export class FinanceReceiptDocumentService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":receipt-document:"+receiptRef]);
    const prev=await tx.query<ReceiptDoc>(
     "SELECT * FROM cg19_finance_receipt_document "+
     "WHERE root_realm_id=$1 AND receipt_id=$2 FOR UPDATE",
