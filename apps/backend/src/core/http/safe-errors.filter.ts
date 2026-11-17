@@ -51,7 +51,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
       ?rawCode:null;
     const rawField=payload&&typeof payload==="object"&&"field" in payload?payload.field:null;
     const field=typeof rawField==="string"&&["identifier","password","currentPassword","newPassword","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind",
-      "expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","branchRef","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
+      "invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","budgetRef","budgetName","periodStart","periodEnd","fundingNote","journalRef","bankRef","bankItemReference","statementDate","statementAmount","reconciliationRef","from","to","yearRef","accountRef","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","branchRef","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
       "creditAccountRef","fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherType","voucherRef","payeeName","purpose","quantity","unitRate","tax","charges","expectedVersion"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
