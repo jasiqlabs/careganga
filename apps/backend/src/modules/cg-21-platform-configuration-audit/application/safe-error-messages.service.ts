@@ -26,22 +26,22 @@ export class SafeErrorMessagesService{
  }
  async update(bearer:string,body:unknown){
   if(!body||typeof body!=="object"||Array.isArray(body))
-   throw new BadRequestException("Select a permitted message and enter the replacement wording.");
+   throw new BadRequestException({code:"PLATFORM_COPY_FORM_INVALID"});
   const input=body as Record<string,unknown>;
   if(Object.keys(input).some(k=>!["key","message","expectedRevision","requestKey","currentPassword"].includes(k)))
-   throw new BadRequestException("Only message wording can be changed here.");
+   throw new BadRequestException({code:"PLATFORM_COPY_FORM_INVALID"});
   const key=input.key,msg=input.message,expected=input.expectedRevision,
    req=input.requestKey,password=input.currentPassword;
   if(typeof key!=="string"||!Object.hasOwn(SAFE_MESSAGE_CATALOG,key))
-   throw new BadRequestException("Select a supported user-facing error message.");
+   throw new BadRequestException({code:"PLATFORM_COPY_UNSUPPORTED"});
   if(typeof msg!=="string"||msg.trim().length<16||msg.trim().length>220||
     /[<>\r\n\x00-\x1f]/.test(msg)||!/[.!?]$/.test(msg.trim()))
-   throw new BadRequestException("Write a plain-language sentence of 16–220 characters, ending with punctuation. No markup or hidden characters.");
+   throw new BadRequestException({code:"PLATFORM_COPY_WORDING_INVALID"});
   if(!Number.isInteger(expected)||Number(expected)<0||Number(expected)>2147483646)
-   throw new BadRequestException("Refresh this message before editing.");
+   throw new BadRequestException({code:"PLATFORM_COPY_STALE"});
   if(typeof req!=="string"||!UUID.test(req)||
     typeof password!=="string"||password.length<8||Buffer.byteLength(password,"utf8")>1024)
-   throw new BadRequestException("Enter your current password to confirm the wording change.");
+   throw new BadRequestException({code:"PLATFORM_COPY_PASSWORD_REQUIRED"});
   const newMessage=msg.trim(),revision=Number(expected);
   const fingerprint=createHash("sha256").update(JSON.stringify([key,newMessage,revision])).digest("hex");
   const actor=await this.sessions.requireAction(bearer,"platform.settings.manage");
@@ -58,7 +58,7 @@ export class SafeErrorMessagesService{
      [actor.realmId,actor.accountId,req]);
     if(prior.rows[0]){
      if(prior.rows[0].request_digest!==fingerprint)
-      throw new ConflictException("This saved request was already used for different wording. Refresh and try again.");
+      throw new ConflictException({code:"PLATFORM_COPY_REPLAY_CONFLICT"});
      await tx.query("COMMIT");
      return {status:"REPLAY_CONFIRMED",key,revision:prior.rows[0].result_revision};
     }
@@ -71,7 +71,7 @@ export class SafeErrorMessagesService{
     if(revision!==(previous?.revision??0))
      throw new ConflictException({code:"PLATFORM_STALE"});
     if(newMessage===(previous?.safe_message??SAFE_MESSAGE_CATALOG[key]))
-     throw new BadRequestException("Choose different wording. This message already uses that text.");
+     throw new BadRequestException({code:"PLATFORM_COPY_NO_CHANGE"});
     const next=revision+1;
     let messageId:string;
     if(previous){
