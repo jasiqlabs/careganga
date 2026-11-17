@@ -126,7 +126,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
      "POST",{...review.body,requestKey:review.key});
    if(!result.status)throw Error("UNKNOWN");
    setPending(null);setSelected(null);setOriginal(null);setPassword("");
-   setInfo("Original CG-03 decision confirmed: "+result.status+
+   setInfo("Reviewer decision confirmed: "+result.status+
     ". No money is marked paid.");
    await load();
   }catch(e){setPending(review);setError(msg(e));
@@ -185,7 +185,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
    </>}
    {selected&&original&&<>
     <Text style={s.bold}>{selected.reference} · {selected.voucherNumber}</Text>
-    <Text style={s.hint}>Source revision {selected.sourceVersion} (immutable case proof)</Text>
+    <Text style={s.hint}>Original submitted voucher version: {selected.sourceVersion}</Text>
     <View style={s.card}>
      <Text style={s.bold}>{original.header.type} · {original.header.payeeName}</Text>
      <Text style={s.hint}>Posting date: {original.header.postingDate}</Text>
