@@ -1,0 +1,512 @@
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
+ NotFoundException} from "@nestjs/common";
+import {createHash,randomUUID} from "node:crypto";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
+import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
+import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const HASH=/^[a-f0-9]{64}$/;
+const KINDS=new Set(["HOME","ABOUT"]);
+const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER"]);
+const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM"]);
+const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
+const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+function uuid(v:unknown,field:string){
+ if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
+ return v;
+}
+function text(v:unknown,field:string,max=4000,min=0){
+ if(typeof v!=="string"||v.trim().length<min||v.length>max||
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v))
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
+ return v.trim();
+}
+function input(v:unknown,keys:string[]){
+ if(!v||typeof v!=="object"||Array.isArray(v)||
+   Object.keys(v).some(k=>!keys.includes(k)))
+  throw new BadRequestException({code:"CMS_INPUT_INVALID"});
+ return v as Record<string,unknown>;
+}
+function path(v:unknown,field:string){
+ const x=text(v,field,140,1);
+ if(!/^\/(?:[a-z0-9-]+\/?)*$/.test(x)||x.startsWith("//")||
+  /(^|\/)(admin|api|auth|internal|_next)(\/|$)/.test(x)||
+  /^\/(join|volunteer|book)(\/|$)/.test(x))
+  throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
+ return x;
+}
+type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER";order:number;
+ fields:Record<string,unknown>};
+type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM";
+ altText:string;order:number};
+type Content={kind:"HOME"|"ABOUT";slug:string;title:string;seoTitle:string;
+ seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[]};
+function parseContent(raw:unknown):Content{
+ const v=input(raw,["kind","slug","title","seoTitle","seoDescription","canonicalPath",
+  "sections","assets"]);
+ if(typeof v.kind!=="string"||!KINDS.has(v.kind))
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"kind"});
+ const kind=v.kind as Content["kind"],slug=text(v.slug,"slug",70,1).toLowerCase();
+ if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug)||reserved.has(slug)||
+  (kind==="HOME"&&slug!=="home")||(kind==="ABOUT"&&slug!=="about"))
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"slug"});
+ const title=text(v.title,"title",180,3);
+ const seoTitle=text(v.seoTitle??v.title,"seoTitle",180,3);
+ const seoDescription=text(v.seoDescription??"","seoDescription",300);
+ const canonicalPath=path(v.canonicalPath??(kind==="HOME"?"/":"/about"),"canonicalPath");
+ if((kind==="HOME"&&canonicalPath!=="/")||
+    (kind==="ABOUT"&&canonicalPath!=="/about"))
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"canonicalPath"});
+ if(!Array.isArray(v.sections)||v.sections.length<1||v.sections.length>24)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+ const sections=v.sections.map((raw,i)=>{
+  const sec=input(raw,["kind","order","fields"]);
+  if(typeof sec.kind!=="string"||!SECTION.has(sec.kind)||
+    !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
+  const fields=input(sec.fields,sec.kind==="HERO"?
+   ["heading","subtitle","primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
+   sec.kind==="TEAM"?["heading","members"]:
+   sec.kind==="CTA"?["label","path"]:
+   sec.kind==="PROJECT_TEASER"?["heading"]:["heading","body"]);
+  const out:Record<string,unknown>={};
+  if(sec.kind==="HERO"){
+   out.heading=text(fields.heading,"heading",180,3);
+   out.subtitle=text(fields.subtitle??"","subtitle",700);
+   if(fields.primaryLabel!==undefined)out.primaryLabel=text(fields.primaryLabel,"primaryLabel",60,2);
+   if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath");
+   if(Boolean(fields.primaryLabel)!==Boolean(fields.primaryPath))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"primaryPath"});
+   if(fields.secondaryLabel!==undefined)out.secondaryLabel=text(fields.secondaryLabel,"secondaryLabel",60,2);
+   if(fields.secondaryPath!==undefined)out.secondaryPath=path(fields.secondaryPath,"secondaryPath");
+   if(Boolean(fields.secondaryLabel)!==Boolean(fields.secondaryPath))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"secondaryPath"});
+  }else if(sec.kind==="RICH_TEXT"){
+   out.heading=text(fields.heading,"heading",160,3);
+   out.body=text(fields.body,"body",4000,5);
+  }else if(sec.kind==="CTA"){
+   out.label=text(fields.label,"label",80,2);
+   out.path=path(fields.path,"path");
+  }else if(sec.kind==="TEAM"){
+   out.heading=text(fields.heading??"Our team","heading",160,3);
+   if(!Array.isArray(fields.members)||fields.members.length>15)
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"members"});
+   out.members=fields.members.map((member:unknown)=>{
+    const m=input(member,["name","designation","bio","consentConfirmed"]);
+    if(m.consentConfirmed!==true)
+     throw new BadRequestException({code:"CMS_TEAM_CONSENT_REQUIRED"});
+    return {name:text(m.name,"name",100,2),
+     designation:text(m.designation,"designation",100,2),
+     bio:text(m.bio??"","bio",600),
+     consentConfirmed:true};
+   });
+  }else out.heading=text(fields.heading??"","heading",160);
+  if(JSON.stringify(out).length>8192)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+  return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:out};
+ });
+ if(new Set(sections.map(s=>s.kind+":"+s.order)).size!==sections.length)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+ if(!sections.some(s=>s.kind==="HERO")&&kind==="HOME")
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+ if(!Array.isArray(v.assets??[])||(v.assets as unknown[]).length>20)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
+ const assets=(v.assets as unknown[]|undefined??[]).map((raw,i)=>{
+  const a=input(raw,["fileRef","version","role","altText","order"]);
+  if(typeof a.role!=="string"||!assetRoles.has(a.role)||
+   !Number.isSafeInteger(a.version)||Number(a.version)<1||
+   !Number.isSafeInteger(a.order)||Number(a.order)<0||Number(a.order)>100)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"]"});
+  return {fileRef:uuid(a.fileRef,"fileRef"),version:Number(a.version),
+   role:a.role as Placement["role"],altText:text(a.altText,"altText",300,3),
+   order:Number(a.order)};
+ });
+ if(new Set(assets.map(a=>a.role+":"+a.order)).size!==assets.length)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets"});
+ return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets};
+}
+type Page={id:string;kind:string;slug:string;version:string;created_by:string;
+ draft_revision_no:number;archived_at:Date|null};
+type Revision={id:string;revision_no:number;status:string;content_digest:string;
+ approval_case_ref:string|null;title:string;seo_title:string;seo_description:string;
+ seo_canonical_path:string;created_by:string};
+@Injectable()
+export class CmsEditorialService{
+ constructor(@Inject(DATABASE)private readonly db:Pool,
+  private readonly sessions:SessionService,
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly approvals:CmsPublicationApprovalService,
+  private readonly media:CmsDraftMediaService){}
+ private async withTx<T>(cb:(tx:PoolClient)=>Promise<T>):Promise<T>{
+  const tx=await this.db.connect();
+  try{await tx.query("BEGIN");const result=await cb(tx);await tx.query("COMMIT");return result;}
+  catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ private async row(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,lock=false){
+  const result=await tx.query<Page>(
+   "SELECT * FROM cms_page WHERE id=$1 AND foundation_root_id=$2 AND archived_at IS NULL "+
+   (lock?"FOR UPDATE":"FOR SHARE"),[uuid(ref,"pageRef"),actor.realmId]);
+  const p=result.rows[0];if(!p)throw new NotFoundException({code:"CMS_NOT_FOUND"});
+  return p;
+ }
+ private async revision(tx:PoolClient,actor:VerifiedFoundationActor,p:Page){
+  const result=await tx.query<Revision>(
+   "SELECT * FROM cms_page_revision WHERE page_id=$1 AND foundation_root_id=$2 "+
+   "AND revision_no=$3 FOR SHARE",[p.id,actor.realmId,p.draft_revision_no]);
+  const v=result.rows[0];if(!v)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+  return v;
+ }
+ async list(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.view");
+  const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
+   version:string;draftStatus:string;publicStatus:string|null}>(
+   'SELECT p.id AS "pageRef",p.kind,p.slug,v.title,p.version,'+
+   'v.status AS "draftStatus",pub.state AS "publicStatus" '+
+   'FROM cms_page p JOIN cms_page_revision v ON v.page_id=p.id '+
+   'AND v.foundation_root_id=p.foundation_root_id '+
+   'AND v.revision_no=p.draft_revision_no '+
+   'LEFT JOIN cms_page_effective e ON e.page_id=p.id '+
+   'AND e.foundation_root_id=p.foundation_root_id '+
+   'LEFT JOIN cms_publication pub ON pub.id=e.publication_id '+
+   "WHERE p.foundation_root_id=$1 AND p.archived_at IS NULL "+
+   "ORDER BY p.created_at DESC,p.id DESC LIMIT 100",[a.realmId]);
+  return {pages:result.rows};
+ }
+ async detail(bearer:string,ref:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.view");
+  return this.withTx(async tx=>{
+   const page=await this.row(tx,a,ref);
+   const rev=await this.revision(tx,a,page);
+   const [sections,assets,published]=await Promise.all([
+    tx.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
+     "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
+     "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no,id",
+     [a.realmId,rev.id]),
+    tx.query<{cg19_file_ref:string;cg19_validated_version:number;role:string;
+     alt_text:string;sort_order:number}>(
+     "SELECT cg19_file_ref,cg19_validated_version,role,alt_text,sort_order "+
+     "FROM cms_asset_placement WHERE foundation_root_id=$1 AND page_revision_id=$2 "+
+     "ORDER BY sort_order,id",[a.realmId,rev.id]),
+    tx.query<{state:string;publication_id:string}>(
+     "SELECT pub.state,pub.id AS publication_id FROM cms_page_effective e "+
+     "JOIN cms_publication pub ON pub.id=e.publication_id "+
+     "AND pub.foundation_root_id=e.foundation_root_id "+
+     "WHERE e.foundation_root_id=$1 AND e.page_id=$2",
+     [a.realmId,page.id])
+   ]);
+   return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
+    revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
+    approvalCaseRef:rev.approval_case_ref,title:rev.title,
+    seoTitle:rev.seo_title,seoDescription:rev.seo_description,
+    canonicalPath:rev.seo_canonical_path,
+    sections:sections.rows.map(x=>({kind:x.section_kind,order:x.order_no,fields:x.structured_fields})),
+    assets:assets.rows.map(x=>({fileRef:x.cg19_file_ref,
+     version:x.cg19_validated_version,role:x.role,altText:x.alt_text,order:x.sort_order})),
+    publicationStatus:published.rows[0]?.state??"NOT_PUBLISHED"};
+  });
+ }
+ private async putSections(tx:PoolClient,actor:VerifiedFoundationActor,rev:string,
+  value:Content){
+  await tx.query("DELETE FROM cms_asset_placement WHERE foundation_root_id=$1 "+
+   "AND page_revision_id=$2",[actor.realmId,rev]);
+  await tx.query("DELETE FROM cms_section_revision WHERE foundation_root_id=$1 "+
+   "AND page_revision_id=$2",[actor.realmId,rev]);
+  for(const sec of value.sections){
+   await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
+    "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
+    [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
+  }
+  for(const asset of value.assets){
+   await this.media.validatePlacement(tx,actor,rev,asset.fileRef,asset.version);
+   await tx.query("INSERT INTO cms_asset_placement(foundation_root_id,page_revision_id,"+
+    "cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,public_rights_status) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,'VALIDATED')",
+    [actor.realmId,rev,asset.fileRef,asset.version,
+     asset.role,asset.altText,asset.order]);
+  }
+ }
+ async create(bearer:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
+  const v=input(raw,["content","requestKey"]);
+  const commandKey=uuid(v.requestKey,"requestKey"),content=parseContent(v.content);
+  const digest=sha(content);
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   const replay=await tx.query<{page_or_nav_ref:string;redacted_metadata:Record<string,unknown>;
+    actor_ref:string}>(
+    "SELECT page_or_nav_ref,redacted_metadata,actor_ref FROM cms_change_audit "+
+    "WHERE foundation_root_id=$1 AND event_key=$2 FOR SHARE",
+    [actor.realmId,commandKey]);
+   if(replay.rows[0]){
+    if(replay.rows[0].actor_ref!==actor.accountId||
+      replay.rows[0].redacted_metadata.digest!==digest)
+     throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
+    return {confirmed:true,pageRef:replay.rows[0].page_or_nav_ref,replayed:true};
+   }
+   const found=await tx.query("SELECT id FROM cms_page "+
+    "WHERE foundation_root_id=$1 AND slug=$2 FOR UPDATE",
+    [actor.realmId,content.slug]);
+   if(found.rowCount)throw new ConflictException({code:"CMS_PAGE_EXISTS"});
+   const page=await tx.query<{id:string}>(
+    "INSERT INTO cms_page(foundation_root_id,slug,kind,draft_revision_no,created_by) "+
+    "VALUES($1,$2,$3,1,$4) RETURNING id",
+    [actor.realmId,content.slug,content.kind,actor.accountId]);
+   const rev=await tx.query<{id:string}>(
+    "INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,"+
+    "seo_title,seo_description,seo_canonical_path,content_digest,created_by) "+
+    "VALUES($1,$2,1,$3,$4,$5,$6,$7,$8) RETURNING id",
+    [actor.realmId,page.rows[0].id,content.title,content.seoTitle,
+     content.seoDescription,content.canonicalPath,digest,actor.accountId]);
+   await this.putSections(tx,actor,rev.rows[0].id,content);
+   await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,event_key,"+
+    "actor_ref,action,revision_ref,redacted_metadata) "+
+    "VALUES($1,$2,$3,$4,'CREATE',$5,$6::jsonb)",
+    [actor.realmId,page.rows[0].id,commandKey,actor.accountId,rev.rows[0].id,
+     JSON.stringify({digest})]);
+   return {confirmed:true,pageRef:page.rows[0].id,revisionRef:rev.rows[0].id,
+    status:"DRAFT",replayed:false};
+  });
+ }
+ async save(bearer:string,pageRef:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
+  const v=input(raw,["content","expectedVersion","requestKey"]);
+  const key=uuid(v.requestKey,"requestKey"),value=parseContent(v.content);
+  const expected=Number(v.expectedVersion);
+  if(!Number.isSafeInteger(v.expectedVersion)||expected<1)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"expectedVersion"});
+  const digest=sha(value);
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   const prior=await tx.query<{page_or_nav_ref:string;actor_ref:string;
+    redacted_metadata:Record<string,unknown>}>(
+    "SELECT page_or_nav_ref,actor_ref,redacted_metadata FROM cms_change_audit "+
+    "WHERE foundation_root_id=$1 AND event_key=$2 FOR SHARE",
+    [actor.realmId,key]);
+   if(prior.rows[0]){
+    if(prior.rows[0].page_or_nav_ref!==pageRef||
+      prior.rows[0].actor_ref!==actor.accountId||
+      prior.rows[0].redacted_metadata.digest!==digest)
+     throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
+    return {confirmed:true,status:"DRAFT_SAVED",replayed:true};
+   }
+   const page=await this.row(tx,actor,pageRef,true);
+   if(page.slug!==value.slug||page.kind!==value.kind||Number(page.version)!==expected)
+    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   let current=await this.revision(tx,actor,page),revisionRef=current.id,
+    revisionNo=page.draft_revision_no;
+   if(current.status!=="DRAFT"){
+    revisionNo++;
+    const rev=await tx.query<{id:string}>(
+     "INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,"+
+     "seo_title,seo_description,seo_canonical_path,content_digest,created_by) "+
+     "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+     [actor.realmId,page.id,revisionNo,value.title,value.seoTitle,
+      value.seoDescription,value.canonicalPath,digest,actor.accountId]);
+    revisionRef=rev.rows[0].id;
+   }else{
+    await tx.query("UPDATE cms_page_revision SET title=$3,seo_title=$4,"+
+     "seo_description=$5,seo_canonical_path=$6,content_digest=$7,created_by=$8 "+
+     "WHERE id=$1 AND foundation_root_id=$2 AND status='DRAFT'",
+     [current.id,actor.realmId,value.title,value.seoTitle,value.seoDescription,
+      value.canonicalPath,digest,actor.accountId]);
+   }
+   await this.putSections(tx,actor,revisionRef,value);
+   await tx.query("UPDATE cms_page SET version=version+1,draft_revision_no=$3 "+
+    "WHERE id=$1 AND foundation_root_id=$2",
+    [page.id,actor.realmId,revisionNo]);
+   await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
+    "event_key,actor_ref,action,revision_ref,redacted_metadata) "+
+    "VALUES($1,$2,$3,$4,'EDIT',$5,$6::jsonb)",
+    [actor.realmId,page.id,key,actor.accountId,revisionRef,JSON.stringify({digest})]);
+   return {confirmed:true,status:"DRAFT_SAVED",pageRef:page.id,
+    revisionRef,version:expected+1,replayed:false};
+  });
+ }
+ async submit(bearer:string,pageRef:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
+  const v=input(raw,["requestKey","expectedVersion"]),key=uuid(v.requestKey,"requestKey");
+  if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   const page=await this.row(tx,actor,pageRef,true),rev=await this.revision(tx,actor,page);
+   if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT")
+    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   const assets=await tx.query<{file_ref:string;version:number}>(
+    "SELECT cg19_file_ref AS file_ref,cg19_validated_version AS version "+
+    "FROM cms_asset_placement WHERE foundation_root_id=$1 AND page_revision_id=$2",
+    [actor.realmId,rev.id]);
+   for(const asset of assets.rows)
+    await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
+   const original=await this.approvals.createCase(tx,actor,{
+    pageRef:page.id,revisionRef:rev.id,revisionNo:rev.revision_no,
+    digest:rev.content_digest,requestKey:key});
+   await tx.query("UPDATE cms_page_revision SET status='SUBMITTED',"+
+    "submitted_at=now(),approval_case_ref=$3,approval_source_revision=$4 "+
+    "WHERE id=$1 AND foundation_root_id=$2 AND status='DRAFT'",
+    [rev.id,actor.realmId,original.caseRef,rev.revision_no]);
+   await tx.query("UPDATE cms_page SET version=version+1 "+
+    "WHERE id=$1 AND foundation_root_id=$2",[page.id,actor.realmId]);
+   await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
+    "event_key,actor_ref,action,revision_ref) "+
+    "VALUES($1,$2,$3,$4,'SUBMIT',$5)",
+    [actor.realmId,page.id,key,actor.accountId,rev.id]);
+   return {confirmed:true,status:"AWAITING_APPROVAL",caseRef:original.caseRef,
+    caseNumber:original.caseNumber,version:Number(page.version)+1};
+  });
+ }
+ async publish(bearer:string,pageRef:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.publish");
+  const v=input(raw,["expectedVersion","requestKey","caseRef"]);
+  const key=uuid(v.requestKey,"requestKey"),caseRef=uuid(v.caseRef,"caseRef");
+  if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.publish");
+   const page=await this.row(tx,actor,pageRef,true);
+   const old=await tx.query<{id:string;source_content_digest:string}>(
+    "SELECT id,source_content_digest FROM cms_publication WHERE "+
+    "foundation_root_id=$1 AND page_id=$2 AND publication_key=$3 FOR SHARE",
+    [actor.realmId,page.id,key]);
+   if(old.rows[0]){
+    const rev=await tx.query<Revision>(
+     "SELECT * FROM cms_page_revision WHERE id=(SELECT page_revision_id "+
+     "FROM cms_publication WHERE id=$1) AND foundation_root_id=$2",
+     [old.rows[0].id,actor.realmId]);
+    if(rev.rows[0]?.approval_case_ref!==caseRef||
+       rev.rows[0]?.content_digest!==old.rows[0].source_content_digest)
+     throw new ConflictException({code:"CMS_REPLAY_CONFLICT"});
+    return {confirmed:true,status:"PUBLISHED",replayed:true};
+   }
+   if(Number(page.version)!==v.expectedVersion)
+    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   const rev=await this.revision(tx,actor,page);
+   if(rev.status!=="SUBMITTED"||rev.approval_case_ref!==caseRef)
+    throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
+   const final=await this.approvals.approved(tx,actor,{
+    caseRef,pageRef:page.id,revisionRef:rev.id,
+    revisionNo:rev.revision_no,digest:rev.content_digest});
+   const assets=await tx.query<{cg19_file_ref:string;cg19_validated_version:number}>(
+    "SELECT cg19_file_ref,cg19_validated_version FROM cms_asset_placement "+
+    "WHERE foundation_root_id=$1 AND page_revision_id=$2 FOR SHARE",
+    [actor.realmId,rev.id]);
+   for(const asset of assets.rows)
+    await this.media.validatePlacement(tx,actor,rev.id,
+     asset.cg19_file_ref,asset.cg19_validated_version);
+   const active=await tx.query<{publication_id:string}>(
+    "SELECT publication_id FROM cms_page_effective WHERE "+
+    "foundation_root_id=$1 AND page_id=$2 FOR UPDATE",[actor.realmId,page.id]);
+   if(active.rows[0])await tx.query(
+    "UPDATE cms_publication SET state='SUPERSEDED' WHERE "+
+    "id=$1 AND foundation_root_id=$2 AND state='EFFECTIVE'",
+    [active.rows[0].publication_id,actor.realmId]);
+   const result=await tx.query<{id:string}>(
+    "INSERT INTO cms_publication(foundation_root_id,page_id,page_revision_id,"+
+    "cg03_final_decision_ref,source_content_digest,publication_key,"+
+    "state,effective_at,created_by) "+
+    "VALUES($1,$2,$3,$4,$5,$6,'EFFECTIVE',now(),$7) RETURNING id",
+    [actor.realmId,page.id,rev.id,final.decisionRef,rev.content_digest,
+     key,actor.accountId]);
+   await tx.query("INSERT INTO cms_page_effective(foundation_root_id,page_id,"+
+    "publication_id) VALUES($1,$2,$3) ON CONFLICT(foundation_root_id,page_id) "+
+    "DO UPDATE SET publication_id=EXCLUDED.publication_id,"+
+    "version=cms_page_effective.version+1,changed_at=now()",
+    [actor.realmId,page.id,result.rows[0].id]);
+   await tx.query("UPDATE cms_page SET version=version+1 "+
+    "WHERE id=$1 AND foundation_root_id=$2",[page.id,actor.realmId]);
+   await this.approvals.finish(tx,actor,caseRef);
+   await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
+    "event_key,actor_ref,action,revision_ref) "+
+    "VALUES($1,$2,$3,$4,'PUBLISH',$5)",
+    [actor.realmId,page.id,key,actor.accountId,rev.id]);
+   return {confirmed:true,status:"PUBLISHED",replayed:false};
+  });
+ }
+ async withdraw(bearer:string,pageRef:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.publish");
+  const v=input(raw,["requestKey","expectedVersion","reason"]);
+  const key=uuid(v.requestKey,"requestKey"),reason=text(v.reason,"reason",300,8);
+  if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
+   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.publish");
+   const page=await this.row(tx,actor,pageRef,true);
+   const previous=await tx.query<{id:string}>(
+    "SELECT id FROM cms_change_audit WHERE foundation_root_id=$1 AND "+
+    "page_or_nav_ref=$2 AND event_key=$3 AND action='WITHDRAW'",
+    [actor.realmId,page.id,key]);
+   if(previous.rows[0])return {confirmed:true,status:"HIDDEN",replayed:true};
+   if(Number(page.version)!==v.expectedVersion)
+    throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   const selected=await tx.query<{publication_id:string}>(
+    "SELECT publication_id FROM cms_page_effective WHERE "+
+    "foundation_root_id=$1 AND page_id=$2 FOR UPDATE",[actor.realmId,page.id]);
+   if(!selected.rows[0])throw new ConflictException({code:"CMS_NOT_PUBLISHED"});
+   await tx.query("DELETE FROM cms_page_effective WHERE foundation_root_id=$1 "+
+    "AND page_id=$2",[actor.realmId,page.id]);
+   await tx.query("UPDATE cms_publication SET state='WITHDRAWN',revoked_at=now() "+
+    "WHERE id=$1 AND foundation_root_id=$2 AND state='EFFECTIVE'",
+    [selected.rows[0].publication_id,actor.realmId]);
+   await tx.query("UPDATE cms_page SET version=version+1 "+
+    "WHERE id=$1 AND foundation_root_id=$2",[page.id,actor.realmId]);
+   await tx.query("INSERT INTO cms_change_audit(foundation_root_id,page_or_nav_ref,"+
+    "event_key,actor_ref,action,redacted_metadata) "+
+    "VALUES($1,$2,$3,$4,'WITHDRAW',$5::jsonb)",
+    [actor.realmId,page.id,key,actor.accountId,JSON.stringify({reason})]);
+   return {confirmed:true,status:"HIDDEN",replayed:false};
+  });
+ }
+ async publicPage(slugInput:string){
+  const slug=text(slugInput,"slug",70,1);
+  if(!/^[a-z0-9-]+$/.test(slug))throw new NotFoundException();
+  const rows=await this.db.query<{id:string;kind:string;slug:string;title:string;
+   seo_title:string;seo_description:string;seo_canonical_path:string;
+   publication_id:string;revision_id:string;changed_at:Date}>(
+   "SELECT p.id,p.kind,p.slug,v.title,v.seo_title,v.seo_description,"+
+   "v.seo_canonical_path,pub.id AS publication_id,v.id AS revision_id,"+
+   "e.changed_at FROM cms_page p JOIN cms_page_effective e "+
+   "ON e.foundation_root_id=p.foundation_root_id AND e.page_id=p.id "+
+   "JOIN cms_publication pub ON pub.id=e.publication_id "+
+   "AND pub.foundation_root_id=e.foundation_root_id "+
+   "JOIN cms_page_revision v ON v.id=pub.page_revision_id "+
+   "AND v.foundation_root_id=pub.foundation_root_id "+
+   "JOIN access_realm realm ON realm.id=p.foundation_root_id "+
+   "WHERE realm.realm_key='FOUNDATION_ROOT' AND p.slug=$1 "+
+   "AND p.archived_at IS NULL AND pub.state='EFFECTIVE' "+
+   "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
+   "LIMIT 1",[slug]);
+  const x=rows.rows[0];if(!x)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  const [sections,assets]=await Promise.all([
+   this.db.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
+    "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
+    "WHERE page_revision_id=$1 ORDER BY order_no,id LIMIT 100",[x.revision_id]),
+   this.db.query<{cg19_file_ref:string;role:string;alt_text:string;sort_order:number}>(
+    "SELECT a.cg19_file_ref,a.role,a.alt_text,a.sort_order "+
+    "FROM cms_asset_placement a JOIN cg19_cms_media_file f "+
+    "ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id "+
+    "AND f.page_revision_id=a.page_revision_id "+
+    "WHERE a.page_revision_id=$1 AND a.public_rights_status='VALIDATED' "+
+    "AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL "+
+    "AND f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
+    "ORDER BY a.sort_order,a.id LIMIT 30",[x.revision_id])
+  ]);
+  const exists=await this.db.query("SELECT 1 FROM cms_page_effective e "+
+   "JOIN cms_publication pub ON pub.id=e.publication_id "+
+   "AND pub.foundation_root_id=e.foundation_root_id "+
+   "WHERE pub.id=$1 AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
+   "AND (pub.expires_at IS NULL OR pub.expires_at>now())",[x.publication_id]);
+  if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  return {schemaVersion:1,effectiveGeneration:x.publication_id,
+   kind:x.kind,slug:x.slug,title:x.title,seoTitle:x.seo_title,
+   seoDescription:x.seo_description,canonicalPath:x.seo_canonical_path,
+   lastPublishedAt:x.changed_at.toISOString(),
+   sections:sections.rows.map(v=>({kind:v.section_kind,order:v.order_no,
+    fields:v.structured_fields})),
+   assets:assets.rows.map(v=>({role:v.role,altText:v.alt_text,
+    src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
+ }
+}
