@@ -12,6 +12,10 @@ export class FinanceAccountsController{
   @Query("yearRef")yearRef?:string){
   return this.service.setup(bearer,search,offset,{kind,groupRef,branchRef,status,yearRef});
  }
+ @Get("account-options")
+ accountOptions(@Headers("authorization")bearer:string,@Query("q")q?:string){
+  return this.service.postingAccountOptions(bearer,q);
+ }
  @Post("years")
  year(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.createYear(bearer,body);
