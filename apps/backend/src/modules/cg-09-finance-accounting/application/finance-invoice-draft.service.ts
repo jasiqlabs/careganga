@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -288,7 +289,7 @@ export class FinanceInvoiceDraftService{
    await tx.query("COMMIT");
    return {confirmed:true,invoiceRef:id,invoiceNumber:result.rows[0].invoice_number,
     version,status:"DRAFT",replayed:false};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
  async dashboard(bearer:string){
   const actor=await this.owner(bearer);
