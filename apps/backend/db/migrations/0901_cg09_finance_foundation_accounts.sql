@@ -29,7 +29,7 @@ BEGIN
    OR NEW.created_at IS DISTINCT FROM OLD.created_at
    OR NEW.version<>OLD.version+1
    OR NEW.status<>'CLOSED' OR OLD.status<>'OPEN'
- THEN RAISE EXCEPTION 'Financial year identity is immutable; only a reviewed close is allowed' USING ERRCODE='P0906' USING ERRCODE='Z9101'; END IF;
+ THEN RAISE EXCEPTION 'Financial year identity is immutable; only a reviewed close is allowed' USING ERRCODE='P0906'; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER cg09_year_guard_update BEFORE UPDATE ON financial_year
@@ -57,14 +57,14 @@ BEGIN
     NEW.category IS DISTINCT FROM OLD.category OR
     NEW.code IS DISTINCT FROM OLD.code OR
     NEW.parent_id IS DISTINCT FROM OLD.parent_id THEN
-   RAISE EXCEPTION 'Financial account group hierarchy is immutable' USING ERRCODE='P0908' USING ERRCODE='Z9102';
+   RAISE EXCEPTION 'Financial account group hierarchy is immutable' USING ERRCODE='P0908';
   END IF;
  END IF;
  IF NEW.parent_id IS NOT NULL THEN
   SELECT category INTO parent_category FROM account_group
     WHERE id=NEW.parent_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
   IF parent_category IS NULL OR parent_category<>NEW.category THEN
-   RAISE EXCEPTION 'Financial group must use its parent category' USING ERRCODE='P0908' USING ERRCODE='Z9103'; END IF;
+   RAISE EXCEPTION 'Financial group must use its parent category' USING ERRCODE='P0908'; END IF;
  END IF;
  RETURN NEW;
 END $$;
@@ -99,11 +99,11 @@ BEGIN
  SELECT category INTO group_category FROM account_group
   WHERE id=NEW.group_id AND root_realm_id=NEW.root_realm_id FOR SHARE;
  IF group_category IS NULL THEN
-  RAISE EXCEPTION 'Finance group is unavailable' USING ERRCODE='P0908' USING ERRCODE='Z9104'; END IF;
+  RAISE EXCEPTION 'Finance group is unavailable' USING ERRCODE='P0908'; END IF;
  expected_side:=CASE WHEN group_category IN('ASSET','EXPENSE') THEN 'DEBIT' ELSE 'CREDIT' END;
  IF NEW.normal_side<>expected_side OR
   (NEW.account_kind IN('CASH','BANK') AND group_category<>'ASSET') THEN
-  RAISE EXCEPTION 'Invalid finance account category and balance side' USING ERRCODE='P0905' USING ERRCODE='Z9105'; END IF;
+  RAISE EXCEPTION 'Invalid finance account category and balance side' USING ERRCODE='P0905'; END IF;
  IF TG_OP='UPDATE' THEN
   IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
     NEW.group_id IS DISTINCT FROM OLD.group_id OR
@@ -116,7 +116,7 @@ BEGIN
     NEW.created_at IS DISTINCT FROM OLD.created_at OR
     NEW.version<>OLD.version+1 OR
     NEW.status IS NOT DISTINCT FROM OLD.status THEN
-   RAISE EXCEPTION 'Account identity cannot change during a status update' USING ERRCODE='P0907' USING ERRCODE='Z9106';
+   RAISE EXCEPTION 'Account identity cannot change during a status update' USING ERRCODE='P0907';
   END IF;
  END IF;
  RETURN NEW;
@@ -145,7 +145,7 @@ BEGIN
   SELECT 1 FROM finance_account a
   WHERE a.id=NEW.account_id AND a.root_realm_id=NEW.root_realm_id
     AND a.account_kind=NEW.kind AND (a.status='ACTIVE' OR NEW.status='INACTIVE')
- ) THEN RAISE EXCEPTION 'Invalid active cash/bank account' USING ERRCODE='P0905' USING ERRCODE='Z9107'; END IF;
+ ) THEN RAISE EXCEPTION 'Invalid active cash/bank account' USING ERRCODE='P0905'; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER cg09_bank_kind_guard BEFORE INSERT OR UPDATE ON cash_bank_account
@@ -171,7 +171,7 @@ BEGIN
   WHERE fy.id=NEW.financial_year_id AND fy.root_realm_id=NEW.root_realm_id
     AND fy.status='OPEN' AND NEW.posting_date BETWEEN fy.start_on AND fy.end_on
   FOR SHARE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting period is not open' USING ERRCODE='P0901' USING ERRCODE='Z9108'; END IF;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting period is not open' USING ERRCODE='P0901'; END IF;
  RETURN NEW;
 END $$;
 CREATE TABLE journal(
@@ -216,7 +216,7 @@ BEGIN
     AND a.status='ACTIVE'
     AND (a.scope_kind='FOUNDATION' OR a.branch_id=NEW.branch_id)
   FOR SHARE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting account is unavailable' USING ERRCODE='P0902' USING ERRCODE='Z9109'; END IF;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Finance posting account is unavailable' USING ERRCODE='P0902'; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER cg09_guard_new_line BEFORE INSERT ON journal_line FOR EACH ROW
@@ -242,17 +242,17 @@ BEGIN
     ON fy.id=j.financial_year_id AND fy.root_realm_id=j.root_realm_id
    WHERE j.id=v_journal AND j.root_realm_id=r
     AND j.posting_date BETWEEN fy.start_on AND fy.end_on
- ) THEN RAISE EXCEPTION 'Posting date outside financial year' USING ERRCODE='P0901' USING ERRCODE='Z9110'; END IF;
+ ) THEN RAISE EXCEPTION 'Posting date outside financial year' USING ERRCODE='P0901'; END IF;
  IF EXISTS (
    SELECT 1 FROM journal_line l JOIN finance_account a
     ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id
    WHERE l.journal_id=v_journal AND l.root_realm_id=r
     AND (a.scope_kind='BRANCH' AND a.branch_id IS DISTINCT FROM l.branch_id)
  ) THEN
-  RAISE EXCEPTION 'Finance journal branch and account scope do not match' USING ERRCODE='P0904' USING ERRCODE='Z9111';
+  RAISE EXCEPTION 'Finance journal branch and account scope do not match' USING ERRCODE='P0904';
  END IF;
  IF line_count<2 OR total_debit<=0 OR total_debit<>total_credit THEN
-   RAISE EXCEPTION 'Unbalanced posted journal' USING ERRCODE='P0903' USING ERRCODE='Z9112'; END IF;
+   RAISE EXCEPTION 'Unbalanced posted journal' USING ERRCODE='P0903'; END IF;
  RETURN NULL;
 END $$;
 CREATE CONSTRAINT TRIGGER cg09_journal_requires_balance
@@ -264,7 +264,7 @@ CREATE CONSTRAINT TRIGGER cg09_line_requires_balance
 
 -- Journal/history are append-only; corrections must be new linked reversals.
 CREATE FUNCTION cg09_immutable_record() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0907' USING ERRCODE='Z9113'; END $$;
+BEGIN RAISE EXCEPTION 'Posted finance records cannot be edited' USING ERRCODE='P0907'; END $$;
 CREATE TRIGGER cg09_journal_immutable BEFORE UPDATE OR DELETE ON journal
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
 CREATE TRIGGER cg09_lines_immutable BEFORE UPDATE OR DELETE ON journal_line
