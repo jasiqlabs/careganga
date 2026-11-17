@@ -160,3 +160,9 @@ CREATE INDEX ix_cg09_voucher_command_original ON finance_voucher_workflow_comman
 CREATE TRIGGER cg09_voucher_command_immutable
  BEFORE UPDATE OR DELETE ON finance_voucher_workflow_command
  FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
+
+-- Reuse the original finance event audit; never build a parallel voucher audit master.
+ALTER TABLE finance_event DROP CONSTRAINT IF EXISTS finance_event_entity_kind_check;
+ALTER TABLE finance_event
+ ADD CONSTRAINT cg09_finance_event_voucher_kind
+ CHECK(entity_kind IN('YEAR','GROUP','ACCOUNT','JOURNAL','VOUCHER'));
