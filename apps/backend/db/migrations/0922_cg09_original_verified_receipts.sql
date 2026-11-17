@@ -61,7 +61,7 @@ BEGIN
  END IF;
  SELECT j.posting_date INTO journal_date FROM journal j
  WHERE j.id=NEW.journal_id AND j.root_realm_id=NEW.root_realm_id
-  AND j.status='POSTED' AND j.posting_kind='GENERAL' FOR SHARE;
+  AND j.status='POSTED' AND j.posting_kind='GENERAL' AND j.source_ref=NEW.invoice_id FOR SHARE;
  IF NOT FOUND THEN
   RAISE EXCEPTION 'An existing posted balanced receipt journal is required' USING ERRCODE='P0927';
  END IF;
@@ -90,4 +90,4 @@ CREATE TRIGGER cg09_verified_receipt_guard
 
 ALTER TABLE finance_invoice_command DROP CONSTRAINT finance_invoice_command_action_check;
 ALTER TABLE finance_invoice_command ADD CONSTRAINT finance_invoice_command_action_check
- CHECK(action IN('DRAFT_SAVE','SUBMIT','RECONCILE','ACCRUAL_POST','ISSUE','RECEIPT_LINK'));
+ CHECK(action IN('DRAFT_SAVE','SUBMIT','RECONCILE','ACCRUAL_POST','ISSUE','COLLECTION_POST','RECEIPT_LINK'));
