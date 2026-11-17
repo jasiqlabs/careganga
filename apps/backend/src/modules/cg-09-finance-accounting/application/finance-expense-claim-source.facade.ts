@@ -48,7 +48,7 @@ export class FinanceExpenseClaimSourceFacade{
   reference:string,version:number){
   const c=await this.lock(client,actor,reference,version,"write");
   if(c.status!=="DRAFT")throw new ConflictException({code:"FINANCE_CLAIM_NOT_EDITABLE"});
-  return {claimRef:c.id,revision:c.version,sourceDigest:c.create_digest};
+  return {claimRef:c.id,revision:c.version,sourceDigest:c.current_digest};
  }
  /** Reviewer view of only a submitted original claim. Never a public person master. */
  async reviewerSnapshot(bearer:string,reference:string,version:number){
@@ -93,20 +93,20 @@ export class FinanceExpenseClaimSourceFacade{
   await this.identity.assertCurrent(client,actor,"finance.claims.review");
   await this.identity.assertCurrent(client,actor,"approvals.review");
   const result=await client.query<Original>(
-   "SELECT id,root_realm_id,requested_by,version,status,create_digest "+
+   "SELECT id,root_realm_id,requested_by,version,status,current_digest "+
    "FROM expense_claim WHERE id=$1 AND root_realm_id=$2 AND version=$3 FOR SHARE",
    [reference,actor.realmId,version]);
   const claim=result.rows[0];
   if(!claim||claim.current_digest!==expectedDigest||
      claim.status!=="SUBMITTED"||claim.requested_by===actor.accountId)
    throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
-  return {claimRef:claim.id,revision:claim.version,sourceDigest:claim.create_digest};
+  return {claimRef:claim.id,revision:claim.version,sourceDigest:claim.current_digest};
  }
  async guardFrozen(client:PoolClient,actor:VerifiedFoundationActor,
   reference:string,version:number,expectedDigest:string){
   const c=await this.lock(client,actor,reference,version,"read");
-  if(c.create_digest!==expectedDigest||c.status==="DRAFT")
+  if(c.current_digest!==expectedDigest||c.status==="DRAFT")
    throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
-  return {claimRef:c.id,revision:c.version,sourceDigest:c.create_digest};
+  return {claimRef:c.id,revision:c.version,sourceDigest:c.current_digest};
  }
 }
