@@ -1,6 +1,7 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useMemo,useState,type ReactNode} from "react";
 import {FinanceManualJournalWorkspace} from "./finance-manual-journal-workspace";
+import {FinanceVoucherDraftWorkspace} from "./finance-voucher-draft-workspace";
 
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string;version:number};
 type Group={groupRef:string;name:string;code:string;category:string};
@@ -64,7 +65,7 @@ function Field({name,label,form,onChange,type="text",required=false,children,fai
     {failure?.message}</small>}
  </label>;
 }
-export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;canPost:boolean}){
+export function FinanceAccountsWorkspace({canManage,canPost,canViewVouchers,canManageVouchers}:{canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean}){
  const [data,setData]=useState<Setup|null>(null);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true);
@@ -73,7 +74,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
  const [filters,setFilters]=useState(emptyFilters);
  const [appliedFilters,setAppliedFilters]=useState(emptyFilters);
  const [offset,setOffset]=useState(0);
- const [tab,setTab]=useState<"accounts"|"groups"|"years"|"opening"|"journals">("accounts");
+ const [tab,setTab]=useState<"accounts"|"groups"|"years"|"opening"|"journals"|"vouchers">("accounts");
  const [drawer,setDrawer]=useState<FormKind|null>(null);
  const [form,setForm]=useState<Record<string,string>>(blank());
  const [failure,setFailure]=useState<SafeFailure|null>(null);
@@ -294,8 +295,8 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    </div>
    <div className="cg-fin-content-grid"><section className="cg-fin-panel">
     <div className="cg-fin-toolbar">
-     <div><h2>{tab==="journals"?"General Journal Entries":"Financial accounts & opening setup"}</h2>
-      <p>{tab==="journals"?"Posted journal is not proof of a payment or voucher approval.":"Amounts are shown only from confirmed, posted finance records."}</p></div>
+     <div><h2>{tab==="journals"?"General Journal Entries":tab==="vouchers"?"Finance Voucher Drafts":"Financial accounts & opening setup"}</h2>
+      <p>{tab==="journals"?"Posted journal is not proof of a payment or voucher approval.":tab==="vouchers"?"Voucher drafts are not approved, posted or paid.":"Amounts are shown only from confirmed, posted finance records."}</p></div>
      <div className="cg-fin-toolbar-actions">
       {canManage&&<button type="button" onClick={()=>open("year")}>+ Financial Year</button>}
       {canManage&&<button type="button" onClick={()=>open("group")}>+ Account Group</button>}
@@ -352,7 +353,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
     </form>}
     <div className="cg-fin-tabs" role="tablist" aria-label="Financial setup sections">
      {([
-      ["accounts","Accounts"],["groups","Account Groups"],["years","Financial Years"],["opening","Opening Entries"],["journals","General Journal"]
+      ["accounts","Accounts"],["groups","Account Groups"],["years","Financial Years"],["opening","Opening Entries"],["journals","General Journal"],...(canViewVouchers?[["vouchers","Voucher Drafts"] as const]:[])
      ] as const).map(([key,title])=><button role="tab" aria-selected={tab===key}
       className={tab===key?"is-active":""} key={key} onClick={()=>setTab(key)}
       type="button">{title}</button>)}
@@ -396,6 +397,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
         onClick={()=>setStatusConfirm({type:"year",ref:y.yearRef,name:y.name,
          expectedVersion:y.version,nextStatus:"CLOSED"})}>Close year</button>:"Closed"}</td>}</tr>)}
      </tbody></table>{!data.years.length&&<p className="cg-fin-empty">No financial year exists. Add a financial year to begin.</p>}</div>}
+    {tab==="vouchers"&&canViewVouchers&&<FinanceVoucherDraftWorkspace years={data.years} branches={data.branches} canManage={canManageVouchers}/>}
     {tab==="journals"&&<FinanceManualJournalWorkspace years={data.years} canPost={canPost}
       onUpdated={()=>void load()}/>}
     {tab==="opening"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
