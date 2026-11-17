@@ -69,6 +69,27 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{if(editor)setEditor(null);else onExit();return true;});
   return()=>sub.remove();
  },[onExit,editor]);
+ useEffect(()=>{
+  if(category!=="JOURNALS")return;
+  let active=true;
+  setManualLoading(true);setManualError("");
+  void (async()=>{
+   try{
+    const response=await identityRequest("/api/finance-accounting/manual-journals",{
+     headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    if(response.status===401){if(active)onExpired();return;}
+    if(!response.ok)throw Error(viewError(response.status));
+    const value:unknown=await response.json();
+    if(!value||typeof value!=="object"||!("journals" in value)||
+       !Array.isArray(value.journals))throw Error("Posted journals could not be verified. Refresh and try again.");
+    if(active)setManualJournals(value.journals);
+   }catch(e){
+    if(active){setManualJournals([]);setManualError(
+     e instanceof Error?e.message:"Cannot load journal records. Refresh and retry.");}
+   }finally{if(active)setManualLoading(false);}
+  })();
+  return()=>{active=false;};
+ },[category,token,manualRefresh,onExpired]);
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
     onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
@@ -100,6 +121,8 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
      onPress={()=>setEditor({kind:"account"})}><Text style={s.createText}>+ Account</Text></Pressable>}
     {canPost&&<Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"opening"})}><Text style={s.createText}>+ Opening Entry</Text></Pressable>}
+    {canPost&&<Pressable style={s.create} accessibilityRole="button"
+     onPress={()=>setEditor({kind:"manual"})}><Text style={s.createText}>+ General Journal</Text></Pressable>}
    </View>
    {busy&&<View style={s.state}><ActivityIndicator color={theme.primary}/>
     <Text style={s.subtext}>Checking current finance records…</Text></View>}
@@ -153,6 +176,23 @@ export function FinanceAccountsScreen({token,canManage,canPost,onExit,onExpired}
        <Text style={s.cardTitle}>{j.yearName}</Text><Text style={s.meta}>{j.postingDate} · Posted</Text>
        <Text style={s.amount}>{inr(j.amountMinor)}</Text>
       </View>))}
+   {category==="JOURNALS"&&<>
+    {manualLoading&&<View style={s.state}><ActivityIndicator color={theme.primary}/>
+     <Text style={s.meta}>Checking posted journals…</Text></View>}
+    {!!manualError&&<View style={s.error} accessibilityRole="alert">
+     <Text style={s.errorText}>{manualError}</Text>
+     <Pressable style={s.retry} accessibilityRole="button" onPress={()=>setManualRefresh(n=>n+1)}>
+      <Text style={s.retryText}>Try again</Text></Pressable></View>}
+    {!manualLoading&&!manualError&&(!manualJournals.length?
+     <Text style={s.empty}>No manual journals have been posted yet.
+      Authorized Finance staff can record a balanced general journal.</Text>:
+     manualJournals.map(j=><View key={j.journalRef} style={s.card}>
+      <Text style={s.cardTitle}>{j.description}</Text>
+      <Text style={s.meta}>{j.yearName} · {j.postingDate}</Text>
+      <Text style={s.amount}>{inr(j.debitMinor)}</Text>
+      <Text style={s.meta}>Posted to ledger — not a verified payment</Text>
+     </View>))}
+   </>}
   </ScrollView>
  </SafeAreaView>;
 }
