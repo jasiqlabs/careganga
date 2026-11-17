@@ -36,7 +36,7 @@ async function failure(res:Response){
 export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  const [years,setYears]=useState<Year[]>([]);
  const [branches,setBranches]=useState<Branch[]>([]);
- const [categories,setCategories]=useState<string[]>([]);
+ const [categories,setCategories]=useState<{code:string;name:string}[]>([]);
  const [budgets,setBudgets]=useState<Budget[]>([]);
  const [overview,setOverview]=useState<Dashboard|null>(null);
  const [refreshTick,setRefreshTick]=useState(0);
@@ -80,7 +80,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    try{
     const r=await fetch("/api/finance/budgets/options",{cache:"no-store"});
     if(!r.ok)throw Error(await failure(r));
-    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:string[]};
+    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:{code:string;name:string}[]};
     if(!Array.isArray(d.years)||!Array.isArray(d.branches)||!Array.isArray(d.categories))throw Error("Invalid budget options");
     if(mounted){setYears(d.years);setBranches(d.branches);setCategories(d.categories);}
    }catch(e){if(mounted)setError(e instanceof Error?e.message:"Budget scope unavailable.");}
@@ -226,10 +226,10 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
        <option value="">Foundation root — no branch</option>
        {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
       </select></label>
-     <label className="cg-fin-field">Actual expense account category
+     <label className="cg-fin-field">Expense account group
       <select value={form.category} onChange={e=>update("category",e.target.value)}>
        <option value="">Select an existing expense group</option>
-       {categories.map(c=><option key={c} value={c}>{c}</option>)}
+       {categories.map(c=><option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
       </select></label>
      {(["periodStart","periodEnd"] as const).map(k=><label className="cg-fin-field" key={k}>
       {k==="periodStart"?"Period begins":"Period ends"}
