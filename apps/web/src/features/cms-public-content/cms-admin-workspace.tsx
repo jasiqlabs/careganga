@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
+import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
 type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
@@ -334,6 +335,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     Review approvals</button>}
    {canManage&&<button type="button" onClick={()=>{setSelected(null);setReviewing(false);
     setDraft(blank("HOME"));setPending(null);setPreview(false);}}>New page</button>}
+   {canManage&&!selected&&!reviewing&&<button type="button" disabled={busy}
+    onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
+    Use client screenshot text in a new editable draft</button>}
   </div></header>
   {!!error&&<p role="alert" className="cg-cms-error">{error}</p>}
   {!!notice&&<p role="status" className="cg-cms-notice">{notice}</p>}
@@ -399,7 +403,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      <p>Private editor preview — not published. Images are shown only after approval.</p>
      <CmsPublicPage page={previewPage}/>
     </div>:<div className="cg-cms-form">
-     <label>Page<select disabled={!!selected||!canManage} value={draft.kind}
+     <p>The original site's visible words are a drafting reference. Confirm all
+        impact, tax and partnership claims, link destinations and photo rights before publication.</p>
+      <label>Page<select disabled={!!selected||!canManage} value={draft.kind}
       onChange={e=>setDraft(blank(e.target.value as Kind))}>
       <option value="HOME">Homepage</option><option value="ABOUT">About the Foundation</option>
      </select></label>
