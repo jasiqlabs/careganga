@@ -7,7 +7,7 @@ function allowed(p:string[],method:string){
  if(p.length===1&&p[0]==="intents")return method==="POST";
  if(p.length===2&&p[0]==="intents"&&UUID.test(p[1]))return method==="GET";
  if(p.length===3&&p[0]==="intents"&&UUID.test(p[1])&&p[2]==="confirm")return method==="POST";
- if(p.length===3&&p[0]==="vouchers"&&UUID.test(p[1])&&p[2]==="files")return method==="GET";
+ if(p.length===3&&p[0]==="vouchers"&&UUID.test(p[1])&&["files","payment-files"].includes(p[2]))return method==="GET";
  if(p.length===3&&p[0]==="files"&&UUID.test(p[1])&&p[2]==="revoke")return method==="POST";
  if(p.length===3&&p[0]==="files"&&UUID.test(p[1])&&p[2]==="download")return method==="GET";
  return false;
