@@ -119,6 +119,23 @@ export class FinanceVoucherDraftService{
     ORDER BY updated_at DESC,id DESC LIMIT 40`,[actor.realmId]);
   return {vouchers:rows.rows,status:"DRAFT_NOT_APPROVED_OR_POSTED"};
  }
+ async detail(bearer:string,voucherInput:string){
+  const actor=await this.actor(bearer,"finance.vouchers.view");
+  const ref=uid(voucherInput,"voucherRef");
+  const found=await this.db.query<{voucherRef:string;voucherNumber:string;version:number;
+    header:Record<string,unknown>;lines:Record<string,unknown>[];
+    taxMinor:string;chargesMinor:string;grossMinor:string;totalMinor:string}>(`
+    SELECT v.id AS "voucherRef",v.voucher_number AS "voucherNumber",
+      v.version,r.header_snapshot AS header,r.line_snapshot AS lines,
+      r.tax_minor::text AS "taxMinor",r.charges_minor::text AS "chargesMinor",
+      r.gross_minor::text AS "grossMinor",r.total_minor::text AS "totalMinor"
+    FROM finance_voucher v
+    JOIN finance_voucher_draft_revision r
+      ON r.voucher_id=v.id AND r.root_realm_id=v.root_realm_id AND r.version=v.version
+    WHERE v.id=$1 AND v.root_realm_id=$2 AND v.status='DRAFT'`,[ref,actor.realmId]);
+  if(!found.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_NOT_EDITABLE"});
+  return {...found.rows[0],status:"DRAFT_NOT_APPROVED_OR_POSTED"};
+ }
  private async prior(client:PoolClient,actor:VerifiedFoundationActor,key:string){
   return client.query<Prior>(`
     SELECT v.id AS voucher_id,r.payload_digest,r.version,v.voucher_number
