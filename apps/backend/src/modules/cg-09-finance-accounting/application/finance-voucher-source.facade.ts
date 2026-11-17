@@ -7,7 +7,8 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 
 export type VerifiedVoucherDraftSource=Readonly<{
  voucherRef:string;rootRef:string;revision:number;createdBy:string;
- status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED";
+ status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED"|
+  "POSTED"|"PAYMENT_REQUESTED"|"PAID_VERIFIED";
  sourceDigest:string
 }>;
 /** CG-09-owned, read-only cross-owner contract.
@@ -75,6 +76,23 @@ export class FinanceVoucherSourceFacade{
     throw new ConflictException({code:"FINANCE_VOUCHER_NOT_EDITABLE"});
    await client.query("COMMIT");return row;
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+ }
+ async currentForPayment(bearer:string,reference:string,revision:number){
+  const actor=await this.sessions.requireAction(bearer,"finance.vouchers.manage");
+  const client=await this.db.connect();
+  try{
+   await client.query("BEGIN");
+   const row=await this.load(client,actor,reference,revision,"finance.vouchers.manage");
+   if(row.status!=="PAYMENT_REQUESTED")
+    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
+   await client.query("COMMIT");return row;
+  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
+ }
+ async guardPayment(client:PoolClient,actor:VerifiedFoundationActor,reference:string,revision:number){
+  const row=await this.load(client,actor,reference,revision,"finance.vouchers.manage");
+  if(row.status!=="PAYMENT_REQUESTED")
+   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
+  return row;
  }
  async guardDraft(client:PoolClient,actor:VerifiedFoundationActor,reference:string,revision:number){
   const row=await this.load(client,actor,reference,revision,"finance.vouchers.manage");
