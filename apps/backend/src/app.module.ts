@@ -6,6 +6,7 @@ import { PlatformConfigurationModule } from "./modules/cg-21-platform-configurat
 import { RegistrationApprovalsModule } from "./modules/cg-03-registration-approvals/registration-approvals.module";
 import { DocumentsNotificationsModule } from "./modules/cg-19-documents-notifications/documents-notifications.module";
 import { FoundationStructureModule } from "./modules/cg-02-foundation-structure/foundation-structure.module";
+import { FinanceAccountingModule } from "./modules/cg-09-finance-accounting/finance-accounting.module";
 
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule], controllers: [HealthController] })
 export class AppModule {}
