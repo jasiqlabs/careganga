@@ -145,10 +145,9 @@ export class FinanceAccountsService{
    throw new BadRequestException({code:"FINANCE_SCOPE_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
   const kind=filters.kind||"ALL",status=filters.status||"ALL";
-  if(!["ALL","GENERAL","CASH","BANK"].includes(kind))
-   fieldError("FINANCE_ACCOUNT_KIND_INVALID","accountKind");
-  if(!["ALL","ACTIVE","INACTIVE"].includes(status))
-   fieldError("FINANCE_SCOPE_INVALID","scopeKind");
+  if(!["ALL","GENERAL","CASH","BANK"].includes(kind)||
+     !["ALL","ACTIVE","INACTIVE"].includes(status))
+   throw new BadRequestException({code:"FINANCE_FILTER_INVALID"});
   const group=filters.groupRef?ref(filters.groupRef,"groupRef"):null;
   const branch=filters.branchRef?ref(filters.branchRef,"branchRef","FINANCE_SCOPE_INVALID"):null;
   const year=filters.yearRef?ref(filters.yearRef,"startOn","FINANCE_YEAR_CLOSED"):null;
@@ -287,6 +286,7 @@ export class FinanceAccountsService{
   if(scope==="BRANCH"&&(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1))
    fieldError("FINANCE_BRANCH_STALE","branchRef");
   const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"bankLabel",120);
+  if(bankLabel&&/[0-9]{8,}/.test(bankLabel))fieldError("FINANCE_BANK_LABEL_INVALID","bankLabel");
   const lastFour=kind==="BANK"&&body.bankLastFour?body.bankLastFour:"";
   if(typeof lastFour!=="string"||(lastFour&&!/^[0-9]{4}$/.test(lastFour)))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
