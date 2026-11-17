@@ -214,6 +214,17 @@ BEGIN
     AND j.posting_kind='VOUCHER' AND j.status='POSTED'
     AND j.source_ref=NEW.id AND j.immutable_payload_digest=p.original_digest
     AND j.financial_year_id=NEW.financial_year_id AND j.posting_date=NEW.posting_date
+    AND (
+     SELECT count(*)=2 AND COALESCE(sum(l.debit_minor),0)=NEW.total_minor
+      AND COALESCE(sum(l.credit_minor),0)=NEW.total_minor
+      AND count(*) FILTER (WHERE l.account_id=NEW.debit_account_id
+       AND l.branch_id IS NOT DISTINCT FROM NEW.branch_id
+       AND l.debit_minor=NEW.total_minor AND l.credit_minor=0)=1
+      AND count(*) FILTER (WHERE l.account_id=NEW.credit_account_id
+       AND l.branch_id IS NOT DISTINCT FROM NEW.branch_id
+       AND l.credit_minor=NEW.total_minor AND l.debit_minor=0)=1
+     FROM journal_line l WHERE l.journal_id=j.id AND l.root_realm_id=NEW.root_realm_id
+    )
    FOR SHARE OF p,j;
   IF NOT FOUND THEN
    RAISE EXCEPTION 'Balanced original journal posting is required' USING ERRCODE='P0913';
