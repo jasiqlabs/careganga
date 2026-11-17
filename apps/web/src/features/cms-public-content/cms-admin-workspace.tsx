@@ -233,6 +233,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     {...a,order:a.order-1}:a);
   setDraft(v=>({...v,slides,assets}));
  }
+ const unsaved=selected!==null&&
+  JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
+ const heroPhotoMissing=draft.kind==="HOME"&&draft.slides.some((_,index)=>
+  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
@@ -655,6 +659,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         Remove from draft</button></div>)}
      </fieldset>}
     </div>}
+    {selected?.status==="DRAFT"&&unsaved&&<p role="status">
+     Save your changes before sending this page for approval.</p>}
+    {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
+     Add and save a verified desktop image for each homepage banner before review.</p>}
     <div className="cg-cms-actions">
      {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}
@@ -662,7 +670,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       onClick={()=>command("Draft saved","pages/"+selected.pageRef+"/draft","PUT",
        {content:payload(draft),expectedVersion:selected.version})}>Save draft</button>}
      {selected&&selected.status==="DRAFT"&&canManage&&<button
-      disabled={busy||!!pending} type="button"
+      disabled={busy||!!pending||unsaved||heroPhotoMissing} type="button"
       onClick={()=>command("Submitted for approval","pages/"+selected.pageRef+"/submit","POST",
        {expectedVersion:selected.version})}>Send for review</button>}
      {selected&&selected.status==="SUBMITTED"&&selected.approvalCaseRef&&canPublish&&
