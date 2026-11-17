@@ -98,7 +98,7 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
    if(!raw||typeof raw!=="object"||!("status" in raw)||typeof raw.status!=="string")
     throw Error("Unknown reviewer result");
    setPending(null);setPassword("");setOpen(null);setVoucher(null);
-   setInfo("CG-03 decision recorded: "+raw.status+
+   setInfo("Reviewer decision recorded: "+raw.status+
     ". Financial posting or payment is not automatic.");
    await load();
   }catch{
@@ -203,7 +203,7 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
      <p><strong>Payee:</strong> {voucher.header.payeeName}</p>
      <p><strong>Date:</strong> {voucher.header.postingDate}</p>
      <p><strong>Purpose:</strong> {voucher.header.purpose}</p>
-     <p><strong>Current CG-03 state:</strong> {open.status}</p>
+     <p><strong>Current review status:</strong> {open.status}</p>
     </div>
     <div className="cg-fin-table-wrap"><table className="cg-fin-table">
      <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
