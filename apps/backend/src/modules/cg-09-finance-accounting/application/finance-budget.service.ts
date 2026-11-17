@@ -92,7 +92,7 @@ export class FinanceBudgetService{
     p.branchVersion!,"finance.budgets.manage");
   const groups=await tx.query(
    "SELECT id FROM account_group WHERE root_realm_id=$1 "+
-   "AND category='EXPENSE' AND name=$2 ORDER BY id LIMIT 1 FOR SHARE",
+   "AND category='EXPENSE' AND code=$2 ORDER BY id LIMIT 1 FOR SHARE",
    [actor.realmId,p.category]);
   if(!groups.rowCount)
    throw new ConflictException({code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});
@@ -342,7 +342,7 @@ export class FinanceBudgetService{
    "AND p.root_realm_id=j.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND j.financial_year_id=$2 "+
    "AND j.posting_kind='VOUCHER' AND j.status='POSTED' "+
-   "AND j.posting_date BETWEEN $3 AND $4 AND g.category='EXPENSE' AND g.name=$5 "+
+   "AND j.posting_date BETWEEN $3 AND $4 AND g.category='EXPENSE' AND g.code=$5 "+
    "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
    "AND v.branch_id IS NOT DISTINCT FROM $6::uuid "+
    "AND NOT EXISTS(SELECT 1 FROM finance_budget_event e WHERE "+
@@ -453,10 +453,10 @@ export class FinanceBudgetService{
    "end_on::text AS \"endOn\" FROM financial_year WHERE root_realm_id=$1 "+
    "ORDER BY start_on DESC,id DESC LIMIT 30",[actor.realmId]);
   const branches=await this.branches.financeBranches(bearer,"finance.budgets.view");
-  const categories=await this.db.query<{name:string}>(
-   "SELECT DISTINCT name FROM account_group WHERE root_realm_id=$1 "+
-   "AND category='EXPENSE' ORDER BY name LIMIT 100",[actor.realmId]);
-  return {years:years.rows,branches,categories:categories.rows.map(r=>r.name)};
+  const categories=await this.db.query<{code:string;name:string}>(
+   "SELECT code,name FROM account_group WHERE root_realm_id=$1 "+
+   "AND category='EXPENSE' ORDER BY name,code LIMIT 100",[actor.realmId]);
+  return {years:years.rows,branches,categories:categories.rows};
  }
  async commandStatus(bearer:string,keyInput:string){
   const actor=await this.actor(bearer);
