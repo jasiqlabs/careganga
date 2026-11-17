@@ -5,6 +5,10 @@ import {FinanceInvoiceCancellationService} from "../application/finance-invoice-
 export class FinanceInvoiceWorkflowController{
  constructor(private readonly service:FinanceInvoiceWorkflowService,
   private readonly corrections:FinanceInvoiceCancellationService){}
+ @Get("cancel-eligibility")
+ cancelEligibility(@Headers("authorization")auth:string){
+  return this.corrections.eligibility(auth);
+ }
  @Get("cancel-commands/:requestKey")
  cancelStatus(@Headers("authorization")auth:string,@Param("requestKey")key:string){
   return this.corrections.status(auth,key);
