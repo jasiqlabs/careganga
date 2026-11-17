@@ -11,6 +11,11 @@ export class FinanceVoucherDraftController{
  options(@Headers("authorization")bearer:string){return this.service.options(bearer);}
  @Get("drafts")
  drafts(@Headers("authorization")bearer:string,@Query("offset")offset?:string){return this.service.list(bearer,offset);}
+ @Get("drafts/:voucherRef/revisions/:version")
+ historical(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string,
+  @Param("version")version:string){
+  return this.service.historicalDetail(bearer,ref,version);
+ }
  @Get("drafts/:voucherRef")
  detail(@Headers("authorization")bearer:string,@Param("voucherRef")ref:string){
   return this.service.detail(bearer,ref);
