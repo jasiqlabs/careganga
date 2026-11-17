@@ -95,12 +95,12 @@ export class FinanceAccountsService{
    VALUES($1,$2,$3,$4,$5) ON CONFLICT(root_realm_id,command_kind,request_key)
    DO NOTHING RETURNING id`,[actor.realmId,actor.accountId,kind,key,hash]);
   if(inserted.rowCount)return {duplicate:null};
-  const earlier=await client.query<{entity_ref:string|null;payload_digest:string}>(`
-   SELECT entity_ref,payload_digest FROM finance_command
+  const earlier=await client.query<{entity_ref:string|null;payload_digest:string;actor_ref:string}>(`
+   SELECT entity_ref,payload_digest,actor_ref FROM finance_command
    WHERE root_realm_id=$1 AND command_kind=$2 AND request_key=$3 FOR UPDATE`,
    [actor.realmId,kind,key]);
   const previous=earlier.rows[0];
-  if(!previous||previous.payload_digest!==hash||!previous.entity_ref)
+  if(!previous||previous.payload_digest!==hash||previous.actor_ref!==actor.accountId||!previous.entity_ref)
    throw new ConflictException({code:"FINANCE_REQUEST_CONFLICT"});
   return {duplicate:previous.entity_ref};
  }
