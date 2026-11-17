@@ -212,6 +212,8 @@ export class FinanceInvoiceDraftService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":"+actor.accountId+":"+key]);
    await this.identity.assertCurrent(tx,actor,"finance.invoices.manage");
    const prior=await tx.query<Previous>(
     "SELECT request_digest,invoice_id,source_version,result_status "+
