@@ -1,6 +1,5 @@
 import {ConflictException,Inject,Injectable} from "@nestjs/common";
 import type {PoolClient} from "pg";
-import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
@@ -10,8 +9,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
  */
 @Injectable()
 export class FinanceVoucherProofSourceFacade{
- constructor(private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade){}
  async guardForReviewer(client:PoolClient,actor:VerifiedFoundationActor,input:{
   voucherRef:string;voucherVersion:number;fileRef:string;fileVersion:number
  }){
