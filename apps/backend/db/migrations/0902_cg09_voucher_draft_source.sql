@@ -49,7 +49,7 @@ CREATE TABLE finance_voucher_draft_revision(
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
  changed_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(voucher_id,version),UNIQUE(root_realm_id,actor_ref,request_key),
+ UNIQUE(voucher_id,version),CONSTRAINT ux_cg09_voucher_request UNIQUE(root_realm_id,actor_ref,request_key),
  FOREIGN KEY(voucher_id,root_realm_id) REFERENCES finance_voucher(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
