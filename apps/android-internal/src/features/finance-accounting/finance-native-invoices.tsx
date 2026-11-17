@@ -350,7 +350,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
         onChange={v=>setForm(f=>({...f,lines:f.lines.map((x,j)=>j===i?{...x,description:v}:x)}))}/>
        <Field label="Quantity" value={line.quantity} keyboardType="number-pad"
         onChange={v=>setForm(f=>({...f,lines:f.lines.map((x,j)=>j===i?{...x,quantity:v}:x)}))}/>
-       <Field label="Unit rate (₹)" value={line.unitRate} keyboardType="decimal-pad"
+       <Field label="Final unit rate after discount (₹)" value={line.unitRate} keyboardType="decimal-pad"
         onChange={v=>setForm(f=>({...f,lines:f.lines.map((x,j)=>j===i?{...x,unitRate:v}:x)}))}/>
        {form.lines.length>1&&<Action label="Remove item" secondary
         onPress={()=>setForm(f=>({...f,lines:f.lines.filter((_,j)=>j!==i)}))}/>}
