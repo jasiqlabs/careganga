@@ -49,7 +49,8 @@ type Note={id:string;invoice_id:string;credit_note_number:string;total_minor:str
 type Refund={id:string;invoice_id:string;credit_note_id:string;amount_minor:string;
  bank_account_id:string;financial_year_id:string;posting_date:string;
  requested_by:string;status:string;request_digest:string;request_key:string;
- approved_by:string|null;approval_key:string|null;approval_journal_id:string|null};
+ approved_by:string|null;approval_key:string|null;approval_journal_id:string|null;
+ transfer_reference:string|null};
 @Injectable()
 export class FinanceInvoiceAdjustmentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -293,8 +294,12 @@ export class FinanceInvoiceAdjustmentService{
  }
  async approveRefund(bearer:string,refundInput:string,raw:unknown){
   const actor=await this.reviewer(bearer),refundRef=id(refundInput,"refundRef");
-  const v=input(raw,["requestKey","currentPassword"]);
+  const v=input(raw,["requestKey","currentPassword","transferReference"]);
   const key=id(v.requestKey,"requestKey"),proof=password(v.currentPassword);
+  if(typeof v.transferReference!=="string"||
+     !/^[A-Za-z0-9._/: -]{4,100}$/.test(v.transferReference.trim()))
+   throw new BadRequestException({code:"FINANCE_ADJUSTMENT_INVALID",field:"transferReference"});
+  const transferReference=v.transferReference.trim();
   await this.sessions.limitFoundationRootProof(actor);
   const tx=await this.db.connect();
   try{
@@ -314,7 +319,8 @@ export class FinanceInvoiceAdjustmentService{
    if(!x)throw new ConflictException({code:"FINANCE_REFUND_NOT_FOUND"});
    await this.scope(bearer,"finance.invoices.review",x.branch_id);
    if(x.status==="BANK_POSTED"){
-    if(x.approved_by===actor.accountId&&x.approval_key===key){
+    if(x.approved_by===actor.accountId&&x.approval_key===key&&
+       x.transfer_reference===transferReference){
      await tx.query("COMMIT");return {confirmed:true,status:"BANK_POSTED_AWAITING_STATEMENT",
       journalRef:x.approval_journal_id,replayed:true};
     }
@@ -339,9 +345,10 @@ export class FinanceInvoiceAdjustmentService{
    const changed=await tx.query(
     "UPDATE finance_invoice_refund SET status='BANK_POSTED',approved_by=$3,"+
     "approved_at=now(),password_verified_at=now(),approval_key=$4,"+
-    "approval_journal_id=$5 WHERE id=$1 AND root_realm_id=$2 "+
+    "approval_journal_id=$5,transfer_reference=$6 "+
+    "WHERE id=$1 AND root_realm_id=$2 "+
     "AND status='REQUESTED' RETURNING id",
-    [refundRef,actor.realmId,actor.accountId,key,journal]);
+    [refundRef,actor.realmId,actor.accountId,key,journal,transferReference]);
    if(changed.rowCount!==1)
     throw new ConflictException({code:"FINANCE_REFUND_ALREADY_APPROVED"});
    await tx.query("INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,"+
