@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
 import {FinanceVoucherApprovalService} from "../application/finance-voucher-approval.service";
 
 @Controller("api/registration-approvals/finance-vouchers")
@@ -13,7 +13,7 @@ export class FinanceVoucherApprovalController{
   return this.approvals.initializeProcess(bearer,input);
  }
  @Get()
- list(@Headers("authorization")bearer:string){return this.approvals.list(bearer);}
+ list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){return this.approvals.list(bearer,offset);}
  @Get(":caseRef")
  detail(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
   return this.approvals.detail(bearer,ref);
