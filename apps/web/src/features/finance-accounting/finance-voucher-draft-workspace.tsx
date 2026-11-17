@@ -281,14 +281,14 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canViewEv
   </div>}
   {editing&&<div className="drawer-backdrop" role="presentation">
    <div role="dialog" aria-modal="true" aria-labelledby="cg-fin-voucher-title"
-    className="role-drawer cg-fin-drawer">
+    className="role-drawer cg-fin-drawer cg-voucher-full-editor">
     <div className="cg-fin-drawer-header"><div><p>Finance Management / Voucher</p>
      <h2 id="cg-fin-voucher-title">{target?"Edit "+target.number:"New Voucher Draft"}</h2></div>
      <button type="button" aria-label="Close voucher form" disabled={busy||Boolean(pending)}
       onClick={()=>setEditing(false)}>×</button></div>
-    <p className="cg-fin-description">Stage 1: voucher details · Stage 2: line items and totals.
+    <p className="cg-fin-description">Voucher number is generated automatically. Enter the original finance details and verified expense items.
      Saving creates only a draft; evidence verification and approval are separate.</p>
-    <form className="cg-fin-form" onSubmit={submit}>
+    <form className="cg-fin-form cg-voucher-full-form" onSubmit={submit}>
      <label className="cg-fin-field">Voucher type *
       <select required value={form.type} onChange={e=>field("type",e.target.value)}>
        <option value="PAYMENT">Payment voucher</option><option value="EXPENSE">Expense voucher</option>
