@@ -15,9 +15,9 @@ type Command={path:string;body:Record<string,unknown>;label:string};
  * No new accounting master or external bank API: all writes use CG09 source.
  */
 export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
- onExpired,onPdf}:{
+ onExpired,onPdf,onCredited}:{
  token:string;invoiceRef:string;canReview:boolean;canManage:boolean;
- onExpired:()=>void;onPdf:(path:string)=>Promise<void>
+ onExpired:()=>void;onPdf:(path:string)=>Promise<void>;onCredited:()=>void
 }){
  const [data,setData]=useState<Detail|null>(null),[choices,setChoices]=useState<OptionsData|null>(null);
  const [year,setYear]=useState(""),[date,setDate]=useState(""),
@@ -46,6 +46,7 @@ export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
    const result=await request<{confirmed:boolean;status:string}>(token,c.path,"POST",c.body);
    if(!result.confirmed)throw Error("UNKNOWN");
    setPending(null);setReviewPassword("");setRefundPassword("");
+   if(result.status==="CREDIT_NOTE_POSTED")onCredited();
    setNotice(c.label+" recorded: "+result.status.replaceAll("_"," ")+
     ". Bank refund is not verified until original statement review.");
    await refresh();
