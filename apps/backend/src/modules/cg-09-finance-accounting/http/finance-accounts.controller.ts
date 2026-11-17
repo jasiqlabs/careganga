@@ -1,9 +1,11 @@
 import {Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {FinanceAccountsService} from "../application/finance-accounts.service";
+import {FinanceJournalReversalService} from "../application/finance-journal-reversal.service";
 
 @Controller("api/finance-accounting")
 export class FinanceAccountsController{
- constructor(private readonly service:FinanceAccountsService){}
+ constructor(private readonly service:FinanceAccountsService,
+  private readonly corrections:FinanceJournalReversalService){}
  @Get("setup")
  setup(@Headers("authorization")bearer:string,
   @Query("search")search?:string,@Query("offset")offset?:string,
@@ -32,6 +34,9 @@ export class FinanceAccountsController{
  manualJournals(@Headers("authorization")bearer:string){
   return this.service.manualJournalHistory(bearer);
  }
+ @Post("manual-journals/:journalRef/reverse")
+ reverseManual(@Headers("authorization")bearer:string,@Param("journalRef")ref:string,
+  @Body()body:unknown){return this.corrections.reverse(bearer,ref,body);}
  @Post("manual-journals")
  manualJournalPost(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.service.postGeneral(bearer,body);
