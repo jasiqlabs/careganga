@@ -99,8 +99,8 @@ function normalize(input:unknown):SafeDraft{
   chargesMinor:charges.toString(),totalMinor:total.toString()};
 }
 type Prior={voucher_id:string;payload_digest:string;version:number;voucher_number:string};
-const fingerprint=(safe:SafeDraft,reference:string|null)=>createHash("sha256")
- .update(JSON.stringify({reference,safe})).digest("hex");
+const fingerprint=(safe:SafeDraft,reference:string|null,expectedVersion:number|null)=>createHash("sha256")
+ .update(JSON.stringify({reference,expectedVersion,safe})).digest("hex");
 
 @Injectable()
 export class FinanceVoucherDraftService{
@@ -236,7 +236,7 @@ export class FinanceVoucherDraftService{
  private async commitDraft(client:PoolClient,actor:VerifiedFoundationActor,
   key:string,safe:SafeDraft,reference:string|null,expectedVersion:number|null){
   await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
-  const hash=fingerprint(safe,reference);
+  const hash=fingerprint(safe,reference,expectedVersion);
   const existing=await this.prior(client,actor,key);
   if(existing.rows[0]){
    if(existing.rows[0].payload_digest!==hash)
@@ -310,7 +310,7 @@ export class FinanceVoucherDraftService{
   if(reference&&(!Number.isSafeInteger(expected)||Number(expected)<1))
    return fail("FINANCE_VOUCHER_STALE","expectedVersion");
   const safe=normalize(payload);
-  const hash=fingerprint(safe,reference);
+  const hash=fingerprint(safe,reference,reference?Number(expected):null);
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
