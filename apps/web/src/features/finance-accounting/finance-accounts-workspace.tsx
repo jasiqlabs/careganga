@@ -126,15 +126,23 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
    try{
     const response=await fetch(base+"/account-options?q="+encodeURIComponent(postingQuery.trim()),
      {cache:"no-store",signal:controller.signal});
-    if(!response.ok)throw Error("Account choices could not be loaded.");
+    if(!response.ok){
+     const reason=await parseFailure(response);
+     if(active){setPostingResults([]);setPostingError(reason.message);}
+     return;
+    }
     const value:unknown=await response.json();
     if(!value||typeof value!=="object"||Array.isArray(value)||
        !("accounts" in value)||!Array.isArray(value.accounts)||
-       !("hasMore" in value)||typeof value.hasMore!=="boolean"||
+       !("hasMore" in value)||typeof value.hasMore!=="boolean"||value.accounts.length>50||
        !value.accounts.every((x:unknown)=>x&&typeof x==="object"&&
           "accountRef" in x&&typeof x.accountRef==="string"&&
           "name" in x&&typeof x.name==="string"&&
-          "code" in x&&typeof x.code==="string"))
+          "code" in x&&typeof x.code==="string"&&
+          "branchRef" in x&&(x.branchRef===null||typeof x.branchRef==="string")&&
+          "branchName" in x&&(x.branchName===null||typeof x.branchName==="string")&&
+          "branchVersion" in x&&(x.branchVersion===null||
+           (typeof x.branchVersion==="number"&&Number.isSafeInteger(x.branchVersion)))))
        throw Error("Account choices could not be verified.");
     if(active){setPostingResults(value.accounts as PostingChoice[]);
       setPostingMore(value.hasMore);}
@@ -533,6 +541,7 @@ export function FinanceAccountsWorkspace({canManage,canPost}:{canManage:boolean;
         onChange={e=>setPostingQuery(e.target.value)}/>
       </label>
       {postingLoading&&<p role="status">Finding eligible finance accounts…</p>}
+      {!postingLoading&&!postingError&&postingResults.length===0&&<p className="cg-fin-help">No matching active accounts found. Try another account name or business code, or ask a Finance Administrator to create the account.</p>}
       {postingMore&&<p className="cg-fin-help">More eligible accounts exist. Refine the search to find the correct account.</p>}
       {postingError&&<div className="cg-fin-notice" role="alert"><p>{postingError}</p>
        <button type="button" onClick={()=>setPostingSearchRevision(i=>i+1)}>Retry search</button></div>}
