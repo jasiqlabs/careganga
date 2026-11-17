@@ -41,6 +41,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
  const [years,setYears]=useState<Year[]>([]),[accounts,setAccounts]=useState<Account[]>([]);
  const [year,setYear]=useState(""),[account,setAccount]=useState("");
  const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
+ const [allBranches,setAllBranches]=useState(true);
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
  const [offset,setOffset]=useState(0),[next,setNext]=useState<number|null>(null);
  const [rows,setRows]=useState<Ledger[]>([]);
@@ -106,9 +107,12 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
-   const opts=await request<{years:Year[];accounts:Account[];branches:Branch[]}>(token,
+   const opts=await request<{years:Year[];accounts:Account[];branches:Branch[];allBranches:boolean}>(token,
     "/api/finance-accounting/reports/options");
-   if(alive){setYears(opts.years);setAccounts(opts.accounts);setBranches(opts.branches);}
+   if(alive){setYears(opts.years);setAccounts(opts.accounts);setBranches(opts.branches);
+     setAllBranches(opts.allBranches===true);
+     if(opts.allBranches!==true)setBranch(current=>opts.branches.some(x=>x.branchRef===current)?current:(opts.branches[0]?.branchRef??""));
+    }
   }catch(e){if(alive)problemView(e);}})();return()=>{alive=false;};
  },[token,onExpired]);
  useEffect(()=>{let alive=true;if(view!=="reconciliation"||!bank){
@@ -285,7 +289,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
      options={[{ref:"",label:"All years"},...years.map(y=>({ref:y.ref,label:y.name}))]}
      onChange={v=>{setYear(v);setOffset(0);}}/>
     <Options label="Foundation / branch" value={branch}
-     options={[{ref:"",label:"All permitted branches"},...branches.map(x=>({
+     options={[...(allBranches?[{ref:"",label:"All Foundation branches"}]:[]),...branches.map(x=>({
       ref:x.branchRef,label:x.code+" · "+x.name}))]}
      onChange={v=>{setBranch(v);setOffset(0);}}/>
     {["general-ledger","cash-book","bank-book","day-book","receivables"].includes(view)&&<Options label="Finance account" value={account}
