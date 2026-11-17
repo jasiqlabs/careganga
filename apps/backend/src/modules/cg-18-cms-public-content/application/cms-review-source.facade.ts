@@ -50,7 +50,19 @@ export class CmsReviewSourceFacade{
    'AND v.approval_case_ref=$4 ORDER BY s.order_no,s.id LIMIT 101',
    [bearerRealm,pageRef,revisionRef,caseRef]);
   if(!original.rows.length)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
-  return {title:original.rows[0].title,kind:original.rows[0].kind,
+  const nav=await this.db.query<{login_desired:boolean;member_join_desired:boolean;
+   volunteer_join_desired:boolean}>(
+   "SELECT login_desired,member_join_desired,volunteer_join_desired "+
+   "FROM cms_navigation_revision WHERE foundation_root_id=$1 AND "+
+   "home_revision_id=$2 AND status='SUBMITTED'",
+   [bearerRealm,revisionRef]);
+  if(original.rows[0].kind==="HOME"&&!nav.rows[0])
+   throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+  return {navigation:nav.rows[0]?{
+   loginDesired:nav.rows[0].login_desired,
+   memberJoinDesired:nav.rows[0].member_join_desired,
+   volunteerJoinDesired:nav.rows[0].volunteer_join_desired}:null,
+   title:original.rows[0].title,kind:original.rows[0].kind,
    slug:original.rows[0].slug,seoTitle:original.rows[0].seo_title,
    seoDescription:original.rows[0].seo_description,
    sections:original.rows.slice(0,100).filter(x=>x.section_kind!==null)
