@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {PlatformSettingsPanel} from "../../../../features/platform-configuration/platform-settings-panel";
+import {SafeErrorMessagesEditor} from "../../../../features/platform-configuration/safe-error-messages-editor";
 export const dynamic="force-dynamic";
 
 export default async function FoundationSettings(){
@@ -55,7 +56,7 @@ export default async function FoundationSettings(){
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
-      <main className="workspace"><PlatformSettingsPanel/></main>
+      <main className="workspace"><PlatformSettingsPanel/><SafeErrorMessagesEditor canEdit={keys.includes("platform.settings.manage")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
