@@ -48,6 +48,19 @@ type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
  "ABOUT"|"PROMO"|"FEATURE";
  altText:string;order:number};
+// Only reveal media when its exact authored section or indexed card still exists.
+function placementFits(sections:readonly Section[],a:{role:string;order:number}){
+ return sections.some(s=>{
+  if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order;
+  if(a.role==="ABOUT")return s.kind==="RICH_TEXT"&&s.order===a.order&&s.fields.variant==="SPLIT";
+  if(a.role==="PROMO")return s.kind==="CTA"&&s.order===a.order;
+  if(a.role==="TEAM")return s.kind==="TEAM"&&
+   Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
+  if(a.role==="FEATURE")return s.kind==="FEATURE_CARDS"&&
+   Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length;
+  return false;
+ });
+}
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type Content={kind:"HOME"|"ABOUT";slug:string;title:string;seoTitle:string;
  seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[];navigation:NavDesired|null};
@@ -226,19 +239,7 @@ function parseContent(raw:unknown):Content{
  // authorized but unused media could be exposed in the public page payload.
  for(let i=0;i<assets.length;i++){
   const a=assets[i];
-  const matches=sections.some(s=>{
-   if(a.role==="HERO"||a.role==="MOBILE_HERO")
-    return s.kind==="HERO"&&s.order===a.order;
-   if(a.role==="ABOUT")
-    return s.kind==="RICH_TEXT"&&s.order===a.order&&s.fields.variant==="SPLIT";
-   if(a.role==="PROMO")return s.kind==="CTA"&&s.order===a.order;
-   if(a.role==="TEAM")return s.kind==="TEAM"&&
-    Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
-   if(a.role==="FEATURE")return s.kind==="FEATURE_CARDS"&&
-    Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length;
-   return false;
-  });
-  if(!matches)throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+  if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
  }
  return {kind,slug,title,seoTitle,seoDescription,canonicalPath,sections,assets,navigation};
 }
@@ -796,7 +797,12 @@ export class CmsEditorialService{
    "WHERE pub.id=$1 AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
    "AND (pub.expires_at IS NULL OR pub.expires_at>now())",[x.publication_id]);
   if(!exists.rowCount)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
-  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
+  const authoredSections:Section[]=sections.rows.map(sec=>({
+  kind:sec.section_kind as Section["kind"],order:sec.order_no,
+  fields:sec.structured_fields}));
+ const visibleAssets=assets.rows.filter(asset=>placementFits(authoredSections,
+  {role:asset.role,order:asset.sort_order}));
+ const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
   return {schemaVersion:1,effectiveGeneration:x.publication_id,
@@ -806,7 +812,7 @@ export class CmsEditorialService{
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
     fields:v.structured_fields})),
-   assets:assets.rows.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
+   assets:visibleAssets.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
  }
