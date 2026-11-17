@@ -47,8 +47,10 @@ async function handle(req:NextRequest,p:string[],method:"GET"|"POST"){
    const bytes=Buffer.from(await response.arrayBuffer());
    if(!bytes.length||bytes.length>10485760)
     return NextResponse.json({message:"The private statement could not be verified."},{status:503});
+   const ext=mime==="application/pdf"?"pdf":mime==="image/jpeg"?"jpg":
+    mime==="image/png"?"png":"webp";
    return new NextResponse(bytes,{status:200,headers:{"Content-Type":mime,
-    "Content-Disposition":'attachment; filename="CareGanga-private-bank-statement"',
+    "Content-Disposition":'attachment; filename="CareGanga-private-bank-statement.'+ext+'"',
     "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
   }
   const data:unknown=await response.json().catch(()=>null);
