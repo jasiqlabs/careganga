@@ -8,6 +8,7 @@ import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/applicati
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {FinanceJournalPostingService} from "./finance-journal-posting.service";
 import {financeSqlFailure} from "./finance-sql-error";
+import {renderOriginalFinanceCreditNote} from "../../cg-19-documents-notifications/application/finance-credit-note-pdf-renderer";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const id=(x:unknown,field="invoiceRef"):string=>{
  if(typeof x!=="string"||!UUID.test(x))
@@ -345,4 +346,29 @@ export class FinanceInvoiceAdjustmentService{
     refundRef,replayed:false};
   }catch(e){await tx.query("ROLLBACK");financeSqlFailure(e,"invoice");}finally{tx.release();}
  }
+ async creditPdf(bearer:string,invoiceInput:string):Promise<Buffer>{
+  const actor=await this.sessions.requireAction(bearer,"finance.invoices.view");
+  const ref=id(invoiceInput);
+  const source=await this.db.query<{
+   branch_id:string|null;noteNumber:string;invoiceNumber:string;invoiceDate:string;
+   creditDate:string;counterparty:string;reason:string;totalMinor:string;
+   collectedMinor:string;incomeMinor:string;taxMinor:string
+  }>(
+   "SELECT i.branch_id,c.credit_note_number AS \"noteNumber\","+
+   "i.invoice_number AS \"invoiceNumber\",i.invoice_date::text AS \"invoiceDate\","+
+   "c.created_at::date::text AS \"creditDate\","+
+   "i.counterparty_name AS counterparty,c.reason,"+
+   "c.total_minor::text AS \"totalMinor\","+
+   "c.collected_minor::text AS \"collectedMinor\","+
+   "(i.gross_minor+i.charges_minor)::text AS \"incomeMinor\","+
+   "i.tax_minor::text AS \"taxMinor\" "+
+   "FROM finance_invoice_credit_note c JOIN finance_invoice i "+
+   "ON i.id=c.invoice_id AND i.root_realm_id=c.root_realm_id "+
+   "WHERE c.root_realm_id=$1 AND c.invoice_id=$2",[actor.realmId,ref]);
+  const x=source.rows[0];
+  if(!x)throw new ConflictException({code:"FINANCE_CREDIT_NOTE_NOT_FOUND"});
+  await this.scope(bearer,"finance.invoices.view",x.branch_id);
+  return renderOriginalFinanceCreditNote({...x,currency:"INR"});
+ }
+
 }
