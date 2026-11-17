@@ -50,6 +50,32 @@ export class FinanceExpenseClaimSourceFacade{
   if(c.status!=="DRAFT")throw new ConflictException({code:"FINANCE_CLAIM_NOT_EDITABLE"});
   return {claimRef:c.id,revision:c.version,sourceDigest:c.create_digest};
  }
+ /** Reviewer view of only a submitted original claim. Never a public person master. */
+ async reviewerSnapshot(bearer:string,reference:string,version:number){
+  const actor=await this.sessions.requireAction(bearer,"finance.claims.review");
+  await this.sessions.requireAction(bearer,"approvals.review");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"finance.claims.review");
+   const found=await tx.query<{claimRef:string;claimNumber:string;category:string;
+    purpose:string;expenseDate:string;amountMinor:string;status:string;version:number;
+    requestedBy:string;billFileRef:string|null;billVersion:number|null}>(
+    "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,"+
+    "purpose,expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\","+
+    "status,version,requested_by AS \"requestedBy\",bill_file_id AS \"billFileRef\","+
+    "bill_file_version AS \"billVersion\" FROM expense_claim "+
+    "WHERE root_realm_id=$1 AND id=$2 AND version=$3 AND status<>'DRAFT' FOR SHARE",
+    [actor.realmId,reference,version]);
+   const c=found.rows[0];
+   if(!c||c.requestedBy===actor.accountId)
+    throw new ConflictException({code:"FINANCE_CLAIM_REVIEW_UNAVAILABLE"});
+   await tx.query("COMMIT");
+   return {claimNumber:c.claimNumber,claimRef:c.claimRef,category:c.category,
+    purpose:c.purpose,expenseDate:c.expenseDate,amountMinor:c.amountMinor,
+    status:c.status,version:c.version,billFileRef:c.billFileRef,billVersion:c.billVersion};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async guardForReviewer(client:PoolClient,actor:VerifiedFoundationActor,reference:string,
   version:number,expectedDigest:string){
   if(typeof reference!=="string"||!UUID.test(reference)||!Number.isSafeInteger(version)||
