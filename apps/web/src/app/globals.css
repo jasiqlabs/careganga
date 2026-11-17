@@ -608,3 +608,22 @@ button:disabled { cursor:wait; opacity:.65; }
 @media(max-width:48rem){.cg-fin-side{grid-template-columns:1fr}
  .cg-fin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:28rem){.cg-fin-kpis{grid-template-columns:1fr}}
+
+/* Original U36 advanced filter band: compact, responsive and real inputs only. */
+.cg-fin-advanced{display:grid;gap:.65rem;padding:.9rem 1rem 1rem;
+ background:var(--cg-surface);border-block:1px solid var(--cg-border)}
+.cg-fin-advanced>strong{font-size:.8rem;font-weight:650}
+.cg-fin-filter-grid{display:grid;grid-template-columns:repeat(6,minmax(8rem,1fr));gap:.6rem}
+.cg-fin-filter-grid label{display:grid;min-width:0;gap:.25rem;font-size:.72rem;
+ color:var(--cg-muted);font-weight:600}
+.cg-fin-filter-grid input,.cg-fin-filter-grid select{width:100%;min-width:0;
+ min-height:2.4rem;border:1px solid var(--cg-border);border-radius:.4rem;
+ color:var(--cg-text);background:var(--cg-surface);padding:.4rem .55rem;font:inherit}
+.cg-fin-filter-actions{display:flex;justify-content:flex-end;align-items:center;gap:.55rem;flex-wrap:wrap}
+.cg-fin-filter-actions button{min-height:2.5rem;padding:.5rem .75rem;
+ border:1px solid var(--cg-border);border-radius:.4rem;background:var(--cg-surface)}
+.cg-fin-filter-actions button.primary{background:var(--cg-accent);color:var(--cg-accent-text);
+ border-color:var(--cg-accent)}
+@media(max-width:88rem){.cg-fin-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:48rem){.cg-fin-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:28rem){.cg-fin-filter-grid{grid-template-columns:1fr}}
