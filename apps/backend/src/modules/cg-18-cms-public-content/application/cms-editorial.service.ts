@@ -407,9 +407,8 @@ export class CmsEditorialService{
    if(!placementMimeAllowed(asset,value.sections,proof.mime))
     throw new BadRequestException({code:"CMS_MEDIA_INVALID",field:"assets"});
    await tx.query("INSERT INTO cms_asset_placement(foundation_root_id,page_revision_id,"+
-    "page_id,cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,"+
-    "public_rights_status) SELECT $1,$2,v.page_id,$3,$4,$5,$6,$7,'VALIDATED' "+
-    "FROM cms_page_revision v WHERE v.id=$2 AND v.foundation_root_id=$1",
+    "cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,"+
+    "public_rights_status) VALUES($1,$2,$3,$4,$5,$6,$7,'VALIDATED')",
     [actor.realmId,rev,asset.fileRef,asset.version,
      asset.role,asset.altText,asset.order]);
   }
