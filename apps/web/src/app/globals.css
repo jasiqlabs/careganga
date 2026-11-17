@@ -564,3 +564,7 @@ button:disabled { cursor:wait; opacity:.65; }
  .cg-fin-table{min-width:40rem}.cg-fin-header-actions{width:100%}
  .cg-fin-paging{justify-content:space-between}}
 @media(max-width:28rem){.cg-fin-kpis{grid-template-columns:1fr}}
+
+.cg-fin-field textarea{width:100%;min-height:6rem;padding:.65rem .75rem;
+ border:1px solid var(--cg-border);border-radius:.4rem;
+ background:var(--cg-surface);color:var(--cg-text);font:inherit;font-weight:400;resize:vertical}
