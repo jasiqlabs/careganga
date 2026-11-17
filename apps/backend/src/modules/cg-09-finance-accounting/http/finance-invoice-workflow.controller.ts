@@ -15,6 +15,17 @@ export class FinanceInvoiceWorkflowController{
  @Post(":invoiceRef/issue")
  issue(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
   @Body()body:unknown){return this.service.issue(auth,ref,body);}
+ @Get(":invoiceRef/receipt-options")
+ receiptOptions(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return this.service.receiptOptions(auth,ref);
+ }
+ @Get(":invoiceRef/receipt")
+ receiptStatus(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string){
+  return this.service.receiptStatus(auth,ref);
+ }
+ @Post(":invoiceRef/link-receipt")
+ linkReceipt(@Headers("authorization")auth:string,@Param("invoiceRef")ref:string,
+  @Body()body:unknown){return this.service.linkReceipt(auth,ref,body);}
  @Get("workflow-commands/:requestKey")
  command(@Headers("authorization")auth:string,@Param("requestKey")ref:string){
   return this.service.commandStatus(auth,ref);
