@@ -269,14 +269,14 @@ BEGIN
   END IF;
   FOR line IN SELECT value FROM jsonb_array_elements(NEW.draft_payload->'items'->'rows') LOOP
    IF jsonb_typeof(line)<>'object' OR
-     line->>'unitRateMinor' !~ '^[1-9][0-9]{0,13}$' OR
-     line->>'lineTotalMinor' !~ '^[1-9][0-9]{0,13}$' OR
-     line->>'quantity' !~ '^[1-9][0-9]{0,6}$' OR
-     char_length(btrim(line->>'description')) NOT BETWEEN 2 AND 180 THEN
+     COALESCE(line->>'unitRateMinor','') !~ '^[1-9][0-9]{0,13}$' OR
+     COALESCE(line->>'lineTotalMinor','') !~ '^[1-9][0-9]{0,13}$' OR
+     COALESCE(line->>'quantity','') !~ '^[1-9][0-9]{0,6}$' OR
+     char_length(btrim(COALESCE(line->>'description',''))) NOT BETWEEN 2 AND 180 THEN
     RAISE EXCEPTION 'Invalid immutable original invoice item' USING ERRCODE='P0922';
    END IF;
    rate=(line->>'unitRateMinor')::bigint;qty=(line->>'quantity')::integer;
-   IF qty>1000000 OR rate*qty<1 OR
+   IF qty>1000000 OR rate>99999999999999/qty OR rate*qty<1 OR
       rate*qty<>(line->>'lineTotalMinor')::bigint THEN
     RAISE EXCEPTION 'Original invoice line does not balance' USING ERRCODE='P0922';
    END IF;
@@ -318,15 +318,20 @@ BEGIN
     AND p.invoice_version=NEW.version AND p.approval_case_id=NEW.approval_case_id
     AND j.source_ref=NEW.id AND j.posting_kind='INVOICE' AND j.status='POSTED'
     AND j.financial_year_id=NEW.financial_year_id
+    AND j.posting_date=NEW.invoice_date
     AND j.immutable_payload_digest=p.original_digest
     AND (SELECT COALESCE(SUM(l.debit_minor),0)=NEW.total_minor
         AND COALESCE(SUM(l.credit_minor),0)=NEW.total_minor
+        AND COUNT(*)=CASE WHEN NEW.tax_minor>0 THEN 3 ELSE 2 END
         AND COUNT(*) FILTER (WHERE l.account_id=NEW.receivable_account_id
+          AND l.branch_id IS NOT DISTINCT FROM NEW.branch_id
           AND l.debit_minor=NEW.total_minor AND l.credit_minor=0)=1
         AND COUNT(*) FILTER (WHERE l.account_id=NEW.income_account_id
+          AND l.branch_id IS NOT DISTINCT FROM NEW.branch_id
           AND l.credit_minor=NEW.gross_minor+NEW.charges_minor AND l.debit_minor=0)=1
         AND (NEW.tax_minor=0 OR COUNT(*) FILTER
-          (WHERE l.account_id=NEW.tax_account_id AND l.credit_minor=NEW.tax_minor
+          (WHERE l.account_id=NEW.tax_account_id
+           AND l.branch_id IS NOT DISTINCT FROM NEW.branch_id AND l.credit_minor=NEW.tax_minor
            AND l.debit_minor=0)=1)
       FROM journal_line l WHERE l.journal_id=j.id AND l.root_realm_id=NEW.root_realm_id)
    FOR SHARE OF p,j;
