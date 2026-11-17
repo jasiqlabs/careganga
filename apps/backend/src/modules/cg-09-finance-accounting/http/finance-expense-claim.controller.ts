@@ -21,6 +21,9 @@ export class FinanceExpenseClaimController{
  eligibleVouchers(@Headers("authorization")bearer:string,@Param("claimRef")ref:string){
   return this.claims.eligibleVouchers(bearer,ref);
  }
+ @Post(":claimRef/correct")
+ correct(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
+  @Body()body:unknown){return this.claims.correctReturned(bearer,ref,body);}
  @Post(":claimRef/submit")
  submit(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
   @Body()body:unknown){return this.claims.submit(bearer,ref,body);}
