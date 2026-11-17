@@ -13,10 +13,6 @@ export class FinanceExpenseClaimController{
  workflowCommand(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
   return this.claims.workflowCommand(bearer,key);
  }
- @Get(":claimRef")
- detail(@Headers("authorization")bearer:string,@Param("claimRef")ref:string){
-  return this.claims.detail(bearer,ref);
- }
  @Post(":claimRef/submit")
  submit(@Headers("authorization")bearer:string,@Param("claimRef")ref:string,
   @Body()body:unknown){return this.claims.submit(bearer,ref,body);}
@@ -37,5 +33,9 @@ export class FinanceExpenseClaimController{
  @Get("draft-commands/:requestKey")
  command(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
   return this.claims.command(bearer,key);
+ }
+ @Get(":claimRef")
+ detail(@Headers("authorization")bearer:string,@Param("claimRef")ref:string){
+  return this.claims.detail(bearer,ref);
  }
 }
