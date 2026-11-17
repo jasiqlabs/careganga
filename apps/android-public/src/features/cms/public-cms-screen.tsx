@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -66,15 +66,29 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
+ const latestPageRequest=useRef(0);
+ const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
+  const request=++latestNavRequest.current;
   onLoginVisibility(false);
-  onLoginVisibility(await approvedLoginFlag());
+  const visible=await approvedLoginFlag();
+  if(request===latestNavRequest.current)onLoginVisibility(visible);
  },[onLoginVisibility]);
  const load=useCallback(async(target:"home"|"about")=>{
-  setLoading(true);setActiveSlide(0);setResult(await published(target));setLoading(false);
+  const request=++latestPageRequest.current;
+  setLoading(true);setActiveSlide(0);
+  const response=await published(target);
+  if(request!==latestPageRequest.current)return;
+  setResult(response);setLoading(false);
  },[]);
- useEffect(()=>{void load(slug);},[slug,load]);
- useEffect(()=>{void refreshNavigation();},[refreshNavigation]);
+ useEffect(()=>{
+  void load(slug);
+  return()=>{latestPageRequest.current++};
+ },[slug,load]);
+ useEffect(()=>{
+  void refreshNavigation();
+  return()=>{latestNavRequest.current++};
+ },[refreshNavigation]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",state=>{
    if(state==="active"){void load(slug);void refreshNavigation();}
