@@ -8,6 +8,7 @@ import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/b
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 type SafeDraft={year:string;branch:string|null;branchVersion:number|null;paymentAccount:string|null;
+ claimRef:string|null;claimVersion:number|null;
  debitAccount:string;creditAccount:string;
  kind:"PAYMENT"|"EXPENSE"|"CONTRA"|"GENERAL";date:string;payee:string;
  purpose:string;lines:{description:string;quantity:number;unitRateMinor:string;
@@ -53,7 +54,7 @@ function normalize(input:unknown):SafeDraft{
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const value=input as Record<string,unknown>;
  const fields=["financialYearRef","branchRef","branchVersion","voucherType","postingDate",
-  "payeeName","purpose","paymentAccountRef","debitAccountRef","creditAccountRef","lines","tax","charges","requestKey","expectedVersion"];
+  "payeeName","purpose","paymentAccountRef","debitAccountRef","creditAccountRef","lines","tax","charges","requestKey","expectedVersion","expenseClaimRef","expenseClaimVersion"];
  if(Object.keys(value).some(k=>!fields.includes(k)))
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const year=uid(value.financialYearRef,"financialYearRef");
@@ -61,6 +62,10 @@ function normalize(input:unknown):SafeDraft{
  const branchVersion=branch?value.branchVersion:null;
  if(branch&&(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1))
   return fail("FINANCE_BRANCH_STALE","branchRef");
+ const claimRef=value.expenseClaimRef?uid(value.expenseClaimRef,"expenseClaimRef"):null;
+ const claimVersion=claimRef?value.expenseClaimVersion:null;
+ if(claimRef&&(!Number.isSafeInteger(claimVersion)||Number(claimVersion)<1))
+  return fail("FINANCE_CLAIM_STALE","expenseClaimRef");
  const kind=value.voucherType;
  if(!["PAYMENT","EXPENSE","CONTRA","GENERAL"].includes(String(kind)))
   return fail("FINANCE_VOUCHER_TYPE_INVALID","voucherType");
@@ -100,6 +105,7 @@ function normalize(input:unknown):SafeDraft{
  if(gross<=0n||total>99999999999999n)
   return fail("FINANCE_VOUCHER_AMOUNT_INVALID","lines");
  return {year,branch,branchVersion:branch?Number(branchVersion):null,paymentAccount,
+  claimRef,claimVersion:claimRef?Number(claimVersion):null,
   debitAccount,creditAccount,
   kind:kind as SafeDraft["kind"],date:date(value.postingDate),
   payee:name(value.payeeName,"payeeName",150),purpose:purpose(value.purpose),
@@ -252,6 +258,20 @@ export class FinanceVoucherDraftService{
    return fail("FINANCE_VOUCHER_DATE_INVALID","postingDate");
   if(safe.branch)await this.branches.financeActiveBranch(client,actor,safe.branch,
    safe.branchVersion??0,"finance.vouchers.manage");
+  if(safe.claimRef){
+   await this.identity.assertCurrent(client,actor,"finance.claims.manage");
+   if(!["EXPENSE","PAYMENT"].includes(safe.kind))
+    return fail("FINANCE_CLAIM_VOUCHER_INVALID","expenseClaimRef");
+   const claim=await client.query<{status:string;version:number;amount_minor:string}>(
+    "SELECT status,version,amount_minor::text FROM expense_claim "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+    [actor.realmId,safe.claimRef]);
+   if(!claim.rows[0]||claim.rows[0].status!=="APPROVED"||
+      claim.rows[0].version!==safe.claimVersion||
+      claim.rows[0].amount_minor!==safe.totalMinor)
+    throw new ConflictException({code:"FINANCE_CLAIM_VOUCHER_INVALID",
+      field:"expenseClaimRef"});
+  }
   const accounts=await client.query<{id:string;status:string;account_kind:string;
     branch_id:string|null;category:string}>(`
      SELECT a.id,a.status,a.account_kind,a.branch_id,g.category
@@ -315,28 +335,31 @@ export class FinanceVoucherDraftService{
      SET financial_year_id=$1,branch_id=$2,voucher_type=$3,posting_date=$4,
        payee_name=$5,purpose=$6,gross_minor=$7,tax_minor=$8,charges_minor=$9,
        total_minor=$10,version=$11,payment_account_id=$14,
-       debit_account_id=$15,credit_account_id=$16,status='DRAFT',approval_case_id=NULL,
+       debit_account_id=$15,credit_account_id=$16,expense_claim_id=$17,
+       expense_claim_version=$18,status='DRAFT',approval_case_id=NULL,
        proof_file_id=NULL,proof_file_revision=NULL,updated_at=now()
      WHERE id=$12 AND root_realm_id=$13`,
     [safe.year,safe.branch,safe.kind,safe.date,safe.payee,safe.purpose,
      safe.grossMinor,safe.taxMinor,safe.chargesMinor,safe.totalMinor,version,
-     reference,actor.realmId,safe.paymentAccount,safe.debitAccount,safe.creditAccount]);
+     reference,actor.realmId,safe.paymentAccount,safe.debitAccount,safe.creditAccount,
+     safe.claimRef,safe.claimVersion]);
   }else{
    const out=await client.query<{id:string;voucher_number:string}>(`
      INSERT INTO finance_voucher(root_realm_id,financial_year_id,branch_id,voucher_type,
       posting_date,payee_name,purpose,gross_minor,tax_minor,charges_minor,total_minor,created_by,payment_account_id,
-      debit_account_id,credit_account_id)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      debit_account_id,credit_account_id,expense_claim_id,expense_claim_version)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
      RETURNING id,voucher_number`,[actor.realmId,safe.year,safe.branch,safe.kind,
       safe.date,safe.payee,safe.purpose,safe.grossMinor,safe.taxMinor,
       safe.chargesMinor,safe.totalMinor,actor.accountId,safe.paymentAccount,
-      safe.debitAccount,safe.creditAccount]);
+      safe.debitAccount,safe.creditAccount,safe.claimRef,safe.claimVersion]);
    voucherRef=out.rows[0].id;
    voucherNumber=out.rows[0].voucher_number;
    version=1;
   }
   const header={financialYearRef:safe.year,branchRef:safe.branch,type:safe.kind,paymentAccountRef:safe.paymentAccount,
     debitAccountRef:safe.debitAccount,creditAccountRef:safe.creditAccount,
+    expenseClaimRef:safe.claimRef,expenseClaimVersion:safe.claimVersion,
     postingDate:safe.date,payeeName:safe.payee,purpose:safe.purpose};
   await client.query(`
     INSERT INTO finance_voucher_draft_revision(root_realm_id,voucher_id,version,
