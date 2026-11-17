@@ -5,6 +5,10 @@ import {FinanceExpenseClaimService} from "../application/finance-expense-claim.s
 @Controller("api/finance-accounting/claims")
 export class FinanceExpenseClaimController{
  constructor(private readonly claims:FinanceExpenseClaimService){}
+ @Get("managed")
+ managed(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
+  return this.claims.managed(bearer,offset);
+ }
  @Get("approved-options")
  approvedOptions(@Headers("authorization")bearer:string,@Query("q")q?:string){
   return this.claims.approvedOptions(bearer,q);
