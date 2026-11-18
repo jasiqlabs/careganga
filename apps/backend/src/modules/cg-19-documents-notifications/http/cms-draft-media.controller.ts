@@ -47,7 +47,7 @@ export class CmsPublicMediaController{
    return new StreamableFile(x.bytes,{type:"video/mp4",disposition:"inline"});
   }
   // One bounded HTTP byte range only; no multipart or unchecked integers.
-  const m=/^bytes=(\\d*)-(\\d*)$/.exec(requestedRange.trim());
+  const m=/^bytes=(\d*)-(\d*)$/.exec(requestedRange.trim());
   const first=m?.[1],last=m?.[2];
   let start=0,end=total-1;
   if(!m||(!first&&!last)||total<1){
