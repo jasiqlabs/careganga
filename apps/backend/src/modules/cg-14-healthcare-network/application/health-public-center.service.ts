@@ -12,7 +12,13 @@ export class HealthPublicCenterService{
   const slug=publicSlug.trim().toLowerCase();
   if(!/^[a-z0-9][a-z0-9-]{2,79}$/.test(slug))
    throw new NotFoundException("Verified center unavailable");
-  const result=await this.db.query<{id:string;root_realm_id:string;display_name:string;
+  // Build the public projection within a short center-row read lock.
+  // Suspension and publication mutations also acquire this center lock.
+  const tx=await this.db.connect();
+  let active=false;
+  try{
+  await tx.query("BEGIN");active=true;
+  const result=await tx.query<{id:string;root_realm_id:string;display_name:string;
    center_type:string;address_line:string;pin_code:string;
    public_phone:string|null;time_zone:string;latitude:string|null;
    longitude:string|null;provider_name:string;publication_generation:number}>(
@@ -47,22 +53,22 @@ export class HealthPublicCenterService{
     "AND c.status='VERIFIED' AND p.status='VERIFIED' "+
     "AND c.access_state='ENABLED' AND cg.status='OWNER_COMPLETED' "+
     "AND intent.status='VALIDATED' AND intent.classification='HEALTH_CENTER_LICENSE' "+
-    "LIMIT 1",[slug]);
+    "LIMIT 1 FOR SHARE OF c",[slug]);
   const c=result.rows[0];
   if(!c)throw new NotFoundException("Verified center unavailable");
   const [hours,services]=await Promise.all([
-    this.db.query<{weekday:number;open_local:string;close_local:string;service_type:string}>(
+    tx.query<{weekday:number;open_local:string;close_local:string;service_type:string}>(
       "SELECT weekday,open_local::text,close_local::text,service_type "+
       "FROM health_center_hours WHERE root_realm_id=$1 AND center_id=$2 "+
       "ORDER BY weekday,open_local LIMIT 42",[c.root_realm_id,c.id]),
-    this.db.query<{capability_code:string}>(
+    tx.query<{capability_code:string}>(
       "SELECT capability_code FROM health_center_capability "+
       "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code LIMIT 6",
       [c.root_realm_id,c.id])
   ]);
   // Revalidate the public generation after loading dependent rows so a
   // concurrent withdrawal does not return a stale approved projection.
-  const fresh=await this.db.query(
+  const fresh=await tx.query(
     "SELECT 1 FROM health_center c "+
     "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
     "JOIN health_center_publication pub ON pub.root_realm_id=c.root_realm_id "+
@@ -79,6 +85,7 @@ export class HealthPublicCenterService{
     "AND c.access_state='ENABLED' AND c.publication_state='PUBLISHED'",
     [c.root_realm_id,c.id,c.publication_generation]);
   if(!fresh.rowCount)throw new NotFoundException("Verified center unavailable");
+  await tx.query("COMMIT");active=false;
   return {centerName:c.display_name,providerName:c.provider_name,type:c.center_type,
     address:c.address_line,pinCode:c.pin_code,publicPhone:c.public_phone,
     timeZone:c.time_zone,latitude:c.latitude===null?null:Number(c.latitude),
@@ -87,5 +94,9 @@ export class HealthPublicCenterService{
       closes:h.close_local.slice(0,5),service:h.service_type})),
     declaredServices:services.rows.map(x=>x.capability_code),
     notice:"Verified center information. Booking and online payment are not available here."};
+  }catch(error){
+    if(active)try{await tx.query("ROLLBACK");}catch{}
+    throw error;
+  }finally{tx.release();}
  }
 }
