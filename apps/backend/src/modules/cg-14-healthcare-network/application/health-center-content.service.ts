@@ -83,8 +83,16 @@ export class HealthCenterContentService{
     "SELECT version,state,content FROM health_center_content_draft "+
     "WHERE root_realm_id=$1 AND center_id=$2 FOR SHARE",[actor.realmId,center]);
    const data=result.rows[0];
+   const previous=await tx.query<{approval_case_ref:string|null;status:string|null}>(
+    "SELECT rev.approval_case_ref,cg.status FROM health_center_content_revision rev "+
+    "LEFT JOIN cg03_case cg ON cg.id=rev.approval_case_ref AND cg.realm_id=rev.root_realm_id "+
+    "WHERE rev.root_realm_id=$1 AND rev.center_id=$2 "+
+    "ORDER BY rev.revision_no DESC,rev.id DESC LIMIT 1",
+    [actor.realmId,center]);
    return {centerRef:center,version:data?.version??0,state:data?.state??"DRAFT",
-    content:data?.content??EMPTY};
+    content:data?.content??EMPTY,
+    reviewCaseRef:previous.rows[0]?.approval_case_ref??null,
+    reviewStatus:previous.rows[0]?.status??null};
   });
  }
  async save(bearer:string,centerRef:string,body:unknown){
@@ -131,6 +139,10 @@ export class HealthCenterContentService{
     "content=EXCLUDED.content,updated_by=EXCLUDED.updated_by,updated_at=now() "+
     "RETURNING version",[actor.realmId,center,JSON.stringify(value),actor.accountId]);
    const version=saved.rows[0].version;
+   await tx.query(
+    "INSERT INTO health_center_content_event(root_realm_id,center_id,actor_ref,"+
+    "action_key,source_version) VALUES($1,$2,$3,'DRAFT_SAVED',$4)",
+    [actor.realmId,center,actor.accountId,version]);
    await tx.query(
     "UPDATE health_network_command SET result_ref=$2,result_version=$3 WHERE id=$1",
     [cmd.rows[0].id,center,version]);
