@@ -113,6 +113,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [selected,setSelected]=useState<Detail|null>(null);
  const [draft,setDraft]=useState<Draft>(initial("IMPACT"));
  const [busy,setBusy]=useState(false),[preview,setPreview]=useState(false);
+ const [previewMediaScope,setPreviewMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
  const [noticeSources,setNoticeSources]=useState<NoticeSource[]>([]);
@@ -132,7 +133,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
    setEditorOpen(true);setClosePrompt(false);
-   setGalleryCategory("ALL");setGalleryVisibility("ALL");
+   setPreviewMediaScope("PHOTO");setGalleryCategory("ALL");setGalleryVisibility("ALL");
    setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
@@ -145,6 +146,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  };
  const begin=(k:Kind)=>{
   setKind(k);setSelected(null);setDraft(initial(k));setPreview(false);
+  setPreviewMediaScope("PHOTO");
   setEditorOpen(true);setClosePrompt(false);
   setPending(null);setError("");setNotice("");
   setUploadRole(k==="IMPACT"?"IMPACT":k==="GALLERY"?"GALLERY":
@@ -371,8 +373,18 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      <button type="button" onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
       Discard edits and close</button></div>
    </div>}
-   {preview?<div className="cg-cms-preview"><p>Private preview; no publication or public media URL is implied.</p>
-    <CmsPublicPage page={previewPage}/></div>:<div className="cg-cms-form">
+   {preview?<div className="cg-cms-preview">
+    <p>Private preview; no publication or public media URL is implied.</p>
+    {draft.kind==="GALLERY"&&<div className="cg-cms-actions" role="group"
+      aria-label="Preview the three original public media URLs">
+     {([["PHOTO","Gallery /gallery"],["VIDEO","Videos /videos"],
+       ["PUBLICATION","Publications /publications"]] as const)
+      .map(([mode,label])=><button type="button" key={mode}
+       aria-pressed={previewMediaScope===mode}
+       onClick={()=>setPreviewMediaScope(mode)}>{label}</button>)}
+    </div>}
+    <CmsPublicPage page={previewPage} mediaScope={
+     draft.kind==="GALLERY"?previewMediaScope:undefined}/></div>:<div className="cg-cms-form">
     {draft.kind==="IMPACT"&&<section className="cg-cms-impact-facts"
      aria-label="Original U23 Page Facts, from current unsaved editorial draft">
       <h4>Page Facts</h4>
