@@ -276,3 +276,20 @@
  .cg-site-legal-data{grid-template-columns:1fr}
  .cg-site-healthcare{padding:1.2rem}
 }
+
+
+.cg-site-gallery-filters{display:flex;flex-wrap:wrap;align-items:end;gap:1rem;margin:2rem 0 1rem;
+ background:#f8f8f0;border:1px solid #e3e9dc;border-radius:1rem;padding:1.15rem}
+.cg-site-gallery-tabs{display:flex;flex-wrap:wrap;gap:.4rem}
+.cg-site-gallery-filters label{display:flex;flex-direction:column;gap:.4rem;
+ font-size:.875rem;font-weight:700;color:#28543d;min-width:11rem;flex:1 1 11rem}
+.cg-site-gallery-filters input,.cg-site-gallery-filters select{min-height:2.65rem;padding:.5rem .7rem;
+ background:white;color:#173c2d;border:1px solid #aabcae;border-radius:.45rem;max-width:100%}
+.cg-site-gallery-tabs button{min-height:2.65rem;padding:.55rem .9rem;
+ color:#23553c;border:1px solid #93ab95;border-radius:.45rem;background:#fff;font-weight:650;cursor:pointer}
+.cg-site-gallery-tabs button[aria-pressed="true"]{background:#245d45;color:white}
+.cg-site-gallery-tabs button:focus-visible,.cg-site-gallery-filters :focus-visible{
+ outline:3px solid #a78020;outline-offset:3px}
+.cg-site-gallery-empty{border:1px dashed #aebdac;border-radius:1rem;padding:1.75rem}
+@media(max-width:540px){.cg-site-gallery-filters{flex-direction:column;align-items:stretch}
+ .cg-site-gallery-tabs{display:grid;grid-template-columns:1fr 1fr}}
