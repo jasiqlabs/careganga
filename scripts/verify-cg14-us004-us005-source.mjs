@@ -1,0 +1,89 @@
+/**
+ * CG-14 US004/US005 local SOURCE-WIRING guard only.
+ * No CI / GitHub Actions. No PostgreSQL, TypeScript build, browser,
+ * Android, scanner/object-store, Web pixel, backup/restore, race or p95 run.
+ * Run: npm run verify:cg14-us004-us005-source
+ */
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+const root=resolve(import.meta.dirname,"..");
+const read=(p)=>readFileSync(resolve(root,p),"utf8");
+const s={
+ directory:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-directory.service.ts"),
+ directoryApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-public-directory.controller.ts"),
+ content:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-content.service.ts"),
+ contentApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-center-content.controller.ts"),
+ review:read("apps/backend/src/modules/cg-03-registration-approvals/application/health-center-content-approval.service.ts"),
+ reviewSource:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-content-review-source.facade.ts"),
+ media:read("apps/backend/src/modules/cg-19-documents-notifications/application/health-center-content-media.service.ts"),
+ mediaApi:read("apps/backend/src/modules/cg-19-documents-notifications/http/health-center-content-media.controller.ts"),
+ support:read("apps/backend/src/modules/cg-19-documents-notifications/application/support.service.ts"),
+ supportScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
+ publicCenter:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-center.service.ts"),
+ sql12:read("apps/backend/db/migrations/1412_cg14_center_content_drafts_and_cg19_support_scope.sql"),
+ sql13:read("apps/backend/db/migrations/1413_cg03_original_center_content_review.sql"),
+ sql14:read("apps/backend/db/migrations/1414_cg14_center_content_publication_lifecycle.sql"),
+ sql15:read("apps/backend/db/migrations/1415_cg19_original_center_content_media_and_rights.sql"),
+ sql16:read("apps/backend/db/migrations/1416_cg14_reference_healthcare_categories.sql"),
+ web:read("apps/web/src/app/health-network/page.tsx"),
+ webDoctor:read("apps/web/src/app/health-network/doctors/[doctorRef]/page.tsx"),
+ webCenter:read("apps/web/src/app/healthcare/centers/[slug]/page.tsx"),
+ webEditor:read("apps/web/src/features/health-network/center-content-editor.tsx"),
+ webPhoto:read("apps/web/src/features/health-network/center-photo-uploader.tsx"),
+ webReview:read("apps/web/src/features/health-network/center-content-review-inbox.tsx"),
+ webSupport:read("apps/web/src/features/health-network/center-support-desk.tsx"),
+ native:read("apps/android-public/src/features/health-network/public-healthcare-directory.tsx"),
+ nativeEntry:read("apps/android-public/app/index.tsx"),
+ sitemap:read("apps/web/src/app/sitemap.ts"),
+ photosProxy:read("apps/web/src/app/healthcare/centers/[slug]/photos/[fileRef]/route.ts"),
+ bff:read("apps/web/src/app/api/health-network/[...parts]/route.ts"),
+ supportBff:read("apps/web/src/app/api/support/[...parts]/route.ts"),
+ mediaBff:read("apps/web/src/app/api/documents/health-center-content/[...parts]/route.ts"),
+ errors:read("apps/backend/src/core/http/safe-error-copy.ts"),
+ tasks:read("specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/tasks.md")
+};
+const checks=[
+ ["US004 original verified center only",s.directory.includes("health_center_publication")&&s.directory.includes("HEALTH_CENTER_LICENSE")],
+ ["US004 original doctor case and unrevoked proof",s.directory.includes("HEALTH_DOCTOR_VERIFICATION")&&s.directory.includes("HEALTH_DOCTOR_LICENSE")&&s.directory.includes("revoked_at IS NULL")],
+ ["US004 independent approved center-specific fee",s.directory.includes("fee.doctor_center_id=assoc.id")&&s.directory.includes("fee.status='APPROVED'")],
+ ["US004 approved photos never leak private object key",s.media.includes("derivative(bytes,before.original_mime)")&&s.photosProxy.includes('"Cache-Control":"no-store')],
+ ["US004 source-current no cache API",s.directoryApi.includes('Cache-Control')&&s.directoryApi.includes("facets()")],
+ ["US004 stable doctor-center cursor",s.directory.includes('split_part($6')&&s.directory.includes('doc.id LIMIT 21')],
+ ["US004 validated category + geography",s.sql16.includes("POLYCLINIC")&&s.directory.includes("g.status='ACTIVE'")],
+ ["US004 name, specialty, qualifications, experience, fees",s.directory.includes("doc.qualifications")&&s.directory.includes("doc.specialties")&&s.directory.includes("minExperience")&&s.directory.includes("minFee")],
+ ["US004 actual day/service/facility allowlist",s.directory.includes("health_center_hours")&&s.directory.includes("health_center_capability")&&s.directory.includes("facilities")],
+ ["US004 Next responsive list/detail and guarded 404",s.web.includes("gridTemplateColumns")&&s.webDoctor.includes("notFound()")&&s.webCenter.includes("notFound()")],
+ ["US004 Web category and area filters",s.web.includes("publicAreas")&&s.web.includes('name="district"')],
+ ["US004 native actual filter/detail/back",s.nativeEntry.includes("PublicHealthcareDirectory")&&s.native.includes("AppState.addEventListener")&&s.native.includes("Back")],
+ ["US004 real dynamic approved-only sitemap",s.sitemap.includes("approvedHealthSitemap")&&s.directory.includes("async sitemap(")],
+ ["US004 no invented booking slots",s.web.includes("Online appointments")&&s.native.includes("cannot confirm appointments")],
+ ["US005 typed versioned draft+original CG03 case",s.sql12.includes("health_center_content_revision")&&s.sql13.includes("HEALTH_CENTER_CONTENT_REVIEW")],
+ ["US005 independent protected reviewer decision",s.review.includes("requireFreshFoundationRootProof")&&s.review.includes("c.proposer_id===actor.accountId")],
+ ["US005 exact source and stale version rejection",s.reviewSource.includes("input.revisionNo+1")&&s.content.includes("this.review.approved(")],
+ ["US005 public content only frozen approved source",s.publicCenter.includes("cp.original_decision_ref")&&s.publicCenter.includes("source_snapshot")],
+ ["US005 original scanned CG19 photo and rights",s.sql15.includes("cg19_center_content_media_rights")&&s.media.includes("verifyPrivateObject")],
+ ["US005 photo revocation after approval",s.media.includes("async revokeRights(")&&s.media.includes("rights.revoked_at IS NULL")],
+ ["US005 public Web and Android center photos",s.webCenter.includes("/photos/")&&s.native.includes("/api/documents/health-center-content/public/")],
+ ["US005 own center content editor",s.webEditor.includes("CenterPhotoUploader")&&s.webEditor.includes("Save private draft")],
+ ["US005 real Foundation review and separate publication",s.webReview.includes("Record independent decision")&&s.webReview.includes("Publish independently approved content")],
+ ["US005 exact current center support ownership",s.supportScope.includes("f.status='ACTIVE'")&&s.support.includes("async centerReply(")],
+ ["US005 CG19 original support case not shadow table",s.sql12.includes("ALTER TABLE cg19_support_case ADD COLUMN center_id")&&!s.sql12.includes("CREATE TABLE health_center_support_case")],
+ ["US005 no own-center BFF permissions bypass",s.supportBff.includes('parts[0]==="centers"')&&s.mediaBff.includes("cg_staff_session")],
+ ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")],
+ ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes("content/withdraw")],
+ ["All original 94 story QA identifiers preserved",(()=>{
+   const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
+   const want=new Set();
+   for(let story=1;story<=5;story++)for(let n=1;n<=(story===5?22:18);n++)
+    want.add("US-"+String(story).padStart(3,"0")+"-QA"+String(n).padStart(2,"0"));
+   return actual.size===94&&[...want].every(x=>actual.has(x));
+ })()]
+];
+let fails=0;
+for(const [name,pass] of checks){
+ process.stdout.write((pass?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+name+"\n");
+ if(!pass)fails++;
+}
+process.stdout.write("US004/US005 static source wiring "+(checks.length-fails)+"/"+checks.length+
+ "; **no executed QA**, SQL, build, device or pixel proof.\n");
+if(fails)process.exitCode=1;
