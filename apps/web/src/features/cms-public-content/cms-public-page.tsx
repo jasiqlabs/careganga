@@ -166,6 +166,19 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
   </div>
  </>;
 }
+/** Shared original public shell for genuine non-CMS owner projections.
+ * This does not invent a second CMS page or reusable business master.
+ */
+export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactNode;
+ navigation?:PublicCmsNavigation|null;siteFooter?:Record<string,unknown>|null}){
+ const footer=siteFooter??{};
+ return <main className="cg-site">
+  <CmsSiteHeader navigation={navigation} contact={{
+   address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
+  {children}
+  <SiteFooter data={footer} navigation={navigation}/>
+ </main>;
+}
 /** Greenfield site uses the CLIENT-owned original gold/green public reference.
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
