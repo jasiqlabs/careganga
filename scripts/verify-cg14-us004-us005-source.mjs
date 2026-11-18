@@ -24,6 +24,7 @@ const s={
  erpReviewBff:read("apps/web/src/app/api/health/erp-grant-reviews/[...parts]/route.ts"),
  erpPanel:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
  erpRoot:read("apps/backend/src/modules/cg-03-registration-approvals/registration-approvals.module.ts"),
+ erpSourceModule:read("apps/backend/src/modules/cg-14-healthcare-network/health-source.module.ts"),
  erpConfig:read("apps/backend/src/core/config/config.ts"),
  content:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-content.service.ts"),
  contentApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-center-content.controller.ts"),
@@ -148,6 +149,16 @@ if(fails)process.exitCode=1;
   s.erpReviewUi.includes("Record independent decision")&&
   s.erpReviewUi.includes("Apply approved center grant")&&
   s.erpPanel.includes("CenterErpCapabilityPanel")],
+ ["US005 protected original source exported to CG03 DI",s.erpSourceModule.includes(
+  "exports:[HealthReviewSourceFacade,HealthDoctorReviewSourceFacade,HealthCenterContentReviewSourceFacade,HealthErpGrantReviewSourceFacade]")&&
+  s.erpRoot.includes("HealthErpGrantApprovalService")],
+ ["US005 grant revision owning-center DB composite key",s.erpSql.includes(
+  "UNIQUE(root_realm_id,provider_id,id)")&&s.erpSql.includes(
+  "REFERENCES health_center(root_realm_id,provider_id,id)")],
+ ["US005 review and publish consistent parent-grant-case locks",s.erpReview.includes(
+  "await this.source.original(tx,actor,this.submission(snapshot))")&&
+  s.erpReview.includes("FOR UPDATE")&&
+  s.erpGrant.includes("all write")],
  ["US005 original grant modules and staff-only proxy",s.publicModule.includes("HealthCenterErpGrantService")&&
   s.erpRoot.includes("HealthErpGrantApprovalService")&&
   s.erpReviewBff.includes("erp-grant-reviews")&&
