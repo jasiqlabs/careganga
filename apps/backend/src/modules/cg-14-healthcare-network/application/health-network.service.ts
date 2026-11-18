@@ -364,11 +364,13 @@ export class HealthNetworkService{
       id:string;provider_id:string;center_code:string;display_name:string;center_type:string;
       address_line:string;state_ref:string;district_ref:string;block_ref:string|null;
       pin_code:string;latitude:string|null;longitude:string|null;time_zone:string;
-      public_phone:string|null;version:number;status:string;provider_status:string
+      public_phone:string|null;version:number;status:string;provider_status:string;
+      access_state:string;publication_state:string;public_slug:string|null
     }>(
       "SELECT c.id,c.provider_id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,c.time_zone,"+
-      "c.public_phone,c.version,c.status,p.status AS provider_status FROM health_center c "+
+      "c.public_phone,c.version,c.status,p.status AS provider_status,"+
+      "c.access_state,c.publication_state,c.public_slug FROM health_center c "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
         "AND f.center_id=c.id AND f.account_ref=$3 AND f.status='PENDING_EDIT' ":"")+
@@ -383,7 +385,9 @@ export class HealthNetworkService{
     const capabilities=await this.db.query<{capability_code:string}>(
       "SELECT capability_code FROM health_center_capability "+
       "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code",[actor.realmId,ref]);
-    return {centerRef:x.id,providerRef:x.provider_id,version:x.version,status:x.status,providerStatus:x.provider_status,
+    return {centerRef:x.id,providerRef:x.provider_id,version:x.version,status:x.status,
+      providerStatus:x.provider_status,accessState:x.access_state,
+      publicationState:x.publication_state,publicSlug:x.public_slug,
       center:{centerCode:x.center_code,displayName:x.display_name,centerType:x.center_type,
         addressLine:x.address_line,stateRef:x.state_ref,districtRef:x.district_ref,
         blockRef:x.block_ref,pinCode:x.pin_code,
