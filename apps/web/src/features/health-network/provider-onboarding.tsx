@@ -137,7 +137,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   useEffect(()=>{
     if(!selected||!canSelectAccounts)return;
     let live=true;
-    void fetch("/api/access/accounts/options",{cache:"no-store"})
+    void fetch("/api/health-network/representatives/options",{cache:"no-store"})
       .then(async r=>{
         if(!r.ok)throw Error("Eligible staff options unavailable");
         return r.json() as Promise<{options:Option[]}>;
