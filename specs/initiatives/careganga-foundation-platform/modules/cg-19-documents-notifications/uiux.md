@@ -68,3 +68,7 @@ In [tasks.md](tasks.md) every user story must trace source token/component reuse
 
 ## Original Notice and Contact receiving source — 18 November 2026
 Original Batch02 Notice & Announcement Board search/category/priority cards, humanized dates, Read Details and true empty state now have source-rendered CG-18 public UI backed by CG-19 current approved notices. Original Batch03 Contact 3 inquiry cards, FAQs, map/social, one message form and footer have source-managed CG-18 presentation but original CG-19 support stays the only private record. Source rights, received-case status, actual reply, no imaginary staffed 24/7, screenshot scroll and Android/browser QA must be verified, not marked PASS.
+
+### 18 November — original NGO child and Contact photo parity source checkpoint
+
+Original client Contact Batch03 021909 3-image strip is optional until Foundation supplies current authorized photo files, and only original CG19 scan/rights-confirmed images render in public Web/Android. No placeholder or screenshot capture as actual licensed asset. Original NGO registration and annual report cards/downloads likewise show only approved public file placements. Test image absent, stale upload, revoked document, invalid MIME and smaller phone/tablet layouts, separate from source reviews.
