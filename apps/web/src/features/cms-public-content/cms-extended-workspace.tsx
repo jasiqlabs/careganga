@@ -267,15 +267,71 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
    <p>The outcome is not confirmed. Refresh before retrying the same request.</p>
    <button disabled={busy} onClick={()=>void command(pending)}>Retry original request</button>
   </div>}
-  <div className="cg-cms-list">{pages.map(p=><button disabled={busy} key={p.pageRef}
-   aria-pressed={selected?.pageRef===p.pageRef} onClick={()=>void open(p)}>
-   <strong>{p.title}</strong><span>{p.kind} · {p.draftStatus.replaceAll("_"," ")}
-   {p.publicStatus?" · "+p.publicStatus.replaceAll("_"," "):""}</span>
-  </button>)}</div>
-  {(canManage||selected)&&<section className="cg-cms-card">
+  <div className="cg-cms-dashboard" aria-label="Actual editorial page counts">
+   <div><span>Editorial pages</span><strong>{pages.length}</strong></div>
+   <div><span>Currently public</span><strong>{published}</strong></div>
+   <div><span>Scheduled</span><strong>{scheduled}</strong></div>
+   <div><span>Awaiting independent review</span><strong>{inReview}</strong></div>
+  </div>
+  <div className="cg-cms-list-controls" aria-label="Find original editorial content">
+   <label>Content type
+    <select value={listKind} onChange={e=>setListKind(e.target.value as Kind|"ALL")}>
+     <option value="ALL">All editorial content</option>
+     {kinds.map(k=><option value={k} key={k}>{k==="COMPLIANCE"?"80G / Reports":k}</option>)}
+    </select>
+   </label>
+   <label>Publication status
+    <select value={listStatus} onChange={e=>setListStatus(e.target.value)}>
+     <option value="ALL">All statuses</option>
+     <option value="DRAFT">Draft</option>
+     <option value="SUBMITTED">Submitted for review</option>
+     <option value="PUBLISHED">Currently public</option>
+     <option value="SCHEDULED">Scheduled</option>
+    </select>
+   </label>
+   <label>Search by title
+    <input type="search" maxLength={80} placeholder="Search original pages"
+     value={listSearch} onChange={e=>setListSearch(e.target.value)}/>
+   </label>
+  </div>
+  <div className="cg-cms-table-wrap"><table className="cg-cms-editorial-table">
+   <caption>Current Foundation editorial pages ({visible.length})</caption>
+   <thead><tr><th scope="col">Page title</th><th scope="col">Content type</th>
+    <th scope="col">Editing status</th><th scope="col">Publication</th>
+    <th scope="col">Action</th></tr></thead>
+   <tbody>{visible.map(p=><tr key={p.pageRef}>
+    <th scope="row"><strong>{p.title}</strong></th>
+    <td>{p.kind==="COMPLIANCE"?"80G / Reports":p.kind}</td>
+    <td>{p.draftStatus.replaceAll("_"," ")}</td>
+    <td>{p.publicStatus?p.publicStatus.replaceAll("_"," "):"Not published"}</td>
+    <td><button type="button" disabled={busy} onClick={()=>void open(p)}>
+     {canManage?"Open editor":"View source"}</button></td>
+   </tr>)}</tbody>
+  </table>
+  {visible.length===0&&<p role="status" className="cg-cms-muted">
+   No actual editorial pages match. Change the filters or create a new page.</p>}
+  </div>
+  {editorOpen&&(canManage||selected)&&<>
+   <button type="button" className="cg-cms-drawer-backdrop" disabled={busy}
+    aria-label="Close editorial drawer" onClick={close}/>
+   <section className="cg-cms-card cg-cms-drawer" role="dialog" aria-modal="true"
+    aria-label={selected?"Edit Foundation editorial content":"Create Foundation editorial content"}>
    <div className="cg-cms-toolbar"><h3>{selected?"Edit source draft":"Create editorial page"}</h3>
-    <button type="button" onClick={()=>setPreview(x=>!x)}>{preview?"Edit":"Preview"}</button>
+    <div className="cg-cms-actions">
+     {canManage&&<button type="button" disabled={busy} onClick={()=>setPreview(x=>!x)}>
+      {preview?"Edit":"Preview"}</button>}
+     <button type="button" disabled={busy} onClick={close}
+      aria-label="Close editorial editor">Close</button>
+    </div>
    </div>
+   {closePrompt&&<div className="cg-cms-notice" role="alert">
+    <p>This draft contains unsaved changes. Closing will discard only the
+     edits on this screen; it will not alter the current saved or published version.</p>
+    <div className="cg-cms-actions"><button type="button"
+     onClick={()=>setClosePrompt(false)}>Keep editing</button>
+     <button type="button" onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
+      Discard edits and close</button></div>
+   </div>}
    {preview?<div className="cg-cms-preview"><p>Private preview; no publication or public media URL is implied.</p>
     <CmsPublicPage page={previewPage}/></div>:<div className="cg-cms-form">
     <label>Content type<select disabled={!!selected||!canManage} value={draft.kind}
@@ -550,6 +606,7 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
    {selected&&<p className="cg-cms-muted">Draft {selected.status.replaceAll("_"," ")} ·
     Publication {selected.publicationStatus.replaceAll("_"," ")}.
     Review through the original Website CMS approval inbox. No draft is public.</p>}
-  </section>}
+   </section>
+  </>}
  </section>;
 }
