@@ -280,7 +280,8 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   GALLERY:["GALLERY_GRID"],
   ARTICLE:["ARTICLE_BODY"],
   CONTACT:["RICH_TEXT","CTA"],
-  HEALTHCARE:["HERO","RICH_TEXT","HEALTHCARE_CATEGORIES","CTA"]
+  HEALTHCARE:["HERO","RICH_TEXT","HEALTHCARE_CATEGORIES","CTA"],
+  POLICY:["RICH_TEXT"]
  };
  const whitelist=permitted[kind];
  if(!whitelist||types.some(v=>!whitelist.includes(v)))
@@ -312,5 +313,8 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
  if(kind==="HEALTHCARE"&&!types.includes("HEALTHCARE_CATEGORIES"))
   return error("categories");
  if(kind==="CONTACT"&&!types.some(v=>v==="RICH_TEXT"))
+  return error("sections");
+ if(kind==="POLICY"&&(sections.length<1||sections.length>12||
+  types.some(t=>t!=="RICH_TEXT")||assets.length>0))
   return error("sections");
 }
