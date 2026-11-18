@@ -5,13 +5,13 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "prd.md",
-      "current_artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+      "current_artifact_sha256": "0d5884fed45768d6ecd42ed092f21dc80903d606ca4a330237514551c639b537",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4",
+      "sha256": "0d5884fed45768d6ecd42ed092f21dc80903d606ca4a330237514551c639b537",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -47,19 +47,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "a03f45c798b7ad349615747ff8cbbcc4c701376fded1c9dcfcba1bfa7bc832d4"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "0d5884fed45768d6ecd42ed092f21dc80903d606ca4a330237514551c639b537"
       }
     },
     "hld": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "hld.md",
-      "current_artifact_sha256": "8a792e7ee50315731204e67e2e5265a30683c81ded2f0f851d6a002514caa48d",
+      "current_artifact_sha256": "ea587ee29a2ae712e573d75ee94cf198e4a15ff0dcd3e778b3eb9d725fcc1fbf",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "8a792e7ee50315731204e67e2e5265a30683c81ded2f0f851d6a002514caa48d",
+      "sha256": "ea587ee29a2ae712e573d75ee94cf198e4a15ff0dcd3e778b3eb9d725fcc1fbf",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -95,19 +103,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "8a792e7ee50315731204e67e2e5265a30683c81ded2f0f851d6a002514caa48d"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "ea587ee29a2ae712e573d75ee94cf198e4a15ff0dcd3e778b3eb9d725fcc1fbf"
       }
     },
     "uiux/cg-02-foundation-structure": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-02-foundation-structure/uiux.md",
-      "current_artifact_sha256": "a43d83714fa4f82aacf2d3a4e587a7694ffd886586773bc95b08059ea8d50b5b",
+      "current_artifact_sha256": "fdd4c76020484a44b51a82fa14de00e6f7633cd0e261cd37e7eecf4513c2a419",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "a43d83714fa4f82aacf2d3a4e587a7694ffd886586773bc95b08059ea8d50b5b",
+      "sha256": "fdd4c76020484a44b51a82fa14de00e6f7633cd0e261cd37e7eecf4513c2a419",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -143,19 +159,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "a43d83714fa4f82aacf2d3a4e587a7694ffd886586773bc95b08059ea8d50b5b"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "fdd4c76020484a44b51a82fa14de00e6f7633cd0e261cd37e7eecf4513c2a419"
       }
     },
     "dld/cg-02-foundation-structure": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-02-foundation-structure/dld.md",
-      "current_artifact_sha256": "19117858c273cef5e5ac323fe8a1dc6ec5139de71cfa7ec0cd196492ae179c6d",
+      "current_artifact_sha256": "75ac70ea17f316f7fc97afcbd5d7e433449d15ee092bd85069b0a6559e6d253a",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "19117858c273cef5e5ac323fe8a1dc6ec5139de71cfa7ec0cd196492ae179c6d",
+      "sha256": "75ac70ea17f316f7fc97afcbd5d7e433449d15ee092bd85069b0a6559e6d253a",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -191,19 +215,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "19117858c273cef5e5ac323fe8a1dc6ec5139de71cfa7ec0cd196492ae179c6d"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "75ac70ea17f316f7fc97afcbd5d7e433449d15ee092bd85069b0a6559e6d253a"
       }
     },
     "planning/cg-02-foundation-structure": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-02-foundation-structure/module.md",
-      "current_artifact_sha256": "2ffe6134bcda7b3f2a3bd8970fcee1d618c1e15ee0c1aef41516eb05b8944a78",
+      "current_artifact_sha256": "0bc35edfa57d74c0aa959ad3eccda636c405f3e0ea0c7dfb57e9801fe038819c",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "2ffe6134bcda7b3f2a3bd8970fcee1d618c1e15ee0c1aef41516eb05b8944a78",
+      "sha256": "0bc35edfa57d74c0aa959ad3eccda636c405f3e0ea0c7dfb57e9801fe038819c",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -239,19 +271,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "2ffe6134bcda7b3f2a3bd8970fcee1d618c1e15ee0c1aef41516eb05b8944a78"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "0bc35edfa57d74c0aa959ad3eccda636c405f3e0ea0c7dfb57e9801fe038819c"
       }
     },
     "planning/cg-21-platform-configuration-audit": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-21-platform-configuration-audit/module.md",
-      "current_artifact_sha256": "ef6414250b54f0568bcc19e68b1558283a757a884d357cb140597ac5ee05d28d",
+      "current_artifact_sha256": "ae3b3ac2280faec6a3a2128347a1be845cd6c62f59b05e09667f683fe75330a7",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "ef6414250b54f0568bcc19e68b1558283a757a884d357cb140597ac5ee05d28d",
+      "sha256": "ae3b3ac2280faec6a3a2128347a1be845cd6c62f59b05e09667f683fe75330a7",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -287,19 +327,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "ef6414250b54f0568bcc19e68b1558283a757a884d357cb140597ac5ee05d28d"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "ae3b3ac2280faec6a3a2128347a1be845cd6c62f59b05e09667f683fe75330a7"
       }
     },
     "uiux/cg-21-platform-configuration-audit": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-21-platform-configuration-audit/uiux.md",
-      "current_artifact_sha256": "bdd27c44c8a01abe293b47d65b42c0678a3cf7ffa72f521470e199a3c24b21be",
+      "current_artifact_sha256": "c26410b2a75a1a7968d09a428250e9424f4984c4a3d73ab8ade396ed454e1600",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "bdd27c44c8a01abe293b47d65b42c0678a3cf7ffa72f521470e199a3c24b21be",
+      "sha256": "c26410b2a75a1a7968d09a428250e9424f4984c4a3d73ab8ade396ed454e1600",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -335,19 +383,27 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "bdd27c44c8a01abe293b47d65b42c0678a3cf7ffa72f521470e199a3c24b21be"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "c26410b2a75a1a7968d09a428250e9424f4984c4a3d73ab8ade396ed454e1600"
       }
     },
     "dld/cg-21-platform-configuration-audit": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-21-platform-configuration-audit/dld.md",
-      "current_artifact_sha256": "399bbb77647a33816e3a18829affcc412b26cbb071eec201e5d188dedbae747a",
+      "current_artifact_sha256": "e35b913d70e70c414d3f8d8142e6146a6a0c7e4ceaf1474718c3c706e766c579",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "399bbb77647a33816e3a18829affcc412b26cbb071eec201e5d188dedbae747a",
+      "sha256": "e35b913d70e70c414d3f8d8142e6146a6a0c7e4ceaf1474718c3c706e766c579",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -383,6 +439,14 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "399bbb77647a33816e3a18829affcc412b26cbb071eec201e5d188dedbae747a"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "e35b913d70e70c414d3f8d8142e6146a6a0c7e4ceaf1474718c3c706e766c579"
       }
     },
     "planning/cg-03-registration-approvals": {
@@ -533,13 +597,13 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/module.md",
-      "current_artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+      "current_artifact_sha256": "f5983b79a8276f4b128957a5cbc25a646bdd2a6e1e4b022cc14ee48f9619d0bf",
       "reviewed_by": "JASIQ AI Design Review Agent",
       "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410",
+      "sha256": "f5983b79a8276f4b128957a5cbc25a646bdd2a6e1e4b022cc14ee48f9619d0bf",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-16",
       "quality_review": {
@@ -575,6 +639,14 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "b1fa75492d9c422f378cffc8d58c2b7fe00d03dd76f2948a2150b6d9a5660410"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "f5983b79a8276f4b128957a5cbc25a646bdd2a6e1e4b022cc14ee48f9619d0bf"
       }
     },
     "uiux/cg-19-documents-notifications": {
