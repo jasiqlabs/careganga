@@ -1,15 +1,18 @@
 -- US005: extend original CG19 scanner-backed support-case private attachments.
 -- Never create a second ticket/file master or public object store.
+-- The original case and attachment must belong to the exact SAME center.
+ALTER TABLE cg19_support_case ADD CONSTRAINT uq_cg19_support_case_exact_center
+ UNIQUE(id,realm_id,center_id);
 ALTER TABLE cg19_upload_intent
  ADD COLUMN support_case_id uuid,
- ADD CONSTRAINT fk_cg19_original_support_intent FOREIGN KEY(support_case_id,realm_id)
- REFERENCES cg19_support_case(id,realm_id) ON DELETE RESTRICT,
+ ADD CONSTRAINT fk_cg19_original_support_intent FOREIGN KEY(support_case_id,realm_id,health_center_id)
+ REFERENCES cg19_support_case(id,realm_id,center_id) ON DELETE RESTRICT,
  ADD CONSTRAINT uq_cg19_support_upload_source UNIQUE
  (id,realm_id,support_case_id,health_center_id,health_source_version);
 ALTER TABLE cg19_stored_file
  ADD COLUMN support_case_id uuid,
- ADD CONSTRAINT fk_cg19_original_support_file FOREIGN KEY(support_case_id,realm_id)
- REFERENCES cg19_support_case(id,realm_id) ON DELETE RESTRICT,
+ ADD CONSTRAINT fk_cg19_original_support_file FOREIGN KEY(support_case_id,realm_id,health_center_id)
+ REFERENCES cg19_support_case(id,realm_id,center_id) ON DELETE RESTRICT,
  ADD CONSTRAINT fk_cg19_support_file_matches_upload FOREIGN KEY
  (upload_intent_id,realm_id,support_case_id,health_center_id,health_source_version)
  REFERENCES cg19_upload_intent
@@ -140,8 +143,8 @@ CREATE TABLE cg19_support_attachment_event(
  intent_ref uuid,
  file_ref uuid,
  created_at timestamptz NOT NULL DEFAULT now(),
- FOREIGN KEY(support_case_id,realm_id)
- REFERENCES cg19_support_case(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(support_case_id,realm_id,center_id)
+ REFERENCES cg19_support_case(id,realm_id,center_id) ON DELETE RESTRICT,
  FOREIGN KEY(realm_id,center_id)
  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,realm_id)
