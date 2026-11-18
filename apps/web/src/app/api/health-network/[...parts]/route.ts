@@ -19,7 +19,7 @@ const errors=new Set([
   "HEALTH_DOCTOR_UNAVAILABLE","HEALTH_DOCTOR_NOT_VERIFIED",
   "HEALTH_DOCTOR_REVIEW_INVALID","HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED",
   "HEALTH_DOCTOR_REVIEW_UNAVAILABLE","HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE",
-  "HEALTH_DOCTOR_ASSOCIATION_CHANGED",
+  "HEALTH_DOCTOR_ASSOCIATION_CHANGED","HEALTH_CENTER_STAFF_UNAVAILABLE",
   "HEALTH_DOCTOR_FEE_INVALID","HEALTH_DOCTOR_FEE_INELIGIBLE",
   "HEALTH_DOCTOR_FEE_OVERLAP","HEALTH_DOCTOR_FEE_REQUEST_CONFLICT",
   "HEALTH_DOCTOR_FEE_STALE","HEALTH_DOCTOR_FEE_UNAVAILABLE",
@@ -52,6 +52,12 @@ function allowed(parts:string[],method:string){
       ["apply","return-to-draft"].includes(parts[3]))return method==="POST";
     return false;
   }
+  if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
+    parts[2]==="doctors")return method==="GET";
+  if(parts[0]==="my-centers"&&parts.length===7&&UUID.test(parts[1])&&
+    parts[2]==="doctors"&&UUID.test(parts[3])&&parts[4]==="associations"&&
+    UUID.test(parts[5])&&parts[6]==="fees")
+    return method==="GET"||method==="POST";
   if(parts.length===1){
     if(parts[0]==="providers")return method==="GET"||method==="POST";
     if(parts[0]==="geography"||parts[0]==="my-centers")return method==="GET";
