@@ -876,6 +876,54 @@ export class CmsEditorialService{
    asOfDate:x.as_of_date,path:"/blog/"+x.slug})),
    nextCursor:rows.rows.length>20?rows.rows[19].slug:null};
  }
+ /** Only original CG19 ALL_ACTIVE notices explicitly approved as public in a
+  * separate effective CG18 Article revision. No recipient, channel, internal
+  * reference or sender fields enter this anonymous source projection.
+  */
+ async publicNotices(){
+  const rows=await this.db.query<{slug:string;title:string;body:string;
+   category:string;priority:string;approved_at:Date;expires_at:Date}>( 
+   "SELECT p.slug,n.title,n.body,"+
+   "body.structured_fields->>'category' AS category,"+
+   "n.priority,n.approved_at,n.expires_at "+
+   "FROM cms_page p JOIN cms_page_effective e ON e.page_id=p.id "+
+   "AND e.foundation_root_id=p.foundation_root_id "+
+   "JOIN cms_publication pub ON pub.id=e.publication_id "+
+   "AND pub.foundation_root_id=e.foundation_root_id "+
+   "JOIN cms_page_revision v ON v.id=pub.page_revision_id "+
+   "AND v.foundation_root_id=pub.foundation_root_id "+
+   "JOIN cms_section_revision body ON body.page_revision_id=v.id "+
+   "AND body.foundation_root_id=p.foundation_root_id "+
+   "AND body.section_kind='ARTICLE_BODY' "+
+   "JOIN cg19_notice n ON n.realm_id=p.foundation_root_id "+
+   "AND n.id::text=body.structured_fields->>'sourceNoticeRef' "+
+   "JOIN access_realm root ON root.id=p.foundation_root_id "+
+   "WHERE root.realm_key='FOUNDATION_ROOT' AND p.kind='ARTICLE' "+
+   "AND p.archived_at IS NULL AND pub.state='EFFECTIVE' "+
+   "AND pub.effective_at<=now() "+
+   "AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
+   "AND body.structured_fields->>'publicReleaseConfirmed'='true' "+
+   "AND n.audience_kind='ALL_ACTIVE' AND n.approved_by IS NOT NULL "+
+   "AND n.approved_at IS NOT NULL AND n.state='ACTIVE' "+
+   "AND n.expires_at>now() "+
+   "AND n.title=body.structured_fields->>'heading' "+
+   "AND n.body=body.structured_fields->>'body' "+
+   "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
+   "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
+   "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
+   "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
+   "OR f.revision<>a.cg19_validated_version)) "+
+   "ORDER BY n.approved_at DESC,p.slug ASC LIMIT 60");
+  return {schemaVersion:1,notices:rows.rows.map(n=>({
+   title:n.title,body:n.body,category:n.category,
+   priority:n.priority==="IMPORTANT"?"IMPORTANT":"NORMAL",
+   publishedOn:n.approved_at.toISOString().slice(0,10),
+   expiresOn:n.expires_at.toISOString().slice(0,10),
+   path:"/blog/"+n.slug
+  }))};
+ }
  async publicNavigation(){
   const response=await this.db.query<{effective_generation:string;login_desired:boolean}>(
    'SELECT n.id AS "effective_generation",n.login_desired '+
