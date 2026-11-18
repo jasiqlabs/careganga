@@ -45,6 +45,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [representativeRefresh,setRepresentativeRefresh]=useState(0);
   const [account,setAccount]=useState("");
   const [bankProof,setBankProof]=useState("");
+  const [existingBankProof,setExistingBankProof]=useState("");
   const [maskedLabel,setMaskedLabel]=useState("");
   const [bankVersion,setBankVersion]=useState(0);
   const key=useRef("");
@@ -68,13 +69,14 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       .finally(()=>setLoading(false));
   },[loadList]);
   async function open(ref:string){
-    setError("");setNotice("");setCenterEditor(null);setBankProof("");
+    setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
     try{
       await loadDetail(ref);
       if(canViewFinance){
-        const result=await api<{reference:{maskedLabel:string;version:number}|null}>(
+        const result=await api<{reference:{maskedLabel:string;fileRef:string;version:number}|null}>(
           "providers/"+encodeURIComponent(ref)+"/finance-reference");
         setMaskedLabel(result.reference?.maskedLabel??"");
+        setExistingBankProof(result.reference?.fileRef??"");
         setBankVersion(result.reference?.version??0);
       }
     }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Provider unavailable");}
@@ -169,7 +171,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           requestKey:crypto.randomUUID(),expectedVersion:bankVersion,
           fileRef:bankProof,maskedLabel
         });
-      setBankVersion(result.version);setBankProof("");
+      setBankVersion(result.version);setExistingBankProof(bankProof);setBankProof("");
       setNotice("Masked settlement reference saved with verified private document.");
     }catch(e){setError(e instanceof Error?e.message:"Private bank reference could not be confirmed.");}
     finally{setBusy(false);}
@@ -292,6 +294,9 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         </section>}
         {canManageFinance&&<section className="form-section"><h3>Protected settlement reference</h3>
           <p>Enter only a masked display label. The full bank document stays in CG-19 private storage.</p>
+          {!!existingBankProof&&<p>
+            <a href={"/api/documents/health-draft/files/"+encodeURIComponent(existingBankProof)+"/download"}>
+              View current private bank proof</a></p>}
           <HealthEvidenceUploader providerRef={selected.provider.providerRef}
             sourceVersion={selected.provider.version} classification="HEALTH_BANK_PROOF"
             onVerified={ref=>setBankProof(ref)}/>
@@ -304,8 +309,13 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
               onClick={()=>void saveBank()}>Save protected reference</button>
           </div>
         </section>}
-        {!canManageFinance&&canViewFinance&&
-          <p>Protected bank details can be reviewed only by an authorized finance user.</p>}
+        {!canManageFinance&&canViewFinance&&<p>
+          {existingBankProof?<>
+            Masked settlement reference: {maskedLabel}.{" "}
+            <a href={"/api/documents/health-draft/files/"+encodeURIComponent(existingBankProof)+"/download"}>
+              View private verified proof</a>
+          </>:"No current protected settlement reference is available."}
+        </p>}
       </section>}
     </>}
   </div>;
