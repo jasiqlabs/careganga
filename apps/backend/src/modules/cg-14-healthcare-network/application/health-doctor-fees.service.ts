@@ -125,6 +125,31 @@ export class HealthDoctorFeesService{
     return row;
   }
   async propose(bearer:string,doctorRef:string,associationRef:string,body:unknown){
+    const actor=await this.sessions.requireAction(bearer,"health.doctors.manage");
+    return this.proposeForActor(actor,"health.doctors.manage",null,doctorRef,associationRef,body);
+  }
+  async proposeForOwnCenter(bearer:string,centerRef:string,doctorRef:string,
+    associationRef:string,body:unknown){
+    const center=id(centerRef,"centerRef");
+    const actor=await this.sessions.requireAction(bearer,"health.centers.draft.edit");
+    return this.proposeForActor(actor,"health.centers.draft.edit",center,
+      doctorRef,associationRef,body);
+  }
+  private async assertActiveOwnCenter(tx:PoolClient,actor:Actor,centerRef:string){
+    const r=await tx.query(
+      "SELECT f.id FROM health_center_account_affiliation f "+
+      "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
+      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+      "JOIN account a ON a.id=f.account_ref AND a.realm_id=f.root_realm_id "+
+      "WHERE f.root_realm_id=$1 AND f.center_id=$2 AND f.account_ref=$3 "+
+      "AND f.status='ACTIVE' AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
+      "AND p.status='VERIFIED' AND a.status='ACTIVE' FOR SHARE OF f,c,p,a",
+      [actor.realmId,centerRef,actor.accountId]);
+    if(!r.rowCount)
+      throw new NotFoundException({code:"HEALTH_CENTER_STAFF_UNAVAILABLE"});
+  }
+  private async proposeForActor(actor:Actor,action:"health.doctors.manage"|"health.centers.draft.edit",
+    ownCenter:string|null,doctorRef:string,associationRef:string,body:unknown){
     const doctor=id(doctorRef,"doctorRef"),associationId=id(associationRef,"associationRef");
     const x=object(body);
     strict(x,["requestKey","expectedAssociationVersion","feeKind",
@@ -143,15 +168,19 @@ export class HealthDoctorFeesService{
       from.getTime()>Date.now()+5*365*86400000||
       (to!==null&&to.getTime()<=from.getTime()))
       throw new BadRequestException({code:"HEALTH_DOCTOR_FEE_INVALID",field:"effectiveFromUtc"});
-    const actor=await this.sessions.requireAction(bearer,"health.doctors.manage");
     const input={doctor,associationId,expected,kind,mode,amountMinor:Number(x.amountMinor),
       from:from.toISOString(),to:to?.toISOString()??null};
     return this.transact(async tx=>{
-      await this.identity.assertCurrent(tx,actor,"health.doctors.manage");
+      await this.identity.assertCurrent(tx,actor,action);
+      // Only the current actively affiliated representative of THIS center
+      // may propose. A center picker or doctor ID is never an entitlement.
+      if(ownCenter)await this.assertActiveOwnCenter(tx,actor,ownCenter);
       const cmd=await this.command(tx,actor,"DOCTOR_FEE_PROPOSE",key,input);
       if(cmd.replay)return {feeRef:cmd.replay.result_ref,version:cmd.replay.result_version,
         status:"PROPOSED",replayed:true};
       const assoc=await this.association(tx,actor,doctor,associationId,true);
+      if(ownCenter&&assoc.center_id!==ownCenter)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
       if(assoc.version!==expected)
         throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
       const fee=await tx.query<{id:string;version:number}>(
