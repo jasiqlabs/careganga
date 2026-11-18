@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {Suspense} from "react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import {CmsGalleryGridClient} from "./cms-gallery-grid-client";
 type Asset=PublicCmsPage["assets"][number];
@@ -97,8 +98,10 @@ export function CmsGallery({section,assets}:{
   <p className="cg-site-eyebrow">Media &amp; Resources</p>
   <h1>{text(fields.heading)}</h1>
   {text(fields.description)&&<p>{text(fields.description)}</p>}
-  <CmsGalleryGridClient fields={{heading:fields.heading,
-   description:fields.description,items:fields.items}} assets={assets}/>
+  <Suspense fallback={<p role="status">Loading approved gallery filters…</p>}>
+   <CmsGalleryGridClient fields={{heading:fields.heading,
+    description:fields.description,items:fields.items}} assets={assets}/>
+  </Suspense>
  </section>;
 }
 export function CmsArticle({section,assets}:{
