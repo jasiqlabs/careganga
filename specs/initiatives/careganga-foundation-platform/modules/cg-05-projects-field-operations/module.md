@@ -1,5 +1,18 @@
 # CG-05 — Projects, Tasks, Activities, Events & Field Operations
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Original public `/upcoming-projects`, `Our Work` six category destinations, genuine Projects and Events routes and related source-backed cards.
+
+**Domain/technical source contract:** CG-05 publishes only approved root-scoped actual projects/events/category/status and optional authorized place/date/goal/media refs. Original screenshot displays planned project cards with healthcare, education, environmental and welfare subjects; names, amounts, dates and media remain unverified until owner validates. CG-07 is sole source of real Support Project/payment destination; CG-18 only designs/cards/nav.
+
+**Screen and Admin UI acceptance:** Full-width image hero, stacked rounded project picture/detail cards, badges (planned/category), location, tagline, description, objective chips, launch date, goal and Support Project button. Keep Our Work All Projects/Education/Healthcare/Livelihood/Social Welfare/Community Development distinct category views; preserve future Events separately. Screenshot-native mobile reflow, no fake goal or payment.
+
+**QA and independent review:** Trace public search/list/category/year/date/status; empty planned projects and canceled event; event revocation; approved CG-07 CTA; correct image rights; root isolation; accurate current source and original project-card visual. Implementation belongs to current CG-05 story/task, not an extra CG-18 project master. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Authoritative source:** [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-05-BR01–11; [PRD](../../prd.md) FR-012–014; [HLD](../../hld.md); **[original Admin Panel Screenshot UI/UX Audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A01–A06, A09–A11, U31–U32, UI-G09**; [DLD](dld.md); [UI/UX](uiux.md); [100 QA](tasks.md); [canonical delivery order](../../DEVELOPMENT_ORDER.md).
 **Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED — DESIGN ONLY** by JASIQ AI Design Review Agent (15 November 2026), after self-disclosed expert BR/PRD/HLD/screenshot-audit/DLD/UI/QA source review/fix/re-review across 5 independent CG-05 stories and **100 unique manual QA (20 each)**, authentic indexed Admin **A01–A06/A09–A11/U31–U32**, PostgreSQL CRITICAL same-root project/branch/task/visit/activity/event and GPS privacy, NestJS/CG-01/02/03/19/10/09/18 source guards, responsive Web and native Internal Android. Seven receiving owner integrations placed in CG-04/06/07/08/09/18/20 module/DLD/UI/QA; later modules not thereby fully approved. Global PRD/HLD latest source REVIEW_REQUIRED; authenticated Harness resolver, independently qualified CRITICAL DB/privacy review, actual SQL migrations/backup/restore, implemented code/Web/native/device/Play/original PNG/video/motion/performance QA NOT_RUN; five implementation stories BLOCKED.
 
