@@ -444,3 +444,33 @@
  .cg-site-ngo-sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr))}
  .cg-site-ngo-sidebar h2,.cg-site-ngo-breadcrumb,.cg-site-ngo-secondary{grid-column:1/-1}}
 @media(max-width:460px){.cg-site-ngo-sidebar nav{grid-template-columns:1fr}}
+
+/* Original notice-board layout (Batch02 021339 and 021359). The backend
+ * provides only current CG19-public + independently approved CG18 notices. */
+.cg-site-notices{padding-block:clamp(1.3rem,4vw,3rem) 4rem;max-width:75rem}
+.cg-site-notice-hero{background:linear-gradient(120deg,#184b3a,#155f53);
+ color:white;text-align:center;border-radius:1rem;padding:clamp(2rem,5vw,4.3rem) 1.2rem;
+ margin:0 0 2rem}
+.cg-site-notice-hero h1{font-family:Georgia,"Times New Roman",serif;
+ font-size:clamp(2rem,4vw,3.2rem);line-height:1.16;margin:.5rem auto;
+ max-width:23ch}
+.cg-site-notice-hero p{max-width:56ch;margin:0 auto}
+.cg-site-notice-hero .cg-site-eyebrow{color:#e5c15c;margin-bottom:.9rem}
+.cg-site-notices .cg-site-gallery-tabs{justify-content:flex-start}
+.cg-site-notice-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:1.2rem;margin-top:1.2rem}
+.cg-site-notice-card{background:#fffdf7;border-radius:1rem;border:1px solid #dce7de;
+ padding:clamp(1rem,2vw,1.7rem);min-width:0;box-shadow:0 7px 24px #14382b10}
+.cg-site-notice-meta{display:flex;gap:.45rem;flex-wrap:wrap;
+ align-items:center;color:#556c61;font-size:.8rem}
+.cg-site-notice-meta span{border-radius:999px;padding:.25rem .65rem;background:#ebf4e9;
+ color:#235d44;font-weight:750}
+.cg-site-notice-meta time{margin-left:auto}
+.cg-site-notice-card h2{font-family:Georgia,"Times New Roman",serif;
+ color:#184632;font-size:clamp(1.4rem,2vw,1.8rem);margin:.85rem 0}
+.cg-site-notice-card p{color:#4d6258;overflow-wrap:anywhere;white-space:pre-wrap}
+.cg-site-notice-link{display:inline-flex;font-weight:800;color:#19674b!important;
+ text-underline-offset:.25rem;min-height:2.4rem;align-items:center}
+.cg-site-notice-link:focus-visible{outline:3px solid #ad8d2a;outline-offset:3px}
+@media(max-width:680px){.cg-site-notice-list{grid-template-columns:1fr}
+ .cg-site-notices .cg-site-gallery-tabs{justify-content:center}}
