@@ -338,7 +338,7 @@ export class HealthReviewWorkflowService{
    await tx.query(
     "UPDATE health_center_account_affiliation f "+
     "SET status='REVOKED',revoked_at=now(),revision=revision+1 "+
-    "WHERE f.root_realm_id=$1 AND f.status='PENDING_EDIT' AND "+
+    "WHERE f.root_realm_id=$1 AND f.status IN('PENDING_EDIT','ACTIVE') AND "+
     "f.center_id IN(SELECT id FROM health_center WHERE root_realm_id=$1 AND provider_id=$2)",
     [actor.realmId,ref]);
    // CG-14 doctor-to-center eligibility cannot survive provider suspension.
@@ -386,7 +386,7 @@ export class HealthReviewWorkflowService{
    await tx.query(
     "UPDATE health_center_account_affiliation SET status='REVOKED',"+
     "revoked_at=now(),revision=revision+1 "+
-    "WHERE root_realm_id=$1 AND center_id=$2 AND status='PENDING_EDIT'",
+    "WHERE root_realm_id=$1 AND center_id=$2 AND status IN('PENDING_EDIT','ACTIVE')",
     [actor.realmId,ref]);
    await tx.query(
     "UPDATE health_doctor_center SET affiliation_state='SUSPENDED',"+
@@ -511,6 +511,13 @@ export class HealthReviewWorkflowService{
     "ELSE publication_state END,version=version+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,ref,data.enabled?"ENABLED":"DISABLED"]);
+   // The same Foundation decision activates only already assigned representatives.
+   // Disabling operational access removes the active entitlement immediately.
+   await tx.query(
+     "UPDATE health_center_account_affiliation SET status=$3,revision=revision+1 "+
+     "WHERE root_realm_id=$1 AND center_id=$2 AND status=$4",
+     [actor.realmId,ref,data.enabled?"ACTIVE":"PENDING_EDIT",
+       data.enabled?"PENDING_EDIT":"ACTIVE"]);
    await this.complete(tx,actor,cmd.id,c.rows[0].provider_id,ref,
       "HEALTH_CENTER_ACCESS",ref,next);
    return {status:data.enabled?"ENABLED":"DISABLED",version:next,replayed:false,
