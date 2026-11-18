@@ -577,9 +577,10 @@ export class HealthNetworkService{
         {ref,file,masked,expected});
       if(cmd.replay)return {status:"CONFIRMED",version:cmd.replay.result_version,
         replayed:true,message:"Previously saved. Refresh the masked reference."};
+      // Serialize first-set and subsequent CAS updates even before a finance row exists.
       const source=await client.query<{version:number}>(
         "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
-        "AND status='PENDING' FOR SHARE",[actor.realmId,ref]);
+        "AND status='PENDING' FOR UPDATE",[actor.realmId,ref]);
       if(!source.rows[0])throw new NotFoundException("Pending provider unavailable");
       const proof=await this.evidence.prove(client,actor,ref,null,file,"HEALTH_BANK_PROOF");
       if(proof.health_source_version!==source.rows[0].version)
