@@ -101,11 +101,13 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {categories.length>1&&<View style={styles.filterRow} accessibilityLabel="Approved categories">
    <Pressable accessibilityRole="button" accessibilityState={{selected:categoryFilter==="ALL"}}
     style={[styles.filter,categoryFilter==="ALL"&&styles.filterActive]}
-    onPress={()=>setCategoryFilter("ALL")}><Text style={styles.filterText}>All categories</Text></Pressable>
+    onPress={()=>setCategoryFilter("ALL")}><Text style={[styles.filterText,
+      categoryFilter==="ALL"&&styles.filterActiveText]}>All categories</Text></Pressable>
    {categories.map(name=><Pressable key={name} accessibilityRole="button"
     accessibilityState={{selected:categoryFilter===name}}
     style={[styles.filter,categoryFilter===name&&styles.filterActive]}
-    onPress={()=>setCategoryFilter(name)}><Text style={styles.filterText}>{name}</Text></Pressable>)}
+    onPress={()=>setCategoryFilter(name)}><Text style={[styles.filterText,
+      categoryFilter===name&&styles.filterActiveText]}>{name}</Text></Pressable>)}
   </View>}
   <TextInput style={styles.search} value={search} onChangeText={setSearch}
    placeholder="Search approved media" accessibilityLabel="Search approved media"
