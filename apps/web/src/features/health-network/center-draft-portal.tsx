@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
+import {CenterDoctorFees} from "./center-doctor-fees";
 
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string;
@@ -99,7 +100,7 @@ export function CenterDraftPortal(){
   }
   return <div className="role-workspace">
     <header className="topbar"><div><h1>My healthcare center</h1>
-      <p>Update your assigned pending location. Approval and public listing are controlled by the Foundation.</p>
+      <p>Maintain your assigned center. Foundation approval controls verification, doctor associations and public listing.</p>
     </div></header>
     {loading&&<p role="status">Checking your current center assignment…</p>}
     {!!error&&<p className="notice error" role="alert">{error}</p>}
@@ -108,7 +109,7 @@ export function CenterDraftPortal(){
       <button type="button" onClick={()=>{setUncertain(false);if(active)void choose(active.centerRef);}}>
         Refresh original center</button></p>}
     {!loading&&centers.length===0&&
-      <p>No pending center is assigned to your account. Contact your Foundation administrator.</p>}
+      <p>No healthcare center is currently assigned to your account. Contact your Foundation administrator.</p>}
     <div className="toolbar">
       {centers.map(x=><button type="button" key={x.centerRef}
         onClick={()=>void choose(x.centerRef)} aria-pressed={active?.centerRef===x.centerRef}>
@@ -124,7 +125,12 @@ export function CenterDraftPortal(){
         <p><a href={"/healthcare/centers/"+encodeURIComponent(active.publicSlug)}>
           View approved public page</a></p>}
       <p>Only the Foundation may approve, activate or publish this center.</p>
-      <CenterEditor value={draft} identityLocked disabled={saving||active.status!=="PENDING"} onChange={setDraft}/>
+      {active.status==="PENDING"&&<CenterEditor value={draft} identityLocked
+        disabled={saving} onChange={setDraft}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+        <CenterDoctorFees key={active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState!=="ENABLED"&&
+        <p>Center access is not active. Ask the Foundation to enable this verified location.</p>}
       {active.status==="PENDING"&&<div className="toolbar">
         <button type="button" className="primary" disabled={saving||uncertain}
           onClick={()=>void save()}>{saving?"Saving…":"Save pending details"}</button>
