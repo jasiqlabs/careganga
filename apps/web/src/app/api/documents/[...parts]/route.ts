@@ -31,8 +31,21 @@ function branchEvidence(parts:string[],method:"GET"|"POST"){
      parts[3]==="download")return method==="GET";
   return false;
 }
+function healthDraftEvidence(parts:string[],method:"GET"|"POST"){
+  if(parts[0]!=="health-draft")return false;
+  if(parts.length===2&&parts[1]==="intents")return method==="POST";
+  if(parts.length===3&&parts[1]==="intents"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===4&&parts[1]==="intents"&&UUID.test(parts[2])&&
+    parts[3]==="confirm")return method==="POST";
+  if(parts.length===3&&parts[1]==="providers"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===4&&parts[1]==="files"&&UUID.test(parts[2])&&
+    ["revoke","download"].includes(parts[3]))
+    return method===(parts[3]==="revoke"?"POST":"GET");
+  return false;
+}
 function allowed(parts:string[],method:"GET"|"POST"){
   if(parts[0]==="branch-evidence")return branchEvidence(parts,method);
+  if(parts[0]==="health-draft")return healthDraftEvidence(parts,method);
   if(parts[0]==="active-branch-files")return activeBranchEvidence(parts,method);
   if(parts.length===2&&parts[0]==="letters"&&parts[1]==="template")
     return method==="GET";
@@ -77,6 +90,8 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
       (parts.length===4&&parts[1]==="files"&&parts[3]==="revoke")))||
     (parts[0]==="branch-evidence"&&((parts.length===2&&parts[1]==="intents")||
       (parts.length===4&&parts[1]==="files"&&parts[3]==="revoke")))||
+    (parts[0]==="health-draft"&&((parts.length===2&&parts[1]==="intents")||
+      (parts.length===4&&parts[1]==="files"&&parts[3]==="revoke")))||
       (parts.length===2&&["initiate","issue"].includes(parts[1]))||
       (parts.length===3&&parts[1]==="template"&&parts[2]==="approve")||
       (parts.length===3&&["letters","files"].includes(parts[0])&&
@@ -90,11 +105,13 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
   }
   const download=(parts.length===3&&
     (parts[0]==="files"||parts[0]==="letters")&&parts[2]==="download")||
-    (parts.length===4&&["branch-evidence","active-branch-files"].includes(parts[0])&&
+    (parts.length===4&&["branch-evidence","active-branch-files","health-draft"].includes(parts[0])&&
       parts[1]==="files"&&parts[3]==="download");
   try{
     const path="/api/documents/"+parts.join("/");
     const target=new URL(path,process.env.BACKEND_URL);
+    if(method==="GET"&&parts[0]==="health-draft"&&parts[1]==="providers")
+      target.search=request.nextUrl.search;
     const response=await fetch(target,{
       method,cache:"no-store",signal:AbortSignal.timeout(12000),body,
       headers:{Authorization:"Bearer "+session,
