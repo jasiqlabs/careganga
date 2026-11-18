@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import Link from "next/link";
 import {blankCenter,CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterRepresentatives} from "./center-representatives";
@@ -65,8 +66,10 @@ function ProviderFields({value,onChange}:{value:ProviderDraft;
         </label>
       </div>;
 }
-export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,canManageFinance}:{
- canManage:boolean;canSelectAccounts:boolean;canViewFinance:boolean;canManageFinance:boolean
+export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,canManageFinance,
+ canVerify,canActivate,canPublish}:{
+ canManage:boolean;canSelectAccounts:boolean;canViewFinance:boolean;canManageFinance:boolean;
+ canVerify:boolean;canActivate:boolean;canPublish:boolean
 }){
   const [list,setList]=useState<Row[]>([]);
   const [selected,setSelected]=useState<Detail|null>(null);
@@ -83,6 +86,12 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [representativeRefresh,setRepresentativeRefresh]=useState(0);
   const [account,setAccount]=useState("");
   const [bankProof,setBankProof]=useState("");
+  const [providerProof,setProviderProof]=useState("");
+  const [centerProofs,setCenterProofs]=useState<Record<string,string>>({});
+  const [accessPassword,setAccessPassword]=useState("");
+  const [publicationPassword,setPublicationPassword]=useState("");
+  const [publicSlug,setPublicSlug]=useState("");
+  const reviewRequestKeys=useRef<Record<string,string>>({});
   const [existingBankProof,setExistingBankProof]=useState("");
   const [maskedLabel,setMaskedLabel]=useState("");
   const [bankVersion,setBankVersion]=useState(0);
@@ -107,7 +116,9 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       .finally(()=>setLoading(false));
   },[loadList]);
   async function open(ref:string){
-    setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");setEditingProvider(false);
+    setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
+    setEditingProvider(false);setProviderProof("");setCenterProofs({});
+    setAccessPassword("");setPublicationPassword("");
     try{
       await loadDetail(ref);
       if(canViewFinance){
@@ -221,6 +232,90 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     }catch(e){setError(e instanceof Error?e.message:"Staff assignment was not confirmed.");}
     finally{setBusy(false);}
   }
+  async function submitProviderForReview(){
+    if(!selected||busy||uncertain||!canManage||!providerProof||selected.provider.status!=="PENDING")
+      return;
+    const ref=selected.provider.providerRef;
+    const key="provider:"+ref;
+    if(!reviewRequestKeys.current[key])reviewRequestKeys.current[key]=crypto.randomUUID();
+    setBusy(true);setError("");setNotice("");
+    try{
+      await api("providers/"+encodeURIComponent(ref)+"/submit","POST",{
+        requestKey:reviewRequestKeys.current[key],
+        expectedVersion:selected.provider.version,proofFileRef:providerProof
+      });
+      delete reviewRequestKeys.current[key];
+      setProviderProof("");
+      await loadDetail(ref);await loadList();
+      setNotice("Provider evidence submitted for independent approval. No center access was enabled.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Provider submission result cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
+  async function submitCenterForReview(centerRef:string,expectedVersion:number){
+    if(!selected||busy||uncertain||!canManage||!centerProofs[centerRef]||
+      selected.provider.status!=="VERIFIED")return;
+    const key="center:"+centerRef;
+    if(!reviewRequestKeys.current[key])reviewRequestKeys.current[key]=crypto.randomUUID();
+    setBusy(true);setError("");setNotice("");
+    try{
+      await api("centers/"+encodeURIComponent(centerRef)+"/submit","POST",{
+        requestKey:reviewRequestKeys.current[key],expectedVersion,
+        proofFileRef:centerProofs[centerRef]
+      });
+      delete reviewRequestKeys.current[key];
+      setCenterProofs(old=>({...old,[centerRef]:""}));
+      await loadDetail(selected.provider.providerRef);await loadList();
+      setNotice("Center licence submitted for independent review. Public listing remains disabled.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Center submission result cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
+  async function changeAccess(centerRef:string,version:number,enabled:boolean){
+    if(!canActivate||busy||uncertain||!accessPassword)return;
+    setBusy(true);setError("");setNotice("");
+    const key="access:"+centerRef;
+    if(!reviewRequestKeys.current[key])reviewRequestKeys.current[key]=crypto.randomUUID();
+    try{
+      await api("centers/"+encodeURIComponent(centerRef)+"/access","POST",{
+        requestKey:reviewRequestKeys.current[key],expectedVersion:version,
+        enabled,currentPassword:accessPassword
+      });
+      delete reviewRequestKeys.current[key];setAccessPassword("");
+      if(selected)await loadDetail(selected.provider.providerRef);
+      setNotice(enabled?"Verified center access enabled. Publication remains a separate action.":
+        "Center access disabled and public listing withdrawn.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Access change outcome cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
+  async function changePublication(centerRef:string,version:number,published:boolean){
+    if(!canPublish||busy||uncertain||!publicationPassword)return;
+    setBusy(true);setError("");setNotice("");
+    const key="publish:"+centerRef;
+    if(!reviewRequestKeys.current[key])reviewRequestKeys.current[key]=crypto.randomUUID();
+    try{
+      await api("centers/"+encodeURIComponent(centerRef)+"/publication","POST",{
+        requestKey:reviewRequestKeys.current[key],expectedVersion:version,
+        published,slug:published?publicSlug:null,currentPassword:publicationPassword
+      });
+      delete reviewRequestKeys.current[key];setPublicationPassword("");
+      if(selected)await loadDetail(selected.provider.providerRef);
+      setNotice(published?
+        "Verified center listing published. Booking and payment remain unavailable.":
+        "Center public listing withdrawn.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Publication outcome cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
   async function saveBank(){
     if(!selected||!bankProof||!canManageFinance||busy)return;
     setBusy(true);setError("");
@@ -237,7 +332,8 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   }
   return <div className="role-workspace">
     <header className="topbar"><div><h1>Healthcare providers</h1>
-      <p>Register organizations and operating centers. All new records remain pending verification.</p></div>
+      <p>Register organizations and centers, review private evidence and publish only independently verified services.</p></div>
+      {canVerify&&<Link href="/admin/health-network/reviews">Review submitted registrations</Link>}
       {canManage&&<button className="primary" type="button" onClick={()=>{
         setMode("create");setSelected(null);setCenterEditor(null);
         setProvider(emptyProvider());setCenters([blankCenter()]);
@@ -274,14 +370,15 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       <div className="table-wrap"><table><thead><tr><th>Organization</th><th>Type</th>
         <th>Centers</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {list.map(x=><tr key={x.providerRef}><td>{x.name}</td><td>{x.type}</td>
-          <td>{x.centerCount}</td><td>Pending verification</td><td>
+          <td>{x.centerCount}</td><td>{x.status.replaceAll("_"," ")}</td><td>
             <button type="button" onClick={()=>void open(x.providerRef)}>View draft</button>
           </td></tr>)}
       </tbody></table></div>
       {selected&&<section className="form-section">
-        <h2>{selected.provider.name}</h2><p>Pending registration — no public listing is active.</p>
+        <h2>{selected.provider.name}</h2><p>Provider status: {selected.provider.status.replaceAll("_"," ")}.
+          {selected.provider.status!=="VERIFIED"?" Centers cannot be publicly published.":""}</p>
         <p>Contact: {selected.provider.contactName} · {selected.provider.contactPhone}</p>
-        {canManage&&<button type="button" onClick={()=>{
+        {canManage&&selected.provider.status==="PENDING"&&<button type="button" onClick={()=>{
           setProvider({providerCode:selected.provider.code,legalName:selected.provider.name,
             providerType:selected.provider.type,contactName:selected.provider.contactName,
             contactPhone:selected.provider.contactPhone,
@@ -299,15 +396,15 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" onClick={()=>setEditingProvider(false)}>Cancel</button>
           </div>
         </form>}
-        <div className="toolbar">{canManage&&<button type="button" onClick={()=>{
+        <div className="toolbar">{canManage&&selected.provider.status==="PENDING"&&<button type="button" onClick={()=>{
           key.current="";setCenterEditor({centerRef:null,version:0,value:blankCenter()});
         }}>Add location</button>}</div>
         {selected.centers.map(center=><section key={center.centerRef} className="form-section">
           <h3>{center.name}</h3>
-          <p>{center.type.replaceAll("_"," ")} · Pending verification</p>
-          {canManage&&<button type="button" onClick={()=>void editCenter(center.centerRef)}>
+          <p>{center.type.replaceAll("_"," ")} · {center.status.replaceAll("_"," ")}</p>
+          {canManage&&center.status==="PENDING"&&<button type="button" onClick={()=>void editCenter(center.centerRef)}>
             Edit pending center</button>}
-          {canSelectAccounts&&canManage&&<div className="toolbar">
+          {canSelectAccounts&&canManage&&center.status==="PENDING"&&<div className="toolbar">
             <label className="field">Eligible representative
               <select value={account} onChange={e=>setAccount(e.target.value)}>
                 <option value="">Choose active staff</option>
@@ -319,9 +416,17 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           </div>}
           {canManage&&<CenterRepresentatives centerRef={center.centerRef}
             canRevoke={canManage} refresh={representativeRefresh}/>}
-          {canManage&&<HealthEvidenceUploader providerRef={selected.provider.providerRef}
+          {canManage&&center.status==="PENDING"&&
+            <HealthEvidenceUploader providerRef={selected.provider.providerRef}
             centerRef={center.centerRef} sourceVersion={center.version}
-            classification="HEALTH_CENTER_LICENSE"/>}
+            classification="HEALTH_CENTER_LICENSE"
+            onVerified={fileRef=>setCenterProofs(prev=>({...prev,
+              [center.centerRef]:fileRef}))}/>}
+          {canManage&&center.status==="PENDING"&&selected.provider.status==="VERIFIED"&&
+            <button type="button" className="primary" disabled={busy||uncertain||
+              !centerProofs[center.centerRef]}
+              onClick={()=>void submitCenterForReview(center.centerRef,center.version)}>
+              Submit center licence for review</button>}
         </section>)}
         {centerEditor&&canManage&&<div className="form-section">
           <h3>{centerEditor.centerRef?"Edit current center":"Add pending center"}</h3>
@@ -333,10 +438,16 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" onClick={()=>setCenterEditor(null)}>Cancel</button>
           </div>
         </div>}
-        {canManage&&<section><h3>Private provider proof</h3>
+        {canManage&&selected.provider.status==="PENDING"&&<section>
+          <h3>Private provider proof</h3>
           <HealthEvidenceUploader providerRef={selected.provider.providerRef}
             sourceVersion={selected.provider.version}
-            classification="HEALTH_PROVIDER_REGISTRATION"/>
+            classification="HEALTH_PROVIDER_REGISTRATION"
+            onVerified={fileRef=>setProviderProof(fileRef)}/>
+          <button type="button" className="primary"
+            disabled={busy||uncertain||!providerProof}
+            onClick={()=>void submitProviderForReview()}>
+            Submit provider for independent verification</button>
         </section>}
         {canManageFinance&&<section className="form-section"><h3>Protected settlement reference</h3>
           <p>Enter only a masked display label. The full bank document stays in CG-19 private storage.</p>
