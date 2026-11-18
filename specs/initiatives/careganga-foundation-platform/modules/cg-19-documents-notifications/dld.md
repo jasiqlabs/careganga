@@ -1,5 +1,16 @@
 # CG-19 — Detailed-Level Design
 
+### 2026-11-18 original public website source/visual/QA handoff
+
+**Binding evidence:** [47 client public screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); all original screenshots preserved in the private CareGanga Library. This is a requirements and QA refinement inside the existing CG-19 stories, **not** source implementation or a new module.
+
+**Exact original-facing pages:** `/notices` Notice & Announcement Board has keyword search, priority and category filters (General, Announcements, Events, Updates, Emergency, Policy), real approved announcement cards, effective date and Read Details. `/contact` shows a genuine private message form and an existing support chat entry (24/7 must only be advertised when operational). Separate `/gallery`, `/videos`, `/publications` and NGO proof links consume only CG-19 scanned, rights-cleared, public-released files. Newsletter Subscribe must use a real opt-in/unsubscribe owner before activation; never fake success.
+
+**One Foundation Admin, single data owner:** Current CG-19 role-permitted Admin is the source for validated uploads, public document/media rights and version, explicitly public notices and expiry/withdrawal, received contact/support cases and any real newsletter consent. CG-18 owns the page visual/editorial presentation only; use CG-03 independent publication review where applicable. Never copy staff-only notices, private contact messages, original legal IDs or source files into public CMS records.
+
+**Original UI / QA addition:** Trace published vs internal-only/expired notices, search/priority/category/reset, visible detail and original empty states, PDF/video MIME and public-byte revocation, contact form field-level CG-21 errors, saved/private support receipt and unavailable-chat state, opted-in newsletter only, real document download and desktop/narrow Web/public Android screenshot parity. Executed runtime QA, pixel approval and qualified independent review **NOT_RUN**; preserve existing story numbering and QA counts pending revised case mapping.
+
+
 **Source:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43 · PRD N-13/HLD H-12.  
 **State:** REQUIRED / owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026), **JASIQ AI Design Review Agent**, after review/fix/re-review of actual CG-01/03 private files, safe document issuance, durable CG-03 event/outbox reconciliation, truthful optional provider states and CG-19 Foundation support. `database_impact: CRITICAL`; latest PRD/HLD formal approvals REVIEW_REQUIRED, authenticated Harness resolver and qualified independent DB/migration/object-restore/runtime/mobile/visual/provider QA NOT_RUN. No source-code/runtime PASS claimed.
 
