@@ -60,6 +60,11 @@ export default async function HealthcareDirectory({searchParams}:Props){
        .map(type=><option key={type} value={type}>{nice(type)}</option>)}
      </select>
     </label>
+    <label>Facilities (optional)
+     <input name="facility"
+      defaultValue={typeof raw.facility==="string"?raw.facility:""}
+      maxLength={80} placeholder="e.g. Wheelchair access"/>
+    </label>
     {tab==="doctors"&&<>
      <label>Specialty <input name="specialty"
       defaultValue={typeof raw.specialty==="string"?raw.specialty:""}
@@ -67,6 +72,14 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <label>Minimum consultation fee (₹)
       <input name="minFee" inputMode="numeric" type="number" min={0} max={9999999}
        defaultValue={typeof raw.minFee==="string"?raw.minFee:""}/></label>
+     <label>Minimum years of experience
+      <input name="minExperience" inputMode="numeric" type="number"
+       min={0} max={70} defaultValue={typeof raw.minExperience==="string"?raw.minExperience:""}/>
+     </label>
+     <label>Maximum years of experience
+      <input name="maxExperience" inputMode="numeric" type="number"
+       min={0} max={70} defaultValue={typeof raw.maxExperience==="string"?raw.maxExperience:""}/>
+     </label>
      <label>Maximum consultation fee (₹)
       <input name="maxFee" inputMode="numeric" type="number" min={0} max={9999999}
        defaultValue={typeof raw.maxFee==="string"?raw.maxFee:""}/></label>
