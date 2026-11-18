@@ -433,6 +433,10 @@ sequenceDiagram
 
 ### 6.5 CMS publication, search and reporting (FR-066–074)
 
+**Original public navigation architecture acceptance:** Follow the [single original screenshot navigation inventory](../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md) for source evidence and ownership. One versioned CG-18 effective publication projection drives the public header/footer/CTA for responsive Next.js and Public Android. Distinguish (a) CGI8-owned editorial page paths such as Home/About/Impact/80G/Gallery/Blog/Healthcare and approved seven legal-policy bodies, (b) domain-owned real links for CG-04 join, CG-05 project/event, CG-07 campaign/donate, CG-08 partner and CG-14/15/17 medical/booking, and (c) CG-19 owned consented newsletter intake if introduced. CG-18 only projects published owner links; it cannot assert an owner route from a screenshot, activate a dead CTA or clone business records. Media photo/video/publication choices can be **filters over one CG-19-verified, CG-18-approved gallery** until original distinct URLs are proven. Capture original About submenu, official policy text/partner logos/social URLs and mobile/animation evidence before declaring full replication. Keep existing owner approvals, session checks, no-store revocation and current-source testing; no new navigation service or data master.
+
+
+
 - **Public data projection:** CG-18 determines which approved Foundation projects, impact summaries, campaigns, teams, centers/doctors, service information and legal documents may appear. The underlying modules supply authoritative current status, fees and eligibility.
 - **Search:** Indexed, paginated query against permitted published data; no blind cross-center private search. Public website renders indexable valid content, not unverified draft or clinical data.
 - **Live appointment information:** Schedule and fee are fetched from authoritative CG-14/15/17 APIs at selection/confirmation rather than trusted from a stale public page cache.
