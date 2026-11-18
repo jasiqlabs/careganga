@@ -134,3 +134,9 @@ Current source implements the Impact and NGO landing route, and three source-bac
 
 ## Original Notice and Contact receiving source — 18 November 2026
 Batch02 021339/021359 /notices original source now has dedicated public screen, current notice cards, search, source category and priority chips, Reset Filters, real verified detail link and accurate no-current-data state. Batch03 021809–022004 Contact current Admin source now supports original dark-green hero, three approved inquiry cards, FAQ expandable cards, office hours, safe verified map/social links and existing private message form. No fake 24/7 live chat or arbitrary external address. Original photo triptych, complete mobile animations, exact pixels, real provider chat and source owners' optional services remain NOT_VERIFIED, not a completed screenshot pass.
+
+### 18 November — original NGO child and Contact photo parity source checkpoint
+
+Batch01 NGO original `/ngo-information/pan-details`, `/registration-certificate`, `/annual-reports` now have source-backed distinct page layout. The approved PAN is displayed only when current CMS source supplies it. Documents must be rights-cleared CG19 current originals; annual report year filter and title/Download/empty state follow original screenshots; no client-asset copy, fabricated certificate or private financial report. Original full sidebar still includes disabled financial and other no-source destinations.
+
+Batch03 original Contact `021909` three-photo strip now supports 3 authorized CG19 uploads in the existing blue Admin CMS drawer and responsive gold/emerald public Web grid. Public Android shows the same source-backed imagery and CMS cards/FAQ, with real private Contact link. Original exact photographs, client photo rights, visual pixel and animation evidence and real browser/device QA NOT_RUN. Keep CTA for 24/7 Live Chat inactive unless a real staffed service becomes available.
