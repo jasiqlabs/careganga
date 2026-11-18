@@ -321,21 +321,31 @@ export class HealthCenterErpGrantService{
   });
  }
  async foundation(bearer:string){
-  const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+  // The publisher must not need approvals.review or the reviewer role.
+  // The original CG03 case remains private; expose only its ready-to-apply
+  // reference after an independent protected approval is already recorded.
+  const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
   return this.run(async tx=>{
-   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.identity.assertCurrent(tx,actor,"health.centers.publish");
    const found=await tx.query<{center_id:string;capability:Capability;state:string;
-    version:number;display_name:string;legal_name:string}>(
+    version:number;display_name:string;legal_name:string;
+    ready_case_ref:string|null}>(
     "SELECT g.center_id,g.capability,g.state,g.version,c.display_name,"+
-    "p.legal_name FROM health_center_erp_grant g "+
+    "p.legal_name,CASE WHEN g.state='REQUESTED' AND "+
+    "review.status='PENDING_OWNER' THEN review.id ELSE NULL END "+
+    "AS ready_case_ref FROM health_center_erp_grant g "+
     "JOIN health_center c ON c.id=g.center_id AND c.root_realm_id=g.root_realm_id "+
     "JOIN health_provider p ON p.id=c.provider_id AND p.root_realm_id=c.root_realm_id "+
+    "LEFT JOIN cg03_case review ON review.realm_id=g.root_realm_id "+
+    "AND review.health_erp_revision_id=g.pending_revision_id "+
+    "AND review.case_kind='HEALTH_CENTER_ERP_GRANT' "+
     "WHERE g.root_realm_id=$1 ORDER BY g.updated_at DESC,g.center_id "+
     "LIMIT 100",[actor.realmId]);
    return {grants:found.rows.map(row=>({centerRef:row.center_id,
     centerName:row.display_name,providerName:row.legal_name,capability:row.capability,
     status:row.state,version:row.version,global:this.deployment(row.capability).status,
-    effective:false}))};
+    effective:false,approvedCaseRef:row.ready_case_ref,
+    readyToApply:!!row.ready_case_ref}))};
   });
  }
 }
