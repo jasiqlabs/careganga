@@ -6865,32 +6865,32 @@
       "approval_mode": "OWNER_DELEGATED_BR_BUSINESS_DESIGN_BASELINE",
       "artifact": "docs/business-requirements/",
       "artifact_kind": "BR_PACKAGE_SHA256_MANIFEST",
-      "sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "sha256": "d36d702facf81651f03e43d59dbc3f227760a53531f8d20c0fea487d87f55acc",
       "manifest_hash_method": "SHA256 of ordered UTF8 path, newline, file SHA256 lines and trailing newline (8 files)",
       "artifacts": [
         {
           "path": "docs/business-requirements/00-MASTER-BUSINESS-REQUIREMENTS.md",
-          "sha256": "4f279fd3ab19d461dea1733abe24bd7f9d2f3e40489d10d0f0e25ac1a0458d99",
+          "sha256": "a82b4ddd79d572734c31696ac4e9c7a7833b0337aa43d1be65ee9c13781a3b00",
           "kind": "NORMATIVE_MASTER_BR"
         },
         {
           "path": "docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md",
-          "sha256": "d029a5f53b201acbb21c174ad9d9f11ba6e5e0d4eef816352fb68a526eb6e5c1",
+          "sha256": "e103dfada1a307eeabb8c87f0b1e570acbab55f38dfa9cad3deb88d11c2f7998",
           "kind": "NORMATIVE_FOUNDATION_BR"
         },
         {
           "path": "docs/business-requirements/02-INTEGRATED-HEALTHCARE-BR.md",
-          "sha256": "6f79b81868a4da7271b34f562b1e1f87dca09eade8e1327d2ae7940ca0763cc9",
+          "sha256": "0e505965a7a3a810c80b9574b03d25b74c03fa1349ccec7602207b31a7c5b75a",
           "kind": "NORMATIVE_INTEGRATED_HEALTHCARE_BR"
         },
         {
           "path": "docs/business-requirements/03-CMS-CHANNELS-BR.md",
-          "sha256": "e0236cc5f8a892937b1534c808b7cd1a0f8a4811a6409e247e85d6b7620539aa",
+          "sha256": "bf4d5038f23122e169afb60008dd53a546ba332c4ba9836a4c636fbaf68f3fa2",
           "kind": "NORMATIVE_CMS_CHANNELS_BR"
         },
         {
           "path": "docs/business-requirements/04-TRACEABILITY-DECISIONS.md",
-          "sha256": "e1545cacd0f1a06d1672b4b22f69d631c45a2451936a74c51a52be228dd85f6c",
+          "sha256": "e7ca845b049dbf0b911cf9d229d4890c77d2208f256c87d40f548300f48cbc37",
           "kind": "BUSINESS_POLICY_DECISION_REGISTER"
         },
         {
@@ -6915,7 +6915,7 @@
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
-        "review_kind": "NORMATIVE_BR_PACKAGE_MANIFEST_REHASH_AFTER_GREENFIELD_AUTH_ALIGNMENT",
+        "review_kind": "EXACT_SOURCE_BR_PACKAGE_HASH_RECONCILIATION",
         "scope": "24 module DLD, UIUX, planning, story/QA task files checked; PRD/HLD/BR/NFR and original Admin screenshot mapping cross-checked against CG-01 backend/Web/Internal and Public Android source; CG-10/14/15 and Foundation documentation corrected; no routine TOTP/OTP-only login or invitation enrollment required",
         "login_contract": "Operator-script first Super Admin; authorized Admin creates ACTIVE account with eligible role, strong initial password and mobile/optional email; all roles use one CG-01 mobile/email + password sign-in and revocable session; password recovery uses stored-contact email/SMS OTP only; patient mobile claim uses separate purpose-bound verification; sensitive actions verify current password; center access uses existing CG-01 account plus CG-14 affiliation",
         "no_false_test_results": true,
@@ -6926,14 +6926,14 @@
         "independent_specialist_review": "NOT_RUN",
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
-        "source_review_date": "2026-11-16",
-        "artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+        "source_review_date": "2026-11-18",
+        "artifact_sha256": "d36d702facf81651f03e43d59dbc3f227760a53531f8d20c0fea487d87f55acc",
         "additional_manifest_reconciliation": "Two further previously stale BR documents rehashed against exact current source and manifest rebuilt"
       },
       "client_approval": "NOT_GIVEN",
       "formal_stage_gate": "INTERNAL_DESIGN_ONLY_CLIENT_FORMAL_SIGNOFF_AND_INDEPENDENT_RUNTIME_AND_HARNESS_RESOLVER_NOT_RUN",
-      "previous_package_sha256": "e8b3af0692438a8db8f17d6c8bfe35cc916276317fd49d9b248950f5cd3889f1",
-      "current_artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "previous_package_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+      "current_artifact_sha256": "d36d702facf81651f03e43d59dbc3f227760a53531f8d20c0fea487d87f55acc",
       "current_source_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
@@ -6948,8 +6948,8 @@
         "independent_specialist_review": "NOT_RUN",
         "authenticated_harness_resolver": "NOT_RUN",
         "release_status": "NOT_APPROVED",
-        "source_review_date": "2026-11-16",
-        "artifact_sha256": "7474215e683a7ff1ef741a55b163a2c372363cb814c07f19ca649c3262e0ae05",
+        "source_review_date": "2026-11-18",
+        "artifact_sha256": "d36d702facf81651f03e43d59dbc3f227760a53531f8d20c0fea487d87f55acc",
         "additional_manifest_reconciliation": "Two further previously stale BR documents rehashed against exact current source and manifest rebuilt"
       },
       "previous_quality_review": {
@@ -6965,7 +6965,7 @@
         "independent_specialist_review": "NOT_RUN",
         "NFR_and_visual_runtime": "NOT_RUN"
       },
-      "review_evidence": "REHASHED_8_BR_DOCUMENT_MANIFEST_CURRENT_SOURCE"
+      "review_evidence": "SHA256 of eight exact current BR documents; owner-delegated source/design only, runtime and client formal acceptance NOT_RUN"
     }
   }
 }
