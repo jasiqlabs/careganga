@@ -29,6 +29,16 @@ export class HealthNetworkController{
   provider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
     return this.network.provider(bearer,ref);
   }
+  @Post("providers/:providerRef/suspend")
+  suspendProvider(@Headers("authorization")bearer:string,
+    @Param("providerRef")ref:string,@Body()body:unknown){
+    return this.reviews.suspendProvider(bearer,ref,body);
+  }
+  @Post("centers/:centerRef/suspend")
+  suspendCenter(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Body()body:unknown){
+    return this.reviews.suspendCenter(bearer,ref,body);
+  }
   @Post("providers/:providerRef/submit")
   submitProvider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string,
     @Body()body:unknown){
