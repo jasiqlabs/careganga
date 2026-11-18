@@ -195,6 +195,22 @@ export class HealthErpGrantApprovalService{
    const snapshot=initial.rows[0];
    if(!snapshot)throw new NotFoundException("Original center capability review unavailable");
    await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   // An accepted original decision remains idempotently recoverable after
+   // Foundation application even if the current grant has changed state.
+   if(!["SUBMITTED","IN_REVIEW"].includes(snapshot.status)){
+    const earlier=await tx.query<{actor_id:string;request_digest:string;
+      accepted_case_revision:number}>(
+     "SELECT actor_id,request_digest,accepted_case_revision FROM cg03_case_decision "+
+     "WHERE realm_id=$1 AND case_id=$2 AND request_key=$3 FOR SHARE",
+     [actor.realmId,caseRef,input.requestKey]);
+    if(earlier.rows[0]&&earlier.rows[0].actor_id===actor.accountId&&
+      earlier.rows[0].request_digest===digest){
+     await tx.query("COMMIT");active=false;
+     return {caseRef,status:"PREVIOUSLY_CONFIRMED",
+      revision:earlier.rows[0].accepted_case_revision,replayed:true};
+    }
+    throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
+   }
    await this.source.original(tx,actor,this.submission(snapshot));
    const rows=await tx.query<Original>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
