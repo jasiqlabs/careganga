@@ -172,13 +172,26 @@ export class HealthErpGrantApprovalService{
    await tx.query("BEGIN");active=true;
    await tx.query("SET LOCAL lock_timeout='3s'");
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   // Parent-first lock order matches grant request/apply: provider -> center ->
+   // grant revision -> original CG03 case. Locking the case first would
+   // deadlock against an owner applying a PENDING_OWNER decision.
+   const initial=await tx.query<Original>(
+    "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='HEALTH_CENTER_ERP_GRANT'",
+    [actor.realmId,caseRef]);
+   const snapshot=initial.rows[0];
+   if(!snapshot)throw new NotFoundException("Original center capability review unavailable");
+   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.source.original(tx,actor,this.submission(snapshot));
    const rows=await tx.query<Original>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='HEALTH_CENTER_ERP_GRANT' FOR UPDATE",
     [actor.realmId,caseRef]);
    const c=rows.rows[0];
-   if(!c)throw new NotFoundException("Original center capability review unavailable");
-   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   if(!c||c.health_erp_revision_id!==snapshot.health_erp_revision_id||
+      c.health_source_digest!==snapshot.health_source_digest||
+      c.health_revision_no!==snapshot.health_revision_no)
+    throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
    if(c.proposer_id===actor.accountId)
     throw new ForbiddenException("A different Foundation reviewer is required");
    const old=await tx.query<{actor_id:string;request_digest:string;
@@ -195,7 +208,6 @@ export class HealthErpGrantApprovalService{
    if(c.revision!==input.expectedRevision||
      !["SUBMITTED","IN_REVIEW"].includes(c.status))
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
-   await this.source.original(tx,actor,this.submission(c));
    const step=await tx.query(
     "SELECT ordinal FROM cg03_process_step WHERE process_id=$1 AND "+
     "ordinal=$2 AND capability_key='approvals.review' "+
