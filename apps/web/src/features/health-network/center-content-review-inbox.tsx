@@ -6,7 +6,9 @@ type Content={description:string;services:string[];facilities:string[];
  media:string[]};
 type Detail={caseRef:string;reference:string;title:string;centerRef:string;
  status:string;revision:number;
- content:Content|null;requiresIndependentReviewer:boolean};
+ content:Content|null;isCurrentPublished:boolean;
+ publicationGeneration:number|null;approvedRevisionRef:string|null;
+ requiresIndependentReviewer:boolean};
 async function api<T>(path:string,init?:RequestInit){
  const r=await fetch("/api/health/content-reviews/"+path,{
   ...init,cache:"no-store",credentials:"same-origin"});
@@ -87,20 +89,24 @@ export function CenterContentReviewInbox({canPublish}:{canPublish:boolean}){
  }
  async function withdraw(){
   if(!detail||busy||uncertain||!canPublish||publicationPassword.length<8||
-    detail.status!=="OWNER_COMPLETED")return;
+    !detail.isCurrentPublished||detail.publicationGeneration===null||
+    !detail.approvedRevisionRef)return;
   setBusy(true);setError("");setNotice("");
   try{
    const r=await fetch("/api/health-network/my-centers/"+
     encodeURIComponent(detail.centerRef)+"/content/withdraw",{
     method:"POST",credentials:"same-origin",cache:"no-store",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({currentPassword:publicationPassword})
+    body:JSON.stringify({currentPassword:publicationPassword,
+      expectedGeneration:detail.publicationGeneration,
+      approvedRevisionRef:detail.approvedRevisionRef})
    });
    const data:unknown=await r.json().catch(()=>null);
    if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
     typeof data.message==="string"?data.message:
     "Withdrawal was not confirmed. Recheck the published center.");
-   setPublicationPassword("");setNotice("Approved center presentation was withdrawn from public pages.");
+   setPublicationPassword("");await load();await select(detail.caseRef);
+   setNotice("Approved center presentation was withdrawn from public pages.");
   }catch(e){setUncertain(true);setError(
    e instanceof Error?e.message:"Withdrawal outcome unconfirmed.");}
   finally{setBusy(false);}
@@ -139,11 +145,14 @@ export function CenterContentReviewInbox({canPublish}:{canPublish:boolean}){
       onClick={()=>void publish()}>
       Publish independently approved content
      </button>}
-   {detail.status==="OWNER_COMPLETED"&&canPublish&&
+   {detail.status==="OWNER_COMPLETED"&&detail.isCurrentPublished&&canPublish&&
      <button type="button" disabled={busy||uncertain||publicationPassword.length<8}
       onClick={()=>void withdraw()}>
       Withdraw currently published center presentation
      </button>}
+   {detail.status==="OWNER_COMPLETED"&&!detail.isCurrentPublished&&
+    <p role="status">This reviewed version is not currently published.
+     Only the current approved presentation can be withdrawn.</p>}
    {detail.content&&<>
     <h3>Submitted content (read-only)</h3>
     <p>{detail.content.description}</p>
