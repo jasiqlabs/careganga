@@ -5,6 +5,8 @@ import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/regis
 import {HealthReviewWorkflowService} from "./application/health-review-workflow.service";
 import {HealthPublicCenterService} from "./application/health-public-center.service";
 import {HealthPublicDirectoryService} from "./application/health-public-directory.service";
+import {HealthCenterErpGrantService} from "./application/health-center-erp-grant.service";
+import {HealthCenterErpGrantController} from "./http/health-center-erp-grant.controller";
 import {HealthPublicRequestThrottleService} from "./application/health-public-request-throttle.service";
 import {HealthPublicDirectoryController} from "./http/health-public-directory.controller";
 import {HealthCenterContentService} from "./application/health-center-content.service";
@@ -21,8 +23,8 @@ import {HealthDoctorReviewSourceFacade} from "./application/health-doctor-review
 
 @Module({
   imports:[IdentityAccessModule,DocumentsNotificationsModule,RegistrationApprovalsModule],
-  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthPublicDirectoryService,HealthPublicRequestThrottleService,HealthCenterContentService,HealthCenterSupportScopeFacade,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
-  controllers:[HealthNetworkController,HealthPublicCenterController,HealthPublicDirectoryController,HealthCenterContentController,HealthDoctorDraftController],
+  providers:[HealthCenterErpGrantService,HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthPublicDirectoryService,HealthPublicRequestThrottleService,HealthCenterContentService,HealthCenterSupportScopeFacade,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
+  controllers:[HealthCenterErpGrantController,HealthNetworkController,HealthPublicCenterController,HealthPublicDirectoryController,HealthCenterContentController,HealthDoctorDraftController],
   exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService]
 })
 export class HealthNetworkModule{}
