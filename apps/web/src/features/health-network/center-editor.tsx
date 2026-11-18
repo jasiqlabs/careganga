@@ -61,13 +61,9 @@ export function CenterEditor({value,onChange,disabled=false,identityLocked=false
   useEffect(()=>{
     let live=true;
     if(!value.districtRef){setBlocks([]);return;}
-    void Promise.all([
-      fetchAreas("BLOCK",value.districtRef),
-      fetchAreas("SUBDIVISION",value.districtRef)
-    ]).then(async([direct,subs])=>{
-      const child=await Promise.all(subs.slice(0,100).map(s=>fetchAreas("BLOCK",s.value)));
-      if(live)setBlocks([...new Map([...direct,...child.flat()].map(x=>[x.value,x])).values()]);
-    }).catch(e=>{if(live)setGeoError(e instanceof Error?e.message:"Blocks unavailable.");});
+    void fetchAreas("BLOCK",value.districtRef)
+      .then(options=>{if(live)setBlocks(options);})
+      .catch(e=>{if(live)setGeoError(e instanceof Error?e.message:"Blocks unavailable.");});
     return()=>{live=false;};
   },[value.districtRef]);
   const set=<K extends keyof CenterDraft,>(field:K,v:CenterDraft[K])=>onChange({...value,[field]:v});
