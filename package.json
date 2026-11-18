@@ -19,7 +19,8 @@
     "verify:design-approvals": "node scripts/verify-design-approvals.mjs",
     "verify:cg18-source": "node scripts/verify-cg18-us001-source.mjs",
     "verify:core-source": "node scripts/verify-cg-core-source.mjs",
-    "verify:cg14-source": "node scripts/verify-cg14-source.mjs"
+    "verify:cg14-source": "node scripts/verify-cg14-source.mjs",
+    "verify:cg14-us004-us005-source": "node scripts/verify-cg14-us004-us005-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
