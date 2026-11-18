@@ -18,11 +18,12 @@ export class HealthCenterContentReviewSourceFacade{
   if(provider.rows[0]?.status!=="VERIFIED"||center.rows[0]?.status!=="VERIFIED"||
     center.rows[0]?.access_state!=="ENABLED")
    throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
-  const draft=await tx.query<{state:string}>(
-   "SELECT state FROM health_center_content_draft "+
+  const draft=await tx.query<{state:string;version:number}>(
+   "SELECT state,version FROM health_center_content_draft "+
    "WHERE root_realm_id=$1 AND center_id=$2 FOR SHARE",
    [actor.realmId,input.centerRef]);
-  if(draft.rows[0]?.state!=="SUBMITTED")
+  if(draft.rows[0]?.state!=="SUBMITTED"||
+   draft.rows[0]?.version!==input.revisionNo+1)
    throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
   const row=await tx.query<{source_snapshot:Record<string,unknown>;approval_case_ref:string|null}>(
    "SELECT source_snapshot,approval_case_ref FROM health_center_content_revision "+
@@ -30,6 +31,12 @@ export class HealthCenterContentReviewSourceFacade{
    "AND revision_no=$4 AND source_digest=$5 FOR SHARE",
    [actor.realmId,input.centerRef,input.revisionRef,input.revisionNo,input.digest]);
   if(!row.rows[0])
+   throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
+  const later=await tx.query(
+   "SELECT id FROM health_center_content_revision WHERE root_realm_id=$1 "+
+   "AND center_id=$2 AND revision_no>$3 LIMIT 1",
+   [actor.realmId,input.centerRef,input.revisionNo]);
+  if(later.rowCount)
    throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
   return {title:center.rows[0].display_name,source:row.rows[0].source_snapshot,
    approvalCaseRef:row.rows[0].approval_case_ref};
