@@ -212,9 +212,11 @@ export class HealthCenterErpGrantService{
    const caseRow=c.rows[0];
    if(!caseRow||caseRow.status!=="PENDING_OWNER")
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
-   await tx.query("SELECT id FROM health_provider WHERE root_realm_id=$1 "+
+   const parent=await tx.query("SELECT id FROM health_provider WHERE root_realm_id=$1 "+
     "AND id=$2 AND status='VERIFIED' FOR SHARE",
     [actor.realmId,caseRow.health_provider_id]);
+   if(!parent.rowCount)
+    throw new ConflictException({code:"HEALTH_ERP_GRANT_SOURCE_CHANGED"});
    const center=await this.center(tx,actor.realmId,caseRow.health_center_id);
    if(center.provider_id!==caseRow.health_provider_id)
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
@@ -275,8 +277,10 @@ export class HealthCenterErpGrantService{
     "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,center]);
    if(!ref.rows[0])throw new NotFoundException("Center unavailable");
-   await tx.query("SELECT id FROM health_provider WHERE root_realm_id=$1 "+
-    "AND id=$2 FOR SHARE",[actor.realmId,ref.rows[0].provider_id]);
+   const parent=await tx.query("SELECT id,status FROM health_provider "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+    [actor.realmId,ref.rows[0].provider_id]);
+   if(!parent.rows[0])throw new NotFoundException("Provider unavailable");
    await tx.query("SELECT id FROM health_center WHERE root_realm_id=$1 "+
     "AND id=$2 FOR SHARE",[actor.realmId,center]);
    const old=await tx.query<Grant>(
