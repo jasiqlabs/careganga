@@ -4,7 +4,8 @@ import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
-type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string};
+type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string;
+ providerStatus:string;accessState:string;publicationState:string;publicSlug:string|null};
 async function get<T>(path:string):Promise<T>{
   const r=await fetch("/api/health-network/"+path,{cache:"no-store",credentials:"same-origin"});
   const result:unknown=await r.json().catch(()=>null);
@@ -20,6 +21,8 @@ export function CenterDraftPortal(){
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const requestKey=useRef("");
+  const reviewKey=useRef("");
+  const [verifiedLicense,setVerifiedLicense]=useState("");
   const loadList=useCallback(async()=>{
     const r=await get<{centers:Row[]}>("my-centers");
     if(!Array.isArray(r.centers))throw Error("Assigned center list is incomplete");
@@ -34,7 +37,7 @@ export function CenterDraftPortal(){
     return()=>{alive=false;};
   },[]);
   async function choose(ref:string){
-    setError("");setNotice("");setActive(null);setDraft(null);
+    setError("");setNotice("");setActive(null);setDraft(null);setVerifiedLicense("");
     try{
       const record=await get<Detail>("my-centers/"+encodeURIComponent(ref));
       if(!record.center)throw Error("Center draft unavailable.");
@@ -66,6 +69,34 @@ export function CenterDraftPortal(){
     }catch(e){setError(e instanceof Error?e.message:"Save outcome uncertain.");}
     finally{setSaving(false);}
   }
+  async function submitForReview(){
+    if(!active||saving||uncertain||!verifiedLicense||active.status!=="PENDING"||
+      active.providerStatus!=="VERIFIED")return;
+    setSaving(true);setError("");setNotice("");
+    if(!reviewKey.current)reviewKey.current=crypto.randomUUID();
+    try{
+      const r=await fetch("/api/health-network/my-centers/"+
+        encodeURIComponent(active.centerRef)+"/submit",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({requestKey:reviewKey.current,
+          expectedVersion:active.version,proofFileRef:verifiedLicense})
+      });
+      const response:unknown=await r.json().catch(()=>null);
+      if(!r.ok){
+        if(r.status>=500)setUncertain(true);
+        throw Error(response&&typeof response==="object"&&
+          "message" in response&&typeof response.message==="string"?
+          response.message:"Original review submission could not be confirmed.");
+      }
+      reviewKey.current="";
+      await choose(active.centerRef);await loadList();
+      setNotice("Center licence submitted for independent Foundation verification. "+
+        "Activation and publication are separate.");
+    }catch(e){setError(e instanceof Error?e.message:
+      "Review submission outcome uncertain. Check the original center.");}
+    finally{setSaving(false);}
+  }
   return <div className="role-workspace">
     <header className="topbar"><div><h1>My healthcare center</h1>
       <p>Update your assigned pending location. Approval and public listing are controlled by the Foundation.</p>
@@ -85,18 +116,32 @@ export function CenterDraftPortal(){
     </div>
     {active&&draft&&<section className="form-section">
       <h2>{draft.displayName}</h2>
-      <p>Pending verification. You cannot approve this registration or activate a public listing.</p>
-      <CenterEditor value={draft} identityLocked disabled={saving} onChange={setDraft}/>
-      <div className="toolbar">
+      <p>Center: {active.status.replaceAll("_"," ")}.
+        Provider: {active.providerStatus.replaceAll("_"," ")}.
+        Access: {active.accessState==="ENABLED"?"Enabled":"Disabled"}.
+        Listing: {active.publicationState==="PUBLISHED"?"Published":"Not published"}.</p>
+      {active.publicationState==="PUBLISHED"&&active.publicSlug&&
+        <p><a href={"/healthcare/centers/"+encodeURIComponent(active.publicSlug)}>
+          View approved public page</a></p>}
+      <p>Only the Foundation may approve, activate or publish this center.</p>
+      <CenterEditor value={draft} identityLocked disabled={saving||active.status!=="PENDING"} onChange={setDraft}/>
+      {active.status==="PENDING"&&<div className="toolbar">
         <button type="button" className="primary" disabled={saving||uncertain}
           onClick={()=>void save()}>{saving?"Saving…":"Save pending details"}</button>
         <button type="button" disabled={saving}
           onClick={()=>void choose(active.centerRef)}>Discard unsaved changes</button>
-      </div>
-      <h3>Private center licence</h3>
-      <HealthEvidenceUploader providerRef={active.providerRef}
-        centerRef={active.centerRef} sourceVersion={active.version}
-        classification="HEALTH_CENTER_LICENSE"/>
+      </div>}
+      {active.status==="PENDING"&&<>
+        <h3>Private center licence</h3>
+        <HealthEvidenceUploader providerRef={active.providerRef}
+          centerRef={active.centerRef} sourceVersion={active.version}
+          classification="HEALTH_CENTER_LICENSE"
+          onVerified={fileRef=>setVerifiedLicense(fileRef)}/>
+        {active.providerStatus==="VERIFIED"&&<button type="button"
+          className="primary" disabled={saving||uncertain||!verifiedLicense}
+          onClick={()=>void submitForReview()}>
+          Submit scanned licence for independent review</button>}
+      </>}
     </section>}
   </div>;
 }
