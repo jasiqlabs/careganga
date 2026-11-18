@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterDoctorFees} from "./center-doctor-fees";
+import {CenterSupportDesk} from "./center-support-desk";
 
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string;
@@ -129,6 +130,8 @@ export function CenterDraftPortal(){
         disabled={saving} onChange={setDraft}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterDoctorFees key={active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+        <CenterSupportDesk key={"support:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState!=="ENABLED"&&
         <p>Center access is not active. Ask the Foundation to enable this verified location.</p>}
       {active.status==="PENDING"&&<div className="toolbar">
