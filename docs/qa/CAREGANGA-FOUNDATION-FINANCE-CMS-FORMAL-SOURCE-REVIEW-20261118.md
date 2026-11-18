@@ -111,3 +111,19 @@ Original screenshot sources were reopened from the CareGanga Library: 167-screen
 5. **Release/merge decision remains separate**: even three approvals do not imply client content/legal approval, full original site parity, completed later-owner modules, 296 runtime QA PASS, deployment readiness, or owner permission to merge.
 
 **Current gate:** `HUMAN_SPECIALIST_REVIEW = NOT_STARTED` (0 assigned / 0 submitted). `APPSEC_REVIEW = PENDING`, `POSTGRES_FINANCE_REVIEW = PENDING`, `UIUX_NATIVE_REVIEW = PENDING`, `SOURCE_COMPLETE = NOT_APPROVED`, `RUNTIME_QA = NOT_RUN`, `MERGE = BLOCKED`. This request intentionally carries **no fake human signatures or fabricated executed test evidence**.
+
+## 18 November 2026 — post-merge review status, PR #10
+
+**Factually verified change to integration state:** The product owner explicitly instructed merging [PR #10](https://github.com/jasiqlabs/careganga/pull/10) despite pending human and runtime verification. GitHub confirmed `merged=true`, `closed` and merge commit [`71dde336ccefb114d0ca7e250d1226bf0c2079e5`](https://github.com/jasiqlabs/careganga/commit/71dde336ccefb114d0ca7e250d1226bf0c2079e5) at 2026-11-18 08:46 UTC. PR integrated source head `2c2ae9688cd4c63524c15528a9628619d844736b` to `main` with no remaining unmerged feature source commits. Historical statements of `MERGE_BLOCKED` above describe the **pre-merge review recommendation**, not the new GitHub branch status; do not rewrite past reviewer evidence.
+
+**GitHub and independent-execution evidence:** PR #10 was made non-draft for the authorized merge and successfully merged, but **the last checked review ledger had no submitted human approvals**. The JASIQ Developer's last preflight commit *reports* 10/10 local checks passed (including npm installs, source scripts, Web/Backend builds and Android typechecks); this reviewer has not independently reproduced that execution or inspected machine-generated test logs. Physical database migration/rollback/restore, two-tenant financial/accounting/IDOR API races, provider scanner/object-storage verification, rendered original 167 Admin + 47 public screenshot/UI and real-device comparisons and the 296 original manual QA-case results remain unverified. Do not equate code merge with release QA.
+
+**Current disposition:**
+- `GITHUB_SOURCE_MERGE = PASS` (GitHub event confirmed).
+- `SOURCE_PRESENT_ON_MAIN = PASS` for PR #10 integrated changes; `FORMAL_SOURCE_COMPLETE = NOT_APPROVED`.
+- `LOCAL_PREFLIGHT = DEVELOPER_REPORTED_PASS; INDEPENDENT_EVIDENCE_NOT_REPRODUCED`.
+- `INDEPENDENT_HUMAN_APPSEC/POSTGRES_FINANCE/UIUX_APPROVAL = PENDING`.
+- `CANONICAL_RUNTIME_QA = NOT_VERIFIED`, `PRODUCTION_RELEASE = BLOCKED`.
+- Previously documented CG-SR-06 and CG-SR-07 remain open in the actual affected owner/release scope. Owner's source merge exception does not supersede original privacy, financial and runtime gates.
+
+**Tracking policy:** Source merge checkpoint was appended to `specs/initiatives/careganga-foundation-platform/DEVELOPMENT_ORDER.md` on `main` without changing any SHA-approved original QA story definitions. On developer checkout, record actual per-case real execution results in each existing owner `tasks.md` with exact artifact/hash change management; never wholesale mark 296 cases PASS or refresh approval digests as a shortcut. Next development module (CG-14) remains subject to explicit owner approval.
