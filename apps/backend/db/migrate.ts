@@ -3,6 +3,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 
+// Safely load environment files if present in cwd or workspace root
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../.env"); } catch {}
+
 async function migrate(): Promise<void> {
   const url = process.env.DATABASE_MIGRATION_URL;
   if (!url) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");

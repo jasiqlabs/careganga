@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "tsc -p tsconfig.json && node --env-file=.env dist/src/main.js",
+    "dev": "tsc -p tsconfig.json && node --watch --env-file=.env dist/src/main.js",
     "start": "node dist/src/main.js",
     "build": "tsc -p tsconfig.json",
     "db:migrate": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",

@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { AdminProfileWorkspace } from "../../../features/identity-access/admin-profile-workspace";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
+import { AuthWelcomeListener } from "../../../shared/auth-notification";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -68,12 +70,18 @@ export default async function AdminHome() {
   if (invalidSession) redirect("/admin/login");
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
+    <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
       canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers}/>
-    <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p><SignOutButton/></section>
+    <main className="workspace">
+      <AdminProfileWorkspace
+        displayName={current.displayName}
+        roleName={current.roleName}
+        scope={current.scope}
+        canViewSettings={canViewSettings}
+      />
     </main>
   </div>;
 }

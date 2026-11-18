@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { hashPassword } from "../domain/secret-crypto";
 
+// Safely load environment files if present in cwd or workspace root
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../../../../../.env"); } catch {}
+
 // One-time secure local operator action, run only after applying greenfield PostgreSQL migrations.
 // NEVER add a public bootstrap endpoint or print the password, mobile or credentials.
 async function bootstrapRoot(): Promise<void> {
