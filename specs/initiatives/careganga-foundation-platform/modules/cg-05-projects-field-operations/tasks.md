@@ -189,3 +189,6 @@ Dependencies: US-001–004 genuine source rows, CG-18 only when actually publish
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, global formal development gate BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, global formal development gate BLOCKED.
 - US-005: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, global formal development gate BLOCKED.
+
+## 18 November 2026 — original website receiving acceptance — receiving story QA
+For original US-001/003/005 QA, validate **true status and category filters, real approved progress, removal on cancellation/withdrawal, no screenshot fake funds or standalone blood-donation module** against Batch02 021139–021224 and original 07 Our Work menu and /upcoming-projects; Our Work category routes; Events. Cross-reference [original screenshot QA contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), then run source owner→Admin permissions/CG-21 error→approval→current Web/native state→withdrawal/denied/unavailable/rollback. No new QA identifier, fake financial/provider action or screenshot-only PASS. **RECEIVING SOURCE OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**
