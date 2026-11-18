@@ -214,6 +214,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_DOCTOR_REVIEW_INVALID:"Check the doctor review details and original file before submitting.",
       HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED:"The original professional details or proof changed. Refresh the registration and submit a new review.",
       HEALTH_DOCTOR_REVIEW_UNAVAILABLE:"The original professional verification case is unavailable for this action.",
+      HEALTH_CENTER_STAFF_UNAVAILABLE:"Your current role is not assigned to this active healthcare center. Ask the Foundation administrator to check the assignment.",
       HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE:"This doctor center association is not available for your current access.",
       HEALTH_DOCTOR_ASSOCIATION_CHANGED:"The doctor center assignment changed. Refresh before approving or suspending it.",
       HEALTH_DOCTOR_FEE_INVALID:"Enter a valid consultation fee, type and effective date.",
