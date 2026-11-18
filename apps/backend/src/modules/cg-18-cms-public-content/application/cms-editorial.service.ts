@@ -13,7 +13,10 @@ import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExt
 import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
-const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"]);
+const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"]);
+const POLICY_SLUGS=new Set(["terms-and-conditions","privacy-policy","cookie-policy",
+ "disclaimer","refund-and-cancellation","grievance-redressal",
+ "copyright-and-intellectual-property"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
  "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES"]);
@@ -101,7 +104,7 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
 }
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type Content={kind:"HOME"|"ABOUT"|"IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|
- "CONTACT"|"HEALTHCARE";slug:string;title:string;seoTitle:string;
+ "CONTACT"|"HEALTHCARE"|"POLICY";slug:string;title:string;seoTitle:string;
  seoDescription:string;canonicalPath:string;sections:Section[];assets:Placement[];navigation:NavDesired|null};
 function parseContent(raw:unknown):Content{
  const v=input(raw,["kind","slug","title","seoTitle","seoDescription","canonicalPath",
@@ -114,22 +117,26 @@ function parseContent(raw:unknown):Content{
   HEALTHCARE:"healthcare"};
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug)||reserved.has(slug)||
     (fixed[kind]!==undefined&&slug!==fixed[kind])||
-    (kind==="ARTICLE"&&Object.values(fixed).includes(slug)))
+    (kind==="ARTICLE"&&Object.values(fixed).includes(slug))||
+    (kind==="POLICY"&&!POLICY_SLUGS.has(slug)))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"slug"});
  const title=text(v.title,"title",180,3);
  const seoTitle=text(v.seoTitle??v.title,"seoTitle",180,3);
  const seoDescription=text(v.seoDescription??"","seoDescription",300);
  const expectedPath=kind==="HOME"?"/":kind==="ABOUT"?"/about":
-  kind==="COMPLIANCE"?"/80g":kind==="ARTICLE"?"/blog/"+slug:"/"+slug;
+  kind==="COMPLIANCE"?"/80g":kind==="ARTICLE"?"/blog/"+slug:
+  kind==="POLICY"?"/policies/"+slug:"/"+slug;
  const canonicalPath=v.canonicalPath??expectedPath;
  if(typeof canonicalPath!=="string"||canonicalPath!==expectedPath||
     !/^\/(?:[a-z0-9-]+\/?)*$/.test(canonicalPath))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"canonicalPath"});
- if(!Array.isArray(v.sections)||v.sections.length<1||v.sections.length>24)
+ if(!Array.isArray(v.sections)||v.sections.length<1||v.sections.length>24||
+  (kind==="POLICY"&&v.sections.length>12))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
  const sections=v.sections.map((raw,i)=>{
   const sec=input(raw,["kind","order","fields"]);
   if(typeof sec.kind!=="string"||!SECTION.has(sec.kind)||
+    (kind==="POLICY"&&sec.kind!=="RICH_TEXT")||
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
   if(extendedKinds.has(String(sec.kind))){
@@ -192,8 +199,8 @@ function parseContent(raw:unknown):Content{
    if(Boolean(fields.secondaryLabel)!==Boolean(fields.secondaryPath))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"secondaryPath"});
   }else if(sec.kind==="RICH_TEXT"){
-   out.heading=text(fields.heading,"heading",160,3);
-   out.body=text(fields.body,"body",4000,5);
+   out.heading=text(fields.heading??"","heading",160,kind==="POLICY"?0:3);
+   out.body=text(fields.body??"","body",4000,kind==="POLICY"?0:5);
    out.eyebrow=text(fields.eyebrow??"","eyebrow",100);
    if(fields.variant!==undefined){
     if(!["STANDARD","SPLIT"].includes(String(fields.variant)))
@@ -592,7 +599,19 @@ export class CmsEditorialService{
       asset.role==="HERO"&&asset.sort_order===slide.order_no)))
      throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
    }
-   if(page.kind!=="HOME"&&page.kind!=="ABOUT"){
+   if(page.kind==="POLICY"){
+    const owned=await tx.query<{section_kind:string;structured_fields:Record<string,unknown>}>(
+     "SELECT section_kind,structured_fields FROM cms_section_revision "+
+     "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no",
+     [actor.realmId,rev.id]);
+    if(owned.rows.length<1||owned.rows.length>12||
+      owned.rows.some(row=>row.section_kind!=="RICH_TEXT"||
+       typeof row.structured_fields.heading!=="string"||
+       row.structured_fields.heading.trim().length<3||
+       typeof row.structured_fields.body!=="string"||
+       row.structured_fields.body.trim().length<5)||assets.rows.length>0)
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
+   }else if(page.kind!=="HOME"&&page.kind!=="ABOUT"){
     const owned=await tx.query<{section_kind:string;order_no:number;
      structured_fields:Record<string,unknown>}>(
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
@@ -902,6 +921,7 @@ export class CmsEditorialService{
    "ORDER BY p.slug LIMIT 100");
   const publishedRoutes=routes.rows.map(p=>({kind:p.kind,slug:p.slug,
    path:p.kind==="ARTICLE"?"/blog/"+p.slug:
+    p.kind==="POLICY"?"/policies/"+p.slug:
     p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/80g":"/"+p.slug}));
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
