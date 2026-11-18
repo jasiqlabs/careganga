@@ -7,6 +7,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {HealthCenterSupportScopeFacade} from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
+import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
@@ -148,7 +149,8 @@ export class HealthCenterContentMediaService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly scope:HealthCenterSupportScopeFacade,
-  private readonly objects:PrivateObjectStorage){}
+  private readonly objects:PrivateObjectStorage,
+  private readonly protectedOwner:ProtectedAccessOwnerService){}
  private async run<T>(fn:(tx:PoolClient)=>Promise<T>){
   const tx=await this.db.connect();let active=false;
   try{
@@ -431,6 +433,77 @@ export class HealthCenterContentMediaService{
    return {revoked:true,version:result.rows[0].revoked_at?Number(expected):
     Number(expected)+1};
   });
+ }
+ /** Original CG-19 approved-case reviewer image, not an anonymous public URL.
+  * Secure fetch and second live source/consent check before returning bytes.
+  */
+ private async reviewerSource(bearer:string,caseRef:string,fileRef:string){
+  const actor=await this.sessions.requireAction(bearer,"approvals.review");
+  await this.sessions.requireAction(bearer,"health.providers.verify");
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN");active=true;
+   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   const verified=await tx.query<{id:string;revision:number;original_mime:string;
+     object_key:string;object_version:string;verified_size_bytes:string;
+     verified_sha256:string;rights_version:number}>(
+    "SELECT f.id,f.revision,f.original_mime,f.object_key,f.object_version,"+
+    "f.verified_size_bytes,f.verified_sha256,rights.version AS rights_version "+
+    "FROM cg03_case cg "+
+    "JOIN health_center_content_revision rev ON rev.id=cg.health_content_revision_id "+
+    "AND rev.root_realm_id=cg.realm_id AND rev.center_id=cg.health_center_id "+
+    "AND rev.revision_no=cg.health_revision_no AND rev.source_digest=cg.health_source_digest "+
+    "AND rev.approval_case_ref=cg.id "+
+    "JOIN health_center center ON center.id=rev.center_id "+
+    "AND center.root_realm_id=rev.root_realm_id AND center.status='VERIFIED' "+
+    "AND center.access_state='ENABLED' "+
+    "JOIN health_provider provider ON provider.id=center.provider_id "+
+    "AND provider.root_realm_id=center.root_realm_id AND provider.status='VERIFIED' "+
+    "JOIN health_center_content_draft draft ON draft.root_realm_id=rev.root_realm_id "+
+    "AND draft.center_id=rev.center_id AND draft.state='SUBMITTED' "+
+    "AND draft.version=rev.revision_no+1 "+
+    "JOIN cg19_stored_file f ON f.realm_id=rev.root_realm_id "+
+    "AND f.health_center_id=rev.center_id AND f.id=$3 "+
+    "AND f.owner_kind='CG14_CENTER_CONTENT' AND f.revoked_at IS NULL "+
+    "AND f.scan_status='CLEAN_VERIFIED' "+
+    "JOIN cg19_upload_intent intent ON intent.id=f.upload_intent_id "+
+    "AND intent.realm_id=f.realm_id AND intent.status='VALIDATED' "+
+    "AND intent.classification IN('HEALTH_CENTER_PHOTO','HEALTH_CENTER_LOGO') "+
+    "JOIN cg19_center_content_media_rights rights ON rights.file_ref=f.id "+
+    "AND rights.root_realm_id=f.realm_id AND rights.center_id=f.health_center_id "+
+    "AND rights.revoked_at IS NULL "+
+    "WHERE cg.realm_id=$1 AND cg.id=$2 "+
+    "AND cg.case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
+    "AND cg.status IN('SUBMITTED','IN_REVIEW','PENDING_OWNER') "+
+    "AND rev.source_snapshot->'media' @> to_jsonb(ARRAY[f.id::text]) "+
+    "LIMIT 1 FOR SHARE OF cg,rev,center,provider,draft,f,intent,rights",
+    [actor.realmId,caseRef,fileRef]);
+   await tx.query("COMMIT");active=false;
+   return verified.rows[0]??null;
+  }catch(e){if(active)try{await tx.query("ROLLBACK");}catch{};throw e;}
+  finally{tx.release();}
+ }
+ async reviewImage(bearer:string,caseRef:string,fileRef:string){
+  id(caseRef);id(fileRef);
+  const original=await this.reviewerSource(bearer,caseRef,fileRef);
+  if(!original)throw new NotFoundException("Original review photo unavailable");
+  let bytes:Buffer;
+  try{
+   bytes=await this.objects.readVerifiedPrivateObject({
+    objectKey:original.object_key,objectVersion:original.object_version,
+    maxBytes:Math.min(Number(original.verified_size_bytes),3*1024*1024)
+   });
+  }catch{throw new ServiceUnavailableException("Original review image could not be confirmed");}
+  if(!Buffer.isBuffer(bytes)||bytes.length!==Number(original.verified_size_bytes)||
+    createHash("sha256").update(bytes).digest("hex")!==original.verified_sha256)
+   throw new ServiceUnavailableException("Original review image could not be confirmed");
+  const safe=derivative(bytes,original.original_mime);
+  const now=await this.reviewerSource(bearer,caseRef,fileRef);
+  if(!now||now.revision!==original.revision||
+    now.object_version!==original.object_version||
+    now.rights_version!==original.rights_version)
+   throw new NotFoundException("Original review image changed or was revoked");
+  return {data:safe,mime:original.original_mime};
  }
  /** Public images are rechecked against current original CG03 center +
   * content publication and CG19 scanner+rights before AND after private
