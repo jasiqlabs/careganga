@@ -70,7 +70,7 @@ const checks=[
  ["US005 CG19 original support case not shadow table",s.sql12.includes("ALTER TABLE cg19_support_case ADD COLUMN center_id")&&!s.sql12.includes("CREATE TABLE health_center_support_case")],
  ["US005 no own-center BFF permissions bypass",s.supportBff.includes('parts[0]==="centers"')&&s.mediaBff.includes("cg_staff_session")],
  ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")],
- ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes("content/withdraw")],
+ ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
  ["All original 94 story QA identifiers preserved",(()=>{
    const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
    const want=new Set();
