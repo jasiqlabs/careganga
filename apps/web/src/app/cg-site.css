@@ -521,3 +521,9 @@
  grid-template-columns:1fr 1fr}}
 @media(max-width:440px){.cg-site-contact-photo-strip{grid-template-columns:1fr}
  .cg-site-contact-photo-strip img{aspect-ratio:16/10}}
+
+/* Render only a client-approved Google Maps embed; normal location URLs
+ * remain safe outbound links and never become arbitrary iframes. */
+.cg-site-contact-map-embed{display:block;width:100%;height:clamp(16rem,34vw,26rem);
+ border:1px solid #c6dbcb;border-radius:.8rem;margin:1rem 0;
+ background:#eef4ef}
