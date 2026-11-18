@@ -13,7 +13,7 @@ type Account={accountRef:string;name:string;code:string;groupName:string;kind:st
   bankLabel:string|null;maskedDetails:string|null;version:number};
 type Setup=FinanceSetup & {accounts:Account[];years:Year[];
   openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
-  nextOffset:number|null};
+  canManageFoundationFinance:boolean;nextOffset:number|null};
 type Props={token:string;canManage:boolean;canPost:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean;canReverse:boolean;onExit:()=>void;onExpired:()=>void};
 function inr(minor:string):string{
  try{
@@ -34,6 +34,7 @@ function viewError(status:number):string{
  */
 export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment,canReverse,onExit,onExpired}:Props){
  const [data,setData]=useState<Setup|null>(null);
+ const canFoundation=Boolean(data?.canManageFoundationFinance);
  const [offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
@@ -76,6 +77,8 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
    if(!result||typeof result!=="object"||Array.isArray(result)||
       !("accounts" in result)||!Array.isArray(result.accounts)||
       !("years" in result)||!Array.isArray(result.years)||
+      !("canManageFoundationFinance" in result)||
+      typeof result.canManageFoundationFinance!=="boolean"||
       !("openingJournals" in result)||!Array.isArray(result.openingJournals)||
       !("nextOffset" in result)||(result.nextOffset!==null&&
        !(typeof result.nextOffset==="number"&&Number.isSafeInteger(result.nextOffset)))){
@@ -142,11 +145,12 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.subtext}>Only confirmed financial data for your permitted Foundation role is shown.</Text>
    <View style={s.actionRow}>
-    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+    {canManage&&canFoundation&&<Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"year"})}><Text style={s.createText}>+ Financial Year</Text></Pressable>}
-    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+    {canManage&&canFoundation&&<Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"group"})}><Text style={s.createText}>+ Account Group</Text></Pressable>}
-    {canManage&&<Pressable style={s.create} accessibilityRole="button"
+    {canManage&&(canFoundation||Boolean(data?.branches.length))&&
+     <Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"account"})}><Text style={s.createText}>+ Account</Text></Pressable>}
     {canPost&&<Pressable style={s.create} accessibilityRole="button"
      onPress={()=>setEditor({kind:"opening"})}><Text style={s.createText}>+ Opening Entry</Text></Pressable>}
@@ -169,7 +173,8 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
       <Text style={s.meta}>{a.branchName??"Foundation"} · {a.kind==="BANK"?"Bank":a.kind==="CASH"?"Cash":"General"}</Text>
       {!!a.bankLabel&&<Text style={s.meta}>{a.bankLabel}{a.maskedDetails?" · "+a.maskedDetails:""}</Text>}
       <Text style={s.amount}>{inr(a.balanceMinor)}</Text>
-      {canManage&&<Pressable accessibilityRole="button" style={s.create}
+      {canManage&&(canFoundation||a.scopeKind==="BRANCH")&&
+       <Pressable accessibilityRole="button" style={s.create}
        onPress={()=>setEditor({kind:"accountStatus",
         target:{ref:a.accountRef,name:a.name,status:a.status,version:a.version}})}>
        <Text style={s.createText}>{a.status==="ACTIVE"?"Deactivate account":"Reactivate account"}</Text>
@@ -195,7 +200,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
        <View style={s.line}><Text style={s.cardTitle}>{y.name}</Text>
         <Text style={[s.status,y.status==="OPEN"&&s.active]}>{y.status==="OPEN"?"Open":"Closed"}</Text></View>
        <Text style={s.meta}>{y.startOn} to {y.endOn}</Text>
-       {canManage&&y.status==="OPEN"&&<Pressable accessibilityRole="button"
+       {canManage&&canFoundation&&y.status==="OPEN"&&<Pressable accessibilityRole="button"
          style={s.create} onPress={()=>setEditor({kind:"yearStatus",
            target:{ref:y.yearRef,name:y.name,status:y.status,version:y.version}})}>
         <Text style={s.createText}>Close financial year</Text>
