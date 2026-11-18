@@ -1,5 +1,10 @@
 # CG-05 — Projects, Tasks, Activities, Events & Field Operations
 
+### 2026-11-18 screenshot-confirmed CG-05 public receiving-owner contract
+
+**Authoritative original public reference:** [47 client screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) and 2026-11-18 Batch 02 (four `/upcoming-projects` captures). The original site has a **separate `/upcoming-projects` page**, not a placeholder or CMS-owned project collection. CG-05 owns actual approved Foundation projects, categories, location, planned dates, media associations and project lifecycle. Our Work's six original filters (All Projects, Education, Healthcare, Livelihood, Social Welfare, Community Development) remain CG-05-driven; Events also belongs to CG-05, but its original page screenshots/URL are still unavailable. CG-18 owns source-approved public layout/menu, not duplicate project/event data; CG-07 alone owns genuine Support Project donation. The original blood-camp-themed *past content* does not authorize recreating the replaced top-level Blood Donation module. Every mutable project/card/location/status is maintained in existing authorized Project Admin, published via real CG-03/18 gate, never seeded from screenshot. This update is a **design handoff**, not a new user story or source-complete claim.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
