@@ -63,7 +63,9 @@ export class SafeErrorsFilter implements ExceptionFilter {
        "districtRef","blockRef","pinCode","latitude","longitude","coordinates","timeZone",
        "publicPhone","hours","weekday","openLocal","closeLocal","serviceType",
        "capabilities","accountRef","maskedLabel","finance","intentRef","fileRef",
-       "sourceVersion"].includes(rawField)?rawField:null;
+       "sourceVersion","doctor","doctorRef","fullName","registrationJurisdiction",
+       "registrationNumber","qualifications","specialties","experienceYears",
+       "publicBio","portraitRightsStatus"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
       // raw driver/provider messages, contact details, or private payloads into logs.
