@@ -3,7 +3,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Case={caseRef:string;reference:string;title:string;status:string;revision:number};
 type Content={description:string;services:string[];facilities:string[];
  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
-type Detail={caseRef:string;reference:string;title:string;status:string;revision:number;
+type Detail={caseRef:string;reference:string;title:string;centerRef:string;
+ status:string;revision:number;
  content:Content|null;requiresIndependentReviewer:boolean};
 async function api<T>(path:string,init?:RequestInit){
  const r=await fetch("/api/health/content-reviews/"+path,{
@@ -59,6 +60,44 @@ export function CenterContentReviewInbox(){
    e instanceof Error?e.message:"Decision outcome uncertain. Refresh original review.");}
   finally{setBusy(false);}
  }
+ async function publish(){
+  if(!detail||busy||uncertain||detail.status!=="PENDING_OWNER")return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const ref=detail.caseRef;
+   const r=await fetch("/api/health-network/my-centers/content/reviews/"+
+    encodeURIComponent(ref)+"/apply",{
+    method:"POST",credentials:"same-origin",cache:"no-store",
+    headers:{"Content-Type":"application/json"},body:"{}"
+   });
+   const data:unknown=await r.json().catch(()=>null);
+   if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
+    typeof data.message==="string"?data.message:
+    "Publication was not confirmed. Refresh the original case.");
+   await load();await select(ref);
+   setNotice("Independently approved center presentation was published.");
+  }catch(e){setUncertain(true);setError(
+   e instanceof Error?e.message:"Publication unconfirmed. Recheck the original case.");}
+  finally{setBusy(false);}
+ }
+ async function withdraw(){
+  if(!detail||busy||uncertain||detail.status!=="OWNER_COMPLETED")return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const r=await fetch("/api/health-network/my-centers/"+
+    encodeURIComponent(detail.centerRef)+"/content/withdraw",{
+    method:"POST",credentials:"same-origin",cache:"no-store",
+    headers:{"Content-Type":"application/json"},body:"{}"
+   });
+   const data:unknown=await r.json().catch(()=>null);
+   if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
+    typeof data.message==="string"?data.message:
+    "Withdrawal was not confirmed. Recheck the published center.");
+   setNotice("Approved center presentation was withdrawn from public pages.");
+  }catch(e){setUncertain(true);setError(
+   e instanceof Error?e.message:"Withdrawal outcome unconfirmed.");}
+  finally{setBusy(false);}
+ }
  return <section className="role-workspace">
   <header className="topbar"><div><h1>Center content reviews</h1>
    <p>Independent CG-03 verification of each immutable center presentation.
@@ -82,6 +121,16 @@ export function CenterContentReviewInbox(){
    <p>Review: {detail.reference} · {detail.status.replaceAll("_"," ")}</p>
    {!detail.content&&<p>This review is not awaiting another decision.
     Refresh the original center status to check its outcome.</p>}
+   {detail.status==="PENDING_OWNER"&&
+     <button type="button" className="primary" disabled={busy||uncertain}
+      onClick={()=>void publish()}>
+      Publish independently approved content
+     </button>}
+   {detail.status==="OWNER_COMPLETED"&&
+     <button type="button" disabled={busy||uncertain}
+      onClick={()=>void withdraw()}>
+      Withdraw currently published center presentation
+     </button>}
    {detail.content&&<>
     <h3>Submitted content (read-only)</h3>
     <p>{detail.content.description}</p>
