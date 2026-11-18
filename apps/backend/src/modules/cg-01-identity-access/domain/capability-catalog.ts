@@ -84,7 +84,10 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"health.providers.manage",businessLabel:"Register and manage healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.centers.draft.edit",businessLabel:"Edit my assigned pending healthcare center",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.providers.finance.view",businessLabel:"View protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
-  {key:"health.providers.finance.manage",businessLabel:"Manage protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true}
+  {key:"health.providers.finance.manage",businessLabel:"Manage protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.providers.verify",businessLabel:"Review submitted healthcare provider and center registrations",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.centers.activate",businessLabel:"Enable or suspend verified healthcare center access",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.centers.publish",businessLabel:"Publish or withdraw verified healthcare center listing",group:"Healthcare network",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
