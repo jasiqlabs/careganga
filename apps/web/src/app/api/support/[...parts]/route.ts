@@ -6,6 +6,15 @@ type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PATCH";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
+  // Protected Center Portal uses the original CG-19 case authority.
+  // Backend rechecks the exact active CG-14 center account on every request.
+  if(parts.length===3&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&["GET","POST"].includes(method))return "STAFF";
+  if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&UUID.test(parts[3])&&method==="GET")return "STAFF";
+  if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&UUID.test(parts[3])&&parts[4]==="reply"&&
+    method==="POST")return "STAFF";
   if(parts.join("/")==="public/contact"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="receipt/status"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="public/faqs"&&method==="GET")return "PUBLIC";
