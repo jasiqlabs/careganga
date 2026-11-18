@@ -8,6 +8,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {HealthDraftEvidenceService} from "../../cg-19-documents-notifications/application/health-draft-evidence.service";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
@@ -139,7 +140,8 @@ type CommandRow={id:string;request_digest:string;result_ref:string|null;result_v
 export class HealthNetworkService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
-    private readonly identity:FoundationStructureIdentityFacade){}
+    private readonly identity:FoundationStructureIdentityFacade,
+    private readonly evidence:HealthDraftEvidenceService){}
   private async transact<T>(fn:(client:PoolClient)=>Promise<T>):Promise<T>{
     const client=await this.db.connect();let open=false;
     try{
@@ -473,6 +475,69 @@ export class HealthNetworkService{
         center.provider_id,ref,inserted.rows[0].id,inserted.rows[0].revision);
       return {affiliationRef:inserted.rows[0].id,status:"PENDING_EDIT",replayed:false,
         message:"Representative can edit this pending center only."};
+    });
+  }
+  async financeReference(bearer:string,providerRef:string){
+    const actor=await this.allowed(bearer,"health.providers.finance.view");
+    const ref=uuid(providerRef,"providerRef");
+    const found=await this.db.query<{masked_label:string;version:number;file_ok:boolean}>(
+      "SELECT f.masked_label,f.version, "+
+      "EXISTS(SELECT 1 FROM cg19_stored_file file JOIN cg19_upload_intent intent "+
+      "ON intent.id=file.upload_intent_id AND intent.realm_id=file.realm_id "+
+      "WHERE file.id=f.protected_file_ref AND file.realm_id=f.root_realm_id "+
+      "AND file.health_provider_id=f.provider_id "+
+      "AND file.owner_kind='CG14_DRAFT' AND file.revoked_at IS NULL "+
+      "AND file.scan_status='CLEAN_VERIFIED' AND intent.status='VALIDATED' "+
+      "AND intent.classification='HEALTH_BANK_PROOF') AS file_ok "+
+      "FROM health_provider_finance_ref f JOIN health_provider p "+
+      "ON p.root_realm_id=f.root_realm_id AND p.id=f.provider_id "+
+      "WHERE f.root_realm_id=$1 AND f.provider_id=$2 AND p.status='PENDING'",
+      [actor.realmId,ref]);
+    return {reference:found.rows[0]&&found.rows[0].file_ok?{
+      maskedLabel:found.rows[0].masked_label,version:found.rows[0].version
+    }:null};
+  }
+  async saveFinanceReference(bearer:string,providerRef:string,body:unknown){
+    const input=record(body,"finance");
+    only(input,["requestKey","expectedVersion","fileRef","maskedLabel"],"finance");
+    const ref=uuid(providerRef,"providerRef");
+    const file=uuid(input.fileRef,"fileRef"),expected=version(input.expectedVersion,true);
+    const masked=str(input.maskedLabel,"maskedLabel",4,60);
+    // No raw destination number, UPI ID, IFSC or unmasked sensitive data
+    // is accepted: only a visible redacted label + verified CG-19 private file.
+    if(!/^(?:[*•xX]{4,}|[A-Za-z ]{1,24}[*•xX]{4,})[0-9]{4}$/.test(masked))
+      throw new BadRequestException({code:"HEALTH_FINANCE_MASK_INVALID",field:"maskedLabel"});
+    const actor=await this.allowed(bearer,"health.providers.finance.manage");
+    return this.transact(async client=>{
+      await this.identity.assertCurrent(client,actor,"health.providers.finance.manage");
+      const cmd=await this.command(client,actor,"FINANCE_REF_SAVE",input.requestKey,
+        {ref,file,masked,expected});
+      if(cmd.replay)return {status:"CONFIRMED",version:cmd.replay.result_version,
+        replayed:true,message:"Previously saved. Refresh the masked reference."};
+      const source=await client.query<{version:number}>(
+        "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status='PENDING' FOR SHARE",[actor.realmId,ref]);
+      if(!source.rows[0])throw new NotFoundException("Pending provider unavailable");
+      const proof=await this.evidence.prove(client,actor,ref,null,file,"HEALTH_BANK_PROOF");
+      if(proof.health_source_version!==source.rows[0].version)
+        throw new ConflictException({code:"HEALTH_EVIDENCE_SOURCE_CHANGED"});
+      const prior=await client.query<{version:number}>(
+        "SELECT version FROM health_provider_finance_ref "+
+        "WHERE root_realm_id=$1 AND provider_id=$2 FOR UPDATE",[actor.realmId,ref]);
+      if((prior.rows[0]?.version??0)!==expected)
+        throw new ConflictException({code:"HEALTH_VERSION_CHANGED",field:"expectedVersion"});
+      const next=expected+1;
+      await client.query(
+        "INSERT INTO health_provider_finance_ref(root_realm_id,provider_id,"+
+        "protected_file_ref,masked_label,version,updated_by) "+
+        "VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(root_realm_id,provider_id) "+
+        "DO UPDATE SET protected_file_ref=EXCLUDED.protected_file_ref,"+
+        "masked_label=EXCLUDED.masked_label,version=EXCLUDED.version,"+
+        "updated_by=EXCLUDED.updated_by,updated_at=now()",
+        [actor.realmId,ref,file,masked,next,actor.accountId]);
+      await this.done(client,cmd.commandId,actor,"FINANCE_REF_SAVE",ref,null,ref,next);
+      return {status:"CONFIRMED",version:next,replayed:false,
+        message:"The protected settlement reference was saved."};
     });
   }
   async geo(bearer:string,level:string,parentRef?:string){
