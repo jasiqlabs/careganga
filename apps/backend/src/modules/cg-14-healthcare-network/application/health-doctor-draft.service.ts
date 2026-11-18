@@ -257,6 +257,44 @@ export class HealthDoctorDraftService{
         message:"Center association proposed. It is not active or publicly visible."};
     });
   }
+  async suspendDoctor(bearer:string,doctorRef:string,body:unknown){
+    const ref=validId(doctorRef,"doctorRef"),x=object(body,"doctor");
+    fields(x,["requestKey","expectedVersion","currentPassword"],"doctor");
+    const v=expected(x.expectedVersion);
+    if(typeof x.currentPassword!=="string")
+      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"currentPassword"});
+    const actor=await this.actor(bearer,"health.doctors.verify");
+    await this.sessions.limitFoundationRootProof(actor);
+    return this.transaction(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.doctors.verify");
+      await this.sessions.requireFreshFoundationRootProof(
+        tx,actor,x.currentPassword as string);
+      const cmd=await this.command(tx,actor,"DOCTOR_SUSPEND",x.requestKey,{ref,v});
+      if(cmd.replay)return {doctorRef:cmd.replay.result_ref,
+        version:cmd.replay.result_version,status:"SUSPENDED",replayed:true};
+      const doctor=await tx.query<{status:string;version:number}>(
+        "SELECT status,version FROM health_doctor "+
+        "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,ref]);
+      const current=doctor.rows[0];
+      if(!current)throw new NotFoundException({code:"HEALTH_DOCTOR_UNAVAILABLE"});
+      if(current.status!=="VERIFIED"||current.version!==v)
+        throw new ConflictException({code:"HEALTH_DOCTOR_VERSION_CHANGED"});
+      // Global professional suspension invalidates every center association,
+      // without changing the independent price/evidence history or other doctors.
+      await tx.query(
+        "UPDATE health_doctor_center SET affiliation_state='SUSPENDED',"+
+        "version=version+1,updated_at=now() WHERE root_realm_id=$1 "+
+        "AND doctor_id=$2 AND affiliation_state IN('PENDING','APPROVED')",
+        [actor.realmId,ref]);
+      await tx.query(
+        "UPDATE health_doctor SET status='SUSPENDED',version=version+1,"+
+        "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
+        [actor.realmId,ref]);
+      await this.recorded(tx,actor,cmd.id!,"DOCTOR_SUSPEND",ref,null,ref,v+1);
+      return {doctorRef:ref,version:v+1,status:"SUSPENDED",replayed:false,
+        message:"Doctor verification suspended at all centers. Old prices and evidence remain private history; no appointment was created."};
+    });
+  }
   async eligibleCenters(bearer:string,q=""){
     const actor=await this.actor(bearer,"health.doctors.manage");
     const term=q.trim();
