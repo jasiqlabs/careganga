@@ -197,10 +197,16 @@ export class HealthNetworkService{
       throw new BadRequestException({code:"HEALTH_GEOGRAPHY_INVALID",field:"districtRef"});
     if(draft.blockRef){
       const block=map.get(draft.blockRef);
-      if(!block||block.level!=="BLOCK"||block.status!=="ACTIVE"||
-         (block.parent_area_id!==district.id&&
-           !r.rows.some(row=>row.id===block.parent_area_id&&row.level==="SUBDIVISION"&&row.parent_area_id===district.id)))
+      if(!block||block.level!=="BLOCK"||block.status!=="ACTIVE")
         throw new BadRequestException({code:"HEALTH_GEOGRAPHY_INVALID",field:"blockRef"});
+      if(block.parent_area_id!==district.id){
+        const parent=await client.query<{id:string}>(
+          "SELECT id FROM geography_area WHERE id=$1 AND root_realm_id=$2 "+
+          "AND level='SUBDIVISION' AND parent_area_id=$3 AND status='ACTIVE' FOR SHARE",
+          [block.parent_area_id,actor.realmId,district.id]);
+        if(!parent.rows[0])
+          throw new BadRequestException({code:"HEALTH_GEOGRAPHY_INVALID",field:"blockRef"});
+      }
     }
   }
   private async insertCenter(client:PoolClient,actor:Actor,providerId:string,draft:CenterDraft){
@@ -369,12 +375,18 @@ export class HealthNetworkService{
         status:"PENDING",replayed:true};
       const original=await this.canEdit(client,actor,ref,!own);
       if(original.version!==expected)throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
-      if(draft.centerCode!==undefined){
-        const old=await client.query<{center_code:string}>(
-          "SELECT center_code FROM health_center WHERE root_realm_id=$1 AND id=$2",
+      if(own){
+        const old=await client.query<{center_code:string;center_type:string;state_ref:string;
+          district_ref:string;block_ref:string|null}>(
+          "SELECT center_code,center_type,state_ref,district_ref,block_ref "+
+          "FROM health_center WHERE root_realm_id=$1 AND id=$2",
           [actor.realmId,ref]);
-        if(old.rows[0]?.center_code!==draft.centerCode&&own)
-          throw new ForbiddenException("Center registration code can only be changed by Foundation");
+        if(!old.rows[0]||old.rows[0].center_code!==draft.centerCode||
+          old.rows[0].center_type!==draft.centerType||
+          old.rows[0].state_ref!==draft.stateRef||
+          old.rows[0].district_ref!==draft.districtRef||
+          old.rows[0].block_ref!==draft.blockRef)
+          throw new ForbiddenException("Foundation must approve changes to registered center identity or location");
       }
       await this.validGeo(client,actor,draft);
       await client.query(
@@ -464,14 +476,19 @@ export class HealthNetworkService{
     });
   }
   async geo(bearer:string,level:string,parentRef?:string){
-    // CG-02's authoritative geography table; no private branch projection.
-    const actor=await this.allowed(bearer,
-      level==="OWN"?"health.centers.draft.edit":"health.providers.view");
-    if(!["STATE","DISTRICT","SUBDIVISION","BLOCK","OWN"].includes(level))
+    if(!["STATE","DISTRICT","SUBDIVISION","BLOCK"].includes(level))
       throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"level"});
+    // An affiliated representative needs limited geography names for their
+    // center draft, without CG-02 private Foundation branch information.
+    let actor:Actor;
+    try{actor=await this.allowed(bearer,"health.providers.view");}
+    catch(e){
+      if(!(e instanceof ForbiddenException))throw e;
+      actor=await this.allowed(bearer,"health.centers.draft.edit");
+    }
     const rows=await this.db.query<{id:string;display_name:string;level:string}>(
       "SELECT id,display_name,level FROM geography_area WHERE root_realm_id=$1 "+
-      "AND status='ACTIVE' AND ($2='OWN' OR level=$2) AND "+
+      "AND status='ACTIVE' AND level=$2 AND "+
       "($3::uuid IS NULL OR parent_area_id=$3) ORDER BY display_name,id LIMIT 100",
       [actor.realmId,level,parentRef?uuid(parentRef,"parentRef"):null]);
     return {options:rows.rows.map(x=>({value:x.id,label:x.display_name,level:x.level}))};
