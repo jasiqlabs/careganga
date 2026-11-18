@@ -17,10 +17,11 @@ const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,onBackToNews,mediaScope,backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
+ onNavigate,onBackToNews,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
  onContact:()=>void;onNavigate:(path:unknown)=>void;
- onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";backLabel?:string}){
+ onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
+ ngoScope?:"80g"|"pan-details"|"registration-certificate"|"annual-reports";backLabel?:string}){
  const f=section.fields;
  const impactItems=rows(f.items);
  const impactPeak=Math.max(0,...impactItems.map(v=>typeof v.value==="number"&&
@@ -30,6 +31,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const [categoryFilter,setCategoryFilter]=useState("ALL");
  const [search,setSearch]=useState("");
  const [openFaq,setOpenFaq]=useState<number|null>(null);
+ const [annualYear,setAnnualYear]=useState("ALL");
  const galleryItems=rows(f.items);
  const categories=Array.from(new Set(galleryItems.map(x=>text(x.category)).filter(Boolean))).sort();
  const galleryMatches=galleryItems.map((item,index)=>({item,
@@ -83,6 +85,52 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    ["/","/about","/contact","/our-impact","/gallery","/healthcare","/ngo-information"].includes(text(f.ctaPath))&&
    <Action title={text(f.ctaLabel)} onPress={()=>onNavigate(f.ctaPath)}/>}
  </View>;
+ if(section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="80g"){
+  const verified=rows(f.documents).map((record,index)=>({
+   record,index,url:mediaUrl(asset("DOCUMENT",index))
+  })).filter(v=>!!v.url);
+  if(ngoScope==="pan-details"){
+   const publishedPan=text(f.pan);
+   return <View style={styles.section}>
+    <Text accessibilityRole="header" style={styles.title}>PAN Details</Text>
+    {/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(publishedPan)?
+     <Text style={styles.value}>{publishedPan}</Text>:
+     <Text style={styles.source}>No current approved PAN is published.</Text>}
+    {!!text(f.issuer)&&<Text style={styles.body}>Issuer: {text(f.issuer)}</Text>}
+    {!!text(f.verifiedAsOf)&&<Text style={styles.source}>
+     Source reviewed: {text(f.verifiedAsOf)}</Text>}
+    <Text style={styles.source}>{text(f.disclaimer)}</Text>
+   </View>;
+  }
+  const requested=ngoScope==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION";
+  const matching=verified.filter(({record})=>record.type===requested);
+  const years=Array.from(new Set(matching.map(({record})=>text(record.asOfDate).slice(0,4))
+   .filter(v=>/^\d{4}$/.test(v)))).sort((a,b)=>b.localeCompare(a));
+  const active=matching.filter(({record})=>ngoScope!=="annual-reports"||
+   annualYear==="ALL"||text(record.asOfDate).startsWith(annualYear+"-"));
+  return <View style={styles.section}>
+   <Text accessibilityRole="header" style={styles.title}>
+    {ngoScope==="annual-reports"?"Annual Reports":"Registration Certificate"}</Text>
+   {ngoScope==="annual-reports"&&<View style={styles.filterRow}
+     accessibilityLabel="Annual reports year filter">
+    <Pressable accessibilityRole="button" accessibilityState={{selected:annualYear==="ALL"}}
+     onPress={()=>setAnnualYear("ALL")} style={styles.filter}>
+     <Text style={styles.filterText}>All years</Text></Pressable>
+    {years.map(y=><Pressable key={y} accessibilityRole="button"
+     accessibilityState={{selected:annualYear===y}} onPress={()=>setAnnualYear(y)}
+     style={styles.filter}><Text style={styles.filterText}>{y}</Text></Pressable>)}
+   </View>}
+   {active.length===0&&<Text style={styles.source}>
+    No current approved documents are available for this selection.</Text>}
+   {active.map(({record,index,url})=><View style={styles.item} key={index}>
+    <Text style={styles.itemTitle}>{text(record.title)}</Text>
+    <Text style={styles.source}>Document date: {text(record.asOfDate)}</Text>
+    {url&&<Action title="View verified original document"
+     onPress={()=>open(url)}/>}
+   </View>)}
+   <Text style={styles.source}>{text(f.disclaimer)}</Text>
+  </View>;
+ }
  if(section.kind==="COMPLIANCE_FACTS"){
   const proof=asset("DOCUMENT",0),url=mediaUrl(proof);
   return <View style={styles.section}>
