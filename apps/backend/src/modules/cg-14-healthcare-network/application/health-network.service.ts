@@ -319,6 +319,44 @@ export class HealthNetworkService{
         timeZone:x.time_zone,publicPhone:x.public_phone,status:x.status,version:x.version
       }))};
   }
+  async centerDraft(bearer:string,centerRef:string,own=false){
+    const actor=await this.allowed(bearer,
+      own?"health.centers.draft.edit":"health.providers.view");
+    const ref=uuid(centerRef,"centerRef");
+    const rows=await this.db.query<{
+      id:string;provider_id:string;center_code:string;display_name:string;center_type:string;
+      address_line:string;state_ref:string;district_ref:string;block_ref:string|null;
+      pin_code:string;latitude:string|null;longitude:string|null;time_zone:string;
+      public_phone:string|null;version:number;status:string
+    }>(
+      "SELECT c.id,c.provider_id,c.center_code,c.display_name,c.center_type,c.address_line,"+
+      "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,c.time_zone,"+
+      "c.public_phone,c.version,c.status FROM health_center c "+
+      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+      (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
+        "AND f.center_id=c.id AND f.account_ref=$3 AND f.status='PENDING_EDIT' ":"")+
+      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status='PENDING' "+
+      "LIMIT 1",own?[actor.realmId,ref,actor.accountId]:[actor.realmId,ref]);
+    const x=rows.rows[0];
+    if(!x)throw new NotFoundException("Pending center is unavailable");
+    const hours=await this.db.query<{weekday:number;open_local:string;close_local:string;service_type:string}>(
+      "SELECT weekday,open_local::text,close_local::text,service_type "+
+      "FROM health_center_hours WHERE root_realm_id=$1 AND center_id=$2 "+
+      "ORDER BY weekday,open_local LIMIT 42",[actor.realmId,ref]);
+    const capabilities=await this.db.query<{capability_code:string}>(
+      "SELECT capability_code FROM health_center_capability "+
+      "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code",[actor.realmId,ref]);
+    return {centerRef:x.id,providerRef:x.provider_id,version:x.version,status:x.status,
+      center:{centerCode:x.center_code,displayName:x.display_name,centerType:x.center_type,
+        addressLine:x.address_line,stateRef:x.state_ref,districtRef:x.district_ref,
+        blockRef:x.block_ref,pinCode:x.pin_code,
+        latitude:x.latitude===null?null:Number(x.latitude),
+        longitude:x.longitude===null?null:Number(x.longitude),
+        timeZone:x.time_zone,publicPhone:x.public_phone,
+        hours:hours.rows.map(h=>({weekday:h.weekday,openLocal:h.open_local.slice(0,5),
+          closeLocal:h.close_local.slice(0,5),serviceType:h.service_type})),
+        capabilities:capabilities.rows.map(s=>s.capability_code)}};
+  }
   async createCenter(bearer:string,providerRef:string,body:unknown){
     const input=record(body,"center");
     only(input,["requestKey","expectedVersion","center"],"center");
