@@ -226,22 +226,30 @@ export class HealthCenterErpGrantService{
    const center=await this.center(tx,actor.realmId,caseRow.health_center_id);
    if(center.provider_id!==caseRow.health_provider_id)
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
+   // Resolve the immutable capability without taking a row lock; all write
+   // paths use provider -> center -> grant -> source revision -> original case.
+   const peek=await tx.query<Revision>(
+    "SELECT * FROM health_center_erp_grant_revision "+
+    "WHERE root_realm_id=$1 AND center_id=$2 AND id=$3 "+
+    "AND revision_no=$4 AND source_digest=$5",
+    [actor.realmId,caseRow.health_center_id,caseRow.health_erp_revision_id,
+     caseRow.health_revision_no,caseRow.health_source_digest]);
+   if(!peek.rows[0]||peek.rows[0].original_case_ref!==caseRef)
+    throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
+   const grant=await tx.query<Grant>(
+    "SELECT state,version,pending_revision_id,approved_revision_id,"+
+    "original_decision_ref FROM health_center_erp_grant WHERE root_realm_id=$1 "+
+    "AND center_id=$2 AND capability=$3 FOR UPDATE",
+    [actor.realmId,caseRow.health_center_id,peek.rows[0].capability]);
    const source=await tx.query<Revision>(
     "SELECT * FROM health_center_erp_grant_revision "+
     "WHERE root_realm_id=$1 AND center_id=$2 AND id=$3 "+
     "AND revision_no=$4 AND source_digest=$5 FOR SHARE",
     [actor.realmId,caseRow.health_center_id,caseRow.health_erp_revision_id,
      caseRow.health_revision_no,caseRow.health_source_digest]);
-   const rev=source.rows[0];
-   if(!rev||rev.original_case_ref!==caseRef)
-    throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
-   const grant=await tx.query<Grant>(
-    "SELECT state,version,pending_revision_id,approved_revision_id,"+
-    "original_decision_ref FROM health_center_erp_grant WHERE root_realm_id=$1 "+
-    "AND center_id=$2 AND capability=$3 FOR UPDATE",
-    [actor.realmId,caseRow.health_center_id,rev.capability]);
-   const g=grant.rows[0];
-   if(g?.state!=="REQUESTED"||g.version!==rev.revision_no||
+   const rev=source.rows[0],g=grant.rows[0];
+   if(!rev||rev.original_case_ref!==caseRef||
+     g?.state!=="REQUESTED"||g.version!==rev.revision_no||
      g.pending_revision_id!==rev.id)
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
    const proof=await this.approval.approved(tx,actor,{
