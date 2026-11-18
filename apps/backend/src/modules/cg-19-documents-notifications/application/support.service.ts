@@ -348,7 +348,7 @@ export class SupportService{
         [a.realmId,ref,a.accountId])
     ]);
     const seen=reading.rows[0];
-    return {caseRef:row.id,...request,status:row.status,
+    return {caseRef:row.id,sourceChannel:row.source_channel,...request,status:row.status,
       unread:!seen?.last_seen_inbound_at||seen.last_seen_inbound_at<row.latest_inbound_at,
       archived:!!seen?.archived_at,
       revision:row.revision,assignedAccountRef:row.assigned_account_id,
