@@ -438,7 +438,40 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       </div>
     </form>}
     {mode==="list"&&<>
-      {!loading&&list.length===0&&<p>No provider applications yet. Add a provider to begin.</p>}
+      <form className="form-section" onSubmit={e=>{
+        e.preventDefault();setAppliedListSearch(listSearch.trim());
+      }}>
+        <h2>Find healthcare providers</h2>
+        <div className="form-grid">
+          <label className="field">Organization name or provider code
+            <input type="search" maxLength={80} value={listSearch}
+              onChange={e=>setListSearch(e.target.value)}
+              placeholder="Search registered organizations"/>
+          </label>
+          <label className="field">Registration status
+            <select value={listStatus} onChange={e=>setListStatus(e.target.value)}>
+              <option value="ALL">All statuses</option>
+              <option value="PENDING">Pending draft</option>
+              <option value="SUBMITTED">Submitted for review</option>
+              <option value="RETURNED">Returned for corrections</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+          </label>
+        </div>
+        <div className="toolbar">
+          <button type="submit" className="primary">Apply search</button>
+          <button type="button" onClick={()=>{
+            setListStatus("ALL");setListSearch("");setAppliedListSearch("");
+          }}>Reset filters</button>
+        </div>
+        {!loading&&<p role="status" className="muted">
+          {list.length} matching providers loaded{nextListOffset!==null?" — more available":""}.
+        </p>}
+      </form>
+      {!loading&&list.length===0&&
+        <p>No providers match the current filters. Reset filters or register a provider.</p>}
       <div className="table-wrap"><table><thead><tr><th>Organization</th><th>Type</th>
         <th>Centers</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {list.map(x=><tr key={x.providerRef}><td>{x.name}</td><td>{x.type}</td>
@@ -446,6 +479,11 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" onClick={()=>void open(x.providerRef)}>View draft</button>
           </td></tr>)}
       </tbody></table></div>
+      {nextListOffset!==null&&<div className="toolbar">
+        <button type="button" disabled={listPageLoading||loading}
+          onClick={()=>void loadMoreProviders()}>
+          {listPageLoading?"Loading more…":"Load more providers"}</button>
+      </div>}
       {selected&&<section className="form-section">
         <h2>{selected.provider.name}</h2><p>Provider status: {selected.provider.status.replaceAll("_"," ")}.
           {selected.provider.status!=="VERIFIED"?" Centers cannot be publicly published.":""}</p>
