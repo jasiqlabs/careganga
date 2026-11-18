@@ -257,6 +257,85 @@ export class HealthDoctorDraftService{
         message:"Center association proposed. It is not active or publicly visible."};
     });
   }
+  async approveCenter(bearer:string,doctorRef:string,associationRef:string,body:unknown){
+    const doctorId=validId(doctorRef,"doctorRef");
+    const associationId=validId(associationRef,"associationRef");
+    const x=object(body,"center");
+    fields(x,["requestKey","expectedVersion"],"center");
+    const v=expected(x.expectedVersion);
+    const actor=await this.actor(bearer,"health.doctors.verify");
+    return this.transaction(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.doctors.verify");
+      const cmd=await this.command(tx,actor,"DOCTOR_CENTER_APPROVE",x.requestKey,
+        {doctorId,associationId,v});
+      if(cmd.replay)return {associationRef:cmd.replay.result_ref,
+        version:cmd.replay.result_version,status:"APPROVED",replayed:true};
+      const doctor=await tx.query(
+        "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status='VERIFIED' FOR SHARE",[actor.realmId,doctorId]);
+      if(!doctor.rowCount)
+        throw new ConflictException({code:"HEALTH_DOCTOR_NOT_VERIFIED"});
+      const association=await tx.query<{version:number;affiliation_state:string;center_id:string}>(
+        "SELECT version,affiliation_state,center_id FROM health_doctor_center "+
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3 FOR UPDATE",
+        [actor.realmId,doctorId,associationId]);
+      const current=association.rows[0];
+      if(!current)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      if(current.version!==v||current.affiliation_state!=="PENDING")
+        throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
+      const center=await tx.query(
+        "SELECT c.id FROM health_center c JOIN health_provider p "+
+        "ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+        "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='VERIFIED' "+
+        "AND c.access_state='ENABLED' AND p.status='VERIFIED' FOR SHARE OF c,p",
+        [actor.realmId,current.center_id]);
+      if(!center.rowCount)
+        throw new ConflictException({code:"HEALTH_CENTER_NOT_VERIFIED"});
+      await tx.query(
+        "UPDATE health_doctor_center SET affiliation_state='APPROVED',"+
+        "approved_from=now(),approved_by=$4,version=version+1,updated_at=now() "+
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3",
+        [actor.realmId,doctorId,associationId,actor.accountId]);
+      await this.recorded(tx,actor,cmd.id!,"DOCTOR_CENTER_APPROVE",
+        doctorId,current.center_id,associationId,v+1);
+      return {associationRef:associationId,version:v+1,status:"APPROVED",
+        replayed:false,message:"Doctor approved for this center only. No public listing or booking was created."};
+    });
+  }
+  async suspendCenter(bearer:string,doctorRef:string,associationRef:string,body:unknown){
+    const doctorId=validId(doctorRef,"doctorRef");
+    const associationId=validId(associationRef,"associationRef");
+    const x=object(body,"center");
+    fields(x,["requestKey","expectedVersion"],"center");
+    const v=expected(x.expectedVersion);
+    const actor=await this.actor(bearer,"health.doctors.verify");
+    return this.transaction(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.doctors.verify");
+      const cmd=await this.command(tx,actor,"DOCTOR_CENTER_SUSPEND",x.requestKey,
+        {doctorId,associationId,v});
+      if(cmd.replay)return {associationRef:cmd.replay.result_ref,
+        version:cmd.replay.result_version,status:"SUSPENDED",replayed:true};
+      const found=await tx.query<{version:number;affiliation_state:string;center_id:string}>(
+        "SELECT version,affiliation_state,center_id FROM health_doctor_center "+
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3 FOR UPDATE",
+        [actor.realmId,doctorId,associationId]);
+      const current=found.rows[0];
+      if(!current)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      if(current.version!==v||current.affiliation_state!=="APPROVED")
+        throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
+      await tx.query(
+        "UPDATE health_doctor_center SET affiliation_state='SUSPENDED',"+
+        "approved_to=now(),version=version+1,updated_at=now() "+
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3",
+        [actor.realmId,doctorId,associationId]);
+      await this.recorded(tx,actor,cmd.id!,"DOCTOR_CENTER_SUSPEND",
+        doctorId,current.center_id,associationId,v+1);
+      return {associationRef:associationId,version:v+1,status:"SUSPENDED",
+        replayed:false,message:"Doctor association suspended at this center. Other centers remain unchanged."};
+    });
+  }
   async centers(bearer:string,doctorRef:string){
     const actor=await this.actor(bearer,"health.doctors.view");
     const ref=validId(doctorRef,"doctorRef");
