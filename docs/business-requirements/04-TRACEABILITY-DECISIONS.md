@@ -1,5 +1,9 @@
 # CareGanga — Delegated Business Policy Baseline
 
+### 18 Nov 2026 — complete supplied original public-site evidence and ownership decision
+The [canonical 47-screenshot client-site/page/ownership map](../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) supersedes generic/guessed navigation URLs or visual mock descriptions in older drafts. Reconciled owner routing: CG-18 original approved global/editorial shell (4 existing US / 76 QA, still open); CG-02 genuine Team/NGO identity; CG-04 member/volunteer; CG-05 project/event; CG-07 donations; CG-08 partners; CG-09/20 finance/report; CG-19 published notices/media/support/contact; CG-21 editable Admin errors; CG-14/15/17 real Healthcare Assistance. No additional operational master or new CMS story. Original source screenshot URLs are ground truth where captured (`/our-impact`, `/ngo-information/*`, `/videos`, `/publications`, `/notices`, `/collaboration`, `/membership`, `/volunteer`, `/about/team`); generic /impact, /80g and gallery query-type variants may remain fallback/aliases but are not a substitute for original pages. Capture gaps for About dropdown, Campaigns/Events, live mobile/animations and true documents/rights stay open. Development source review and runtime/pixel/DB/independent approval must be separately evidenced.
+
+
 **Document:** CG-BR-900  
 **Status:** All 27 numbered business-scope decisions recorded (D-01–D-23, D-25–D-28; D-24 not issued) and resolved for PRD/HLD planning using the owner's explicit delegated-default instruction in this conversation  
 **Authority:** Product-owner delegation for planning decisions; not a claim of independent client sign-off, verified banking credentials or legally completed provider arrangements  

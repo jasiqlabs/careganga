@@ -8,7 +8,7 @@ import type { IdentityAuthorization, VerifiedFoundationActor } from "../public-a
 import { capabilitiesInUse, implementedCapability } from "../domain/capability-catalog";
 import { DEFAULT_SECURITY_POLICY } from "../domain/security-policy";
 
-const INVALID_LOGIN = "Mobile number, email or password could not be confirmed.";
+const INVALID_LOGIN = {code:"IDENTITY_LOGIN_INVALID"} as const;
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 type AccountCredential = {

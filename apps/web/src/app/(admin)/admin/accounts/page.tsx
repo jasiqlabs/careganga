@@ -37,7 +37,7 @@ export default async function FoundationAccounts(){
       <h1>Access denied</h1><p>You cannot view staff accounts.</p>
       <Link href="/admin">Return to my account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="accounts" displayName={actor.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={canViewAccounts||canCreateOnly}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}

@@ -1,5 +1,9 @@
 # CareGanga Foundation — Master Business Requirements (BR)
 
+### 18 Nov 2026 original 47-screenshot public website requirement acceptance (client reference only)
+[Authoritative original page/route/content/design and single Admin ownership inventory](../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) binds all modules. The 47 captures are stored in four private CareGanga Library reference ZIPs (10 original + 12/18/7 recent), indexed with page URLs and checksums. Required matching original site navigation/layout/sections/FAQ/empty states and current approved content are not optional, but **operational data always stays in the owning Admin module**; CG-18 edits public presentation, menus, page copy, media and metadata after CG-03 approval. Preserve original Team Directory, /our-impact, NGO Information child pages, /upcoming-projects, /collaboration, /notices, /gallery, distinct /videos and /publications, /membership, /volunteer, /contact, and footer/loading screen. Only the original top-level Blood Donation destination is replaced by Healthcare Assistance; its Our Work > Healthcare category remains. Original Campaigns/Events/About dropdown full route evidence, authentic logos/photos/legal documents, exact mobile motion and real service availability are unverified. This is design evidence, **not** executed QA, authorized client content publication or acceptance of screenshot amounts/certifications.
+
+
 **Document ID:** CG-BR-000  
 **Baseline:** Single consolidated BR for modular PRDs  
 **Status:** Consolidated source-reviewed BR baseline; SHA-bound internal owner-delegated business-design approval is recorded in `specs/initiatives/careganga-foundation-platform/approvals.json`. **Independent client/business sign-off remains required** before treating unverified commercial, medical, legal or numerical targets as contractual/operational approval  

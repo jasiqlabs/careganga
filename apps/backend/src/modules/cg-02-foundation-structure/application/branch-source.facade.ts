@@ -42,6 +42,148 @@ type SubmittedRow={
 export class BranchSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
+ async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
+  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const row=await client.query<{id:string}>(`
+    SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
+    FOR SHARE`,[ensureId(branchRef),actor.realmId]);
+  if(!row.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
+  await this.requireFinanceActorBranch(client,actor,branchRef,action);
+ }
+ /** One current CG02 manager/administrator authorization, reusable inside a
+  * protected CG03/CG09 transaction without a second bearer token or fake master.
+  */
+ async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
+  branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
+   "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
+  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const branchRef=ensureId(branchInput);
+  const source=await client.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch "+
+   "WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' FOR SHARE",
+   [branchRef,actor.realmId]);
+  if(!source.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
+  if(source.rows[0].manager_account_ref===actor.accountId)return;
+  const privileged=await client.query<{allowed:boolean}>(`
+   SELECT EXISTS(
+    SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+    AND r.active=true LEFT JOIN role_grant g ON g.role_id=r.id
+      AND g.capability_key='foundation.branches.admin'
+    WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
+      AND (r.is_protected=true OR g.capability_key IS NOT NULL)
+   ) AS allowed`,[actor.accountId,actor.realmId]);
+  if(!privileged.rows[0]?.allowed)
+   throw new ForbiddenException("This finance branch is not assigned to your account");
+ }
+ /** CG-02 owner check for actual Finance invoice branch selection. */
+ async requireFinanceBranchVersion(client:PoolClient,actor:VerifiedFoundationActor,
+  branchRef:string,expectedVersion:number,action:"finance.invoices.manage"|"finance.budgets.manage"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  if(!UUID.test(branchRef)||!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+   throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+  const found=await client.query<{version:number}>(
+   "SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[branchRef,actor.realmId]);
+  if(!found.rows[0]||found.rows[0].version!==expectedVersion)
+   throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+  await this.requireFinanceActorBranch(client,actor,branchRef,action);
+ }
+ /** Owner-controlled permitted branch labels for past ACTIVE/INACTIVE finance accounts. */
+ async financeBranchLabels(bearer:string,branchRefs:readonly string[]):Promise<Record<string,string>>{
+  if(branchRefs.length>60||branchRefs.some(r=>!UUID.test(r)))
+   throw new BadRequestException("The finance branch selection is invalid. Refresh the list.");
+  const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+  const unique=[...new Set(branchRefs)];
+  if(unique.length===0)return {};
+  const scope=await this.financeReportScope(bearer,"finance.accounts.view");
+  const labels=await this.db.query<{id:string;name:string}>(`
+    SELECT id,name FROM branch
+    WHERE root_realm_id=$1 AND id=ANY($2::uuid[])
+      AND ($3::boolean OR id=ANY($4::uuid[]))
+    ORDER BY name,id LIMIT 60`,[actor.realmId,unique,scope.all,scope.branchRefs]);
+  return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
+ }
+ /** Authoritative CG-02 branch visibility for finance reports, selectors and CSV.
+  * Protected Foundation super admin and explicitly granted branch admins may
+  * see all. An ordinary branch manager sees only their real assigned branch(es);
+  * finance.reports.view alone never silently grants Foundation-wide money.
+  */
+ async financeReportScope(bearer:string,capability:"finance.reports.view"|"finance.reconciliation.manage"|"finance.reconciliation.review"|"finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.review"|"finance.invoices.issue"|
+  "finance.accounts.view"|"finance.accounts.manage"|"finance.journals.post"|
+  "finance.vouchers.view"|"finance.vouchers.manage"|"finance.budgets.view"|
+  "finance.budgets.manage"="finance.reports.view"):Promise<{all:boolean;branchRefs:string[]}>{
+   const actor=await this.sessions.requireAction(bearer,capability);
+   const protectedRole=await this.db.query<{allowed:boolean}>(`
+     SELECT EXISTS(SELECT 1 FROM account_role ar
+       JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true
+       WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL) AS allowed`,
+      [actor.accountId,actor.realmId]);
+   let full=protectedRole.rows[0]?.allowed===true;
+   if(!full){
+     try{await this.sessions.requireAction(bearer,"foundation.branches.admin");full=true;}
+     catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   }
+   if(full)return {all:true,branchRefs:[]};
+   const branches=await this.db.query<{id:string}>(`
+     SELECT id FROM branch WHERE root_realm_id=$1 AND manager_account_ref=$2
+       AND status='ACTIVE' ORDER BY id LIMIT 101`,[actor.realmId,actor.accountId]);
+   if(branches.rows.length>100)
+     throw new ForbiddenException("Choose a narrower authorized branch list");
+   return {all:false,branchRefs:branches.rows.map(x=>x.id)};
+ }
+ async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
+   const allowed=await this.financeReportScope(bearer);
+   if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
+     throw new ForbiddenException("Select a branch assigned to your account");
+ }
+ /** CG-09 finance uses only the actual active branch identity, not private branch files. */
+ async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"|"finance.budgets.view"|"finance.budgets.manage"|"finance.reports.view"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
+   const actor=await this.sessions.requireAction(bearer,capability);
+   const scope=await this.financeReportScope(bearer,capability);
+   const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
+     SELECT id,name,branch_code,version FROM branch
+     WHERE root_realm_id=$1 AND status='ACTIVE'
+       AND ($2::boolean OR id=ANY($3::uuid[]))
+     ORDER BY name,id LIMIT 100`,[actor.realmId,scope.all,scope.branchRefs]);
+   return rows.rows.map(b=>({branchRef:b.id,name:b.name,code:b.branch_code,version:b.version}));
+ }
+ /** A Foundation-wide financial year, chart or root journal may be changed
+  * only by a current protected root role or explicit CG-02 branch administrator.
+  * A manager's finance.accounts.manage/journals.post grant is NOT root authority.
+  */
+ async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
+   action:"finance.accounts.manage"|"finance.journals.post"|
+    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const result=await client.query<{allowed:boolean}>(`
+   SELECT EXISTS(SELECT 1 FROM account_role ar
+    JOIN role r ON r.id=ar.role_id AND r.active=true
+    LEFT JOIN role_grant g ON g.role_id=r.id
+      AND g.capability_key='foundation.branches.admin'
+    WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
+      AND (r.is_protected=true OR g.capability_key IS NOT NULL)
+   ) AS allowed`,[actor.accountId,actor.realmId]);
+  if(!result.rows[0]?.allowed)
+   throw new ForbiddenException("Foundation-wide finance requires administrator access");
+ }
+ /** Finance transaction must recheck real CG-02 branch and current CG-01 action. */
+ async financeActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
+     branchRef:string,expectedVersion:number,action:string):Promise<void>{
+   if(!["finance.accounts.manage","finance.journals.post","finance.vouchers.manage"].includes(action))
+     throw new ForbiddenException("You do not have permission to use this branch for finance");
+   await this.identity.assertCurrent(client,actor,action);
+   const rows=await client.query<{version:number}>(`
+     SELECT version FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
+     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
+   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
+   if(rows.rows[0].version!==expectedVersion)
+     throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+   await this.requireFinanceActorBranch(client,actor,branchRef,action as
+    "finance.accounts.manage"|"finance.journals.post"|"finance.vouchers.manage");
+ }
  private async admin(bearer:string):Promise<boolean>{
    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
    catch(e){if(e instanceof ForbiddenException)return false;throw e;}

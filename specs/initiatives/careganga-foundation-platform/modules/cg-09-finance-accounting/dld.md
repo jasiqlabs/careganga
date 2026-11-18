@@ -1,5 +1,16 @@
 # CG-09 — Detailed-Level Design
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Original NGO Information financial reports and transparent financial data pages: `/ngo-information/financial-reports` table (financial year, report type, publication date, download/export) and public `/publications` approved financial/statutory documents. Frontend cards and yearly filters reuse actual source-authorized CG-09 records and CG-20 approved public reports, not client screenshot amounts.
+
+**One Foundation Admin / source contract:** CG-09 remains authoritative ledger/financial statement owner with branch/root-scope accounting; CG-20 handles authorized report projection/release, CG-19 scanned versioned downloadable PDFs and CG-18 design/breadcrumb/sidebar only. A role-permitted Finance/Admin user may mark exactly which reports are approved for public display; never expose raw ledger, donors, suppliers, payroll or protected journal lines by accident.
+
+**Per-story QA addition:** Trace public report type/year/empty and export, publication date/version after correction, safe PDF download, scoped finance authorization, revocation, no unverified 80G/financial claim, CSV injection safe export, query limits, Admin public-visibility approval, original screenshot alignment and device QA NOT_RUN. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Source:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42 · PRD N-13/HLD H-12.  
 **State:** REQUIRED · **DELEGATED_APPROVED — design only** by JASIQ AI Design Review Agent for current CG-09 DLD source (15 Nov 2026), including narrow original CG-12 supplier/receipt and CG-05 real project voucher/budget/ledger receiving-owner integrations (full original six-story financial review preserved), after review/fix/re-review of single Foundation accounting owner, root-isolated accounts and years, US-001 first reusable balanced opening posting, immutable journal/claim/invoice/budget/reconciliation integrity, idempotent verified money effects and CG-09-introduced finance owner extensions in CG-03/CG-19. `database_impact: CRITICAL`; independent qualified database review, real SQL/migration/restore, authenticated Harness resolver and source-code/Web/Android/pixel/motion QA NOT_RUN. PRD/HLD latest hashes REVIEW_REQUIRED; development not cleared.
 

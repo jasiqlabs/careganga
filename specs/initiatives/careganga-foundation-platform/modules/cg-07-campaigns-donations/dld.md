@@ -1,5 +1,22 @@
 # CG-07 — Detailed-Level Design
 
+### 2026-11-18 source-backed original Donate/Support CTA contract
+Reference [47 screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Expose one root-scoped approved campaign/public donation-entry projection consumed by CG-18 header/footer/hero and CG-05 `/upcoming-projects` cards; no CG-18 mirror table or direct CMS amount-handling. Conditional link activation requires approved campaign/project association, current fundraising eligibility and validated intended recipient; on withdrawal/expiry, linked Donate and Support Project become inactive immediately. Show genuine campaign goal only when a current CG-07 source confirms amount/currency; payments retain original CG-07 idempotency and CG-09 one-time posting, CG-19 real receipts. Actual Foundation Admin (campaign editor) owns public summary, target, beneficiary-safe media/eligibility and status; CG-18 Admin owns only labels/theme/layout. Unknown original Campaigns URL and details stay NOT_VERIFIED until captured; never silently create screenshots-as-money.
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original Campaigns top navigation, genuine Donate Now floating/footer action, original /upcoming-projects Support Project CTA, and donor-facing tax/receipt flow. Project cards show funding goal and payment CTA only when the verified CG-07 real campaign/donation route is enabled; screenshot donation amounts or statuses are NOT evidence of actual funds.
+
+**Admin and ownership:** One current Campaigns/Donations Admin owns campaign content that is operational (goal, allocation, approved state, beneficiary/project associations, beneficiary rights, payment configuration, receipt issuance). CG-05 owns project metadata; CG-18 controls visual menu, CTA labels and approved site location. No second CTA/payment master.
+
+**Acceptance and QA trace:** Existing CG-07 cases must trace Campaigns link, Donate Now, project Support Project, unavailable payment/unknown outcome, withdrawal/public no-stale route, tax/80G truth, original screenshot responsive CTAs, current beneficiary and project permissions. Payment acceptance requires real settlement and offline/manual source evidence, not screenshot.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Source:** [PRD](../../prd.md) FR-017, FR-018, FR-019, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-07-BR01–CG-07-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A12, A13, A14, A15, A16, A17, A18 · PRD N-13/HLD H-12.  
 **State:** REQUIRED · DESIGN_SOURCE_REVIEWED / owner-delegated **design content only** (hash in `../../approvals.json`). Current PRD/HLD global REVIEW_REQUIRED; local authenticated Harness resolver, independently qualified CRITICAL database/privacy review, actual schema/migrations/restore, source code and runtime/device/pixel/performance QA **NOT_RUN**; formal development gate BLOCKED.
 

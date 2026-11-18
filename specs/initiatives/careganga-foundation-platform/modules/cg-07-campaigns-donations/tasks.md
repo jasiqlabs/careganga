@@ -1,5 +1,22 @@
 # CG-07 — Three independently deliverable full-stack stories and 60 manual QA scenarios
 
+### 2026-11-18 original-public donation/Support Project owner QA — receiving trace
+Reference [47 screenshot/URL contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), particularly original `/upcoming-projects` project cards, gold Campaigns nav, floating Donate Now and repeated support CTAs. Integrate **within the existing CG-07 US-001..003 and CG-05/18 receiving cases**: Admin creates/approves real campaign and project association; published menu/project support connects to only eligible actual CG-07 intent; withdrawn/expired/unauthorized campaign disables links; verified payment/receipt/one CG-09 ledger credit and retry safety; cancel/refund/no-payment state; original CTA focus/tap/accessibility and responsive Web/native visibility. Do not replay screenshot funding goals or make unverified 80G promises. Campaigns landing image/route evidence still missing. All checks **PLANNED, not executed**; external review and data migration not certified.
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original Campaigns top navigation, genuine Donate Now floating/footer action, original /upcoming-projects Support Project CTA, and donor-facing tax/receipt flow. Project cards show funding goal and payment CTA only when the verified CG-07 real campaign/donation route is enabled; screenshot donation amounts or statuses are NOT evidence of actual funds.
+
+**Admin and ownership:** One current Campaigns/Donations Admin owns campaign content that is operational (goal, allocation, approved state, beneficiary/project associations, beneficiary rights, payment configuration, receipt issuance). CG-05 owns project metadata; CG-18 controls visual menu, CTA labels and approved site location. No second CTA/payment master.
+
+**Acceptance and QA trace:** Existing CG-07 cases must trace Campaigns link, Donate Now, project Support Project, unavailable payment/unknown outcome, withdrawal/public no-stale route, tax/80G truth, original screenshot responsive CTAs, current beneficiary and project permissions. Payment acceptance requires real settlement and offline/manual source evidence, not screenshot.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning / GREENFIELD · **DESIGN_SOURCE_REVIEWED** for 3 stories with **60 uniquely identified planned QA cases (20 each)**, current content review/approval hashes recorded in `../../approvals.json` after final review. [Module](module.md), [PRD](../../prd.md) FR-017–019, [HLD](../../hld.md), [UI/UX](uiux.md), [DLD](dld.md), and original indexed A12–A18 Admin audit are mandatory.  
@@ -104,3 +121,6 @@ Dependencies: US-002 actual CG-09 confirmed posting and original CG-19 issued re
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+## 18 November 2026 — original website receiving acceptance — receiving story QA
+For original US-001/002/003 QA, validate **campaign real publication and genuine CTA/payment, verified receipt/duplicate/rejected/refund, correct source-owned original donor artwork** against original first 10 + Batch02 021139–021224 and Campaigns; Donate Now; Upcoming Projects Support; actual donor receipt/certificate. Cross-reference [original screenshot QA contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), then run source owner→Admin permissions/CG-21 error→approval→current Web/native state→withdrawal/denied/unavailable/rollback. No new QA identifier, fake financial/provider action or screenshot-only PASS. **RECEIVING SOURCE OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**

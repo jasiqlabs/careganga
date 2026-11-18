@@ -1,5 +1,18 @@
 # CG-02 — Foundation Structure
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Verified Foundation legal identity and any authorized team/people profile source used by the original `/about/team` and `/ngo-information` family.
+
+**Domain/technical source contract:** CG-02 must expose only current Foundation-root-scoped, approved public-safe identity, registrations, PAN/80G verification statuses and correct source refs; never publicize private employee/member details or screenshot PAN/registration numbers by default. A Team Directory projection may select authorized CG-02 staff/structure fields or CG-04 member/volunteer fields only after documented source ownership and explicit subject consent, status and display permission.
+
+**Screen and Admin UI acceptance:** Team Directory state/district/subdivision/block/designation filters and search/reset must be source-backed and scoped; NGO sidebar PAN/registration/80G proof panels must follow the exact screenshot layout with truthful source status, badges and document links (no invented 'VERIFIED').
+
+**QA and independent review:** Source trace: anonymous request cannot enumerate private team, volunteer, employee, document IDs or unchecked legal fields; original screenshot Team search/filtered empty state, NGO proof/no-proof, consent revocation and root isolation must be manually tested by original owner and CG-18 receiver. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 ## 16 Nov 2026 simple-auth cross-owner change — source-review required
 
 **Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
@@ -70,3 +83,6 @@ US-001 completes with **CG-01 only**; US-002 later delivers the branch/approval/
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: U18, U19, U20, U21, U22. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 18 November 2026 — original website receiving acceptance
+**Original visitor routes:** /about/team; /ngo-information legal identity and PAN/registration proof. **Evidence:** Batch01 020435–020959. **Owned source:** true CG-02 identity/geo/verified legal facts and actual CG-04 approved person consent; CG-19 current official scanned originals, CG-18 presentation. This [original 47-screen acceptance contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md) is mandatory for existing US-001/002, without changing business owners, adding phantom records or accepting screenshot values as verified production facts.

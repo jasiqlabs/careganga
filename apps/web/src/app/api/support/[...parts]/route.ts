@@ -90,6 +90,14 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     if(!result.ok){
       const status=[400,401,403,404,409,413,429].includes(result.status)?
         result.status:503;
+      // Preserve the approved CG21 editable safe wording; never forward raw
+      // provider, SQL or validation payloads to an anonymous Contact visitor.
+      const source:unknown=await result.json().catch(()=>null);
+      const copy=source&&typeof source==="object"&&!Array.isArray(source)&&
+        "message" in source&&typeof source.message==="string"&&
+        source.message.length>=8&&source.message.length<=240&&
+        !/[<>\u0000-\u001f\u007f]/.test(source.message)?source.message:null;
+      if(copy)return fail(status,copy);
       return fail(status,status===409?"Original record changed. Refresh before retrying.":
         status===401?"Sign in again.":
         status===403?"Current role cannot perform this action.":

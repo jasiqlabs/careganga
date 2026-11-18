@@ -1,5 +1,16 @@
 # CG-09 — Finance Accounting
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Original NGO Information financial reports and transparent financial data pages: `/ngo-information/financial-reports` table (financial year, report type, publication date, download/export) and public `/publications` approved financial/statutory documents. Frontend cards and yearly filters reuse actual source-authorized CG-09 records and CG-20 approved public reports, not client screenshot amounts.
+
+**One Foundation Admin / source contract:** CG-09 remains authoritative ledger/financial statement owner with branch/root-scope accounting; CG-20 handles authorized report projection/release, CG-19 scanned versioned downloadable PDFs and CG-18 design/breadcrumb/sidebar only. A role-permitted Finance/Admin user may mark exactly which reports are approved for public display; never expose raw ledger, donors, suppliers, payroll or protected journal lines by accident.
+
+**Per-story QA addition:** Trace public report type/year/empty and export, publication date/version after correction, safe PDF download, scoped finance authorization, revocation, no unverified 80G/financial claim, CSV injection safe export, query limits, Admin public-visibility approval, original screenshot alignment and device QA NOT_RUN. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-09-BR01–CG-09-BR17, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42.  
@@ -87,3 +98,6 @@ Detailed authoritative clauses:
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: A19, B01, B02, U33, U34, U35, U36, U37, U38, U39, U40, U41, U42. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 18 November 2026 — original website receiving acceptance
+Original client routes: **/ngo-information/financial-reports; official approved financial reports**. Original captures **Batch01 021020/021040 and Admin U35–U42**. One true owner: CG-09 posted accounts with CG-20 public-safe projection and CG-19 approved PDF; no private journal leak. This requirement is linked to [the 47 public-screen alignment matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Preserve existing US-004/006 (71 QA unchanged) and do not seed screenshot claims as facts.

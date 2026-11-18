@@ -33,7 +33,7 @@ export default async function FoundationStructurePage(){
       <p>You do not have permission to view this Foundation information.</p>
       <Link href="/admin">Return to my account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="foundation" displayName={actor.displayName} roleName={actor.roleName}
+      <FoundationAdminNav canViewFinance={actions.includes("finance.accounts.view")} canViewVouchers={actions.includes("finance.vouchers.view")} active="foundation" displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={actions.includes("roles.view")}
         canViewAccounts={actions.includes("accounts.view")}
         canManageSecurityPolicy={actions.includes("identity.security-policy.manage")}

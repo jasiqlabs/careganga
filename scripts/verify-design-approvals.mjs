@@ -51,6 +51,18 @@ const modules=["identity-access","foundation-structure","registration-approvals"
 const paths=["prd.md","hld.md"].map(f=>join(base,f));
 for(let i=0;i<modules.length;i++)for(const doc of ["module.md","dld.md","uiux.md","tasks.md"])
   paths.push(join(base,"modules","cg-"+String(i+1).padStart(2,"0")+"-"+modules[i],doc));
+// Require an approval record for every canonical design artifact, not just
+// correctness of records already present. Missing QA task approvals must fail.
+const requiredApprovalKeys = ["prd", "hld"];
+for (let i = 0; i < modules.length; i++) {
+  const moduleKey = "cg-" + String(i + 1).padStart(2, "0") + "-" + modules[i];
+  for (const kind of ["planning", "dld", "uiux", "tasks"])
+    requiredApprovalKeys.push(kind + "/" + moduleKey);
+}
+for (const key of requiredApprovalKeys) {
+  if (!Object.prototype.hasOwnProperty.call(ledger.records, key))
+    failures.push(key + ": missing canonical design approval record");
+}
 const legacy=/accounts\.invite\b|\/api\/access\/invitations\b|\binviteOnly\b|\brootMfaRequired\b|\brequiresFreshAuthenticator\b|magic.?link|passwordless|otp[- ]?only login|login[- ]?otp\b|(?:login|sign.?in).{0,60}\bTOTP\b|\bTOTP\b.{0,60}(?:login|sign.?in)/i;
 for(const relative of paths){
   const path=join(root,relative);

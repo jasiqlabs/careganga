@@ -1,5 +1,18 @@
 # CG-04 — Mandatory Original CareGanga UI/UX: Membership & Volunteers
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Actual original `/membership` and `/volunteer` public pages, approved member/volunteer verification, and public Team Directory participation where consented.
+
+**Domain/technical source contract:** One existing CG-04 member/volunteer master: published tier version/fee/benefit source, application/approval/identity-document handling, public member/volunteer verification, volunteer four-step submission, PIN/state/district/availability/interests and optional referral. Never invent prices, acceptance, payment proof or a duplicate CMS registration table. CG-09 handles actual fee; CG-19 files and CG-03 approvals stay in their respective owners.
+
+**Screen and Admin UI acceptance:** Original Membership hero, Membership Cards/Verify Membership tabs, search/Annual/Lifetime/Honorary/Student filters, plan cards, benefit list, View Details/Apply Now; Volunteer dark hero/How It Works, Application Form/Verify Volunteer tabs, four-step progress, personal/contact/address/referral fields. Preserve screenshot composition and CG-21 field-specific editable errors; narrow layout and Android per owned channel.
+
+**QA and independent review:** Existing CG-04 QA must trace original /membership and /volunteer flow with tier selection/real price, apply/verify ID, scoped applicant PII, optional referral, PIN locality mapping and location fallbacks, unique approval/issuance, sensitive proof only through CG-19, responsiveness and original screenshot comparison. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Evidence:** [Indexed 167-image Admin audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B09 `09_Membership_Program_Overview.png`, B10 `10_Membership_Create_New_Tier.png`, U11 `103048`, U12 `103113`, U13 `103119`, U14 `103135`, U15 `103143`, U16 `103154`, U17 `103158`, B41/B42 shared card source, U42 volunteer claim form, A04/A09 assignment source, C50 original nav flag styling; [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-04-BR01–11; [PRD](../../prd.md) FR-009–011/N-13; [HLD](../../hld.md) H-12; [module](module.md) · [DLD](dld.md) · [QA](tasks.md).
 **Review:** DELEGATED_APPROVED — DESIGN ONLY (15 Nov 2026). Original indexed screenshot control mapping and responsive/native error/permission design source-reviewed. Original PNG/video not loaded as executable display assets from GitHub; exact pixel, color extraction, animation timing/easing, rendered screen/Web/Android comparison and screen-reader/device QA remain **VISUAL_NOT_RUN / MOTION_NOT_VERIFIED**. Do not invent a new palette or assert pixel-perfect PASS.
 

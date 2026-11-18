@@ -1,5 +1,16 @@
 # CG-19 — CareGanga UI/UX Design
 
+### 2026-11-18 original public website source/visual/QA handoff
+
+**Binding evidence:** [47 client public screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); all original screenshots preserved in the private CareGanga Library. This is a requirements and QA refinement inside the existing CG-19 stories, **not** source implementation or a new module.
+
+**Exact original-facing pages:** `/notices` Notice & Announcement Board has keyword search, priority and category filters (General, Announcements, Events, Updates, Emergency, Policy), real approved announcement cards, effective date and Read Details. `/contact` shows a genuine private message form and an existing support chat entry (24/7 must only be advertised when operational). Separate `/gallery`, `/videos`, `/publications` and NGO proof links consume only CG-19 scanned, rights-cleared, public-released files. Newsletter Subscribe must use a real opt-in/unsubscribe owner before activation; never fake success.
+
+**One Foundation Admin, single data owner:** Current CG-19 role-permitted Admin is the source for validated uploads, public document/media rights and version, explicitly public notices and expiry/withdrawal, received contact/support cases and any real newsletter consent. CG-18 owns the page visual/editorial presentation only; use CG-03 independent publication review where applicable. Never copy staff-only notices, private contact messages, original legal IDs or source files into public CMS records.
+
+**Original UI / QA addition:** Trace published vs internal-only/expired notices, search/priority/category/reset, visible detail and original empty states, PDF/video MIME and public-byte revocation, contact form field-level CG-21 errors, saved/private support receipt and unavailable-chat state, opted-in newsletter only, real document download and desktop/narrow Web/public Android screenshot parity. Executed runtime QA, pixel approval and qualified independent review **NOT_RUN**; preserve existing story numbering and QA counts pending revised case mapping.
+
+
 **Authority:** [PRD](../../prd.md) FR-070, FR-071, FR-072, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-19-BR01–CG-19-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B38, B41, B42, C15, C16, C17, C18, C35, C36, C39, C40, C41, C42, C43 · PRD N-13/HLD H-12.  
 **State:** REQUIRED / owner-delegated design content `DELEGATED_APPROVED` (15 Nov 2026), **JASIQ AI Design Review Agent**, after source owner/UIUX review/fix/re-review using original B38/B41/B42/C15–C18/C35–C43, CG-01 brand tokens and real Web/native scoped states. Original screenshot pixels/video motion and rendered Web/Android device parity remain VISUAL_NOT_RUN/MOTION_REFERENCE_UNVERIFIED. PRD/HLD current formal approvals and authenticated Harness resolver remain pending.
 
@@ -54,3 +65,10 @@ Use original Admin document/media right-drawer/modal, upload progress, preview, 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+## Original Notice and Contact receiving source — 18 November 2026
+Original Batch02 Notice & Announcement Board search/category/priority cards, humanized dates, Read Details and true empty state now have source-rendered CG-18 public UI backed by CG-19 current approved notices. Original Batch03 Contact 3 inquiry cards, FAQs, map/social, one message form and footer have source-managed CG-18 presentation but original CG-19 support stays the only private record. Source rights, received-case status, actual reply, no imaginary staffed 24/7, screenshot scroll and Android/browser QA must be verified, not marked PASS.
+
+### 18 November — original NGO child and Contact photo parity source checkpoint
+
+Original client Contact Batch03 021909 3-image strip is optional until Foundation supplies current authorized photo files, and only original CG19 scan/rights-confirmed images render in public Web/Android. No placeholder or screenshot capture as actual licensed asset. Original NGO registration and annual report cards/downloads likewise show only approved public file placements. Test image absent, stale upload, revoked document, invalid MIME and smaller phone/tablet layouts, separate from source reviews.

@@ -1,5 +1,16 @@
 # CG-21 — Platform Configuration Audit
 
+### 2026-11-18 original client full website, Admin-managed field/visual and safe errors contract
+
+**Authority:** [47 original screenshot page/route/content/UI reference](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) plus the approved pre-existing Admin screenshot audit. Requirement clarification for the **existing** CG-21 stories (no standalone visual builder or new business module).
+
+**One Foundation Admin requirement:** Every authored public label/body/FAQ/SEO, approved visual banner/gallery/media placement, page/menu/footer CTA, validated contact/social/map links, newsletter explanatory copy, section ordering/visibility, and bounded colors/logo/theme variants is maintainable by a properly authorized Foundation Admin through **CG-18's existing editorial controls**. CG-21 only owns the platform-wide configuration policy, permissioned audit and editable safe field-level error-message catalog; don't reintroduce CG-18 website navigation settings into CG-21 or duplicate operational master data.
+
+**Original UI/UX:** Match the real CareGanga gold/cream sticky header, green accents, orange Donate, original serif/sans editorial style, original distinct page layouts and branded nonblocking load/splash. Configuration must be limited to validated, accessible design tokens and rights-cleared media/links; no arbitrary Admin HTML, JavaScript or CSS execution. Preview must match actual published page, including mobile/narrow view, source-withdrawal and empty state, and observe reduced-motion preferences. Each Admin form produces accurate field-specific errors whose wording can be adjusted within CG-21 while keeping backend checks strict.
+
+**QA/approval:** Test authorized editor vs reviewer/publisher roles, audit immutable change histories, forbidden toggle/permission escalation, invalid link/file/font/unsafe script rejection, override of editable error text without changing error code, source revocation, theme contrast/focus/responsiveness and 47 screenshot baseline. Runtime/mobile/visual, specialist security review and actual error-catalog mutation verification remain **NOT_RUN**; do not mark the previous CG-21 story/QA cases PASS.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-075, FR-076, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-21-BR01–CG-21-BR06, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) C09, C10, C50, C51, C52, C53, C54, C55.  
@@ -57,3 +68,6 @@ CG-21 owns nonsecret versioned operational settings, external provider-reference
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: C09, C10, C50, C51, C52, C53, C54, C55. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 18 November 2026 — original website receiving acceptance
+Original visitor/admin routes: **all original public and Admin forms, including /membership /volunteer /contact**. Screenshots: **Batch02 021604–021739, Batch03 021809–022004, 167 original Admin screenshots**. Owner: one protected editable error/copy catalog shared by every source-owning API, Web and Android. See [47-screen original source contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Existing US-001/002 retained; screenshot controls are not backend operation proof.

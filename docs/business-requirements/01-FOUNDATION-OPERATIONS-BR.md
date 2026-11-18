@@ -1,5 +1,9 @@
 # CG-BR-100 — Foundation Administration, Programs and Operations
 
+### 18 Nov 2026 source-owner receiving requirements from the client's original public website
+[Exact original 47-screenshot page/route/design/Admin matrix](../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) is now authoritative for the presentation of Foundation domain records. **CG-02** maintains public-safe verified legal registration/approved team fields; **CG-04** owns true /membership and /volunteer plan, application and verification; **CG-05** owns source-backed /upcoming-projects, six Our Work categories and Events; **CG-07** owns Campaigns/Donate/Support Project with genuine payment/receipt; **CG-08** owns actual /collaboration partners and clearances; **CG-09/20** own public-safe verified NGO financial/annual reports and exports; **CG-19** owns notices, approved original files, private contact enquiries/live-chat if genuinely enabled and newsletter subscriptions only with consent; **CG-21** keeps original user-editable field errors/configuration audit. CG-18's Admin CMS is the common approved **presentation and page editing** authority, not a second membership, project, payment or partner master. Never infer real member price, 80G/PAN/registration certificate, partner identity, impact count, fundraiser target, donor record or 24/7 staffing from screenshot mock content. Existing module stories and QA plans must trace their page and source ownership; no new stories or passed runtime assertions are implied by this BR addition.
+
+
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
 **Status:** Consolidated business requirements · Client decisions identified separately  
 **Scope:** CG-01 through CG-13, CG-19 through CG-21. Healthcare-specific requirements remain in [CG-BR-200](02-INTEGRATED-HEALTHCARE-BR.md). Public content controls are in [CG-BR-300](03-CMS-CHANNELS-BR.md).

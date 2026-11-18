@@ -1,5 +1,16 @@
 # CG-10 — Human Resources
 
+### 2026-11-18 original public Team Directory receiving-owner contract (no public HR directory)
+
+**Reference:** [original 47 client public screenshots, including /about/team](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), Batch 01 team image filenames and original Foundation Admin audit. This does NOT make private CG-10 HR data public.
+
+**Owner source:** CG-10 maintains actual staff employee/assignment/designation/status and separately consented public-safe biography source; CG-02 owns authorized State/District/Sub-Division/Block organizational geography; CG-04 owns eligible real member/volunteer profiles. CG-18 owns the original Leadership/Team Directory public page design and separately approved editorial placement. No duplicate employee/member master; CG-10 US-001 remains independently deliverable without CG-18.
+
+**Public projection only after approval:** published active person, explicit profile/photo/name display consent, safe designation and approved geographic reach; name/public alias search only if authorized (never reveal raw internal employee/member ID by default). No private contact, address, DOB, bank, salary, medical, identity files or HR KYC. Exit, transfer, consent withdrawal or source unpublish revokes public search/cached presentation.
+
+**Original UI acceptance:** existing Foundation Admin manages authorized staff master and profile consent, CG-18 manages hero/intro/CTA/order. Public Team Directory supports name/public alias search, dependent State-District-Sub-Division-Block and designation selectors, Search/Reset, approved-only disclaimer and no-result state. Existing CG-10 US-001/CG-18 US-001 QA trace must cover root/branch scope, consent/withdrawal, anonymous enumeration, dependent selectors, duplicate aliases, bounded list, desktop/mobile and accessibility. This is a planning/QA handoff, not code delivery or runtime QA.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-029–033, [HLD](../../hld.md), [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–15, [original UI audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) actual CG-10 B20–B28, B30–B33, B35–B42, B44–B51 with B29 CG-03 reviewer, B34 CG-01 role, B38 CG-19 PDF owner, B43 CG-11 payroll, B49 visible allowance (not filename leave), B19 CG-12 inventory.

@@ -1,4 +1,6 @@
 import "reflect-metadata";
+import type {Pool} from "pg";
+import {DATABASE} from "./core/infrastructure/database.module";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { readConfig } from "./core/config/config";
@@ -11,7 +13,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bodyParser: true, rawBody: true });
   app.enableShutdownHooks();
   app.use(correlateRequest);
-  app.useGlobalFilters(new SafeErrorsFilter());
+  app.useGlobalFilters(new SafeErrorsFilter(app.get<Pool>(DATABASE)));
   app.enableCors({ origin: cfg.webOrigin, credentials: false, methods: ["GET","POST","PATCH","DELETE"] });
   await app.listen(cfg.port, "0.0.0.0");
 }

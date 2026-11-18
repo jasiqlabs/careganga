@@ -1,0 +1,9 @@
+import type {Metadata} from "next";
+import {CmsEditorialRoute,editorialMetadata} from "../../features/cms-public-content/cms-editorial-route";
+export const dynamic="force-dynamic";
+export async function generateMetadata():Promise<Metadata>{
+ return editorialMetadata("our-impact");
+}
+export default function OriginalImpactPage(){
+ return <CmsEditorialRoute slug="our-impact"/>;
+}

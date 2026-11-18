@@ -56,7 +56,29 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"support.cases.view",businessLabel:"View Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
   {key:"support.cases.manage",businessLabel:"Assign and manage Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
   {key:"support.cases.reply",businessLabel:"Reply to Foundation support requests",group:"Helpdesk & support",assignable:true,sensitive:true},
-  {key:"support.faq.manage",businessLabel:"Manage Foundation help questions",group:"Helpdesk & support",assignable:true,sensitive:true}
+  {key:"support.faq.manage",businessLabel:"Manage Foundation help questions",group:"Helpdesk & support",assignable:true,sensitive:true},
+  {key:"finance.accounts.view",businessLabel:"View finance accounts and periods",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.accounts.manage",businessLabel:"Manage chart, financial years and cash/bank accounts",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.journals.post",businessLabel:"Post balanced finance entries",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.vouchers.view",businessLabel:"View Finance voucher drafts and status",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.vouchers.manage",businessLabel:"Create and revise Finance voucher drafts",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.claims.create",businessLabel:"Create my Foundation expense claims",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.claims.view",businessLabel:"View my Foundation expense claims",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.claims.review",businessLabel:"Review protected Foundation reimbursements",group:"Finance & accounting",assignable:false,sensitive:true},
+  {key:"finance.claims.manage",businessLabel:"Reconcile approved Foundation claims and link original posted vouchers",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.invoices.view",businessLabel:"View Foundation invoices and receipts",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.invoices.manage",businessLabel:"Prepare and submit Foundation invoices",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.invoices.review",businessLabel:"Review protected Foundation invoices",group:"Finance & accounting",assignable:false,sensitive:true},
+  {key:"finance.invoices.issue",businessLabel:"Issue approved Foundation invoices and receipts",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.view",businessLabel:"View Foundation budget allocations and utilization",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.manage",businessLabel:"Draft budgets and manage genuine allocation commitments",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.budgets.review",businessLabel:"Protected approval of original Foundation budgets",group:"Finance & accounting",assignable:false,sensitive:true},
+  {key:"finance.reports.view",businessLabel:"View scoped posted General Ledger, cash/bank and trial balance",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.reconciliation.manage",businessLabel:"Record actual original bank statement matches",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"finance.reconciliation.review",businessLabel:"Independently verify protected bank reconciliations",group:"Finance & accounting",assignable:false,sensitive:true},
+  {key:"cms.content.view",businessLabel:"View website content and publication status",group:"Website & content",assignable:true,sensitive:false},
+  {key:"cms.content.manage",businessLabel:"Write website pages and draft public content",group:"Website & content",assignable:true,sensitive:true},
+  {key:"cms.content.publish",businessLabel:"Publish or withdraw approved website content",group:"Website & content",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

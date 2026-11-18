@@ -1,17 +1,42 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
+import type {Pool} from "pg";
+import {SAFE_MESSAGE_CATALOG} from "./safe-error-copy";
 import type { CareGangaRequest } from "../observability/request-correlation";
 
 @Catch()
 export class SafeErrorsFilter implements ExceptionFilter {
   private readonly logger=new Logger(SafeErrorsFilter.name);
-  catch(error: unknown, host: ArgumentsHost): void {
+  private readonly cache=new Map<string,{text:string;expires:number}>();
+  constructor(private readonly pool?:Pool){}
+  private async editableCopy(code:string):Promise<string>{
+    const fallback=SAFE_MESSAGE_CATALOG[code];
+    if(!this.pool)return fallback;
+    const cached=this.cache.get(code),now=Date.now();
+    if(cached&&cached.expires>now)return cached.text;
+    let result=fallback;
+    try{
+      const rows=await this.pool.query<{safe_message:string}>(`
+        SELECT safe_message FROM platform_error_message
+        WHERE foundation_realm_id=(SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT')
+          AND message_key=$1 LIMIT 1`,[code]);
+      const candidate=rows.rows[0]?.safe_message;
+      if(typeof candidate==="string"&&candidate.length>=16&&candidate.length<=220&&
+        !/[<>\r\n]/.test(candidate))result=candidate;
+    }catch{/* Missing table/DB outage must preserve approved safe default; never expose SQL. */}
+    this.cache.set(code,{text:result,expires:now+45_000});
+    return result;
+  }
+  async catch(error: unknown, host: ArgumentsHost):Promise<void> {
     const request = host.switchToHttp().getRequest<CareGangaRequest>();
     const response = host.switchToHttp().getResponse<Response>();
     const status = error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const requestId = request.cgRequestId??randomUUID();
-    const message = status >= 500 ? "Service temporarily unavailable. Please try again."
+    const isReadOnly=request.method==="GET"||request.method==="HEAD";
+    const message = status >= 500 ? (isReadOnly
+      ? "The information is temporarily unavailable. Refresh this page or try again later."
+      : "We could not confirm whether your change was saved. Check its status before submitting again.")
       : status === 401 ? "Sign in is required."
       : status === 403 ? "You do not have access to this action."
       : status === 429 ? "Too many attempts. Please try again later."
@@ -19,26 +44,20 @@ export class SafeErrorsFilter implements ExceptionFilter {
       : status === 409 ? "This was already changed. Refresh and try again."
       : "Request could not be completed.";
     // Only these reviewed application error codes may cross the API boundary.
-    const safeCodes:Record<string,string>={
-      DUPLICATE_ROLE:"A role with this name already exists. Choose another name.",
-      STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
-      ROLE_RETIRED:"This role was already retired.",
-      ROLE_ASSIGNED:"Reassign accounts using this role before retiring it.",
-      REPLAY_CONFLICT:"This request reference has already been used. Refresh before retrying.",
-      DUPLICATE_ACCOUNT_OR_ASSIGNMENT:"This account or assignment already exists.",
-      STALE_ACCOUNT:"This staff account changed. Refresh before saving.",
-      ROLE_ALREADY_ASSIGNED:"That role is already assigned to the account.",
-      ROLE_ALREADY_REVOKED:"The account's role was already removed.",
-      ACCOUNT_ALREADY_IN_STATUS:"The account already has that status.",
-      POLICY_STALE:"Security policy changed elsewhere. Refresh before saving.",
-      POLICY_REPLAY_CONFLICT:"This policy request reference was already used. Refresh before retrying.",
-      PLATFORM_STALE:"Platform settings changed elsewhere. Refresh before saving.",
-      PLATFORM_REPLAY_CONFLICT:"This configuration request was previously used for another change."
-    };
+    const safeCodes=SAFE_MESSAGE_CATALOG;
     const payload=error instanceof HttpException?error.getResponse():null;
     const rawCode=payload&&typeof payload==="object"&&"code" in payload?payload.code:null;
-    const code=status===409&&typeof rawCode==="string"&&Object.hasOwn(safeCodes,rawCode)
+    const code=status>=400&&status<500&&typeof rawCode==="string"&&Object.hasOwn(safeCodes,rawCode)
       ?rawCode:null;
+    const rawField=payload&&typeof payload==="object"&&"field" in payload?payload.field:null;
+    const field=typeof rawField==="string"&&["identifier","password","currentPassword","newPassword","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind",
+      "invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","budgetRef","budgetName","periodStart","periodEnd","fundingNote","journalRef","bankRef","bankAccountRef","date","bankItemReference","statementDate","statementAmount","reconciliationRef","from","to","yearRef","accountRef","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","branchRef","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
+      "creditAccountRef","fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherType","voucherRef","payeeName","purpose","quantity","unitRate","tax","charges","expectedVersion",
+       "kind","slug","title","seoTitle","seoDescription","canonicalPath","sections","assets",
+       "navigation","heading","body","source","asOfDate","verifiedAsOf","validUntil",
+       "verification","documents","galleryMedia","categories","healthcareClaims","ctaPath",
+       "ctaLabel","group","items","members","percentage","pan","mediaType","tags","publicReleaseConfirmed",
+       "heroSlides","sourceNoticeRef"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
       // raw driver/provider messages, contact details, or private payloads into logs.
@@ -52,7 +71,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
       }));}catch{/* Logging failure must never change the response or transaction outcome. */}
     }
     // No passwords, tokens, OTPs, raw contacts, SQL exceptions or provider payloads in response.
-    response.status(status).json({status:"error",message:code?safeCodes[code]:message,
-      ...(code?{code}:{}),requestId});
+    response.status(status).json({status:"error",message:code?await this.editableCopy(code):message,
+      ...(code?{code}:{}),...(field&&code?{field}:{}),requestId});
   }
 }

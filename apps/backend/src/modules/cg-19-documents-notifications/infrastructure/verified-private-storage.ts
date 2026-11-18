@@ -12,7 +12,13 @@ export type UploadInput={
   objectKey:string;requestKey:string;mime:string;sizeBytes:number;
   sha256:string;expiresAt:string;
 };
-const allowedMime=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
+const allowedMime=new Set(["application/pdf","image/jpeg","image/png","image/webp","video/mp4"]);
+// A short MP4 is permitted only for original CG19 scanned CMS assets.
+const maxFor=(key:string,mime:string)=>
+ key.startsWith("careganga/private/cg19/cms/")&&mime==="video/mp4"?
+  25*1024*1024:10*1024*1024;
+const supported=(key:string,mime:string)=>allowedMime.has(mime)&&
+ (mime!=="video/mp4"||key.startsWith("careganga/private/cg19/cms/"));
 const SHA=/^[a-f0-9]{64}$/;
 const validKey=(key:string)=>
   typeof key==="string"&&key.startsWith("careganga/private/cg19/")&&
@@ -34,6 +40,13 @@ export function byteSignatureMatches(bytes:Buffer,mime:string):boolean{
   if(mime==="image/webp")
     return bytes.toString("ascii",0,4)==="RIFF"&&
       bytes.toString("ascii",8,12)==="WEBP";
+  if(mime==="video/mp4"){
+    // ISO BMFF: require a finite ftyp box and accepted MP4-compatible brand.
+    const size=bytes.readUInt32BE(0),brand=bytes.toString("ascii",8,12);
+    return bytes.length>=16&&size>=16&&size<=bytes.length&&
+      bytes.toString("ascii",4,8)==="ftyp"&&
+      ["isom","iso2","iso4","iso5","iso6","mp41","mp42","avc1","M4V ","dash"].includes(brand);
+  }
   return false;
 }
 
@@ -51,9 +64,11 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
 
   async reservePrivateUpload(request:UploadInput):Promise<PrivateUploadReservation>{
     const expiry=Date.parse(request.expiresAt);
-    if(!validKey(request.objectKey)||!allowedMime.has(request.mime)||
+    // Only the server-side PDF issuer may write these create-only keys.
+    if(!validKey(request.objectKey)||/\/(?:invoices|receipts)\//.test(request.objectKey)||
+      !supported(request.objectKey,request.mime)||
       !Number.isSafeInteger(request.sizeBytes)||request.sizeBytes<1||
-      request.sizeBytes>10*1024*1024||!SHA.test(request.sha256)||
+      request.sizeBytes>maxFor(request.objectKey,request.mime)||!SHA.test(request.sha256)||
       !Number.isFinite(expiry)||expiry<=Date.now()||expiry>Date.now()+16*60*1000)
       throw new BadRequestException("Invalid private upload request");
     return this.signUpload(request);
@@ -62,9 +77,9 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
   async verifyPrivateObject(request:{
     objectKey:string;mime:string;sizeBytes:number;sha256:string
   }):Promise<PrivateVerifiedObject>{
-    if(!validKey(request.objectKey)||!allowedMime.has(request.mime)||
+    if(!validKey(request.objectKey)||!supported(request.objectKey,request.mime)||
       !Number.isSafeInteger(request.sizeBytes)||request.sizeBytes<1||
-      request.sizeBytes>10*1024*1024||!SHA.test(request.sha256))
+      request.sizeBytes>maxFor(request.objectKey,request.mime)||!SHA.test(request.sha256))
       throw new BadRequestException("Invalid private file verification");
     const file=await this.loadLatest(request.objectKey,request.sizeBytes);
     if(file.mime!==request.mime||file.bytes.length!==request.sizeBytes||
@@ -82,13 +97,32 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
   }):Promise<Buffer>{
     if(!validKey(request.objectKey)||typeof request.objectVersion!=="string"||
       !Number.isSafeInteger(request.maxBytes)||request.maxBytes<1||
-      request.maxBytes>10*1024*1024)
+      request.maxBytes>(request.objectKey.startsWith("careganga/private/cg19/cms/")?
+         25*1024*1024:10*1024*1024))
       throw new BadRequestException("Invalid private file");
     const file=await this.loadVersion(request.objectKey,request.objectVersion,
       request.maxBytes);
     if(file.objectVersion!==request.objectVersion||file.bytes.length>request.maxBytes)
       throw new ServiceUnavailableException("Stored file version no longer matches");
     return file.bytes;
+  }
+
+  async reconcileIssuedPrivateDocument(request:{
+    objectKey:string;maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{
+    // An invoice/receipt key is server-created, random and never signed for upload.
+    if(!/^careganga\/private\/cg19\/[0-9a-f-]{36}\/(invoices|receipts)\/[0-9a-f-]{36}$/.test(request.objectKey)||
+      !Number.isSafeInteger(request.maxBytes)||request.maxBytes<100||
+      request.maxBytes>10*1024*1024)
+      throw new BadRequestException("Invalid private document recovery request");
+    const stored=await this.loadLatest(request.objectKey,request.maxBytes);
+    if(stored.mime!=="application/pdf"||stored.bytes.length<100||
+      !byteSignatureMatches(stored.bytes,"application/pdf")||
+      stored.objectVersion.length>160)
+      throw new ServiceUnavailableException("The original private PDF is not verified");
+    await this.scanner.scan(stored.bytes);
+    return {objectVersion:stored.objectVersion,sha256:digest(stored.bytes),
+      sizeBytes:stored.bytes.length};
   }
 
   async writeVerifiedPrivateDocument(request:{

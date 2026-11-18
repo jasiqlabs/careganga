@@ -1,5 +1,20 @@
 # CG-08 — CareGanga UI/UX Design
 
+### 2026-11-18 original Corporate Partners page fidelity
+Use [Batch 02 `/collaboration` and full 47-screenshot gallery](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). The page has dark navy/green split hero with leaf/seed imagery, badge 'Corporate Partnerships', serif Corporate Partners heading, Partner With Us and Meet Our Partners CTAs, a row of benefit cards (Trusted Collaborations, Shared Purpose, Greater Impact), social partner section with balanced logo/name/description cards, and green Let's Collaborate/contact panel. Reproduce the original mobile/reduced-motion composition and dropdown active state, with content/images edited from Foundation Admin. Use only actual publicly approved partner information/media; don't show screenshot's Milaap/Ketto names as verified if the client has not confirmed rights and relationship. No orphan CTA, fake email submit or fabricated number.
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Public `/collaboration` is the original Partnerships destination, with dark green Corporate Partners hero, reasons-to-partner cards, collaborator logos/cards, Partner With Us/Meet Our Partners, Let's Collaborate CTA and verified email contact. Milaap/Ketto appear in original screenshots but cannot be asserted active without current owner approval and logo rights.
+
+**One Foundation Admin / source contract:** Existing CG-08 CSR/partner Admin owns the current approved corporate/partner identity, partnership state, nature of relationship, start/end and public-display right; it maintains optional partner enquiry assignment to real CG-19 private contact source. CG-18 CMS owns editorial layout, hero, card captions, photos and menu. No duplicate partner master or guessed contractual state.
+
+**Per-story QA addition:** Add current-source partner list/display-right/withdrawal, anonymized private enquiry, source revocation, role-scoped Admin edit and approval, public `/collaboration` click/Back, mobile/desktop dark hero and cards, neutral unpublished empty state. No outside brand or partner claim without proof; source and runtime tests tracked separately. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Authority:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02 · PRD N-13/HLD H-12.  
 **State:** REQUIRED · DESIGN_SOURCE_REVIEWED / 3 stories with source-mapped B02–B08 Admin Web. Original PNG/rendered pixel/video-microinteraction QA NOT_RUN; approval hash in `../../approvals.json`.
 

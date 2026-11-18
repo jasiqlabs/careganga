@@ -1,5 +1,16 @@
 # CG-10 — UI/UX Specification: HR & Employee Lifecycle
 
+### 2026-11-18 original public Team Directory receiving-owner contract (no public HR directory)
+
+**Reference:** [original 47 client public screenshots, including /about/team](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), Batch 01 team image filenames and original Foundation Admin audit. This does NOT make private CG-10 HR data public.
+
+**Owner source:** CG-10 maintains actual staff employee/assignment/designation/status and separately consented public-safe biography source; CG-02 owns authorized State/District/Sub-Division/Block organizational geography; CG-04 owns eligible real member/volunteer profiles. CG-18 owns the original Leadership/Team Directory public page design and separately approved editorial placement. No duplicate employee/member master; CG-10 US-001 remains independently deliverable without CG-18.
+
+**Public projection only after approval:** published active person, explicit profile/photo/name display consent, safe designation and approved geographic reach; name/public alias search only if authorized (never reveal raw internal employee/member ID by default). No private contact, address, DOB, bank, salary, medical, identity files or HR KYC. Exit, transfer, consent withdrawal or source unpublish revokes public search/cached presentation.
+
+**Original UI acceptance:** existing Foundation Admin manages authorized staff master and profile consent, CG-18 manages hero/intro/CTA/order. Public Team Directory supports name/public alias search, dependent State-District-Sub-Division-Block and designation selectors, Search/Reset, approved-only disclaimer and no-result state. Existing CG-10 US-001/CG-18 US-001 QA trace must cover root/branch scope, consent/withdrawal, anonymous enumeration, dependent selectors, duplicate aliases, bounded list, desktop/mobile and accessibility. This is a planning/QA handoff, not code delivery or runtime QA.
+
+
 **Source authority:** [Foundation operations BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–15; [PRD](../../prd.md) FR-029–033; [HLD](../../hld.md) Admin/public/native and security constraints; [original indexed 167 screenshot audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B20–B51 with exact original owner mapping; [DLD](dld.md); [100 numbered QA](tasks.md).
 **Review state:** REQUIRED · **DELEGATED_APPROVED — DESIGN ONLY** by JASIQ AI Design Review Agent (15 Nov 2026), after source review/fix/re-review of real B20–B51 ownership (excluding B19 inventory, B29 CG-03 reviewer, B34 CG-01 roles, B43 CG-11 payroll, B49 filename not visible leave), complete Foundation Admin responsive Web and native Internal Android HR self-service, actual statuses, role/branch privacy, CG-19 official cards/letters, CG-09 source claims and CG-05 future native assigned work. Exact original reference PNG/video and rendered actual application are NOT AVAILABLE in current planning branch; pixel/motion/device/Native UI QA VISUAL_NOT_RUN, no claim of exact rendered colors/easing.
 

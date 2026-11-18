@@ -1,5 +1,18 @@
 # CG-02 — User Stories & Manual QA
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Verified Foundation legal identity and any authorized team/people profile source used by the original `/about/team` and `/ngo-information` family.
+
+**Domain/technical source contract:** CG-02 must expose only current Foundation-root-scoped, approved public-safe identity, registrations, PAN/80G verification statuses and correct source refs; never publicize private employee/member details or screenshot PAN/registration numbers by default. A Team Directory projection may select authorized CG-02 staff/structure fields or CG-04 member/volunteer fields only after documented source ownership and explicit subject consent, status and display permission.
+
+**Screen and Admin UI acceptance:** Team Directory state/district/subdivision/block/designation filters and search/reset must be source-backed and scoped; NGO sidebar PAN/registration/80G proof panels must follow the exact screenshot layout with truthful source status, badges and document links (no invented 'VERIFIED').
+
+**QA and independent review:** Source trace: anonymous request cannot enumerate private team, volunteer, employee, document IDs or unchecked legal fields; original screenshot Team search/filtered empty state, NGO proof/no-proof, consent revocation and root isolation must be manually tested by original owner and CG-18 receiver. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
@@ -85,3 +98,12 @@ Dependencies: Within CG-02: US-001. External **hard** prerequisites for this sto
 - **Original 167-Admin screenshot evidence:** private original ZIP reopened; U05/U08 shared shell and U18–U22 original screenshots mapped to shared branded header/sidebar, source-backed branch KPI/table/filters, seven-stage stepper, proof summary and native right department drawer. Original map/advanced filters are not fully replicated; no unsupported staff statistics or unverified global search injected. Pixel/motion/device QA remains NOT_RUN.
 - **QA truth:** US001-QA01–09 and US002-QA01–16 retain 25 unique test cases; 21 have substantive source traces and 4 have VISUAL/DB/DEVICE NOT_VERIFIABLE dispositions; **0 actual runtime PASS**. Build, Postgres migration/restore, live concurrency, CG03 current-password proof, CG19 scanner/cloud, Web/Android device and authenticated Harness/formal SHA-bound gates remain NOT_RUN. Local developer handoff remains authoritative.
 - **Reviewer independence:** separate adversarial pass by assistant, not a third-party assessor. Review **does not** certify penetration testing or independent organizational security review. Do not re-label source-only merge as source-complete runtime QA or release readiness.
+
+## 18 November 2026 — original website receiving acceptance — existing QA receiving checks
+In the ORIGINAL US-001/002 story QA, verify **dependent state/district/block/designation, published person-only directory, proof/expiry and correct public fields, authorized case/branch scope** against Batch01 020435–020959 and /about/team; /ngo-information legal identity and PAN/registration proof; source contract [here](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Trace protected Admin edit → original owner record → genuine approval when required → public Web/native verified state → wrong scope/revoke/expired/empty and CG-21 editable human error. Retain the original QA count/IDs and mark only executed evidence PASS. **REFERENCE_ALIGNED / SOURCE RECEIVING WORK OPEN / RUNTIME VISUAL DEVICE NOT_RUN.**
+
+## 18 November 2026 — consolidated Foundation → Finance → CMS local QA execution index
+The original QA cases above remain authoritative and unchanged. Execute the relevant owner cases in dependency order using [the consolidated local QA runbook](../../../../../docs/qa/CAREGANGA-FOUNDATION-FINANCE-CMS-LOCAL-QA-RUNBOOK-20261118.md) and `npm run verify:core-source` for static QA-ID/source assertions. This runbook adds **no new story, case ID or PASS**. Record positive, negative, editable error, unauthorized, concurrency, source revocation, database evidence and applicable Web/Android screenshot results in their original rows. **Runtime/Web/Android/DB/manual case execution: NOT_RUN in this source checkpoint.**
+
+## 18 November 2026 — formal source review finding trace (six owner gates)
+The current code-based review and fix evidence is [the six-owner formal source review](../../../../../docs/qa/CAREGANGA-FOUNDATION-FINANCE-CMS-FORMAL-SOURCE-REVIEW-20261118.md). **Owner finding:** HIGH cross-branch role/source defect fixed in CG-02 owner facade; Finance selectors, mutations and original root authority now enforced at source. This is the same original QA matrix — no new user stories or QA IDs. Corrected source was re-read after commit; the static Finance scope check returned 28/28 current predicates, **not runtime tests**. Independent reviewer/security/DB/Harness final gate, current design SHA signoff, backend/Web/Android build, disposable PostgreSQL migration, original screenshot comparison and positive/negative/error/manual QA remain **NOT_RUN/BLOCKED**. **Module formal SOURCE_COMPLETE: NOT_APPROVED**, original runtime QA outcomes remain NOT_RUN; no merge to main.
