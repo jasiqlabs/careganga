@@ -1,5 +1,10 @@
 # CG-05 — Five full-stack user stories and 100 unique manual QA cases
 
+### 2026-11-18 screenshot-derived CG-05 public receiving QA (existing stories only)
+
+**Evidence:** [47 screenshot original client page/ownership matrix](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); Batch 02 exact `/upcoming-projects` page and six original Our Work filters. Trace the following **within the existing CG-05 US-001/003/005 cases and CG-18 receiving QA** (do not invent new story numbers or claim execution): Project Admin edits actual category/title/location/launch date/status/verified media/optional goal → CG-03 source approval → public `/upcoming-projects` image/card/empty states and category filters; published-only content, expired/withdrawn project and permission change disappear; CG-07 Support Project button only has real eligible donation target and rejects fake amount; screenshot layout at desktop/mobile and Public Android with keyboard/Back; no private project task, applicant or beneficiary leak. Original Events page imagery and project-detail URLs still require direct client evidence. **DRAFT DESIGN ONLY; source QA, independent reviewer and runtime QA NOT_RUN.**
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
