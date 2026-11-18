@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {blankCenter,CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
+import {CenterRepresentatives} from "./center-representatives";
 type ProviderDraft={providerCode:string;legalName:string;providerType:string;
  contactName:string;contactPhone:string;contactEmail:string;registrationRef:string};
 type Row={providerRef:string;code:string;name:string;type:string;
@@ -41,6 +42,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [notice,setNotice]=useState(""),[error,setError]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [options,setOptions]=useState<Option[]>([]);
+  const [representativeRefresh,setRepresentativeRefresh]=useState(0);
   const [account,setAccount]=useState("");
   const [bankProof,setBankProof]=useState("");
   const [maskedLabel,setMaskedLabel]=useState("");
@@ -153,6 +155,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         requestKey:crypto.randomUUID(),accountRef:account
       });
       setNotice("Staff member assigned to edit this pending center only.");
+      setRepresentativeRefresh(previous=>previous+1);
       setAccount("");
     }catch(e){setError(e instanceof Error?e.message:"Staff assignment was not confirmed.");}
     finally{setBusy(false);}
@@ -266,6 +269,8 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" disabled={!account||busy}
               onClick={()=>void assign(center.centerRef)}>Assign to this center</button>
           </div>}
+          {canManage&&<CenterRepresentatives centerRef={center.centerRef}
+            canRevoke={canManage} refresh={representativeRefresh}/>}
           {canManage&&<HealthEvidenceUploader providerRef={selected.provider.providerRef}
             centerRef={center.centerRef} sourceVersion={center.version}
             classification="HEALTH_CENTER_LICENSE"/>}
