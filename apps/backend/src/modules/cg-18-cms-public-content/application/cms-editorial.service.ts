@@ -155,7 +155,7 @@ function parseContent(raw:unknown):Content{
    sec.kind==="FEATURE_CARDS"?["heading","eyebrow","body","cards"]:
    sec.kind==="JOIN_CARDS"?["volunteerTitle","volunteerBody","volunteerBenefits",
     "memberTitle","memberBody","memberBenefits"]:
-   sec.kind==="SITE_FOOTER"?["mission","address","email","phone","newsletterText"]:
+   sec.kind==="SITE_FOOTER"?["mission","address","email","phone","whatsappNumber","newsletterText"]:
    sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
    ["heading"]);
   const out:Record<string,unknown>={};
@@ -252,10 +252,13 @@ function parseContent(raw:unknown):Content{
    out.mission=text(fields.mission??"","mission",600);
    out.address=text(fields.address??"","address",300);
    out.phone=text(fields.phone??"","phone",32);
+   out.whatsappNumber=text(fields.whatsappNumber??"","whatsappNumber",16);
    out.email=text(fields.email??"","email",150);
    out.newsletterText=text(fields.newsletterText??"","newsletterText",250);
    if(out.phone&&!/^\+?[0-9 ()-]{7,32}$/.test(String(out.phone)))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"phone"});
+   if(out.whatsappNumber&&!/^\+?[1-9][0-9]{9,14}$/.test(String(out.whatsappNumber)))
+    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"whatsappNumber"});
    if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(out.email)))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"email"});
   }else out.heading=text(fields.heading??"","heading",160);
