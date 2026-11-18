@@ -192,3 +192,7 @@ CG-19 US-001/003 receiving original Contact photo and NGO report QA: migration 0
 ### 18 November — native NGO legal proof read-back QA receiving tests
 
 CG-19 US-001 current document/public rights QA now includes native NGO 80G→PAN/Registration/Annual filtering and full original Web subpages. Confirm CG-19 file scan/rights, MIME, version, expiry, withdrawn/superseded publication, wrong root, direct URL and real PDF/image display using local Expo and backend, with Web and Android parity. Only approved actual original document placement is returned; no second legal/financial file source or newly invented proof. Source-only. No runtime or independent QA PASS.
+
+### 18 November — original public Videos same-origin 206 proxy receiving QA
+
+Existing CG-19 image/media QA: verify Web public media 206/416 end-to-end through `apps/web/src/app/api/public/content/media/[fileRef]/route.ts` and Nest public media controller; valid bytes=0-, bytes=5-50, bytes=-128; malformed/multipart and stale/expired/withdrawn file; approved MP4, no Range, approved PDF download, disallowed MIME/oversize/length mismatch, no private storage URL or auth header forwarded, Cache-Control no-store. The backend still SHA-validates the entire private object for each request and rechecks current publication, so storage-side Range bandwidth optimization remains a future NFR engineering issue only if measurements justify it; do not optimize until test data. Source-only, runtime NOT_RUN.
