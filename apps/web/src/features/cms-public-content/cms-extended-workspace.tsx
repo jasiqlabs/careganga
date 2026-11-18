@@ -37,7 +37,8 @@ const group=(key:string,i:number):Section=>({kind:"IMPACT_GROUP",order:i,
 function initial(kind:Kind):Draft{
  const sections:Section[]=kind==="IMPACT"?groups.map(group):
   kind==="COMPLIANCE"?[{kind:"COMPLIANCE_FACTS",order:0,fields:{
-   heading:"",summary:"",issuer:"",pan:"",registrationNumber:"",
+   heading:"",summary:"",badgeText:"",subtitle:"",importantNote:"",
+   issuer:"",pan:"",registrationNumber:"",
    approvalNumber:"",validFrom:"",validUntil:"",verifiedAsOf:today(),
    source:"",verification:"NOT_VERIFIED",
    disclaimer:"Check current official records before claiming a tax benefit.",documents:[]
@@ -499,6 +500,12 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         Add {groupName.toLowerCase()} item</button>}
       </>}
       {section.kind==="COMPLIANCE_FACTS"&&<>
+       <Field name="Client-approved status badge (shown only with valid proof)"
+        value={f.badgeText} onChange={v=>change("badgeText",v)}/>
+       <Field name="Original orange subheading" value={f.subtitle}
+        onChange={v=>change("subtitle",v)}/>
+       <Field name="Original Important note (subject to legal review)" large
+        value={f.importantNote} onChange={v=>change("importantNote",v)}/>
        <Field name="Public summary (no unverified tax promises)" value={f.summary} large
         onChange={v=>change("summary",v)}/>
        {(["issuer","pan","registrationNumber","approvalNumber","source"] as const)
