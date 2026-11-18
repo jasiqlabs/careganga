@@ -1,9 +1,10 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {FoundationSupportAttachments} from "./foundation-support-attachments";
 type CaseItem={caseRef:string;subject:string;name:string;contact:string;
   status:string;revision:number;assignedAccountRef:string|null;
   createdAt:string;updatedAt:string;unread:boolean;archived:boolean};
-type CaseDetail=CaseItem&{message:string;replies:Array<{replyRef:string;
+type CaseDetail=CaseItem&{sourceChannel:string;message:string;replies:Array<{replyRef:string;
   authorAccountRef:string;body:string;createdAt:string}>;
   history:Array<{kind:string;at:string}>};
 type Counts={total:number;open:number;replied:number;closed:number;
@@ -230,6 +231,8 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <p><strong>{selected.name}</strong> · {selected.contact}</p>
           <p>Status: {selected.status==="CLOSED"?"RESOLVED":selected.status} · Revision {selected.revision}</p>
           <p style={{whiteSpace:"pre-wrap"}}>{selected.message}</p>
+          {selected.sourceChannel==="CENTER_PORTAL"&&
+           <FoundationSupportAttachments key={selected.caseRef} caseRef={selected.caseRef}/>}
           <h3>Private reply history</h3>
           {selected.replies.length===0&&<p>No operator replies yet.</p>}
           {selected.replies.map(r=><article key={r.replyRef} className="permission-group">
