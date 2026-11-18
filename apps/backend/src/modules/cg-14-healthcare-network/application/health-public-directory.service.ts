@@ -166,10 +166,14 @@ export class HealthPublicDirectoryService{
         "JOIN cg03_case review ON review.id=cr.approval_case_ref "+
         "AND review.realm_id=cr.root_realm_id "+
         "AND review.case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
+        "AND review.health_content_revision_id=cr.id "+
+        "AND review.health_source_digest=cr.source_digest "+
         "AND review.status='OWNER_COMPLETED' "+
         "JOIN cg03_case_decision decision ON decision.id=cp.original_decision_ref "+
         "AND decision.realm_id=review.realm_id AND decision.case_id=review.id "+
         "AND decision.action='APPROVE' "+
+        "AND decision.fresh_password_verified_at IS NOT NULL "+
+        "AND decision.actor_id<>review.proposer_id "+
         "JOIN LATERAL jsonb_array_elements_text("+
         "COALESCE(cr.source_snapshot->'facilities','[]'::jsonb)) facility(value) ON TRUE "+
         "WHERE cp.root_realm_id=c.root_realm_id AND cp.center_id=c.id "+
