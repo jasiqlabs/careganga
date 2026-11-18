@@ -12,9 +12,23 @@ const errors=new Set([
   "HEALTH_VERSION_CHANGED","HEALTH_REPRESENTATIVE_NOT_ELIGIBLE",
   "HEALTH_REPRESENTATIVE_EXISTS","HEALTH_REPRESENTATIVE_REVOKED","HEALTH_EVIDENCE_INVALID",
   "HEALTH_EVIDENCE_REPLAY_CONFLICT","HEALTH_EVIDENCE_SOURCE_CHANGED",
-  "HEALTH_EVIDENCE_NOT_VERIFIED","HEALTH_FINANCE_MASK_INVALID"
+  "HEALTH_EVIDENCE_NOT_VERIFIED","HEALTH_FINANCE_MASK_INVALID",
+  "HEALTH_DOCTOR_FIELD_INVALID","HEALTH_DOCTOR_VERSION_INVALID",
+  "HEALTH_DOCTOR_DUPLICATE","HEALTH_DOCTOR_REQUEST_CONFLICT",
+  "HEALTH_DOCTOR_NOT_PENDING","HEALTH_DOCTOR_VERSION_CHANGED",
+  "HEALTH_DOCTOR_UNAVAILABLE","HEALTH_DOCTOR_NOT_VERIFIED"
 ]);
 function allowed(parts:string[],method:string){
+  // Doctor drafts are private and permission-checked again in CG01/Nest.
+  // No public routes, approval, fee, booking or consent claims are exposed.
+  if(parts[0]==="doctors"){
+    if(parts.length===1)return method==="GET"||method==="POST";
+    if(parts.length===2&&UUID.test(parts[1]))
+      return method==="GET"||method==="PATCH";
+    if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="centers")
+      return method==="GET"||method==="POST";
+    return false;
+  }
   if(parts.length===1){
     if(parts[0]==="providers")return method==="GET"||method==="POST";
     if(parts[0]==="geography"||parts[0]==="my-centers")return method==="GET";
