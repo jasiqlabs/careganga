@@ -365,6 +365,24 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    </div>}
    {preview?<div className="cg-cms-preview"><p>Private preview; no publication or public media URL is implied.</p>
     <CmsPublicPage page={previewPage}/></div>:<div className="cg-cms-form">
+    {draft.kind==="IMPACT"&&<section className="cg-cms-impact-facts"
+     aria-label="Original U23 Page Facts, from current unsaved editorial draft">
+      <h4>Page Facts</h4>
+      <dl>{([
+       ["Stat cards","STATS"],["Key impact areas","FOCUS"],
+       ["Success stories","STORIES"],["Latest updates","UPDATES"],
+       ["Map pins","GEOGRAPHY"]
+      ] as const).map(([title,key])=>{
+       const entries=items(draft.sections.find(section=>
+        section.kind==="IMPACT_GROUP"&&section.fields.group===key)?.fields.items);
+       const count=key==="GEOGRAPHY"?entries.filter(x=>
+        typeof x.latitude==="number"&&typeof x.longitude==="number").length:
+        entries.length;
+       return <div key={key}><dt>{title}</dt><dd>{count}</dd></div>;
+      })}</dl>
+      <p>These are your actual draft entries, not audited project counts or
+       a claimed public publication. Release requires separate CMS approval.</p>
+     </section>}
     <label>Content type<select disabled={!!selected||!canManage} value={draft.kind}
      onChange={e=>begin(e.target.value as Kind)}>
      {kinds.map(k=><option key={k} value={k}>{k==="COMPLIANCE"?"80G / registration":k.replaceAll("_"," ")}</option>)}
