@@ -337,9 +337,10 @@ export class HealthCenterContentMediaService{
    await this.own(tx,actor,center,null,false);
    const r=await tx.query<{id:string;health_source_version:number;
     classification:string;revision:number;revoked_at:Date|null;
-    scan_status:string;status:string;alt_text:string|null;rights_revoked_at:Date|null}>(
+    scan_status:string;status:string;alt_text:string|null;rights_revoked_at:Date|null;rights_version:number|null}>(
     "SELECT f.id,f.health_source_version,i.classification,f.revision,f.revoked_at,"+
-    "f.scan_status,i.status,rights.alt_text,rights.revoked_at AS rights_revoked_at "+
+    "f.scan_status,i.status,rights.alt_text,rights.version AS rights_version,"+
+    "rights.revoked_at AS rights_revoked_at "+
     "FROM cg19_stored_file f JOIN cg19_upload_intent i "+
     "ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
     "LEFT JOIN cg19_center_content_media_rights rights ON rights.file_ref=f.id "+
@@ -349,7 +350,7 @@ export class HealthCenterContentMediaService{
    return {files:r.rows.map(f=>({fileRef:f.id,fileVersion:f.revision,
     classification:f.classification,sourceVersion:f.health_source_version,
     rights:!f.revoked_at&&!f.rights_revoked_at&&!!f.alt_text?"CONFIRMED":"NONE",
-    altText:f.alt_text,status:f.revoked_at?"REVOKED":f.status}))};
+    rightsVersion:f.rights_version,altText:f.alt_text,status:f.revoked_at?"REVOKED":f.status}))};
   });
  }
  /** Original CG19 proof in SAME CG14 content save/submission/approval transaction. */
@@ -363,7 +364,7 @@ export class HealthCenterContentMediaService{
    "AND rights.root_realm_id=f.realm_id AND rights.center_id=f.health_center_id "+
    "AND rights.revoked_at IS NULL "+
    "WHERE f.id=$1 AND f.realm_id=$2 AND f.health_center_id=$3 "+
-   "AND f.health_source_version=$4 AND f.owner_kind='CG14_CENTER_CONTENT' "+
+   "AND f.health_source_version<=$4 AND f.owner_kind='CG14_CENTER_CONTENT' "+
    "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND i.status='VALIDATED' AND "+
    "i.classification IN('HEALTH_CENTER_PHOTO','HEALTH_CENTER_LOGO') "+
