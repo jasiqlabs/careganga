@@ -30,7 +30,8 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "AND (sec.structured_fields->'members'->a.sort_order->>'consentConfirmed')='true') OR "+
  "(a.role='GALLERY' AND sec.section_kind='GALLERY_GRID' "+
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'items')='array' "+
- "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END) OR "+
+ "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END "+
+ "AND (sec.structured_fields->'items'->a.sort_order->>'visible') IS DISTINCT FROM 'false') OR "+
  "(a.role='ARTICLE' AND sec.section_kind='ARTICLE_BODY' AND a.sort_order=0) OR "+
  "(a.role='IMPACT' AND sec.section_kind='IMPACT_GROUP' AND sec.order_no=a.sort_order) OR "+
  "(a.role='DOCUMENT' AND sec.section_kind='COMPLIANCE_FACTS' "+
