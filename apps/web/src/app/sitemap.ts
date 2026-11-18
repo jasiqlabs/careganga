@@ -22,7 +22,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  for(const item of [home,about,impact,legal,gallery,healthcare]){
   if(item.state!=="PUBLISHED")continue;
   const page=item.page;
-  if(!["/","/about","/our-impact","/80g","/gallery","/healthcare"].includes(page.canonicalPath))continue;
+  if(!["/","/about","/our-impact","/ngo-information","/gallery","/healthcare"].includes(page.canonicalPath))continue;
   const last=new Date(page.lastPublishedAt);
   results.push({url:new URL(page.canonicalPath,origin).toString(),
    ...(Number.isFinite(last.getTime())?{lastModified:last}:{}),
