@@ -40,6 +40,9 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
   const [fileStatus,setFileStatus]=useState<string>("");
   const [proofFileRef,setProofFileRef]=useState("");
   const submitKey=useRef("");
+  const suspendKey=useRef("");
+  const [suspendConfirm,setSuspendConfirm]=useState(false);
+  const [suspendPassword,setSuspendPassword]=useState("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
   const [more,setMore]=useState<number|null>(null),[paging,setPaging]=useState(false);
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -65,6 +68,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
   async function show(ref:string){
     setError("");setNotice("");setEditing("none");
     setSelected(null);setFileStatus("");setProofFileRef("");
+    setSuspendConfirm(false);setSuspendPassword("");
     try{
       const item=await request<Detail>("/"+encodeURIComponent(ref));
       setSelected(item);
@@ -97,6 +101,29 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
       setError(e instanceof Error?e.message:"Doctor submission could not be confirmed.");
       if(!(e&&typeof e==="object"&&"status" in e&&
         typeof e.status==="number"&&e.status<500))setUnknown(true);
+    }finally{setBusy(false);}
+  }
+  async function suspendDoctor(){
+    if(!selected||selected.status!=="VERIFIED"||!canVerify||busy||unknown||
+      suspendPassword.length<8)return;
+    if(!suspendKey.current)suspendKey.current=crypto.randomUUID();
+    setBusy(true);setError("");setNotice("");
+    const ref=selected.doctorRef;
+    try{
+      await request("/"+encodeURIComponent(ref)+"/suspend","POST",{
+        requestKey:suspendKey.current,expectedVersion:selected.version,
+        currentPassword:suspendPassword
+      });
+      suspendKey.current="";setSuspendConfirm(false);setSuspendPassword("");
+      setUnknown(false);
+      await load();await show(ref);
+      setNotice("Doctor suspended across all centers. Existing consultation fee history remains unchanged.");
+    }catch(e){
+      setSuspendPassword("");
+      setError(e instanceof Error?e.message:"Doctor suspension could not be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUnknown(true);
+      else suspendKey.current="";
     }finally{setBusy(false);}
   }
   function edit(existing?:Detail){
@@ -252,6 +279,27 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
         </div>}
         {!!fileStatus&&<p role="status">{fileStatus}</p>}
       </>}
+      {canVerify&&selected.status==="VERIFIED"&&<div className="form-section">
+        {!suspendConfirm&&<button type="button" disabled={busy||unknown}
+          onClick={()=>setSuspendConfirm(true)}>Suspend professional registration</button>}
+        {suspendConfirm&&<div className="form">
+          <p>This will suspend this doctor's eligibility at every associated center.
+            It will not delete previously approved fee history.</p>
+          <label className="field">Confirm with your current password
+            <input type="password" autoComplete="current-password"
+              value={suspendPassword} minLength={8} disabled={busy||unknown}
+              onChange={e=>setSuspendPassword(e.target.value)}/>
+          </label>
+          <div className="toolbar">
+            <button type="button" disabled={busy||unknown||suspendPassword.length<8}
+              onClick={()=>void suspendDoctor()}>
+              {busy?"Confirming suspension…":"Confirm doctor suspension"}</button>
+            <button type="button" disabled={busy} onClick={()=>{
+              setSuspendConfirm(false);setSuspendPassword("");
+            }}>Cancel</button>
+          </div>
+        </div>}
+      </div>}
       <DoctorCenterManagement doctorRef={selected.doctorRef}
         verified={selected.status==="VERIFIED"} canManage={canManage} canVerify={canVerify}/>
       <p className="muted">No appointment availability, patient payment or benefit is implied by a verified registration.</p>
