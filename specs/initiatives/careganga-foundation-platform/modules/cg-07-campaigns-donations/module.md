@@ -1,5 +1,9 @@
 # CG-07 — Campaigns, Donations & Fundraising
 
+### 2026-11-18 original public Campaigns/Donate and project support — true CG-07 owner
+[Full 47-screenshot website requirements and source routing](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) are binding; Campaigns and floating Donate Now appear in the original 12-item nav and repeated original footer/CTA, while `/upcoming-projects` shows Support Project buttons and funding targets. **Full original Campaigns landing screenshot and destination URLs have not been supplied**; do not invent exact page shape. CG-07 owns authenticated/anonymous donation intents, approved campaign eligibility, verified external payment result, donor privacy and receipts/CG-09 posting, **not** CG-18 CMS. CG-18 controls the visible original shell/menu/presentation and only exposes CG-07-provided valid destinations; CG-05 owns the real linked project. Foundation Admin manages real public campaign title, owner-approved goal/status/media/visibility and link to CG-05 project; donor financial data remains protected. Screenshot funding values, contact details, 80G eligibility and tax statements are not production facts. No new business module or story; source implementation/review/runtime remain separate.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
