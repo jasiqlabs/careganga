@@ -50,6 +50,17 @@ export class HealthNetworkController{
     @Param("centerRef")ref:string,@Body()body:unknown){
     return this.network.affiliate(bearer,ref,body);
   }
+  @Get("centers/:centerRef/representatives")
+  representativesOfCenter(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string){
+    return this.network.centerRepresentatives(bearer,ref);
+  }
+  @Post("centers/:centerRef/representatives/:affiliationRef/revoke")
+  revokeRepresentative(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,
+    @Param("affiliationRef")affiliationRef:string,@Body()body:unknown){
+    return this.network.revokeRepresentative(bearer,ref,affiliationRef,body);
+  }
   @Get("my-centers")
   myCenters(@Headers("authorization")bearer:string){
     return this.network.myCenters(bearer);
