@@ -114,7 +114,7 @@ function parseContent(raw:unknown):Content{
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"kind"});
  const kind=v.kind as Content["kind"],slug=text(v.slug,"slug",70,1).toLowerCase();
  const fixed:Partial<Record<Content["kind"],string>>={HOME:"home",ABOUT:"about",
-  IMPACT:"impact",COMPLIANCE:"80g",GALLERY:"gallery",CONTACT:"contact",
+  IMPACT:"our-impact",COMPLIANCE:"80g",GALLERY:"gallery",CONTACT:"contact",
   HEALTHCARE:"healthcare"};
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug)||reserved.has(slug)||
     (fixed[kind]!==undefined&&slug!==fixed[kind])||
