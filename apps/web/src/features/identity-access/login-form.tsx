@@ -3,6 +3,7 @@
 import { FormEvent, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { showAuthNotification } from "../../shared/auth-notification";
 
 interface LoginFormProps {
@@ -11,6 +12,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onForgotPassword }: LoginFormProps) {
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -293,12 +295,12 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
       </div>
 
       {/* Row: Remember Me & Forgot Password */}
-      <div className="cg-login-options-row">
+      <div className="cg-login-row-helpers">
         <label className="cg-remember-me-label" htmlFor="cg-remember-me">
           <input
             id="cg-remember-me"
             type="checkbox"
-            className="cg-checkbox-input"
+            className="cg-remember-checkbox"
             checked={rememberMe}
             onChange={e => setRememberMe(e.target.checked)}
             disabled={loading}
@@ -309,14 +311,14 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         {onForgotPassword ? (
           <button
             type="button"
-            className="cg-forgot-password-link-btn"
+            className="cg-forgot-password-link"
             onClick={onForgotPassword}
             disabled={loading}
           >
             Forgot Password?
           </button>
         ) : (
-          <Link href="/admin/recovery" className="cg-forgot-password-link-btn">
+          <Link href="/admin/recovery" className="cg-forgot-password-link">
             Forgot Password?
           </Link>
         )}
@@ -334,11 +336,22 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         </div>
       )}
 
-      {/* Primary Action Button: Gradient Green CTA */}
-      <button
+      {/* Primary Action Button: Gradient Blue-to-Green CTA with Framer Motion feedback */}
+      <motion.button
         className="cg-login-submit-gradient-btn"
         type="submit"
         disabled={loading || !identifier.trim() || !password}
+        whileHover={
+          !loading && identifier.trim() && password && !shouldReduceMotion
+            ? { scale: 1.015 }
+            : undefined
+        }
+        whileTap={
+          !loading && identifier.trim() && password && !shouldReduceMotion
+            ? { scale: 0.985 }
+            : undefined
+        }
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         suppressHydrationWarning
       >
         {loading ? (
@@ -349,12 +362,18 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         ) : (
           <span className="cg-btn-content">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M8 7l-5 5 5 5M16 7l5 5-5 5M3 12h18"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <span>SIGN IN</span>
           </span>
         )}
-      </button>
+      </motion.button>
 
       {/* OR Divider */}
       <div className="cg-login-or-divider">

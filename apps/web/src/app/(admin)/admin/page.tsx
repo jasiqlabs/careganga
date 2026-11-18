@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { AdminProfileWorkspace } from "../../../features/identity-access/admin-profile-workspace";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
 import { AuthWelcomeListener } from "../../../shared/auth-notification";
 export const dynamic="force-dynamic";
@@ -74,8 +75,13 @@ export default async function AdminHome() {
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
       canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers}/>
-    <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p><SignOutButton/></section>
+    <main className="workspace">
+      <AdminProfileWorkspace
+        displayName={current.displayName}
+        roleName={current.roleName}
+        scope={current.scope}
+        canViewSettings={canViewSettings}
+      />
     </main>
   </div>;
 }

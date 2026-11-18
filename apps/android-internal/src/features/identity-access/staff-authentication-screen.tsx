@@ -194,11 +194,15 @@ export function StaffAuthenticationScreen(){
           method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.name === "AbortError") {
+        if (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted") || err.message?.includes("timeout"))) {
           setMessage("The request is taking too long. Please try again.");
           return;
         }
-        setMessage("Internet connection unavailable. Please check your connection and try again.");
+        if (err instanceof Error && (err.message.includes("API configuration error") || err.message === "Authentication service unavailable")) {
+          setMessage("Authentication service is currently unavailable. Please check settings.");
+          return;
+        }
+        setMessage("Unable to connect to server. Please check your connection and try again.");
         return;
       }
       if(!response.ok){
@@ -217,8 +221,10 @@ export function StaffAuthenticationScreen(){
           data.message:response.status===429?"Too many login attempts. Please try later.":
           response.status===401?"Mobile number/email or password is incorrect.":
           response.status===400?"Check your mobile/email and password details.":
+          response.status===403?"Access is not authorized. Please contact an administrator.":
+          response.status===404?"Authentication service is currently unavailable. Please try again shortly.":
           response.status>=500?"We’re unable to connect right now. Please try again shortly.":
-          "Sign-in could not be confirmed. Check your connection and retry.");
+          "Sign-in could not be confirmed. Check your details and retry.");
         return;
       }
       const data:CG01SessionCreated=await response.json();

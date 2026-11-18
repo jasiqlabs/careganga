@@ -2,6 +2,7 @@
 
 import { FormEvent, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { showAuthNotification } from "../../shared/auth-notification";
 
 interface RecoveryFormProps {
@@ -9,6 +10,7 @@ interface RecoveryFormProps {
 }
 
 export function RecoveryForm({ onReturnToSignIn }: RecoveryFormProps) {
+  const shouldReduceMotion = useReducedMotion();
   const [step, setStep] = useState<"request" | "confirm">("request");
   const [identifier, setIdentifier] = useState("");
   const [channel, setChannel] = useState<"email" | "sms">("sms");
@@ -414,10 +416,21 @@ export function RecoveryForm({ onReturnToSignIn }: RecoveryFormProps) {
 
       {/* Action Buttons */}
       {!done && (
-        <button
+        <motion.button
           className="cg-login-submit-gradient-btn"
           type="submit"
           disabled={loading || uncertain || (step === "confirm" && (otp.length !== 6 || newPassword.length < 8))}
+          whileHover={
+            !loading && !uncertain && !(step === "confirm" && (otp.length !== 6 || newPassword.length < 8)) && !shouldReduceMotion
+              ? { scale: 1.015 }
+              : undefined
+          }
+          whileTap={
+            !loading && !uncertain && !(step === "confirm" && (otp.length !== 6 || newPassword.length < 8)) && !shouldReduceMotion
+              ? { scale: 0.985 }
+              : undefined
+          }
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           suppressHydrationWarning
         >
           {loading ? (
@@ -430,15 +443,17 @@ export function RecoveryForm({ onReturnToSignIn }: RecoveryFormProps) {
               <span>{step === "request" ? "SEND RESET OTP" : "RESET PASSWORD"}</span>
             </span>
           )}
-        </button>
+        </motion.button>
       )}
 
       {/* Request another OTP action */}
       {step === "confirm" && !done && (
-        <button
+        <motion.button
           type="button"
           className="cg-secondary-action-btn"
           disabled={loading}
+          whileHover={!loading && !shouldReduceMotion ? { scale: 1.01 } : undefined}
+          whileTap={!loading && !shouldReduceMotion ? { scale: 0.99 } : undefined}
           onClick={() => {
             setStep("request");
             setOtp("");
@@ -448,7 +463,7 @@ export function RecoveryForm({ onReturnToSignIn }: RecoveryFormProps) {
           }}
         >
           Request another OTP
-        </button>
+        </motion.button>
       )}
 
       {/* Return to Sign In */}

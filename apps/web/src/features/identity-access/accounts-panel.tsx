@@ -40,6 +40,7 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   const [list,setList]=useState<CG01AccountList|null>(null);
   const [actions,setActions]=useState<string[]>([]);
   const [roles,setRoles]=useState<RoleOption[]>([]);
+  const [rolesLoading,setRolesLoading]=useState(false);
   const [history,setHistory]=useState<Array<{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}>|null>(null);
   const [filter,setFilter]=useState("all");
   const [query,setQuery]=useState("");
@@ -66,7 +67,7 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   const historyRead=useRef(0);
 
   const purge=useCallback((message:string)=>{
-    ++generation.current;++roleRead.current;++historyRead.current;setList(null);setRoles([]);setActions([]);setHistory(null);setTarget(null);
+    ++generation.current;++roleRead.current;++historyRead.current;setList(null);setRoles([]);setRolesLoading(false);setActions([]);setHistory(null);setTarget(null);
     setPending(null);setEditor(null);setLoading(false);
     setNotice({kind:"error",text:message});
   },[]);
@@ -112,18 +113,25 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   const canAssign=actions.includes("roles.assign");
   const canStatus=actions.includes("accounts.status.manage");
   async function roleSearch(value:string){
-    const generationBefore=generation.current,request=++roleRead.current;
+    const request=++roleRead.current;
+    setRolesLoading(true);
     try{
       const params=new URLSearchParams({search:value});
       const result=await read<{options:RoleOption[]}>("roles/options?"+params.toString());
-      if(request!==roleRead.current||generationBefore!==generation.current)return;
+      if(request!==roleRead.current)return;
       if(!Array.isArray(result.options))throw new Error("Invalid role response");
-      setRoles(result.options.filter(x=>x.context==="Foundation"));
+      const filtered=result.options.filter(x=>x.context==="Foundation");
+      const unique=Array.from(new Map(filtered.map(r=>[r.value,r])).values());
+      setRoles(unique);
+      setRoleRef(prev=>(prev&&unique.some(r=>r.value===prev)?prev:""));
     }catch(e){
-      if(request!==roleRead.current||generationBefore!==generation.current)return;
+      if(request!==roleRead.current)return;
       setRoles([]);
+      setRoleRef("");
       if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
       else setNotice({kind:"error",text:"Eligible roles are temporarily unavailable."});
+    }finally{
+      if(request===roleRead.current)setRolesLoading(false);
     }
   }
   function openCreate(){
@@ -146,15 +154,15 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
   }
   async function loadAccountHistory(accountRef:string){
     if(!actions.includes("access.audit.view"))return;
-    const generationBefore=generation.current,request=++historyRead.current;
+    const request=++historyRead.current;
     try{
       const result=await read<{events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}[]}>(
         "audit?limit=30&targetRef="+encodeURIComponent(accountRef));
-      if(request!==historyRead.current||generationBefore!==generation.current)return;
+      if(request!==historyRead.current)return;
       if(!Array.isArray(result.events))throw new Error("Invalid history response");
       setHistory(result.events);
     }catch(error){
-      if(request!==historyRead.current||generationBefore!==generation.current)return;
+      if(request!==historyRead.current)return;
       setHistory(null);
       if(error instanceof Error&&/session expired|permission denied/i.test(error.message))
         purgeProtectedHistory(error.message);
@@ -301,9 +309,9 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
           <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
             onChange={event=>setSearchRole(event.target.value)}/></label>
           <button type="button" onClick={()=>void roleSearch(searchRole)}>Find roles</button>
-          <label className="field">Assign role<select value={roleRef} required
+          <label className="field">Assign role<select value={roleRef} required disabled={rolesLoading}
             onChange={event=>setRoleRef(event.target.value)}>
-            <option value="">Choose a role explicitly</option>
+            <option value="">{rolesLoading?"Loading eligible roles…":roles.length===0?"No eligible roles available":"Choose a role explicitly"}</option>
             {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
           </select></label>
           <p>Account is active immediately after creation.</p>
@@ -334,9 +342,9 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
               <label className="field">Find eligible roles<input maxLength={80}
                 value={searchRole} onChange={event=>setSearchRole(event.target.value)}/></label>
               <button type="button" onClick={()=>void roleSearch(searchRole)}>Find roles</button>
-              <label className="field">Role<select value={roleRef}
+              <label className="field">Role<select value={roleRef} disabled={rolesLoading}
                 onChange={event=>setRoleRef(event.target.value)}>
-                <option value="">Choose a custom role</option>
+                <option value="">{rolesLoading?"Loading eligible roles…":roles.length===0?"No custom roles available":"Choose a custom role"}</option>
                 {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
               </select></label>
               <button type="button" disabled={!roleRef||roleRef===target.roleRef} onClick={()=>{
