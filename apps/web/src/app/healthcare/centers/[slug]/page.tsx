@@ -1,6 +1,7 @@
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
+import {directory,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
 export const dynamic="force-dynamic";
 type Params={params:Promise<{slug:string}>};
 type Center={
@@ -47,6 +48,7 @@ export default async function VerifiedCenterPage({params}:Params){
  const c=await current(slug);
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
+ const doctors=await directory<PublicDoctor>("doctors",new URLSearchParams({center:slug}));
  return <main className="cg-public-shell">
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
@@ -66,6 +68,14 @@ export default async function VerifiedCenterPage({params}:Params){
           encodeURIComponent(c.latitude+","+c.longitude)}
          target="_blank" rel="noopener noreferrer">View location on maps</a></p>}
    </section>
+   {doctors.state==="READY"&&doctors.items.length>0&&<section className="cg-public-section">
+     <h2>Currently verified doctors at this center</h2>
+     <ul>{doctors.items.map(d=><li key={d.doctorRef}>
+       <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>{d.doctorName}</Link>
+       {d.specialties.length>0?" · "+d.specialties.join(", "):""}
+       {d.fee?" · Current in-person consultation ₹"+(d.fee.amountMinor/100).toLocaleString("en-IN"):" · Fee not currently approved"}
+     </li>)}</ul>
+   </section>}
    {serviceNames.length>0&&<section className="cg-public-section">
      <h2>Services declared by the center</h2>
      <p>Service information does not confirm individual appointment availability.</p>
@@ -79,7 +89,8 @@ export default async function VerifiedCenterPage({params}:Params){
    </section>}
    <section className="cg-public-section">
      <p>Online booking, clinical advice and online payment are not offered on this page.</p>
-     <Link href="/contact">Contact CareGanga</Link>
+     <Link href="/health-network">Browse verified centers and doctors</Link>
+     <p><Link href="/contact">Contact CareGanga</Link></p>
    </section>
  </main>;
 }
