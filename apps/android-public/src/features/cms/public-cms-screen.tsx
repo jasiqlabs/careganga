@@ -134,6 +134,8 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
+ const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
+  "registration-certificate"|"annual-reports">("80g");
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
@@ -193,6 +195,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  },[slug,load,refreshNavigation]);
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(slug==="80g"&&ngoScope!=="80g"){setNgoScope("80g");return true;}
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
@@ -201,14 +204,16 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    }return false;
   });
   return()=>sub.remove();
- },[slug,articleBackTarget]);
+ },[slug,articleBackTarget,ngoScope]);
  const navigate=(href:unknown)=>{
   const route=local(href);
   if(route==="/")setSlug("home");
   else if(route==="/contact"){
    if(publishedPaths.includes("/contact"))setSlug("contact");else onContact();
   }
-  else if(route==="/ngo-information"&&publishedPaths.includes(route))setSlug("80g");
+  else if(route==="/ngo-information"&&publishedPaths.includes(route)){
+   setNgoScope("80g");setSlug("80g");
+  }
   else if((route==="/videos"||route==="/publications")&&
    publishedPaths.includes("/gallery")){
    setMediaScope(route==="/videos"?"VIDEO":"PUBLICATION");setSlug("gallery");
@@ -225,6 +230,15 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   (!noticeSearch.trim()||[n.title,n.body,n.category].some(v=>
    v.toLocaleLowerCase().includes(noticeSearch.trim().toLocaleLowerCase()))));
  const page=result.page;
+ const ngoFields=page?.kind==="COMPLIANCE"?
+  page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields:undefined;
+ const ngoDocuments=Array.isArray(ngoFields?.documents)?ngoFields.documents:[];
+ const hasOfficialDocument=(type:string)=>ngoDocuments.some((entry,i)=>
+  entry!==null&&typeof entry==="object"&&!Array.isArray(entry)&&
+  (entry as Record<string,unknown>).type===type&&
+  page?.assets.some(a=>a.role==="DOCUMENT"&&a.order===i));
+ const ngoHasPan=typeof ngoFields?.pan==="string"&&
+  /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(ngoFields.pan);
  const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
   .sort((a,b)=>a.order-b.order)??[];
  const safeImage=(asset:Asset|undefined)=>{
@@ -242,7 +256,17 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
       .filter(([path])=>publishedPaths.includes(path)).map(([,label,name])=>
        <CmsButton key={name} title={label} secondary={slug!==name}
         onPress={()=>setSlug(name)}/>)}
-   {publishedPaths.includes("/gallery")&&([
+   {slug==="80g"&&ngoFields&&([
+     ["80g","80G Registration"],
+     ["pan-details","PAN Details"],
+     ["registration-certificate","Registration Certificate"],
+     ["annual-reports","Annual Reports"]
+    ] as const).filter(([scope])=>scope==="80g"||
+      (scope==="pan-details"?ngoHasPan:
+       hasOfficialDocument(scope==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION")))
+     .map(([scope,label])=><CmsButton key={scope} title={label}
+      secondary={ngoScope!==scope} onPress={()=>setNgoScope(scope)}/>)}
+    {publishedPaths.includes("/gallery")&&([
     ["PHOTO","Gallery"],["VIDEO","Videos"],["PUBLICATION","Publications"]
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
@@ -453,6 +477,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
+       ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
     // Project teasers require CG05 original owner and cannot be invented.
