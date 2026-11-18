@@ -32,6 +32,7 @@ const files={
  routePublications:read("apps/web/src/app/publications/page.tsx"),
  mediaRenderer:read("apps/web/src/features/cms-public-content/cms-editorial-route.tsx"),
  route80g:read("apps/web/src/app/80g/page.tsx"),
+ routeNgo:read("apps/web/src/app/ngo-information/page.tsx"),
  routeGallery:read("apps/web/src/app/gallery/page.tsx"),
  routeBlog:read("apps/web/src/app/blog/page.tsx"),
  routeHealthcare:read("apps/web/src/app/healthcare/page.tsx"),
@@ -102,7 +103,7 @@ const checks=[
   files.proof.includes("complianceEligible(")&&
   files.backend.includes("await complianceEligible(")&&
   files.due.includes("await complianceEligible(")&&
-  files.route80g.includes('slug="80g"')],
+  files.routeNgo.includes("CmsOriginalNgoInformationRoute")],
  ["CG18 US-003 gallery and article originals reuse CG19 private bytes",
   files.extended.includes('kind==="GALLERY_GRID"')&&
   files.extended.includes('kind==="ARTICLE_BODY"')&&
@@ -151,6 +152,13 @@ const checks=[
   ["Home","About Us","Our Work","NGO Information","Campaigns","Upcoming Projects",
    "Partnerships","Events","Media & Resources","Join Now","Healthcare Assistance","Contact Us"]
     .every(name=>files.header.includes(name))&&!files.header.includes("Blood Donation")],
+ ["Original NGO Information uses the approved current 80G source without fabricated PAN pages",
+  files.backend.includes('kind==="COMPLIANCE"?"/ngo-information"')&&
+  files.backend.includes('p.kind==="COMPLIANCE"?"/ngo-information"')&&
+  files.routeNgo.includes('CmsOriginalNgoInformationRoute')&&
+  files.mediaRenderer.includes('publishedCmsPage("80g")')&&
+  files.web.includes('cg-site-ngo-sidebar')&&
+  files.route80g.includes('permanentRedirect("/ngo-information")')],
  ["Original /our-impact is canonical across validated server CMS and public SSR",
   files.backend.includes('IMPACT:"our-impact"')&&
   files.publicSource.includes('slug!=="our-impact"')&&
