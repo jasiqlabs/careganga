@@ -706,6 +706,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     {selected?.status==="DRAFT"&&canManage&&<button disabled={busy||!!pending}
      onClick={()=>act("pages/"+selected.pageRef+"/draft","PUT",{
       content:content(draft),expectedVersion:selected.version})}>Save draft</button>}
+    {selected&&selected.status!=="DRAFT"&&canManage&&
+     <div className="cg-cms-review-edit">
+      <p>Start a new unpublished revision of this page. The currently
+       published copy stays unchanged until the new revision is independently
+       approved and published. Older scheduled drafts may be cancelled.</p>
+      <button type="button" disabled={busy||!!pending}
+       onClick={()=>act("pages/"+selected.pageRef+"/draft","PUT",{
+        content:content(draft),expectedVersion:selected.version})}>
+       Create next draft revision</button>
+     </div>}
     {selected?.status==="DRAFT"&&canManage&&<button disabled={busy||!!pending||!!unsaved}
      onClick={()=>act("pages/"+selected.pageRef+"/submit","POST",{
       expectedVersion:selected.version})}>Submit to independent review</button>}
