@@ -4,7 +4,7 @@ import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsSiteHeader} from "./cms-site-header";
 import type {CmsMediaType} from "./cms-gallery-grid-client";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
-import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare} from "./cms-public-extended";
+import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare,CmsContactInfo} from "./cms-public-extended";
 
 export type PublicCmsSection={kind:string;order:number;fields:Record<string,unknown>};
 export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
@@ -228,6 +228,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
       section={section}/>;
+     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section}/>;
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
