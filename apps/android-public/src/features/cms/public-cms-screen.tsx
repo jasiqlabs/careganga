@@ -23,7 +23,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/80g","/gallery","/videos","/publications","/healthcare"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -79,7 +79,7 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
     result.schemaVersion!==1)return {login:false,paths:[]};
   const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
-  const valid=new Set(["/about","/our-impact","/80g","/gallery","/healthcare",
+  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/healthcare",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
@@ -161,6 +161,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   const route=local(href);
   if(route==="/")setSlug("home");
   else if(route==="/contact")onContact();
+  else if(route==="/ngo-information"&&publishedPaths.includes(route))setSlug("80g");
   else if((route==="/videos"||route==="/publications")&&
    publishedPaths.includes("/gallery")){
    setMediaScope(route==="/videos"?"VIDEO":"PUBLICATION");setSlug("gallery");
@@ -182,7 +183,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    <CmsButton title="Home" onPress={()=>setSlug("home")} secondary={slug!=="home"}/>
    {publishedPaths.includes("/about")&&<CmsButton title="About"
     onPress={()=>setSlug("about")} secondary={slug!=="about"}/>}
-   {([["/our-impact","Impact","our-impact"],["/80g","80G","80g"],
+   {([["/our-impact","Impact","our-impact"],["/ngo-information","NGO Information","80g"],
      ["/healthcare","Healthcare","healthcare"]] as const)
       .filter(([path])=>publishedPaths.includes(path)).map(([,label,name])=>
        <CmsButton key={name} title={label} secondary={slug!==name}
