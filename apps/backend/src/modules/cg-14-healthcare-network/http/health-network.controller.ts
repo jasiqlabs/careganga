@@ -1,9 +1,11 @@
 import {BadRequestException,Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {HealthNetworkService} from "../application/health-network.service";
+import {HealthReviewWorkflowService} from "../application/health-review-workflow.service";
 
 @Controller("api/v1/health-network")
 export class HealthNetworkController{
-  constructor(private readonly network:HealthNetworkService){}
+  constructor(private readonly network:HealthNetworkService,
+    private readonly reviews:HealthReviewWorkflowService){}
   @Get("representatives/options")
   representatives(@Headers("authorization")bearer:string,@Query("search")search?:string){
     return this.network.representativeOptions(bearer,search);
@@ -26,6 +28,42 @@ export class HealthNetworkController{
   @Get("providers/:providerRef")
   provider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
     return this.network.provider(bearer,ref);
+  }
+  @Post("providers/:providerRef/submit")
+  submitProvider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string,
+    @Body()body:unknown){
+    return this.reviews.submitProvider(bearer,ref,body);
+  }
+  @Post("providers/reviews/:caseRef/apply")
+  applyProvider(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+    return this.reviews.apply(bearer,ref,"HEALTH_PROVIDER_VERIFICATION");
+  }
+  @Post("providers/reviews/:caseRef/return-to-draft")
+  returnProvider(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+    return this.reviews.resumeReturned(bearer,ref,"HEALTH_PROVIDER_VERIFICATION");
+  }
+  @Post("centers/:centerRef/submit")
+  submitCenter(@Headers("authorization")bearer:string,@Param("centerRef")ref:string,
+    @Body()body:unknown){
+    return this.reviews.submitCenter(bearer,ref,body,false);
+  }
+  @Post("my-centers/:centerRef/submit")
+  submitMyCenter(@Headers("authorization")bearer:string,@Param("centerRef")ref:string,
+    @Body()body:unknown){
+    return this.reviews.submitCenter(bearer,ref,body,true);
+  }
+  @Post("centers/reviews/:caseRef/apply")
+  applyCenter(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+    return this.reviews.apply(bearer,ref,"HEALTH_CENTER_VERIFICATION");
+  }
+  @Post("centers/reviews/:caseRef/return-to-draft")
+  returnCenter(@Headers("authorization")bearer:string,@Param("caseRef")ref:string){
+    return this.reviews.resumeReturned(bearer,ref,"HEALTH_CENTER_VERIFICATION");
+  }
+  @Post("centers/:centerRef/access")
+  updateAccess(@Headers("authorization")bearer:string,@Param("centerRef")ref:string,
+    @Body()body:unknown){
+    return this.reviews.access(bearer,ref,body);
   }
   @Get("providers/:providerRef/finance-reference")
   financeReference(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
