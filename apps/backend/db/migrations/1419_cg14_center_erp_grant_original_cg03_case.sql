@@ -334,7 +334,7 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
   AND health_provider_revision_id IS NULL AND health_center_revision_id IS NULL
   AND health_doctor_id IS NULL AND health_doctor_revision_id IS NULL
   AND health_content_revision_id IS NULL AND health_erp_revision_id IS NOT NULL
-  AND health_revision_no>0 AND health_source_digest ~ '^[a-f0-9]{64}
+  AND health_revision_no>0 AND health_source_digest ~ '^[a-f0-9]{64}$'
   AND num_nonnulls(cms_page_id,cms_page_revision_id,cms_revision_no,cms_content_digest,
    branch_source_ref,branch_source_revision,branch_source_digest,
    finance_voucher_id,finance_voucher_revision,finance_voucher_digest,
