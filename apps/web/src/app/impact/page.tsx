@@ -1,5 +1,3 @@
-import type {Metadata} from "next";
-import {CmsEditorialRoute,editorialMetadata} from "../../features/cms-public-content/cms-editorial-route";
-export const dynamic="force-dynamic";
-export async function generateMetadata():Promise<Metadata>{return editorialMetadata("impact");}
-export default function EditorialPage(){return <CmsEditorialRoute slug="impact"/>;}
+import {permanentRedirect} from "next/navigation";
+/** Former provisional greenfield route: never index duplicate Impact content. */
+export default function FormerImpactRoute(){permanentRedirect("/our-impact");}
