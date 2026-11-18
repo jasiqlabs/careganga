@@ -195,11 +195,15 @@ export class HealthVerificationApprovalService{
     replayed:false};
  }
  private async reviewer(bearer:string){
-  const actor=await this.sessions.requireAction(bearer,"approvals.review");
-  await this.sessions.requireAction(bearer,"health.providers.verify");
-  return actor;
+  return this.sessions.requireAction(bearer,"approvals.review");
+ }
+ private async requireKind(bearer:string,kind:CaseRow["case_kind"]){
+  await this.sessions.requireAction(bearer,kind==="HEALTH_DOCTOR_VERIFICATION"?
+    "health.doctors.verify":"health.providers.verify");
  }
  private submission(c:CaseRow):HealthSubmission{
+  if(c.case_kind==="HEALTH_DOCTOR_VERIFICATION")
+    throw new ConflictException({code:"HEALTH_REVIEW_SOURCE_CHANGED"});
   return {kind:c.case_kind,providerRef:c.health_provider_id,
     centerRef:c.health_center_id,
     revisionRef:c.case_kind==="HEALTH_PROVIDER_VERIFICATION"?
@@ -207,12 +211,28 @@ export class HealthVerificationApprovalService{
     revisionNo:c.health_revision_no,digest:c.health_source_digest,
     requestKey:c.request_key};
  }
+ private doctorSubmission(c:CaseRow):DoctorSubmission{
+  if(c.case_kind!=="HEALTH_DOCTOR_VERIFICATION"||
+     !c.health_doctor_id||!c.health_doctor_revision_id)
+    throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED"});
+  return {kind:"HEALTH_DOCTOR_VERIFICATION",doctorRef:c.health_doctor_id,
+    revisionRef:c.health_doctor_revision_id,
+    revisionNo:c.health_revision_no,digest:c.health_source_digest,
+    requestKey:c.request_key};
+ }
  async inbox(bearer:string,offset=0,status="ALL",kind="ALL",search=""){
   const actor=await this.reviewer(bearer);
+  let canProviders=false,canDoctors=false;
+  try{await this.sessions.requireAction(bearer,"health.providers.verify");canProviders=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  try{await this.sessions.requireAction(bearer,"health.doctors.verify");canDoctors=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(!canProviders&&!canDoctors)
+    throw new ForbiddenException("Healthcare reviewer access is unavailable");
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
     !["ALL","SUBMITTED","IN_REVIEW","RETURNED","REJECTED",
       "PENDING_OWNER","OWNER_COMPLETED"].includes(status)||
-    !["ALL","HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION"].includes(kind)||
+    !["ALL","HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION","HEALTH_DOCTOR_VERIFICATION"].includes(kind)||
     search.length>80)
     throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
   const tx=await this.db.connect();
@@ -224,15 +244,16 @@ export class HealthVerificationApprovalService{
     const cases=await tx.query<{id:string;case_number:string;account_name_snapshot:string;
       case_kind:string;status:string;revision:number}>(
       "SELECT id,case_number,account_name_snapshot,case_kind,status,revision "+
-      "FROM cg03_case WHERE realm_id=$1 AND case_kind IN "+
-      "('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') "+
+      "FROM cg03_case WHERE realm_id=$1 AND ( "+
+      "($6::boolean AND case_kind IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION')) "+
+      "OR ($7::boolean AND case_kind='HEALTH_DOCTOR_VERIFICATION')) "+
       "AND status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','PENDING_OWNER','OWNER_COMPLETED') "+
       "AND ($3::text='ALL' OR status=$3) "+
       "AND ($4::text='ALL' OR case_kind=$4) "+
       "AND ($5::text='' OR strpos(lower(case_number),lower($5))>0 "+
       "OR strpos(lower(account_name_snapshot),lower($5))>0) "+
       "ORDER BY submitted_at DESC,id DESC LIMIT 41 OFFSET $2",
-      [actor.realmId,offset,status,kind,search.trim()]);
+      [actor.realmId,offset,status,kind,search.trim(),canProviders,canDoctors]);
     await tx.query("COMMIT");
     return {cases:cases.rows.slice(0,40).map(c=>({caseRef:c.id,reference:c.case_number,
       title:c.account_name_snapshot,kind:c.case_kind,status:c.status,revision:c.revision})),
