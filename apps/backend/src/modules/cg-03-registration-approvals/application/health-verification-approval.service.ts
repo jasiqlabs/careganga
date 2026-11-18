@@ -380,11 +380,39 @@ export class HealthVerificationApprovalService{
   if(!current.rows[0])throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
   return current.rows[0].decision_ref;
  }
+ /** The one original CG03 accepted final decision for the exact doctor
+  * revision and scanned CG19 proof. No client 'verified' flag is trusted.
+  */
+ async approvedDoctor(tx:PoolClient,actor:VerifiedFoundationActor,
+  input:DoctorSubmission&{caseRef:string}){
+  const accepted=await tx.query<{decision_ref:string}>(
+    "SELECT d.id AS decision_ref FROM cg03_case c "+
+    "JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id "+
+    "WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='HEALTH_DOCTOR_VERIFICATION' "+
+    "AND c.health_doctor_id=$3 AND c.health_doctor_revision_id=$4 "+
+    "AND c.health_revision_no=$5 AND c.health_source_digest=$6 "+
+    "AND c.status IN('PENDING_OWNER','OWNER_COMPLETED') "+
+    "AND d.action='APPROVE' AND d.actor_id<>c.proposer_id "+
+    "AND d.fresh_password_verified_at IS NOT NULL "+
+    "AND EXISTS(SELECT 1 FROM account reviewer "+
+    "JOIN account_role ar ON ar.account_id=reviewer.id AND ar.realm_id=reviewer.realm_id "+
+    "AND ar.revoked_at IS NULL JOIN role role_now ON role_now.id=ar.role_id "+
+    "AND role_now.realm_id=reviewer.realm_id "+
+    "WHERE reviewer.id=d.actor_id AND reviewer.realm_id=c.realm_id "+
+    "AND reviewer.status='ACTIVE' AND role_now.active=true AND role_now.is_protected=true) "+
+    "ORDER BY d.created_at DESC,d.id DESC LIMIT 1 FOR SHARE OF c,d",
+    [input.caseRef,actor.realmId,input.doctorRef,input.revisionRef,
+      input.revisionNo,input.digest]);
+  if(!accepted.rows[0])
+    throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
+  return accepted.rows[0].decision_ref;
+ }
  async finish(tx:PoolClient,actor:VerifiedFoundationActor,caseRef:string){
   const updated=await tx.query(
     "UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,"+
     "updated_at=now() WHERE id=$1 AND realm_id=$2 AND "+
-    "case_kind IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') "+
+    "case_kind IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION',"+
+      "'HEALTH_DOCTOR_VERIFICATION') "+
     "AND status='PENDING_OWNER' RETURNING id",[caseRef,actor.realmId]);
   if(!updated.rowCount)
     throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
