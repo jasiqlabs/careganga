@@ -17,10 +17,10 @@ const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,onBackToNews,mediaScope}:{section:Section;assets:Asset[];
+ onNavigate,onBackToNews,mediaScope,backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
  onContact:()=>void;onNavigate:(path:unknown)=>void;
- onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION"}){
+ onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";backLabel?:string}){
  const f=section.fields;
  const impactItems=rows(f.items);
  const impactPeak=Math.max(0,...impactItems.map(v=>typeof v.value==="number"&&
@@ -178,7 +178,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {picture("ARTICLE",0)}
   <Text style={styles.body}>{text(f.body)}</Text>
   {Array.isArray(f.tags)&&<Text style={styles.source}>{f.tags.map(text).join(" · ")}</Text>}
-  <Action title="Back to approved articles" onPress={onBackToNews}/>
+  <Action title={backLabel} onPress={onBackToNews}/>
  </View>;
  if(section.kind==="CONTACT_INFO"){
   const permitted=(value:unknown,hosts:string[])=>{
