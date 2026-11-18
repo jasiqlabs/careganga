@@ -258,7 +258,7 @@ export class HealthReviewWorkflowService{
   return this.transaction(async tx=>{
    await this.identity.assertCurrent(tx,actor,"health.providers.manage");
    const c=await this.caseSource(tx,actor,ref,kind);
-   if(c.state!=="RETURNED")
+   if(!["RETURNED","REJECTED"].includes(c.state))
     throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
    const table=kind==="HEALTH_PROVIDER_VERIFICATION"?
      "health_provider":"health_center";
