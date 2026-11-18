@@ -28,6 +28,15 @@ export class HealthDraftEvidenceController{
       body&&typeof body==="object"&&"expectedRevision" in body?
         body.expectedRevision:undefined);
   }
+  @Get("reviews/:caseRef/download")
+  @Header("Cache-Control","private, no-store")
+  @Header("X-Content-Type-Options","nosniff")
+  async downloadForReview(@Headers("authorization")bearer:string,
+    @Param("caseRef")caseRef:string){
+    const result=await this.evidence.reviewDownload(bearer,caseRef);
+    return new StreamableFile(result.data,{type:result.mime,
+      disposition:'attachment; filename="Private-healthcare-review-evidence"'});
+  }
   @Get("files/:fileRef/download")
   @Header("Cache-Control","private, no-store")
   @Header("X-Content-Type-Options","nosniff")
