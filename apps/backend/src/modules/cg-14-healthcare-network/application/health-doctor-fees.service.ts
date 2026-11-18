@@ -352,19 +352,38 @@ export class HealthDoctorFeesService{
       // Read provider, center, professional, association and current amounts
       // under one short transaction. Concurrent suspension cannot slip
       // between the active-eligibility check and the fee response snapshot.
-      const association=await tx.query<{eligible:boolean}>(
-        "SELECT (a.affiliation_state='APPROVED' AND d.status='VERIFIED' "+
-        "AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
-        "AND p.status='VERIFIED') AS eligible FROM health_doctor_center a "+
-        "JOIN health_doctor d ON d.root_realm_id=a.root_realm_id AND d.id=a.doctor_id "+
+      const refs=await tx.query<{center_id:string;provider_id:string}>(
+        "SELECT a.center_id,c.provider_id FROM health_doctor_center a "+
         "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
-        "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-        "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3 "+
-        "FOR SHARE OF a,d,c,p",
+        "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3",
         [actor.realmId,doctor,associationId]);
-      if(!association.rows[0])
+      const record=refs.rows[0];
+      if(!record)
         throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
-      const eligible=association.rows[0].eligible;
+      // Match writer lock order explicitly; no multi-join row locks whose
+      // acquisition order could deadlock with center/doctor suspension.
+      const provider=await tx.query<{status:string}>(
+        "SELECT status FROM health_provider WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+        [actor.realmId,record.provider_id]);
+      const center=await tx.query<{status:string;access_state:string}>(
+        "SELECT status,access_state FROM health_center "+
+        "WHERE root_realm_id=$1 AND id=$2 AND provider_id=$3 FOR SHARE",
+        [actor.realmId,record.center_id,record.provider_id]);
+      const professional=await tx.query<{status:string}>(
+        "SELECT status FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+        [actor.realmId,doctor]);
+      const association=await tx.query<{affiliation_state:string}>(
+        "SELECT affiliation_state FROM health_doctor_center "+
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND center_id=$3 AND id=$4 FOR SHARE",
+        [actor.realmId,doctor,record.center_id,associationId]);
+      if(!provider.rows[0]||!center.rows[0]||!professional.rows[0]||
+        !association.rows[0])
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      const eligible=provider.rows[0].status==="VERIFIED"&&
+        center.rows[0].status==="VERIFIED"&&
+        center.rows[0].access_state==="ENABLED"&&
+        professional.rows[0].status==="VERIFIED"&&
+        association.rows[0].affiliation_state==="APPROVED";
       const result=await tx.query<FeeRow&{created_at:Date}>(
         "SELECT id,fee_kind,consultation_mode,amount_minor,effective_from,"+
         "effective_to,status,version,created_at FROM health_center_fee "+
