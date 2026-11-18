@@ -539,7 +539,7 @@ export class SupportService{
     const center=uuid(rawCenter),actor=await this.actor(bearer,"health.centers.draft.edit");
     const tx=await this.db.connect();let started=false;
     try{
-      await tx.query("BEGIN READ ONLY");started=true;
+      await tx.query("BEGIN");started=true;
       await this.centerScope.assertCurrent(tx,actor,center);
       const data=await tx.query<CaseRow>(
         "SELECT id,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
@@ -560,7 +560,7 @@ export class SupportService{
       actor=await this.actor(bearer,"health.centers.draft.edit");
     const tx=await this.db.connect();let started=false;
     try{
-      await tx.query("BEGIN READ ONLY");started=true;
+      await tx.query("BEGIN");started=true;
       await this.centerScope.assertCurrent(tx,actor,center);
       const data=await tx.query<CaseRow>(
         "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND center_id=$2 "+
