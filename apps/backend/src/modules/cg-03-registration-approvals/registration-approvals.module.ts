@@ -5,6 +5,8 @@ import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.mo
 import {CmsSourceModule} from "../cg-18-cms-public-content/cms-source.module";
 import {HealthSourceModule} from "../cg-14-healthcare-network/health-source.module";
 import {HealthVerificationApprovalService} from "./application/health-verification-approval.service";
+import {HealthCenterContentApprovalService} from "./application/health-center-content-approval.service";
+import {HealthCenterContentApprovalController} from "./http/health-center-content-approval.controller";
 import {HealthVerificationApprovalController} from "./http/health-verification-approval.controller";
 import {CmsPublicationApprovalService} from "./application/cms-publication-approval.service";
 import {CmsPublicationApprovalController} from "./http/cms-publication-approval.controller";
@@ -28,8 +30,8 @@ import {ApprovalDocumentSource} from "./application/approval-document-source.ser
 import {CommittedDecisionSource} from "./application/committed-decision-source.service";
 @Module({
   imports:[IdentityAccessModule,FoundationStructureModule,FinanceSourceModule,FinanceEvidenceSourceModule,CmsSourceModule,HealthSourceModule],
-  providers:[HealthVerificationApprovalService,ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService,FinanceBudgetApprovalService,CmsPublicationApprovalService],
-  controllers:[HealthVerificationApprovalController,ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController,FinanceVoucherApprovalController,FinanceClaimApprovalController,FinanceInvoiceApprovalController,FinanceBudgetApprovalController,CmsPublicationApprovalController],
-  exports:[HealthVerificationApprovalService,ApprovalProposalService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService,FinanceBudgetApprovalService,CmsPublicationApprovalService]
+  providers:[HealthVerificationApprovalService,HealthCenterContentApprovalService,ApprovalProposalService,ApprovalDecisionService,ApprovalFinalizationService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService,FinanceBudgetApprovalService,CmsPublicationApprovalService],
+  controllers:[HealthVerificationApprovalController,HealthCenterContentApprovalController,ApprovalProposalController,ApprovalDecisionController,ApprovalFinalizationController,FinanceVoucherApprovalController,FinanceClaimApprovalController,FinanceInvoiceApprovalController,FinanceBudgetApprovalController,CmsPublicationApprovalController],
+  exports:[HealthVerificationApprovalService,HealthCenterContentApprovalService,ApprovalProposalService,ApprovalDocumentSource,CommittedDecisionSource,BranchApprovalService,FinanceVoucherApprovalService,FinanceClaimApprovalService,FinanceInvoiceApprovalService,FinanceBudgetApprovalService,CmsPublicationApprovalService]
 })
 export class RegistrationApprovalsModule {}
