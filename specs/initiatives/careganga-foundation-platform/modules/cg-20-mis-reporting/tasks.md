@@ -182,3 +182,6 @@ Dependencies: US-003 saved report revision, US-004 protected run/artifact and ac
 
 - US-001–005: DESIGN_REVIEWED / IMPLEMENTATION_NOT_STARTED on planning branch. **5 source-owned stories / 81 distinct manual QA scenarios** with real cross-stack tasks and permission-negative cases. Active real code progress must be verified separately; do not inherit older stale task status.
 - LOCAL_HARNESS_RESOLVER: NOT_RUN; independent CRITICAL DB/privacy review, migrations/restore, source code QA, Web/native runtime/pixel/motion, NFR load/egress: NOT_RUN/NOT_MEASURED.
+
+## 18 November 2026 — original website receiving acceptance — existing QA receiving acceptance
+Within original US-001/002/004, validate **correct category/map/year/period filters, permitted exports and measured source/transparent zero data** from Batch01 020524,020538,020554,021020,021040 and /our-impact; /ngo-information/annual-reports; /ngo-information/financial-reports; follow [original route QA matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Source Admin → permissions/field-level copy → actual owner API and persisted state → Web and applicable Android → withdrawal/denied/error, with original UI screenshot comparison. Do not change canonical QA counts or fake PASS. **REFERENCE_ALIGNED; SOURCE RECEIVING OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**
