@@ -1,0 +1,55 @@
+import {BadRequestException,Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
+import {HealthNetworkService} from "../application/health-network.service";
+
+@Controller("api/v1/health-network")
+export class HealthNetworkController{
+  constructor(private readonly network:HealthNetworkService){}
+  @Get("providers")
+  list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
+    if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
+      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"offset"});
+    return this.network.list(bearer,Number(offset??"0"));
+  }
+  @Post("providers")
+  createProvider(@Headers("authorization")bearer:string,@Body()body:unknown){
+    return this.network.createProvider(bearer,body);
+  }
+  @Get("providers/:providerRef")
+  provider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
+    return this.network.provider(bearer,ref);
+  }
+  @Post("providers/:providerRef/centers")
+  addCenter(@Headers("authorization")bearer:string,
+    @Param("providerRef")ref:string,@Body()body:unknown){
+    return this.network.createCenter(bearer,ref,body);
+  }
+  @Patch("centers/:centerRef")
+  updateCenter(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Body()body:unknown){
+    return this.network.updateCenter(bearer,ref,body,false);
+  }
+  @Post("centers/:centerRef/representatives")
+  affiliate(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Body()body:unknown){
+    return this.network.affiliate(bearer,ref,body);
+  }
+  @Get("my-centers")
+  myCenters(@Headers("authorization")bearer:string){
+    return this.network.myCenters(bearer);
+  }
+  @Get("my-centers/:centerRef")
+  myCenter(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string){
+    return this.network.myCenter(bearer,ref);
+  }
+  @Patch("my-centers/:centerRef")
+  updateOwnCenter(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Body()body:unknown){
+    return this.network.updateCenter(bearer,ref,body,true);
+  }
+  @Get("geography")
+  geography(@Headers("authorization")bearer:string,
+    @Query("level")level?:string,@Query("parentRef")parentRef?:string){
+    return this.network.geo(bearer,level??"STATE",parentRef);
+  }
+}
