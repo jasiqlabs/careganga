@@ -53,3 +53,7 @@ For every row above, trace the actual story QA from this sequence; do not stamp 
 **Not completed:** the remaining original NGO child URLs/owner receiving flows above, exact pixel/animation/assets/DOM equivalence, source-backed official documents/metrics/partnerships/benefits, independent reviewer gate, PostgreSQL migration execution, actual browser/API/native/device QA. No screenshot-level PASS. CG-18 original **4 stories / 76 QA**, CG-09 **6 stories / 71 QA** retained unchanged; **0 runtime QA executed** for both. Both modules remain SOURCE_ONLY, no main merge.
 
 Use this file as the single cross-owner screenshot alignment index, **not** an alternative story tracker. The original per-owner `module.md`, `dld.md`, `uiux.md` and `tasks.md` remain authoritative implementation requirements.
+
+### 18 November — original NGO native functional parity receiving note
+
+Original NGO 80G, PAN Details, Registration Certificate and Annual Reports are now source-backed on Public Android in addition to original Web routes. Native only exposes buttons with current approved fact/document placement; pressing Back returns to 80G. All original NGO real official verification, financial report owner source, pixel matches, browser/Android runtime, expired-stale file and database tests remain OPEN. Original CG-18 US-002 and CG-19 US-001 QA IDs retained.
