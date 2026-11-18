@@ -4,6 +4,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       IDENTITY_IDENTIFIER_REQUIRED:"Enter your registered mobile number or email address.",
       IDENTITY_IDENTIFIER_INVALID:"Enter a valid 10-digit Indian mobile number starting with 6–9, or a valid email address.",
       IDENTITY_PASSWORD_REQUIRED:"Enter your password to sign in.",
+      IDENTITY_LOGIN_INVALID:"Mobile number, email or password could not be confirmed. Check your details and try again.",
       IDENTITY_PASSWORD_TOO_LONG:"The password is too long. Check your entry and try again.",
       IDENTITY_CURRENT_PASSWORD_REQUIRED:"Enter your current password to confirm the change.",
       IDENTITY_NEW_PASSWORD_TOO_SHORT:"Create a new password containing at least 8 characters.",
