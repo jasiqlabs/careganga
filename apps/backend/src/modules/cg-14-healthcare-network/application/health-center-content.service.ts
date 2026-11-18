@@ -330,12 +330,13 @@ export class HealthCenterContentService{
     "SELECT version,state,content FROM health_center_content_draft "+
     "WHERE root_realm_id=$1 AND center_id=$2 FOR UPDATE",
     [actor.realmId,center]);
-   const last=await tx.query<{status:string}>(
-    "SELECT status FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+   const last=await tx.query<{status:string;health_revision_no:number}>(
+    "SELECT status,health_revision_no FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND health_center_id=$3 AND case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
     "FOR SHARE",[actor.realmId,ref,center]);
    if(!last.rows[0]||!["RETURNED","REJECTED"].includes(last.rows[0].status)||
-     draft.rows[0]?.state!=="SUBMITTED")
+     draft.rows[0]?.state!=="SUBMITTED"||
+     draft.rows[0].version!==last.rows[0].health_revision_no+1)
     throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
    await tx.query(
     "UPDATE health_center_content_draft SET state='RETURNED',"+
