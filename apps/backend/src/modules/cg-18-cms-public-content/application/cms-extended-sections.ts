@@ -75,8 +75,8 @@ const groupItem=(raw:unknown,i:number,group:string)=>{
   return error(f+".percentage");
  return out;
 };
-export function parseExtendedSection(kind:string,raw:unknown):Record<string,unknown>{
- const allowed=kind==="IMPACT_GROUP"?
+function allowedSectionFields(kind:string):string[]{
+ return kind==="IMPACT_GROUP"?
   ["group","heading","intro","source","asOfDate","items","claimsFullBreakdown","ctaLabel","ctaPath"]:
   kind==="COMPLIANCE_FACTS"?
   ["heading","summary","issuer","pan","registrationNumber","approvalNumber",
@@ -88,6 +88,46 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    "sourceNoticeRef","publicReleaseConfirmed"]:
   kind==="HEALTHCARE_CATEGORIES"?
   ["heading","intro","categories","ctaLabel","ctaPath"]: [];
+
+}
+/**
+ * Protected editorial DRAFT only. The same section-kind field allow-lists
+ * and finite schema budgets are enforced, but empty/incomplete inputs are
+ * allowed so editors can save progress without fabricating data.
+ * A separate strict parse is mandatory on SUBMIT, before CG03 review.
+ */
+export function parseDraftExtendedSection(kind:string,raw:unknown):Record<string,unknown>{
+ const x=obj(raw,"fields",allowedSectionFields(kind));
+ const walk=(value:unknown,depth:number):unknown=>{
+  if(depth>5)return error("fields");
+  if(value===null)return null;
+  if(typeof value==="string"){
+   if(value.length>7000||/[\u0000-\u001f\u007f]/.test(value)||danger.test(value))
+    return error("fields");
+   return value.trim();
+  }
+  if(typeof value==="number"){
+   if(!Number.isFinite(value)||Math.abs(value)>1e12)return error("fields");
+   return value;
+  }
+  if(typeof value==="boolean")return value;
+  if(Array.isArray(value)){
+   if(value.length>16)return error("fields");
+   return value.map(v=>walk(v,depth+1));
+  }
+  if(value&&typeof value==="object"){
+   const rec=value as Record<string,unknown>,names=Object.keys(rec);
+   if(names.length>20||names.some(k=>!/^[A-Za-z][A-Za-z0-9]*$/.test(k)))
+    return error("fields");
+   return Object.fromEntries(names.map(k=>[k,walk(rec[k],depth+1)]));
+  }
+  return error("fields");
+ };
+ return walk(x,0) as Record<string,unknown>;
+}
+
+export function parseExtendedSection(kind:string,raw:unknown):Record<string,unknown>{
+ const allowed=allowedSectionFields(kind);
  const x=obj(raw,"fields",allowed);
  if(kind==="IMPACT_GROUP"){
   const group=str(x.group,"group",32,3);
