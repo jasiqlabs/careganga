@@ -134,7 +134,7 @@ const checks=[
     s.cg03.includes("'REJECTED','PENDING_OWNER'")],
 
  ["Public checks real approval and evidence",s.public.includes("health_center_publication")&&s.public.includes("cg03_case_decision")&&s.public.includes("CLEAN_VERIFIED")],
- ["Public eligibility recheck after fields",s.public.includes("const fresh=await this.db.query(")&&s.public.includes("c.publication_generation=$3")],
+ ["Public eligibility recheck after fields",s.public.includes("const fresh=await tx.query(")&&s.public.includes("c.publication_generation=$3")],
  ["Public does not claim booking or payment",s.publicWeb.includes("Online booking, clinical advice and online payment are not offered")],
  ["Same-origin guarded Web BFF",s.bff.includes('request.headers.get("origin")')&&s.bff.includes('"publication","suspend"')],
  ["Visible Admin verified actions",s.admin.includes("changeAccess(center.centerRef")&&s.admin.includes("changePublication(center.centerRef")],
