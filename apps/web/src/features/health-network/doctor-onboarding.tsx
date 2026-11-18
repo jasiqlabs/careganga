@@ -10,7 +10,7 @@ type DoctorRow={doctorRef:string;name:string;status:string;version:number;
   specialties:string[]};
 type Detail={doctorRef:string;status:string;version:number;doctor:DoctorForm};
 type CenterRow={associationRef:string;name:string;status:string;centerStatus:string};
-type Files={files:{status:string;cleanVerified:boolean;currentVersion:boolean}[]};
+type Files={files:{fileRef:string;status:string;cleanVerified:boolean;currentVersion:boolean}[]};
 const empty=():DoctorForm=>({
   fullName:"",registrationJurisdiction:"",registrationNumber:"",
   qualifications:[],specialties:[],experienceYears:0,publicBio:"",
@@ -39,6 +39,8 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
   const [editing,setEditing]=useState<"none"|"create"|"update">("none");
   const [linked,setLinked]=useState<CenterRow[]>([]);
   const [fileStatus,setFileStatus]=useState<string>("");
+  const [proofFileRef,setProofFileRef]=useState("");
+  const submitKey=useRef("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
   const [more,setMore]=useState<number|null>(null),[paging,setPaging]=useState(false);
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -63,7 +65,7 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
   },[load]);
   async function show(ref:string){
     setError("");setNotice("");setEditing("none");
-    setSelected(null);setLinked([]);setFileStatus("");
+    setSelected(null);setLinked([]);setFileStatus("");setProofFileRef("");
     try{
       const item=await request<Detail>("/"+encodeURIComponent(ref));
       setSelected(item);
@@ -73,6 +75,7 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
         if(proof.ok){
           const result=await proof.json() as Files;
           const latest=result.files?.find(f=>f.currentVersion&&f.cleanVerified);
+          setProofFileRef(latest?.fileRef??"");
           setFileStatus(latest?"Original clean scanned licence is recorded":
             "No current verified private licence is recorded");
         }else setFileStatus("Private licence status could not be verified");
@@ -81,6 +84,24 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
         "/"+encodeURIComponent(ref)+"/centers");
       setLinked(Array.isArray(associations.centers)?associations.centers:[]);
     }catch(e){setError(e instanceof Error?e.message:"Doctor registration unavailable.");}
+  }
+  async function submitForReview(){
+    if(!selected||selected.status!=="PENDING"||!canManage||!proofFileRef||busy||unknown)return;
+    if(!submitKey.current)submitKey.current=crypto.randomUUID();
+    setBusy(true);setError("");setNotice("");
+    try{
+      await request("/"+encodeURIComponent(selected.doctorRef)+"/submit","POST",{
+        requestKey:submitKey.current,expectedVersion:selected.version,proofFileRef
+      });
+      submitKey.current="";setUnknown(false);
+      const ref=selected.doctorRef;
+      await load();await show(ref);
+      setNotice("Doctor registration submitted for independent Foundation review. It is not yet verified.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Doctor submission could not be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUnknown(true);
+    }finally{setBusy(false);}
   }
   function edit(existing?:Detail){
     key.current="";setUnknown(false);setError("");setNotice("");
@@ -225,7 +246,14 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
         </div>
         <DoctorProofUploader key={selected.doctorRef+":"+selected.version}
           doctorRef={selected.doctorRef} version={selected.version}
-          onVerified={()=>setFileStatus("Original clean scanned licence is recorded")}/>
+          onVerified={(ref)=>{setProofFileRef(ref);
+            setFileStatus("Original clean scanned licence is recorded");}}/>
+        {!!proofFileRef&&<div className="toolbar">
+          <button type="button" className="primary" disabled={busy||unknown}
+            onClick={()=>void submitForReview()}>
+            {busy?"Submitting for review…":"Submit registration for verification"}
+          </button>
+        </div>}
         {!!fileStatus&&<p role="status">{fileStatus}</p>}
       </>}
       <h3>Center associations</h3>
@@ -235,8 +263,7 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
             <td>{x.name}</td><td>{label(x.status)}</td>
           </tr>)}</tbody>
         </table></div>}
-      <p className="muted">Professional review, center association approval and current fees
-        require separate authorized workflows. No appointment availability is shown.</p>
+      <p className="muted">Professional verification does not itself approve center associations or consultation fees. No appointment availability is shown.</p>
     </section>}
   </div>;
 }
