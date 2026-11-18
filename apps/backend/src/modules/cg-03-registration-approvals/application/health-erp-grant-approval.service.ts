@@ -145,14 +145,26 @@ export class HealthErpGrantApprovalService{
   try{
    await tx.query("BEGIN");active=true;
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   const initial=await tx.query<Original>(
+    "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='HEALTH_CENTER_ERP_GRANT'",
+    [actor.realmId,caseRef]);
+   const snapshot=initial.rows[0];
+   if(!snapshot)throw new NotFoundException("Original center capability review unavailable");
+   // Read-only review uses the same parent -> center -> grant -> source ->
+   // case order as decision/apply. Never lock the case before center/parent.
+   const showSource=["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(snapshot.status);
+   const proof=showSource?
+    await this.source.original(tx,actor,this.submission(snapshot)):null;
    const rows=await tx.query<Original>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='HEALTH_CENTER_ERP_GRANT' FOR SHARE",
     [actor.realmId,caseRef]);
    const c=rows.rows[0];
-   if(!c)throw new NotFoundException("Original center capability review unavailable");
-   const proof=["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(c.status)?
-    await this.source.original(tx,actor,this.submission(c)):null;
+   if(!c||c.health_erp_revision_id!==snapshot.health_erp_revision_id||
+     c.health_source_digest!==snapshot.health_source_digest||
+     c.health_revision_no!==snapshot.health_revision_no)
+    throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
    await tx.query("COMMIT");active=false;
    return {caseRef:c.id,reference:c.case_number,status:c.status,
     revision:c.revision,title:c.account_name_snapshot,
