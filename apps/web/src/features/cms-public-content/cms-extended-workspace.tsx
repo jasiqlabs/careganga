@@ -490,7 +490,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        {items(f.items).map((item,j)=><div className="cg-cms-team" key={j}>
         <span className="cg-cms-muted">Gallery item {j+1} ·
          {item.visible===false?" Hidden from public":" Visible after approval"}</span>
-        {draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)&&
+        {item.mediaType==="PHOTO"&&
+         draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)&&
          <img className="cg-cms-review-image" loading="lazy"
           alt={str(draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)?.altText)}
           src={"/api/cms-image-preview/"+
