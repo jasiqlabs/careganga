@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Patch} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Patch,Post} from "@nestjs/common";
 import {HealthCenterContentService} from "../application/health-center-content.service";
 @Controller("api/v1/health-network/my-centers")
 export class HealthCenterContentController{
