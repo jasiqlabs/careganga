@@ -59,6 +59,22 @@ export async function directory<T extends PublicDoctor|PublicCenter>(
     next:data.next};
  }catch{return {state:"UNAVAILABLE",items:[],next:null};}
 }
+export type PublicArea={value:string;label:string;level:string;parentRef:string|null};
+export async function publicAreas():Promise<PublicArea[]>{
+ try{
+  const response=await read("facets");
+  if(!response||typeof response!=="object"||!("areas" in response)||
+   !Array.isArray(response.areas))return [];
+  return response.areas.filter((x:unknown):x is PublicArea=>
+   !!x&&typeof x==="object"&&"value" in x&&"label" in x&&
+   "level" in x&&typeof x.value==="string"&&
+   /^[a-f0-9-]{36}$/i.test(x.value)&&
+   typeof x.label==="string"&&typeof x.level==="string"&&
+   ["STATE","DISTRICT","BLOCK"].includes(x.level)&&
+   "parentRef" in x&&(x.parentRef===null||typeof x.parentRef==="string"))
+   .slice(0,500);
+ }catch{return [];}
+}
 export async function publicDoctor(ref:string){
  if(!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(ref))return null;
  try{
