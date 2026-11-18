@@ -57,3 +57,7 @@ Use this file as the single cross-owner screenshot alignment index, **not** an a
 ### 18 November — original NGO native functional parity receiving note
 
 Original NGO 80G, PAN Details, Registration Certificate and Annual Reports are now source-backed on Public Android in addition to original Web routes. Native only exposes buttons with current approved fact/document placement; pressing Back returns to 80G. All original NGO real official verification, financial report owner source, pixel matches, browser/Android runtime, expired-stale file and database tests remain OPEN. Original CG-18 US-002 and CG-19 US-001 QA IDs retained.
+
+### 18 November — Verified original Videos Web transport source reconciliation
+
+Original `/videos` Batch02 021443: the backend CG19 protected read now supports MP4 single-range 206/416 after current-publication and SHA checks, and the existing public Web same-origin media proxy was corrected to preserve Range and status. This closes the specific source mismatch that previously caused the Web proxy to emit full 200 instead of partial video responses. No actual video playback, Android emulator, browser seeking, CDN/storage bandwidth or revocation-in-flight test has been executed. Existing CG-18 US-003 / CG-19 original QA IDs unchanged.
