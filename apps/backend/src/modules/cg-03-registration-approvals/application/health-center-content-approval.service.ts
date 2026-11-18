@@ -165,10 +165,21 @@ export class HealthCenterContentApprovalService{
       c.health_revision_no!==snapshot.health_revision_no||
       c.status!==snapshot.status)
     throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
+   const current=await tx.query<{approved_revision_id:string;
+    generation:number;withdrawn_at:Date|null}>(
+    "SELECT approved_revision_id,generation,withdrawn_at "+
+    "FROM health_center_content_publication "+
+    "WHERE root_realm_id=$1 AND center_id=$2 FOR SHARE",
+    [actor.realmId,c.health_center_id]);
+   const live=current.rows[0];
+   const isCurrentPublished=c.status==="OWNER_COMPLETED"&&!!live&&
+     !live.withdrawn_at&&live.approved_revision_id===c.health_content_revision_id;
    await tx.query("COMMIT");active=false;
    return {caseRef:c.id,reference:c.case_number,centerRef:c.health_center_id,
     title:c.account_name_snapshot,status:c.status,revision:c.revision,
-    content,requiresIndependentReviewer:true};
+    content,isCurrentPublished,publicationGeneration:isCurrentPublished?
+     live.generation:null,approvedRevisionRef:isCurrentPublished?
+     c.health_content_revision_id:null,requiresIndependentReviewer:true};
   }catch(e){if(active)try{await tx.query("ROLLBACK");}catch{};throw e;}
   finally{tx.release();}
  }
