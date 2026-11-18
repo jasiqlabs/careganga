@@ -31,7 +31,8 @@ export default async function HealthNetworkPage(){
       !Array.isArray(rights.actions))throw Error("Current role unavailable");
     const actions=new Set<string>(rights.actions.flatMap((x:unknown)=>
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
-    if(!actions.has("health.providers.view"))
+    if(!actions.has("health.providers.view")&&
+      !(actions.has("approvals.review")&&actions.has("health.providers.verify")))
       return <main className="page main"><h1>Healthcare access restricted</h1>
         <p>Your current role cannot read healthcare provider registrations.</p>
         <Link href="/admin">Return to account</Link></main>;
@@ -52,11 +53,11 @@ export default async function HealthNetworkPage(){
         actions.has("health.providers.verify")&&
         <p><Link href="/admin/health-network/content-reviews">
           Review submitted center content</Link></p>}
-        <ProviderOnboarding
+        {actions.has("health.providers.view")&&<ProviderOnboarding
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
-        canManageFinance={actions.has("health.providers.finance.manage")}/></main>
+        canManageFinance={actions.has("health.providers.finance.manage")}/>}</main>
     </div>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
