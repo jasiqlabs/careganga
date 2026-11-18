@@ -9,7 +9,7 @@ export class HealthVerificationApprovalController{
   if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset)||
     !["ALL","SUBMITTED","IN_REVIEW","RETURNED","REJECTED",
       "PENDING_OWNER","OWNER_COMPLETED"].includes(status??"ALL")||
-    !["ALL","HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION"].includes(kind??"ALL")||
+    !["ALL","HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION","HEALTH_DOCTOR_VERIFICATION"].includes(kind??"ALL")||
     (query!==undefined&&(query.length>80||/[\u0000-\u001f\u007f]/.test(query))))
    throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
   return this.reviews.inbox(auth,Number(offset??0),status??"ALL",kind??"ALL",query?.trim()??"");
