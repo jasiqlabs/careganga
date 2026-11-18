@@ -4,7 +4,8 @@ import {CenterPhotoUploader} from "./center-photo-uploader";
 type Content={description:string;services:string[];facilities:string[];
  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];media:string[]};
 type Snapshot={centerRef:string;version:number;state:string;content:Content;
- reviewCaseRef:string|null;reviewStatus:string|null};
+ reviewCaseRef:string|null;reviewStatus:string|null;
+ approvedPresentationPublished:boolean;publicSlug:string|null};
 const EMPTY:Content={description:"",services:[],facilities:[],
  hoursNote:"",publicEmail:"",faqs:[],media:[]};
 async function api<T>(ref:string,init?:RequestInit):Promise<T>{
@@ -96,7 +97,15 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
   {!!notice&&<p role="status" className="notice">{notice}</p>}
   {!snapshot?<button type="button" onClick={()=>void load()}>Recheck current content</button>:<>
    <p>Draft: {snapshot.state.replaceAll("_"," ")} (version {snapshot.version}).
-    {snapshot.reviewStatus?" Original review: "+snapshot.reviewStatus.replaceAll("_"," "):""}</p>
+    {snapshot.reviewStatus?" Original review: "+snapshot.reviewStatus.replaceAll("_"," "):""}.
+    {snapshot.approvedPresentationPublished?
+     " Independently approved presentation is currently public.":
+     " No independently approved presentation is currently public."}
+   </p>
+   {snapshot.approvedPresentationPublished&&snapshot.publicSlug&&
+    <p><a href={"/healthcare/centers/"+encodeURIComponent(snapshot.publicSlug)}
+      target="_blank" rel="noopener noreferrer">
+      Preview current published center page</a></p>}
    <div className="form-grid">
     <label>Center description
      <textarea value={content.description} rows={5} maxLength={1600}
