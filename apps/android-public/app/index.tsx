@@ -9,6 +9,7 @@ import {careGangaTheme as theme} from "../../../packages/design-tokens/src/index
 import {RecipientNotifications} from "../../../packages/native-communications/src/recipient-notifications";
 import {FoundationContactScreen} from "../src/features/support/foundation-contact-screen";
 import {PublicCmsContent} from "../src/features/cms/public-cms-screen";
+import {PublicHealthcareDirectory} from "../src/features/health-network/public-healthcare-directory";
 
 const KEY="cg_public_own_notice_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -49,6 +50,7 @@ export default function PublicHome(){
   const [message,setMessage]=useState("");
   const [noticeOpen,setNoticeOpen]=useState(false);
   const [contactOpen,setContactOpen]=useState(false);
+  const [directoryOpen,setDirectoryOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
@@ -128,6 +130,7 @@ export default function PublicHome(){
     finally{setBusy(false);}
   }
   if(contactOpen)return <FoundationContactScreen onExit={()=>setContactOpen(false)}/>;
+  if(directoryOpen)return <PublicHealthcareDirectory onExit={()=>setDirectoryOpen(false)}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
@@ -143,6 +146,14 @@ export default function PublicHome(){
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
             onLoginVisibility={setPublicLoginVisible}/>
+          <View style={styles.card}>
+            <Text style={styles.heading}>Healthcare Network</Text>
+            <Text>Search only current verified CareGanga healthcare centers and doctors.</Text>
+            <Pressable accessibilityRole="button" style={styles.primary}
+              onPress={()=>setDirectoryOpen(true)}>
+              <Text style={styles.primaryText}>Find healthcare centers & doctors</Text>
+            </Pressable>
+          </View>
           <View style={styles.card}>
             <Text style={styles.heading}>Contact & Help</Text>
             <Text>Send a private Foundation request without signing in,
