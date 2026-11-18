@@ -410,7 +410,8 @@ export class HealthNetworkService{
       if(cmd.replay)return {centerRef:cmd.replay.result_ref,version:cmd.replay.result_version,
         status:"PENDING",replayed:true};
       const provider=await client.query<{version:number}>(
-        "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$2 AND status='PENDING' FOR UPDATE",
+        "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status IN('PENDING','VERIFIED') FOR UPDATE",
         [actor.realmId,ref]);
       if(!provider.rows[0])throw new NotFoundException("Provider draft unavailable");
       if(provider.rows[0].version!==expected)
