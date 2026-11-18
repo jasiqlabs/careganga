@@ -148,8 +148,10 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(slug!=="home"){
-    setSlug(!["about","impact","80g","gallery","healthcare","articles"].includes(slug)?
-     "articles":"home");return true;
+    // Article detail returns to News. A published legal policy must
+    // return to Home; it is not part of the article reader.
+    setSlug(!["about","impact","80g","gallery","healthcare","articles"].includes(slug)&&
+     !isPolicySlug(slug)?"articles":"home");return true;
    }return false;
   });
   return()=>sub.remove();
