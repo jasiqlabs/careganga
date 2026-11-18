@@ -43,7 +43,8 @@ function uuid(v:unknown,field:string){
 }
 function text(v:unknown,field:string,max=4000,min=0){
  if(typeof v!=="string"||v.trim().length<min||v.length>max||
-  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v))
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v)||
+  /<[^>]*>|(?:javascript|data):|on(?:error|click)\s*=/i.test(v))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field});
  return v.trim();
 }
