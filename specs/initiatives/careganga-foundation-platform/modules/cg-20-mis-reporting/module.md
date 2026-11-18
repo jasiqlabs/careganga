@@ -1,5 +1,16 @@
 # CG-20 — Reports, MIS, Dashboards & Authorized Exports
 
+### 2026-11-18 original client public reporting and impact evidence handoff
+
+**Binding screenshots/accepted routes:** [47-screenshot full original public website contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a **design/QA receiving-owner requirement**, not new CG-20 reports or runtime-pass evidence.
+
+**Original screenshots requiring actual source:** `/our-impact` shows impact growth by year, geographic reach (India/States/Districts), category impact distribution, success stories, Key Impact Areas and Latest Updates. `/ngo-information/annual-reports`, `/ngo-information/financial-reports`, `/publications` show real authorized annual and financial PDF/report lists, year/type/category filters, publication dates, downloads/exports and honest empty states. Blank/zero original screenshots do not establish real counts.
+
+**Admin/ownership:** Existing CG-20 report owner creates/reviews versioned public-safe reports from authorized CG-05 project, CG-09 ledger, CG-04 activity and other verified sources; CG-19 stores approved/rights-cleared exported files; CG-18 owns original page layout, source dates and editorial text. Foundation Admin can choose which exact signed-off report/version/metrics to publish; finance/medical/donor/payroll/confidential data must not leak into public chart, CSV or file.
+
+**QA delta on existing US:** exact screenshot-style chart/map/category/year/source dates, original report year/type filtering and safe export, pagination, revocation or corrected-source publish, empty states, verified public PDF version, root/branch access, CSV injection/unsafe filenames, performance, narrow Web/native and original screenshot pixel comparison. No fake metrics and no invented tax/regulatory certification. Actual data, builds, independent qualified review and runtime QA **NOT_RUN**; original task counts and story scope preserved until case reconciliation.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-073, FR-074, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-20-BR01–CG-20-BR07, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U01, C44, C45, C46, C47, C49.  
