@@ -27,7 +27,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const [search,setSearch]=useState("");
  const galleryItems=rows(f.items);
  const categories=Array.from(new Set(galleryItems.map(x=>text(x.category)).filter(Boolean))).sort();
- const galleryMatches=galleryItems.map((item,i)=>({item,i})).filter(({item})=>
+ const galleryMatches=galleryItems.map((item,index)=>({item,
+  i:typeof item.originalIndex==="number"&&Number.isSafeInteger(item.originalIndex)?
+   item.originalIndex:index})).filter(({item})=>
    (mediaFilter==="ALL"||item.mediaType===mediaFilter)&&
    (categoryFilter==="ALL"||item.category===categoryFilter)&&
    (!search.trim()||[item.title,item.caption,item.category].some(v=>
