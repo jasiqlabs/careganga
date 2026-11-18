@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
-type Doctor={associationRef:string;doctorRef:string;name:string;specialties:string[];version:number};
+type Doctor={associationRef:string;doctorRef:string;name:string;specialties:string[];version:number;status:string};
+type Candidate={doctorRef:string;name:string;specialties:string[]};
 type Fee={feeRef:string;feeKind:string;consultationMode:string;amountMinor:number;
   status:string;current:boolean;effectiveFromUtc:string;effectiveToUtc:string|null};
 const label=(v:string)=>v.replaceAll("_"," ").toLowerCase()
@@ -28,6 +29,9 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   const [doctors,setDoctors]=useState<Doctor[]>([]);
   const [selected,setSelected]=useState<Doctor|null>(null);
   const [fees,setFees]=useState<Fee[]>([]);
+  const [candidates,setCandidates]=useState<Candidate[]>([]);
+  const [search,setSearch]=useState("");
+  const [candidate,setCandidate]=useState("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [uncertain,setUncertain]=useState(false);
@@ -37,6 +41,7 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   const [start,setStart]=useState("");
   const [end,setEnd]=useState("");
   const requestKey=useRef("");
+  const assignmentKey=useRef("");
   const feePath=selected?path+"/"+encodeURIComponent(selected.doctorRef)+
     "/associations/"+encodeURIComponent(selected.associationRef)+"/fees":"";
   const load=useCallback(async()=>{
@@ -59,14 +64,40 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   async function choose(ref:string){
     const doctor=doctors.find(d=>d.associationRef===ref)??null;
     setSelected(doctor);setFees([]);setError("");setNotice("");
-    if(doctor)try{
+    if(doctor?.status==="APPROVED")try{
       await loadFees(path+"/"+encodeURIComponent(doctor.doctorRef)+"/associations/"+
         encodeURIComponent(doctor.associationRef)+"/fees");
     }catch(e){setError(e instanceof Error?e.message:"Fee history is unavailable.");}
   }
+  async function searchCandidates(){
+    if(busy||uncertain)return;
+    setError("");setCandidates([]);setCandidate("");
+    try{
+      const found=await call<{doctors:Candidate[]}>(
+        "my-centers/"+encodeURIComponent(centerRef)+"/eligible-doctors?q="+
+        encodeURIComponent(search.trim()));
+      setCandidates(Array.isArray(found.doctors)?found.doctors:[]);
+    }catch(e){setError(e instanceof Error?e.message:"Eligible doctors cannot be verified.");}
+  }
+  async function proposeDoctor(){
+    if(!candidate||busy||uncertain)return;
+    setBusy(true);setError("");setNotice("");
+    if(!assignmentKey.current)assignmentKey.current=crypto.randomUUID();
+    try{
+      await call(path,"POST",{requestKey:assignmentKey.current,doctorRef:candidate});
+      assignmentKey.current="";setCandidate("");setCandidates([]);
+      await load();
+      setNotice("Association submitted for Foundation approval. The doctor is not active at this center yet.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Association outcome could not be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+      else assignmentKey.current="";
+    }finally{setBusy(false);}
+  }
   async function propose(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
-    if(!selected||busy||uncertain)return;
+    if(!selected||selected.status!=="APPROVED"||busy||uncertain)return;
     try{
       const minor=cents(amount);
       const from=new Date(start),to=end?new Date(end):null;
@@ -95,30 +126,60 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   }
   return <section className="form-section">
     <h3>Doctors and fees at this center</h3>
-    <p>Only your active center's approved doctor associations appear here.
-      Changes to proposed prices require separate Foundation approval.</p>
+    <p>Only your active center's doctor associations appear here. The Foundation separately approves assignments and prices.</p>
     {loading&&<p role="status">Loading assigned doctors…</p>}
     {!!error&&<p role="alert" className="notice error">{error}</p>}
     {!!notice&&<p role="status" className="notice">{notice}</p>}
     {uncertain&&<div className="notice" role="alert">
-      A fee proposal may already be saved. Check the original record before making another change.
+      A doctor assignment or fee proposal may already have been saved.
+      Refresh current records before making another change.
       <button type="button" onClick={()=>{
-        void loadFees(feePath).then(()=>{
-          setUncertain(false);requestKey.current="";setError("");
-        }).catch(e=>setError(e instanceof Error?e.message:"Fee history unavailable."));
-      }}>Check current fees</button>
-    </div>}
-    {!loading&&doctors.length===0&&<p>No approved doctors are assigned to this center.</p>}
-    {doctors.length>0&&<label className="field">Approved doctor
+        void load().then(async()=>{
+          if(selected?.status==="APPROVED")await loadFees(feePath);
+          setUncertain(false);requestKey.current="";assignmentKey.current="";
+          setError("");
+        }).catch(e=>setError(e instanceof Error?e.message:"Current records unavailable."));
+      }}>Check current records</button>
+    </div>
+    <div className="form">
+      <h4>Request a doctor for this center</h4>
+      <p>Find a verified professional by name. Their private registration
+        details and licence are not shared with center operators.</p>
+      <div className="form-grid">
+        <label className="field">Doctor name
+          <input type="search" maxLength={80} value={search} disabled={busy||uncertain}
+            onChange={e=>setSearch(e.target.value)}/>
+        </label>
+        <div className="toolbar">
+          <button type="button" disabled={busy||uncertain}
+            onClick={()=>void searchCandidates()}>Find verified doctors</button>
+        </div>
+        {candidates.length>0&&<label className="field">Professional
+          <select value={candidate} disabled={busy||uncertain}
+            onChange={e=>setCandidate(e.target.value)}>
+            <option value="">Select a verified professional</option>
+            {candidates.map(d=><option key={d.doctorRef} value={d.doctorRef}>
+              {d.name} — {d.specialties.join(", ")||"Specialty not recorded"}
+            </option>)}
+          </select>
+        </label>}
+      </div>
+      <button type="button" disabled={!candidate||busy||uncertain}
+        onClick={()=>void proposeDoctor()}>
+        {busy?"Sending association…":"Request center association"}</button>
+    </div>
+    {!loading&&doctors.length===0&&<p>No doctors have been assigned to this center yet.</p>}
+    {doctors.length>0&&<label className="field">Doctors at this center
       <select value={selected?.associationRef??""} disabled={busy||uncertain}
         onChange={e=>void choose(e.target.value)}>
         <option value="">Select a doctor</option>
         {doctors.map(d=><option key={d.associationRef} value={d.associationRef}>
-          {d.name} — {d.specialties.join(", ")||"General"}
+          {d.name} — {d.specialties.join(", ")||"Specialty not recorded"} ({label(d.status)})
         </option>)}
       </select>
     </label>}
-    {selected&&<>
+    {selected?.status==="PENDING"&&<p role="status">This association is awaiting separate Foundation approval. Consultation fees cannot be proposed yet.</p>}
+    {selected?.status==="APPROVED"&&<>
       <h4>{selected.name} — this center's fee history</h4>
       {fees.length===0&&<p>No previous fee proposal or approved price exists.</p>}
       {fees.length>0&&<div className="table-wrap"><table>
