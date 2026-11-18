@@ -83,12 +83,19 @@ BEGIN
       NEW.id IS DISTINCT FROM OLD.id THEN
      RAISE EXCEPTION 'Approved center fee amount and source are immutable';
    END IF;
-   IF NEW.effective_to IS DISTINCT FROM OLD.effective_to AND
-      (NEW.effective_to IS NULL OR NEW.effective_to<now() OR
+   IF NEW.effective_to IS DISTINCT FROM OLD.effective_to THEN
+     IF NEW.effective_to IS NULL OR NEW.effective_to<now() OR
        NEW.effective_to<=OLD.effective_from OR
        (OLD.effective_to IS NOT NULL AND
-        NEW.effective_to>OLD.effective_to)) THEN
-     RAISE EXCEPTION 'Only future shortening of approved fee validity is allowed';
+        NEW.effective_to>OLD.effective_to) THEN
+       RAISE EXCEPTION 'Only future shortening of approved fee validity is allowed';
+     END IF;
+     IF NEW.version<>OLD.version+1 OR NEW.updated_at<OLD.updated_at THEN
+       RAISE EXCEPTION 'Accepted fee validity change requires next version';
+     END IF;
+   ELSIF NEW.version IS DISTINCT FROM OLD.version OR
+         NEW.updated_at IS DISTINCT FROM OLD.updated_at THEN
+     RAISE EXCEPTION 'Unchanged approved fee cannot be silently rewritten';
    END IF;
  END IF;
  RETURN NEW;
