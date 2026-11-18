@@ -143,15 +143,28 @@ export class HealthCenterContentApprovalService{
   try{
    await tx.query("BEGIN");active=true;
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   // Read the immutable reference before taking locks. Both independent
+   // review and owner publication lock provider -> center -> draft/revision ->
+   // original CG03 case; case-first reads can deadlock with publication.
+   const initial=await tx.query<Case>(
+    "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='HEALTH_CENTER_CONTENT_REVIEW'",
+    [actor.realmId,caseRef]);
+   const snapshot=initial.rows[0];
+   if(!snapshot)throw new NotFoundException("This center content review is unavailable");
+   let content:Record<string,unknown>|null=null;
+   if(["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(snapshot.status))
+    content=(await this.source.original(tx,actor,this.submission(snapshot))).source;
    const found=await tx.query<Case>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='HEALTH_CENTER_CONTENT_REVIEW' FOR SHARE",
     [actor.realmId,caseRef]);
    const c=found.rows[0];
-   if(!c)throw new NotFoundException("This center content review is unavailable");
-   let content:Record<string,unknown>|null=null;
-   if(["SUBMITTED","IN_REVIEW"].includes(c.status))
-    content=(await this.source.original(tx,actor,this.submission(c))).source;
+   if(!c||c.health_content_revision_id!==snapshot.health_content_revision_id||
+      c.health_source_digest!==snapshot.health_source_digest||
+      c.health_revision_no!==snapshot.health_revision_no||
+      c.status!==snapshot.status)
+    throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
    await tx.query("COMMIT");active=false;
    return {caseRef:c.id,reference:c.case_number,centerRef:c.health_center_id,
     title:c.account_name_snapshot,status:c.status,revision:c.revision,
@@ -169,13 +182,40 @@ export class HealthCenterContentApprovalService{
    await tx.query("BEGIN");active=true;
    await tx.query("SET LOCAL lock_timeout='3s'");
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   const initial=await tx.query<Case>(
+    "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='HEALTH_CENTER_CONTENT_REVIEW'",
+    [actor.realmId,caseRef]);
+   const snapshot=initial.rows[0];
+   if(!snapshot)throw new NotFoundException("Content review unavailable");
+   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   // Immutable original decisions are replayable even after publication.
+   if(!["SUBMITTED","IN_REVIEW"].includes(snapshot.status)){
+    const earlier=await tx.query<{actor_id:string;request_digest:string;
+     accepted_case_revision:number}>(
+     "SELECT actor_id,request_digest,accepted_case_revision FROM cg03_case_decision "+
+     "WHERE realm_id=$1 AND case_id=$2 AND request_key=$3 FOR SHARE",
+     [actor.realmId,caseRef,input.requestKey]);
+    if(earlier.rows[0]&&earlier.rows[0].actor_id===actor.accountId&&
+      earlier.rows[0].request_digest===digest){
+     await tx.query("COMMIT");active=false;
+     return {caseRef,status:"PREVIOUSLY_CONFIRMED",
+      revision:earlier.rows[0].accepted_case_revision,replayed:true};
+    }
+    throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
+   }
+   // Must lock the original center before the case to avoid inversion
+   // against the Center Portal submit and protected Foundation apply.
+   await this.source.original(tx,actor,this.submission(snapshot));
    const found=await tx.query<Case>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='HEALTH_CENTER_CONTENT_REVIEW' FOR UPDATE",
     [actor.realmId,caseRef]);
    const c=found.rows[0];
-   if(!c)throw new NotFoundException("Content review unavailable");
-   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   if(!c||c.health_content_revision_id!==snapshot.health_content_revision_id||
+     c.health_source_digest!==snapshot.health_source_digest||
+     c.health_revision_no!==snapshot.health_revision_no)
+    throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
    if(c.proposer_id===actor.accountId)
     throw new ForbiddenException("A different Foundation reviewer must approve this content");
    const old=await tx.query<{actor_id:string;request_digest:string;
@@ -192,7 +232,6 @@ export class HealthCenterContentApprovalService{
    if(c.revision!==input.expectedRevision||
      !["SUBMITTED","IN_REVIEW"].includes(c.status))
     throw new ConflictException({code:"HEALTH_CONTENT_REVIEW_CONFLICT"});
-   await this.source.original(tx,actor,this.submission(c));
    const step=await tx.query(
     "SELECT ordinal FROM cg03_process_step WHERE process_id=$1 "+
     "AND ordinal=$2 AND capability_key='approvals.review' "+
