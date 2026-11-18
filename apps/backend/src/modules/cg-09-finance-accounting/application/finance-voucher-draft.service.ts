@@ -184,6 +184,7 @@ export class FinanceVoucherDraftService{
  }
  async list(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
+  const scope=await this.branches.financeReportScope(bearer,"finance.vouchers.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    throw new BadRequestException({code:"FINANCE_FILTER_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
@@ -195,7 +196,8 @@ export class FinanceVoucherDraftService{
       v.approval_case_id AS "approvalCaseRef",b.kind AS "paymentAccountKind"
     FROM finance_voucher v LEFT JOIN cash_bank_account b ON b.account_id=v.payment_account_id
       AND b.root_realm_id=v.root_realm_id WHERE v.root_realm_id=$1
-    ORDER BY v.updated_at DESC,v.id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset]);
+      AND ($3::boolean OR v.branch_id=ANY($4::uuid[]))
+    ORDER BY v.updated_at DESC,v.id DESC LIMIT 41 OFFSET $2`,[actor.realmId,offset,scope.all,scope.branchRefs]);
   return {vouchers:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null,
    status:"SOURCE_BACKED_VOUCHER_STATUS"};
  }
@@ -205,6 +207,7 @@ export class FinanceVoucherDraftService{
  async historicalDetail(bearer:string,voucherInput:string,versionInput:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
   const voucherRef=uid(voucherInput,"voucherRef");
+  const scope=await this.branches.financeReportScope(bearer,"finance.vouchers.view");
   if(!/^[1-9][0-9]{0,5}$/.test(versionInput))
    throw new BadRequestException({code:"FINANCE_VOUCHER_STALE",field:"expectedVersion"});
   const version=Number(versionInput);
@@ -217,14 +220,16 @@ export class FinanceVoucherDraftService{
      r.charges_minor::text AS "chargesMinor",r.total_minor::text AS "totalMinor"
    FROM finance_voucher_draft_revision r JOIN finance_voucher v
     ON v.id=r.voucher_id AND v.root_realm_id=r.root_realm_id
-   WHERE v.id=$1 AND v.root_realm_id=$2 AND r.version=$3`,
-   [voucherRef,actor.realmId,version]);
+   WHERE v.id=$1 AND v.root_realm_id=$2 AND r.version=$3
+     AND ($4::boolean OR v.branch_id=ANY($5::uuid[]))`,
+   [voucherRef,actor.realmId,version,scope.all,scope.branchRefs]);
   if(!record.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
   return {...record.rows[0],status:"ORIGINAL_FROZEN_REVISION"};
  }
  async detail(bearer:string,voucherInput:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
   const ref=uid(voucherInput,"voucherRef");
+  const scope=await this.branches.financeReportScope(bearer,"finance.vouchers.view");
   const found=await this.db.query<{voucherRef:string;voucherNumber:string;version:number;
     header:Record<string,unknown>;lines:Record<string,unknown>[];
     taxMinor:string;chargesMinor:string;grossMinor:string;totalMinor:string;status:string}>(`
@@ -235,7 +240,9 @@ export class FinanceVoucherDraftService{
     FROM finance_voucher v
     JOIN finance_voucher_draft_revision r
       ON r.voucher_id=v.id AND r.root_realm_id=v.root_realm_id AND r.version=v.version
-    WHERE v.id=$1 AND v.root_realm_id=$2`,[ref,actor.realmId]);
+    WHERE v.id=$1 AND v.root_realm_id=$2
+      AND ($3::boolean OR v.branch_id=ANY($4::uuid[]))`,
+    [ref,actor.realmId,scope.all,scope.branchRefs]);
   if(!found.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_NOT_EDITABLE"});
   return {...found.rows[0],status:found.rows[0].status};
  }
@@ -258,6 +265,7 @@ export class FinanceVoucherDraftService{
    return fail("FINANCE_VOUCHER_DATE_INVALID","postingDate");
   if(safe.branch)await this.branches.financeActiveBranch(client,actor,safe.branch,
    safe.branchVersion??0,"finance.vouchers.manage");
+  else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.manage");
   if(safe.claimRef){
    await this.identity.assertCurrent(client,actor,"finance.claims.manage");
    if(!["EXPENSE","PAYMENT"].includes(safe.kind))
@@ -320,13 +328,17 @@ export class FinanceVoucherDraftService{
   let voucherRef:string,voucherNumber:string,version:number;
   if(reference){
    const old=await client.query<{id:string;voucher_number:string;version:number;
-      status:string;created_by:string}>(`
-    SELECT id,voucher_number,version,status,created_by FROM finance_voucher
+      status:string;created_by:string;branch_id:string|null}>(`
+    SELECT id,voucher_number,version,status,created_by,branch_id FROM finance_voucher
     WHERE id=$1 AND root_realm_id=$2 FOR UPDATE`,[reference,actor.realmId]);
    if(!old.rows[0]||!["DRAFT","RETURNED"].includes(old.rows[0].status))
     throw new ConflictException({code:"FINANCE_VOUCHER_NOT_EDITABLE"});
    if(old.rows[0].version!==expectedVersion)
     throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+   if(old.rows[0].branch_id)
+    await this.branches.requireFinanceActorBranch(client,actor,old.rows[0].branch_id,
+     "finance.vouchers.manage");
+   else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.manage");
    voucherRef=old.rows[0].id;
    voucherNumber=old.rows[0].voucher_number;
    version=old.rows[0].version+1;
