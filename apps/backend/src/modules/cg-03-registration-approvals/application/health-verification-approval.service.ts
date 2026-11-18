@@ -112,7 +112,7 @@ export class HealthVerificationApprovalService{
     "health_provider_revision_id,health_center_revision_id,health_revision_no,health_source_digest) "+
     "SELECT $1,'CG-AP-'||lpad(nextval('cg03_public_case_sequence')::text,6,'0'),"+
     "p.id,p.version,$2,NULL,NULL,$3,'Healthcare review',NULL,NULL,$4,$5,$6,$7,"+
-    "$8,$9,$10,$11,$12,$13 FROM cg03_process p WHERE p.id=$14 RETURNING *",
+    "$8,$9,$10,$11,$12,$13,$14 FROM cg03_process p WHERE p.id=$15 RETURNING *",
     [actor.realmId,actor.accountId,label,input.revisionNo,input.digest,
      requestDigest,input.requestKey,input.kind,input.providerRef,input.centerRef,
      input.kind==="HEALTH_PROVIDER_VERIFICATION"?input.revisionRef:null,
