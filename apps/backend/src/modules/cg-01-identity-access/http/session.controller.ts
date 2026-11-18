@@ -13,14 +13,21 @@ export class SessionController {
   @Post("login")
   @HttpCode(200)
   async signIn(@Body() body: SignInBody, @Req() request: CareGangaRequest) {
-    if (!body || typeof body.identifier !== "string" || body.identifier.length > 254
-      || !(/^[6-9][0-9]{9}$/.test(body.identifier.trim()) ||
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.identifier.trim()))
-      || typeof body.password !== "string" || body.password.length < 1 || Buffer.byteLength(body.password,"utf8") > 1024
-      || (body.deviceLabel !== undefined && (typeof body.deviceLabel !== "string" || body.deviceLabel.length > 60)))
-      throw new BadRequestException();
+    const identifier=typeof body?.identifier==="string"?body.identifier.trim():"";
+    if(!identifier)
+      throw new BadRequestException({code:"IDENTITY_IDENTIFIER_REQUIRED",field:"identifier"});
+    if(identifier.length>254||!(/^[6-9][0-9]{9}$/.test(identifier)||
+       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)))
+      throw new BadRequestException({code:"IDENTITY_IDENTIFIER_INVALID",field:"identifier"});
+    if(typeof body.password!=="string"||body.password.length===0)
+      throw new BadRequestException({code:"IDENTITY_PASSWORD_REQUIRED",field:"password"});
+    if(Buffer.byteLength(body.password,"utf8")>1024)
+      throw new BadRequestException({code:"IDENTITY_PASSWORD_TOO_LONG",field:"password"});
+    if(body.deviceLabel!==undefined&&
+      (typeof body.deviceLabel!=="string"||body.deviceLabel.length>60))
+      throw new BadRequestException({code:"IDENTITY_DEVICE_INVALID"});
     return this.service.signIn({
-      identifier:body.identifier,password:body.password,
+      identifier,password:body.password,
       remoteAddress:request.ip ?? "unknown", deviceLabel:typeof body.deviceLabel === "string" ? body.deviceLabel : "Unknown device",
       correlationRef:request.cgRequestId??randomUUID()
     });
@@ -40,10 +47,12 @@ export class SessionController {
     @Body() body:{currentPassword?:unknown;newPassword?:unknown},
     @Req() request:CareGangaRequest){
     if(!body||typeof body.currentPassword!=="string"||
-      typeof body.newPassword!=="string"||body.newPassword.length<8||
-      Buffer.byteLength(body.currentPassword,"utf8")>1024||
-      Buffer.byteLength(body.newPassword,"utf8")>1024)
-      throw new BadRequestException("Check current and new password");
+      body.currentPassword.length===0||Buffer.byteLength(body.currentPassword,"utf8")>1024)
+      throw new BadRequestException({code:"IDENTITY_CURRENT_PASSWORD_REQUIRED",field:"currentPassword"});
+    if(typeof body.newPassword!=="string"||body.newPassword.length<8)
+      throw new BadRequestException({code:"IDENTITY_NEW_PASSWORD_TOO_SHORT",field:"newPassword"});
+    if(Buffer.byteLength(body.newPassword,"utf8")>1024)
+      throw new BadRequestException({code:"IDENTITY_PASSWORD_TOO_LONG",field:"newPassword"});
     return this.service.changePassword(bearer,body.currentPassword,body.newPassword,
       request.cgRequestId??randomUUID());
   }

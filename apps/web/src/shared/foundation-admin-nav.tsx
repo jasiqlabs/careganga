@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
+import {SignOutButton} from "../features/identity-access/signout-button";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches";
+  active:"dashboard"|"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims"|"financeClaimReviews"|"financeInvoices"|"financeInvoiceReviews"|"financeBudgets"|"financeBudgetReviews"|"financeReports"|"cms";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -18,11 +19,22 @@ type FoundationAdminNavProps={
   canViewSupport?:boolean;
   canViewFoundation?:boolean;
   canViewBranches?:boolean;
+  canViewFinance?:boolean;
+  canViewVouchers?:boolean;
+  canReviewFinance?:boolean;
+  canViewClaims?:boolean;
+  canReviewClaims?:boolean;
+  canViewInvoices?:boolean;
+  canReviewInvoices?:boolean;
+  canViewBudgets?:boolean;
+  canReviewBudgets?:boolean;
+  canViewFinanceReports?:boolean;
+  canViewCms?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false,canReviewClaims=false,canViewInvoices=false,canReviewInvoices=false,canViewBudgets=false,canReviewBudgets=false,canViewFinanceReports=false,canViewCms=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const searchRef=useRef<HTMLInputElement>(null);
   // Unlike the old admin screenshot's unverified people search, this
@@ -83,12 +95,39 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
   const supportAccess=currentActions?
     ["support.cases.view","support.faq.manage"].some(key=>currentActions.has(key)):canViewSupport;
 
+  const financeAccess=allowed("finance.accounts.view",canViewFinance);
+  const voucherAccess=allowed("finance.vouchers.view",canViewVouchers);
+  const claimsReviewerAccess=currentActions?
+    ["approvals.review","finance.claims.review","documents.files.view"]
+      .every(k=>currentActions.has(k)):canReviewClaims;
+  const claimsAccess=currentActions?["finance.claims.view","finance.claims.create","finance.claims.manage"].some(k=>currentActions.has(k)):canViewClaims;
+  const invoiceAccess=currentActions?currentActions.has("finance.invoices.view"):canViewInvoices;
+  const reportAccess=currentActions?currentActions.has("finance.reports.view"):canViewFinanceReports;
+  const cmsAccess=allowed("cms.content.view",canViewCms);
+  const budgetAccess=currentActions?currentActions.has("finance.budgets.view"):canViewBudgets;
+  const budgetReviewAccess=currentActions?["finance.budgets.review","approvals.review"].every(k=>currentActions.has(k)):canReviewBudgets;
+  const invoiceReviewAccess=currentActions?["finance.invoices.review","approvals.review"].every(k=>currentActions.has(k)):canReviewInvoices;
+  const reviewerAccess=currentActions?
+    ["approvals.review","finance.vouchers.view","documents.files.view"].every(k=>currentActions.has(k)):
+    canReviewFinance;
   const links=[
+    {key:"dashboard" as const,label:"Dashboard",href:"/admin/dashboard"},
     {key:"account" as const,label:"My account",href:"/admin"},
     ...(accountsAccess?[{key:"accounts" as const,label:"Users Management",href:"/admin/accounts"}]:[]),
     ...(rolesAccess?[{key:"roles" as const,label:"Roles & permissions",href:"/admin/roles"}]:[]),
     ...(foundationAccess?[{key:"foundation" as const,label:"Foundation Structure",href:"/admin/foundation"}]:[]),
     ...(branchAccess?[{key:"branches" as const,label:"Branches & registration",href:"/admin/foundation/branches"}]:[]),
+    ...(cmsAccess?[{key:"cms" as const,label:"Website CMS",href:"/admin/website"}]:[]),
+    ...(financeAccess?[{key:"finance" as const,label:"Accounts",href:"/admin/finance"}]:[]),
+    ...(voucherAccess?[{key:"financeVouchers" as const,label:"Voucher Drafts",href:"/admin/finance/vouchers"}]:[]),
+    ...(claimsAccess?[{key:"financeClaims" as const,label:"Expense Claims",href:"/admin/finance/claims"}]:[]),
+    ...(invoiceAccess?[{key:"financeInvoices" as const,label:"Invoices & Receipts",href:"/admin/finance/invoices"}]:[]),
+    ...(budgetAccess?[{key:"financeBudgets" as const,label:"Budgets",href:"/admin/finance/budgets"}]:[]),
+    ...(reportAccess?[{key:"financeReports" as const,label:"Ledger & Reports",href:"/admin/finance/reports"}]:[]),
+    ...(budgetReviewAccess?[{key:"financeBudgetReviews" as const,label:"Budget Reviews",href:"/admin/finance/budget-reviews"}]:[]),
+    ...(invoiceReviewAccess?[{key:"financeInvoiceReviews" as const,label:"Invoice Reviews",href:"/admin/finance/invoice-reviews"}]:[]),
+    ...(claimsReviewerAccess?[{key:"financeClaimReviews" as const,label:"Claim Reviews",href:"/admin/finance/claim-reviews"}]:[]),
+    ...(reviewerAccess?[{key:"financeReviews" as const,label:"Voucher Reviews",href:"/admin/finance/voucher-approvals"}]:[]),
     ...(policyAccess?[{key:"policy" as const,label:"Security Policy",href:"/admin/security-policy"}]:[]),
     ...(settingsAccess?[{key:"settings" as const,label:"General Settings",href:"/admin/settings"}]:[]),
     ...(auditAccess?[{key:"audit" as const,label:"Audit Logs",href:"/admin/audit"}]:[]),
@@ -99,12 +138,12 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(supportAccess?[{key:"support" as const,label:"Contact Messages & Help",href:"/admin/support"}]:[])
   ].filter(item=>item.label.toLowerCase().includes(query.trim().toLowerCase()));
   const titles:Record<FoundationAdminNavProps["active"],string>={
-    account:"Foundation Dashboard",roles:"Roles & Permissions",
+    dashboard:"Foundation Dashboard",account:"My Account",roles:"Roles & Permissions",
     accounts:"Users Management",policy:"Security Policy",settings:"General Settings",
     audit:"Audit Logs",recovery:"Backup & Restore",
     approvals:"Registration & Approval",documents:"Private Case Documents",
     communications:"Notices & Notifications",support:"Help & Support",
-    foundation:"Departments / Committees",branches:"Branches / Locations"
+    foundation:"Departments / Committees",branches:"Branches / Locations",cms:"Website CMS",finance:"Finance & Accounting",financeReports:"Ledger & Reports",financeBudgets:"Budgets",financeBudgetReviews:"Budget Reviews",financeInvoices:"Invoices & Receipts",financeInvoiceReviews:"Invoice Reviews",financeClaims:"Expense Claims",financeClaimReviews:"Expense Claim Reviews",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
   };
   return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
@@ -116,9 +155,10 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     </div>
     <div className="sidebar-links">
       {([
-        {name:"DASHBOARD",keys:["account"]},
+        {name:"DASHBOARD",keys:["dashboard","account"]},
         {name:"USER & ACCESS MANAGEMENT",keys:["accounts","roles","approvals","policy"]},
-        {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation"]},
+        {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation","cms"]},
+        {name:"FINANCE & ACCOUNTING",keys:["finance","financeVouchers","financeReviews","financeClaims","financeClaimReviews","financeInvoices","financeInvoiceReviews","financeBudgets","financeBudgetReviews","financeReports"]},
         {name:"PLATFORM & COMMUNICATIONS",
           keys:["documents","communications","support","settings","audit","recovery"]}
       ] as const).map(group=>{
@@ -133,9 +173,18 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
       })}
       {links.length===0&&<p className="sidebar-empty">No matching permitted menu item.</p>}
     </div>
-    <div className="sidebar-user">
-      <strong>{displayName}</strong>
-      <span>{roleName} · Foundation</span>
+    <div className="sidebar-footer">
+      <div className="sidebar-footer-role-wrap">
+        <span className="sidebar-footer-role" title={roleName?.trim() || "Staff Member"}>
+          {roleName?.trim() || "Staff Member"}
+        </span>
+        {displayName && (
+          <span className="sidebar-footer-user" title={displayName}>
+            {displayName}
+          </span>
+        )}
+      </div>
+      <SignOutButton variant="icon" />
     </div>
   </nav>
     <header className="admin-topbar">

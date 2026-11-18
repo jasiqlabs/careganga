@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {PlatformSettingsPanel} from "../../../../features/platform-configuration/platform-settings-panel";
+import {SafeErrorMessagesEditor} from "../../../../features/platform-configuration/safe-error-messages-editor";
 export const dynamic="force-dynamic";
 
 export default async function FoundationSettings(){
@@ -36,13 +37,13 @@ export default async function FoundationSettings(){
       !("actions" in access)||!Array.isArray(access.actions))
       throw Error("Access unavailable");
     const keys=(access.actions as unknown[]).filter((x):x is {key:string}=>
-      Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
+      x!==null&&typeof x==="object"&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     if(!keys.includes("platform.settings.view")||
       !keys.includes("platform.integrations.view"))
       return <main className="page main"><h1>Access denied</h1>
         <Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="settings" displayName={actor.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="settings" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||
           (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
@@ -55,7 +56,7 @@ export default async function FoundationSettings(){
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
-      <main className="workspace"><PlatformSettingsPanel/></main>
+      <main className="workspace"><PlatformSettingsPanel/><SafeErrorMessagesEditor canEdit={keys.includes("platform.settings.manage")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&

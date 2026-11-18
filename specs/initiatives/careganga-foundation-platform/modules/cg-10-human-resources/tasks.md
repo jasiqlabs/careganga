@@ -1,5 +1,16 @@
 # CG-10 — User Stories & Manual QA (one canonical tracker)
 
+### 2026-11-18 original public Team Directory receiving-owner contract (no public HR directory)
+
+**Reference:** [original 47 client public screenshots, including /about/team](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), Batch 01 team image filenames and original Foundation Admin audit. This does NOT make private CG-10 HR data public.
+
+**Owner source:** CG-10 maintains actual staff employee/assignment/designation/status and separately consented public-safe biography source; CG-02 owns authorized State/District/Sub-Division/Block organizational geography; CG-04 owns eligible real member/volunteer profiles. CG-18 owns the original Leadership/Team Directory public page design and separately approved editorial placement. No duplicate employee/member master; CG-10 US-001 remains independently deliverable without CG-18.
+
+**Public projection only after approval:** published active person, explicit profile/photo/name display consent, safe designation and approved geographic reach; name/public alias search only if authorized (never reveal raw internal employee/member ID by default). No private contact, address, DOB, bank, salary, medical, identity files or HR KYC. Exit, transfer, consent withdrawal or source unpublish revokes public search/cached presentation.
+
+**Original UI acceptance:** existing Foundation Admin manages authorized staff master and profile consent, CG-18 manages hero/intro/CTA/order. Public Team Directory supports name/public alias search, dependent State-District-Sub-Division-Block and designation selectors, Search/Reset, approved-only disclaimer and no-result state. Existing CG-10 US-001/CG-18 US-001 QA trace must cover root/branch scope, consent/withdrawal, anonymous enumeration, dependent selectors, duplicate aliases, bounded list, desktop/mobile and accessibility. This is a planning/QA handoff, not code delivery or runtime QA.
+
+
 **Authority:** [canonical development order](../../DEVELOPMENT_ORDER.md), [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [PRD](../../prd.md) FR-029–033, [HLD](../../hld.md), [HR BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-10-BR01–15 and original screenshot audit B20–B51 with real owner filter.
 **Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design only)** by JASIQ AI Design Review Agent (15 Nov 2026) for current 5 independently testable CG-10 full-stack stories and exactly 100 unique explicit manual QA (20/story), with PostgreSQL/real CG-01/02/03/19 source extension/NestJS/Admin Web/native Internal Android and legitimate public exclusions. No external DB/source/runtime test marked complete.
 **Development gate:** Five current-source HR story definitions are delegated design approved only; global PRD/HLD latest-hash review REQUIRED, authenticated Harness resolver NOT_RUN, verified real CG-01/02/03/19 predecessor code NOT_RUN, qualified independent CRITICAL HR DB/security reviewer and actual SQL migration/backup/restore NOT_RUN, source-code QA, live Admin Web/Internal Android native/mobile-store/PDF/PNG/video/pixel/motion/performance QA NOT_RUN. All five stories remain BLOCKED/NOT_STARTED; no CI/GitHub Actions, no false implementation or test PASS.

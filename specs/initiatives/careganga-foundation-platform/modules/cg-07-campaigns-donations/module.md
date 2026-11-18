@@ -1,5 +1,22 @@
 # CG-07 — Campaigns, Donations & Fundraising
 
+### 2026-11-18 original public Campaigns/Donate and project support — true CG-07 owner
+[Full 47-screenshot website requirements and source routing](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) are binding; Campaigns and floating Donate Now appear in the original 12-item nav and repeated original footer/CTA, while `/upcoming-projects` shows Support Project buttons and funding targets. **Full original Campaigns landing screenshot and destination URLs have not been supplied**; do not invent exact page shape. CG-07 owns authenticated/anonymous donation intents, approved campaign eligibility, verified external payment result, donor privacy and receipts/CG-09 posting, **not** CG-18 CMS. CG-18 controls the visible original shell/menu/presentation and only exposes CG-07-provided valid destinations; CG-05 owns the real linked project. Foundation Admin manages real public campaign title, owner-approved goal/status/media/visibility and link to CG-05 project; donor financial data remains protected. Screenshot funding values, contact details, 80G eligibility and tax statements are not production facts. No new business module or story; source implementation/review/runtime remain separate.
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original Campaigns top navigation, genuine Donate Now floating/footer action, original /upcoming-projects Support Project CTA, and donor-facing tax/receipt flow. Project cards show funding goal and payment CTA only when the verified CG-07 real campaign/donation route is enabled; screenshot donation amounts or statuses are NOT evidence of actual funds.
+
+**Admin and ownership:** One current Campaigns/Donations Admin owns campaign content that is operational (goal, allocation, approved state, beneficiary/project associations, beneficiary rights, payment configuration, receipt issuance). CG-05 owns project metadata; CG-18 controls visual menu, CTA labels and approved site location. No second CTA/payment master.
+
+**Acceptance and QA trace:** Existing CG-07 cases must trace Campaigns link, Donate Now, project Support Project, unavailable payment/unknown outcome, withdrawal/public no-stale route, tax/80G truth, original screenshot responsive CTAs, current beneficiary and project permissions. Payment acceptance requires real settlement and offline/manual source evidence, not screenshot.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-017, FR-018, FR-019, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-07-BR01–CG-07-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A12, A13, A14, A15, A16, A17, A18.  
@@ -73,3 +90,6 @@ This module must complete actual create/read/update/review and permissioned Web/
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: A12, A13, A14, A15, A16, A17, A18. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with **60** explicit per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 18 November 2026 — original website receiving acceptance
+**Original route/journey:** Campaigns; Donate Now; Upcoming Projects Support; actual donor receipt/certificate. **Reference:** original first 10 + Batch02 021139–021224. **Owner:** CG-07 campaign and payment source, CG-09 actual journal, CG-19 client-original donor receipt/certificate version, not commercial invoice. Use this [47-screen public owner and QA map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), preserving the existing US-001/002/003 boundaries and all real financial/document permissions; screenshots are not authorized seeds.

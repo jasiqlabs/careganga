@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 ORIGIN = "https://github.com/jasiqlabs/jasiq-harness.git"
-PINNED_MAIN_SHA = "26371c78da3a6d94717d65d24f159f03127a2a8a"
+PINNED_MAIN_SHA = "96cd95d57acd9b0267d83f8c9d91c8994ac29927"
 REQUIRED = (
     "AGENTS.md",
     "jasiq-asdlc/VERSION",
@@ -116,7 +116,9 @@ def main() -> int:
         if root != harness:
             raise RuntimeError("BLOCKED_HARNESS_PATH: not a Harness checkout root")
         origin = git("-C", str(harness), "remote", "get-url", "origin")
-        origin = origin.removesuffix(".git").rstrip("/")
+        if origin.endswith(".git"):
+            origin = origin[:-4]
+        origin = origin.rstrip("/")
         if origin not in (
             "https://github.com/jasiqlabs/jasiq-harness",
             "git@github.com:jasiqlabs/jasiq-harness",

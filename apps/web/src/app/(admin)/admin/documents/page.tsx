@@ -45,7 +45,7 @@ export default async function PrivateDocumentsPage(){
         <p>Private documents are available only to authorized case operators.</p>
         <Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="documents" displayName={person.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="documents" displayName={person.displayName}
         roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||

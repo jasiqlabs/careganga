@@ -1,5 +1,16 @@
 # CG-20 — Reports, MIS, Dashboards & Authorized Exports
 
+### 2026-11-18 original client public reporting and impact evidence handoff
+
+**Binding screenshots/accepted routes:** [47-screenshot full original public website contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a **design/QA receiving-owner requirement**, not new CG-20 reports or runtime-pass evidence.
+
+**Original screenshots requiring actual source:** `/our-impact` shows impact growth by year, geographic reach (India/States/Districts), category impact distribution, success stories, Key Impact Areas and Latest Updates. `/ngo-information/annual-reports`, `/ngo-information/financial-reports`, `/publications` show real authorized annual and financial PDF/report lists, year/type/category filters, publication dates, downloads/exports and honest empty states. Blank/zero original screenshots do not establish real counts.
+
+**Admin/ownership:** Existing CG-20 report owner creates/reviews versioned public-safe reports from authorized CG-05 project, CG-09 ledger, CG-04 activity and other verified sources; CG-19 stores approved/rights-cleared exported files; CG-18 owns original page layout, source dates and editorial text. Foundation Admin can choose which exact signed-off report/version/metrics to publish; finance/medical/donor/payroll/confidential data must not leak into public chart, CSV or file.
+
+**QA delta on existing US:** exact screenshot-style chart/map/category/year/source dates, original report year/type filtering and safe export, pagination, revocation or corrected-source publish, empty states, verified public PDF version, root/branch access, CSV injection/unsafe filenames, performance, narrow Web/native and original screenshot pixel comparison. No fake metrics and no invented tax/regulatory certification. Actual data, builds, independent qualified review and runtime QA **NOT_RUN**; original task counts and story scope preserved until case reconciliation.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-073, FR-074, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-20-BR01–CG-20-BR07, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U01, C44, C45, C46, C47, C49.  
@@ -69,3 +80,6 @@ Actual screenshots from the verified 167-screen Admin source were re-opened in t
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: U01, C44, C45, C46, C47, C49. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) with five cross-stack, source-owned stories and individual source QA; no duplicate stories or CI. Design approval is SHA-bound in the initiative ledger. Formal local Harness resolver, independent CRITICAL database/privacy/financial review, actual SQL migration, payment/owner runtime checks, Android/Play/AAB and rendered original-pixel/motion comparison remain NOT_RUN.
+
+## 18 November 2026 — original website receiving acceptance
+Original visitor/admin routes: **/our-impact; /ngo-information/annual-reports; /ngo-information/financial-reports**. Screenshots: **Batch01 020524,020538,020554,021020,021040**. Owner: true dated CG-20 impact figures and real CG-09/05 source metrics, CG-19 verified versioned reports. See [47-screen original source contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Existing US-001/002/004 retained; screenshot controls are not backend operation proof.

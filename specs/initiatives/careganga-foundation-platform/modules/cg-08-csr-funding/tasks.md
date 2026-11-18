@@ -1,5 +1,20 @@
 # CG-08 — User Stories & Manual QA
 
+### 2026-11-18 receiving-owner QA for original Partnerships UI
+[47 screenshot contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) includes exact `/collaboration` original layout. Within **existing CG-08 US-001–003 and CG-18 US-003 QA**, verify: authorized CSR/partner Admin creates real party; rights and relationship public status separately confirmed; CG-03 approval enables `/collaboration` card with true logo; public view contains no private deal/contact fields; revocation makes logo/card/CTA inaccessible; genuine Partner With Us/Meet Our Partners flow preserves one source case; original hero/cards and narrow Web/Android active state visually compared. Do not seed/claim Milaap or Ketto without client clearance. **DESIGN acceptance only; source and runtime tests, independent review NOT_RUN.**
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Public `/collaboration` is the original Partnerships destination, with dark green Corporate Partners hero, reasons-to-partner cards, collaborator logos/cards, Partner With Us/Meet Our Partners, Let's Collaborate CTA and verified email contact. Milaap/Ketto appear in original screenshots but cannot be asserted active without current owner approval and logo rights.
+
+**One Foundation Admin / source contract:** Existing CG-08 CSR/partner Admin owns the current approved corporate/partner identity, partnership state, nature of relationship, start/end and public-display right; it maintains optional partner enquiry assignment to real CG-19 private contact source. CG-18 CMS owns editorial layout, hero, card captions, photos and menu. No duplicate partner master or guessed contractual state.
+
+**Per-story QA addition:** Add current-source partner list/display-right/withdrawal, anonymized private enquiry, source revocation, role-scoped Admin edit and approval, public `/collaboration` click/Back, mobile/desktop dark hero and cards, neutral unpublished empty state. No outside brand or partner claim without proof; source and runtime tests tracked separately. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DESIGN_SOURCE_REVIEWED; current SHA-256 approval record required; formal Harness resolver, independent CRITICAL DB, actual code and live QA NOT_RUN;  [module](module.md), [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
@@ -101,3 +116,6 @@ Dependencies: US-002
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+## 18 November 2026 — original website receiving acceptance
+Receiving tests within original **US-001/002/003** QA: real partnered state, approved logos, original CSR hero/cards, withdrawal and enquiry. Reproduce original route **/collaboration; CSR Partner enquiries** using original screenshots **Batch02 021242, 021258 and 021318**. Perform authorized Admin source → permission and editable field errors → current review/publish → Web/native → correct revoke/denied/expired and true empty. The [47-screen owner map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md) is the QA index; do not add new US/QA IDs. **REFERENCE_ALIGNED; SOURCE INTEGRATION OPEN; RUNTIME/VISUAL QA NOT_RUN.**

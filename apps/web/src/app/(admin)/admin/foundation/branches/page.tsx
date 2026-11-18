@@ -32,7 +32,7 @@ export default async function BranchRegistrationPage(){
         <p>Your current role does not permit branch registration.</p>
         <Link href="/admin">My account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="branches" displayName={person.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="branches" displayName={person.displayName}
         roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")}

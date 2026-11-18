@@ -1,5 +1,20 @@
 # CG-08 — Csr Funding
 
+### 2026-11-18 original `/collaboration` corporate partner source/ownership
+**Authority:** [47 client screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), especially three dedicated `/collaboration` captures. CG-08 owns **actual** corporate/CSR or real partner organization identity, scope, contract/approval, relevant public logo permission and contact/enquiry destination; CG-18 owns the screenshot-faithful Corporate Partners hero, three benefit cards, Our Social Partners layout and Let's Collaborate editorial CTA. Original screenshots show *Milaap* and *Ketto* logos, but **these are evidence of a visual reference, not verification of a current commercial relationship/brand permission**. Publish partner name/logo/claim only after Foundation Admin records and approves actual partner relationship and authorized media; no CG-18 clone of CSR parties or financial data. Partner With Us routes to genuine CG-08 enquiry or CG-19 contact case by defined business owner. Existing three user stories unchanged, no runtime QA/pass inferred.
+
+
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Public `/collaboration` is the original Partnerships destination, with dark green Corporate Partners hero, reasons-to-partner cards, collaborator logos/cards, Partner With Us/Meet Our Partners, Let's Collaborate CTA and verified email contact. Milaap/Ketto appear in original screenshots but cannot be asserted active without current owner approval and logo rights.
+
+**One Foundation Admin / source contract:** Existing CG-08 CSR/partner Admin owns the current approved corporate/partner identity, partnership state, nature of relationship, start/end and public-display right; it maintains optional partner enquiry assignment to real CG-19 private contact source. CG-18 CMS owns editorial layout, hero, card captions, photos and menu. No duplicate partner master or guessed contractual state.
+
+**Per-story QA addition:** Add current-source partner list/display-right/withdrawal, anonymized private enquiry, source revocation, role-scoped Admin edit and approval, public `/collaboration` click/Back, mobile/desktop dark hero and cards, neutral unpublished empty state. No outside brand or partner claim without proof; source and runtime tests tracked separately. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02.  
@@ -66,3 +81,6 @@ This module must complete actual create/read/update/review and permissioned Web/
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: B02. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 18 November 2026 — original website receiving acceptance
+Original client routes: **/collaboration; CSR Partner enquiries**. Original captures **Batch02 021242, 021258 and 021318**. One true owner: verified CG-08 CSR partners and public logo rights; no screenshot-based false partnership claim. This requirement is linked to [the 47 public-screen alignment matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Preserve existing US-001/002/003 and do not seed screenshot claims as facts.

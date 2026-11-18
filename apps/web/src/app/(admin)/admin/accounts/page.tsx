@@ -30,14 +30,14 @@ export default async function FoundationAccounts(){
       !effective||typeof effective!=="object"||!("actions" in effective)||
       !Array.isArray(effective.actions))throw new Error("ACCESS_UNAVAILABLE");
     const keys=(effective.actions as unknown[]).filter((x):x is {key:string}=>
-      Boolean(x)&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
+      x!==null&&typeof x==="object"&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     const canViewAccounts=keys.includes("accounts.view");
     const canCreateOnly=!canViewAccounts&&keys.includes("accounts.create")&&keys.includes("roles.assign");
     if(!canViewAccounts&&!canCreateOnly)return <main className="page main">
       <h1>Access denied</h1><p>You cannot view staff accounts.</p>
       <Link href="/admin">Return to my account</Link></main>;
     return <div className="shell">
-      <FoundationAdminNav active="accounts" displayName={actor.displayName}
+      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={canViewAccounts||canCreateOnly}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}

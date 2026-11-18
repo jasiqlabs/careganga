@@ -11,6 +11,26 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 ## Screen/flow map
 
+### Whole original public website visual acceptance — 47 captures, 18 November
+
+**Binding reference:** [Original full 47-screenshot site-level UI/UX and page inventory](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); use original private ZIPs plus the 2026-11-15 Admin UI pack to compare source, *not* a generic coloured CMS mock. Each screenshot establishes structure, title treatment, gutters, colors, photo placement, header active state, footer, CTA, form sequence and first-load/empty states; hover/motion/mobile still need runtime original capture.
+
+- **Home/global:** creamy gold sticky navbar, 12 original top links/dropdowns, top social/contact strip, original logo, editorial serif titles, teal/nature and orange accents, hero/banner transitions, optional nonblocking branded loading/splash, floral/floating icon, WhatsApp and Donate, verified published footer/social/newsletter/legal links.
+- **Team & Impact:** `/about/team` half-image Leadership Directory hero, 5 geographic/designation selectors+search/reset/approval disclaimer and team/Join cards; `/our-impact` growth chart, geographical map/state/district filters, category percentage bars, source/zero states, success stories and updates.
+- **NGO:** dedicated left green-highlight NGO sidebar, breadcrumbs, authentic 80G/PAN visual/registration cards, proof thumbnails and View Document, annual/financial reports table/year/type and real empty state, preserved seven legal/policy labels. **Never seed the screenshot PAN, certificate numbers or verified-badge statuses**.
+- **Projects/Partnerships/Notices:** original project image-right-card layout with planned badges/dates/goal and owner's real Support CTA; corporate partnership dark hero and two original partner-card layouts; notice priority and category chips, approved details and list/empty state.
+- **Media:** separate Gallery, Videos, Publications landing pages with their own original hero titles, category chips, search fields and distinct empty states; an internal gallery type query is *not* the original full-page screen.
+- **Join:** membership/volunteer original full-bleed hero, tabs (apply/verify), benefits/tier/date/pricing from actual CG-04, four-step volunteer form with validation and responsive controls, never duplicate CG-04 applicant records.
+- **Contact:** dark green intro; inquiry purpose cards; verified chat panel; two-column original form and address/hours/map; image triptych; question-and-answer blocks and last CTA/footers, editable copy and real CG-19 support actions.
+- **Every admin-changeable visual** must be editable from the existing Foundation Admin (role-permitted draft, preview, approval, effective status), while real operational fields are edited in the proper existing module. Validate responsive Web/Public Android adaptations and original Admin layout, keyboard/focus/reduced motion, no arbitrary HTML or permanent broken original images.
+
+**Visual QA status:** none of the original 47 pages or videos has been runtime/pixel accepted on replacement. No extra CG-18 story; map gaps into the four original US QA cases and their cross-owner handoffs.
+
+
+**Screenshot-faithful public navigation and footer is required, not optional.** [Canonical original page/menu inventory](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md) contains 12 primary nav items, 6 Our Work children, 5 Media children, 2 Join children, 7 footer policies, 4 Quick Links, social and donation/WhatsApp/floating controls. Exactly one top-level menu label/entry changes: Blood Donation → Healthcare Assistance. About Us must retain the dropdown appearance, but its child options cannot be guessed. Media Videos/Publications must be selectable real filtered views; do not show inert labels when eligible published CG-19 media exists. Policy/legal copy and collaborator logos must be client-cleared before linking/rendering. Source-owned CG-04/05/07/08/14/15/17/19 links activate only with real approved destinations. CG-18 Admin previews the same menu/header/footer states in public Web and adapted Public Android. Add regression attention for keyboard/dropdown/mobile collapse, unknown route, broken click, stale publish, unreachable domain-owner link and original pixel/motion evidence. Do not increase the existing 4 story/76 QA count or silently declare acceptance.
+
+
+
 - **FR-066:** Admin edits Foundation site — Manage homepage, About/Our Work, projects, team, hero images/typography, CTAs, website navigation and public Login/Join visibility with authorized preview/publish controls. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-067:** Admin edits NGO impact/transparency — Publish editable Impact groups, geography/charts/stories with appropriate provenance; maintain 80G/PAN/registration, annual and financial disclosure pages/documents. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
 - **FR-068:** Admin publishes reusable content — Manage galleries, videos, publications, media, articles, updates, events, notices and public enquiries with controlled fields, review, ordering, preview and status. Provide real permission-limited named selectors and current source status, valid create/view/edit/review actions and legible error guidance.
@@ -94,3 +114,37 @@ Follow original public CMS screens for page/hero/menu/media editing, right-drawe
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+## Client's original PUBLIC website visual contract — evidence from 10 screenshots (17 Nov 2026)
+
+**This is distinct from the original Admin panel!** Use [original public screenshot audit](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-SCREENSHOT-AUDIT-20261117.md) and the private Library pack `/CareGanga/CareGanga-Original-Public-Website-Visual-Reference-20261117.zip`. Original client site = authority, new JASIQ repo = greenfield implementation. Screenshot-visible desktop: gold sticky nav, dark green/teal editorial bands, authentic photographs, cream cards, serif headings, amber CTA, white/near-black footer, multi-slide camp hero, separate Our Work/Join/Media dropdowns. Public screenshots support only selected desktop states; font identity, CSS source, mobile responsiveness, carousel/dropdown motion, live CTA destinations and image licenses remain UNKNOWN until captured/verified. Never mark exact pixel or animation QA PASS yet.
+
+- **US-001:** reproduce original public header with all menu items, golden nav/hover/dropdowns, Home/About original text and media, multiple individually ordered hero slides (current single HERO incomplete), documented volunteer band, full About split layout, original FAQ-like/impact section presentation, join/member cards, floating Donate/WhatsApp controls and dark footer. Preserve C20–C26 Admin CMS look separately; original public design is NOT the Admin's navy/blue dashboard theme. Source owner of actual links still decides availability.
+- **US-002:** original compliance and impact assertions + proper report/legal links; no made-up 80G status, financial promises, partner compliance or `25,000+` impact figures without validated Foundation source.
+- **US-003:** original Media & Resources dropdown, partner logos, gallery, publications, updates/news and newsletter visual presentation; CG-19/source-owning modules provide the actual media/intake; never invent partner logos or consent.
+- **US-004:** replace ONLY original top-menu `Blood Donation` with `Healthcare Assistance`. Existing `Our Work > Healthcare`, Project Spandan healthcare camp editorial and unrelated Foundation history remain intact. New healthcare public booking/info is backed by CG-14/15/17, not a second CMS master.
+
+**Visible source contrast:** original public gold/dark-green/cream UI MUST have separate semantic design choices from original Admin screenshot-blue UI; both retain true CareGanga brand. **Animations not derivable from still screenshots** — validate only from real browser/video before claiming exact effects. Do not introduce an unrelated UI template.
+
+## Original 47-screenshot reconciliation — 18 November 2026
+
+Original public screenshot Batch01 020524–020554 establishes /our-impact; Batch01 020634–021040 establishes /ngo-information 80G and separate legal/report children; Batch02 021422/021443/021502 establishes distinct Gallery, Videos and Publications headings, filters, Reset/empty views. Batch03 022004 establishes floating Donate and WhatsApp buttons and footer: only an Admin-approved separate WhatsApp destination may activate the latter. Preserve gold/cream/emerald public theme distinct from original blue Admin.
+
+Current source implements the Impact and NGO landing route, and three source-backed public media routes with Admin preview. The NGO other children, real /about/team, /notices, /upcoming-projects, /collaboration, /membership, /volunteer, Contact FAQ/chat/map remain owner integration gaps, not visually accepted pages. Full screenshot reference: docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md. No claim of exact original pixels, licensed media, motion timings, browser or Android visual QA.
+
+## Original Notice and Contact receiving source — 18 November 2026
+Batch02 021339/021359 /notices original source now has dedicated public screen, current notice cards, search, source category and priority chips, Reset Filters, real verified detail link and accurate no-current-data state. Batch03 021809–022004 Contact current Admin source now supports original dark-green hero, three approved inquiry cards, FAQ expandable cards, office hours, safe verified map/social links and existing private message form. No fake 24/7 live chat or arbitrary external address. Original photo triptych, complete mobile animations, exact pixels, real provider chat and source owners' optional services remain NOT_VERIFIED, not a completed screenshot pass.
+
+### 18 November — original NGO child and Contact photo parity source checkpoint
+
+Batch01 NGO original `/ngo-information/pan-details`, `/registration-certificate`, `/annual-reports` now have source-backed distinct page layout. The approved PAN is displayed only when current CMS source supplies it. Documents must be rights-cleared CG19 current originals; annual report year filter and title/Download/empty state follow original screenshots; no client-asset copy, fabricated certificate or private financial report. Original full sidebar still includes disabled financial and other no-source destinations.
+
+Batch03 original Contact `021909` three-photo strip now supports 3 authorized CG19 uploads in the existing blue Admin CMS drawer and responsive gold/emerald public Web grid. Public Android shows the same source-backed imagery and CMS cards/FAQ, with real private Contact link. Original exact photographs, client photo rights, visual pixel and animation evidence and real browser/device QA NOT_RUN. Keep CTA for 24/7 Live Chat inactive unless a real staffed service becomes available.
+
+### Original screenshot Native notice and current Contact map — 18 November
+
+Batch02 021339–021359 Notice Board now has source-backed responsive Web and Public Android category/priority/search/reset, accurate current count and real approved detail/back action. Batch02 021443 Videos uses verified byte-range transport under existing original video cards. Batch03 Contact map now renders an iframe only from an explicitly Admin-approved Google Maps embed (`/maps/embed` with pb query); other validated map links are normal outbound links. Source readback only: full Web/Android browser visual, original pixel/motion, external map/MP4 and CG-21 field-copy QA remains NOT_RUN. Do not invent publication, listener, 24/7 service or directions.
+
+### Original 80G child navigation — Public Android parity
+
+The original NGO sidebar desktop layout remains on Web; Public Android provides equivalent source-gated in-page buttons for 80G Registration, PAN Details, Registration Certificate, and Annual Reports, reusing the real current approved documents and an annual-year filter with parent Back. This is layout adaptation for phone, not fabricated statutory source. Original Batch01 `020634`–`021040` responsive screenshots, actual scroll-state, VoiceOver/TalkBack and document accessibility tests are still NOT_RUN.

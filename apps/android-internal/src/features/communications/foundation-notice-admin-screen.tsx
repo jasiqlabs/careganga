@@ -308,7 +308,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
         <Text>Selected notice revision: {review.revision}. Current Super Admin password confirmation required.</Text>
         <TextInput value={currentPassword} onChangeText={x=>setCurrentPassword(x)}
           accessibilityLabel="Current password" secureTextEntry autoComplete="current-password"
-          style={s.input} keyboardType="number-pad" secureTextEntry maxLength={1024}/>
+          style={s.input} keyboardType="default" maxLength={1024}/>
         <Pressable style={s.button} disabled={busy||reviewUnknown||currentPassword.length<8}
           onPress={()=>void decide()}><Text>Confirm {review.action.toLowerCase()}</Text></Pressable>
         {reviewKey&&<Pressable style={s.button} disabled={busy}

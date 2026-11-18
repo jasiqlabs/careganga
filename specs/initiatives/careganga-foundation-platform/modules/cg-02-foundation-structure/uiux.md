@@ -1,5 +1,18 @@
 # CG-02 — CareGanga UI/UX Design
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Verified Foundation legal identity and any authorized team/people profile source used by the original `/about/team` and `/ngo-information` family.
+
+**Domain/technical source contract:** CG-02 must expose only current Foundation-root-scoped, approved public-safe identity, registrations, PAN/80G verification statuses and correct source refs; never publicize private employee/member details or screenshot PAN/registration numbers by default. A Team Directory projection may select authorized CG-02 staff/structure fields or CG-04 member/volunteer fields only after documented source ownership and explicit subject consent, status and display permission.
+
+**Screen and Admin UI acceptance:** Team Directory state/district/subdivision/block/designation filters and search/reset must be source-backed and scoped; NGO sidebar PAN/registration/80G proof panels must follow the exact screenshot layout with truthful source status, badges and document links (no invented 'VERIFIED').
+
+**QA and independent review:** Source trace: anonymous request cannot enumerate private team, volunteer, employee, document IDs or unchecked legal fields; original screenshot Team search/filtered empty state, NGO proof/no-proof, consent revocation and root isolation must be manually tested by original owner and CG-18 receiver. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Authority:** [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-02-BR01–CG-02-BR10, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) U18, U19, U20, U21, U22 · PRD N-13/HLD H-12.  
 **State:** REQUIRED · **DELEGATED_APPROVED** for exact current CareGanga CG-02 U18–U22 UI/UX source by JASIQ AI Design Review Agent (15 Nov 2026), preserving original palette/shell/forms/drawers and verified real branch profile versus immutable approved application. Earlier approved SHA is historical. PRD/HLD REVIEW_REQUIRED, Harness resolver/runtime/device/pixel/motion verification NOT_RUN; no appearance PASS asserted.
 

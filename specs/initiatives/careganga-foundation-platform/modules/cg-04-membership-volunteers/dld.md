@@ -1,5 +1,18 @@
 # CG-04 — DLD: Membership, Applications, Renewals & Volunteers
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Actual original `/membership` and `/volunteer` public pages, approved member/volunteer verification, and public Team Directory participation where consented.
+
+**Domain/technical source contract:** One existing CG-04 member/volunteer master: published tier version/fee/benefit source, application/approval/identity-document handling, public member/volunteer verification, volunteer four-step submission, PIN/state/district/availability/interests and optional referral. Never invent prices, acceptance, payment proof or a duplicate CMS registration table. CG-09 handles actual fee; CG-19 files and CG-03 approvals stay in their respective owners.
+
+**Screen and Admin UI acceptance:** Original Membership hero, Membership Cards/Verify Membership tabs, search/Annual/Lifetime/Honorary/Student filters, plan cards, benefit list, View Details/Apply Now; Volunteer dark hero/How It Works, Application Form/Verify Volunteer tabs, four-step progress, personal/contact/address/referral fields. Preserve screenshot composition and CG-21 field-specific editable errors; narrow layout and Android per owned channel.
+
+**QA and independent review:** Existing CG-04 QA must trace original /membership and /volunteer flow with tier selection/real price, apply/verify ID, scoped applicant PII, optional referral, PIN locality mapping and location fallbacks, unique approval/issuance, sensitive proof only through CG-19, responsiveness and original screenshot comparison. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Authority:** [BR CG-04-BR01–11](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) · [PRD FR-009–011](../../prd.md) · [HLD](../../hld.md) · [original Admin audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B09/B10, U11–U17, U42, B41/B42, A04/A09, C50 · [owner plan](module.md) · [UIUX](uiux.md) · [QA](tasks.md).
 **Review state:** DELEGATED_APPROVED — DESIGN ONLY, 15 Nov 2026, after manual source review/fix/re-review. CRITICAL database/identity/fee/refund/privacy design, independent specialist, actual schema/migrations/restore/races/DB EXPLAIN, original Web/native builds and Harness stage resolver **NOT_RUN**; global PRD/HLD current hash REVIEW_REQUIRED. The names below are implementation contracts, NOT existing deployed tables/APIs.
 

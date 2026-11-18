@@ -52,12 +52,10 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
     const trimmedIdentifier = identifier.trim();
     let hasValidationError = false;
 
-    // Scenario C: Empty fields
     if (!trimmedIdentifier) {
       setIdentifierError("Mobile number or email is required.");
       hasValidationError = true;
     } else if (!isMobile(trimmedIdentifier) && !isEmail(trimmedIdentifier)) {
-      // Scenario D: Invalid format
       setIdentifierError("Invalid mobile number or email. Please check and try again.");
       hasValidationError = true;
     }
@@ -90,55 +88,66 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         code?: string;
         displayName?: string;
         signedIn?: boolean;
+        field?: string;
       } | null;
 
       if (!response.ok) {
         setLoading(false);
 
-        if (response.status === 401) {
-          // Check if backend explicitly identified an invalid password or invalid identifier
-          if (data?.code === "INVALID_PASSWORD") {
-            // Scenario A: Explicit incorrect password
-            setPasswordError("Incorrect password. Please try again.");
-            setGlobalError("Sign-in failed. Please check your credentials and try again.");
-            showAuthNotification({
-              type: "ERROR",
-              title: "Sign-In Failed",
-              message: "Incorrect password. Please try again."
-            });
-          } else if (data?.code === "INVALID_IDENTIFIER") {
-            // Scenario B: Explicit invalid identifier
-            setIdentifierError("Invalid mobile number or email. Please check and try again.");
-            setGlobalError("Sign-in failed. Please check your credentials and try again.");
-            showAuthNotification({
-              type: "ERROR",
-              title: "Sign-In Failed",
-              message: "Invalid mobile number or email. Please check and try again."
-            });
+        const safe = data && typeof data === "object" && !Array.isArray(data)
+          ? (data as Record<string, unknown>)
+          : {};
+
+        if (response.status === 400) {
+          const target = safe.field === "identifier" || safe.field === "password" ? safe.field : null;
+          const msg =
+            typeof safe.message === "string" && safe.message.length >= 10 && safe.message.length <= 220
+              ? safe.message
+              : "Check the mobile number/email and password fields before signing in.";
+          if (target === "identifier") {
+            setIdentifierError(msg);
+          } else if (target === "password") {
+            setPasswordError(msg);
           } else {
-            // Generic 401 credentials failure (Security / OWASP best practice: fields stay neutral)
-            setGlobalError("Sign-in failed. Please check your credentials and try again.");
-            showAuthNotification({
-              type: "ERROR",
-              title: "Sign-In Failed",
-              message: "Mobile number/email or password could not be confirmed."
-            });
+            setGlobalError(msg);
           }
+          showAuthNotification({
+            type: "ERROR",
+            title: "Validation Error",
+            message: msg
+          });
+        } else if (response.status === 401) {
+          // Identity failures share one generic server-owned, Admin-editable message.
+          // Never reveal whether the identifier exists or the account is inactive.
+          const isSafe =
+            safe.code === "IDENTITY_LOGIN_INVALID" &&
+            typeof safe.message === "string" &&
+            safe.message.length >= 16 &&
+            safe.message.length <= 220;
+          const msg = isSafe
+            ? (safe.message as string)
+            : "Mobile number/email or password could not be confirmed.";
+          setGlobalError(msg);
+          showAuthNotification({
+            type: "ERROR",
+            title: "Sign-In Failed",
+            message: msg
+          });
         } else if (response.status === 429) {
-          // Rate limited
-          setGlobalError("Too many login attempts. Please try again later.");
+          const msg = "Too many login attempts. Please try again later.";
+          setGlobalError(msg);
           showAuthNotification({
             type: "ERROR",
             title: "Too Many Attempts",
-            message: "Too many sign-in attempts. Please try again later."
+            message: msg
           });
         } else {
-          // Scenario E: Server or service failure (do not mark fields red)
-          setGlobalError("Unable to sign in right now. Please try again later.");
+          const msg = "Sign-in cannot be confirmed right now. Check your connection and retry.";
+          setGlobalError(msg);
           showAuthNotification({
             type: "ERROR",
             title: "Sign-In Unavailable",
-            message: "Unable to sign in right now. Please try again later."
+            message: msg
           });
         }
         return;
@@ -158,16 +167,16 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
       }
 
       setPassword("");
-      router.replace("/admin");
+      router.replace("/admin/dashboard");
       router.refresh();
     } catch {
-      // Scenario E: Network failure
       setLoading(false);
-      setGlobalError("Unable to sign in right now. Please try again later.");
+      const msg = "Sign-in cannot be confirmed right now. Check your connection and retry.";
+      setGlobalError(msg);
       showAuthNotification({
         type: "ERROR",
         title: "Connection Error",
-        message: "Something went wrong. Please check your connection and try again."
+        message: msg
       });
     }
   }
@@ -223,16 +232,16 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
 
       {/* Field 2: Password */}
       <div className="cg-form-group">
-        <label htmlFor="cg-password" className="cg-form-label">
-          PASSWORD
-        </label>
-        <div
-          className={`cg-input-wrapper ${passwordError ? "is-invalid" : ""}`}
-        >
+        <div className="cg-form-label-row">
+          <label htmlFor="cg-password" className="cg-form-label">
+            PASSWORD
+          </label>
+        </div>
+        <div className={`cg-input-wrapper ${passwordError ? "is-invalid" : ""}`}>
           <span className="cg-input-icon" aria-hidden="true">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="2" />
+              <rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" />
             </svg>
           </span>
           <input
@@ -241,9 +250,9 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
             className="cg-text-input"
             value={password}
             onChange={e => handlePasswordChange(e.target.value)}
-            autoComplete="current-password"
-            placeholder="••••••••••••••••"
+            placeholder="Enter your password"
             maxLength={1024}
+            autoComplete="current-password"
             disabled={loading}
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? "password-error" : undefined}
@@ -284,35 +293,36 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
       </div>
 
       {/* Row: Remember Me & Forgot Password */}
-      <div className="cg-login-row-helpers">
-        <label className="cg-remember-me-label">
+      <div className="cg-login-options-row">
+        <label className="cg-remember-me-label" htmlFor="cg-remember-me">
           <input
+            id="cg-remember-me"
             type="checkbox"
-            className="cg-remember-checkbox"
+            className="cg-checkbox-input"
             checked={rememberMe}
             onChange={e => setRememberMe(e.target.checked)}
             disabled={loading}
-            suppressHydrationWarning
           />
-          <span>Remember Me</span>
+          <span className="cg-remember-me-text">Remember Me</span>
         </label>
+
         {onForgotPassword ? (
           <button
             type="button"
-            className="cg-forgot-password-link"
+            className="cg-forgot-password-link-btn"
             onClick={onForgotPassword}
             disabled={loading}
           >
             Forgot Password?
           </button>
         ) : (
-          <Link href="/admin/recovery" className="cg-forgot-password-link">
+          <Link href="/admin/recovery" className="cg-forgot-password-link-btn">
             Forgot Password?
           </Link>
         )}
       </div>
 
-      {/* Global Authentication Error Banner strictly positioned ABOVE the Sign In button */}
+      {/* Global Error Banner strictly positioned ABOVE the action button */}
       {globalError && (
         <div className="cg-global-auth-error-banner" role="alert">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -324,11 +334,11 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         </div>
       )}
 
-      {/* Sign In Button with Blue-to-Green Gradient */}
+      {/* Primary Action Button: Gradient Green CTA */}
       <button
         className="cg-login-submit-gradient-btn"
         type="submit"
-        disabled={loading}
+        disabled={loading || !identifier.trim() || !password}
         suppressHydrationWarning
       >
         {loading ? (
