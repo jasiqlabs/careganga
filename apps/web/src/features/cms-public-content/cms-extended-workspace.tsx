@@ -44,7 +44,10 @@ function initial(kind:Kind):Draft{
    disclaimer:"Check current official records before claiming a tax benefit.",documents:[]
   }}]:
   kind==="GALLERY"?[{kind:"GALLERY_GRID",order:0,
-   fields:{heading:"",description:"",items:[]}}]:
+   fields:{heading:"",description:"",videosHeading:"Stories in Motion",
+    videosDescription:"",publicationsHeading:"Publications & Reports",
+    publicationsDescription:"",photosEmptyText:"",videosEmptyText:"",
+    publicationsEmptyText:"",items:[]}}]:
   kind==="ARTICLE"?[{kind:"ARTICLE_BODY",order:0,fields:{
    heading:"",category:"",excerpt:"",body:"",authorLabel:"",
    source:"",asOfDate:today(),tags:[]}}]:
@@ -551,6 +554,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       </>}
       {section.kind==="GALLERY_GRID"&&<>
        <Field name="Intro" value={f.description} large onChange={v=>change("description",v)}/>
+       <fieldset><legend>Original separate media pages</legend>
+        <p>One approved Gallery and CG-19 media source serves three original URLs: Gallery, Videos and Publications. Edit their headings and empty states here.</p>
+        <Field name="Videos page heading" value={f.videosHeading} onChange={v=>change("videosHeading",v)}/>
+        <Field name="Videos page description" value={f.videosDescription} large onChange={v=>change("videosDescription",v)}/>
+        <Field name="Videos empty result message" value={f.videosEmptyText} onChange={v=>change("videosEmptyText",v)}/>
+        <Field name="Publications page heading" value={f.publicationsHeading} onChange={v=>change("publicationsHeading",v)}/>
+        <Field name="Publications page description" value={f.publicationsDescription} large onChange={v=>change("publicationsDescription",v)}/>
+        <Field name="Publications empty result message" value={f.publicationsEmptyText} onChange={v=>change("publicationsEmptyText",v)}/>
+        <Field name="Gallery empty result message" value={f.photosEmptyText} onChange={v=>change("photosEmptyText",v)}/>
+       </fieldset>
        <div className="cg-cms-actions" role="group" aria-label="Original gallery category filters">
         <button type="button" aria-pressed={galleryCategory==="ALL"}
          onClick={()=>setGalleryCategory("ALL")}>All ({items(f.items).length})</button>
