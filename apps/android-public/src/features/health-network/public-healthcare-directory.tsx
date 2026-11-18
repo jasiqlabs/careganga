@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
- ActivityIndicator,AppState,Linking,Pressable,ScrollView,StyleSheet,
+ ActivityIndicator,AppState,Image,Linking,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -17,7 +17,8 @@ type Doctor={doctorRef:string;doctorName:string;centerSlug:string;
  specialties:string[];qualifications:string[];experienceYears:number};
 type Details={centerName:string;providerName:string;type:string;address:string;
  approvedPresentation:null|{description:string;services:string[];facilities:string[];
- hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
+ hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];
+ media:{fileRef:string;altText:string}[]};
  pinCode:string;publicPhone:string|null;latitude:number|null;longitude:number|null;
  declaredServices:string[];hours:{weekday:number;opens:string;closes:string}[];
  timeZone:string;notice:string};
@@ -197,6 +198,13 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
     {centerDetails.approvedPresentation&&<>
      <Text style={styles.cardTitle}>About this center</Text>
      <Text>{centerDetails.approvedPresentation.description}</Text>
+     {!!base&&selection?.kind==="center"&&centerDetails.approvedPresentation.media.map(m=>
+      <View key={m.fileRef} style={styles.subcard}>
+       <Image accessibilityLabel={m.altText} style={styles.photo}
+        source={{uri:new URL("/api/documents/health-center-content/public/"+
+         encodeURIComponent(selection.slug)+"/"+encodeURIComponent(m.fileRef),base).toString()}}/>
+       <Text>{m.altText}</Text>
+      </View>)}
      <Text style={styles.cardTitle}>Approved services</Text>
      {centerDetails.approvedPresentation.services.map((v,i)=><Text key={i}>• {v}</Text>)}
      <Text style={styles.cardTitle}>Facilities</Text>
@@ -260,5 +268,6 @@ const styles=StyleSheet.create({
  card:{backgroundColor:theme.surface,borderRadius:12,borderWidth:1,
   borderColor:theme.border,padding:16,gap:10},
  subcard:{borderTopWidth:1,borderColor:theme.border,paddingTop:12,gap:6},
- cardTitle:{fontSize:18,fontWeight:"700",color:theme.text}
+ cardTitle:{fontSize:18,fontWeight:"700",color:theme.text},
+ photo:{width:"100%",height:220,borderRadius:10}
 });
