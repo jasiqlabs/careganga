@@ -2,6 +2,7 @@ import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
 import {CenterContentReviewInbox} from "../../../../../features/health-network/center-content-review-inbox";
+import {CenterContentPublisherQueue} from "../../../../../features/health-network/center-content-publisher-queue";
 export const dynamic="force-dynamic";
 export default async function CenterContentReviewPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
@@ -24,12 +25,17 @@ export default async function CenterContentReviewPage(){
     !Array.isArray(rights.actions))throw Error("Invalid permissions");
   const allowed=new Set(rights.actions.flatMap((v:unknown)=>
    v&&typeof v==="object"&&"key" in v&&typeof v.key==="string"?[v.key]:[]));
-  if(!allowed.has("approvals.review")||!allowed.has("health.providers.verify"))
+  const canReview=allowed.has("approvals.review")&&allowed.has("health.providers.verify");
+  const canPublish=allowed.has("health.centers.publish");
+  if(!canReview&&!canPublish)
    return <main className="page main"><h1>Review access restricted</h1>
     <p>Your current role cannot independently review center content.</p>
     <Link href="/admin/health-network">Return to healthcare</Link></main>;
   return <main className="page main"><p><Link href="/admin/health-network">
-    Back to healthcare management</Link></p><CenterContentReviewInbox canPublish={allowed.has("health.centers.publish")}/></main>;
+    Back to healthcare management</Link></p>
+    {canReview&&<CenterContentReviewInbox canPublish={canPublish}/>}
+    {canPublish&&<CenterContentPublisherQueue/>}
+   </main>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
