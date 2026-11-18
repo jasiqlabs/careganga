@@ -50,7 +50,7 @@ export default async function HealthNetworkPage(){
         canViewSupport={actions.has("support.cases.view")}/>
       <main className="workspace"><ProviderOnboarding
         canManage={actions.has("health.providers.manage")}
-        canSelectAccounts={actions.has("accounts.select")||actions.has("roles.assign")}
+        canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
         canManageFinance={actions.has("health.providers.finance.manage")}/></main>
     </div>;
