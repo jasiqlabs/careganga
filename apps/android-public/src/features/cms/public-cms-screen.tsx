@@ -217,6 +217,13 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   // not been independently approved/published in the current source.
   else if(route&&publishedPaths.includes(route))setSlug(route.slice(1));
  };
+ const noticeCategories=Array.from(new Set(noticeFeed.notices.map(n=>n.category)
+  .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+ const visibleNotices=noticeFeed.notices.filter(n=>
+  (noticeCategory==="ALL"||n.category===noticeCategory)&&
+  (noticePriority==="ALL"||n.priority===noticePriority)&&
+  (!noticeSearch.trim()||[n.title,n.body,n.category].some(v=>
+   v.toLocaleLowerCase().includes(noticeSearch.trim().toLocaleLowerCase()))));
  const page=result.page;
  const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
   .sort((a,b)=>a.order-b.order)??[];
@@ -267,7 +274,47 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
       <CmsButton title="Read full article" onPress={()=>{setArticleBackTarget("articles");setSlug(item.slug);}}/>
      </View>)}
     <CmsButton title="Refresh approved news" secondary onPress={()=>void load("articles")}/>
-   </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
+   </View>:slug==="notices"?<View style={styles.card}>
+     <Text accessibilityRole="header" style={styles.heading}>
+      Notice &amp; Announcement Board</Text>
+     {!noticeFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
+      Current approved notices cannot be verified.</Text>:<>
+      <TextInput value={noticeSearch} onChangeText={setNoticeSearch}
+       placeholder="Search current notices" accessibilityLabel="Search current notices"
+       style={styles.search} autoCapitalize="none" maxLength={80}/>
+      <View style={styles.actions} accessibilityLabel="Notice priority filters">
+       {(["ALL","IMPORTANT","NORMAL"] as const).map(priority=>
+        <CmsButton key={priority}
+         title={priority==="ALL"?"All priorities":
+          priority==="IMPORTANT"?"Important":"Normal"}
+         secondary={noticePriority!==priority}
+         onPress={()=>setNoticePriority(priority)}/>)}
+      </View>
+      <View style={styles.actions} accessibilityLabel="Notice category filters">
+       <CmsButton title="All categories" secondary={noticeCategory!=="ALL"}
+        onPress={()=>setNoticeCategory("ALL")}/>
+       {noticeCategories.map(category=><CmsButton key={category} title={category}
+         secondary={noticeCategory!==category}
+         onPress={()=>setNoticeCategory(category)}/>)}
+      </View>
+      <CmsButton title="Reset Filters" secondary onPress={()=>{
+       setNoticeSearch("");setNoticeCategory("ALL");setNoticePriority("ALL");}}/>
+      <Text style={styles.muted} accessibilityLiveRegion="polite">
+       {visibleNotices.length} current approved notices match</Text>
+      {visibleNotices.length===0&&
+       <Text style={styles.muted}>No current notices match the selected filters.</Text>}
+      {visibleNotices.map(n=><View style={styles.person} key={n.path}>
+       <Text style={styles.eyebrow}>{n.category} · {n.priority}</Text>
+       <Text accessibilityRole="header" style={styles.heading}>{n.title}</Text>
+       <Text style={styles.body}>{n.body}</Text>
+       <Text style={styles.muted}>Published {n.publishedOn}</Text>
+       <CmsButton title="Read approved notice" onPress={()=>{
+        setArticleBackTarget("notices");setSlug(n.path.slice("/blog/".length));}}/>
+      </View>)}
+     </>}
+     <CmsButton title="Refresh approved notices" secondary
+      onPress={()=>void load("notices")}/>
+    </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
     <Text style={styles.heading}>{slug==="home"?"Foundation homepage":"About the Foundation"}</Text>
     <Text style={styles.muted}>This page has not yet been published.</Text>
    </View>:result.state==="UNAVAILABLE"?<View style={styles.card}>
