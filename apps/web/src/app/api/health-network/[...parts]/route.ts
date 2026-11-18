@@ -44,6 +44,8 @@ function allowed(parts:string[],method:string){
     if(parts.length===5&&UUID.test(parts[1])&&parts[2]==="centers"&&
       UUID.test(parts[3])&&["approve","suspend"].includes(parts[4]))
       return method==="POST";
+    if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="suspend")
+      return method==="POST";
     if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="submit")
       return method==="POST";
     if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
