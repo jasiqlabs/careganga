@@ -1,4 +1,5 @@
-import {Image,Linking,Pressable,StyleSheet,Text,View} from "react-native";
+import {useState} from "react";
+import {Image,Linking,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
@@ -21,6 +22,16 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  onContact:()=>void;onNavigate:(path:unknown)=>void;
  onBackToNews:()=>void}){
  const f=section.fields;
+ const [mediaFilter,setMediaFilter]=useState("ALL");
+ const [categoryFilter,setCategoryFilter]=useState("ALL");
+ const [search,setSearch]=useState("");
+ const galleryItems=rows(f.items);
+ const categories=Array.from(new Set(galleryItems.map(x=>text(x.category)).filter(Boolean))).sort();
+ const galleryMatches=galleryItems.map((item,i)=>({item,i})).filter(({item})=>
+   (mediaFilter==="ALL"||item.mediaType===mediaFilter)&&
+   (categoryFilter==="ALL"||item.category===categoryFilter)&&
+   (!search.trim()||[item.title,item.caption,item.category].some(v=>
+    text(v).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))));
  const asset=(role:string,order=section.order)=>assets.find(a=>a.role===role&&a.order===order);
  const picture=(role:string,order=section.order)=>{
   const img=asset(role,order),uri=mediaUrl(img);
@@ -76,7 +87,34 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   <Text style={styles.eyebrow}>Media &amp; Resources</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
   <Text style={styles.body}>{text(f.description)}</Text>
-  {rows(f.items).map((item,i)=>{
+  <View style={styles.filterRow} accessibilityLabel="Approved media type filters">
+   {([["ALL","All"],["PHOTO","Photos"],["VIDEO","Videos"],
+     ["PUBLICATION","Publications"]] as const).map(([value,label])=>
+    <Pressable key={value} accessibilityRole="button"
+     accessibilityState={{selected:mediaFilter===value}}
+     style={[styles.filter,mediaFilter===value&&styles.filterActive]}
+     onPress={()=>setMediaFilter(value)}>
+     <Text style={[styles.filterText,mediaFilter===value&&styles.filterActiveText]}>
+      {label}</Text>
+    </Pressable>)}
+  </View>
+  {categories.length>1&&<View style={styles.filterRow} accessibilityLabel="Approved categories">
+   <Pressable accessibilityRole="button" accessibilityState={{selected:categoryFilter==="ALL"}}
+    style={[styles.filter,categoryFilter==="ALL"&&styles.filterActive]}
+    onPress={()=>setCategoryFilter("ALL")}><Text style={styles.filterText}>All categories</Text></Pressable>
+   {categories.map(name=><Pressable key={name} accessibilityRole="button"
+    accessibilityState={{selected:categoryFilter===name}}
+    style={[styles.filter,categoryFilter===name&&styles.filterActive]}
+    onPress={()=>setCategoryFilter(name)}><Text style={styles.filterText}>{name}</Text></Pressable>)}
+  </View>}
+  <TextInput style={styles.search} value={search} onChangeText={setSearch}
+   placeholder="Search approved media" accessibilityLabel="Search approved media"
+   autoCapitalize="none" maxLength={80}/>
+  <Text style={styles.source} accessibilityLiveRegion="polite">
+   {galleryMatches.length} approved resources match</Text>
+  {galleryMatches.length===0&&<Text style={styles.body}>No approved media matches.
+    Change the filter or search.</Text>}
+  {galleryMatches.map(({item,i})=>{
    const media=asset("GALLERY",i),url=mediaUrl(media);
    if(!url)return null;
    return <View style={styles.item} key={i}>
@@ -130,5 +168,13 @@ const styles=StyleSheet.create({
  photo:{width:"100%",height:220,borderRadius:10},
  button:{minHeight:46,borderRadius:9,alignItems:"center",justifyContent:"center",
   backgroundColor:"#efa747",padding:12},
- buttonText:{fontSize:15,fontWeight:"700",color:"#193729"}
+ buttonText:{fontSize:15,fontWeight:"700",color:"#193729"},
+ filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
+ filter:{borderRadius:8,borderWidth:1,borderColor:"#7fa792",paddingVertical:9,
+  paddingHorizontal:12,minHeight:42,justifyContent:"center"},
+ filterActive:{backgroundColor:"#205c42"},
+ filterText:{fontWeight:"600",color:"#205c42"},
+ filterActiveText:{color:"#fff"},
+ search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:46,
+  paddingHorizontal:12,color:t.text}
 });
