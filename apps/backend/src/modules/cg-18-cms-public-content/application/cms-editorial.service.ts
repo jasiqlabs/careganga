@@ -988,8 +988,12 @@ export class CmsEditorialService{
   const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
   fields:sec.structured_fields}));
+ const gallerySource=authoredSections.find(x=>x.kind==="GALLERY_GRID");
+ const authoredGallery=Array.isArray(gallerySource?.fields.items)?
+  gallerySource.fields.items as Record<string,unknown>[]:[];
  const visibleAssets=assets.rows.filter(asset=>placementFits(authoredSections,
-  {role:asset.role,order:asset.sort_order}));
+  {role:asset.role,order:asset.sort_order})&&
+  (asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false));
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1001,7 +1005,12 @@ export class CmsEditorialService{
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
     fields:v.section_kind==="ARTICLE_BODY"?
       Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
-       !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):v.structured_fields})),
+       !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):
+     v.section_kind==="GALLERY_GRID"?{...v.structured_fields,
+      items:Array.isArray(v.structured_fields.items)?
+       (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>
+        item&&item.visible!==false?[{...item,originalIndex:index}]:[]):[]}:
+     v.structured_fields})),
    assets:visibleAssets.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
