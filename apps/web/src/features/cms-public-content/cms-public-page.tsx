@@ -200,7 +200,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children}:{
      if(section.kind==="TEAM")return <Team key={key}
       fields={section.fields} assets={assets}/>;
      if(section.kind==="IMPACT_GROUP")return <CmsImpactGroup key={key}
-      section={section} assets={assets}/>;
+      section={section} assets={assets} navigation={navigation}/>;
      if(section.kind==="COMPLIANCE_FACTS")return <CmsCompliance key={key}
       section={section} assets={assets}/>;
      if(section.kind==="GALLERY_GRID")return <CmsGallery key={key}
