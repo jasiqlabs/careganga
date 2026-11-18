@@ -488,6 +488,18 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       {section.kind==="GALLERY_GRID"&&<>
        <Field name="Intro" value={f.description} large onChange={v=>change("description",v)}/>
        {items(f.items).map((item,j)=><div className="cg-cms-team" key={j}>
+        <span className="cg-cms-muted">Gallery item {j+1} ·
+         {item.visible===false?" Hidden from public":" Visible after approval"}</span>
+        {draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)&&
+         <img className="cg-cms-review-image" loading="lazy"
+          alt={str(draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)?.altText)}
+          src={"/api/cms-image-preview/"+
+           draft.assets.find(a=>a.role==="GALLERY"&&a.order===j)?.fileRef}/>}
+        <label className="cg-cms-consent">
+         <input type="checkbox" checked={item.visible!==false}
+          onChange={e=>changeItem(index,j,{visible:e.target.checked})}/>
+         Show this item on the public site after independent approval and publication
+        </label>
         {(["title","caption","category","source"] as const).map(key=>
          <Field key={key} name={key} value={item[key]}
           onChange={v=>changeItem(index,j,{[key]:v})}/>)}
@@ -503,7 +515,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        </div>)}
        {canManage&&items(f.items).length<12&&<button type="button"
         onClick={()=>addItem(index,"items",{title:"",caption:"",category:"",
-         source:"",asOfDate:today(),mediaType:"PHOTO"})}>Add gallery item</button>}
+         source:"",asOfDate:today(),mediaType:"PHOTO",visible:true})}>Add gallery item</button>}
       </>}
       {section.kind==="ARTICLE_BODY"&&<>
        {canViewNoticeSources&&<details className="cg-cms-card">
