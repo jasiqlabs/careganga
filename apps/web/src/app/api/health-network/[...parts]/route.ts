@@ -32,6 +32,16 @@ function allowed(parts:string[],method:string){
     if(parts[0]==="providers"&&parts[2]==="finance-reference")return method==="GET"||method==="POST";
     if(parts[0]==="centers"&&parts[2]==="representatives")return method==="GET"||method==="POST";
   }
+  if(parts.length===3&&UUID.test(parts[1])){
+    if(parts[0]==="providers"&&parts[2]==="submit")return method==="POST";
+    if(parts[0]==="centers"&&["submit","access","publication"].includes(parts[2]))
+      return method==="POST";
+    if(parts[0]==="my-centers"&&parts[2]==="submit")return method==="POST";
+  }
+  if(parts.length===4&&["providers","centers"].includes(parts[0])&&
+    parts[1]==="reviews"&&UUID.test(parts[2])&&
+    ["apply","return-to-draft"].includes(parts[3]))
+    return method==="POST";
   if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
     parts[2]==="representatives"&&UUID.test(parts[3])&&parts[4]==="revoke")
     return method==="POST";
