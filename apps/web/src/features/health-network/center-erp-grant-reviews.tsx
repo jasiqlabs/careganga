@@ -4,7 +4,8 @@ type Review={caseRef:string;reference:string;title:string;status:string;revision
 type Detail=Review&{capability?:string;centerName?:string;
  validFrom?:string;validUntil?:string|null;independentReviewerRequired:true};
 type Grant={centerRef:string;centerName:string;providerName:string;
- capability:string;status:string;version:number;global:string;effective:false};
+ capability:string;status:string;version:number;global:string;effective:false;
+ approvedCaseRef:string|null;readyToApply:boolean};
 async function api<T>(path:string,init?:RequestInit):Promise<T>{
  const response=await fetch(path,{...init,cache:"no-store",credentials:"same-origin"});
  const data:unknown=await response.json().catch(()=>null);
@@ -32,13 +33,14 @@ export function CenterErpGrantReviews({canReview,canPublish}:{
    const [inbox,registered]=await Promise.all([
     canReview?api<{cases:Review[]}>("/api/health/erp-grant-reviews/list"):
      Promise.resolve({cases:[] as Review[]}),
-    api<{grants:Grant[]}>("/api/health-network/erp-grants/foundation")
+    canPublish?api<{grants:Grant[]}>("/api/health-network/erp-grants/foundation"):
+     Promise.resolve({grants:[] as Grant[]})
    ]);
    if(n===epoch.current){setItems(inbox.cases);setGrants(registered.grants);setError("");
      setUncertain(false);}
   }catch(e){if(n===epoch.current)setError(e instanceof Error?
     e.message:"The Foundation capability queue is unavailable.");}
- },[canReview]);
+ },[canReview,canPublish]);
  useEffect(()=>{void load();return()=>{epoch.current++;};},[load]);
  async function select(ref:string){
   const n=++epoch.current;setError("");setNotice("");
@@ -80,6 +82,23 @@ export function CenterErpGrantReviews({canReview,canPublish}:{
    setNotice("Center capability approved. Optional ERP operations remain unavailable until the owning module is installed.");
   }catch(e){setUncertain(true);setError(e instanceof Error?e.message:
    "The approved grant was not confirmed. Recheck original status.");}
+  finally{setBusy(false);}
+ }
+ async function publishReady(g:Grant){
+  if(!canPublish||busy||uncertain||!g.readyToApply||!g.approvedCaseRef||
+     publishPassword.length<8)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await api("/api/health-network/erp-grants/reviews/"+
+    encodeURIComponent(g.approvedCaseRef)+"/apply",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({currentPassword:publishPassword,
+      expectedVersion:g.version})
+   });
+   setPublishPassword("");await load();
+   setNotice("Approved center capability recorded. Actual ERP operations remain disabled.");
+  }catch(e){setUncertain(true);setError(e instanceof Error?e.message:
+   "Approved grant outcome uncertain. Check the original state.");}
   finally{setBusy(false);}
  }
  async function changeGrant(g:Grant,operation:"suspend"|"withdraw"){
@@ -164,6 +183,9 @@ export function CenterErpGrantReviews({canReview,canPublish}:{
     <td>{nice(g.status)}</td>
     <td>{nice(g.global)} · No module enabled</td>
     <td>{canPublish&&<div className="toolbar">
+     {g.readyToApply&&g.approvedCaseRef&&
+      <button type="button" disabled={busy||uncertain||publishPassword.length<8}
+       onClick={()=>void publishReady(g)}>Apply independently approved grant</button>}
      {g.status==="APPROVED"&&<button type="button" disabled={busy||uncertain||
       publishPassword.length<8} onClick={()=>void changeGrant(g,"suspend")}>
        Suspend</button>}
