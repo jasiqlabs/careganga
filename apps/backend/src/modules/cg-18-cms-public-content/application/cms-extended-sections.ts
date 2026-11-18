@@ -24,7 +24,7 @@ const obj=(v:unknown,field:string,allowed:string[])=>{
 };
 const str=(v:unknown,field:string,max:number,min=0)=>{
  if(typeof v!=="string"||v.trim().length<min||v.length>max||
-  /[\u0000-\u001f\u007f]/.test(v)||danger.test(v))return error(field);
+  /[\u0000-\u0009\u000b-\u001f\u007f]/.test(v)||danger.test(v))return error(field);
  return v.trim();
 };
 const num=(v:unknown,field:string,low:number,high:number)=>{
@@ -102,7 +102,7 @@ export function parseDraftExtendedSection(kind:string,raw:unknown):Record<string
   if(depth>5)return error("fields");
   if(value===null)return null;
   if(typeof value==="string"){
-   if(value.length>7000||/[\u0000-\u001f\u007f]/.test(value)||danger.test(value))
+   if(value.length>7000||/[\u0000-\u0009\u000b-\u001f\u007f]/.test(value)||danger.test(value))
     return error("fields");
    return value.trim();
   }
