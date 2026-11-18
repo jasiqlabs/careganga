@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {ReactNode} from "react";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsSiteHeader} from "./cms-site-header";
+import type {CmsMediaType} from "./cms-gallery-grid-client";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
 import {CmsImpactGroup,CmsCompliance,CmsGallery,CmsArticle,CmsHealthcare} from "./cms-public-extended";
 
@@ -129,7 +130,7 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
      <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>
      <span aria-disabled="true" className="cg-site-unavailable">Donate</span>
-     {isPublished("/impact")&&<Link href="/impact">Our Impact</Link>}
+     {isPublished("/impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
      <Link href="/contact">Contact</Link></div>
@@ -167,9 +168,10 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter,children}:{
+export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
- siteFooter?:Record<string,unknown>|null;children?:ReactNode}){
+ siteFooter?:Record<string,unknown>|null;children?:ReactNode;
+ mediaScope?:CmsMediaType}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -204,7 +206,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children}:{
      if(section.kind==="COMPLIANCE_FACTS")return <CmsCompliance key={key}
       section={section} assets={assets}/>;
      if(section.kind==="GALLERY_GRID")return <CmsGallery key={key}
-      section={section} assets={assets}/>;
+      section={section} assets={assets} mediaScope={mediaScope}/>;
      if(section.kind==="ARTICLE_BODY")return <CmsArticle key={key}
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
