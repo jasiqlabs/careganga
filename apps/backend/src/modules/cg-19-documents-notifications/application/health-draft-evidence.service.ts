@@ -7,6 +7,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
@@ -59,7 +60,8 @@ export class HealthDraftEvidenceService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
     private readonly identity:FoundationStructureIdentityFacade,
-    private readonly objects:PrivateObjectStorage){}
+    private readonly objects:PrivateObjectStorage,
+    private readonly protectedOwner:ProtectedAccessOwnerService){}
   private permission(classification:Classification,mutate:boolean,centerRef:string|null){
     if(classification==="HEALTH_BANK_PROOF")return mutate?"health.providers.finance.manage":"health.providers.finance.view";
     if(centerRef)return mutate?"health.centers.draft.edit":"health.centers.draft.edit";
@@ -365,6 +367,74 @@ export class HealthDraftEvidenceService{
       "AND owner_kind='CG14_DRAFT' AND revision=$3 AND revoked_at IS NULL",
       [file.id,actor.realmId,file.revision]);
     if(!current.rows[0])throw new NotFoundException("Private file was withdrawn");
+    return {data:bytes,mime:file.original_mime};
+  }
+  /** Genuine CG-03 reviewer-only original provider/center licence bytes.
+   * Reviewer must not need broad provider manage or private account access.
+   * A direct CG-19 file URL cannot bypass original case and evidence source.
+   */
+  async reviewDownload(bearer:string,caseRef:string){
+    const ref=id(caseRef,"caseRef");
+    const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+    await this.sessions.requireAction(bearer,"approvals.review");
+    const prove=async()=>{
+      const tx=await this.db.connect();
+      try{
+        await tx.query("BEGIN");
+        await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+        await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+        const r=await tx.query<FileRow&{case_id:string;provider_id:string;
+          center_id:string|null;source_digest:string;case_status:string}>(
+          "SELECT f.*,i.classification,i.status AS intent_status,"+
+          "c.id AS case_id,c.health_provider_id AS provider_id,"+
+          "c.health_center_id AS center_id,c.health_source_digest AS source_digest,"+
+          "c.status AS case_status FROM cg03_case c "+
+          "JOIN health_provider_revision pr ON c.case_kind='HEALTH_PROVIDER_VERIFICATION' "+
+          "AND pr.id=c.health_provider_revision_id AND pr.root_realm_id=c.realm_id "+
+          "JOIN cg19_stored_file f ON f.id=pr.proof_file_ref "+
+          "AND f.realm_id=pr.root_realm_id "+
+          "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id "+
+          "AND i.realm_id=f.realm_id "+
+          "WHERE c.id=$1 AND c.realm_id=$2 AND c.proposer_id<>$3 "+
+          "AND c.status IN('SUBMITTED','IN_REVIEW','PENDING_OWNER','OWNER_COMPLETED') "+
+          "AND pr.source_digest=c.health_source_digest AND pr.approval_case_ref=c.id "+
+          "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+          "AND i.status='VALIDATED' AND i.classification='HEALTH_PROVIDER_REGISTRATION' "+
+          "UNION ALL "+
+          "SELECT f.*,i.classification,i.status AS intent_status,"+
+          "c.id AS case_id,c.health_provider_id AS provider_id,"+
+          "c.health_center_id AS center_id,c.health_source_digest AS source_digest,"+
+          "c.status AS case_status FROM cg03_case c "+
+          "JOIN health_center_revision cr ON c.case_kind='HEALTH_CENTER_VERIFICATION' "+
+          "AND cr.id=c.health_center_revision_id AND cr.root_realm_id=c.realm_id "+
+          "JOIN cg19_stored_file f ON f.id=cr.proof_file_ref "+
+          "AND f.realm_id=cr.root_realm_id "+
+          "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id "+
+          "AND i.realm_id=f.realm_id "+
+          "WHERE c.id=$1 AND c.realm_id=$2 AND c.proposer_id<>$3 "+
+          "AND c.status IN('SUBMITTED','IN_REVIEW','PENDING_OWNER','OWNER_COMPLETED') "+
+          "AND cr.source_digest=c.health_source_digest AND cr.approval_case_ref=c.id "+
+          "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+          "AND i.status='VALIDATED' AND i.classification='HEALTH_CENTER_LICENSE' LIMIT 1",
+          [ref,actor.realmId,actor.accountId]);
+        if(!r.rows[0])throw new NotFoundException("Private healthcare review evidence unavailable");
+        await tx.query("COMMIT");
+        return r.rows[0];
+      }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}
+      finally{tx.release();}
+    };
+    const file=await prove();
+    const bytes=await this.objects.readVerifiedPrivateObject({
+      objectKey:file.object_key,objectVersion:file.object_version,
+      maxBytes:Math.min(Number(file.verified_size_bytes),10485760)
+    });
+    if(!Buffer.isBuffer(bytes)||bytes.length!==Number(file.verified_size_bytes)||
+      createHash("sha256").update(bytes).digest("hex")!==file.verified_sha256)
+      throw new ServiceUnavailableException("Private review evidence could not be verified");
+    const now=await prove();
+    if(now.id!==file.id||now.revision!==file.revision||
+      now.object_version!==file.object_version)
+      throw new NotFoundException("Original review proof changed");
     return {data:bytes,mime:file.original_mime};
   }
   async revoke(bearer:string,fileRef:string,expectedRevision:unknown){
