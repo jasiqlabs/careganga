@@ -1,6 +1,5 @@
-import {ConflictException,Inject,Injectable} from "@nestjs/common";
+import {ConflictException,Injectable} from "@nestjs/common";
 import type {PoolClient} from "pg";
-import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 export type GrantSubmission=Readonly<{
@@ -12,9 +11,7 @@ export type GrantSubmission=Readonly<{
  * process. Never grant an operational ERP permission from this facade. */
 @Injectable()
 export class HealthErpGrantReviewSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade){}
  async original(tx:PoolClient,actor:VerifiedFoundationActor,input:GrantSubmission){
-  await this.identity.assertCurrent(tx,actor,"health.providers.verify");
   const p=await tx.query<{status:string;legal_name:string}>(
    "SELECT status,legal_name FROM health_provider WHERE root_realm_id=$1 "+
    "AND id=$2 FOR SHARE",[actor.realmId,input.providerRef]);
