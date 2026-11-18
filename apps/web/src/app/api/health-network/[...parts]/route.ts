@@ -23,7 +23,8 @@ const errors=new Set([
   "HEALTH_DOCTOR_FEE_INVALID","HEALTH_DOCTOR_FEE_INELIGIBLE",
   "HEALTH_DOCTOR_FEE_OVERLAP","HEALTH_DOCTOR_FEE_REQUEST_CONFLICT",
   "HEALTH_DOCTOR_FEE_STALE","HEALTH_DOCTOR_FEE_UNAVAILABLE",
-  "HEALTH_DOCTOR_FEE_CHANGED"
+  "HEALTH_DOCTOR_FEE_CHANGED","HEALTH_CONTENT_INVALID","HEALTH_CONTENT_REQUEST_CONFLICT",
+  "HEALTH_CONTENT_VERSION_CHANGED"
 ]);
 function allowed(parts:string[],method:string){
   // Doctor drafts are private and permission-checked again in CG01/Nest.
@@ -52,6 +53,8 @@ function allowed(parts:string[],method:string){
       ["apply","return-to-draft"].includes(parts[3]))return method==="POST";
     return false;
   }
+  if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
+    parts[2]==="content")return method==="GET"||method==="PATCH";
   if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
     parts[2]==="eligible-doctors")return method==="GET";
   if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
