@@ -9,6 +9,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthDraftEvidenceService} from "../../cg-19-documents-notifications/application/health-draft-evidence.service";
+import {HealthNetworkIdentityFacade} from "../../cg-01-identity-access/application/health-network-identity.facade";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
@@ -141,7 +142,8 @@ export class HealthNetworkService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
     private readonly identity:FoundationStructureIdentityFacade,
-    private readonly evidence:HealthDraftEvidenceService){}
+    private readonly evidence:HealthDraftEvidenceService,
+    private readonly representativeIdentity:HealthNetworkIdentityFacade){}
   private async transact<T>(fn:(client:PoolClient)=>Promise<T>):Promise<T>{
     const client=await this.db.connect();let open=false;
     try{
@@ -492,16 +494,7 @@ export class HealthNetworkService{
       const cmd=await this.command(client,actor,"CENTER_AFFILIATE",input.requestKey,{ref,accountRef});
       if(cmd.replay)return {affiliationRef:cmd.replay.result_ref,status:"PENDING_EDIT",replayed:true};
       const center=await this.canEdit(client,actor,ref,true);
-      const eligibility=await client.query<{id:string}>(
-        "SELECT a.id FROM account a JOIN account_role ar ON ar.account_id=a.id "+
-        "AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL "+
-        "JOIN role r ON r.id=ar.role_id AND r.active=true "+
-        "JOIN role_grant g ON g.role_id=r.id AND g.capability_key='health.centers.draft.edit' "+
-        "WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE' FOR SHARE OF a,ar,r",
-        [accountRef,actor.realmId]);
-      if(!eligibility.rows[0])throw new BadRequestException({
-        code:"HEALTH_REPRESENTATIVE_NOT_ELIGIBLE",field:"accountRef"
-      });
+      await this.representativeIdentity.eligibleRepresentative(client,actor,accountRef);
       const inserted=await client.query<{id:string;revision:number}>(
         "INSERT INTO health_center_account_affiliation(root_realm_id,center_id,account_ref,assigned_by) "+
         "VALUES($1,$2,$3,$4) "+
@@ -577,6 +570,9 @@ export class HealthNetworkService{
       return {status:"CONFIRMED",version:next,replayed:false,
         message:"The protected settlement reference was saved."};
     });
+  }
+  async representativeOptions(bearer:string,search?:string){
+    return this.representativeIdentity.eligibleRepresentativeOptions(bearer,search??"");
   }
   async geo(bearer:string,level:string,parentRef?:string){
     if(!["STATE","DISTRICT","SUBDIVISION","BLOCK"].includes(level))
