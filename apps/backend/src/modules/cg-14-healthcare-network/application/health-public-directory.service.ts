@@ -94,6 +94,9 @@ export class HealthPublicDirectoryService{
     "AND doc.id=assoc.doctor_id AND doc.status='VERIFIED' "+
     "JOIN health_doctor_revision drv ON drv.root_realm_id=doc.root_realm_id "+
     "AND drv.doctor_id=doc.id "+
+    "AND drv.revision_no=(SELECT MAX(r2.revision_no) "+
+    "FROM health_doctor_revision r2 WHERE r2.root_realm_id=doc.root_realm_id "+
+    "AND r2.doctor_id=doc.id) "+
     "JOIN cg03_case dc ON dc.id=drv.approval_case_ref AND dc.realm_id=drv.root_realm_id "+
     "AND dc.case_kind='HEALTH_DOCTOR_VERIFICATION' AND dc.status='OWNER_COMPLETED' "+
     "AND dc.health_doctor_id=doc.id AND dc.health_doctor_revision_id=drv.id "+
