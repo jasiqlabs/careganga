@@ -1,0 +1,114 @@
+import type {Metadata} from "next";
+import Link from "next/link";
+import {
+  directory,directorySearch,type PublicCenter,type PublicDoctor
+} from "../../features/health-network/public-directory-source";
+export const dynamic="force-dynamic";
+export const metadata:Metadata={title:"Healthcare Centers & Doctors | CareGanga",
+ description:"Find currently verified CareGanga healthcare centers and doctors. Confirm services directly with the center.",
+ robots:{index:true,follow:true},
+ alternates:{canonical:"/health-network"}};
+type Props={searchParams:Promise<Record<string,string|string[]|undefined>>};
+const nice=(value:string)=>value.toLowerCase().replaceAll("_"," ")
+ .replace(/\b\w/g,c=>c.toUpperCase());
+const rupee=(amount:number)=>new Intl.NumberFormat("en-IN",{
+ style:"currency",currency:"INR",maximumFractionDigits:2}).format(amount/100);
+export default async function HealthcareDirectory({searchParams}:Props){
+ const raw=await searchParams,tab=raw.tab==="doctors"?"doctors":"centers";
+ const query=directorySearch(raw);
+ const result=tab==="doctors"?
+  await directory<PublicDoctor>("doctors",query):
+  await directory<PublicCenter>("centers",query);
+ const next=new URLSearchParams(query);
+ if(result.next)next.set("after",result.next);
+ return <main className="cg-public-shell">
+  <header className="cg-public-header">
+   <nav aria-label="Breadcrumb">
+    <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
+    <span>Healthcare Network</span>
+   </nav>
+  </header>
+  <section className="cg-public-section">
+   <p className="cg-eyebrow">CareGanga · Healthcare Assistance</p>
+   <h1>Find verified healthcare centers and doctors</h1>
+   <p className="cg-lead">Only currently approved, published partners appear here.
+    Contact the center to confirm timings and care. Online appointments and
+    financial assistance estimates are not offered in this directory.</p>
+   <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
+    <Link href="/health-network?tab=centers" aria-current={tab==="centers"?"page":undefined}>Centers</Link>
+    <Link href="/health-network?tab=doctors" aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
+   </nav>
+  </section>
+  <section className="cg-public-section" aria-label="Search the directory">
+   <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
+    <input type="hidden" name="tab" value={tab}/>
+    <label>Search name or {tab==="doctors"?"qualification":"provider"}
+     <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
+      type="search" maxLength={80} placeholder="Search verified records"/>
+    </label>
+    <label>PIN code (optional)
+     <input name="pin" defaultValue={typeof raw.pin==="string"?raw.pin:""}
+      inputMode="numeric" pattern="[1-9][0-9]{5}" maxLength={6}
+      placeholder="Six-digit PIN"/>
+    </label>
+    <label>Center type
+     <select name="category" defaultValue={typeof raw.category==="string"?raw.category:""}>
+      <option value="">All verified center types</option>
+      {(["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"] as const)
+       .map(type=><option key={type} value={type}>{nice(type)}</option>)}
+     </select>
+    </label>
+    {tab==="doctors"&&<>
+     <label>Specialty <input name="specialty"
+      defaultValue={typeof raw.specialty==="string"?raw.specialty:""}
+      maxLength={60} placeholder="e.g. General Medicine"/></label>
+     <label>Minimum consultation fee (₹)
+      <input name="minFee" inputMode="numeric" type="number" min={0} max={9999999}
+       defaultValue={typeof raw.minFee==="string"?raw.minFee:""}/></label>
+     <label>Maximum consultation fee (₹)
+      <input name="maxFee" inputMode="numeric" type="number" min={0} max={9999999}
+       defaultValue={typeof raw.maxFee==="string"?raw.maxFee:""}/></label>
+    </>}
+    <div style={{display:"flex",flexWrap:"wrap",gap:16,alignItems:"center"}}>
+     <button type="submit">Apply filters</button>
+     <Link href={"/health-network?tab="+tab}>Reset filters</Link>
+    </div>
+   </form>
+  </section>
+  <section className="cg-public-section" aria-live="polite">
+   <h2>{tab==="centers"?"Published healthcare centers":"Verified professionals"}</h2>
+   {result.state==="UNAVAILABLE"?<p role="alert">Current verified directory results
+     could not be checked. Please try again. No outdated listing is shown.</p>:
+    result.items.length===0?<p>No currently approved listings match your search.</p>:
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:16}}>
+     {tab==="centers"?
+      (result.items as PublicCenter[]).map(c=><article key={c.slug}
+        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
+       <p className="cg-eyebrow">{nice(c.type)} · Verified center</p>
+       <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>{c.centerName}</Link></h3>
+       <p>{c.providerName}</p><p>{c.address}, {c.pinCode}</p>
+       <Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
+      </article>):
+      (result.items as PublicDoctor[]).map(d=><article
+        key={d.doctorRef+":"+d.centerSlug}
+        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
+       <p className="cg-eyebrow">Verified doctor · {d.centerName}</p>
+       <h3><Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
+        {d.doctorName}</Link></h3>
+       <p>{d.specialties.join(", ")||"Specialty not listed"}</p>
+       <p>{d.address}, {d.pinCode}</p>
+       <p>{d.fee?("Current in-person consultation: "+rupee(d.fee.amountMinor)):
+         "Consultation fee not currently published"}</p>
+       <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
+        View verified doctor</Link>
+      </article>)}
+    </div>}
+   {result.state==="READY"&&result.next&&<p style={{marginTop:20}}>
+    <Link href={"/health-network?tab="+tab+"&"+next.toString()}>Next results</Link>
+   </p>}
+  </section>
+  <section className="cg-public-section">
+   <p>Listings do not imply availability, a booking, a benefit amount, or a medical recommendation.</p>
+  </section>
+ </main>;
+}
