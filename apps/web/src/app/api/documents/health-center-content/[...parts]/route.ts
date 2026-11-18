@@ -46,6 +46,19 @@ async function handler(req:NextRequest,ctx:Ctx,method:"GET"|"POST"){
   if(!result.ok){
    const status=[400,401,403,404,409,413,429].includes(result.status)?
     result.status:503;
+   const raw:unknown=await result.json().catch(()=>null);
+   const permitted=new Set([
+    "HEALTH_CENTER_MEDIA_INVALID","HEALTH_CENTER_MEDIA_SOURCE_CHANGED",
+    "HEALTH_CENTER_MEDIA_REQUEST_CONFLICT","HEALTH_CENTER_MEDIA_RIGHTS_INVALID",
+    "HEALTH_CENTER_MEDIA_RIGHTS_CHANGED","HEALTH_CENTER_MEDIA_NOT_VERIFIED"
+   ]);
+   if(status<500&&raw&&typeof raw==="object"&&"code" in raw&&
+     typeof raw.code==="string"&&permitted.has(raw.code)&&
+     "message" in raw&&typeof raw.message==="string"&&
+     raw.message.length>=16&&raw.message.length<=240&&
+     !/[<>\u0000-\u001f\u007f]/.test(raw.message))
+    return NextResponse.json({code:raw.code,message:raw.message},{
+     status,headers:{"Cache-Control":"no-store"}});
    return fail(status,status===401?"Sign in to continue.":
     status===403?"You cannot manage files for this center.":
     status===409?"This file or center draft changed. Refresh original status.":
