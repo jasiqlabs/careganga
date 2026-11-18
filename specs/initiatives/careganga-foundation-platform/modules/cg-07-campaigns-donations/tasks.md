@@ -121,3 +121,6 @@ Dependencies: US-002 actual CG-09 confirmed posting and original CG-19 issued re
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+## 18 November 2026 — original website receiving acceptance — receiving story QA
+For original US-001/002/003 QA, validate **campaign real publication and genuine CTA/payment, verified receipt/duplicate/rejected/refund, correct source-owned original donor artwork** against original first 10 + Batch02 021139–021224 and Campaigns; Donate Now; Upcoming Projects Support; actual donor receipt/certificate. Cross-reference [original screenshot QA contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), then run source owner→Admin permissions/CG-21 error→approval→current Web/native state→withdrawal/denied/unavailable/rollback. No new QA identifier, fake financial/provider action or screenshot-only PASS. **RECEIVING SOURCE OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**
