@@ -69,7 +69,8 @@ export function CmsSiteHeader({navigation,contact}:{
       text==="Videos"&&isPublished("/gallery")?"/videos":
       text==="Publications / Reports"&&isPublished("/gallery")?
        "/publications":
-      (text==="News & Updates"||text==="Blog")&&anyArticles?"/blog":undefined}))}/>
+      text==="News & Updates"?"/notices":
+      text==="Blog"&&anyArticles?"/blog":undefined}))}/>
     <Menu label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
     {isPublished("/healthcare")?<Link href="/healthcare"
