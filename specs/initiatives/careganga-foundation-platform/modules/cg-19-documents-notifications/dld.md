@@ -115,3 +115,7 @@ CG19's single source media relation supports new original CG18 Contact photo pla
 ### Public verified video byte-range transport — 18 November
 
 CG19 public media controller responds to a single valid MP4 HTTP `Range` request with 206/`Content-Range`/`Content-Length`/`Accept-Ranges`, rejects malformed and unsatisfiable ranges with 416, keeps standard no-store/nonvideo behavior. Calls existing `publicBytes` first (full SHA-256 integrity check and current-publication revocation after private storage access). No direct public S3/Firebase object read or bypass on Range. Does not yet optimize private-storage full-file read per chunk; assess verified seeking and bandwidth in real QA. No API/DB/video playback tests executed.
+
+### Same-origin Media proxy Range alignment — 18 November
+
+The native CG19 `publicBytes` remains the one rights/scan/SHA+current effective publication authority. The Web same-origin proxy now carries a sanitized single MP4 Range request and response 206 Content-Range/Content-Length/Accept-Ranges; invalid/unsatisfiable Range gets 416, missing current file 404, source unavailable 503, original images and PDFs remain 200 with no-store. Validate real public playback/video seek and CG19 direct-file revalidation after source revocation on Web, Android and backend. This is source-reviewed only, not a claim of executed performance/DB tests.
