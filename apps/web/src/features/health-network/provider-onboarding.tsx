@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {blankCenter,CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 type ProviderDraft={providerCode:string;legalName:string;providerType:string;
@@ -77,7 +77,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       }
     }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Provider unavailable");}
   }
-  async function submitCreate(event:React.FormEvent<HTMLFormElement>){
+  async function submitCreate(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!canManage||busy||uncertain)return;
     setBusy(true);setError("");setNotice("");
