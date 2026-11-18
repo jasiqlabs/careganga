@@ -9,11 +9,13 @@ import {HealthNetworkService} from "./application/health-network.service";
 import {HealthNetworkController} from "./http/health-network.controller";
 import {HealthDoctorDraftService} from "./application/health-doctor-draft.service";
 import {HealthDoctorDraftController} from "./http/health-doctor-draft.controller";
+import {HealthDoctorReviewWorkflowService} from "./application/health-doctor-review-workflow.service";
+import {HealthDoctorReviewSourceFacade} from "./application/health-doctor-review-source.facade";
 
 @Module({
   imports:[IdentityAccessModule,DocumentsNotificationsModule,RegistrationApprovalsModule],
-  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthDoctorDraftService],
+  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthDoctorDraftService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
   controllers:[HealthNetworkController,HealthPublicCenterController,HealthDoctorDraftController],
-  exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService]
+  exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService,HealthDoctorReviewWorkflowService]
 })
 export class HealthNetworkModule{}
