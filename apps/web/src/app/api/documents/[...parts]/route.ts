@@ -52,6 +52,8 @@ function doctorEvidence(parts:string[],method:"GET"|"POST"){
   if(parts.length===4&&parts[1]==="intents"&&UUID.test(parts[2])&&
     parts[3]==="confirm")return method==="POST";
   if(parts.length===3&&parts[1]==="doctors"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
+    parts[3]==="download")return method==="GET";
   if(parts.length===4&&parts[1]==="files"&&UUID.test(parts[2])&&
     parts[3]==="revoke")return method==="POST";
   return false;
@@ -123,6 +125,8 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
     (parts[0]==="files"||parts[0]==="letters")&&parts[2]==="download")||
     (parts.length===4&&["branch-evidence","active-branch-files","health-draft"].includes(parts[0])&&
       parts[1]==="files"&&parts[3]==="download")||
+    (parts.length===4&&parts[0]==="doctor-evidence"&&parts[1]==="reviews"&&
+      parts[3]==="download")||
     (parts.length===4&&parts[0]==="health-draft"&&parts[1]==="reviews"&&
       parts[3]==="download");
   try{
