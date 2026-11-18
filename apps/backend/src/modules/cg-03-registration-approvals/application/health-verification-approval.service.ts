@@ -151,7 +151,7 @@ export class HealthVerificationApprovalService{
       "SELECT id,case_number,account_name_snapshot,case_kind,status,revision "+
       "FROM cg03_case WHERE realm_id=$1 AND case_kind IN "+
       "('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') "+
-      "AND status IN('SUBMITTED','IN_REVIEW','RETURNED','PENDING_OWNER','OWNER_COMPLETED') "+
+      "AND status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','PENDING_OWNER','OWNER_COMPLETED') "+
       "ORDER BY submitted_at DESC,id DESC LIMIT 41 OFFSET $2",
       [actor.realmId,offset]);
     await tx.query("COMMIT");
