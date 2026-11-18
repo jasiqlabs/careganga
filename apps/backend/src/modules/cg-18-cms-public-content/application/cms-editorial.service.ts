@@ -915,6 +915,7 @@ export class CmsEditorialService{
    "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
    "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
+   "a.public_rights_status<>'VALIDATED' OR "+
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
    "OR f.revision<>a.cg19_validated_version)) "+
    "ORDER BY n.approved_at DESC,p.slug ASC LIMIT 60");
