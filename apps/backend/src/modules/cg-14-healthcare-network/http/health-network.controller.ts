@@ -1,11 +1,13 @@
 import {BadRequestException,Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {HealthNetworkService} from "../application/health-network.service";
+import {HealthDoctorFeesService} from "../application/health-doctor-fees.service";
 import {HealthReviewWorkflowService} from "../application/health-review-workflow.service";
 
 @Controller("api/v1/health-network")
 export class HealthNetworkController{
   constructor(private readonly network:HealthNetworkService,
-    private readonly reviews:HealthReviewWorkflowService){}
+    private readonly reviews:HealthReviewWorkflowService,
+    private readonly fees:HealthDoctorFeesService){}
   @Get("representatives/options")
   representatives(@Headers("authorization")bearer:string,@Query("search")search?:string){
     return this.network.representativeOptions(bearer,search);
@@ -132,6 +134,23 @@ export class HealthNetworkController{
     @Param("centerRef")ref:string,
     @Param("affiliationRef")affiliationRef:string,@Body()body:unknown){
     return this.network.revokeRepresentative(bearer,ref,affiliationRef,body);
+  }
+  @Get("my-centers/:centerRef/doctors")
+  ownDoctors(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string){
+    return this.fees.ownDoctors(bearer,ref);
+  }
+  @Get("my-centers/:centerRef/doctors/:doctorRef/associations/:associationRef/fees")
+  ownFees(@Headers("authorization")bearer:string,
+    @Param("centerRef")center:string,@Param("doctorRef")doctor:string,
+    @Param("associationRef")association:string){
+    return this.fees.ownFees(bearer,center,doctor,association);
+  }
+  @Post("my-centers/:centerRef/doctors/:doctorRef/associations/:associationRef/fees")
+  ownFeeProposal(@Headers("authorization")bearer:string,
+    @Param("centerRef")center:string,@Param("doctorRef")doctor:string,
+    @Param("associationRef")association:string,@Body()body:unknown){
+    return this.fees.proposeForOwnCenter(bearer,center,doctor,association,body);
   }
   @Get("my-centers")
   myCenters(@Headers("authorization")bearer:string){
