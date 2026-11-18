@@ -29,6 +29,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
  // A stale unrelated district/block must never remain in the submitted query.
  const query=directorySearch({...raw,state:selectedState,
   district:selectedDistrict,block:selectedBlock});
+ const showAdvanced=["pin","state","district","block","category","service","day",
+  "facility","specialty","minExperience","maxExperience","minFee","maxFee"]
+  .some(key=>query.has(key));
  const result=tab==="doctors"?
   await directory<PublicDoctor>("doctors",query):
   await directory<PublicCenter>("centers",query);
@@ -59,6 +62,11 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
     </label>
+    <details open={showAdvanced} style={{border:"1px solid #d7dfdb",
+       borderRadius:12,padding:12}}>
+     <summary style={{cursor:"pointer",fontWeight:600,padding:"8px 0"}}>
+      More filters — location, center type, services and fees</summary>
+     <div style={{display:"grid",gap:12,marginTop:12}}>
     <label>PIN code (optional)
      <input name="pin" defaultValue={typeof raw.pin==="string"?raw.pin:""}
       inputMode="numeric" pattern="[1-9][0-9]{5}" maxLength={6}
@@ -133,6 +141,8 @@ export default async function HealthcareDirectory({searchParams}:Props){
       <input name="maxFee" inputMode="numeric" type="number" min={0} max={9999999}
        defaultValue={typeof raw.maxFee==="string"?raw.maxFee:""}/></label>
     </>}
+     </div>
+    </details>
     <div style={{display:"flex",flexWrap:"wrap",gap:16,alignItems:"center"}}>
      <button type="submit">Apply filters</button>
      <Link href={"/health-network?tab="+tab}>Reset filters</Link>
