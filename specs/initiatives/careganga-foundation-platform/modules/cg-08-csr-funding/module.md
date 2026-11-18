@@ -1,5 +1,9 @@
 # CG-08 — Csr Funding
 
+### 2026-11-18 original `/collaboration` corporate partner source/ownership
+**Authority:** [47 client screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), especially three dedicated `/collaboration` captures. CG-08 owns **actual** corporate/CSR or real partner organization identity, scope, contract/approval, relevant public logo permission and contact/enquiry destination; CG-18 owns the screenshot-faithful Corporate Partners hero, three benefit cards, Our Social Partners layout and Let's Collaborate editorial CTA. Original screenshots show *Milaap* and *Ketto* logos, but **these are evidence of a visual reference, not verification of a current commercial relationship/brand permission**. Publish partner name/logo/claim only after Foundation Admin records and approves actual partner relationship and authorized media; no CG-18 clone of CSR parties or financial data. Partner With Us routes to genuine CG-08 enquiry or CG-19 contact case by defined business owner. Existing three user stories unchanged, no runtime QA/pass inferred.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
