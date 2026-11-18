@@ -223,7 +223,22 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_DOCTOR_FEE_REQUEST_CONFLICT:"This price request was already used for different details. Review the saved fee before retrying.",
       HEALTH_DOCTOR_FEE_STALE:"The requested fee start time has passed or overlaps another price. Choose a future date.",
       HEALTH_DOCTOR_FEE_UNAVAILABLE:"This center's fee proposal is unavailable for your current access.",
-      HEALTH_DOCTOR_FEE_CHANGED:"The consultation fee proposal changed. Refresh before approving."
+      HEALTH_DOCTOR_FEE_CHANGED:"The consultation fee proposal changed. Refresh before approving.",
+      HEALTH_PUBLIC_FILTER_INVALID:"Check the directory filters. Choose a valid area, category, name or fee range.",
+      HEALTH_CONTENT_INVALID:"Check the center description, services, facilities, photos and questions before saving.",
+      HEALTH_CONTENT_REQUIRED:"Describe this center in at least 20 characters and add at least one service before submitting.",
+      HEALTH_CONTENT_VERSION_CHANGED:"This center presentation changed elsewhere. Reload the latest private draft.",
+      HEALTH_CONTENT_REQUEST_CONFLICT:"The original content request was used for different details. Check its status.",
+      HEALTH_CONTENT_SOURCE_CHANGED:"The submitted center version is no longer current. Refresh the original review.",
+      HEALTH_CONTENT_REVIEW_CONFLICT:"This Foundation content review changed. Reload the original case before deciding.",
+      HEALTH_CONTENT_REVIEW_INVALID:"Choose a review decision and confirm with your current Foundation password.",
+      HEALTH_CONTENT_ALREADY_WITHDRAWN:"This center presentation has already been withdrawn. Reload its public status.",
+      HEALTH_CENTER_MEDIA_INVALID:"Choose a JPG or PNG under 3 MB from this center's current private draft.",
+      HEALTH_CENTER_MEDIA_SOURCE_CHANGED:"The center photo or draft version changed. Refresh the original photo status.",
+      HEALTH_CENTER_MEDIA_REQUEST_CONFLICT:"The original photo upload key was used for different details. Check its status.",
+      HEALTH_CENTER_MEDIA_RIGHTS_INVALID:"Record a real photo owner or written publication consent and a useful image description.",
+      HEALTH_CENTER_MEDIA_RIGHTS_CHANGED:"Photo publication rights changed. Refresh the original image before retrying.",
+      HEALTH_CENTER_MEDIA_NOT_VERIFIED:"Only a securely scanned, unrevoked center photo can be selected for publication."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
