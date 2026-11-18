@@ -305,8 +305,11 @@ export class HealthReviewWorkflowService{
     throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
    if(found.rows[0].status!=="VERIFIED")
     throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+   // Invalidate every dependent center's verification, not merely its
+   // current public flag. After provider reapproval each center must reopen,
+   // submit its own new proof and receive an independent CG03 decision.
    await tx.query(
-    "UPDATE health_center SET access_state='DISABLED',"+
+    "UPDATE health_center SET status='SUSPENDED',access_state='DISABLED',"+
     "publication_state='UNPUBLISHED',publication_generation=publication_generation+1,"+
     "version=version+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND provider_id=$2",[actor.realmId,ref]);
