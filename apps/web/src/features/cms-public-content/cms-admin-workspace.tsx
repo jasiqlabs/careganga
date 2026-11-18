@@ -785,9 +785,6 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
         Remove profile</button>}
       </div>)}
-      {false&&canManage&&draft.team.length<15&&<button type="button" onClick={()=>edit("team",[
-       ...draft.team,{name:"",designation:"",bio:"",consentConfirmed:false}])}>
-       Add team member</button>}
      </fieldset>
      {!!selected&&selected.status==="DRAFT"&&canManage&&<fieldset>
       <legend>Page photographs</legend>
