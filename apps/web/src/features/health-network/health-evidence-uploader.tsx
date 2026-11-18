@@ -119,15 +119,17 @@ export function HealthEvidenceUploader({
     </div>
     {!!notice&&<p className="notice" role={uncertain?"alert":"status"}>{notice}</p>}
     {classification!=="HEALTH_BANK_PROOF"&&<HealthFileList
-      providerRef={providerRef} centerRef={centerRef} refresh={fileRefresh}/>}
+      providerRef={providerRef} centerRef={centerRef} refresh={fileRefresh}
+      onChoose={onVerified}/>}
   </div>;
 }
 
 
 type ProtectedItem={fileRef:string;classification:string;status:string;
  currentVersion:boolean;fileVersion:number};
-function HealthFileList({providerRef,centerRef,refresh}:{
-  providerRef:string;centerRef?:string;refresh:number
+function HealthFileList({providerRef,centerRef,refresh,onChoose}:{
+  providerRef:string;centerRef?:string;refresh:number;
+  onChoose?:(fileRef:string,version:number)=>void
 }){
   const [files,setFiles]=useState<ProtectedItem[]>([]);
   const [notice,setNotice]=useState("");
@@ -165,6 +167,10 @@ function HealthFileList({providerRef,centerRef,refresh}:{
       {file.status==="VALIDATED"&&file.currentVersion&&<>
         <a href={"/api/documents/health-draft/files/"+
           encodeURIComponent(file.fileRef)+"/download"}>View private proof</a>
+        {onChoose&&<button type="button" disabled={working}
+          onClick={()=>{onChoose(file.fileRef,file.fileVersion);
+            setNotice("Current verified proof selected for this registration.");}}>
+          Use verified proof</button>}
         <button type="button" disabled={working} onClick={()=>void revoke(file)}>
           Revoke proof</button>
       </>}
