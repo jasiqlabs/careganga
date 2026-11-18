@@ -15,6 +15,16 @@ const s={
  publicThrottleSql:read("apps/backend/db/migrations/1418_cg14_public_directory_request_throttle.sql"),
  publicCenterApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-public-center.controller.ts"),
  publicModule:read("apps/backend/src/modules/cg-14-healthcare-network/health-network.module.ts"),
+ erpSql:read("apps/backend/db/migrations/1419_cg14_center_erp_grant_original_cg03_case.sql"),
+ erpGrant:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-erp-grant.service.ts"),
+ erpSource:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-erp-grant-review-source.facade.ts"),
+ erpReview:read("apps/backend/src/modules/cg-03-registration-approvals/application/health-erp-grant-approval.service.ts"),
+ erpOwnUi:read("apps/web/src/features/health-network/center-erp-capability-panel.tsx"),
+ erpReviewUi:read("apps/web/src/features/health-network/center-erp-grant-reviews.tsx"),
+ erpReviewBff:read("apps/web/src/app/api/health/erp-grant-reviews/[...parts]/route.ts"),
+ erpPanel:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
+ erpRoot:read("apps/backend/src/modules/cg-03-registration-approvals/registration-approvals.module.ts"),
+ erpConfig:read("apps/backend/src/core/config/config.ts"),
  content:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-content.service.ts"),
  contentApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-center-content.controller.ts"),
  review:read("apps/backend/src/modules/cg-03-registration-approvals/application/health-center-content-approval.service.ts"),
@@ -95,6 +105,54 @@ const checks=[
  ["US005 center and Foundation staff have original guarded attachment UI",s.attachmentHttp.includes("SupportAgentAttachmentController")&&
   s.attachmentCenter.includes("Upload securely")&&
   s.attachmentAgent.includes("Refresh attachments")&&s.supportBff.includes('parts[4]==="attachments"')],
+ ["US005 original ERP source and no fake operational stock",s.erpSql.includes("health_center_erp_grant_revision")&&
+  s.erpSql.includes("health_center_erp_grant_event")&&
+  s.erpSql.includes("HEALTH_CENTER_ERP_GRANT")&&
+  !s.erpSql.includes("CREATE TABLE pharmacy_stock")],
+ ["US005 original CG03 grant source disjoint and frozen",s.erpSql.includes("cg03_erp_only_source")&&
+  s.erpSql.includes("health_source_digest ~ '^[a-f0-9]{64}s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&
+  s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&s.errors.includes("CENTER_SUPPORT_FILE_CHANGED")],
+ ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
+ ["All original 94 story QA identifiers preserved",(()=>{
+   const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
+   const want=new Set();
+   for(let story=1;story<=5;story++)for(let n=1;n<=(story===5?22:18);n++)
+    want.add("US-"+String(story).padStart(3,"0")+"-QA"+String(n).padStart(2,"0"));
+   return actual.size===94&&[...want].every(x=>actual.has(x));
+ })()]
+];
+let fails=0;
+for(const [name,pass] of checks){
+ process.stdout.write((pass?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+name+"\n");
+ if(!pass)fails++;
+}
+process.stdout.write("US004/US005 static source wiring "+(checks.length-fails)+"/"+checks.length+
+ "; **no executed QA**, SQL, build, device or pixel proof.\n");
+if(fails)process.exitCode=1;
+")&&
+  s.erpSql.includes("NEW.health_erp_revision_id IS DISTINCT FROM OLD.health_erp_revision_id")],
+ ["US005 actual original independent CG03 reviewer",s.erpReview.includes("requireDistinctFinalReviewer")&&
+  s.erpReview.includes("requireFreshFoundationRootProof")&&
+  s.erpReview.includes("c.proposer_id===actor.accountId")&&
+  s.erpReview.includes("this.source.original(")],
+ ["US005 center current owner creates ERP request, no operational grant",s.erpGrant.includes("this.centerScope.assertCurrent")&&
+  s.erpGrant.includes("this.approval.create(tx,actor")&&
+  s.erpGrant.includes("canUseOperations:false")],
+ ["US005 protected Foundation applies, suspends or withdraws version",s.erpGrant.includes("this.approval.approved(")&&
+  s.erpGrant.includes("requireFreshFoundationRootProof")&&
+  s.erpGrant.includes("'SUSPENDED'")&&s.erpGrant.includes("'WITHDRAWN'")],
+ ["US005 deployment switches OFF or explicitly NOT_AVAILABLE",s.erpConfig.includes("CAREGANGA_ERP_PHARMACY_ENABLED")&&
+  s.erpConfig.includes("available:false")&&s.erpGrant.includes("erpDeploymentCapabilities")],
+ ["US005 center and Foundation views explicitly do not enable ERP",s.erpOwnUi.includes("Request independent Foundation approval")&&
+  s.erpReviewUi.includes("Record independent decision")&&
+  s.erpReviewUi.includes("Apply approved center grant")&&
+  s.erpPanel.includes("CenterErpCapabilityPanel")],
+ ["US005 original grant modules and staff-only proxy",s.publicModule.includes("HealthCenterErpGrantService")&&
+  s.erpRoot.includes("HealthErpGrantApprovalService")&&
+  s.erpReviewBff.includes("erp-grant-reviews")&&
+  s.bff.includes('parts[0]==="erp-grants"')],
+ ["US005 ERP status and user-editable error",s.errors.includes("HEALTH_ERP_GRANT_INVALID")&&
+  s.errors.includes("HEALTH_ERP_GRANT_SOURCE_CHANGED")],
  ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&
   s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&s.errors.includes("CENTER_SUPPORT_FILE_CHANGED")],
  ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
