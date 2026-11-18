@@ -20,7 +20,7 @@ export type FinanceSetup={accounts:FinanceAccount[];years:FinanceYear[];
  groups:FinanceGroup[];branches:FinanceBranch[];
  openingJournals:{journalRef:string;yearName:string;postingDate:string;amountMinor:string}[];
  categorySummary:{category:string;balanceMinor:string;accountCount:string}[];
- nextOffset:number|null};
+ canManageFoundationFinance:boolean;nextOffset:number|null};
 type Target={ref:string;name:string;status:string;version:number};
 type Props={token:string;kind:FinanceKind;data:FinanceSetup;target?:Target;
  onClose:()=>void;onSaved:()=>void;onExpired:()=>void};
@@ -77,7 +77,7 @@ function Field({label,value,onChange,placeholder,keyboard="default",error,maxLen
 export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExpired}:Props){
  const [form,setForm]=useState<Record<string,string>>({
   name:"",code:"",startOn:"",endOn:"",category:"ASSET",parentRef:"",
-  groupRef:"",accountKind:"GENERAL",scopeKind:"FOUNDATION",branchRef:"",
+  groupRef:"",accountKind:"GENERAL",scopeKind:data.canManageFoundationFinance?"FOUNDATION":"BRANCH",branchRef:"",
   bankLabel:"",bankLastFour:"",financialYearRef:"",postingDate:"",
   debitAccountRef:"",creditAccountRef:"",amount:"",description:""
  });
@@ -293,8 +293,9 @@ export function FinanceSetupEditor({token,kind,data,target,onClose,onSaved,onExp
       options={relatedGroups.map(g=>({value:g.groupRef,label:g.name+" · "+g.code}))}
       onChange={v=>change("groupRef",v)}/>
      <ChoiceRow title="Account scope *" value={form.scopeKind}
-      options={[{value:"FOUNDATION",label:"Foundation"},
-        {value:"BRANCH",label:"Branch"}]} onChange={v=>change("scopeKind",v)}/>
+      options={data.canManageFoundationFinance?
+       [{value:"FOUNDATION",label:"Foundation"},{value:"BRANCH",label:"Branch"}]:
+       [{value:"BRANCH",label:"Branch"}]} onChange={v=>change("scopeKind",v)}/>
      {form.scopeKind==="BRANCH"&&<ChoiceRow title="Current ACTIVE branch *" value={form.branchRef}
        options={data.branches.map(b=>({value:b.branchRef,label:b.name+" · "+b.code}))}
        onChange={v=>change("branchRef",v)}/>}
