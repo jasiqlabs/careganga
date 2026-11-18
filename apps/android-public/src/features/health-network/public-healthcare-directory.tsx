@@ -65,6 +65,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
   state:null,district:null,block:null
  });
  const [resetVersion,setResetVersion]=useState(0);
+ const [filtersExpanded,setFiltersExpanded]=useState(false);
  const [state,setState]=useState<State>({status:"LOADING",items:[],next:null,details:null});
  const seq=useRef(0);
  const selectionRef=useRef<Selection|null>(null);
@@ -159,7 +160,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  },[selection,show,load]);
  function reset(){
   seq.current++;selectionRef.current=null;detailHistory.current=[];
-  setSelection(null);setSearch("");setPin("");setCategory("");
+  setFiltersExpanded(false);setSelection(null);setSearch("");setPin("");setCategory("");
   setFacility("");setService("");setDay("");
   setMinExperience("");setMaxExperience("");
   setRegion({state:null,district:null,block:null});setAreaQuery("");
@@ -195,6 +196,12 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
     <Text style={styles.label}>Search name or qualification</Text>
     <TextInput accessibilityLabel="Search current verified directory" style={styles.input}
      value={search} onChangeText={setSearch} maxLength={80} placeholder="Name or qualification"/>
+    {label(filtersExpanded?"Hide additional filters":"Additional filters",()=>{
+      setFiltersExpanded(v=>!v);
+    },filtersExpanded)}
+    {filtersExpanded&&<>
+     <Text style={styles.helper}>Choose any optional filters, then Apply filters.
+      State, district and block must match the same area.</Text>
     <Text style={styles.label}>Area PIN code (optional)</Text>
     <TextInput accessibilityLabel="Filter by six-digit PIN" style={styles.input}
      value={pin} onChangeText={setPin} keyboardType="number-pad" maxLength={6}
@@ -266,8 +273,9 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
      <TextInput accessibilityLabel="Maximum approved consultation fee" style={styles.input}
       keyboardType="number-pad" value={maxFee} onChangeText={setMaxFee} maxLength={7}/>
     </>}
+    </>}
     <View style={styles.row}>
-     {label("Apply filters",()=>void load())}
+     {label("Apply filters",()=>{setFiltersExpanded(false);void load();})}
      {label("Reset",()=>reset())}
     </View>
     {state.status==="READY"&&state.items.length===0&&
