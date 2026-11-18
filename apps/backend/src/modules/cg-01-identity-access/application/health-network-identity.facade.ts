@@ -1,8 +1,8 @@
-import {BadRequestException,ForbiddenException,Injectable} from "@nestjs/common";
-import type {PoolClient} from "pg";
+import {BadRequestException,Inject,Injectable} from "@nestjs/common";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
 import type {VerifiedFoundationActor} from "../public-api";
 import {SessionService} from "./session.service";
-import {FoundationStructureIdentityFacade} from "./foundation-structure-identity.facade";
 
 /** CG-01 account owner adapter for CG-14 pending center representative selection.
  * No duplicate account master or hand-rolled identity assignment in healthcare.
@@ -10,7 +10,7 @@ import {FoundationStructureIdentityFacade} from "./foundation-structure-identity
 @Injectable()
 export class HealthNetworkIdentityFacade{
   constructor(private readonly sessions:SessionService,
-    private readonly identity:FoundationStructureIdentityFacade){}
+    @Inject(DATABASE) private readonly db:Pool){}
   async eligibleRepresentative(client:PoolClient,actor:VerifiedFoundationActor,accountRef:string){
     const rows=await client.query<{id:string}>(
       "SELECT a.id FROM account a "+
@@ -29,8 +29,7 @@ export class HealthNetworkIdentityFacade{
     if(typeof search!=="string"||search.length>80)
       throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"search"});
     const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\$&");
-    const clientActor=actor;
-    const rows=await this.sessions["db"].query<{id:string;display_name:string}>(
+    const rows=await this.db.query<{id:string;display_name:string}>(
       "SELECT DISTINCT a.id,a.display_name FROM account a "+
       "JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id "+
       "AND ar.revoked_at IS NULL "+
@@ -39,7 +38,7 @@ export class HealthNetworkIdentityFacade{
       "WHERE a.realm_id=$1 AND a.status='ACTIVE' "+
       "AND ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\\') "+
       "ORDER BY a.display_name,a.id LIMIT 30",
-      [clientActor.realmId,term?"%"+term+"%":""]);
+      [actor.realmId,term?"%"+term+"%":""]);
     return {options:rows.rows.map(row=>({value:row.id,label:row.display_name}))};
   }
 }
