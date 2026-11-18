@@ -65,6 +65,11 @@ export class HealthNetworkController{
     @Body()body:unknown){
     return this.reviews.access(bearer,ref,body);
   }
+  @Post("centers/:centerRef/publication")
+  publication(@Headers("authorization")bearer:string,@Param("centerRef")ref:string,
+    @Body()body:unknown){
+    return this.reviews.publish(bearer,ref,body);
+  }
   @Get("providers/:providerRef/finance-reference")
   financeReference(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
     return this.network.financeReference(bearer,ref);
