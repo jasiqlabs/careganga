@@ -29,7 +29,7 @@ export default async function CenterContentReviewPage(){
     <p>Your current role cannot independently review center content.</p>
     <Link href="/admin/health-network">Return to healthcare</Link></main>;
   return <main className="page main"><p><Link href="/admin/health-network">
-    Back to healthcare management</Link></p><CenterContentReviewInbox/></main>;
+    Back to healthcare management</Link></p><CenterContentReviewInbox canPublish={allowed.has("health.centers.publish")}/></main>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
