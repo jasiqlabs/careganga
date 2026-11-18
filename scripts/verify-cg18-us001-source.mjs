@@ -163,7 +163,7 @@ const checks=[
   ["Home","About Us","Our Work","NGO Information","Campaigns","Upcoming Projects",
    "Partnerships","Events","Media & Resources","Join Now","Healthcare Assistance","Contact Us"]
     .every(name=>files.header.includes(name))&&!files.header.includes("Blood Donation")],
- ["Original NGO Information uses the approved current 80G source without fabricated PAN pages",
+ ["Original NGO Information uses the approved 80G source and verified child routes",
   files.backend.includes('kind==="COMPLIANCE"?"/ngo-information"')&&
   files.backend.includes('p.kind==="COMPLIANCE"?"/ngo-information"')&&
   files.routeNgo.includes('CmsOriginalNgoInformationRoute')&&
@@ -275,6 +275,29 @@ const checks=[
   files.web.includes('assets={assets}')&&
   files.androidExtended.includes('picture("CONTACT",i)')&&
   files.android.includes('contact:"CONTACT"')],
+
+ ["Original Native Notice Board consumes only bounded current CG19 public source",
+  files.android.includes("async function publishedNotices()")&&
+  files.android.includes('new URL("/api/public/content/notices",base)')&&
+  files.android.includes('data.notices.length>60')&&
+  files.android.includes('title="Notices"')&&
+  files.android.includes('noticePriority')&&
+  files.android.includes('noticeCategory')&&
+  files.android.includes('noticeSearch')&&
+  files.android.includes('articleBackTarget')],
+
+ ["Native original NGO PAN/certificate/year tabs use approved CG18/CG19 assets",
+  files.android.includes('setNgoScope("80g")')&&
+  files.android.includes('hasOfficialDocument(scope==="annual-reports"')&&
+  files.androidExtended.includes('ngoScope!=="80g"')&&
+  files.androidExtended.includes('mediaUrl(asset("DOCUMENT",index))')&&
+  files.androidExtended.includes('annualYear')&&
+  files.ngoChildren.includes('publishedCmsPage("80g")')],
+
+ ["Verified Google Maps embeds require an explicit safe approved URL",
+  files.publicExtended.includes('u.pathname==="/maps/embed"')&&
+  files.publicExtended.includes('u.searchParams.has("pb")')&&
+  files.publicExtended.includes('referrerPolicy="no-referrer-when-downgrade"')],
 
  ["CG21 administrator can edit original team-consent failure copy",
   files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
