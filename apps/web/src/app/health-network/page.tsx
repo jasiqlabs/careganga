@@ -18,9 +18,17 @@ export default async function HealthcareDirectory({searchParams}:Props){
  const areas=await publicAreas();
  const states=areas.filter(x=>x.level==="STATE"),districts=areas.filter(x=>x.level==="DISTRICT"),
   blocks=areas.filter(x=>x.level==="BLOCK");
- const selectedState=typeof raw.state==="string"?raw.state:"",
-  selectedDistrict=typeof raw.district==="string"?raw.district:"";
- const query=directorySearch(raw);
+ const requestedState=typeof raw.state==="string"?raw.state:"",
+  requestedDistrict=typeof raw.district==="string"?raw.district:"",
+  requestedBlock=typeof raw.block==="string"?raw.block:"";
+ const selectedState=states.some(a=>a.value===requestedState)?requestedState:"",
+  selectedDistrict=selectedState&&districts.some(a=>
+   a.value===requestedDistrict&&a.parentRef===selectedState)?requestedDistrict:"",
+  selectedBlock=selectedDistrict&&blocks.some(a=>
+   a.value===requestedBlock&&a.parentRef===selectedDistrict)?requestedBlock:"";
+ // A stale unrelated district/block must never remain in the submitted query.
+ const query=directorySearch({...raw,state:selectedState,
+  district:selectedDistrict,block:selectedBlock});
  const result=tab==="doctors"?
   await directory<PublicDoctor>("doctors",query):
   await directory<PublicCenter>("centers",query);
@@ -62,17 +70,20 @@ export default async function HealthcareDirectory({searchParams}:Props){
       {states.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
      </select>
     </label>}
-    {districts.length>0&&<label>District
+    {selectedState&&districts.some(a=>a.parentRef===selectedState)&&
+    <label>District
      <select name="district" defaultValue={selectedDistrict}>
       <option value="">All districts</option>
       {districts.filter(a=>!selectedState||a.parentRef===selectedState)
        .map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
      </select>
     </label>}
-    {blocks.length>0&&<label>Block (optional)
-     <select name="block" defaultValue={typeof raw.block==="string"?raw.block:""}>
+    {selectedDistrict&&blocks.some(a=>a.parentRef===selectedDistrict)&&
+    <label>Block (optional)
+     <select name="block" defaultValue={selectedBlock}>
       <option value="">All blocks</option>
-      {blocks.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+      {blocks.filter(a=>a.parentRef===selectedDistrict)
+       .map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
      </select>
     </label>}
     <label>Center type
