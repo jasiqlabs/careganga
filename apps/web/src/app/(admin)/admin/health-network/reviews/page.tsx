@@ -42,7 +42,7 @@ export default async function HealthcareReviewsPage(){
     canViewApprovals={keys.has("approvals.view")}
     canViewDocuments={keys.has("documents.files.view")}
     canViewCms={keys.has("cms.content.view")}/>
-   <main className="workspace"><HealthReviewInbox/></main>
+   <main className="workspace"><HealthReviewInbox canManage={keys.has("health.providers.manage")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
