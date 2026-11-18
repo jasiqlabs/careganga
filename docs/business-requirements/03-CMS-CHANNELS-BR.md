@@ -76,6 +76,10 @@ The source explicitly enumerates **ten** editable content groups:
 
 ## 3. Public website navigation and page ownership
 
+**Original-client screenshot navigation acceptance (18 Nov):** The *actual* existing public desktop header has **12 primary entries**, including **About Us ▾**, **Our Work ▾** (six exact category children), **Media & Resources ▾** (five exact children), and **Join Now ▾** (two children), plus the seven original Footer Policies & Legal links, newsletter, social channels and floating actions. Exact inventory, source-owner decisions, known route gaps and non-fabrication rules are in [canonical original public navigation contract](../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md). **The top-level Blood Donation slot alone becomes Healthcare Assistance**; the original Our Work → Healthcare remains a project category. The 10 screenshots do not prove About dropdown children, original URL targets, live mobile states or legal policy text; do not invent them. This screenshot-verified structure supersedes any generic suggested header labels below, without adding a new module or duplicate business lifecycle. Public Web and Public Android must use only current approved source-backed destinations; CG-18 owns presentation/approval while CG-04/05/07/08/14/15/17/19 retain operational owners.
+
+
+
 The newer UI references demonstrate an integrated top navigation around **Home, About Us, Our Work, Healthcare Assistance, Centers & Labs, Projects, Partners, Media & Resources, Join Now, Donate Now**, along with search and Login/Register. The reference label **Register** means only genuine published membership/volunteer/patient business-application entry points; it does not authorize public creation of a CG-01 login account.
 
 These labels are **design references**; final copy and routing remain editable under the approved navigation model. The following page ownership is the proposed requirement structure:
