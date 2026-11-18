@@ -67,6 +67,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  const [resetVersion,setResetVersion]=useState(0);
  const [state,setState]=useState<State>({status:"LOADING",items:[],next:null,details:null});
  const seq=useRef(0);
+ const selectionRef=useRef<Selection|null>(null);
+ const detailHistory=useRef<Selection[]>([]);
  const load=useCallback(async(nextCursor="",append=false)=>{
   const request=++seq.current;
   setState(s=>({...s,status:"LOADING",details:null}));
@@ -108,7 +110,14 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
   }
  },[mode,search,pin,category,facility,service,day,specialty,minFee,maxFee,
   minExperience,maxExperience,region]);
- const show=useCallback(async(item:Selection)=>{
+ const show=useCallback(async(item:Selection,pushHistory=true)=>{
+  const previous=selectionRef.current;
+  if(pushHistory&&previous&&
+     (previous.kind!==item.kind||
+      (previous.kind==="center"?previous.slug:
+        previous.ref)!==(item.kind==="center"?item.slug:item.ref)))
+   detailHistory.current.push(previous);
+  selectionRef.current=item;
   const request=++seq.current;
   setSelection(item);
   setState(s=>({...s,status:"LOADING",details:null}));
@@ -142,14 +151,15 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    if(status==="active"){
-    if(selection)void show(selection);
+    if(selection)void show(selection,false);
     else void load();
    }
   });
   return()=>sub.remove();
  },[selection,show,load]);
  function reset(){
-  seq.current++;setSelection(null);setSearch("");setPin("");setCategory("");
+  seq.current++;selectionRef.current=null;detailHistory.current=[];
+  setSelection(null);setSearch("");setPin("");setCategory("");
   setFacility("");setService("");setDay("");
   setMinExperience("");setMaxExperience("");
   setRegion({state:null,district:null,block:null});setAreaQuery("");
@@ -160,7 +170,15 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  }
  function back(){
   seq.current++;
-  if(selection){setSelection(null);void load();}else onExit();
+  const previous=detailHistory.current.pop();
+  if(selection&&previous){
+   // Refresh the previous live verified detail, not stale cached doctor fees.
+   void show(previous,false);
+  }else if(selection){
+   selectionRef.current=null;setSelection(null);void load();
+  }else{
+   selectionRef.current=null;detailHistory.current=[];onExit();
+  }
  }
  const centerDetails=selection?.kind==="center"?state.details as Details|null:null;
  const doctorDetails=selection?.kind==="doctor"?state.details as DoctorDetails|null:null;
@@ -193,7 +211,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
      {areaQuery.trim().length>=2&&areas.filter(a=>
       a.label.toLowerCase().includes(areaQuery.trim().toLowerCase())&&
       (a.level==="STATE"||a.level==="DISTRICT"&&
-       (!region.state||a.parentRef===region.state.value)||a.level==="BLOCK"))
+       !!region.state&&a.parentRef===region.state.value||
+       a.level==="BLOCK"&&!!region.district&&a.parentRef===region.district.value))
       .slice(0,8).map(a=><View key={a.value}>
        {label(a.label+" ("+nice(a.level)+")",()=>{
         setRegion(s=>a.level==="STATE"?{state:a,district:null,block:null}:
