@@ -1,5 +1,9 @@
 # CG-08 — User Stories & Manual QA
 
+### 2026-11-18 receiving-owner QA for original Partnerships UI
+[47 screenshot contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) includes exact `/collaboration` original layout. Within **existing CG-08 US-001–003 and CG-18 US-003 QA**, verify: authorized CSR/partner Admin creates real party; rights and relationship public status separately confirmed; CG-03 approval enables `/collaboration` card with true logo; public view contains no private deal/contact fields; revocation makes logo/card/CTA inaccessible; genuine Partner With Us/Meet Our Partners flow preserves one source case; original hero/cards and narrow Web/Android active state visually compared. Do not seed/claim Milaap or Ketto without client clearance. **DESIGN acceptance only; source and runtime tests, independent review NOT_RUN.**
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
