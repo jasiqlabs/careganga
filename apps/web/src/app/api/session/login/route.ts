@@ -28,6 +28,20 @@ export async function POST(request:NextRequest) {
         return NextResponse.json({message,...(code?{code}:{}),...(field?{field}:{})},
           {status:400,headers:{"Cache-Control":"no-store"}});
       }
+      if(result.status===401){
+        // Identity failures share one generic server-owned, Admin-editable message.
+        // Never reveal whether the identifier exists or the account is inactive.
+        const raw:unknown=await result.json().catch(()=>null);
+        const payload=raw&&typeof raw==="object"&&!Array.isArray(raw)?
+          raw as Record<string,unknown>:{};
+        const isSafe=payload.code==="IDENTITY_LOGIN_INVALID"&&
+          typeof payload.message==="string"&&payload.message.length>=16&&
+          payload.message.length<=220;
+        return NextResponse.json({
+          message:isSafe?payload.message:"Mobile number/email or password could not be confirmed.",
+          ...(isSafe?{code:"IDENTITY_LOGIN_INVALID"}:{})
+        },{status:401,headers:{"Cache-Control":"no-store"}});
+      }
       return NextResponse.json({message:
         result.status===401?"Mobile number/email or password is incorrect.":
         result.status===429?"Too many login attempts. Please try again later.":
