@@ -7,6 +7,11 @@
 
 ## Mandatory CLIENT-OWNED ORIGINAL WEBSITE replication baseline — 17 November 2026
 
+### NEW 2026-11-18 authoritative whole-site original screenshot source (47 public captures)
+
+**Before changing any CareGanga public route, CMS, Admin or module design**, read [original full page/content/route/Admin parity](docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), which indexes **all 47 client-supplied original public screenshots** (17-Nov 10 + 18-Nov 12+18+7) in private CareGanga Library, plus the existing admin audit/golden pack. Keep exact observed client URLs (`/our-impact`, NGO children, `/videos`, `/publications`, `/collaboration`, `/membership`, `/volunteer`, `/notices`, `/about/team`, `/contact`) and original public look/feel/copy/empty/form states. Do not declare gallery query filters or flat `/80g` equivalent to separate original pages. **Everything maintainable is managed by authorized Foundation Admin**; original business data remains in CG-02/04/05/07/08/09/19/20 etc owners, CG-18 projects approved editorial only. Never hardcode original screenshot financial/health/legal/third-party identity claims or duplicate owners. Blood Donation top-level becomes Healthcare Assistance; project-category Healthcare remains. Source implementation, source-review, QA trace, independent external review, actual runtime/visual QA are separate truthful gates. This is documentation-only reconciliation and does **not** mark any US complete.
+
+
 **Mandatory public navigation/page regression evidence (18 Nov):** The current authorized [original screenshot menu/footer inventory](docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md) is the single acceptance map for all public-facing components and future-domain-owner link integrations. Do not confuse original screenshot paths with implemented URLs, activate unsupported CG-04/05/07/08/14/15/17/19 links, invent About dropdown children/policy text, or silently drop any original nav/footer item. The original top-level Blood Donation slot becomes Healthcare Assistance only; Our Work → Healthcare stays. Use the existing 4 CG-18 stories, not extra parallel CMS/story masters. Original pixel/mobile/animation and source-owner runtime QA remain separate gates.
 
 
