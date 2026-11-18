@@ -320,8 +320,20 @@ export class HealthCenterContentMediaService{
    const f=current.rows[0];
    if(!f)throw new NotFoundException("Original center photo unavailable");
    await this.own(tx,actor,f.center_id,f.source_version);
-   const proof=await this.prove(tx,actor,f.center_id,f.source_version,file);
-   if(proof.rights)return {fileRef:file,rightsState:"CONFIRMED",replayed:true};
+   await this.prove(tx,actor,f.center_id,f.source_version,file);
+   const prior=await tx.query<{rights_basis:string;rights_holder:string;alt_text:string;
+     revoked_at:Date|null}>(
+    "SELECT rights_basis,rights_holder,alt_text,revoked_at "+
+    "FROM cg19_center_content_media_rights WHERE root_realm_id=$1 "+
+    "AND center_id=$2 AND file_ref=$3 FOR SHARE",
+    [actor.realmId,f.center_id,file]);
+   if(prior.rows[0]){
+    const old=prior.rows[0];
+    if(old.revoked_at||old.rights_basis!==input.basis||
+      old.rights_holder!==input.holder||old.alt_text!==input.alt)
+     throw new ConflictException({code:"HEALTH_CENTER_MEDIA_RIGHTS_CHANGED"});
+    return {fileRef:file,rightsState:"CONFIRMED",replayed:true};
+   }
    await tx.query(
     "INSERT INTO cg19_center_content_media_rights(file_ref,root_realm_id,"+
     "center_id,rights_basis,rights_holder,alt_text,attested_by) "+
@@ -440,6 +452,7 @@ export class HealthCenterContentMediaService{
    "AND cv.root_realm_id=c.root_realm_id AND cv.center_id=c.id "+
    "JOIN cg03_case cc ON cc.id=cv.approval_case_ref AND cc.realm_id=c.root_realm_id "+
    "AND cc.case_kind='HEALTH_CENTER_VERIFICATION' AND cc.status='OWNER_COMPLETED' "+
+   "AND cc.health_center_id=c.id AND cc.health_center_revision_id=cv.id "+
    "AND cc.health_source_digest=cv.source_digest "+
    "JOIN cg03_case_decision cd ON cd.id=pub.original_final_decision_ref "+
    "AND cd.realm_id=cc.realm_id AND cd.case_id=cc.id AND cd.action='APPROVE' "+
