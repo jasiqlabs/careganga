@@ -25,6 +25,8 @@ type Details={centerName:string;providerName:string;type:string;address:string;
 type DoctorDetails={doctorName:string;specialties:string[];qualifications:string[];
  experienceYears:number;bio:string;centers:Doctor[];notice:string};
 type Selection={kind:"center";slug:string}|{kind:"doctor";ref:string};
+type Area={value:string;label:string;level:"STATE"|"DISTRICT"|"BLOCK";
+ parentRef:string|null};
 type State={status:"LOADING"|"READY"|"ERROR";items:(Center|Doctor)[];
  next:string|null;details:Details|DoctorDetails|null};
 const weekdays=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -56,6 +58,11 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  const [minFee,setMinFee]=useState("");
  const [maxFee,setMaxFee]=useState(""),[cursor,setCursor]=useState("");
  const [selection,setSelection]=useState<Selection|null>(null);
+ const [areas,setAreas]=useState<Area[]>([]);
+ const [areaQuery,setAreaQuery]=useState("");
+ const [region,setRegion]=useState<{state:Area|null;district:Area|null;block:Area|null}>({
+  state:null,district:null,block:null
+ });
  const [resetVersion,setResetVersion]=useState(0);
  const [state,setState]=useState<State>({status:"LOADING",items:[],next:null,details:null});
  const seq=useRef(0);
@@ -66,6 +73,9 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    const query=new URLSearchParams();
    if(search.trim())query.set("q",search.trim().slice(0,80));
    if(pin.trim())query.set("pin",pin.trim().slice(0,6));
+   if(region.state)query.set("state",region.state.value);
+   if(region.district)query.set("district",region.district.value);
+   if(region.block)query.set("block",region.block.value);
    if(category)query.set("category",category);
    if(facility.trim())query.set("facility",facility.trim().slice(0,80));
    if(mode==="doctors"){
@@ -94,7 +104,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    setState(s=>({...s,status:"ERROR",next:null,details:null}));
   }
  },[mode,search,pin,category,facility,specialty,minFee,maxFee,
-  minExperience,maxExperience]);
+  minExperience,maxExperience,region]);
  const show=useCallback(async(item:Selection)=>{
   const request=++seq.current;
   setSelection(item);
@@ -114,6 +124,19 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  },[]);
  useEffect(()=>{void load();return()=>{seq.current++;};},[mode,resetVersion]); // Search is applied explicitly
  useEffect(()=>{
+  let alive=true;
+  void read("facets").then(raw=>{
+   if(!alive||!raw||typeof raw!=="object"||!("areas" in raw)||
+    !Array.isArray(raw.areas))return;
+   setAreas(raw.areas.filter((a:unknown):a is Area=>
+    !!a&&typeof a==="object"&&"value" in a&&"label" in a&&"level" in a&&
+    typeof a.value==="string"&&/^[a-f0-9-]{36}$/i.test(a.value)&&
+    typeof a.label==="string"&&typeof a.level==="string"&&
+    ["STATE","DISTRICT","BLOCK"].includes(a.level)).slice(0,500));
+  }).catch(()=>{});
+  return()=>{alive=false;};
+ },[]);
+ useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    if(status==="active"){
     if(selection)void show(selection);
@@ -125,6 +148,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  function reset(){
   seq.current++;setSelection(null);setSearch("");setPin("");setCategory("");
   setFacility("");setMinExperience("");setMaxExperience("");
+  setRegion({state:null,district:null,block:null});setAreaQuery("");
   setSpecialty("");setMinFee("");setMaxFee("");
   // Same mode means no dependency change; explicitly refresh defaults via next action.
   setState({status:"LOADING",items:[],next:null,details:null});
@@ -153,6 +177,30 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
     <TextInput accessibilityLabel="Filter by six-digit PIN" style={styles.input}
      value={pin} onChangeText={setPin} keyboardType="number-pad" maxLength={6}
      placeholder="Six-digit PIN"/>
+    {areas.length>0&&<>
+     <Text style={styles.label}>State, district or block (optional)</Text>
+     <Text style={styles.helper}>
+      {region.state?.label||"All states"} · {region.district?.label||"All districts"} ·
+      {region.block?.label||"All blocks"}
+     </Text>
+     <TextInput accessibilityLabel="Find a state district or block"
+      value={areaQuery} onChangeText={setAreaQuery} maxLength={60}
+      style={styles.input} placeholder="Type an area name, then select below"/>
+     {areaQuery.trim().length>=2&&areas.filter(a=>
+      a.label.toLowerCase().includes(areaQuery.trim().toLowerCase())&&
+      (a.level==="STATE"||a.level==="DISTRICT"&&
+       (!region.state||a.parentRef===region.state.value)||a.level==="BLOCK"))
+      .slice(0,8).map(a=><View key={a.value}>
+       {label(a.label+" ("+nice(a.level)+")",()=>{
+        setRegion(s=>a.level==="STATE"?{state:a,district:null,block:null}:
+         a.level==="DISTRICT"?{state:s.state,district:a,block:null}:
+         {...s,block:a});
+        setAreaQuery("");
+       })}
+      </View>)}
+     {label("Clear area",()=>{setRegion({state:null,district:null,block:null});
+       setAreaQuery("");})}
+    </>}
     <Text style={styles.label}>Center type</Text>
     <View style={styles.row}>
      {["","HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
