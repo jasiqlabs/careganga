@@ -22,7 +22,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
        String(source.kind))||
     (source.kind==="HOME"&&slug!=="home")||
     (source.kind==="ABOUT"&&slug!=="about")||
-    (source.kind==="IMPACT"&&slug!=="impact")||
+    (source.kind==="IMPACT"&&slug!=="our-impact")||
     (source.kind==="COMPLIANCE"&&slug!=="80g")||
     (source.kind==="GALLERY"&&slug!=="gallery")||
     (source.kind==="HEALTHCARE"&&slug!=="healthcare")||
