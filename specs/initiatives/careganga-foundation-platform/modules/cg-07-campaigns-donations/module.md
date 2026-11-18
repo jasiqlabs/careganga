@@ -1,5 +1,18 @@
 # CG-07 — Campaigns, Donations & Fundraising
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original Campaigns top navigation, genuine Donate Now floating/footer action, original /upcoming-projects Support Project CTA, and donor-facing tax/receipt flow. Project cards show funding goal and payment CTA only when the verified CG-07 real campaign/donation route is enabled; screenshot donation amounts or statuses are NOT evidence of actual funds.
+
+**Admin and ownership:** One current Campaigns/Donations Admin owns campaign content that is operational (goal, allocation, approved state, beneficiary/project associations, beneficiary rights, payment configuration, receipt issuance). CG-05 owns project metadata; CG-18 controls visual menu, CTA labels and approved site location. No second CTA/payment master.
+
+**Acceptance and QA trace:** Existing CG-07 cases must trace Campaigns link, Donate Now, project Support Project, unavailable payment/unknown outcome, withdrawal/public no-stale route, tax/80G truth, original screenshot responsive CTAs, current beneficiary and project permissions. Payment acceptance requires real settlement and offline/manual source evidence, not screenshot.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-017, FR-018, FR-019, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-07-BR01–CG-07-BR09, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) A12, A13, A14, A15, A16, A17, A18.  

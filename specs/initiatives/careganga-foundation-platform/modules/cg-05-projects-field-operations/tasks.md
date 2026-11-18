@@ -1,5 +1,18 @@
 # CG-05 — Five full-stack user stories and 100 unique manual QA cases
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original /upcoming-projects and the six Our Work category entries (Education, Healthcare, Livelihood, Social Welfare, Community Development, All Projects), plus real Events with genuine project-event owners. Present actual planned state, launch date, location, authorized image, categories and goal when verified; never seed the screenshot's project names, dates, amounts, donor claims or blood-donation business process. CG-07 alone owns Support Project donation.
+
+**Admin and ownership:** The current Project/Event Admin manages publication state, image proofs, category, tags, dates, description and actual funding goal. CG-18 maintains shared brand, section hero and link presentation; only current source-approved public-safe records appear.
+
+**Acceptance and QA trace:** For existing CG-05 stories add cross-owner acceptance of original /upcoming-projects screenshot card layouts, effective publish/hide/cancel, category filters, empty state, approved project image, CG-07 real CTA, public no-private exposure, original responsive/device visual checks. QA trace required, execution NOT_RUN.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Authority:** [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-05-BR01–11, [PRD](../../prd.md) FR-012–014, [HLD](../../hld.md), [original indexed Admin UI/UX audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) **A01–A06/A09–A11/U31–U32** and UI-G09, [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [canonical order](../../DEVELOPMENT_ORDER.md).
 **Stage:** Harness Planning · **DELEGATED_APPROVED — DESIGN ONLY**, JASIQ AI Design Review Agent (15 Nov 2026), five full-stack CG-05 stories and **100 unique explicit QA (20 each)**, indexed original Admin screenshot audit mandatory, PostgreSQL/NestJS/Web/native Android/private GPS/proof/role/concurrency/real receiving owner integration; no executed source code/SQL/Web/native/PNG/video test PASS.
 **Development gate:** Current-hash owner CG-05 design delegated approved only, all five implementation stories BLOCKED. Global PRD/HLD current-hash REVIEW_REQUIRED; authenticated Harness resolver NOT_RUN; actually delivered CG-01/02/03/10/19 owner code NOT_VERIFIED; qualified independent CRITICAL DB/privacy reviewer and executed SQL migration/backup/restore EXPLAIN NOT_RUN; code review, live Web/Internal Android/Play, original PNG/video/pixel/motion/representative p95 QA NOT_RUN. No CI/GitHub Actions. Future CG-04/06/07/08/20 remain unapproved.

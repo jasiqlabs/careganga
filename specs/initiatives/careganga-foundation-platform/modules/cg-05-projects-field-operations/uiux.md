@@ -1,5 +1,18 @@
 # CG-05 — UI/UX Specification: Projects, Tasks, Activities, Field Visits
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
+
+**Functional/page source:** Original /upcoming-projects and the six Our Work category entries (Education, Healthcare, Livelihood, Social Welfare, Community Development, All Projects), plus real Events with genuine project-event owners. Present actual planned state, launch date, location, authorized image, categories and goal when verified; never seed the screenshot's project names, dates, amounts, donor claims or blood-donation business process. CG-07 alone owns Support Project donation.
+
+**Admin and ownership:** The current Project/Event Admin manages publication state, image proofs, category, tags, dates, description and actual funding goal. CG-18 maintains shared brand, section hero and link presentation; only current source-approved public-safe records appear.
+
+**Acceptance and QA trace:** For existing CG-05 stories add cross-owner acceptance of original /upcoming-projects screenshot card layouts, effective publish/hide/cancel, category filters, empty state, approved project image, CG-07 real CTA, public no-private exposure, original responsive/device visual checks. QA trace required, execution NOT_RUN.
+
+**Original source file status:** screenshots archived; missing original page interactions, browser/mobile pixel validation and real data source approval remain open. Existing story IDs/QA counts remain unchanged until QA plan re-reviewed. Do not claim SOURCE_COMPLETE or merge.
+
+
 **Mandatory original Admin UI authority:** [CareGanga Admin Panel Screenshot UI/UX Audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) **A01–A06, A09–A11, U31–U32**, §3 visible control descriptions and **UI-G09** visit detail owner grouping; [BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-05-BR01–11; [PRD](../../prd.md) FR-012/013/014; [HLD](../../hld.md); [DLD](dld.md); [100 planned QA](tasks.md).
 **Stage:** **DELEGATED_APPROVED — DESIGN ONLY** by JASIQ AI Design Review Agent (15 Nov 2026) for the authentic indexed Admin audit A01–A06/A09–A11/U31–U32 and UI-G09 source ownership, responsive Admin Web, original CareGanga shared theme/tokens, U32 project drawer, A09 seven task tabs, A04 visit form and A05/A06 one ten-tab visit detail, native Internal Android current My Projects/Assigned Tasks/Activities/Visit Capture and optional approved CG-18 public project/event cards; 100 planned QA (20/story). Original PNG/video assets, rendered Web/native pixels/animation/motion NOT_VERIFIED, VISUAL_NOT_RUN / MOTION_NOT_VERIFIED.
 
