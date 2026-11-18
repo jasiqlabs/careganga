@@ -150,6 +150,24 @@ export class BranchSourceFacade{
      ORDER BY name,id LIMIT 100`,[actor.realmId,scope.all,scope.branchRefs]);
    return rows.rows.map(b=>({branchRef:b.id,name:b.name,code:b.branch_code,version:b.version}));
  }
+ /** A Foundation-wide financial year, chart or root journal may be changed
+  * only by a current protected root role or explicit CG-02 branch administrator.
+  * A manager's finance.accounts.manage/journals.post grant is NOT root authority.
+  */
+ async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
+   action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
+  await this.identity.assertCurrent(client,actor,action);
+  const result=await client.query<{allowed:boolean}>(`
+   SELECT EXISTS(SELECT 1 FROM account_role ar
+    JOIN role r ON r.id=ar.role_id AND r.active=true
+    LEFT JOIN role_grant g ON g.role_id=r.id
+      AND g.capability_key='foundation.branches.admin'
+    WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
+      AND (r.is_protected=true OR g.capability_key IS NOT NULL)
+   ) AS allowed`,[actor.accountId,actor.realmId]);
+  if(!result.rows[0]?.allowed)
+   throw new ForbiddenException("Foundation-wide finance requires administrator access");
+ }
  /** Finance transaction must recheck real CG-02 branch and current CG-01 action. */
  async financeActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
      branchRef:string,expectedVersion:number,action:string):Promise<void>{
