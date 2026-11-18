@@ -22,6 +22,8 @@ export function CmsImpactGroup({section,assets,navigation}:{
  const pic=assets.find(a=>a.role==="IMPACT"&&a.order===section.order);
  const tabular=["STATS","GROWTH","BREAKDOWN"].includes(group);
  const heading=text(f.heading);
+ const peak=Math.max(0,...rows.map(v=>typeof v.value==="number"&&
+  Number.isFinite(v.value)?v.value:0));
  return <section className={"cg-site-content cg-site-impact-group cg-site-impact-"+group.toLowerCase()}>
   <div className="cg-site-impact-heading">
    <p className="cg-site-eyebrow">{group==="HERO"&&text(f.eyebrow)?
@@ -47,6 +49,23 @@ export function CmsImpactGroup({section,assets,navigation}:{
      <td>{text(item.description)}</td>
     </tr>)}</tbody>
    </table>
+   {["GROWTH","BREAKDOWN"].includes(group)&&
+    <div className="cg-site-source-bars" aria-hidden="true">
+     {rows.map((item,i)=>{
+      const numeric=group==="BREAKDOWN"?
+       (typeof item.percentage==="number"?item.percentage:0):
+       (typeof item.value==="number"?item.value:0);
+      const width=group==="BREAKDOWN"?Math.max(0,Math.min(100,numeric)):
+       peak>0?Math.max(0,Math.min(100,numeric/peak*100)):0;
+      return <div key={i} className="cg-site-source-bar-row">
+       <span>{text(item.title)}</span>
+       <span className="cg-site-source-bar-track">
+        <span className="cg-site-source-bar-fill"
+         style={{width:width+"%"}}/>
+       </span>
+      </div>;
+     })}
+    </div>}
   </div>:rows.length>0?<div className="cg-site-impact-grid">{rows.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
     <h3>{text(v.title)}</h3>{text(v.description)&&<p>{text(v.description)}</p>}
