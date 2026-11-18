@@ -384,6 +384,16 @@ export class HealthCenterContentMediaService{
    "i.classification IN('HEALTH_CENTER_PHOTO','HEALTH_CENTER_LOGO') "+
    "FOR SHARE OF f,i",[id(file),actor.realmId,id(center),version]);
   if(!r.rows[0])throw new ConflictException({code:"HEALTH_CENTER_MEDIA_NOT_VERIFIED"});
+  if(r.rows[0].rights){
+   // Consent withdrawal must serialize with a draft save/submission/apply:
+   // a read-only LEFT JOIN does not lock the nullable rights row.
+   const locked=await tx.query(
+    "SELECT file_ref FROM cg19_center_content_media_rights "+
+    "WHERE file_ref=$1 AND root_realm_id=$2 AND center_id=$3 "+
+    "AND revoked_at IS NULL FOR SHARE",[file,actor.realmId,center]);
+   if(!locked.rowCount)
+    throw new ConflictException({code:"HEALTH_CENTER_MEDIA_RIGHTS_CHANGED"});
+  }
   return r.rows[0];
  }
  async revoke(bearer:string,fileRef:string,expected:unknown){
