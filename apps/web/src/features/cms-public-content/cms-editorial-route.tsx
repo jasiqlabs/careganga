@@ -33,12 +33,14 @@ const originalMediaPath=(mediaType:OriginalMediaType)=>
  mediaType==="VIDEO"?"/videos":"/publications";
 const originalMediaHeading=(section:Record<string,unknown>|undefined,mediaType:OriginalMediaType)=>{
  const key=mediaType==="VIDEO"?"videosHeading":"publicationsHeading";
- return typeof section?.[key]==="string"&&section[key].trim()?
-  section[key] as string:mediaType==="VIDEO"?"Videos":"Publications";
+ const value=section?.[key];
+ return typeof value==="string"&&value.trim()?
+  value:mediaType==="VIDEO"?"Videos":"Publications";
 };
 const originalMediaDescription=(section:Record<string,unknown>|undefined,mediaType:OriginalMediaType)=>{
  const key=mediaType==="VIDEO"?"videosDescription":"publicationsDescription";
- return typeof section?.[key]==="string"?section[key] as string:"";
+ const value=section?.[key];
+ return typeof value==="string"?value:"";
 };
 /** Separate original visitor routes, one approved CG-18/CG-19 media source.
  * Unpublished Gallery/media remain inaccessible; nothing is auto-seeded.
