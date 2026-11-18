@@ -1,5 +1,9 @@
 # CG-08 — Detailed-Level Design
 
+### 2026-11-18 approved public partner projection and Admin source
+Source [full screenshot parity contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Create no new `collaboration` master; reuse CG-08 current Foundation-root/contract-scoped partner, eligibility and agreed-publication fields. Public projection returns **only** verified approved display-name, public role/type, short client-approved biography, valid logo ref with CG-19 rights, permitted external URL (validated https only) and effective public flag; never expose contract, funding amount, proposal contacts or internal notes. CG-18 public `/collaboration` hero and card order are CMS editorial; the partner card's actual subject/source belongs to CG-08 Admin. Missing/withdrawn/rights-revoked partner must disappear with correct public cache invalidation; no inventing branded fundraising relationships. Enquiry action uses CG-08 approved intake with CG-19 messaging when needed; one request/case source and a safe opaque acknowledgement. Include current CG-01 roles, CG-03 approval, CG-21 editable validation/error copy and audit.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
