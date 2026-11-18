@@ -188,7 +188,7 @@ export class HealthDoctorFeesService{
       throw new BadRequestException({code:"HEALTH_DOCTOR_FEE_INVALID",field:"amountMinor"});
     const from=date(x.effectiveFromUtc,"effectiveFromUtc")!;
     const to=x.effectiveToUtc===undefined?null:date(x.effectiveToUtc,"effectiveToUtc",true);
-    if(from.getTime()<Date.now()-60000||
+    if(from.getTime()<=Date.now()+60000||
       from.getTime()>Date.now()+5*365*86400000||
       (to!==null&&to.getTime()<=from.getTime()))
       throw new BadRequestException({code:"HEALTH_DOCTOR_FEE_INVALID",field:"effectiveFromUtc"});
@@ -244,7 +244,7 @@ export class HealthDoctorFeesService{
       if(!fee)throw new NotFoundException({code:"HEALTH_DOCTOR_FEE_UNAVAILABLE"});
       if(fee.version!==v||fee.status!=="PROPOSED")
         throw new ConflictException({code:"HEALTH_DOCTOR_FEE_CHANGED"});
-      if(fee.effective_from.getTime()<Date.now()-60000)
+      if(fee.effective_from.getTime()<=Date.now()+60000)
         throw new ConflictException({code:"HEALTH_DOCTOR_FEE_STALE"});
       const overlapping=await tx.query<{id:string;effective_from:Date;effective_to:Date|null;version:number}>(
         "SELECT id,effective_from,effective_to,version FROM health_center_fee "+
