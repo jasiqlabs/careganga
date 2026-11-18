@@ -7,11 +7,13 @@ import {HealthPublicCenterService} from "./application/health-public-center.serv
 import {HealthPublicCenterController} from "./http/health-public-center.controller";
 import {HealthNetworkService} from "./application/health-network.service";
 import {HealthNetworkController} from "./http/health-network.controller";
+import {HealthDoctorDraftService} from "./application/health-doctor-draft.service";
+import {HealthDoctorDraftController} from "./http/health-doctor-draft.controller";
 
 @Module({
   imports:[IdentityAccessModule,DocumentsNotificationsModule,RegistrationApprovalsModule],
-  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService],
-  controllers:[HealthNetworkController,HealthPublicCenterController],
-  exports:[HealthNetworkService,HealthReviewWorkflowService]
+  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthDoctorDraftService],
+  controllers:[HealthNetworkController,HealthPublicCenterController,HealthDoctorDraftController],
+  exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService]
 })
 export class HealthNetworkModule{}
