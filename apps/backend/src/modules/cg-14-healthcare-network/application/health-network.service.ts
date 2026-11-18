@@ -15,9 +15,10 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
 const PHONE=/^[+]?[0-9]{10,15}$/;
 const PIN=/^[1-9][0-9]{5}$/;
-const TYPES=["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
-  "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
-  "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"] as const;
+const TYPES=["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"] as const;
+const CENTER_TYPES=[...TYPES,"POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC",
+  "MEDICAL_LABORATORY","NURSING_HOME","ORTHOPEDIC_CLINIC",
+  "HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"] as const;
 const SERVICES=["CONSULTATION","DIAGNOSTICS","PHARMACY","NURSING","SURGERY","EMERGENCY"] as const;
 const HOUR_SERVICES=["GENERAL","CONSULTATION","DIAGNOSTICS","PHARMACY","NURSING"] as const;
 type Hour={weekday:number;openLocal:string;closeLocal:string;serviceType:string};
@@ -130,7 +131,7 @@ function parseCenter(value:unknown):CenterDraft{
     throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"capabilities"});
   return {centerCode:code(x.centerCode,"centerCode"),
     displayName:str(x.displayName,"displayName",2,160),
-    centerType:oneOf(x.centerType,TYPES,"centerType"),
+    centerType:oneOf(x.centerType,CENTER_TYPES,"centerType"),
     addressLine:str(x.addressLine,"addressLine",5,500),
     stateRef:uuid(x.stateRef,"stateRef"),districtRef:uuid(x.districtRef,"districtRef"),
     blockRef:x.blockRef?uuid(x.blockRef,"blockRef"):null,pinCode:pin,
