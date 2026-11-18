@@ -54,7 +54,12 @@ function initial(kind:Kind):Draft{
    source:"",asOfDate:today(),tags:[]}}]:
   kind==="CONTACT"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
-   eyebrow:"",variant:"STANDARD",highlights:[]}}]:
+   eyebrow:"",variant:"STANDARD",highlights:[]}},
+   {kind:"CONTACT_INFO",order:1,fields:{
+    heroTitle:"Get In Touch",heroIntro:"",officeHours:"",mapUrl:"",
+    inquiries:[{title:"General Inquiries",description:""},
+     {title:"Volunteer With Us",description:""},
+     {title:"CSR Partnerships",description:""}],faqs:[],socialLinks:[]}}]:
   kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
@@ -696,6 +701,50 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={e=>change("ctaPath",e.target.value)}>
         <option value="">No link</option><option value="/contact">Foundation Contact</option>
        </select></label>
+      </>}
+      {section.kind==="CONTACT_INFO"&&<>
+       <Field name="Contact page hero title" value={f.heroTitle}
+        onChange={v=>change("heroTitle",v)}/>
+       <Field name="Contact page introduction" large value={f.heroIntro}
+        onChange={v=>change("heroIntro",v)}/>
+       <p>These are real client-approved public inquiry descriptions, not separate support inboxes.</p>
+       {items(f.inquiries).map((v,j)=><div className="cg-cms-team" key={j}>
+        <Field name={"Inquiry card "+(j+1)+" title"} value={v.title}
+         onChange={x=>changeItem(index,j,{title:x},"inquiries")}/>
+        <Field name="Card description" large value={v.description}
+         onChange={x=>changeItem(index,j,{description:x},"inquiries")}/>
+       </div>)}
+       <Field name="Approved office hours (no unverified 24/7 promise)"
+        value={f.officeHours} onChange={v=>change("officeHours",v)}/>
+       <Field name="Verified Google Maps URL (optional)" value={f.mapUrl}
+        onChange={v=>change("mapUrl",v)}/>
+       <h4>Original FAQs — client-approved question and answer only</h4>
+       {items(f.faqs).map((v,j)=><div className="cg-cms-team" key={j}>
+        <Field name="Question" value={v.question}
+         onChange={x=>changeItem(index,j,{question:x},"faqs")}/>
+        <Field name="Answer" large value={v.answer}
+         onChange={x=>changeItem(index,j,{answer:x},"faqs")}/>
+        {canManage&&<button type="button"
+         onClick={()=>removeItem(index,"faqs",j)}>Remove FAQ</button>}
+       </div>)}
+       {canManage&&items(f.faqs).length<8&&<button type="button"
+        onClick={()=>addItem(index,"faqs",{question:"",answer:""})}>Add FAQ</button>}
+       <h4>Verified official social links</h4>
+       {items(f.socialLinks).map((v,j)=><div className="cg-cms-team" key={j}>
+        <label>Network<select value={str(v.network)}
+         onChange={e=>changeItem(index,j,{network:e.target.value},"socialLinks")}>
+         <option value="Facebook">Facebook</option>
+         <option value="Instagram">Instagram</option>
+         <option value="YouTube">YouTube</option>
+        </select></label>
+        <Field name="Approved HTTPS profile URL" value={v.url}
+         onChange={x=>changeItem(index,j,{url:x},"socialLinks")}/>
+        {canManage&&<button type="button"
+         onClick={()=>removeItem(index,"socialLinks",j)}>Remove link</button>}
+       </div>)}
+       {canManage&&items(f.socialLinks).length<3&&<button type="button"
+        onClick={()=>addItem(index,"socialLinks",{network:"Facebook",url:""})}>
+        Add approved social link</button>}
       </>}
       {section.kind==="RICH_TEXT"&&<Field
        name={draft.kind==="POLICY"?"Client-approved legal paragraph":"Introduction"}
