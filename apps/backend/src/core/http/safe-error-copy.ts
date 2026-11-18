@@ -198,7 +198,15 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_EVIDENCE_REPLAY_CONFLICT:"This file request was previously used for different information. Check the original upload.",
       HEALTH_EVIDENCE_SOURCE_CHANGED:"The provider or center changed since the file was selected. Refresh and verify the current proof.",
       HEALTH_EVIDENCE_NOT_VERIFIED:"Choose a current, securely scanned and verified private supporting document.",
-      HEALTH_FINANCE_MASK_INVALID:"Enter only the masked bank label and final four digits. Never enter a full bank account number."
+      HEALTH_FINANCE_MASK_INVALID:"Enter only the masked bank label and final four digits. Never enter a full bank account number.",
+      HEALTH_DOCTOR_FIELD_INVALID:"Check the highlighted doctor registration field and enter valid details.",
+      HEALTH_DOCTOR_VERSION_INVALID:"Refresh the current doctor draft before saving your changes.",
+      HEALTH_DOCTOR_DUPLICATE:"This professional registration is already recorded. Open the existing doctor instead.",
+      HEALTH_DOCTOR_REQUEST_CONFLICT:"This doctor request has already been used for different details. Check the original record.",
+      HEALTH_DOCTOR_NOT_PENDING:"This doctor is no longer a pending editable draft.",
+      HEALTH_DOCTOR_VERSION_CHANGED:"The doctor registration changed. Refresh and review the current details.",
+      HEALTH_DOCTOR_UNAVAILABLE:"The requested private doctor record is unavailable to your role.",
+      HEALTH_DOCTOR_NOT_VERIFIED:"A doctor must have independent professional verification before joining a center."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
