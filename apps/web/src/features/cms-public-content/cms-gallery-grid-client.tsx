@@ -1,5 +1,6 @@
 "use client";
-import {useMemo,useState} from "react";
+import {useEffect,useMemo,useState} from "react";
+import {useSearchParams} from "next/navigation";
 type RecordFields=Record<string,unknown>;
 type Asset={role:string;altText:string;src:string;order:number};
 type GalleryFields={heading:unknown;description:unknown;items:unknown};
@@ -11,7 +12,12 @@ const records=(v:unknown):RecordFields[]=>Array.isArray(v)?
  */
 export function CmsGalleryGridClient({fields,assets}:{
  fields:GalleryFields;assets:Asset[]}){
- const [media,setMedia]=useState("ALL");
+ const params=useSearchParams();
+ const requested=params.get("type");
+ const initialType=["PHOTO","VIDEO","PUBLICATION"].includes(requested??"")?
+  requested!:"ALL";
+ const [media,setMedia]=useState(initialType);
+ useEffect(()=>{setMedia(initialType);},[initialType]);
  const [category,setCategory]=useState("ALL");
  const [search,setSearch]=useState("");
  const items=records(fields.items);
