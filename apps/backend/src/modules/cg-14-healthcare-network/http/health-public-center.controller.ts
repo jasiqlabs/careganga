@@ -4,7 +4,7 @@ import {HealthPublicCenterService} from "../application/health-public-center.ser
 export class HealthPublicCenterController{
  constructor(private readonly centers:HealthPublicCenterService){}
  @Get("centers/:publicSlug")
- @Header("Cache-Control","public, max-age=0, must-revalidate")
+ @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")
  center(@Param("publicSlug")slug:string){
   return this.centers.center(slug);
