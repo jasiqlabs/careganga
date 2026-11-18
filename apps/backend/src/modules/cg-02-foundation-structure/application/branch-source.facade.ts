@@ -58,7 +58,7 @@ export class BranchSourceFacade{
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
    "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
-  "finance.journals.post"|"finance.vouchers.manage"):Promise<void>{
+  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
   const source=await client.query<{manager_account_ref:string}>(
@@ -156,7 +156,7 @@ export class BranchSourceFacade{
   */
  async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
    action:"finance.accounts.manage"|"finance.journals.post"|
-    "finance.vouchers.manage"|"finance.budgets.manage"):Promise<void>{
+    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const result=await client.query<{allowed:boolean}>(`
    SELECT EXISTS(SELECT 1 FROM account_role ar
