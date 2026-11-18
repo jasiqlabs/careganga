@@ -52,14 +52,14 @@ function initial(kind:Kind):Draft{
   kind==="ARTICLE"?[{kind:"ARTICLE_BODY",order:0,fields:{
    heading:"",category:"",excerpt:"",body:"",authorLabel:"",
    source:"",asOfDate:today(),tags:[]}}]:
-  kind==="CONTACT"?[{kind:"RICH_TEXT",order:0,fields:{
-   heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
-   eyebrow:"",variant:"STANDARD",highlights:[]}},
-   {kind:"CONTACT_INFO",order:1,fields:{
+  kind==="CONTACT"?[{kind:"CONTACT_INFO",order:0,fields:{
     heroTitle:"Get In Touch",heroIntro:"",officeHours:"",mapUrl:"",
     inquiries:[{title:"General Inquiries",description:""},
      {title:"Volunteer With Us",description:""},
-     {title:"CSR Partnerships",description:""}],faqs:[],socialLinks:[]}}]:
+     {title:"CSR Partnerships",description:""}],faqs:[],socialLinks:[]}},
+   {kind:"RICH_TEXT",order:1,fields:{
+    heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
+    eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
