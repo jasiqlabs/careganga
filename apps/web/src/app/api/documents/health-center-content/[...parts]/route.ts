@@ -7,6 +7,8 @@ const fail=(status:number,message:string)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"no-store"}
 });
 function allowed(parts:string[],method:"GET"|"POST"){
+ if(parts.length===4&&parts[0]==="reviews"&&UUID.test(parts[1])&&
+  parts[2]==="photos"&&UUID.test(parts[3])&&method==="GET")return true;
  if(parts.length===1&&parts[0]==="intents"&&method==="POST")return true;
  if(parts.length===2&&parts[0]==="intents"&&UUID.test(parts[1])&&method==="GET")
   return true;
@@ -65,6 +67,19 @@ async function handler(req:NextRequest,ctx:Ctx,method:"GET"|"POST"){
     status===404?"This original center photo is unavailable.":
     status===400?"Check your file details and publication rights.":
     "Secure photo status could not be confirmed. Check before retrying.");
+  }
+  if(parts[0]==="reviews"){
+   const mime=result.headers.get("content-type");
+   const bytes=await result.arrayBuffer();
+   if(!["image/jpeg","image/png"].includes(mime??"")||
+      bytes.byteLength<40||bytes.byteLength>3*1024*1024)
+    return fail(503,"Original private photo could not be verified.");
+   return new NextResponse(bytes,{headers:{
+    "Content-Type":mime!,
+    "Cache-Control":"no-store, max-age=0, must-revalidate",
+    "X-Content-Type-Options":"nosniff",
+    "Referrer-Policy":"no-referrer",
+    "Content-Security-Policy":"default-src 'none'; sandbox"}});
   }
   return NextResponse.json(await result.json(),{
    headers:{"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
