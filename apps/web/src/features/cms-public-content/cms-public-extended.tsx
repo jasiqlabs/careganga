@@ -178,3 +178,45 @@ export function CmsHealthcare({section}:{
    Provider availability, clinical advice and bookings are not represented here.</p>
  </section>;
 }
+
+/** Original 3-inquiry/FAQ/office/map/social presentation. All wording and
+ * external destinations are strictly authorized CMS fields; actual support
+ * submission remains CG19, CSR remains CG08 and membership remains CG04.
+ */
+export function CmsContactInfo({section}:{section:PublicCmsSection}){
+ const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
+ const social=records(f.socialLinks);
+ const map=text(f.mapUrl);
+ return <section className="cg-site-contact-original cg-site-content">
+  <header className="cg-site-contact-hero">
+   <p className="cg-site-eyebrow">Contact the Foundation</p>
+   <h1>{text(f.heroTitle)}</h1>
+   {text(f.heroIntro)&&<p>{text(f.heroIntro)}</p>}
+  </header>
+  {inquiries.length>0&&<div className="cg-site-contact-inquiries">
+   {inquiries.map((item,i)=><article key={i} className="cg-site-contact-inquiry">
+    <h2>{text(item.title)}</h2><p>{text(item.description)}</p>
+   </article>)}
+  </div>}
+  {(text(f.officeHours)||map)&&<section className="cg-site-contact-details-public">
+   <h2>Visit or connect</h2>
+   {text(f.officeHours)&&<p>Foundation hours: {text(f.officeHours)}</p>}
+   {map&&<a href={map} rel="noopener noreferrer" target="_blank">
+    View verified Foundation location on Google Maps</a>}
+  </section>}
+  {faq.length>0&&<section className="cg-site-contact-faq">
+   <h2>Frequently Asked Questions</h2>
+   <div className="cg-site-contact-faq-grid">
+    {faq.map((item,i)=><details key={i}>
+     <summary>{text(item.question)}</summary><p>{text(item.answer)}</p>
+    </details>)}
+   </div>
+  </section>}
+  {social.length>0&&<section className="cg-site-contact-social">
+   <h2>Follow the Foundation</h2>
+   <div>{social.filter(link=>text(link.url)&&text(link.network))
+    .map((link,i)=><a key={i} href={text(link.url)}
+     target="_blank" rel="noopener noreferrer">{text(link.network)}</a>)}</div>
+  </section>}
+ </section>;
+}
