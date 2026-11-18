@@ -117,7 +117,7 @@ function parseContent(raw:unknown):Content{
   HEALTHCARE:"healthcare"};
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug)||reserved.has(slug)||
     (fixed[kind]!==undefined&&slug!==fixed[kind])||
-    (kind==="ARTICLE"&&Object.values(fixed).includes(slug))||
+    (kind==="ARTICLE"&&(Object.values(fixed).includes(slug)||POLICY_SLUGS.has(slug)))||
     (kind==="POLICY"&&!POLICY_SLUGS.has(slug)))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"slug"});
  const title=text(v.title,"title",180,3);
