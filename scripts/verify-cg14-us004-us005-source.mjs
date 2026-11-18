@@ -11,6 +11,10 @@ const read=(p)=>readFileSync(resolve(root,p),"utf8");
 const s={
  directory:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-directory.service.ts"),
  directoryApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-public-directory.controller.ts"),
+ publicThrottle:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-request-throttle.service.ts"),
+ publicThrottleSql:read("apps/backend/db/migrations/1418_cg14_public_directory_request_throttle.sql"),
+ publicCenterApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-public-center.controller.ts"),
+ publicModule:read("apps/backend/src/modules/cg-14-healthcare-network/health-network.module.ts"),
  content:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-content.service.ts"),
  contentApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-center-content.controller.ts"),
  review:read("apps/backend/src/modules/cg-03-registration-approvals/application/health-center-content-approval.service.ts"),
@@ -52,7 +56,15 @@ const checks=[
  ["US004 original doctor case and unrevoked proof",s.directory.includes("HEALTH_DOCTOR_VERIFICATION")&&s.directory.includes("HEALTH_DOCTOR_LICENSE")&&s.directory.includes("revoked_at IS NULL")],
  ["US004 independent approved center-specific fee",s.directory.includes("fee.doctor_center_id=assoc.id")&&s.directory.includes("fee.status='APPROVED'")],
  ["US004 approved photos never leak private object key",s.media.includes("derivative(bytes,before.original_mime)")&&s.photosProxy.includes('"Cache-Control":"no-store')],
- ["US004 source-current no cache API",s.directoryApi.includes('Cache-Control')&&s.directoryApi.includes("facets()")],
+ ["US004 source-current no cache API",s.directoryApi.includes('Cache-Control')&&s.directoryApi.includes('this.throttle.hit(request,"facets")')],
+ ["US004 rate-limited and HMAC-bound published endpoints",s.publicThrottle.includes("health_public_request_bucket")&&
+  s.publicThrottle.includes("timingSafeEqual")&&s.publicThrottle.includes("CG14_PUBLIC_PROXY_KEY")&&
+  s.publicThrottleSql.includes("CREATE TABLE health_public_request_bucket")&&
+  s.directoryApi.includes('this.throttle.hit(request,"doctors")')&&
+  s.publicCenterApi.includes('this.throttle.hit(request,"center")')&&
+  s.publicModule.includes("HealthPublicRequestThrottleService")],
+ ["US004 editable safe rate-limit copy",s.errors.includes("HEALTH_PUBLIC_RATE_LIMIT")&&
+  s.publicThrottle.includes('code:"HEALTH_PUBLIC_RATE_LIMIT"')],
  ["US004 stable doctor-center cursor",s.directory.includes('split_part($6')&&s.directory.includes('doc.id LIMIT 21')],
  ["US004 validated category + geography",s.sql16.includes("POLYCLINIC")&&s.directory.includes("g.status='ACTIVE'")],
  ["US004 name, specialty, qualifications, experience, fees",s.directory.includes("doc.qualifications")&&s.directory.includes("doc.specialties")&&s.directory.includes("minExperience")&&s.directory.includes("minFee")],
