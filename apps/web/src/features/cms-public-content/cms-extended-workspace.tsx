@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 
-type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE";
+type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY";
 type Section={kind:string;order:number;fields:Record<string,unknown>};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Draft={kind:Kind;slug:string;title:string;seoTitle:string;seoDescription:string;
@@ -15,15 +15,23 @@ type Detail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:str
  seoDescription:string;sections:Section[];assets:Asset[];
  publicationStatus:string;scheduledAt:string|null};
 type Command={path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-const kinds:Kind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"];
+const kinds:Kind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"];
+const legalPages=[
+ ["terms-and-conditions","Terms & Conditions"],["privacy-policy","Privacy Policy"],
+ ["cookie-policy","Cookie Policy"],["disclaimer","Disclaimer"],
+ ["refund-and-cancellation","Refund & Cancellation"],
+ ["grievance-redressal","Grievance Redressal"],
+ ["copyright-and-intellectual-property","Copyright & Intellectual Property"]
+] as const;
 const groups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY","BREAKDOWN",
  "FOCUS","STORIES","UPDATES","CTA"];
 const today=()=>new Date().toISOString().slice(0,10);
 const str=(v:unknown)=>typeof v==="string"?v:"";
 const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
 const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/80g":
- kind==="ARTICLE"?"/blog/"+slug:"/"+slug;
-const slugFor=(kind:Kind)=>kind==="COMPLIANCE"?"80g":kind.toLowerCase();
+ kind==="ARTICLE"?"/blog/"+slug:kind==="POLICY"?"/policies/"+slug:"/"+slug;
+const slugFor=(kind:Kind)=>kind==="COMPLIANCE"?"80g":
+ kind==="POLICY"?legalPages[0][0]:kind.toLowerCase();
 const group=(key:string,i:number):Section=>({kind:"IMPACT_GROUP",order:i,
  fields:{group:key,heading:"",intro:"",source:"",asOfDate:today(),items:[]}});
 function initial(kind:Kind):Draft{
@@ -42,13 +50,15 @@ function initial(kind:Kind):Draft{
   kind==="CONTACT"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
    eyebrow:"",variant:"STANDARD",highlights:[]}}]:
+  kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
+   heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
     tags:[],visible:true,headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
     headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
    {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
     heading:"",intro:"",categories:[]}}];
- return {kind,slug:slugFor(kind),title:"",seoTitle:"",seoDescription:"",
-  sections,assets:[]};
+ return {kind,slug:slugFor(kind),title:kind==="POLICY"?legalPages[0][1]:"",
+  seoTitle:"",seoDescription:"",sections,assets:[]};
 }
 function content(d:Draft){return {kind:d.kind,slug:d.slug,title:d.title,
  seoTitle:d.seoTitle||d.title,seoDescription:d.seoDescription,
@@ -354,6 +364,19 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      onChange={e=>begin(e.target.value as Kind)}>
      {kinds.map(k=><option key={k} value={k}>{k==="COMPLIANCE"?"80G / registration":k.replaceAll("_"," ")}</option>)}
     </select></label>
+    {draft.kind==="POLICY"&&<>
+     <p>Only Foundation-approved original legal wording may be published.
+      This editor does not generate or assume any policy text.</p>
+     <label>Original footer policy<select disabled={!!selected||!canManage}
+      value={draft.slug} onChange={e=>{
+       const slug=e.target.value,label=legalPages.find(p=>p[0]===slug)?.[1]??"";
+       setDraft(d=>({...d,slug,title:label,
+        sections:d.sections.map((sec,i)=>i===0?{...sec,
+         fields:{...sec.fields,heading:label}}:sec)}));
+      }}>
+      {legalPages.map(([slug,label])=><option key={slug} value={slug}>{label}</option>)}
+     </select></label>
+    </>}
     {draft.kind==="ARTICLE"&&<Field name="Article URL name (lowercase letters, digits, hyphens)"
      value={draft.slug} onChange={v=>setDraft(d=>({...d,slug:v}))}/>}
     <Field name="Page title" value={draft.title}
@@ -552,11 +575,21 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         <option value="">No link</option><option value="/contact">Foundation Contact</option>
        </select></label>
       </>}
-      {section.kind==="RICH_TEXT"&&<Field name="Introduction"
+      {section.kind==="RICH_TEXT"&&<Field
+       name={draft.kind==="POLICY"?"Client-approved legal paragraph":"Introduction"}
        value={f.body} large onChange={v=>change("body",v)}/>}
+      {section.kind==="RICH_TEXT"&&draft.kind==="POLICY"&&canManage&&
+       draft.sections.length>1&&<button type="button" onClick={()=>setDraft(d=>({
+        ...d,sections:d.sections.filter((_,j)=>j!==index).map((sec,j)=>({...sec,order:j}))
+       }))}>Remove this policy section</button>}
      </fieldset>;
     })}
-    {selected?.status==="DRAFT"&&draft.kind!=="CONTACT"&&
+    {draft.kind==="POLICY"&&canManage&&draft.sections.length<12&&
+     <button type="button" onClick={()=>setDraft(d=>({...d,sections:[...d.sections,{
+      kind:"RICH_TEXT",order:d.sections.length,fields:{heading:"",body:"",
+       eyebrow:"",variant:"STANDARD",highlights:[]}}]}))}>
+      Add legal text section</button>}
+    {selected?.status==="DRAFT"&&draft.kind!=="CONTACT"&&draft.kind!=="POLICY"&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
       <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>
