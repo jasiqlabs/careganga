@@ -40,10 +40,10 @@ async function published(slug:string):Promise<Result>{
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||data.slug!==slug||
      data.kind!==({home:"HOME",about:"ABOUT","our-impact":"IMPACT",
-       "80g":"COMPLIANCE",gallery:"GALLERY",healthcare:"HEALTHCARE"} as Record<string,string>)[slug]&&
+       "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE"} as Record<string,string>)[slug]&&
        !(data.kind==="POLICY"&&isPolicySlug(slug))&&
        !(data.kind==="ARTICLE"&&
-         !["home","about","our-impact","80g","gallery","healthcare"].includes(slug)&&
+         !["home","about","our-impact","80g","gallery","contact","healthcare"].includes(slug)&&
          !isPolicySlug(slug))||
      typeof data.title!=="string"||!Array.isArray(data.sections)||
      !Array.isArray(data.assets)||typeof data.effectiveGeneration!=="string")
@@ -79,7 +79,7 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
     result.schemaVersion!==1)return {login:false,paths:[]};
   const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
-  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/healthcare",
+  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
@@ -151,7 +151,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","healthcare","articles"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles"].includes(slug)&&
      !isPolicySlug(slug)?"articles":"home");return true;
    }return false;
   });
@@ -160,7 +160,9 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  const navigate=(href:unknown)=>{
   const route=local(href);
   if(route==="/")setSlug("home");
-  else if(route==="/contact")onContact();
+  else if(route==="/contact"){
+   if(publishedPaths.includes("/contact"))setSlug("contact");else onContact();
+  }
   else if(route==="/ngo-information"&&publishedPaths.includes(route))setSlug("80g");
   else if((route==="/videos"||route==="/publications")&&
    publishedPaths.includes("/gallery")){
@@ -196,7 +198,8 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
-   <CmsButton title="Contact" onPress={onContact} secondary/>
+   <CmsButton title="Contact" onPress={()=>navigate("/contact")}
+    secondary={slug!=="contact"}/>
    {legalPages.some(([name])=>publishedPaths.includes("/policies/"+name))&&
     <CmsButton title={policiesExpanded?"Hide legal policies":"Policies & Legal"}
      secondary onPress={()=>setPoliciesExpanded(v=>!v)}/>}
@@ -353,7 +356,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
      </View>;
     }
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
-       "HEALTHCARE_CATEGORIES"].includes(section.kind))
+       "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
