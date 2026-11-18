@@ -501,7 +501,7 @@ export class HealthNetworkService{
       "FROM health_center_account_affiliation f "+
       "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-      "WHERE f.root_realm_id=$1 AND f.account_ref=$2 AND f.status='PENDING_EDIT' "+
+      "WHERE f.root_realm_id=$1 AND f.account_ref=$2 AND f.status IN('PENDING_EDIT','ACTIVE') "+
       "AND c.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') AND p.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') "+
       "ORDER BY c.display_name,c.id LIMIT 50",[actor.realmId,actor.accountId]);
     return {centers:r.rows.map(x=>({centerRef:x.id,name:x.display_name,
@@ -516,9 +516,9 @@ export class HealthNetworkService{
       "c.time_zone,c.public_phone,c.version,c.status "+
       "FROM health_center c "+
       "JOIN health_center_account_affiliation f "+
-      "ON f.root_realm_id=c.root_realm_id AND f.center_id=c.id AND f.status='PENDING_EDIT' "+
+      "ON f.root_realm_id=c.root_realm_id AND f.center_id=c.id AND f.status IN('PENDING_EDIT','ACTIVE') "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
+      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status IN('PENDING','VERIFIED') AND p.status IN('PENDING','VERIFIED') "+
       "AND f.account_ref=$3 LIMIT 1",[actor.realmId,ref,actor.accountId]);
     if(!rows.rows[0])throw new NotFoundException("This pending center is not assigned to you");
     const [hours,capabilities]=await Promise.all([
@@ -545,7 +545,7 @@ export class HealthNetworkService{
       const inserted=await client.query<{id:string;revision:number}>(
         "INSERT INTO health_center_account_affiliation(root_realm_id,center_id,account_ref,assigned_by) "+
         "VALUES($1,$2,$3,$4) "+
-        "ON CONFLICT(root_realm_id,center_id,account_ref) WHERE status='PENDING_EDIT' "+
+        "ON CONFLICT(root_realm_id,center_id,account_ref) WHERE status IN('PENDING_EDIT','ACTIVE') "+
         "DO NOTHING RETURNING id,revision",
         [actor.realmId,ref,accountRef,actor.accountId]);
       if(!inserted.rows[0])throw new ConflictException({code:"HEALTH_REPRESENTATIVE_EXISTS"});
