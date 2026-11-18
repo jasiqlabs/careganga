@@ -138,22 +138,32 @@ export class HealthVerificationApprovalService{
     revisionNo:c.health_revision_no,digest:c.health_source_digest,
     requestKey:c.request_key};
  }
- async inbox(bearer:string,offset=0){
+ async inbox(bearer:string,offset=0,status="ALL",kind="ALL",search=""){
   const actor=await this.reviewer(bearer);
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
+    !["ALL","SUBMITTED","IN_REVIEW","RETURNED","REJECTED",
+      "PENDING_OWNER","OWNER_COMPLETED"].includes(status)||
+    !["ALL","HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION"].includes(kind)||
+    search.length>80)
     throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
   const tx=await this.db.connect();
   try{
     await tx.query("BEGIN");
     await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+    // These filters are applied on the ORIGINAL CG03 cases before pagination;
+    // client-only filtering could hide pending records outside page 1.
     const cases=await tx.query<{id:string;case_number:string;account_name_snapshot:string;
       case_kind:string;status:string;revision:number}>(
       "SELECT id,case_number,account_name_snapshot,case_kind,status,revision "+
       "FROM cg03_case WHERE realm_id=$1 AND case_kind IN "+
       "('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') "+
       "AND status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','PENDING_OWNER','OWNER_COMPLETED') "+
+      "AND ($3::text='ALL' OR status=$3) "+
+      "AND ($4::text='ALL' OR case_kind=$4) "+
+      "AND ($5::text='' OR strpos(lower(case_number),lower($5))>0 "+
+      "OR strpos(lower(account_name_snapshot),lower($5))>0) "+
       "ORDER BY submitted_at DESC,id DESC LIMIT 41 OFFSET $2",
-      [actor.realmId,offset]);
+      [actor.realmId,offset,status,kind,search.trim()]);
     await tx.query("COMMIT");
     return {cases:cases.rows.slice(0,40).map(c=>({caseRef:c.id,reference:c.case_number,
       title:c.account_name_snapshot,kind:c.case_kind,status:c.status,revision:c.revision})),
