@@ -90,7 +90,9 @@ function allowedSectionFields(kind:string):string[]{
    "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer","documents",
    "badgeText","subtitle","importantNote"]:
   kind==="GALLERY_GRID"?
-  ["heading","description","items"]:
+  ["heading","description","items","videosHeading","videosDescription",
+   "publicationsHeading","publicationsDescription","photosEmptyText",
+   "videosEmptyText","publicationsEmptyText"]:
   kind==="ARTICLE_BODY"?
   ["heading","category","excerpt","body","authorLabel","source","asOfDate","tags",
    "sourceNoticeRef","publicReleaseConfirmed"]:
@@ -221,6 +223,13 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   return {
    heading:str(x.heading,"heading",180,3),
    description:str(x.description??"","description",900),
+   videosHeading:str(x.videosHeading??"","videosHeading",180),
+   videosDescription:str(x.videosDescription??"","videosDescription",900),
+   publicationsHeading:str(x.publicationsHeading??"","publicationsHeading",180),
+   publicationsDescription:str(x.publicationsDescription??"","publicationsDescription",900),
+   photosEmptyText:str(x.photosEmptyText??"","photosEmptyText",300),
+   videosEmptyText:str(x.videosEmptyText??"","videosEmptyText",300),
+   publicationsEmptyText:str(x.publicationsEmptyText??"","publicationsEmptyText",300),
    items:x.items.map((v,i)=>{
     const f="items["+i+"]",item=obj(v,f,
      ["title","caption","category","mediaType","source","asOfDate","visible"]);
