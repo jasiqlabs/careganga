@@ -56,7 +56,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
        "kind","slug","title","seoTitle","seoDescription","canonicalPath","sections","assets",
        "navigation","heading","body","source","asOfDate","verifiedAsOf","validUntil",
        "verification","documents","galleryMedia","categories","healthcareClaims","ctaPath",
-       "ctaLabel","group","items","percentage","pan","mediaType","tags","publicReleaseConfirmed",
+       "ctaLabel","group","items","members","percentage","pan","mediaType","tags","publicReleaseConfirmed",
        "heroSlides","sourceNoticeRef"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
