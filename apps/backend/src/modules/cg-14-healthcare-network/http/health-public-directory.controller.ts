@@ -1,21 +1,31 @@
-import {Controller,Get,Header,Param,Query} from "@nestjs/common";
+import {Controller,Get,Header,Param,Query,Req} from "@nestjs/common";
+import {HealthPublicRequestThrottleService} from "../application/health-public-request-throttle.service";
 import {HealthPublicDirectoryService} from "../application/health-public-directory.service";
 @Controller("api/v1/public/health-network")
 export class HealthPublicDirectoryController{
-  constructor(private readonly directory:HealthPublicDirectoryService){}
+  constructor(private readonly directory:HealthPublicDirectoryService,
+   private readonly throttle:HealthPublicRequestThrottleService){}
   @Get("facets")
   @Header("Cache-Control","no-store, max-age=0")
-  facets(){return this.directory.facets();}
+  async facets(@Req()request:object){await this.throttle.hit(request,"facets");
+    return this.directory.facets();}
   @Get("sitemap")
   @Header("Cache-Control","no-store, max-age=0")
-  sitemap(){return this.directory.sitemap();}
+  async sitemap(@Req()request:object){await this.throttle.hit(request,"sitemap");
+    return this.directory.sitemap();}
   @Get("centers")
   @Header("Cache-Control","no-store, max-age=0")
-  centers(@Query()filters:Record<string,unknown>){return this.directory.centers(filters);}
+  async centers(@Req()request:object,@Query()filters:Record<string,unknown>){
+    await this.throttle.hit(request,"centers");return this.directory.centers(filters);
+  }
   @Get("doctors")
   @Header("Cache-Control","no-store, max-age=0")
-  doctors(@Query()filters:Record<string,unknown>){return this.directory.doctors(filters);}
+  async doctors(@Req()request:object,@Query()filters:Record<string,unknown>){
+    await this.throttle.hit(request,"doctors");return this.directory.doctors(filters);
+  }
   @Get("doctors/:doctorRef")
   @Header("Cache-Control","no-store, max-age=0")
-  doctor(@Param("doctorRef")ref:string){return this.directory.doctor(ref);}
+  async doctor(@Req()request:object,@Param("doctorRef")ref:string){
+    await this.throttle.hit(request,"doctor");return this.directory.doctor(ref);
+  }
 }
