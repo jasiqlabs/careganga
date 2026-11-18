@@ -11,10 +11,14 @@ export class HealthNetworkController{
     return this.network.representativeOptions(bearer,search);
   }
   @Get("providers")
-  list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
-    if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
-      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"offset"});
-    return this.network.list(bearer,Number(offset??"0"));
+  list(@Headers("authorization")bearer:string,@Query("offset")offset?:string,
+    @Query("status")status?:string,@Query("q")search?:string){
+    if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset)||
+      !["ALL","PENDING","SUBMITTED","RETURNED","REJECTED","VERIFIED","SUSPENDED"]
+        .includes(status??"ALL")||
+      search!==undefined&&(search.length>80||/[\u0000-\u001f\u007f]/.test(search)))
+      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"search"});
+    return this.network.list(bearer,Number(offset??"0"),status??"ALL",search??"");
   }
   @Post("providers")
   createProvider(@Headers("authorization")bearer:string,@Body()body:unknown){
