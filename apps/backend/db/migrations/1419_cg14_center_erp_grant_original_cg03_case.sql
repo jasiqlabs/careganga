@@ -1,5 +1,9 @@
 -- CG-14 US005 source-only optional ERP center entitlement. No ERP operations.
 -- CG-03 remains the ONLY real review/decision source; CG16/22/23/24 remain OFF.
+-- Match a center to its verified owning provider at the database boundary.
+-- Previous health_center uniqueness covers (root,id), not (root,provider,id).
+ALTER TABLE health_center ADD CONSTRAINT uq_cg14_center_root_provider_identity
+ UNIQUE(root_realm_id,provider_id,id);
 CREATE TABLE health_center_erp_grant_revision(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL,
