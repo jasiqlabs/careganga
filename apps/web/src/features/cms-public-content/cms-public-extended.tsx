@@ -195,6 +195,16 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
   }catch{return "";}
  };
  const map=secure(f.mapUrl,["www.google.com","google.com","maps.google.com"]);
+ // Render an embedded map only if Admin supplied an explicit Google Maps embed
+ // URL; normal approved location links remain ordinary outbound links.
+ const embeddedMap=(()=>{
+  if(!map)return "";
+  try{
+   const u=new URL(map);
+   return ["www.google.com","google.com"].includes(u.hostname.toLowerCase())&&
+    u.pathname==="/maps/embed"&&u.searchParams.has("pb")?map:"";
+  }catch{return "";}
+ })();
  const allowedSocial:Record<string,string[]>={
   Facebook:["facebook.com","www.facebook.com"],
   Instagram:["instagram.com","www.instagram.com"],
@@ -224,6 +234,9 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
   {(text(f.officeHours)||map)&&<section className="cg-site-contact-details-public">
    <h2>Visit or connect</h2>
    {text(f.officeHours)&&<p>Foundation hours: {text(f.officeHours)}</p>}
+   {embeddedMap&&<iframe className="cg-site-contact-map-embed" title="Foundation location on Google Maps"
+    src={embeddedMap} loading="lazy"
+    referrerPolicy="no-referrer-when-downgrade"/>}
    {map&&<a href={map} rel="noopener noreferrer" target="_blank">
     View verified Foundation location on Google Maps</a>}
   </section>}
