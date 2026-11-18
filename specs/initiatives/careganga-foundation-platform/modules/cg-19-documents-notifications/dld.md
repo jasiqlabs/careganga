@@ -111,3 +111,7 @@ Original /notices Batch02 021339/021359 is an explicitly public read-only CG-19 
 ### 18 November — original NGO child and Contact photo parity source checkpoint
 
 CG19's single source media relation supports new original CG18 Contact photo placements without changing the scanner/rights/storage model. The new Contact role is allowed only at positions 0..2 in CONTACT_INFO; public media SQL enforces this and image MIME after original current CG18 publication proof. Verify direct media revocation across stale URL and CG19 upload source, not only JSX presence. NGO legal source links use exact preexisting current CG19 validated DOCUMENT placements, never an anonymous file table or unverified PDF. Integration/runtime and DB QA pending.
+
+### Public verified video byte-range transport — 18 November
+
+CG19 public media controller responds to a single valid MP4 HTTP `Range` request with 206/`Content-Range`/`Content-Length`/`Accept-Ranges`, rejects malformed and unsatisfiable ranges with 416, keeps standard no-store/nonvideo behavior. Calls existing `publicBytes` first (full SHA-256 integrity check and current-publication revocation after private storage access). No direct public S3/Firebase object read or bypass on Range. Does not yet optimize private-storage full-file read per chunk; assess verified seeking and bandwidth in real QA. No API/DB/video playback tests executed.
