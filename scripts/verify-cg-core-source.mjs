@@ -137,6 +137,53 @@ if(Object.values(financeGuards).every(path=>present(path))){
   src.nativeFinance.includes("canManage&&canFoundation")&&
   src.nativeEditor.includes('scopeKind:data.canManageFoundationFinance?"FOUNDATION":"BRANCH"'));
 }
+
+// 18 Nov independent risk-review regression guards. These intentionally check
+// source wiring only; developer must still test 401/403, DB, Web and native.
+const securityPaths={
+ session:"apps/backend/src/modules/cg-01-identity-access/application/session.service.ts",
+ safeCopy:"apps/backend/src/core/http/safe-error-copy.ts",
+ safeFilter:"apps/backend/src/core/http/safe-errors.filter.ts",
+ loginProxy:"apps/web/src/app/api/session/login/route.ts",
+ loginForm:"apps/web/src/features/identity-access/login-form.tsx",
+ loginNative:"apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+ cmsEditor:"apps/web/src/features/cms-public-content/cms-admin-workspace.tsx",
+ cmsBackend:"apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts",
+ cmsMedia:"apps/backend/src/modules/cg-19-documents-notifications/application/cms-draft-media.service.ts",
+ cmsMigration:"apps/backend/db/migrations/0937_cg18_same_page_verified_media_reuse.sql",
+ financeMigration:"apps/backend/db/migrations/0908_cg09_balanced_voucher_effect.sql"
+};
+for(const [key,file] of Object.entries(securityPaths))
+ check("Independent review source exists: "+key,present(file));
+if(Object.values(securityPaths).every(present)){
+ const s=Object.fromEntries(Object.entries(securityPaths).map(([key,file])=>[key,read(file)]));
+ check("Invalid login has one non-enumerating Admin-editable backend code",
+  s.session.includes('code:"IDENTITY_LOGIN_INVALID"')&&
+  s.session.includes("new UnauthorizedException(INVALID_LOGIN)")&&
+  s.safeCopy.includes("IDENTITY_LOGIN_INVALID:")&&
+  s.safeFilter.includes("await this.editableCopy(code)"));
+ check("Web and native show only safe server-owned invalid-login wording",
+  s.loginProxy.includes('payload.code==="IDENTITY_LOGIN_INVALID"')&&
+  s.loginForm.includes('safe.code==="IDENTITY_LOGIN_INVALID"')&&
+  s.loginNative.includes('data.code==="IDENTITY_LOGIN_INVALID"'));
+ check("CG18 rejects self-attested team publication and strips historic public PII",
+  s.cmsBackend.includes('code:"CMS_TEAM_SOURCE_NOT_READY"')&&
+  s.cmsBackend.includes('v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}')&&
+  s.cmsBackend.includes('visibleAssets.filter(v=>v.role!=="TEAM")'));
+ check("CG19 blocks direct public TEAM image URLs even if previously shared",
+  !s.cmsMedia.includes("(a.role='TEAM' AND sec.section_kind='TEAM'")&&
+  !s.cmsMedia.includes("'MOBILE_HERO','TEAM','ABOUT'")&&
+  s.cmsMedia.split("PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED+").length===3);
+ check("CMS editor does not offer unverified new people or false public consent success",
+  s.cmsEditor.includes("pending verified people source")&&
+  !s.cmsEditor.includes("Add team member</button>")&&
+  s.cmsEditor.includes("draft.team.length===0"));
+ check("Finance and media reuse migration preserve Foundation-root composite FKs",
+  s.cmsMigration.includes("fk_cg18_cg19_same_page_media")&&
+  s.cmsMigration.includes("FOREIGN KEY(cg19_file_ref,foundation_root_id,page_id)")&&
+  s.financeMigration.includes("fk_cg09_voucher_debit")&&
+  s.financeMigration.includes("fk_cg09_voucher_credit"));
+}
 const positives=findings.filter(x=>x.passed).length;
 console.log(`CareGanga static core preflight: ${positives}/${findings.length}; ${totalQA} original QA IDs checked.`);
 for(const x of findings)if(!x.passed)console.error("SOURCE_FAIL: "+x.label);
