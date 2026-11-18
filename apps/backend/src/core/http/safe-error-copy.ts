@@ -183,7 +183,21 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CMS_TEAM_SOURCE_NOT_READY:"Public team profiles need a currently approved employee or volunteer record and permission. Save this page without team profiles for now.",
       CMS_COMPLIANCE_EVIDENCE_EXPIRED:"The supporting 80G document is expired, withdrawn or not verified. Confirm the current official proof before publishing.",
       CMS_ORIGINAL_NOTICE_UNAVAILABLE:"The selected Foundation notice was changed, withdrawn or expired. Choose the current approved original before publishing.",
-      FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status."
+      FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status.",
+      HEALTH_FIELD_INVALID:"Check the highlighted healthcare registration field and enter a valid value.",
+      HEALTH_VERSION_INVALID:"This healthcare draft version is invalid. Refresh the record before saving.",
+      HEALTH_GEOGRAPHY_INVALID:"Select an active state, district and optional block in the correct area.",
+      HEALTH_HOURS_OVERLAP:"Opening hours cannot overlap for the same weekday and service.",
+      HEALTH_DUPLICATE:"This healthcare provider or center code already exists. Choose another code.",
+      HEALTH_REQUEST_CONFLICT:"This request was already used for different details. Check the original saved draft.",
+      HEALTH_VERSION_CHANGED:"This draft changed elsewhere. Refresh and review the current details.",
+      HEALTH_REPRESENTATIVE_NOT_ELIGIBLE:"Choose an active staff account with permission to edit pending center information.",
+      HEALTH_REPRESENTATIVE_EXISTS:"This person already has access to edit the pending center.",
+      HEALTH_EVIDENCE_INVALID:"Choose an eligible original private healthcare file and check its details.",
+      HEALTH_EVIDENCE_REPLAY_CONFLICT:"This file request was previously used for different information. Check the original upload.",
+      HEALTH_EVIDENCE_SOURCE_CHANGED:"The provider or center changed since the file was selected. Refresh and verify the current proof.",
+      HEALTH_EVIDENCE_NOT_VERIFIED:"Choose a current, securely scanned and verified private supporting document.",
+      HEALTH_FINANCE_MASK_INVALID:"Enter only the masked bank label and final four digits. Never enter a full bank account number."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
