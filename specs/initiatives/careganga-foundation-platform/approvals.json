@@ -765,15 +765,15 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-02-foundation-structure/tasks.md",
-      "current_artifact_sha256": "78d9841e380f4d486dd01210a55e0114d8acea601b1b19d540441a08cbd71cff",
+      "current_artifact_sha256": "aaecf50e80d46a3b4996d6716752c533a1c02816321daa6f7533f51fc75657a8",
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "78d9841e380f4d486dd01210a55e0114d8acea601b1b19d540441a08cbd71cff",
+      "sha256": "aaecf50e80d46a3b4996d6716752c533a1c02816321daa6f7533f51fc75657a8",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "approved_at": "2026-11-18",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
@@ -810,11 +810,15 @@
       },
       "last_design_content_review": {
         "date": "2026-11-18",
-        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
-        "actual_runtime_QA": "NOT_RUN",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 25,
+        "source_review_sha256": "aaecf50e80d46a3b4996d6716752c533a1c02816321daa6f7533f51fc75657a8",
+        "independent_human_review": "NOT_RUN",
         "harness_resolver": "NOT_RUN",
-        "file_sha256": "78d9841e380f4d486dd01210a55e0114d8acea601b1b19d540441a08cbd71cff"
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
       }
     },
     "planning/cg-09-finance-accounting": {
@@ -1196,10 +1200,10 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-09-finance-accounting/tasks.md",
-      "sha256": "64a3c73e8efda73a5f9cf82c4d20c33382da5e60c73b005378da6badd8aa2ae2",
-      "current_artifact_sha256": "64a3c73e8efda73a5f9cf82c4d20c33382da5e60c73b005378da6badd8aa2ae2",
+      "sha256": "94b55dcc943e268cbbb3f7f96082ddf0749cb45414614eb110bdac01ff647654",
+      "current_artifact_sha256": "94b55dcc943e268cbbb3f7f96082ddf0749cb45414614eb110bdac01ff647654",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T10:45:07.676Z",
+      "approved_at": "2026-11-18",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-09-finance-accounting/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -1309,12 +1313,17 @@
       ],
       "last_design_content_review": {
         "date": "2026-11-18",
-        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
-        "actual_runtime_QA": "NOT_RUN",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 71,
+        "source_review_sha256": "94b55dcc943e268cbbb3f7f96082ddf0749cb45414614eb110bdac01ff647654",
+        "independent_human_review": "NOT_RUN",
         "harness_resolver": "NOT_RUN",
-        "file_sha256": "64a3c73e8efda73a5f9cf82c4d20c33382da5e60c73b005378da6badd8aa2ae2"
-      }
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
+      },
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118"
     },
     "planning/cg-18-cms-public-content": {
       "status": "DELEGATED_APPROVED",
@@ -1785,10 +1794,10 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-18-cms-public-content/tasks.md",
-      "sha256": "963dbc65cef94e7ee9935505c214469594542f3bf8b949b6b8f333dc613d542d",
-      "current_artifact_sha256": "963dbc65cef94e7ee9935505c214469594542f3bf8b949b6b8f333dc613d542d",
+      "sha256": "0b0182b9fa7e75279e276bbe69150d1d1a79649fd1daca57491c6eeba80efc4a",
+      "current_artifact_sha256": "0b0182b9fa7e75279e276bbe69150d1d1a79649fd1daca57491c6eeba80efc4a",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T11:16:27.215Z",
+      "approved_at": "2026-11-18",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-18-cms-public-content/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -1928,12 +1937,17 @@
       "previous_approved_sha256": "54bf1361c7b587b04d4f7dc687e509de3dca4cc9ed3e76006de62c170ceedec6",
       "last_design_content_review": {
         "date": "2026-11-18",
-        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
-        "actual_runtime_QA": "NOT_RUN",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 76,
+        "source_review_sha256": "0b0182b9fa7e75279e276bbe69150d1d1a79649fd1daca57491c6eeba80efc4a",
+        "independent_human_review": "NOT_RUN",
         "harness_resolver": "NOT_RUN",
-        "file_sha256": "963dbc65cef94e7ee9935505c214469594542f3bf8b949b6b8f333dc613d542d"
-      }
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
+      },
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118"
     },
     "planning/cg-14-healthcare-network": {
       "status": "DELEGATED_APPROVED",
@@ -5344,15 +5358,15 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-01-identity-access/tasks.md",
-      "current_artifact_sha256": "0a016801c6e66a8aca717f4966051c66289c2715547510f2c72be89637ae02e7",
+      "current_artifact_sha256": "e39eb45146d599ce97397a9179dcf4ffcdc1b3f05c2018d62ce05baf942d3501",
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "0a016801c6e66a8aca717f4966051c66289c2715547510f2c72be89637ae02e7",
+      "sha256": "e39eb45146d599ce97397a9179dcf4ffcdc1b3f05c2018d62ce05baf942d3501",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "approved_at": "2026-11-18",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
@@ -5386,6 +5400,18 @@
         "release_status": "NOT_APPROVED",
         "source_review_date": "2026-11-16",
         "artifact_sha256": "0a016801c6e66a8aca717f4966051c66289c2715547510f2c72be89637ae02e7"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 51,
+        "source_review_sha256": "e39eb45146d599ce97397a9179dcf4ffcdc1b3f05c2018d62ce05baf942d3501",
+        "independent_human_review": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
       }
     },
     "planning/cg-17-healthcare-assistance-settlements": {
@@ -6368,15 +6394,15 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "artifact": "modules/cg-19-documents-notifications/tasks.md",
-      "current_artifact_sha256": "2f9faad56d6d51b788cc23f0c3e7ce523a48208dc27dfe595fff8ec0d069530e",
+      "current_artifact_sha256": "1300b92cdb0f02fedbec653182fc3cc83cf2fc53412d0632d6cec403d31f7769",
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT",
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118",
       "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
       "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
       "reason": "The canonical greenfield account and credential design, Admin-created ACTIVE users, mobile/email + password login, SMS/email reset OTP, and fresh password-confirmed sensitive operations require current-hash review. Historical decisions remain in Git history; this record claims no current approval.",
-      "sha256": "2f9faad56d6d51b788cc23f0c3e7ce523a48208dc27dfe595fff8ec0d069530e",
+      "sha256": "1300b92cdb0f02fedbec653182fc3cc83cf2fc53412d0632d6cec403d31f7769",
       "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "approved_at": "2026-11-18",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
         "method": "SELF_DISCLOSED_GITHUB_SOURCE_AUTH_CONTRACT_REVIEW_NOT_INDEPENDENT",
@@ -6413,11 +6439,15 @@
       },
       "last_design_content_review": {
         "date": "2026-11-18",
-        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
-        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
-        "actual_runtime_QA": "NOT_RUN",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 42,
+        "source_review_sha256": "1300b92cdb0f02fedbec653182fc3cc83cf2fc53412d0632d6cec403d31f7769",
+        "independent_human_review": "NOT_RUN",
         "harness_resolver": "NOT_RUN",
-        "file_sha256": "2f9faad56d6d51b788cc23f0c3e7ce523a48208dc27dfe595fff8ec0d069530e"
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
       }
     },
     "br/master": {
@@ -6966,6 +6996,56 @@
         "NFR_and_visual_runtime": "NOT_RUN"
       },
       "review_evidence": "SHA256 of eight exact current BR documents; owner-delegated source/design only, runtime and client formal acceptance NOT_RUN"
+    },
+    "tasks/cg-03-registration-approvals": {
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
+      "artifact": "modules/cg-03-registration-approvals/tasks.md",
+      "reviewed_by": "JASIQ AI Design Review Agent",
+      "approved_by": "JASIQ AI Design Review Agent",
+      "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
+      "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
+      "sha256": "000af23718d582d1dca5bb4ec372feb203e7c731a4db3dd855f747682fc67292",
+      "current_artifact_sha256": "000af23718d582d1dca5bb4ec372feb203e7c731a4db3dd855f747682fc67292",
+      "approved_at": "2026-11-18",
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118",
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 31,
+        "source_review_sha256": "000af23718d582d1dca5bb4ec372feb203e7c731a4db3dd855f747682fc67292",
+        "independent_human_review": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
+      }
+    },
+    "tasks/cg-21-platform-configuration-audit": {
+      "status": "DELEGATED_APPROVED",
+      "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
+      "artifact": "modules/cg-21-platform-configuration-audit/tasks.md",
+      "reviewed_by": "JASIQ AI Design Review Agent",
+      "approved_by": "JASIQ AI Design Review Agent",
+      "formal_stage_gate": "INTERNAL_DESIGN_CONTENT_APPROVED_RUNTIME_AND_INDEPENDENT_QA_NOT_RUN",
+      "development_authority": "OWNER_AUTHORIZED_SOURCE_ONLY_NOT_RUNTIME_VALIDATED",
+      "sha256": "6b7f852cc253ec30f9676c71da07a9f83f36699e2348fa2b1fefec4c70463ba4",
+      "current_artifact_sha256": "6b7f852cc253ec30f9676c71da07a9f83f36699e2348fa2b1fefec4c70463ba4",
+      "approved_at": "2026-11-18",
+      "review_evidence": "CURRENT_GITHUB_SOURCE_QA_ID_COVERAGE_OWNER_DESIGN_REVIEW_20261118",
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_CURRENT_SOURCE_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing current canonical QA story IDs, count and numbering; original client/Admin reference ownership, permission and branch safety, positive/negative/error and source-vs-runtime evidence boundaries; no new story, module implementation or runtime signoff.",
+        "unique_qa_cases": 16,
+        "source_review_sha256": "6b7f852cc253ec30f9676c71da07a9f83f36699e2348fa2b1fefec4c70463ba4",
+        "independent_human_review": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "postgresql_migrations_backup_restore": "NOT_RUN",
+        "web_android_runtime_visual_QA": "NOT_RUN",
+        "source_complete_approval": "NOT_APPROVED"
+      }
     }
   }
 }
