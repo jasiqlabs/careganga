@@ -5,6 +5,26 @@ export const dynamic="force-dynamic";
  * Pages stay out of search results until their current CG03/CG19 approved
  * publication is effective. No stale static sitemap after withdrawal.
  */
+async function approvedHealthSitemap(){
+ const backend=process.env.BACKEND_URL;
+ if(!backend)return {centers:[] as string[],doctors:[] as string[]};
+ try{
+  const r=await fetch(new URL("/api/v1/public/health-network/sitemap",backend),{
+   cache:"no-store",signal:AbortSignal.timeout(9000)
+  });
+  if(!r.ok)throw Error("Current publication unavailable");
+  const d:unknown=await r.json();
+  if(!d||typeof d!=="object"||!("centers" in d)||!("doctors" in d)||
+   !Array.isArray(d.centers)||!Array.isArray(d.doctors))throw Error("Invalid");
+  return {
+   centers:d.centers.filter((x:unknown):x is string=>
+    typeof x==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(x)).slice(0,1000),
+   doctors:d.doctors.filter((x:unknown):x is string=>
+    typeof x==="string"&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(x))
+    .slice(0,1000)
+  };
+ }catch{return {centers:[] as string[],doctors:[] as string[]};}
+}
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  const configured=process.env.PUBLIC_SITE_ORIGIN;
  if(!configured)return [];
@@ -14,10 +34,11 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   if(origin.protocol!=="https:"||origin.username||origin.password||
     origin.search||origin.hash||origin.pathname!=="/")return [];
  }catch{return [];}
- const [home,about,impact,legal,gallery,healthcare,articles,notices]=await Promise.all([
+ const [home,about,impact,legal,gallery,healthcare,articles,notices,healthDirectory]=await Promise.all([
   publishedCmsPage("home"),publishedCmsPage("about"),publishedCmsPage("our-impact"),
   publishedCmsPage("80g"),publishedCmsPage("gallery"),
-  publishedCmsPage("healthcare"),publishedCmsArticles(),publishedCmsNotices()]);
+  publishedCmsPage("healthcare"),publishedCmsArticles(),publishedCmsNotices(),
+  approvedHealthSitemap()]);
  const results:MetadataRoute.Sitemap=[];
  for(const item of [home,about,impact,legal,gallery,healthcare]){
   if(item.state!=="PUBLISHED")continue;
@@ -61,5 +82,14 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   results.push({url:new URL(article.path,origin).toString(),
    changeFrequency:"weekly",priority:0.55});
  }
+ if(healthDirectory.centers.length||healthDirectory.doctors.length)
+  results.push({url:new URL("/health-network",origin).toString(),
+   changeFrequency:"daily",priority:0.7});
+ for(const slug of healthDirectory.centers)
+  results.push({url:new URL("/healthcare/centers/"+encodeURIComponent(slug),origin).toString(),
+   changeFrequency:"daily",priority:0.6});
+ for(const doctorRef of healthDirectory.doctors)
+  results.push({url:new URL("/health-network/doctors/"+encodeURIComponent(doctorRef),origin).toString(),
+   changeFrequency:"daily",priority:0.6});
  return results;
 }
