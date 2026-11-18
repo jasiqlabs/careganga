@@ -84,6 +84,20 @@ export default async function HealthcareDirectory({searchParams}:Props){
        .map(type=><option key={type} value={type}>{nice(type)}</option>)}
      </select>
     </label>
+    <label>Verified center service
+     <select name="service" defaultValue={typeof raw.service==="string"?raw.service:""}>
+      <option value="">All declared services</option>
+      {(["CONSULTATION","DIAGNOSTICS","PHARMACY","NURSING","SURGERY","EMERGENCY"] as const)
+       .map(v=><option key={v} value={v}>{nice(v)}</option>)}
+     </select>
+    </label>
+    <label>Operating weekday (not live opening status)
+     <select name="day" defaultValue={typeof raw.day==="string"?raw.day:""}>
+      <option value="">Any recorded day</option>
+      {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+       .map((v,i)=><option key={v} value={i}>{v}</option>)}
+     </select>
+    </label>
     <label>Facilities (optional)
      <input name="facility"
       defaultValue={typeof raw.facility==="string"?raw.facility:""}
