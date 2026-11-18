@@ -312,7 +312,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   const heroIntro=str(x.heroIntro??"","heroIntro",800);
   const officeHours=str(x.officeHours??"","officeHours",160);
   // Do not publish an unverified always-staffed chat/hours promise.
-  if(/24\\s*\\/?\\s*7|24.hours|always.available/i.test(
+  if(/24[ ]*[/]?[ ]*7|24.hours|always.available/i.test(
    [heroTitle,heroIntro,officeHours].join(" ")))return error("officeHours");
   return {heroTitle,heroIntro,inquiries,faqs,officeHours,
    mapUrl:approvedUrl(x.mapUrl,"mapUrl",
