@@ -213,7 +213,9 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_DOCTOR_EVIDENCE_REPLAY_CONFLICT:"This private doctor upload request was used for different details. Check its original status.",
       HEALTH_DOCTOR_REVIEW_INVALID:"Check the doctor review details and original file before submitting.",
       HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED:"The original professional details or proof changed. Refresh the registration and submit a new review.",
-      HEALTH_DOCTOR_REVIEW_UNAVAILABLE:"The original professional verification case is unavailable for this action."
+      HEALTH_DOCTOR_REVIEW_UNAVAILABLE:"The original professional verification case is unavailable for this action.",
+      HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE:"This doctor center association is not available for your current access.",
+      HEALTH_DOCTOR_ASSOCIATION_CHANGED:"The doctor center assignment changed. Refresh before approving or suspending it."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
