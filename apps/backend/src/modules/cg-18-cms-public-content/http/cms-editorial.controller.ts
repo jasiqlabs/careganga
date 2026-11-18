@@ -47,6 +47,10 @@ export class CmsPublicPagesController{
  articles(@Query("category")category?:string,@Query("cursor")cursor?:string){
   return this.cms.publicArticles(category,cursor);
  }
+ @Get("notices")
+ @Header("Cache-Control","no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ notices(){return this.cms.publicNotices();}
  @Get("pages/:slug")
  @Header("Cache-Control","no-store")
  async publicPage(@Param("slug")slug:string,
