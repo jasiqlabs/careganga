@@ -17,15 +17,16 @@ const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,onBackToNews}:{section:Section;assets:Asset[];
+ onNavigate,onBackToNews,mediaScope}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
  onContact:()=>void;onNavigate:(path:unknown)=>void;
- onBackToNews:()=>void}){
+ onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION"}){
  const f=section.fields;
  const impactItems=rows(f.items);
  const impactPeak=Math.max(0,...impactItems.map(v=>typeof v.value==="number"&&
   Number.isFinite(v.value)?v.value:0));
- const [mediaFilter,setMediaFilter]=useState("ALL");
+ const [mediaFilter,setMediaFilter]=useState("PHOTO");
+ const actualMedia=mediaScope??mediaFilter;
  const [categoryFilter,setCategoryFilter]=useState("ALL");
  const [search,setSearch]=useState("");
  const galleryItems=rows(f.items);
@@ -33,7 +34,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const galleryMatches=galleryItems.map((item,index)=>({item,
   i:typeof item.originalIndex==="number"&&Number.isSafeInteger(item.originalIndex)?
    item.originalIndex:index})).filter(({item})=>
-   (mediaFilter==="ALL"||item.mediaType===mediaFilter)&&
+   item.mediaType===actualMedia&&
    (categoryFilter==="ALL"||item.category===categoryFilter)&&
    (!search.trim()||[item.title,item.caption,item.category].some(v=>
     text(v).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))));
@@ -117,19 +118,23 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  }
  if(section.kind==="GALLERY_GRID")return <View style={styles.section}>
   <Text style={styles.eyebrow}>Media &amp; Resources</Text>
-  <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
-  <Text style={styles.body}>{text(f.description)}</Text>
-  <View style={styles.filterRow} accessibilityLabel="Approved media type filters">
-   {([["ALL","All"],["PHOTO","Photos"],["VIDEO","Videos"],
+  <Text accessibilityRole="header" style={styles.title}>
+   {mediaScope==="VIDEO"?text(f.videosHeading)||text(f.heading):
+    mediaScope==="PUBLICATION"?text(f.publicationsHeading)||text(f.heading):text(f.heading)}
+  </Text>
+  <Text style={styles.body}>{mediaScope==="VIDEO"?text(f.videosDescription):
+   mediaScope==="PUBLICATION"?text(f.publicationsDescription):text(f.description)}</Text>
+  {!mediaScope&&<View style={styles.filterRow} accessibilityLabel="Approved media type filters">
+   {([["PHOTO","Photos"],["VIDEO","Videos"],
      ["PUBLICATION","Publications"]] as const).map(([value,label])=>
     <Pressable key={value} accessibilityRole="button"
-     accessibilityState={{selected:mediaFilter===value}}
-     style={[styles.filter,mediaFilter===value&&styles.filterActive]}
+     accessibilityState={{selected:actualMedia===value}}
+     style={[styles.filter,actualMedia===value&&styles.filterActive]}
      onPress={()=>setMediaFilter(value)}>
-     <Text style={[styles.filterText,mediaFilter===value&&styles.filterActiveText]}>
+     <Text style={[styles.filterText,actualMedia===value&&styles.filterActiveText]}>
       {label}</Text>
     </Pressable>)}
-  </View>
+  </View>}
   {categories.length>1&&<View style={styles.filterRow} accessibilityLabel="Approved categories">
    <Pressable accessibilityRole="button" accessibilityState={{selected:categoryFilter==="ALL"}}
     style={[styles.filter,categoryFilter==="ALL"&&styles.filterActive]}
