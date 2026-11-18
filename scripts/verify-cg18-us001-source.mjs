@@ -56,6 +56,7 @@ const files={
  contactPhotoMigration:read("apps/backend/db/migrations/0941_cg18_original_contact_photography.sql"),
  webSitemap:read("apps/web/src/app/sitemap.ts"),
  publicMediaController:read("apps/backend/src/modules/cg-19-documents-notifications/http/cms-draft-media.controller.ts"),
+ publicMediaWebProxy:read("apps/web/src/app/api/public/content/media/[fileRef]/route.ts"),
  cg21Copy:read("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const checks=[
@@ -232,6 +233,16 @@ const checks=[
   files.noticeRoute.includes("CmsPublicNoticeBoard")&&
   files.noticeBoard.includes("Reset Filters")&&
   files.header.includes('text==="News & Updates"?"/notices"')],
+
+ ["Original MP4 byte ranges survive the Web same-origin proxy without exposing storage",
+  files.publicMediaWebProxy.includes('headers:range?{Range:range}:undefined')&&
+  files.publicMediaWebProxy.includes('status:partial?206:200')&&
+  files.publicMediaWebProxy.includes('response.status===416')&&
+  files.publicMediaWebProxy.includes('declared!==bytes.byteLength')&&
+  files.publicMediaWebProxy.includes("Content-Range")&&
+  files.publicMediaWebProxy.includes("Cache-Control")&&
+  files.publicMediaWebProxy.includes("Content-Security-Policy")&&
+  !files.publicMediaWebProxy.includes("storageUrl")],
 
  ["Original MP4 video byte ranges retain CG19 verification and do not cache rights",
   files.publicMediaController.includes("await this.media.publicBytes(ref)")&&
