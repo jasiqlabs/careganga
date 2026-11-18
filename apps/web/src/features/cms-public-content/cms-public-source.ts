@@ -18,7 +18,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     typeof source.title!=="string"||typeof source.seoTitle!=="string"||
     typeof source.seoDescription!=="string"||!Array.isArray(source.sections)||
     !Array.isArray(source.assets)||source.slug!==slug||
-    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE"].includes(
+    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"].includes(
        String(source.kind))||
     (source.kind==="HOME"&&slug!=="home")||
     (source.kind==="ABOUT"&&slug!=="about")||
@@ -26,7 +26,11 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     (source.kind==="COMPLIANCE"&&slug!=="80g")||
     (source.kind==="GALLERY"&&slug!=="gallery")||
     (source.kind==="HEALTHCARE"&&slug!=="healthcare")||
-    (source.kind==="CONTACT"&&slug!=="contact"))
+    (source.kind==="CONTACT"&&slug!=="contact")||
+    (source.kind==="POLICY"&&
+     !["terms-and-conditions","privacy-policy","cookie-policy","disclaimer",
+      "refund-and-cancellation","grievance-redressal",
+      "copyright-and-intellectual-property"].includes(slug)))
    throw Error();
   return {state:"PUBLISHED",page:p as PublicCmsPage};
  }catch{return {state:"UNAVAILABLE",page:null};}
