@@ -6,7 +6,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG=/^[a-z0-9][a-z0-9-]{2,79}$/;
-type Search={q:string;after:string;category:string;specialty:string;
+type Search={q:string;after:string;category:string;center:string;specialty:string;
   pin:string;state:string;district:string;minFee:number|null;maxFee:number|null};
 type CenterRow={public_slug:string;center_name:string;provider_name:string;
   center_type:string;address:string;pin_code:string;public_phone:string|null;
@@ -29,13 +29,15 @@ function parse(value:unknown):Search{
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const x=value as Record<string,unknown>;
   if(Object.keys(x).some(k=>!["q","after","category","specialty","pin",
-    "state","district","minFee","maxFee"].includes(k)))
+    "state","district","minFee","maxFee","center"].includes(k)))
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
-  const q=safe(x.q,"q"),after=safe(x.after,"after"),
+  const q=safe(x.q,"q"),after=safe(x.after,"after",130),
+    center=safe(x.center,"center",80),
     category=safe(x.category,"category",40),specialty=safe(x.specialty,"specialty",60),
     pin=safe(x.pin,"pin",6),state=safe(x.state,"state",36),
     district=safe(x.district,"district",36);
-  if(after&&!SLUG.test(after)||pin&&!/^[1-9][0-9]{5}$/.test(pin)||
+  if(after&&!SLUG.test(after)&&!/^([a-z0-9][a-z0-9-]{2,79})~([0-9a-f-]{36})$/.test(after)||
+    center&&!SLUG.test(center)||pin&&!/^[1-9][0-9]{5}$/.test(pin)||
     state&&!UUID.test(state)||district&&!UUID.test(district)||
     category&&!["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"].includes(category))
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
@@ -48,7 +50,7 @@ function parse(value:unknown):Search{
   const minFee=amount("minFee"),maxFee=amount("maxFee");
   if(minFee!==null&&maxFee!==null&&minFee>maxFee)
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"maxFee"});
-  return {q,after,category,specialty,pin,state,district,minFee,maxFee};
+  return {q,after,category,center,specialty,pin,state,district,minFee,maxFee};
 }
 /**
  * The standalone anonymous public directory is sourced exclusively from
@@ -128,6 +130,8 @@ export class HealthPublicDirectoryService{
   }
   async centers(input:unknown){
     const s=parse(input),f=this.filters(s);
+    if(s.after.includes("~")||s.center||s.specialty||s.minFee!==null||s.maxFee!==null)
+      throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
     const found=await this.db.query<CenterRow>(
       "SELECT c.public_slug,c.display_name AS center_name,p.legal_name AS provider_name,"+
       "c.center_type,c.address_line AS address,c.pin_code,c.public_phone,"+
@@ -146,6 +150,8 @@ export class HealthPublicDirectoryService{
   }
   async doctors(input:unknown){
     const s=parse(input),f=this.filters(s);
+    if(s.after&&!/^([a-z0-9][a-z0-9-]{2,79})~([0-9a-f-]{36})$/.test(s.after))
+      throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"after"});
     const rows=await this.db.query<DoctorRow>(
       "SELECT doc.id AS doctor_ref,doc.full_name,doc.qualifications,"+
       "doc.specialties,doc.experience_years,doc.public_bio,"+
@@ -160,11 +166,14 @@ export class HealthPublicDirectoryService{
       "WHERE spec ILIKE $7 ESCAPE '\\')) "+
       "AND ($8::bigint IS NULL OR fee.amount_minor >= $8) "+
       "AND ($9::bigint IS NULL OR fee.amount_minor <= $9) "+
-      "AND ($6::text IS NULL OR c.public_slug>$6) "+
-      "ORDER BY c.public_slug,doc.normalized_name,doc.id LIMIT 21",
-      f.params);
+      "AND ($6::text IS NULL OR (c.public_slug,doc.id)>"+
+      "(split_part($6,'~',1),split_part($6,'~',2)::uuid)) "+
+      "AND ($10::text IS NULL OR c.public_slug=$10) "+
+      "ORDER BY c.public_slug,doc.id LIMIT 21",
+      [...f.params,s.center||null]);
     return {items:rows.rows.slice(0,20).map(this.safeDoctor),
-      next:rows.rows.length>20?rows.rows[19].center_slug:null,
+      next:rows.rows.length>20?
+        rows.rows[19].center_slug+"~"+rows.rows[19].doctor_ref:null,
       notice:"Fees are approved current amounts, not appointment availability."};
   }
   async doctor(doctorRef:string){
