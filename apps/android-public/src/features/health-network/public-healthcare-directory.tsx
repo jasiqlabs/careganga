@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
- ActivityIndicator,AppState,Image,Linking,Pressable,ScrollView,StyleSheet,
+ ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -181,6 +181,12 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    selectionRef.current=null;detailHistory.current=[];onExit();
   }
  }
+ useEffect(()=>{
+  const listener=BackHandler.addEventListener("hardwareBackPress",()=>{
+   back();return true;
+  });
+  return()=>listener.remove();
+ },[selection,load,show,onExit]);
  const centerDetails=selection?.kind==="center"?state.details as Details|null:null;
  const doctorDetails=selection?.kind==="doctor"?state.details as DoctorDetails|null:null;
  return <SafeAreaView style={styles.page}>
