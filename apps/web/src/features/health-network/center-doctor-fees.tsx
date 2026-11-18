@@ -42,6 +42,7 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   const [end,setEnd]=useState("");
   const requestKey=useRef("");
   const assignmentKey=useRef("");
+  const feeReadEpoch=useRef(0);
   const feePath=selected?path+"/"+encodeURIComponent(selected.doctorRef)+
     "/associations/"+encodeURIComponent(selected.associationRef)+"/fees":"";
   const load=useCallback(async()=>{
@@ -49,11 +50,15 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
     setDoctors(Array.isArray(r.doctors)?r.doctors:[]);
   },[path]);
   const loadFees=useCallback(async(route:string)=>{
+    const epoch=++feeReadEpoch.current;
     const r=await call<{fees:Fee[]}>(route);
-    setFees(Array.isArray(r.fees)?r.fees:[]);
+    // Never show another professional's prices beneath this selected name.
+    if(epoch===feeReadEpoch.current)
+      setFees(Array.isArray(r.fees)?r.fees:[]);
   },[]);
   useEffect(()=>{
     let alive=true;
+    ++feeReadEpoch.current;
     setDoctors([]);setSelected(null);setFees([]);
     setLoading(true);setError("");setUncertain(false);
     void load().catch(e=>{if(alive)setError(e instanceof Error?e.message:
@@ -63,11 +68,16 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
   },[load]);
   async function choose(ref:string){
     const doctor=doctors.find(d=>d.associationRef===ref)??null;
+    ++feeReadEpoch.current;
     setSelected(doctor);setFees([]);setError("");setNotice("");
-    if(doctor?.status==="APPROVED")try{
-      await loadFees(path+"/"+encodeURIComponent(doctor.doctorRef)+"/associations/"+
-        encodeURIComponent(doctor.associationRef)+"/fees");
-    }catch(e){setError(e instanceof Error?e.message:"Fee history is unavailable.");}
+    if(doctor?.status==="APPROVED"){
+      const operation=loadFees(path+"/"+encodeURIComponent(doctor.doctorRef)+
+        "/associations/"+encodeURIComponent(doctor.associationRef)+"/fees");
+      const epoch=feeReadEpoch.current;
+      try{await operation;}
+      catch(e){if(epoch===feeReadEpoch.current)
+        setError(e instanceof Error?e.message:"Fee history is unavailable.");}
+    }
   }
   async function searchCandidates(){
     if(busy||uncertain)return;
