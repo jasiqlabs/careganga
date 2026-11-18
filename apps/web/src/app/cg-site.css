@@ -393,3 +393,30 @@
 .cg-site-source-bar-fill{display:block;height:100%;border-radius:999px;
  background:#39885a;max-width:100%;min-width:0}
 @media(max-width:480px){.cg-site-source-bar-row{grid-template-columns:1fr;gap:.25rem}}
+
+/* Original public media page treatments (client Batch02 screenshots).
+ * Distinct /gallery, /videos, /publications share one approved CG18/CG19 source.
+ * Visual verification against supplied full-resolution PNGs remains pending. */
+.cg-site-gallery{background:linear-gradient(140deg,#fffbee 0%,#f3fcf4 100%);
+ border-radius:1.1rem;padding:clamp(1.4rem,4vw,3rem);
+ margin-block:1.2rem 2.2rem;max-width:min(100%,73rem)}
+.cg-site-gallery>h1,.cg-site-gallery>p{text-align:center;margin-left:auto;margin-right:auto}
+.cg-site-gallery>h1{max-width:100%;font-size:clamp(1.8rem,3vw,2.75rem)}
+.cg-site-gallery .cg-site-eyebrow{color:#227354}
+.cg-site-gallery-tabs{justify-content:center;margin:1rem 0 2rem}
+.cg-site-gallery-tabs button{border-radius:999px;min-height:2.35rem;font-size:.9rem}
+.cg-site-gallery-filters{justify-content:space-between;background:#ffffffb3}
+.cg-site-gallery-filters label{min-width:min(15rem,100%);max-width:32rem}
+.cg-site-filter-reset,.cg-site-gallery-empty button{
+ padding:.55rem .85rem;border-radius:.5rem;border:1px solid #7aab86;
+ background:#fff;color:#23553c;font-weight:700;min-height:2.65rem;cursor:pointer}
+.cg-site-filter-reset:disabled{opacity:.52;cursor:default}
+.cg-site-filter-reset:focus-visible,.cg-site-gallery-empty button:focus-visible{
+ outline:3px solid #a78020;outline-offset:3px}
+.cg-site-gallery-empty{display:grid;justify-items:center;gap:.75rem;text-align:center;
+ padding:clamp(2rem,5vw,4.5rem);background:#fffdfb;border-color:#c4dcca}
+.cg-site-gallery-empty p{color:#546c5c;margin:0}
+.cg-site-gallery-card video{background:#0c1c1a}
+@media(max-width:540px){.cg-site-gallery{padding:1.1rem;border-radius:.6rem}
+ .cg-site-gallery-tabs{display:flex;gap:.4rem}
+ .cg-site-filter-reset{width:100%}}
