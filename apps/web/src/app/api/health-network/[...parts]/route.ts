@@ -23,7 +23,7 @@ function allowed(parts:string[],method:string){
     return method==="GET";
   }
   if(parts.length===2&&UUID.test(parts[1])){
-    if(parts[0]==="providers")return method==="GET";
+    if(parts[0]==="providers")return method==="GET"||method==="PATCH";
     if(parts[0]==="my-centers")return method==="GET"||method==="PATCH";
     if(parts[0]==="centers")return method==="GET"||method==="PATCH";
   }
