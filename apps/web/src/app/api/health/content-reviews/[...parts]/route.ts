@@ -36,6 +36,16 @@ async function proxy(req:NextRequest,ctx:Ctx,method:"GET"|"POST"){
   });
   if(!result.ok){
    const status=[400,401,403,404,409,429].includes(result.status)?result.status:503;
+   const body:unknown=await result.json().catch(()=>null);
+   const supported=new Set(["HEALTH_CONTENT_REVIEW_INVALID",
+    "HEALTH_CONTENT_REVIEW_CONFLICT","HEALTH_CONTENT_SOURCE_CHANGED"]);
+   if(status<500&&body&&typeof body==="object"&&"code" in body&&
+     typeof body.code==="string"&&supported.has(body.code)&&
+     "message" in body&&typeof body.message==="string"&&
+     body.message.length>=16&&body.message.length<=240&&
+     !/[<>\u0000-\u001f\u007f]/.test(body.message))
+    return NextResponse.json({code:body.code,message:body.message},{
+     status,headers:{"Cache-Control":"no-store"}});
    return fail(status,status===401?"Your session expired. Sign in again.":
     status===403?"Only an authorized independent Foundation reviewer may act.":
     status===409?"This content review changed. Refresh before retrying.":
