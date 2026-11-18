@@ -2,15 +2,31 @@
 import {useEffect,useState} from "react";
 type Faq={faqRef:string;question:string;answer:string};
 type Receipt={receipt:string;expiresAt:string;status:string;result:string};
+class SupportActionError extends Error{
+ constructor(readonly category:"LIMIT"|"CONFLICT"|"INVALID"|"UNKNOWN",message:string){
+  super(message);this.name="SupportActionError";
+ }
+}
 async function call<T>(path:string,body:object){
   let response:Response;
   try{response=await fetch("/api/support/"+path,{method:"POST",
     credentials:"omit",cache:"no-store",
     headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})}
   catch{throw Error("UNKNOWN")}
-  if(!response.ok)throw Error(response.status===429?"LIMIT":
-    response.status===409?"CONFLICT":
-    response.status===400?"INVALID":"UNKNOWN");
+  if(!response.ok){
+    const body:unknown=await response.json().catch(()=>null);
+    const candidate=body&&typeof body==="object"&&!Array.isArray(body)&&
+      "message" in body&&typeof body.message==="string"?body.message:null;
+    const safe=candidate&&candidate.length>=8&&candidate.length<=240&&
+      !/[<>\u0000-\u001f\u007f]/.test(candidate)?candidate:null;
+    const category=response.status===429?"LIMIT":response.status===409?"CONFLICT":
+      response.status===400?"INVALID":"UNKNOWN";
+    throw new SupportActionError(category,safe??
+      (category==="LIMIT"?"Too many requests. Try again later.":
+       category==="INVALID"?"Check the details in the form before retrying.":
+       category==="CONFLICT"?"This request was already used. Review its original status.":
+       "The original request outcome is not confirmed. Check its status before retrying."));
+  }
   return await response.json() as T;
 }
 export function Cg19PublicContactForm(){
@@ -44,11 +60,8 @@ export function Cg19PublicContactForm(){
       setReceipt(response);setProof(response.receipt);setRequestKey("");
       setMessage("");setError("");
     }catch(e){
-      const code=e instanceof Error?e.message:"UNKNOWN";
-      setError(code==="LIMIT"?"Too many attempts. Try again later.":
-        code==="INVALID"?"Check every field and its length.":
-        code==="CONFLICT"?"The original request key already belongs to a different message.":
-        "Submission could not be confirmed. Retry this same message to recover its original receipt without creating another request.");
+      setError(e instanceof SupportActionError?e.message:
+        "Submission could not be confirmed. Retry the same message to recover its original receipt without creating another request.");
     }finally{setBusy(false)}
   }
   async function check(){
@@ -58,8 +71,7 @@ export function Cg19PublicContactForm(){
       const result=await call<{status:string}>("receipt/status",{receipt:proof.trim()});
       setProofState(result.status);
     }catch(e){
-      setError(e instanceof Error&&e.message==="LIMIT"?
-        "Too many receipt checks. Try again later.":
+      setError(e instanceof SupportActionError?e.message:
         "This receipt could not be verified. Check the original private code.");
     }finally{setBusy(false)}
   }
