@@ -1,5 +1,18 @@
 # CG-02 — User Stories & Manual QA
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Verified Foundation legal identity and any authorized team/people profile source used by the original `/about/team` and `/ngo-information` family.
+
+**Domain/technical source contract:** CG-02 must expose only current Foundation-root-scoped, approved public-safe identity, registrations, PAN/80G verification statuses and correct source refs; never publicize private employee/member details or screenshot PAN/registration numbers by default. A Team Directory projection may select authorized CG-02 staff/structure fields or CG-04 member/volunteer fields only after documented source ownership and explicit subject consent, status and display permission.
+
+**Screen and Admin UI acceptance:** Team Directory state/district/subdivision/block/designation filters and search/reset must be source-backed and scoped; NGO sidebar PAN/registration/80G proof panels must follow the exact screenshot layout with truthful source status, badges and document links (no invented 'VERIFIED').
+
+**QA and independent review:** Source trace: anonymous request cannot enumerate private team, volunteer, employee, document IDs or unchecked legal fields; original screenshot Team search/filtered empty state, NGO proof/no-proof, consent revocation and root isolation must be manually tested by original owner and CG-18 receiver. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning DRAFT; [module](module.md), [PRD](../../prd.md) FR-004, FR-005, [HLD](../../hld.md), required [UIUX](uiux.md), [DLD](dld.md).  
