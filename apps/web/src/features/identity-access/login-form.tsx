@@ -21,14 +21,18 @@ export function LoginForm(){
         body:JSON.stringify({identifier:identifier.trim(),password,rememberMe})
       });
       if(!response.ok){
-        const payload:unknown=response.status===400?await response.json().catch(()=>null):null;
+        const payload:unknown=[400,401].includes(response.status)?
+          await response.json().catch(()=>null):null;
         const safe=payload&&typeof payload==="object"&&!Array.isArray(payload)?
           payload as Record<string,unknown>:{};
         const target=response.status===400&&
           (safe.field==="identifier"||safe.field==="password")?safe.field:null;
         setFieldError(target);
-        setMessage(response.status===400&&typeof safe.message==="string"&&
-          typeof safe.code==="string"&&safe.code.startsWith("IDENTITY_")&&safe.message.length<=220?
+        setMessage(((response.status===400&&typeof safe.code==="string"&&
+          safe.code.startsWith("IDENTITY_"))||
+          (response.status===401&&safe.code==="IDENTITY_LOGIN_INVALID"))&&
+          typeof safe.message==="string"&&safe.message.length>=16&&
+          safe.message.length<=220?
           safe.message:response.status===429?"Too many login attempts. Please try again later.":
           response.status===401?"Mobile number/email or password is incorrect.":
           response.status===400?"Check the mobile number/email and password fields before signing in.":
