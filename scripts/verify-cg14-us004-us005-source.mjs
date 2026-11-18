@@ -60,137 +60,114 @@ const s={
  supportBff:read("apps/web/src/app/api/support/[...parts]/route.ts"),
  mediaBff:read("apps/web/src/app/api/documents/health-center-content/[...parts]/route.ts"),
  errors:read("apps/backend/src/core/http/safe-error-copy.ts"),
+ webPublisher:read("apps/web/src/features/health-network/center-content-publisher-queue.tsx"),
+ contentReviewPage:read("apps/web/src/app/(admin)/admin/health-network/content-reviews/page.tsx"),
+ contentPublisherApi:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-center-content.controller.ts"),
+ erpAdminPage:read("apps/web/src/app/(admin)/admin/health-network/erp-grants/page.tsx"),
+ healthAdmin:read("apps/web/src/app/(admin)/admin/health-network/page.tsx"),
  tasks:read("specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/tasks.md")
 };
 const checks=[
- ["US004 original verified center only",s.directory.includes("health_center_publication")&&s.directory.includes("HEALTH_CENTER_LICENSE")],
- ["US004 original doctor case and unrevoked proof",s.directory.includes("HEALTH_DOCTOR_VERIFICATION")&&s.directory.includes("HEALTH_DOCTOR_LICENSE")&&s.directory.includes("revoked_at IS NULL")],
- ["US004 independent approved center-specific fee",s.directory.includes("fee.doctor_center_id=assoc.id")&&s.directory.includes("fee.status='APPROVED'")],
- ["US004 approved photos never leak private object key",s.media.includes("derivative(bytes,before.original_mime)")&&s.photosProxy.includes('"Cache-Control":"no-store')],
- ["US004 source-current no cache API",s.directoryApi.includes('Cache-Control')&&s.directoryApi.includes('this.throttle.hit(request,"facets")')],
- ["US004 rate-limited and HMAC-bound published endpoints",s.publicThrottle.includes("health_public_request_bucket")&&
-  s.publicThrottle.includes("timingSafeEqual")&&s.publicThrottle.includes("CG14_PUBLIC_PROXY_KEY")&&
-  s.publicThrottleSql.includes("CREATE TABLE health_public_request_bucket")&&
-  s.directoryApi.includes('this.throttle.hit(request,"doctors")')&&
-  s.publicCenterApi.includes('this.throttle.hit(request,"center")')&&
-  s.publicModule.includes("HealthPublicRequestThrottleService")],
- ["US004 editable safe rate-limit copy",s.errors.includes("HEALTH_PUBLIC_RATE_LIMIT")&&
-  s.publicThrottle.includes('code:"HEALTH_PUBLIC_RATE_LIMIT"')],
- ["US004 stable doctor-center cursor",s.directory.includes('split_part($6')&&s.directory.includes('doc.id LIMIT 21')],
- ["US004 validated category + geography",s.sql16.includes("POLYCLINIC")&&s.directory.includes("g.status='ACTIVE'")],
- ["US004 name, specialty, qualifications, experience, fees",s.directory.includes("doc.qualifications")&&s.directory.includes("doc.specialties")&&s.directory.includes("minExperience")&&s.directory.includes("minFee")],
- ["US004 actual day/service/facility allowlist",s.directory.includes("health_center_hours")&&s.directory.includes("health_center_capability")&&s.directory.includes("facilities")],
- ["US004 Next responsive list/detail and guarded 404",s.web.includes("gridTemplateColumns")&&s.webDoctor.includes("notFound()")&&s.webCenter.includes("notFound()")],
- ["US004 Web category and area filters",s.web.includes("publicAreas")&&s.web.includes('name="district"')],
- ["US004 native actual filter/detail/back",s.nativeEntry.includes("PublicHealthcareDirectory")&&s.native.includes("AppState.addEventListener")&&s.native.includes("Back")],
- ["US004 real dynamic approved-only sitemap",s.sitemap.includes("approvedHealthSitemap")&&s.directory.includes("async sitemap(")],
- ["US004 no invented booking slots",s.web.includes("Online appointments")&&s.native.includes("cannot confirm appointments")],
- ["US005 typed versioned draft+original CG03 case",s.sql12.includes("health_center_content_revision")&&s.sql13.includes("HEALTH_CENTER_CONTENT_REVIEW")],
- ["US005 independent protected reviewer decision",s.review.includes("requireFreshFoundationRootProof")&&s.review.includes("c.proposer_id===actor.accountId")],
- ["US005 independent content detail avoids case-first deadlock and shows approved frozen snapshot",
-  s.review.includes('this.source.original(tx,actor,this.submission(snapshot))')&&
-  s.review.includes('"PENDING_OWNER"].includes(snapshot.status)')&&
-  s.review.includes('case_kind=\'HEALTH_CENTER_CONTENT_REVIEW\' FOR UPDATE')],
- ["US005 ERP grant reviewer detail and decision parent-first lock consistency",
-  s.erpReview.includes('this.source.original(tx,actor,this.submission(snapshot))')&&
-  s.erpReview.includes('c.status!==snapshot.status')&&
-  s.erpGrant.includes('const peek=await tx.query<Revision>')],
- ["US005 ERP command replay records cannot be changed",
-  s.erpSql.includes('BEFORE UPDATE OR DELETE ON health_center_erp_grant_command')],
- ["US005 exact source and stale version rejection",s.reviewSource.includes("input.revisionNo+1")&&s.content.includes("this.review.approved(")],
- ["US005 public content only frozen approved source",s.publicCenter.includes("cp.original_decision_ref")&&s.publicCenter.includes("source_snapshot")],
- ["US005 original scanned CG19 photo and rights",s.sql15.includes("cg19_center_content_media_rights")&&s.media.includes("verifyPrivateObject")],
- ["US005 photo revocation after approval",s.media.includes("async revokeRights(")&&s.media.includes("rights.revoked_at IS NULL")],
- ["US005 public Web and Android center photos",s.webCenter.includes("/photos/")&&s.native.includes("/api/documents/health-center-content/public/")],
- ["US005 own center content editor",s.webEditor.includes("CenterPhotoUploader")&&s.webEditor.includes("Save private draft")],
- ["US005 real Foundation review and separate publication",s.webReview.includes("Record independent decision")&&s.webReview.includes("Publish independently approved content")],
- ["US005 exact current center support ownership",s.supportScope.includes("f.status='ACTIVE'")&&s.support.includes("async centerReply(")],
- ["US005 CG19 original support case not shadow table",s.sql12.includes("ALTER TABLE cg19_support_case ADD COLUMN center_id")&&!s.sql12.includes("CREATE TABLE health_center_support_case")],
- ["US005 no own-center BFF permissions bypass",s.supportBff.includes('parts[0]==="centers"')&&s.mediaBff.includes("cg_staff_session")],
- ["US005 original CG19 support case attachments, no parallel master",s.attachmentSql.includes("CG19_SUPPORT")&&
-  s.attachmentSql.includes("FOREIGN KEY(support_case_id,realm_id)")&&
+ ["US004 original approved provider and center",s.directory.includes("health_center_publication")&&
+  s.directory.includes("HEALTH_CENTER_LICENSE")],
+ ["US004 doctor current license and independent decision",s.directory.includes("HEALTH_DOCTOR_VERIFICATION")&&
+  s.directory.includes("HEALTH_DOCTOR_LICENSE")&&s.directory.includes("revoked_at IS NULL")],
+ ["US004 original current center-linked doctor fees",s.directory.includes("fee.doctor_center_id=assoc.id")&&
+  s.directory.includes("minFee")&&s.directory.includes("maxFee")],
+ ["US004 bounded original search and current facets",s.directory.includes("minExperience")&&
+  s.directory.includes("service")&&s.directory.includes("health_center_hours")],
+ ["US004 hashed SQL public throttle all directory routes",s.publicThrottleSql.includes("health_public_request_bucket")&&
+  s.publicThrottle.includes("timingSafeEqual")&&
+  ["centers","doctors","doctor","facets","sitemap"].every(x=>
+   s.directoryApi.includes('this.throttle.hit(request,"'+x+'")'))&&
+  s.publicCenterApi.includes('this.throttle.hit(request,"center")')],
+ ["US004 public source and published photos no-store",s.directoryApi.includes("Cache-Control")&&
+  s.publicCenter.includes("health_center_publication")&&
+  s.media.includes("derivative(bytes,before.original_mime)")],
+ ["US004 responsive Web filters and correct parent areas",s.web.includes("selectedDistrict")&&
+  s.web.includes("a.parentRef===selectedDistrict")&&s.web.includes("<details open={showAdvanced}")],
+ ["US004 native Android actual stateful filters and backed directory",s.native.includes("new URLSearchParams()")&&
+  s.native.includes("setRegion(")&&s.native.includes('a.parentRef===region.district.value')&&
+  s.native.includes("{filtersExpanded&&<>")],
+ ["US004 Android Hardware Back and nested verified detail history",s.native.includes("BackHandler.addEventListener")&&
+  s.native.includes("detailHistory.current.pop()")&&
+  s.native.includes("void show(previous,false)")],
+ ["US004 native app entry and published sitemap",s.nativeEntry.includes("PublicHealthcareDirectory")&&
+  s.sitemap.includes("approvedHealthSitemap")],
+ ["US004 no fabricated clinic booking or appointment availability",s.web.includes("Online appointments")&&
+  s.native.includes("cannot confirm appointments")],
+ ["US005 original center content frozen source and publication",s.sql12.includes("health_center_content_revision")&&
+  s.sql14.includes("health_center_content_publication")&&
+  s.content.includes("source_snapshot")],
+ ["US005 CG03 protected independent reviewer decision",s.review.includes("requireFreshFoundationRootProof")&&
+  s.review.includes("c.proposer_id===actor.accountId")&&
+  s.review.includes("this.source.original(tx,actor,this.submission(snapshot))")],
+ ["US005 original CG19 scanned center photo and current consent",s.media.includes("verifyPrivateObject")&&
+  s.media.includes("cg19_center_content_media_rights")&&
+  s.media.includes("async revokeRights(")],
+ ["US005 protected publisher queue separate from original reviewer queue",s.content.includes("async publishing(bearer:string)")&&
+  s.webPublisher.includes("CenterContentPublisherQueue")&&
+  s.contentReviewPage.includes("canReview&&<CenterContentReviewInbox")&&
+  s.contentReviewPage.includes("canPublish&&<CenterContentPublisherQueue")],
+ ["US005 content publication CAS and current source-bound withdrawal",s.content.includes("AND withdrawn_at IS NULL AND generation=$3")&&
+  s.content.includes("AND approved_revision_id=$4 RETURNING generation")&&
+  s.webPublisher.includes("expectedGeneration:item.publicationGeneration")&&
+  s.webReview.includes("expectedGeneration:detail.publicationGeneration")],
+ ["US005 error copy for withdrawal is editable",s.errors.includes("HEALTH_CONTENT_PUBLICATION_CHANGED")&&
+  s.bff.includes("HEALTH_CONTENT_PUBLICATION_CHANGED")],
+ ["US005 original CG19 support case, no duplicate file owner",s.sql12.includes("ALTER TABLE cg19_support_case ADD COLUMN center_id")&&
+  s.attachmentSql.includes("cg19_stored_file")&&
   !s.attachmentSql.includes("CREATE TABLE health_support_file")],
- ["US005 scanned source and double checked private download",s.attachment.includes("verifyPrivateObject")&&
+ ["US005 support attachment exact Center A/B DB FK",s.attachmentSql.includes("uq_cg19_support_case_exact_center")&&
+  s.attachmentSql.includes("REFERENCES cg19_support_case(id,realm_id,center_id)")&&
+  s.attachmentSql.includes("FOREIGN KEY(support_case_id,realm_id,health_center_id)")],
+ ["US005 scanned case attachment and double-checked private downloads",s.attachment.includes("verifyPrivateObject")&&
   s.attachment.includes("async download(")&&s.attachment.includes("async agentDownload(")&&
   s.attachment.includes("after.revision!==before.revision")],
- ["US005 center and Foundation staff have original guarded attachment UI",s.attachmentHttp.includes("SupportAgentAttachmentController")&&
+ ["US005 original CG19 support case accessible to scoped users",s.supportScope.includes("assertCurrent")&&
   s.attachmentCenter.includes("Upload securely")&&
-  s.attachmentAgent.includes("Refresh attachments")&&s.supportBff.includes('parts[4]==="attachments"')],
- ["US005 original ERP source and no fake operational stock",s.erpSql.includes("health_center_erp_grant_revision")&&
-  s.erpSql.includes("health_center_erp_grant_event")&&
-  s.erpSql.includes("HEALTH_CENTER_ERP_GRANT")&&
-  !s.erpSql.includes("CREATE TABLE pharmacy_stock")],
- ["US005 original CG03 grant source disjoint and frozen",s.erpSql.includes("cg03_erp_only_source")&&
-  s.erpSql.includes("health_source_digest ~ '^[a-f0-9]{64}s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&
-  s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&s.errors.includes("CENTER_SUPPORT_FILE_CHANGED")],
- ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
- ["All original 94 story QA identifiers preserved",(()=>{
-   const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
-   const want=new Set();
-   for(let story=1;story<=5;story++)for(let n=1;n<=(story===5?22:18);n++)
-    want.add("US-"+String(story).padStart(3,"0")+"-QA"+String(n).padStart(2,"0"));
-   return actual.size===94&&[...want].every(x=>actual.has(x));
- })()]
-];
-let fails=0;
-for(const [name,pass] of checks){
- process.stdout.write((pass?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+name+"\n");
- if(!pass)fails++;
-}
-process.stdout.write("US004/US005 static source wiring "+(checks.length-fails)+"/"+checks.length+
- "; **no executed QA**, SQL, build, device or pixel proof.\n");
-if(fails)process.exitCode=1;
-")&&
-  s.erpSql.includes("NEW.health_erp_revision_id IS DISTINCT FROM OLD.health_erp_revision_id")],
- ["US005 actual original independent CG03 reviewer",s.erpReview.includes("requireDistinctFinalReviewer")&&
-  s.erpReview.includes("requireFreshFoundationRootProof")&&
+  s.attachmentAgent.includes("Refresh attachments")],
+ ["US005 true CG03 optional ERP source and immutable grants",s.erpSql.includes("HEALTH_CENTER_ERP_GRANT")&&
+  s.erpSql.includes("health_center_erp_grant_revision")&&
+  s.erpSql.includes("BEFORE UPDATE OR DELETE ON health_center_erp_grant_command")],
+ ["US005 source original CG03 FK and provider-center unique",s.erpSql.includes("UNIQUE(root_realm_id,provider_id,id)")&&
+  s.erpSql.includes("REFERENCES health_center(root_realm_id,provider_id,id)")&&
+  s.erpSql.includes("cg03_erp_only_source")],
+ ["US005 independent protected grant reviewer and source module export",s.erpReview.includes("requireFreshFoundationRootProof")&&
   s.erpReview.includes("c.proposer_id===actor.accountId")&&
-  s.erpReview.includes("this.source.original(")],
- ["US005 center current owner creates ERP request, no operational grant",s.erpGrant.includes("this.centerScope.assertCurrent")&&
-  s.erpGrant.includes("this.approval.create(tx,actor")&&
-  s.erpGrant.includes("canUseOperations:false")],
- ["US005 protected Foundation applies, suspends or withdraws version",s.erpGrant.includes("this.approval.approved(")&&
-  s.erpGrant.includes("requireFreshFoundationRootProof")&&
-  s.erpGrant.includes('action:"SUSPENDED"|"WITHDRAWN"')&&
-  s.erpGrant.includes("version=version+1")],
- ["US005 deployment switches OFF or explicitly NOT_AVAILABLE",s.erpConfig.includes("CAREGANGA_ERP_PHARMACY_ENABLED")&&
-  s.erpConfig.includes("available:false")&&s.erpGrant.includes("erpDeploymentCapabilities")],
- ["US005 center and Foundation views explicitly do not enable ERP",s.erpOwnUi.includes("Request independent Foundation approval")&&
-  s.erpReviewUi.includes("Record independent decision")&&
-  s.erpReviewUi.includes("Apply approved center grant")&&
-  s.erpPanel.includes("CenterErpCapabilityPanel")],
- ["US005 protected original source exported to CG03 DI",s.erpSourceModule.includes(
-  "exports:[HealthReviewSourceFacade,HealthDoctorReviewSourceFacade,HealthCenterContentReviewSourceFacade,HealthErpGrantReviewSourceFacade]")&&
-  s.erpRoot.includes("HealthErpGrantApprovalService")],
- ["US005 grant revision owning-center DB composite key",s.erpSql.includes(
-  "UNIQUE(root_realm_id,provider_id,id)")&&s.erpSql.includes(
-  "REFERENCES health_center(root_realm_id,provider_id,id)")],
- ["US005 review and publish consistent parent-grant-case locks",s.erpReview.includes(
-  "await this.source.original(tx,actor,this.submission(snapshot))")&&
-  s.erpReview.includes("FOR UPDATE")&&
-  s.erpGrant.includes("all write")],
- ["US005 original grant modules and staff-only proxy",s.publicModule.includes("HealthCenterErpGrantService")&&
-  s.erpRoot.includes("HealthErpGrantApprovalService")&&
-  s.erpReviewBff.includes("erp-grant-reviews")&&
-  s.bff.includes('parts[0]==="erp-grants"')],
- ["US005 ERP status and user-editable error",s.errors.includes("HEALTH_ERP_GRANT_INVALID")&&
-  s.errors.includes("HEALTH_ERP_GRANT_SOURCE_CHANGED")],
- ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&
-  s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&s.errors.includes("CENTER_SUPPORT_FILE_CHANGED")],
- ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
- ["All original 94 story QA identifiers preserved",(()=>{
-   const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
-   const want=new Set();
-   for(let story=1;story<=5;story++)for(let n=1;n<=(story===5?22:18);n++)
-    want.add("US-"+String(story).padStart(3,"0")+"-QA"+String(n).padStart(2,"0"));
-   return actual.size===94&&[...want].every(x=>actual.has(x));
+  s.erpSourceModule.includes("HealthErpGrantReviewSourceFacade]")],
+ ["US005 distinct ERP publisher can access approved-only queue",s.erpGrant.includes('requireAction(bearer,"health.centers.publish")')&&
+  s.erpGrant.includes("ready_case_ref")&&
+  s.erpReviewUi.includes("publishReady(g)")&&
+  s.erpAdminPage.includes("if(!canReview&&!canPublish)")],
+ ["US005 optional ERP always nonoperational without real owner",s.erpConfig.includes("CAREGANGA_ERP_PHARMACY_ENABLED")&&
+  s.erpConfig.includes("available:false")&&s.erpGrant.includes("canUseOperations:false")&&
+  !s.erpSql.includes("CREATE TABLE pharmacy_stock")],
+ ["US005 original content/ERP Center Portal editable and role safe",s.webEditor.includes("Save private draft")&&
+  s.erpPanel.includes("CenterErpCapabilityPanel")&&
+  s.contentApi.includes('@Get("content/publishing")')],
+ ["US005 source errors safe and editable",s.errors.includes("HEALTH_ERP_GRANT_CHANGED")&&
+  s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&
+  s.errors.includes("HEALTH_CONTENT_PUBLICATION_CHANGED")],
+ ["Original 94 US QA IDs preserved exactly",(()=>{
+  const observed=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
+  const required=new Set();
+  for(let story=1;story<=5;story++){
+   const maximum=story===5?22:18;
+   for(let number=1;number<=maximum;number++)
+    required.add("US-"+String(story).padStart(3,"0")+"-QA"+
+     String(number).padStart(2,"0"));
+  }
+  return observed.size===94&&required.size===94&&
+   [...required].every(id=>observed.has(id));
  })()]
 ];
-let fails=0;
-for(const [name,pass] of checks){
- process.stdout.write((pass?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+name+"\n");
- if(!pass)fails++;
+let failed=0;
+for(const [description,present] of checks){
+ process.stdout.write((present?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+description+"\n");
+ if(!present)failed++;
 }
-process.stdout.write("US004/US005 static source wiring "+(checks.length-fails)+"/"+checks.length+
- "; **no executed QA**, SQL, build, device or pixel proof.\n");
-if(fails)process.exitCode=1;
+process.stdout.write("US004/US005 authored source preflight: "+
+ (checks.length-failed)+"/"+checks.length+
+ ". This script NEVER proves executed PostgreSQL, build, browser, mobile, scanner or specialist QA.\n");
+if(failed)process.exitCode=1;
