@@ -10,7 +10,8 @@ type DoctorForm={fullName:string;registrationJurisdiction:string;
 type DoctorRow={doctorRef:string;name:string;status:string;version:number;
   specialties:string[]};
 type Detail={doctorRef:string;status:string;version:number;doctor:DoctorForm};
-type Files={files:{fileRef:string;status:string;cleanVerified:boolean;currentVersion:boolean}[]};
+type Files={files:{fileRef:string;status:string;cleanVerified:boolean;currentVersion:boolean;
+  classification:string}[]};
 const empty=():DoctorForm=>({
   fullName:"",registrationJurisdiction:"",registrationNumber:"",
   qualifications:[],specialties:[],experienceYears:0,publicBio:"",
@@ -77,7 +78,8 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
           encodeURIComponent(ref),{credentials:"same-origin",cache:"no-store"});
         if(proof.ok){
           const result=await proof.json() as Files;
-          const latest=result.files?.find(f=>f.currentVersion&&f.cleanVerified);
+          const latest=result.files?.find(f=>f.currentVersion&&f.cleanVerified&&
+            f.classification==="HEALTH_DOCTOR_LICENSE");
           setProofFileRef(latest?.fileRef??"");
           setFileStatus(latest?"Original clean scanned licence is recorded":
             "No current verified private licence is recorded");
@@ -271,6 +273,10 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
           doctorRef={selected.doctorRef} version={selected.version}
           onVerified={(ref)=>{setProofFileRef(ref);
             setFileStatus("Original clean scanned licence is recorded");}}/>
+        {selected.doctor.portraitRightsStatus==="CONSENT_PENDING"&&
+          <DoctorProofUploader key={selected.doctorRef+":"+selected.version+":portrait"}
+            classification="HEALTH_DOCTOR_PORTRAIT"
+            doctorRef={selected.doctorRef} version={selected.version}/>}
         {!!proofFileRef&&<div className="toolbar">
           <button type="button" className="primary" disabled={busy||unknown}
             onClick={()=>void submitForReview()}>
