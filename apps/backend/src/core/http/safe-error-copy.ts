@@ -239,6 +239,9 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_CENTER_MEDIA_RIGHTS_INVALID:"Record a real photo owner or written publication consent and a useful image description.",
       HEALTH_CENTER_MEDIA_RIGHTS_CHANGED:"Photo publication rights changed. Refresh the original image before retrying.",
       HEALTH_CENTER_MEDIA_NOT_VERIFIED:"Only a securely scanned, unrevoked center photo can be selected for publication.",
+      HEALTH_ERP_GRANT_INVALID:"Check the requested optional capability, dates, revision and current password.",
+      HEALTH_ERP_GRANT_CHANGED:"This center capability request or original review changed. Refresh its status before continuing.",
+      HEALTH_ERP_GRANT_SOURCE_CHANGED:"This optional capability source is no longer current or the center is unavailable.",
       HEALTH_PUBLIC_RATE_LIMIT:"Too many healthcare directory requests. Please try again shortly.",
       CENTER_SUPPORT_FILE_INVALID:"Choose a supported PDF or image under 10 MB and check the original case revision.",
       CENTER_SUPPORT_FILE_CHANGED:"This support case or private file changed. Reload the original case or upload status before retrying."
