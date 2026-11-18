@@ -13,6 +13,23 @@ const s={
   reviewSql:read("apps/backend/db/migrations/1403_cg14_original_provider_center_review.sql"),
   doctorSql:read("apps/backend/db/migrations/1404_cg14_doctor_identity_and_center_affiliation.sql"),
   feeSql:read("apps/backend/db/migrations/1405_cg14_doctor_center_immutable_fee_history.sql"),
+  doctorEventsSql:read("apps/backend/db/migrations/1406_cg14_doctor_source_event.sql"),
+  doctorEvidenceSql:read("apps/backend/db/migrations/1407_cg19_doctor_original_private_license.sql"),
+  doctorCaseSql:read("apps/backend/db/migrations/1408_cg03_original_doctor_verification_case.sql"),
+  doctorAuditSql:read("apps/backend/db/migrations/1409_cg14_doctor_center_review_audit.sql"),
+  activeStaffSql:read("apps/backend/db/migrations/1410_cg14_active_center_representative_scope.sql"),
+  doctorPortraitSql:read("apps/backend/db/migrations/1411_cg19_doctor_private_portrait_source.sql"),
+  doctorDraft:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-doctor-draft.service.ts"),
+  doctorReview:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-doctor-review-workflow.service.ts"),
+  doctorFees:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-doctor-fees.service.ts"),
+  doctorPrivate:read("apps/backend/src/modules/cg-19-documents-notifications/application/health-doctor-private-evidence.service.ts"),
+  doctorReviewSource:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-doctor-review-source.facade.ts"),
+  doctorHttp:read("apps/backend/src/modules/cg-14-healthcare-network/http/health-doctor-draft.controller.ts"),
+  doctorWeb:read("apps/web/src/features/health-network/doctor-onboarding.tsx"),
+  doctorCenterWeb:read("apps/web/src/features/health-network/doctor-center-management.tsx"),
+  centerDoctorWeb:read("apps/web/src/features/health-network/center-doctor-fees.tsx"),
+  nativeReview:read("apps/android-internal/src/features/registration-approvals/healthcare-native-review.tsx"),
+  nativeAuth:read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx"),
   network:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-network.service.ts"),
   workflow:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-review-workflow.service.ts"),
   public:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-center.service.ts"),
@@ -59,6 +76,45 @@ const checks=[
  ["US003 approved fees cannot overlap and accepted history is guarded",s.feeSql.includes("CREATE EXTENSION IF NOT EXISTS btree_gist")&&
    s.feeSql.includes("EXCLUDE USING gist")&&s.feeSql.includes("cg14_approved_fee_source_guard()")],
 
+ [ "Doctor original event actions support actual review and suspension",
+    s.doctorEventsSql.includes("health_doctor_event")&&
+    s.doctorAuditSql.includes("'DOCTOR_SUBMIT'")&&
+    s.doctorAuditSql.includes("'DOCTOR_VERIFY'")&&
+    s.doctorAuditSql.includes("'DOCTOR_SUSPEND'")],
+ [ "Real CG03 doctor source and protected CG19 license",
+    s.doctorCaseSql.includes("HEALTH_DOCTOR_VERIFICATION")&&
+    s.doctorReview.includes("createDoctorCase(")&&
+    s.doctorReview.includes("this.evidence.prove(")&&
+    s.doctorReviewSource.includes("CLEAN_VERIFIED")&&
+    s.doctorPrivate.includes("HEALTH_DOCTOR_LICENSE")],
+ [ "Optional doctor portrait stays private and does not verify consent",
+    s.doctorPortraitSql.includes("HEALTH_DOCTOR_PORTRAIT")&&
+    s.doctorPrivate.includes("CONSENT_PENDING")&&
+    s.doctorWeb.includes('classification="HEALTH_DOCTOR_PORTRAIT"')],
+ [ "Both foundation and current ACTIVE center staff have real doctor/fee APIs",
+    s.doctorDraft.includes("async proposeOwnCenter(")&&
+    s.doctorDraft.includes("async approveCenter(")&&
+    s.doctorFees.includes("async proposeForOwnCenter(")&&
+    s.doctorFees.includes("async ownFees(")&&
+    s.doctorHttp.includes(":associationRef/fees/:feeRef/approve")],
+ [ "Fee source guards immutable approved rates, future start and no fake slots",
+    s.doctorFees.includes("async approve(")&&
+    s.doctorFees.includes("effective_from.getTime()<=Date.now()+60000")&&
+    s.feeSql.includes("cg14_approved_fee_source_guard")],
+ [ "Center staff must be currently ACTIVE; disabled centers revoke representatives",
+    s.activeStaffSql.includes("status IN ('PENDING_EDIT','ACTIVE','REVOKED')")&&
+    s.doctorFees.includes("f.status='ACTIVE'")&&
+    s.workflow.includes("UPDATE health_center_account_affiliation SET status='REVOKED'")],
+ [ "Readable named doctor center and fee Web controls",
+    s.doctorWeb.includes("DoctorCenterManagement")&&
+    s.doctorCenterWeb.includes("Approve association")&&
+    s.centerDoctorWeb.includes("Request center association")&&
+    s.centerDoctorWeb.includes("Submit fee proposal")],
+ [ "Original Internal Android reviewer uses same CG03 and CG19 sources",
+    s.nativeAuth.includes("HealthcareNativeReview")&&
+    s.nativeReview.includes("/api/health/reviews")&&
+    s.nativeReview.includes("doctor-evidence")&&
+    s.nativeReview.includes("currentPassword")],
  ["Suspension withdraws current exposure",s.workflow.includes("publication_generation=publication_generation+1")],
  ["Suspended sources reopen PENDING for fresh review",s.workflow.includes("async reopenProvider(")&&
     s.workflow.includes("async reopenCenter(")&&
