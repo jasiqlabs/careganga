@@ -347,32 +347,39 @@ export class HealthDoctorFeesService{
   async list(bearer:string,doctorRef:string,associationRef:string){
     const doctor=id(doctorRef,"doctorRef"),associationId=id(associationRef,"associationRef");
     const actor=await this.sessions.requireAction(bearer,"health.doctors.view");
-    const association=await this.db.query<{eligible:boolean}>(
-      "SELECT (a.affiliation_state='APPROVED' AND d.status='VERIFIED' "+
-      "AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
-      "AND p.status='VERIFIED') AS eligible FROM health_doctor_center a "+
-      "JOIN health_doctor d ON d.root_realm_id=a.root_realm_id AND d.id=a.doctor_id "+
-      "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
-      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-      "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3",
-      [actor.realmId,doctor,associationId]);
-    if(!association.rows[0])
-      throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
-    const eligible=association.rows[0].eligible;
-    const result=await this.db.query<FeeRow&{created_at:Date}>(
-      "SELECT id,fee_kind,consultation_mode,amount_minor,effective_from,"+
-      "effective_to,status,version,created_at FROM health_center_fee "+
-      "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
-      "ORDER BY created_at DESC,id DESC LIMIT 50",
-      [actor.realmId,associationId]);
-    const now=Date.now();
-    return {fees:result.rows.map(f=>({
-      feeRef:f.id,feeKind:f.fee_kind,consultationMode:f.consultation_mode,
-      amountMinor:Number(f.amount_minor),status:f.status,version:f.version,
-      effectiveFromUtc:f.effective_from.toISOString(),
-      effectiveToUtc:f.effective_to?.toISOString()??null,
-      current:eligible&&f.status==="APPROVED"&&f.effective_from.getTime()<=now&&
-        (!f.effective_to||f.effective_to.getTime()>now)
-    }))};
+    return this.transact(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.doctors.view");
+      // Read provider, center, professional, association and current amounts
+      // under one short transaction. Concurrent suspension cannot slip
+      // between the active-eligibility check and the fee response snapshot.
+      const association=await tx.query<{eligible:boolean}>(
+        "SELECT (a.affiliation_state='APPROVED' AND d.status='VERIFIED' "+
+        "AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
+        "AND p.status='VERIFIED') AS eligible FROM health_doctor_center a "+
+        "JOIN health_doctor d ON d.root_realm_id=a.root_realm_id AND d.id=a.doctor_id "+
+        "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
+        "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+        "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3 "+
+        "FOR SHARE OF a,d,c,p",
+        [actor.realmId,doctor,associationId]);
+      if(!association.rows[0])
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      const eligible=association.rows[0].eligible;
+      const result=await tx.query<FeeRow&{created_at:Date}>(
+        "SELECT id,fee_kind,consultation_mode,amount_minor,effective_from,"+
+        "effective_to,status,version,created_at FROM health_center_fee "+
+        "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
+        "ORDER BY created_at DESC,id DESC LIMIT 50",
+        [actor.realmId,associationId]);
+      const now=Date.now();
+      return {fees:result.rows.map(f=>({
+        feeRef:f.id,feeKind:f.fee_kind,consultationMode:f.consultation_mode,
+        amountMinor:Number(f.amount_minor),status:f.status,version:f.version,
+        effectiveFromUtc:f.effective_from.toISOString(),
+        effectiveToUtc:f.effective_to?.toISOString()??null,
+        current:eligible&&f.status==="APPROVED"&&f.effective_from.getTime()<=now&&
+          (!f.effective_to||f.effective_to.getTime()>now)
+      }))};
+    });
   }
 }
