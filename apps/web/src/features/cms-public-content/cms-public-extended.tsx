@@ -183,7 +183,7 @@ export function CmsHealthcare({section}:{
  * external destinations are strictly authorized CMS fields; actual support
  * submission remains CG19, CSR remains CG08 and membership remains CG04.
  */
-export function CmsContactInfo({section}:{section:PublicCmsSection}){
+export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets:Asset[]}){
  const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
  const social=records(f.socialLinks);
  const secure=(value:unknown,hosts:string[])=>{
@@ -211,6 +211,16 @@ export function CmsContactInfo({section}:{section:PublicCmsSection}){
     <h2>{text(item.title)}</h2><p>{text(item.description)}</p>
    </article>)}
   </div>}
+  {assets.some(a=>a.role==="CONTACT"&&a.order>=0&&a.order<3&&
+   /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src))&&
+   <div className="cg-site-contact-photo-strip" aria-label="Approved Foundation photographs">
+    {[0,1,2].map(index=>{
+     const asset=assets.find(a=>a.role==="CONTACT"&&a.order===index&&
+      /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src));
+     return asset?<img key={index} src={asset.src} alt={asset.altText}
+      loading="lazy"/>:null;
+    })}
+   </div>}
   {(text(f.officeHours)||map)&&<section className="cg-site-contact-details-public">
    <h2>Visit or connect</h2>
    {text(f.officeHours)&&<p>Foundation hours: {text(f.officeHours)}</p>}
