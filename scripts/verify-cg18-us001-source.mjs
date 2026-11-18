@@ -226,6 +226,7 @@ const checks=[
  ["Original Notices listing reads ONLY independent currently published CG19 source",
   files.backend.includes("async publicNotices(){")&&
   files.backend.includes("n.audience_kind='ALL_ACTIVE'")&&
+  files.backend.includes("a.public_rights_status<>'VALIDATED'")&&
   files.backend.includes("body.structured_fields->>'publicReleaseConfirmed'='true'")&&
   files.backend.includes("n.expires_at>now()")&&
   files.publicCmsController.includes('@Get("notices")')&&
