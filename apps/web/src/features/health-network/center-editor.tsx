@@ -70,7 +70,7 @@ export function CenterEditor({value,onChange,disabled=false,identityLocked=false
     }).catch(e=>{if(live)setGeoError(e instanceof Error?e.message:"Blocks unavailable.");});
     return()=>{live=false;};
   },[value.districtRef]);
-  const set=<K extends keyof CenterDraft>(field:K,v:CenterDraft[K])=>onChange({...value,[field]:v});
+  const set=<K extends keyof CenterDraft,>(field:K,v:CenterDraft[K])=>onChange({...value,[field]:v});
   return <div className="form">
     {geoError&&<p role="alert" className="notice">{geoError}</p>}
     <div className="form-grid">
