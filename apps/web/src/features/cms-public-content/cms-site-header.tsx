@@ -66,6 +66,9 @@ export function CmsSiteHeader({navigation,contact}:{
     <span className="cg-site-unavailable">Events</span>
     <Menu label="Media & Resources" items={media.map(text=>({text,
      href:text==="Gallery"&&isPublished("/gallery")?"/gallery":
+      text==="Videos"&&isPublished("/gallery")?"/gallery?type=VIDEO":
+      text==="Publications / Reports"&&isPublished("/gallery")?
+       "/gallery?type=PUBLICATION":
       (text==="News & Updates"||text==="Blog")&&anyArticles?"/blog":undefined}))}/>
     <Menu label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
