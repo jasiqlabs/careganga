@@ -208,8 +208,11 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
       <tbody>{associations.map(row=><tr key={row.associationRef}>
         <td>{row.name}</td><td>{readable(row.status)}</td><td>
           <div className="toolbar">
-            {row.status==="APPROVED"&&<button type="button" disabled={busy||uncertain}
-              onClick={()=>void openFees(row)}>View center fees</button>}
+            {["APPROVED","SUSPENDED"].includes(row.status)&&
+              <button type="button" disabled={busy||uncertain}
+                onClick={()=>void openFees(row)}>
+                {row.status==="SUSPENDED"?"View past fee history":"View center fees"}
+              </button>}
             {row.status==="PENDING"&&canVerify&&<button type="button" className="primary"
               disabled={busy||uncertain}
               onClick={()=>void decideAssociation(row,"approve")}>Approve association</button>}
