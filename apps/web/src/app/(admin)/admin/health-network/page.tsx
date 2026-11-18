@@ -49,11 +49,12 @@ export default async function HealthNetworkPage(){
         canViewApprovals={actions.has("approvals.view")}
         canViewDocuments={actions.has("documents.files.view")}
         canViewSupport={actions.has("support.cases.view")}/>
-      <main className="workspace">{actions.has("approvals.review")&&
-        actions.has("health.providers.verify")&&
+      <main className="workspace">{(actions.has("health.centers.publish")||
+        actions.has("approvals.review")&&actions.has("health.providers.verify"))&&
         <p><Link href="/admin/health-network/content-reviews">
-          Review submitted center content</Link></p>}
-      {actions.has("health.providers.verify")&&
+          Review or publish approved center content</Link></p>}
+      {(actions.has("health.centers.publish")||
+        actions.has("approvals.review")&&actions.has("health.providers.verify"))&&
         <p><Link href="/admin/health-network/erp-grants">
          Optional center capability approvals</Link></p>}
         {actions.has("health.providers.view")&&<ProviderOnboarding
