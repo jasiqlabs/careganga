@@ -160,7 +160,9 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   const route=local(href);
   if(route==="/")setSlug("home");
   else if(route==="/contact")onContact();
-  else if(route)setSlug(route.slice(1));
+  // A CMS editorial CTA must not activate a destination that has
+  // not been independently approved/published in the current source.
+  else if(route&&publishedPaths.includes(route))setSlug(route.slice(1));
  };
  const page=result.page;
  const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
