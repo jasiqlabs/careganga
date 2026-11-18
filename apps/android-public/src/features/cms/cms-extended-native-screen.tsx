@@ -79,7 +79,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    <Text style={styles.body}>{text(v.description)}</Text>
   </View>)}
   {(f.group==="CTA"||f.group==="HERO")&&!!text(f.ctaLabel)&&
-   ["/","/about","/contact","/our-impact","/gallery","/healthcare","/80g"].includes(text(f.ctaPath))&&
+   ["/","/about","/contact","/our-impact","/gallery","/healthcare","/ngo-information"].includes(text(f.ctaPath))&&
    <Action title={text(f.ctaLabel)} onPress={()=>onNavigate(f.ctaPath)}/>}
  </View>;
  if(section.kind==="COMPLIANCE_FACTS"){
