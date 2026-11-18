@@ -1,5 +1,9 @@
 # CG-08 — CareGanga UI/UX Design
 
+### 2026-11-18 original Corporate Partners page fidelity
+Use [Batch 02 `/collaboration` and full 47-screenshot gallery](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). The page has dark navy/green split hero with leaf/seed imagery, badge 'Corporate Partnerships', serif Corporate Partners heading, Partner With Us and Meet Our Partners CTAs, a row of benefit cards (Trusted Collaborations, Shared Purpose, Greater Impact), social partner section with balanced logo/name/description cards, and green Let's Collaborate/contact panel. Reproduce the original mobile/reduced-motion composition and dropdown active state, with content/images edited from Foundation Admin. Use only actual publicly approved partner information/media; don't show screenshot's Milaap/Ketto names as verified if the client has not confirmed rights and relationship. No orphan CTA, fake email submit or fabricated number.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
