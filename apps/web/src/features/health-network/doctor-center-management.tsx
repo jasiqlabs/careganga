@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 
 type Association={associationRef:string;centerRef:string;name:string;status:string;
   centerStatus:string;version:number};
@@ -104,6 +104,7 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
     }catch(e){
       setError(failed(e));
       if(unknownOutcome(e))setUncertain(true);
+      else delete keys.current[action];
     }finally{setBusy(false);}
   }
   async function proposeAssociation(){
@@ -128,7 +129,7 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
     try{await loadFees(row.associationRef);}
     catch(e){setError(failed(e));}
   }
-  async function proposeFee(event:React.FormEvent<HTMLFormElement>){
+  async function proposeFee(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     const row=associations.find(a=>a.associationRef===active);
     if(!row||row.status!=="APPROVED"||!canManage||busy||uncertain)return;
@@ -164,9 +165,9 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
       The last change may have succeeded. Refresh the original associations and fees
       before taking another action.
       <button type="button" onClick={()=>{
-        setUncertain(false);keys.current={};
         void load().then(async()=>{
           if(active)await loadFees(active);
+          setUncertain(false);keys.current={};setError("");
         }).catch(e=>setError(failed(e)));
       }}>Refresh current records</button>
     </div>}
