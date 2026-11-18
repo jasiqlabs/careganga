@@ -109,8 +109,11 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  navigation?:PublicCmsNavigation|null}){
  const isPublished=(path:string)=>navigation?.publishedRoutes?.some(v=>v.path===path)===true;
  const phone=text(data.phone),email=text(data.email),number=phone.replace(/[^0-9]/g,"");
- const legal=["Terms & Conditions","Privacy Policy","Cookie Policy","Disclaimer",
-  "Refund & Cancellation","Grievance Redressal","Copyright & Intellectual Property"];
+ const legal=[["Terms & Conditions","terms-and-conditions"],
+  ["Privacy Policy","privacy-policy"],["Cookie Policy","cookie-policy"],
+  ["Disclaimer","disclaimer"],["Refund & Cancellation","refund-and-cancellation"],
+  ["Grievance Redressal","grievance-redressal"],
+  ["Copyright & Intellectual Property","copyright-and-intellectual-property"]] as const;
  return <>
   <footer className="cg-site-footer">
    <div className="cg-site-footer-grid">
@@ -124,15 +127,26 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     </div>
     <div><h3>QUICK LINKS</h3>
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
+     <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>
+     <span aria-disabled="true" className="cg-site-unavailable">Donate</span>
      {isPublished("/impact")&&<Link href="/impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
      <Link href="/contact">Contact</Link></div>
     <div><h3>POLICIES & LEGAL</h3>
-     {legal.map(item=><span key={item}>{item}</span>)}
+     {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
+      <Link key={slug} href={"/policies/"+slug}>{label}</Link>:
+      <span key={slug} aria-disabled="true">{label}</span>)}
      {isPublished("/80g")&&<Link href="/80g">80G &amp; Registration</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
+     <label className="cg-site-newsletter-field">
+      <span className="cg-site-sr-only">Email address for Foundation newsletter</span>
+      <input type="email" autoComplete="email" placeholder="Enter your email" disabled
+       aria-label="Newsletter subscription is not available yet"/>
+     </label>
+     <button type="button" disabled className="cg-site-newsletter-button">
+      Subscribe</button>
      <p className="cg-site-muted">Newsletter registration is not yet available.</p>
     </div>
    </div>
