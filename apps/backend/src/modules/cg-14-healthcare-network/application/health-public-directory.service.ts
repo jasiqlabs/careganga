@@ -167,6 +167,21 @@ export class HealthPublicDirectoryService{
         "WHERE cp.root_realm_id=c.root_realm_id AND cp.center_id=c.id "+
         "AND cp.withdrawn_at IS NULL AND facility.value ILIKE $14 ESCAPE '\\')) "};
   }
+  /** Public-safe location choices derive only from current eligible centers,
+   * never expose private future centers or technical UUIDs as UI labels.
+   */
+  async facets(){
+   const locations=await this.db.query<{id:string;level:string;
+    display_name:string;parent_area_id:string|null}>(
+    "SELECT DISTINCT g.id,g.level,g.display_name,g.parent_area_id "+
+    this.eligibleCenter+
+    "JOIN geography_area g ON g.root_realm_id=c.root_realm_id "+
+    "AND g.id IN(c.state_ref,c.district_ref,c.block_ref) "+
+    this.predicates+"AND g.status='ACTIVE' "+
+    "ORDER BY g.level,g.display_name,g.id LIMIT 500");
+   return {areas:locations.rows.map(g=>({value:g.id,label:g.display_name,
+    level:g.level,parentRef:g.parent_area_id}))};
+  }
   /** Bounded, live sitemap projection. Never derive SEO from private drafts. */
   async sitemap(){
     const [center,doctor]=await Promise.all([
