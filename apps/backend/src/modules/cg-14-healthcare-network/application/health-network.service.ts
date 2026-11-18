@@ -380,7 +380,7 @@ export class HealthNetworkService{
       "c.access_state,c.publication_state,c.public_slug FROM health_center c "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
-        "AND f.center_id=c.id AND f.account_ref=$3 AND f.status='PENDING_EDIT' ":"")+
+        "AND f.center_id=c.id AND f.account_ref=$3 AND f.status IN('PENDING_EDIT','ACTIVE') ":"")+
       "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') AND p.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') "+
       "LIMIT 1",own?[actor.realmId,ref,actor.accountId]:[actor.realmId,ref]);
     const x=rows.rows[0];
