@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 type Case={caseRef:string;reference:string;title:string;status:string;revision:number};
 type Content={description:string;services:string[];facilities:string[];
- hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
+ hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];
+ media:string[]};
 type Detail={caseRef:string;reference:string;title:string;centerRef:string;
  status:string;revision:number;
  content:Content|null;requiresIndependentReviewer:boolean};
@@ -152,6 +153,20 @@ export function CenterContentReviewInbox({canPublish}:{canPublish:boolean}){
     <ul>{detail.content.facilities.map(x=><li key={x}>{x}</li>)}</ul>
     <p>Working hours note: {detail.content.hoursNote||"Not provided"}</p>
     <p>Public contact email: {detail.content.publicEmail||"Not provided"}</p>
+    {detail.content.media.length>0&&<>
+     <h4>Submitted, scanned center photos</h4>
+     <p>Images are sourced only from this immutable CG-03 review, verified by CG-19.
+      Missing or withdrawn rights show no image.</p>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,250px),1fr))",gap:12}}>
+      {detail.content.media.map(file=><figure key={file}>
+       {/* eslint-disable-next-line @next/next/no-img-element */}
+       <img loading="lazy" width="450" height="280" alt="Submitted facility photo for independent review"
+        style={{width:"100%",height:"auto",borderRadius:10}}
+        src={"/api/documents/health-center-content/reviews/"+
+         encodeURIComponent(detail.caseRef)+"/photos/"+encodeURIComponent(file)}/>
+      </figure>)}
+     </div>
+    </>}
     <h4>Center questions</h4>
     {detail.content.faqs.map((f,i)=><div key={i}>
      <p><strong>{f.question}</strong></p><p>{f.answer}</p>
