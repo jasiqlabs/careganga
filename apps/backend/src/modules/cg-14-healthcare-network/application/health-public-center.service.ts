@@ -86,6 +86,25 @@ export class HealthPublicCenterService{
     "WHERE cp.root_realm_id=$1 AND cp.center_id=$2 "+
     "AND cp.withdrawn_at IS NULL FOR SHARE OF cp",
     [c.root_realm_id,c.id]);
+  const photos=presentation.rows[0]?await tx.query<{id:string;alt_text:string}>(
+    "SELECT f.id,rights.alt_text FROM health_center_content_publication cp "+
+    "JOIN health_center_content_revision rev ON rev.id=cp.approved_revision_id "+
+    "AND rev.root_realm_id=cp.root_realm_id AND rev.center_id=cp.center_id "+
+    "JOIN LATERAL jsonb_array_elements_text(COALESCE(rev.source_snapshot->'media',"+
+    "'[]'::jsonb)) m(file_ref) ON TRUE "+
+    "JOIN cg19_stored_file f ON f.id::text=m.file_ref "+
+    "AND f.realm_id=cp.root_realm_id AND f.health_center_id=cp.center_id "+
+    "AND f.owner_kind='CG14_CENTER_CONTENT' AND f.revoked_at IS NULL "+
+    "AND f.scan_status='CLEAN_VERIFIED' "+
+    "JOIN cg19_upload_intent intent ON intent.id=f.upload_intent_id "+
+    "AND intent.realm_id=f.realm_id AND intent.status='VALIDATED' "+
+    "AND intent.classification IN('HEALTH_CENTER_PHOTO','HEALTH_CENTER_LOGO') "+
+    "JOIN cg19_center_content_media_rights rights ON rights.file_ref=f.id "+
+    "AND rights.root_realm_id=cp.root_realm_id AND rights.center_id=cp.center_id "+
+    "AND rights.revoked_at IS NULL "+
+    "WHERE cp.root_realm_id=$1 AND cp.center_id=$2 AND cp.withdrawn_at IS NULL "+
+    "ORDER BY m.file_ref LIMIT 8 FOR SHARE OF cp,f,rights",
+    [c.root_realm_id,c.id]):{rows:[] as {id:string;alt_text:string}[]};
   // Revalidate the public generation after loading dependent rows so a
   // concurrent withdrawal does not return a stale approved projection.
   const fresh=await tx.query(
@@ -113,7 +132,10 @@ export class HealthPublicCenterService{
     hours:hours.rows.map(h=>({weekday:h.weekday,opens:h.open_local.slice(0,5),
       closes:h.close_local.slice(0,5),service:h.service_type})),
     declaredServices:services.rows.map(x=>x.capability_code),
-    approvedPresentation:presentation.rows[0]?.source_snapshot??null,
+    approvedPresentation:presentation.rows[0]?{
+      ...presentation.rows[0].source_snapshot,
+      media:photos.rows.map(f=>({fileRef:f.id,altText:f.alt_text}))
+    }:null,
     notice:"Verified center information. Booking and online payment are not available here."};
   }catch(error){
     if(active)try{await tx.query("ROLLBACK");}catch{}
