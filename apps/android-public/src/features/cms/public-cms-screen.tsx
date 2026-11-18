@@ -138,6 +138,12 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
   available:false,posts:[]});
+ const [noticeFeed,setNoticeFeed]=useState<{available:boolean;notices:Notice[]}>({
+  available:false,notices:[]});
+ const [noticeSearch,setNoticeSearch]=useState("");
+ const [noticeCategory,setNoticeCategory]=useState("ALL");
+ const [noticePriority,setNoticePriority]=useState("ALL");
+ const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices">("articles");
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
@@ -161,7 +167,13 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
    setLoading(false);return;
   }
-  const response=await published(target);
+  if(target==="notices"){
+    const feed=await publishedNotices();
+    if(request!==latestPageRequest.current)return;
+    setNoticeFeed(feed);setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
+    setLoading(false);return;
+   }
+   const response=await published(target);
   if(request!==latestPageRequest.current)return;
   setResult(response);setLoading(false);
  },[]);
@@ -184,12 +196,12 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles"].includes(slug)&&
-     !isPolicySlug(slug)?"articles":"home");return true;
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices"].includes(slug)&&
+     !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
   return()=>sub.remove();
- },[slug]);
+ },[slug,articleBackTarget]);
  const navigate=(href:unknown)=>{
   const route=local(href);
   if(route==="/")setSlug("home");
@@ -228,6 +240,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
+   <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
@@ -251,7 +264,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
       <Text style={styles.eyebrow}>{item.category}</Text>
       <Text style={styles.heading}>{item.title}</Text>
       <Text style={styles.body}>{item.excerpt}</Text>
-      <CmsButton title="Read full article" onPress={()=>setSlug(item.slug)}/>
+      <CmsButton title="Read full article" onPress={()=>{setArticleBackTarget("articles");setSlug(item.slug);}}/>
      </View>)}
     <CmsButton title="Refresh approved news" secondary onPress={()=>void load("articles")}/>
    </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
@@ -393,7 +406,8 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
-      onBackToNews={()=>setSlug("articles")}/>;
+      onBackToNews={()=>setSlug(articleBackTarget)}
+       backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
     // Project teasers require CG05 original owner and cannot be invented.
     return null;
    })}
