@@ -327,3 +327,20 @@
 .cg-site-contact-panel details{border-top:1px solid #dce9db;padding:.5rem 0}
 .cg-site-contact-layout>.cg-cms-error{grid-column:1/-1}
 @media(max-width:800px){.cg-site-contact-layout{grid-template-columns:1fr}}
+
+
+/* Client screenshot 10 footer: retain authentic email / Subscribe affordance
+ * without falsely accepting subscriptions until CG19 owns opt-in delivery. */
+.cg-site-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+ overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.cg-site-newsletter-field{display:block;margin:.9rem 0 .55rem}
+.cg-site-newsletter-field input{display:block;width:100%;min-height:2.8rem;
+ border-radius:2rem;border:1px solid #243650;background:#0b1628;color:#e8edfc;
+ padding:.65rem 1.1rem;font:inherit;max-width:100%}
+.cg-site-newsletter-field input::placeholder{color:#a4afc5}
+.cg-site-newsletter-field input:disabled{opacity:.85;cursor:not-allowed}
+.cg-site-newsletter-button{width:100%;min-height:2.7rem;border:0;
+ background:#f3c744;border-radius:2rem;color:#0e1b31;text-transform:uppercase;
+ font-weight:850;letter-spacing:.07em}
+.cg-site-newsletter-button:disabled{cursor:not-allowed;opacity:.7}
+.cg-site-footer [aria-disabled="true"]{cursor:default;opacity:.7}
