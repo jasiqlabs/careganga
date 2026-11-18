@@ -140,7 +140,7 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
       <Link key={slug} href={"/policies/"+slug}>{label}</Link>:
       <span key={slug} aria-disabled="true">{label}</span>)}
-     {isPublished("/80g")&&<Link href="/80g">80G &amp; Registration</Link>}</div>
+     {isPublished("/ngo-information")&&<Link href="/ngo-information">NGO Information &amp; 80G</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
      <label className="cg-site-newsletter-field">
