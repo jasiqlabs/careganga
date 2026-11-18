@@ -245,6 +245,14 @@ const checks=[
   files.publicMediaWebProxy.includes("Content-Security-Policy")&&
   !files.publicMediaWebProxy.includes("storageUrl")],
 
+ ["Published CMS SQL uses the actual revision page ID (never nonexistent placement.page_id)",
+  !files.backend.includes("a.page_id")&&
+  !files.media.includes("a.page_id")&&
+  files.backend.includes("f.page_id=v.page_id")&&
+  files.backend.includes("f.page_id=p.id")&&
+  files.backend.includes("f.page_id=source_rev.page_id")&&
+  files.media.includes("f.page_id=source_rev.page_id")],
+
  ["Original MP4 video byte ranges retain CG19 verification and do not cache rights",
   files.publicMediaController.includes("await this.media.publicBytes(ref)")&&
   files.publicMediaController.includes("requestedRange:string|undefined")&&
