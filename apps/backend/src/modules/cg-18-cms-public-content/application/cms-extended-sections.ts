@@ -47,7 +47,7 @@ const local=(v:unknown,field:string)=>{
 const groupItem=(raw:unknown,i:number,group:string)=>{
  const f="items["+i+"]";
  const x=obj(raw,f,["title","description","value","unit","year","percentage",
-  "consentConfirmed","latitude","longitude"]);
+  "consentConfirmed","latitude","longitude","level"]);
  const out:Record<string,unknown>={
   title:str(x.title,f+".title",140,2),
   description:str(x.description??"",f+".description",450)
@@ -64,6 +64,12 @@ const groupItem=(raw:unknown,i:number,group:string)=>{
   out.longitude=num(x.longitude,f+".longitude",-180,180);
   if(group!=="GEOGRAPHY")return error(f+".latitude");
  }
+ if(x.level!==undefined){
+  if(group!=="GEOGRAPHY")return error(f+".level");
+  const level=str(x.level,f+".level",12,3).toUpperCase();
+  if(!["HIGH","MEDIUM","EXPANDING"].includes(level))return error(f+".level");
+  out.level=level;
+ }
  if(group==="STORIES"){
   if(x.consentConfirmed!==true)return error(f+".consentConfirmed");
   out.consentConfirmed=true;
@@ -77,7 +83,8 @@ const groupItem=(raw:unknown,i:number,group:string)=>{
 };
 function allowedSectionFields(kind:string):string[]{
  return kind==="IMPACT_GROUP"?
-  ["group","heading","intro","source","asOfDate","items","claimsFullBreakdown","ctaLabel","ctaPath"]:
+  ["group","heading","intro","source","asOfDate","items","claimsFullBreakdown","ctaLabel","ctaPath",
+   "eyebrow","highlight","quote"]:
   kind==="COMPLIANCE_FACTS"?
   ["heading","summary","issuer","pan","registrationNumber","approvalNumber",
    "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer","documents"]:
@@ -143,6 +150,12 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    asOfDate:date(x.asOfDate,"asOfDate"),items
   };
   if(String(out.asOfDate)>new Date().toISOString().slice(0,10))return error("asOfDate");
+  if(group==="HERO"){
+   if(x.eyebrow!==undefined)out.eyebrow=str(x.eyebrow,"eyebrow",100);
+   if(x.highlight!==undefined)out.highlight=str(x.highlight,"highlight",120);
+   if(x.quote!==undefined)out.quote=str(x.quote,"quote",500);
+  }else if(x.eyebrow!==undefined||x.highlight!==undefined||x.quote!==undefined)
+   return error("group");
   if(x.claimsFullBreakdown!==undefined){
    if(group!=="BREAKDOWN"||typeof x.claimsFullBreakdown!=="boolean")
     return error("claimsFullBreakdown");
@@ -153,7 +166,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    }
   }
   if(x.ctaLabel!==undefined||x.ctaPath!==undefined){
-   if(group!=="CTA")return error("ctaLabel");
+   if(group!=="CTA"&&group!=="HERO")return error("ctaLabel");
    out.ctaLabel=str(x.ctaLabel,"ctaLabel",60,2);
    out.ctaPath=local(x.ctaPath,"ctaPath");
   }
