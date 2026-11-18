@@ -144,3 +144,7 @@ Batch03 original Contact `021909` three-photo strip now supports 3 authorized CG
 ### Original screenshot Native notice and current Contact map — 18 November
 
 Batch02 021339–021359 Notice Board now has source-backed responsive Web and Public Android category/priority/search/reset, accurate current count and real approved detail/back action. Batch02 021443 Videos uses verified byte-range transport under existing original video cards. Batch03 Contact map now renders an iframe only from an explicitly Admin-approved Google Maps embed (`/maps/embed` with pb query); other validated map links are normal outbound links. Source readback only: full Web/Android browser visual, original pixel/motion, external map/MP4 and CG-21 field-copy QA remains NOT_RUN. Do not invent publication, listener, 24/7 service or directions.
+
+### Original 80G child navigation — Public Android parity
+
+The original NGO sidebar desktop layout remains on Web; Public Android provides equivalent source-gated in-page buttons for 80G Registration, PAN Details, Registration Certificate, and Annual Reports, reusing the real current approved documents and an annual-year filter with parent Back. This is layout adaptation for phone, not fabricated statutory source. Original Batch01 `020634`–`021040` responsive screenshots, actual scroll-state, VoiceOver/TalkBack and document accessibility tests are still NOT_RUN.
