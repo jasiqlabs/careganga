@@ -83,3 +83,33 @@ export async function publishedCmsArticles(category="",cursor=""):
    available:true};
  }catch{return {posts:[],nextCursor:null,available:false};}
 }
+
+export type CmsPublicNotice={title:string;body:string;category:string;
+ priority:"NORMAL"|"IMPORTANT";publishedOn:string;expiresOn:string;path:string};
+/** Anonymous notice board reads only the approved CG19+CG18 intersection. */
+export async function publishedCmsNotices():Promise<{available:boolean;notices:CmsPublicNotice[]}>{
+ const backend=process.env.BACKEND_URL;
+ if(!backend)return {available:false,notices:[]};
+ try{
+  const response=await fetch(new URL("/api/public/content/notices",backend),{
+   cache:"no-store",signal:AbortSignal.timeout(9000)});
+  if(!response.ok)throw Error();
+  const data:unknown=await response.json();
+  if(!data||typeof data!=="object"||Array.isArray(data))throw Error();
+  const source=data as Record<string,unknown>;
+  if(source.schemaVersion!==1||!Array.isArray(source.notices))throw Error();
+  const isNotice=(v:unknown):v is CmsPublicNotice=>{
+   if(!v||typeof v!=="object"||Array.isArray(v))return false;
+   const n=v as Record<string,unknown>;
+   return typeof n.title==="string"&&n.title.length<=120&&
+    typeof n.body==="string"&&n.body.length<=480&&
+    typeof n.category==="string"&&n.category.length<=80&&
+    (n.priority==="NORMAL"||n.priority==="IMPORTANT")&&
+    typeof n.publishedOn==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.publishedOn)&&
+    typeof n.expiresOn==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.expiresOn)&&
+    typeof n.path==="string"&&/^\/blog\/[a-z0-9-]{1,70}$/.test(n.path);
+  };
+  if(source.notices.length>60||!source.notices.every(isNotice))throw Error();
+  return {available:true,notices:source.notices};
+ }catch{return {available:false,notices:[]};}
+}
