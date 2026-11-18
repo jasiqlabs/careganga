@@ -249,11 +249,19 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
  const published=pages.filter(p=>p.publicStatus==="EFFECTIVE").length;
  const scheduled=pages.filter(p=>p.publicStatus==="SCHEDULED").length;
  const inReview=pages.filter(p=>p.draftStatus==="SUBMITTED").length;
- const close=()=>{
-  if(pending||busy)return;
-  if(dirty){setClosePrompt(true);return;}
+ const close=useCallback(()=>{
+  if(busy)return;
+  if(pending||dirty){setClosePrompt(true);return;}
   setEditorOpen(false);
- };
+ },[busy,pending,dirty]);
+ useEffect(()=>{
+  if(!editorOpen)return;
+  const onKey=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!event.defaultPrevented){event.preventDefault();close();}
+  };
+  document.addEventListener("keydown",onKey);
+  return()=>document.removeEventListener("keydown",onKey);
+ },[editorOpen,close]);
  return <section className="cg-cms-workspace" aria-label="Impact, media and healthcare editor">
   <div className="cg-cms-toolbar"><div><h2>Impact, media & healthcare content</h2>
    <p>Editable original content. One private draft, independent review and public publication.</p>
@@ -320,13 +328,21 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
     <div className="cg-cms-actions">
      {canManage&&<button type="button" disabled={busy} onClick={()=>setPreview(x=>!x)}>
       {preview?"Edit":"Preview"}</button>}
-     <button type="button" disabled={busy} onClick={close}
+     <button type="button" autoFocus disabled={busy} onClick={close}
       aria-label="Close editorial editor">Close</button>
     </div>
    </div>
+   {error&&<p className="cg-cms-error" role="alert">{error}</p>}
+   {notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
+   {pending&&<div className="cg-cms-notice" role="alert">
+    <p>The previous server action is not confirmed. Retry the same request key
+     or check the actual saved/public status before starting another edit.</p>
+    <button type="button" disabled={busy}
+     onClick={()=>void command(pending)}>Retry original request</button>
+   </div>}
    {closePrompt&&<div className="cg-cms-notice" role="alert">
-    <p>This draft contains unsaved changes. Closing will discard only the
-     edits on this screen; it will not alter the current saved or published version.</p>
+    <p>{pending?"The previous action may have reached the server. Closing will abandon its retry key. Verify actual status before any new attempt.":
+     "This draft contains unsaved changes. Closing will discard only edits on this screen; the published version is unchanged."}</p>
     <div className="cg-cms-actions"><button type="button"
      onClick={()=>setClosePrompt(false)}>Keep editing</button>
      <button type="button" onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
