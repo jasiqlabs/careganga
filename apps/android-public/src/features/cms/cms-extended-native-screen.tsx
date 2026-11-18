@@ -22,6 +22,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  onContact:()=>void;onNavigate:(path:unknown)=>void;
  onBackToNews:()=>void}){
  const f=section.fields;
+ const impactItems=rows(f.items);
+ const impactPeak=Math.max(0,...impactItems.map(v=>typeof v.value==="number"&&
+  Number.isFinite(v.value)?v.value:0));
  const [mediaFilter,setMediaFilter]=useState("ALL");
  const [categoryFilter,setCategoryFilter]=useState("ALL");
  const [search,setSearch]=useState("");
@@ -52,13 +55,26 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {picture("IMPACT")}
   <Text style={styles.source}>Source: {text(f.source)} · {text(f.asOfDate)}
    {"\n"}Editorial information; not independently audited</Text>
-  {rows(f.items).map((v,i)=><View key={i} style={styles.item}>
+  {impactItems.map((v,i)=><View key={i} style={styles.item}>
    <Text style={styles.itemTitle}>{text(v.title)}
     {typeof v.year==="number"?" ("+v.year+")":""}</Text>
    {f.group==="GEOGRAPHY"&&["HIGH","MEDIUM","EXPANDING"].includes(text(v.level))&&
     <Text style={styles.source}>Source-reported reach: {text(v.level).toLowerCase()}</Text>}
    {typeof v.value==="number"&&<Text style={styles.value}>{v.value} {text(v.unit)}</Text>}
    {typeof v.percentage==="number"&&<Text style={styles.value}>{v.percentage}%</Text>}
+   {["GROWTH","BREAKDOWN"].includes(text(f.group))&&(()=>{
+    const value=f.group==="BREAKDOWN"?
+     (typeof v.percentage==="number"?v.percentage:0):
+     (typeof v.value==="number"?v.value:0);
+    const proportion=f.group==="BREAKDOWN"?value:
+     impactPeak>0?value/impactPeak*100:0;
+    const width=Math.max(0,Math.min(100,proportion));
+    return <View style={styles.barTrack} accessible={false}
+     importantForAccessibility="no-hide-descendants">
+      <View style={[styles.barFill,{flex:width}]}/>
+      <View style={{flex:100-width}}/>
+     </View>;
+   })()}
    <Text style={styles.body}>{text(v.description)}</Text>
   </View>)}
   {(f.group==="CTA"||f.group==="HERO")&&!!text(f.ctaLabel)&&
@@ -183,6 +199,9 @@ const styles=StyleSheet.create({
  highlight:{fontSize:24,fontWeight:"800",color:"#20824c"},
  quote:{fontSize:18,fontStyle:"italic",lineHeight:27,color:"#306b4a"},
  orangeHeading:{fontSize:17,fontWeight:"800",color:"#bd5a12"},
+ barTrack:{flexDirection:"row",height:11,backgroundColor:"#dce9db",
+  borderRadius:7,overflow:"hidden"},
+ barFill:{backgroundColor:"#3b8d5a",borderRadius:7},
  item:{borderRadius:10,backgroundColor:"#f2f7f0",padding:13,gap:7},
  itemTitle:{fontSize:18,fontWeight:"700",color:"#1c4a3a"},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
