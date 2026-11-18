@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {DoctorProofUploader} from "./doctor-proof-uploader";
+import {DoctorCenterManagement} from "./doctor-center-management";
 
 type DoctorForm={fullName:string;registrationJurisdiction:string;
   registrationNumber:string;qualifications:string[];specialties:string[];
@@ -9,7 +10,6 @@ type DoctorForm={fullName:string;registrationJurisdiction:string;
 type DoctorRow={doctorRef:string;name:string;status:string;version:number;
   specialties:string[]};
 type Detail={doctorRef:string;status:string;version:number;doctor:DoctorForm};
-type CenterRow={associationRef:string;name:string;status:string;centerStatus:string};
 type Files={files:{fileRef:string;status:string;cleanVerified:boolean;currentVersion:boolean}[]};
 const empty=():DoctorForm=>({
   fullName:"",registrationJurisdiction:"",registrationNumber:"",
@@ -30,14 +30,13 @@ async function request<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",
       "The doctor registration outcome cannot be verified."),{status:response.status});
   return data as T;
 }
-export function DoctorOnboarding({canManage}:{canManage:boolean}){
+export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVerify:boolean}){
   const [rows,setRows]=useState<DoctorRow[]>([]);
   const [selected,setSelected]=useState<Detail|null>(null);
   const [form,setForm]=useState<DoctorForm>(empty);
   const [qualifications,setQualifications]=useState("");
   const [specialties,setSpecialties]=useState("");
   const [editing,setEditing]=useState<"none"|"create"|"update">("none");
-  const [linked,setLinked]=useState<CenterRow[]>([]);
   const [fileStatus,setFileStatus]=useState<string>("");
   const [proofFileRef,setProofFileRef]=useState("");
   const submitKey=useRef("");
@@ -65,7 +64,7 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
   },[load]);
   async function show(ref:string){
     setError("");setNotice("");setEditing("none");
-    setSelected(null);setLinked([]);setFileStatus("");setProofFileRef("");
+    setSelected(null);setFileStatus("");setProofFileRef("");
     try{
       const item=await request<Detail>("/"+encodeURIComponent(ref));
       setSelected(item);
@@ -80,9 +79,6 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
             "No current verified private licence is recorded");
         }else setFileStatus("Private licence status could not be verified");
       }
-      const associations=await request<{centers:CenterRow[]}>(
-        "/"+encodeURIComponent(ref)+"/centers");
-      setLinked(Array.isArray(associations.centers)?associations.centers:[]);
     }catch(e){setError(e instanceof Error?e.message:"Doctor registration unavailable.");}
   }
   async function submitForReview(){
@@ -256,14 +252,9 @@ export function DoctorOnboarding({canManage}:{canManage:boolean}){
         </div>}
         {!!fileStatus&&<p role="status">{fileStatus}</p>}
       </>}
-      <h3>Center associations</h3>
-      {linked.length===0?<p>No verified center associations have been approved.</p>:
-        <div className="table-wrap"><table><thead><tr><th>Center</th><th>Status</th></tr></thead>
-          <tbody>{linked.map(x=><tr key={x.associationRef}>
-            <td>{x.name}</td><td>{label(x.status)}</td>
-          </tr>)}</tbody>
-        </table></div>}
-      <p className="muted">Professional verification does not itself approve center associations or consultation fees. No appointment availability is shown.</p>
+      <DoctorCenterManagement doctorRef={selected.doctorRef}
+        verified={selected.status==="VERIFIED"} canManage={canManage} canVerify={canVerify}/>
+      <p className="muted">No appointment availability, patient payment or benefit is implied by a verified registration.</p>
     </section>}
   </div>;
 }
