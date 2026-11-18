@@ -3,6 +3,9 @@ import {HealthPublicDirectoryService} from "../application/health-public-directo
 @Controller("api/v1/public/health-network")
 export class HealthPublicDirectoryController{
   constructor(private readonly directory:HealthPublicDirectoryService){}
+  @Get("sitemap")
+  @Header("Cache-Control","no-store, max-age=0")
+  sitemap(){return this.directory.sitemap();}
   @Get("centers")
   @Header("Cache-Control","no-store, max-age=0")
   centers(@Query()filters:Record<string,unknown>){return this.directory.centers(filters);}
