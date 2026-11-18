@@ -53,6 +53,9 @@ export default async function HealthNetworkPage(){
         actions.has("health.providers.verify")&&
         <p><Link href="/admin/health-network/content-reviews">
           Review submitted center content</Link></p>}
+      {actions.has("health.providers.verify")&&
+        <p><Link href="/admin/health-network/erp-grants">
+         Optional center capability approvals</Link></p>}
         {actions.has("health.providers.view")&&<ProviderOnboarding
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
