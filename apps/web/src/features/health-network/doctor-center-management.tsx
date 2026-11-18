@@ -63,6 +63,7 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
   const [uncertain,setUncertain]=useState(false);
   const [confirmSuspend,setConfirmSuspend]=useState<string|null>(null);
   const current=useRef(0);
+  const feeReadEpoch=useRef(0);
   const keys=useRef<Record<string,string>>({});
   const keyFor=(action:string)=>{
     if(!keys.current[action])keys.current[action]=crypto.randomUUID();
@@ -76,11 +77,14 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
     setAssociations(Array.isArray(result.centers)?result.centers:[]);
   },[doctorRef]);
   const loadFees=useCallback(async(associationRef:string)=>{
+    const epoch=++feeReadEpoch.current;
     const result=await call<{fees:Fee[]}>("/"+encodeURIComponent(doctorRef)+
       "/centers/"+encodeURIComponent(associationRef)+"/fees");
-    setFees(Array.isArray(result.fees)?result.fees:[]);
+    if(epoch===feeReadEpoch.current)
+      setFees(Array.isArray(result.fees)?result.fees:[]);
   },[doctorRef]);
   useEffect(()=>{
+    ++feeReadEpoch.current;
     setLoading(true);setActive(null);setFees([]);setUncertain(false);
     void load().catch(e=>setError(failed(e))).finally(()=>setLoading(false));
   },[load]);
@@ -125,9 +129,12 @@ export function DoctorCenterManagement({doctorRef,verified,canManage,canVerify}:
       });
   }
   async function openFees(row:Association){
+    ++feeReadEpoch.current;
     setError("");setNotice("");setFees([]);setActive(row.associationRef);
-    try{await loadFees(row.associationRef);}
-    catch(e){setError(failed(e));}
+    const operation=loadFees(row.associationRef);
+    const epoch=feeReadEpoch.current;
+    try{await operation;}
+    catch(e){if(epoch===feeReadEpoch.current)setError(failed(e));}
   }
   async function proposeFee(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
