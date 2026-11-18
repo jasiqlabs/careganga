@@ -52,7 +52,12 @@ export class SafeErrorsFilter implements ExceptionFilter {
     const rawField=payload&&typeof payload==="object"&&"field" in payload?payload.field:null;
     const field=typeof rawField==="string"&&["identifier","password","currentPassword","newPassword","description","lines","search","offset","name","code","category","startOn","endOn","scopeKind",
       "invoiceRef","invoiceDate","dueDate","counterpartyName","counterpartyAddress","receivableAccountRef","incomeAccountRef","taxAccountRef","stage","rows","terms","notes","budgetRef","budgetName","periodStart","periodEnd","fundingNote","journalRef","bankRef","bankAccountRef","date","bankItemReference","statementDate","statementAmount","reconciliationRef","from","to","yearRef","accountRef","expenseClaimRef","billFileRef","billVersion","linkKind","expenseDate","claimRef","expectedRevision","branchRef","groupRef","parentRef","financialYearRef","bankLabel","accountKind","bankLastFour","postingDate","amount","debitAccountRef",
-      "creditAccountRef","fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherType","voucherRef","payeeName","purpose","quantity","unitRate","tax","charges","expectedVersion"].includes(rawField)?rawField:null;
+      "creditAccountRef","fileRef","fileVersion","transactionReference","paymentMethod","paymentAccountRef","debitAccountRef","creditAccountRef","proofFileRef","proofVersion","caseRef","requestKey","voucherType","voucherRef","payeeName","purpose","quantity","unitRate","tax","charges","expectedVersion",
+       "kind","slug","title","seoTitle","seoDescription","canonicalPath","sections","assets",
+       "navigation","heading","body","source","asOfDate","verifiedAsOf","validUntil",
+       "verification","documents","galleryMedia","categories","healthcareClaims","ctaPath",
+       "ctaLabel","group","items","percentage","pan","mediaType","tags","publicReleaseConfirmed",
+       "heroSlides","sourceNoticeRef"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
       // raw driver/provider messages, contact details, or private payloads into logs.
