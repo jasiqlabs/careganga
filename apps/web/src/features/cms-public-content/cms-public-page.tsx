@@ -228,7 +228,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
       section={section}/>;
-     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section}/>;
+     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets}/>;
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
