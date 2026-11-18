@@ -148,6 +148,11 @@ const checks=[
   ["Home","About Us","Our Work","NGO Information","Campaigns","Upcoming Projects",
    "Partnerships","Events","Media & Resources","Join Now","Healthcare Assistance","Contact Us"]
     .every(name=>files.header.includes(name))&&!files.header.includes("Blood Donation")],
+ ["Original NGO Information navigation never opens unrelated Impact",
+  !files.header.includes('href="/impact"')&&
+  files.header.includes('isPublished("/ngo-information")')&&
+  files.header.includes('href="/ngo-information"')&&
+  files.header.includes('aria-disabled="true">NGO Information')],
  ["Screenshot-original Our Work six / Media five / Join two retained",
   ["All Projects","Education","Healthcare","Livelihood","Social Welfare",
    "Community Development","News & Updates","Gallery","Videos",
