@@ -28,7 +28,7 @@ const groups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY","BREAKDOWN",
 const today=()=>new Date().toISOString().slice(0,10);
 const str=(v:unknown)=>typeof v==="string"?v:"";
 const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
-const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/80g":
+const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/ngo-information":
  kind==="ARTICLE"?"/blog/"+slug:kind==="POLICY"?"/policies/"+slug:"/"+slug;
 const slugFor=(kind:Kind)=>kind==="COMPLIANCE"?"80g":
  kind==="IMPACT"?"our-impact":
