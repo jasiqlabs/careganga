@@ -1,5 +1,16 @@
 # CG-21 — User Stories & Manual QA
 
+### 2026-11-18 original client full website, Admin-managed field/visual and safe errors contract
+
+**Authority:** [47 original screenshot page/route/content/UI reference](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md) plus the approved pre-existing Admin screenshot audit. Requirement clarification for the **existing** CG-21 stories (no standalone visual builder or new business module).
+
+**One Foundation Admin requirement:** Every authored public label/body/FAQ/SEO, approved visual banner/gallery/media placement, page/menu/footer CTA, validated contact/social/map links, newsletter explanatory copy, section ordering/visibility, and bounded colors/logo/theme variants is maintainable by a properly authorized Foundation Admin through **CG-18's existing editorial controls**. CG-21 only owns the platform-wide configuration policy, permissioned audit and editable safe field-level error-message catalog; don't reintroduce CG-18 website navigation settings into CG-21 or duplicate operational master data.
+
+**Original UI/UX:** Match the real CareGanga gold/cream sticky header, green accents, orange Donate, original serif/sans editorial style, original distinct page layouts and branded nonblocking load/splash. Configuration must be limited to validated, accessible design tokens and rights-cleared media/links; no arbitrary Admin HTML, JavaScript or CSS execution. Preview must match actual published page, including mobile/narrow view, source-withdrawal and empty state, and observe reduced-motion preferences. Each Admin form produces accurate field-specific errors whose wording can be adjusted within CG-21 while keeping backend checks strict.
+
+**QA/approval:** Test authorized editor vs reviewer/publisher roles, audit immutable change histories, forbidden toggle/permission escalation, invalid link/file/font/unsafe script rejection, override of editable error text without changing error code, source revocation, theme contrast/focus/responsiveness and 47 screenshot baseline. Runtime/mobile/visual, specialist security review and actual error-catalog mutation verification remain **NOT_RUN**; do not mark the previous CG-21 story/QA cases PASS.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning owner-delegated design content APPROVED (15 Nov 2026), by **JASIQ AI Design Review Agent** following explicit owner confirmation, for latest [module](module.md), [UIUX](uiux.md), [DLD](dld.md), 2 story definitions and 16 QA cases; latest PRD/HLD and Harness ec7c0b81. Formal stage/resolver still BLOCKED.
