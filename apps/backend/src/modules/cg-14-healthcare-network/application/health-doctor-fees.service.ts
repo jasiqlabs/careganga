@@ -270,17 +270,17 @@ export class HealthDoctorFeesService{
       await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
       await this.assertActiveOwnCenter(tx,actor,center);
       const r=await tx.query<{association_ref:string;doctor_ref:string;name:string;
-        specialties:string[];version:number}>(
+        specialties:string[];version:number;status:string}>(
         "SELECT dc.id AS association_ref,d.id AS doctor_ref,d.full_name AS name,"+
-        "d.specialties,dc.version FROM health_doctor_center dc "+
+        "d.specialties,dc.version,dc.affiliation_state AS status FROM health_doctor_center dc "+
         "JOIN health_doctor d ON d.root_realm_id=dc.root_realm_id AND d.id=dc.doctor_id "+
         "WHERE dc.root_realm_id=$1 AND dc.center_id=$2 "+
-        "AND dc.affiliation_state='APPROVED' AND d.status='VERIFIED' "+
+        "AND dc.affiliation_state IN('PENDING','APPROVED') AND d.status='VERIFIED' "+
         "ORDER BY d.normalized_name,dc.id LIMIT 50",
         [actor.realmId,center]);
       return {doctors:r.rows.map(x=>({
         associationRef:x.association_ref,doctorRef:x.doctor_ref,
-        name:x.name,specialties:x.specialties,version:x.version
+        name:x.name,specialties:x.specialties,version:x.version,status:x.status
       }))};
     });
   }
