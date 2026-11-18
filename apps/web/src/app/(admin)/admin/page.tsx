@@ -22,6 +22,8 @@ export default async function AdminHome() {
   let canViewSupport=false;
   let canViewFinance=false;
   let canViewVouchers=false;
+  let canViewHealthcare=false;
+  let canEditOwnCenter=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -38,6 +40,8 @@ export default async function AdminHome() {
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
           canViewFinance=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.accounts.view");
           canViewVouchers=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.vouchers.view");
+          canViewHealthcare=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.providers.view");
+          canEditOwnCenter=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.centers.draft.edit");
           canViewAccounts=Array.isArray(effective.actions)&&
             (effective.actions.some(x=>x.key==="accounts.view")||
               (effective.actions.some(x=>x.key==="accounts.create")&&
@@ -71,9 +75,12 @@ export default async function AdminHome() {
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
-      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers}/>
+      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers} canViewHealthNetwork={canViewHealthcare}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p><SignOutButton/></section>
+    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p>
+      {canViewHealthcare&&<p><Link href="/admin/health-network">Healthcare provider registrations</Link></p>}
+      {canEditOwnCenter&&<p><Link href="/center">My healthcare center</Link></p>}
+      <SignOutButton/></section>
     </main>
   </div>;
 }
