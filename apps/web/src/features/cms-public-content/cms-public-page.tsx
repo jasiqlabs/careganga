@@ -130,7 +130,7 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
      <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>
      <span aria-disabled="true" className="cg-site-unavailable">Donate</span>
-     {isPublished("/impact")&&<Link href="/our-impact">Our Impact</Link>}
+     {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
      <Link href="/contact">Contact</Link></div>
