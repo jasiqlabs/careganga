@@ -1,5 +1,9 @@
 # CG-07 — Three independently deliverable full-stack stories and 60 manual QA scenarios
 
+### 2026-11-18 original-public donation/Support Project owner QA — receiving trace
+Reference [47 screenshot/URL contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), particularly original `/upcoming-projects` project cards, gold Campaigns nav, floating Donate Now and repeated support CTAs. Integrate **within the existing CG-07 US-001..003 and CG-05/18 receiving cases**: Admin creates/approves real campaign and project association; published menu/project support connects to only eligible actual CG-07 intent; withdrawn/expired/unauthorized campaign disables links; verified payment/receipt/one CG-09 ledger credit and retry safety; cancel/refund/no-payment state; original CTA focus/tap/accessibility and responsive Web/native visibility. Do not replay screenshot funding goals or make unverified 80G promises. Campaigns landing image/route evidence still missing. All checks **PLANNED, not executed**; external review and data migration not certified.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
