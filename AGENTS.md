@@ -7,6 +7,10 @@
 
 ## Mandatory CLIENT-OWNED ORIGINAL WEBSITE replication baseline — 17 November 2026
 
+**Mandatory public navigation/page regression evidence (18 Nov):** The current authorized [original screenshot menu/footer inventory](docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md) is the single acceptance map for all public-facing components and future-domain-owner link integrations. Do not confuse original screenshot paths with implemented URLs, activate unsupported CG-04/05/07/08/14/15/17/19 links, invent About dropdown children/policy text, or silently drop any original nav/footer item. The original top-level Blood Donation slot becomes Healthcare Assistance only; Our Work → Healthcare stays. Use the existing 4 CG-18 stories, not extra parallel CMS/story masters. Original pixel/mobile/animation and source-owner runtime QA remain separate gates.
+
+
+
 **Original client source is NOT the JASIQ code repository.** `https://careganga.com/` and `https://admin.careganga.com/login` are the *client's existing live reference websites*. `jasiqlabs/careganga` contains JASIQ's greenfield replacement software, developed from scratch, and must never be used to infer what the original public website looked like or what copy it contained.
 
 - **Exact-replication requirement:** Recreate the existing public website's actual look, feel, brand, navigation, page structure, images, wording and content in the replacement public Web and, where applicable, Public Android. Preserve the original Admin Panel visual/interaction contract from the original screenshots; do not substitute a generic NGO template. Use an authorized CMS so that original site content remains editable, not hardcoded. Respect original photo rights/consent.
