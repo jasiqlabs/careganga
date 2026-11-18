@@ -15,7 +15,7 @@ async function data<T>(url:string,method:"GET"|"POST"="GET",body?:object):Promis
  return value as T;
 }
 const safeText=(v:unknown)=>typeof v==="string"?v:"Not specified";
-export function HealthReviewInbox(){
+export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [decision,setDecision]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -24,15 +24,43 @@ export function HealthReviewInbox(){
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
+ const [statusFilter,setStatusFilter]=useState("ALL");
+ const [kindFilter,setKindFilter]=useState("ALL");
+ const [searchText,setSearchText]=useState("");
+ const [appliedSearch,setAppliedSearch]=useState("");
+ const [nextOffset,setNextOffset]=useState<number|null>(null);
+ const [pageLoading,setPageLoading]=useState(false);
+ const currentRequest=useRef(0);
  const key=useRef("");
- const load=useCallback(async()=>{
-  const out=await data<{cases:Case[]}>("/api/health/reviews");
-  setCases(Array.isArray(out.cases)?out.cases:[]);
- },[]);
+ const load=useCallback(async(offset=0)=>{
+  const thisRequest=++currentRequest.current;
+  const search=new URLSearchParams({
+    offset:String(offset),status:statusFilter,kind:kindFilter,q:appliedSearch
+  });
+  const out=await data<{cases:Case[];nextOffset:number|null}>(
+    "/api/health/reviews?"+search.toString());
+  if(thisRequest!==currentRequest.current)return;
+  if(!Array.isArray(out.cases)||out.cases.some(x=>!x.caseRef||!x.reference))
+    throw Error("The current case list is incomplete.");
+  if(offset===0)setCases(out.cases);
+  else setCases(previous=>{
+    const refs=new Set(previous.map(x=>x.caseRef));
+    return [...previous,...out.cases.filter(x=>!refs.has(x.caseRef))];
+  });
+  setNextOffset(Number.isSafeInteger(out.nextOffset)?out.nextOffset:null);
+ },[statusFilter,kindFilter,appliedSearch]);
  useEffect(()=>{
-  void load().catch(e=>setError(e instanceof Error?e.message:"Healthcare reviews unavailable"))
+  setLoading(true);setError("");setDetail(null);
+  void load(0).catch(e=>setError(e instanceof Error?e.message:"Healthcare reviews unavailable"))
     .finally(()=>setLoading(false));
  },[load]);
+ async function loadMore(){
+  if(nextOffset===null||pageLoading||loading)return;
+  setPageLoading(true);
+  try{await load(nextOffset);}
+  catch(e){setError(e instanceof Error?e.message:"Additional reviews unavailable.");}
+  finally{setPageLoading(false);}
+ }
  async function open(ref:string){
   setError("");setNotice("");setDetail(null);setCurrentPassword("");
   setRemarks("");setUncertain(false);key.current="";
@@ -94,7 +122,43 @@ export function HealthReviewInbox(){
  return <div className="role-workspace">
   <header className="topbar"><div><h1>Healthcare verification queue</h1>
    <p>Each registration requires an independent authorized reviewer and verified private evidence.</p>
-  </div><button type="button" onClick={()=>{void load();}}>Refresh queue</button></header>
+  </div><button type="button" onClick={()=>{void load(0);}}>Refresh queue</button></header>
+  <form className="form-section" onSubmit={e=>{e.preventDefault();setAppliedSearch(searchText.trim());}}>
+    <h2>Find registrations</h2>
+    <div className="form-grid">
+      <label className="field">Search case number or organization
+        <input type="search" maxLength={80} value={searchText}
+          onChange={e=>setSearchText(e.target.value)} placeholder="Search current registrations"/>
+      </label>
+      <label className="field">Approval status
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+          <option value="ALL">All statuses</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="IN_REVIEW">In review</option>
+          <option value="PENDING_OWNER">Approved — awaiting application</option>
+          <option value="OWNER_COMPLETED">Verified and applied</option>
+          <option value="RETURNED">Returned for corrections</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </label>
+      <label className="field">Registration type
+        <select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}>
+          <option value="ALL">Provider and center</option>
+          <option value="HEALTH_PROVIDER_VERIFICATION">Provider</option>
+          <option value="HEALTH_CENTER_VERIFICATION">Center</option>
+        </select>
+      </label>
+    </div>
+    <div className="toolbar">
+      <button type="submit" className="primary">Apply search</button>
+      <button type="button" onClick={()=>{
+        setStatusFilter("ALL");setKindFilter("ALL");setSearchText("");setAppliedSearch("");
+      }}>Reset filters</button>
+    </div>
+    {!loading&&<p className="muted" role="status">
+      {cases.length} matching cases loaded{nextOffset!==null?" — more available":""}.
+      These are current original review records, not sample counts.</p>}
+  </form>
   {loading&&<p role="status">Checking submitted registrations…</p>}
   {!!error&&<p className="notice error" role="alert">{error}</p>}
   {!!notice&&<p className="notice" role="status">{notice}</p>}
@@ -113,6 +177,10 @@ export function HealthReviewInbox(){
      onClick={()=>void open(c.caseRef)}>Review</button></td>
    </tr>)}
   </tbody></table></div>
+  {nextOffset!==null&&<div className="toolbar">
+    <button type="button" disabled={pageLoading||loading} onClick={()=>void loadMore()}>
+      {pageLoading?"Loading more…":"Load more matching reviews"}</button>
+  </div>}
   {detail&&<section className="form-section">
    <h2>{detail.reference}</h2><p>{statusText(detail.kind)} · {statusText(detail.status)}</p>
    {detail.source&&<>
@@ -155,9 +223,11 @@ export function HealthReviewInbox(){
    {detail.status==="PENDING_OWNER"&&<button type="button" className="primary"
       disabled={busy||uncertain} onClick={()=>void apply()}>
      Apply approved registration</button>}
-   {["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"
+   {canManage&&["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"
       disabled={busy||uncertain} onClick={()=>void returnForCorrection()}>
      Reopen for corrections</button>}
+   {!canManage&&["RETURNED","REJECTED"].includes(detail.status)&&
+     <p>Only a Foundation provider manager can reopen this application for new corrections.</p>}
    <p>Only a verified and separately activated center can later be published. No approval creates a booking or payment.</p>
   </section>}
  </div>;
