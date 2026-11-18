@@ -489,6 +489,15 @@ export class HealthReviewWorkflowService{
    const cmd=await this.command(tx,actor,"HEALTH_CENTER_ACCESS",key,
     {ref,expected,enabled:data.enabled});
    if(cmd.ref)return {status:"PREVIOUSLY_CONFIRMED",version:cmd.version,replayed:true};
+   // Parent-before-center locks keep staff enable/disable and public decisions
+   // ordered with provider suspension and scoped consultation-fee writes.
+   const original=await tx.query<{provider_id:string}>(
+     "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
+     [actor.realmId,ref]);
+   if(!original.rows[0])throw new NotFoundException({code:"HEALTH_CENTER_UNAVAILABLE"});
+   const lockedParent=await tx.query<{status:string}>(
+     "SELECT status FROM health_provider WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+     [actor.realmId,original.rows[0].provider_id]);
    const c=await tx.query<{provider_id:string;version:number;status:string;
      access_state:string;publication_state:string}>(
     "SELECT provider_id,version,status,access_state,publication_state "+
@@ -499,12 +508,10 @@ export class HealthReviewWorkflowService{
     throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
    if(data.enabled&&c.rows[0].status!=="VERIFIED")
     throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
-   if(data.enabled){
-    const p=await tx.query("SELECT id FROM health_provider "+
-      "WHERE root_realm_id=$1 AND id=$2 AND status='VERIFIED' FOR SHARE",
-      [actor.realmId,c.rows[0].provider_id]);
-    if(!p.rowCount)throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
-   }
+   if(c.rows[0].provider_id!==original.rows[0].provider_id)
+     throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+   if(data.enabled&&lockedParent.rows[0]?.status!=="VERIFIED")
+     throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
    const next=expected+1;
    await tx.query("UPDATE health_center SET access_state=$3,"+
     "publication_state=CASE WHEN $3='DISABLED' THEN 'UNPUBLISHED' "+
@@ -553,6 +560,15 @@ export class HealthReviewWorkflowService{
    const cmd=await this.command(tx,actor,"HEALTH_CENTER_PUBLICATION",key,
      {ref,expected,published:data.published,slug});
    if(cmd.ref)return {status:"PREVIOUSLY_CONFIRMED",version:cmd.version,replayed:true};
+   // Parent-before-center locks keep staff enable/disable and public decisions
+   // ordered with provider suspension and scoped consultation-fee writes.
+   const original=await tx.query<{provider_id:string}>(
+     "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
+     [actor.realmId,ref]);
+   if(!original.rows[0])throw new NotFoundException({code:"HEALTH_CENTER_UNAVAILABLE"});
+   const lockedParent=await tx.query<{status:string}>(
+     "SELECT status FROM health_provider WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+     [actor.realmId,original.rows[0].provider_id]);
    const center=await tx.query<{provider_id:string;version:number;status:string;
      access_state:string;publication_generation:number;public_slug:string|null}>(
      "SELECT provider_id,version,status,access_state,publication_generation,public_slug "+
@@ -564,10 +580,9 @@ export class HealthReviewWorkflowService{
    if(data.published){
     if(row.status!=="VERIFIED"||row.access_state!=="ENABLED")
       throw new ConflictException({code:"HEALTH_CENTER_NOT_VERIFIED"});
-    const parent=await tx.query("SELECT id FROM health_provider "+
-      "WHERE root_realm_id=$1 AND id=$2 AND status='VERIFIED' FOR SHARE",
-      [actor.realmId,row.provider_id]);
-    if(!parent.rowCount)throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
+    if(row.provider_id!==original.rows[0].provider_id||
+       lockedParent.rows[0]?.status!=="VERIFIED")
+      throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
     const approved=await tx.query<{revision_id:string;decision_id:string;
       proof_file_ref:string;source_version:number}>(
       "SELECT revision.id AS revision_id,decision.id AS decision_id,"+
