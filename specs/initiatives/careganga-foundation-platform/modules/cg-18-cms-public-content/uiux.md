@@ -125,3 +125,9 @@ In [tasks.md](tasks.md) every user story must trace source token/component reuse
 - **US-004:** replace ONLY original top-menu `Blood Donation` with `Healthcare Assistance`. Existing `Our Work > Healthcare`, Project Spandan healthcare camp editorial and unrelated Foundation history remain intact. New healthcare public booking/info is backed by CG-14/15/17, not a second CMS master.
 
 **Visible source contrast:** original public gold/dark-green/cream UI MUST have separate semantic design choices from original Admin screenshot-blue UI; both retain true CareGanga brand. **Animations not derivable from still screenshots** — validate only from real browser/video before claiming exact effects. Do not introduce an unrelated UI template.
+
+## Original 47-screenshot reconciliation — 18 November 2026
+
+Original public screenshot Batch01 020524–020554 establishes /our-impact; Batch01 020634–021040 establishes /ngo-information 80G and separate legal/report children; Batch02 021422/021443/021502 establishes distinct Gallery, Videos and Publications headings, filters, Reset/empty views. Batch03 022004 establishes floating Donate and WhatsApp buttons and footer: only an Admin-approved separate WhatsApp destination may activate the latter. Preserve gold/cream/emerald public theme distinct from original blue Admin.
+
+Current source implements the Impact and NGO landing route, and three source-backed public media routes with Admin preview. The NGO other children, real /about/team, /notices, /upcoming-projects, /collaboration, /membership, /volunteer, Contact FAQ/chat/map remain owner integration gaps, not visually accepted pages. Full screenshot reference: docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md. No claim of exact original pixels, licensed media, motion timings, browser or Android visual QA.
