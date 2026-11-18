@@ -67,7 +67,7 @@ export class HealthPublicRequestThrottleService{
    "ELSE health_public_request_bucket.window_started_at END "+
    "RETURNING attempt_count",[bucket]);
   if((result.rows[0]?.attempt_count??LIMITS[scope]+1)>LIMITS[scope])
-   throw new HttpException("Too many directory requests. Try again shortly.",
+   throw new HttpException({code:"HEALTH_PUBLIC_RATE_LIMIT"},
     HttpStatus.TOO_MANY_REQUESTS);
   // Bounded opportunistic expiry; no scheduled idle worker/PII retention.
   if(Math.random()<0.01)
