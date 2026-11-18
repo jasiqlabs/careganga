@@ -98,8 +98,12 @@ export class HealthDoctorDraftService{
       return result;
     }catch(e){
       if(open)try{await tx.query("ROLLBACK");}catch{}
-      if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+      if(e&&typeof e==="object"&&"code" in e&&e.code==="23505"){
+        const db=e as {constraint?:string};
+        if(db.constraint?.startsWith("health_doctor_center_"))
+          throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
         throw new ConflictException({code:"HEALTH_DOCTOR_DUPLICATE",field:"registrationNumber"});
+      }
       throw e;
     }finally{tx.release();}
   }
@@ -255,6 +259,72 @@ export class HealthDoctorDraftService{
       return {associationRef:created.rows[0].id,version:created.rows[0].version,
         status:"PENDING",replayed:false,
         message:"Center association proposed. It is not active or publicly visible."};
+    });
+  }
+  /** Center staff may only propose a doctor for their own current ACTIVE
+   * affiliation. This intentionally exposes no doctor license or proof fields.
+   */
+  private async assertOwnCenter(tx:PoolClient,actor:Actor,centerRef:string){
+    const found=await tx.query(
+      "SELECT f.id FROM health_center_account_affiliation f "+
+      "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
+      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+      "JOIN account a ON a.id=f.account_ref AND a.realm_id=f.root_realm_id "+
+      "WHERE f.root_realm_id=$1 AND f.center_id=$2 AND f.account_ref=$3 "+
+      "AND f.status='ACTIVE' AND a.status='ACTIVE' "+
+      "AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
+      "AND p.status='VERIFIED' FOR SHARE OF f,c,p,a",
+      [actor.realmId,centerRef,actor.accountId]);
+    if(!found.rowCount)
+      throw new NotFoundException({code:"HEALTH_CENTER_STAFF_UNAVAILABLE"});
+  }
+  async ownEligibleDoctors(bearer:string,centerRef:string,q=""){
+    const center=validId(centerRef,"centerRef"),term=q.trim();
+    if(term.length>80||CONTROL.test(term))
+      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"q"});
+    const actor=await this.actor(bearer,"health.centers.draft.edit");
+    return this.transaction(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
+      await this.assertOwnCenter(tx,actor,center);
+      const result=await tx.query<{id:string;full_name:string;specialties:string[]}>(
+        "SELECT d.id,d.full_name,d.specialties FROM health_doctor d "+
+        "WHERE d.root_realm_id=$1 AND d.status='VERIFIED' "+
+        "AND ($3::text='' OR d.full_name ILIKE ('%' || $3 || '%')) "+
+        "AND NOT EXISTS (SELECT 1 FROM health_doctor_center dc "+
+        "WHERE dc.root_realm_id=d.root_realm_id AND dc.doctor_id=d.id "+
+        "AND dc.center_id=$2) ORDER BY d.normalized_name,d.id LIMIT 50",
+        [actor.realmId,center,term]);
+      return {doctors:result.rows.map(d=>({
+        doctorRef:d.id,name:d.full_name,specialties:d.specialties
+      }))};
+    });
+  }
+  async proposeOwnCenter(bearer:string,centerRef:string,body:unknown){
+    const center=validId(centerRef,"centerRef"),x=object(body,"center");
+    fields(x,["requestKey","doctorRef"],"center");
+    const doctor=validId(x.doctorRef,"doctorRef");
+    const actor=await this.actor(bearer,"health.centers.draft.edit");
+    return this.transaction(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
+      await this.assertOwnCenter(tx,actor,center);
+      const cmd=await this.command(tx,actor,"DOCTOR_CENTER_PROPOSE",x.requestKey,
+        {doctorRef:doctor,centerRef:center});
+      if(cmd.replay)return {associationRef:cmd.replay.result_ref,
+        version:cmd.replay.result_version,status:"PENDING",replayed:true};
+      const existing=await tx.query(
+        "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status='VERIFIED' FOR SHARE",[actor.realmId,doctor]);
+      if(!existing.rowCount)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_UNAVAILABLE"});
+      const created=await tx.query<{id:string;version:number}>(
+        "INSERT INTO health_doctor_center(root_realm_id,doctor_id,center_id,proposed_by) "+
+        "VALUES($1,$2,$3,$4) RETURNING id,version",
+        [actor.realmId,doctor,center,actor.accountId]);
+      await this.recorded(tx,actor,cmd.id!,"DOCTOR_CENTER_PROPOSE",doctor,center,
+        created.rows[0].id,created.rows[0].version);
+      return {associationRef:created.rows[0].id,version:created.rows[0].version,
+        status:"PENDING",replayed:false,
+        message:"Doctor association requested for this center. Foundation approval is required."};
     });
   }
   async suspendDoctor(bearer:string,doctorRef:string,body:unknown){
