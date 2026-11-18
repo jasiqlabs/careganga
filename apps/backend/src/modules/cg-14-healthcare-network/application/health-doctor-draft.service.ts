@@ -408,6 +408,24 @@ export class HealthDoctorDraftService{
         {doctorId,associationId,v});
       if(cmd.replay)return {associationRef:cmd.replay.result_ref,
         version:cmd.replay.result_version,status:"APPROVED",replayed:true};
+      // Parent-first lock order matches healthcare fee and center suspension.
+      const source=await tx.query<{center_id:string;provider_id:string}>(
+        "SELECT a.center_id,c.provider_id FROM health_doctor_center a "+
+        "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
+        "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3",
+        [actor.realmId,doctorId,associationId]);
+      if(!source.rows[0])
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      const provider=await tx.query(
+        "SELECT id FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status='VERIFIED' FOR SHARE",
+        [actor.realmId,source.rows[0].provider_id]);
+      const center=await tx.query(
+        "SELECT id FROM health_center WHERE root_realm_id=$1 AND id=$2 "+
+        "AND provider_id=$3 AND status='VERIFIED' AND access_state='ENABLED' FOR SHARE",
+        [actor.realmId,source.rows[0].center_id,source.rows[0].provider_id]);
+      if(!provider.rowCount||!center.rowCount)
+        throw new ConflictException({code:"HEALTH_CENTER_NOT_VERIFIED"});
       const doctor=await tx.query(
         "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 "+
         "AND status='VERIFIED' FOR SHARE",[actor.realmId,doctorId]);
@@ -415,21 +433,13 @@ export class HealthDoctorDraftService{
         throw new ConflictException({code:"HEALTH_DOCTOR_NOT_VERIFIED"});
       const association=await tx.query<{version:number;affiliation_state:string;center_id:string}>(
         "SELECT version,affiliation_state,center_id FROM health_doctor_center "+
-        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3 FOR UPDATE",
-        [actor.realmId,doctorId,associationId]);
+        "WHERE root_realm_id=$1 AND doctor_id=$2 AND id=$3 AND center_id=$4 FOR UPDATE",
+        [actor.realmId,doctorId,associationId,source.rows[0].center_id]);
       const current=association.rows[0];
       if(!current)
         throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
       if(current.version!==v||current.affiliation_state!=="PENDING")
         throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
-      const center=await tx.query(
-        "SELECT c.id FROM health_center c JOIN health_provider p "+
-        "ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-        "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='VERIFIED' "+
-        "AND c.access_state='ENABLED' AND p.status='VERIFIED' FOR SHARE OF c,p",
-        [actor.realmId,current.center_id]);
-      if(!center.rowCount)
-        throw new ConflictException({code:"HEALTH_CENTER_NOT_VERIFIED"});
       await tx.query(
         "UPDATE health_doctor_center SET affiliation_state='APPROVED',"+
         "approved_from=now(),approved_by=$4,version=version+1,updated_at=now() "+
