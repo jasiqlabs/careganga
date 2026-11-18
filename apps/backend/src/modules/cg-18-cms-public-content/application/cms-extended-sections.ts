@@ -206,16 +206,19 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    description:str(x.description??"","description",900),
    items:x.items.map((v,i)=>{
     const f="items["+i+"]",item=obj(v,f,
-     ["title","caption","category","mediaType","source","asOfDate"]);
+     ["title","caption","category","mediaType","source","asOfDate","visible"]);
     const mediaType=str(item.mediaType,f+".mediaType",12,3);
     if(!["PHOTO","VIDEO","PUBLICATION"].includes(mediaType))
      return error(f+".mediaType");
     const asOfDate=date(item.asOfDate,f+".asOfDate");
     if(asOfDate>new Date().toISOString().slice(0,10))return error(f+".asOfDate");
+    if(item.visible!==undefined&&typeof item.visible!=="boolean")
+     return error(f+".visible");
     return {title:str(item.title,f+".title",150,3),
      caption:str(item.caption??"",f+".caption",500),
      category:str(item.category,f+".category",80,2),mediaType,
-     source:str(item.source,f+".source",160,3),asOfDate};
+     source:str(item.source,f+".source",160,3),asOfDate,
+     visible:item.visible!==false};
    })
   };
  }
