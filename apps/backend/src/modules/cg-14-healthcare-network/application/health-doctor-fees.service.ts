@@ -145,16 +145,31 @@ export class HealthDoctorFeesService{
       doctorRef,associationRef,body);
   }
   private async assertActiveOwnCenter(tx:PoolClient,actor:Actor,centerRef:string){
-    const r=await tx.query(
+    // Explicit parent-to-child locking: provider → center → assignment.
+    // A revoked or disabled center never retains fee/doctor write access.
+    const source=await tx.query<{provider_id:string}>(
+      "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
+      [actor.realmId,centerRef]);
+    if(!source.rows[0])
+      throw new NotFoundException({code:"HEALTH_CENTER_STAFF_UNAVAILABLE"});
+    const provider=await tx.query<{status:string}>(
+      "SELECT status FROM health_provider WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+      [actor.realmId,source.rows[0].provider_id]);
+    const center=await tx.query<{status:string;access_state:string}>(
+      "SELECT status,access_state FROM health_center WHERE root_realm_id=$1 "+
+      "AND provider_id=$2 AND id=$3 FOR SHARE",
+      [actor.realmId,source.rows[0].provider_id,centerRef]);
+    if(provider.rows[0]?.status!=="VERIFIED"||
+       center.rows[0]?.status!=="VERIFIED"||
+       center.rows[0]?.access_state!=="ENABLED")
+      throw new NotFoundException({code:"HEALTH_CENTER_STAFF_UNAVAILABLE"});
+    const assignment=await tx.query(
       "SELECT f.id FROM health_center_account_affiliation f "+
-      "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
-      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       "JOIN account a ON a.id=f.account_ref AND a.realm_id=f.root_realm_id "+
       "WHERE f.root_realm_id=$1 AND f.center_id=$2 AND f.account_ref=$3 "+
-      "AND f.status='ACTIVE' AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
-      "AND p.status='VERIFIED' AND a.status='ACTIVE' FOR SHARE OF f,c,p,a",
+      "AND f.status='ACTIVE' AND a.status='ACTIVE' FOR SHARE OF f,a",
       [actor.realmId,centerRef,actor.accountId]);
-    if(!r.rowCount)
+    if(!assignment.rowCount)
       throw new NotFoundException({code:"HEALTH_CENTER_STAFF_UNAVAILABLE"});
   }
   private async proposeForActor(actor:Actor,action:"health.doctors.manage"|"health.centers.draft.edit",
