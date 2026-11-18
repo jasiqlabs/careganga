@@ -65,3 +65,6 @@ Use original Admin document/media right-drawer/modal, upload progress, preview, 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+## Original Notice and Contact receiving source — 18 November 2026
+Original Batch02 Notice & Announcement Board search/category/priority cards, humanized dates, Read Details and true empty state now have source-rendered CG-18 public UI backed by CG-19 current approved notices. Original Batch03 Contact 3 inquiry cards, FAQs, map/social, one message form and footer have source-managed CG-18 presentation but original CG-19 support stays the only private record. Source rights, received-case status, actual reply, no imaginary staffed 24/7, screenshot scroll and Android/browser QA must be verified, not marked PASS.
