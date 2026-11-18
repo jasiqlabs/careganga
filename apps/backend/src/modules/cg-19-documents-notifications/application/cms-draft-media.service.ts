@@ -26,8 +26,6 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "(a.role='FEATURE' AND sec.section_kind='FEATURE_CARDS' "+
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'cards') ELSE 0 END) OR "+
- "(a.role='TEAM' AND sec.section_kind='TEAM' "+
- "AND (sec.structured_fields->'members'->a.sort_order->>'consentConfirmed')='true') OR "+
  "(a.role='GALLERY' AND sec.section_kind='GALLERY_GRID' "+
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'items')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END "+
@@ -45,7 +43,7 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
 // Videos and PDFs must match the specific approved gallery item type.
 const PUBLIC_MEDIA_MIME_ALLOWED=
  "AND (("+
- "a.role IN('HERO','MOBILE_HERO','TEAM','ABOUT','PROMO','FEATURE','ARTICLE','IMPACT','CONTACT') "+
+ "a.role IN('HERO','MOBILE_HERO','ABOUT','PROMO','FEATURE','ARTICLE','IMPACT','CONTACT') "+
  "AND f.original_mime IN('image/jpeg','image/png','image/webp')) OR "+
  "(a.role='DOCUMENT' AND f.original_mime IN("+
  "'image/jpeg','image/png','image/webp','application/pdf')) OR "+
