@@ -70,6 +70,9 @@ export function CmsCompliance({section,assets}:{
  return <section className="cg-site-content cg-site-legal">
   <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
   <h1>{text(f.heading)}</h1>
+  {supported&&text(f.badgeText)&&<span className="cg-site-legal-badge">
+   {text(f.badgeText)}</span>}
+  {text(f.subtitle)&&<h2 className="cg-site-legal-subtitle">{text(f.subtitle)}</h2>}
   <p>{text(f.summary)}</p>
   <p className="cg-site-legal-status">{supported?
    "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
@@ -96,6 +99,9 @@ export function CmsCompliance({section,assets}:{
   {supported&&proof?.src&&records(f.documents).length===0&&
    <a className="cg-site-action" href={proof.src} download>
     View approved supporting document</a>}
+  {text(f.importantNote)&&<aside className="cg-site-legal-important">
+   <strong>Important</strong><p>{text(f.importantNote)}</p>
+  </aside>}
   <p className="cg-site-legal-notice">{text(f.disclaimer)}</p>
   <p className="cg-site-provenance">Only the current Foundation-published information is shown.
    Confirm tax applicability with the issuing authority.</p>
