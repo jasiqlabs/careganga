@@ -45,6 +45,11 @@ const files={
  policyRoute:read("apps/web/src/app/policies/[slug]/page.tsx"),
  reuseMigration:read("apps/backend/db/migrations/0937_cg18_same_page_verified_media_reuse.sql"),
  galleryClient:read("apps/web/src/features/cms-public-content/cms-gallery-grid-client.tsx"),
+ noticeBoard:read("apps/web/src/features/cms-public-content/cms-public-notice-board.tsx"),
+ noticeRoute:read("apps/web/src/app/notices/page.tsx"),
+ contactRoute:read("apps/web/src/app/contact/page.tsx"),
+ originalScreenshotTrace:read("docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md"),
+ publicCmsController:read("apps/backend/src/modules/cg-18-cms-public-content/http/cms-editorial.controller.ts"),
  cg21Copy:read("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const checks=[
@@ -211,6 +216,28 @@ const checks=[
   files.galleryClient.includes("mediaOrder=Number.isSafeInteger(item.originalIndex)")&&
   files.androidExtended.includes('typeof item.originalIndex==="number"')&&
   files.adminExtended.includes("Show this item on the public site after independent approval")],
+ ["Original Notices listing reads ONLY independent currently published CG19 source",
+  files.backend.includes("async publicNotices(){")&&
+  files.backend.includes("n.audience_kind='ALL_ACTIVE'")&&
+  files.backend.includes("body.structured_fields->>'publicReleaseConfirmed'='true'")&&
+  files.backend.includes("n.expires_at>now()")&&
+  files.publicCmsController.includes('@Get("notices")')&&
+  files.publicSource.includes("publishedCmsNotices()")&&
+  files.noticeRoute.includes("CmsPublicNoticeBoard")&&
+  files.noticeBoard.includes("Reset Filters")&&
+  files.header.includes('text==="News & Updates"?"/notices"')],
+
+ ["Original Contact uses one authorized editable section and real CG19 support",
+  files.extended.includes('if(kind==="CONTACT_INFO")')&&
+  files.backend.includes('"CONTACT_INFO"')&&
+  files.adminExtended.includes("Contact page hero title")&&
+  files.adminExtended.includes("Add FAQ")&&
+  files.publicExtended.includes("export function CmsContactInfo")&&
+  files.publicExtended.includes("const secure=(value:unknown,hosts:string[])")&&
+  files.web.includes('section.kind==="CONTACT_INFO"')&&
+  files.contactRoute.includes("<Cg19PublicContactForm/>")&&
+  files.cg21Copy.includes("CMS_INPUT_INVALID:")],
+
  ["CG21 administrator can edit original team-consent failure copy",
   files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
  ["Original newsletter cannot fake subscriber success before CG19 opt-in",
