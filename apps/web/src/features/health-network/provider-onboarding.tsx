@@ -73,6 +73,12 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
  canVerify:boolean;canActivate:boolean;canPublish:boolean
 }){
   const [list,setList]=useState<Row[]>([]);
+  const [listStatus,setListStatus]=useState("ALL");
+  const [listSearch,setListSearch]=useState("");
+  const [appliedListSearch,setAppliedListSearch]=useState("");
+  const [nextListOffset,setNextListOffset]=useState<number|null>(null);
+  const [listPageLoading,setListPageLoading]=useState(false);
+  const listRequest=useRef(0);
   const [selected,setSelected]=useState<Detail|null>(null);
   const [provider,setProvider]=useState(emptyProvider);
   const [centers,setCenters]=useState<CenterDraft[]>([blankCenter()]);
@@ -98,12 +104,22 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [maskedLabel,setMaskedLabel]=useState("");
   const [bankVersion,setBankVersion]=useState(0);
   const key=useRef("");
-  const initial=useRef(true);
-  const loadList=useCallback(async()=>{
-    const rows=await api<{providers:Row[]}>("providers");
+  const loadList=useCallback(async(offset=0)=>{
+    const requestId=++listRequest.current;
+    const query=new URLSearchParams({
+      offset:String(offset),status:listStatus,q:appliedListSearch
+    });
+    const rows=await api<{providers:Row[];nextOffset:number|null}>(
+      "providers?"+query.toString());
+    if(requestId!==listRequest.current)return;
     if(!Array.isArray(rows.providers))throw Error("Healthcare list is incomplete");
-    setList(rows.providers);
-  },[]);
+    if(offset===0)setList(rows.providers);
+    else setList(previous=>{
+      const seen=new Set(previous.map(x=>x.providerRef));
+      return [...previous,...rows.providers.filter(x=>!seen.has(x.providerRef))];
+    });
+    setNextListOffset(Number.isSafeInteger(rows.nextOffset)?rows.nextOffset:null);
+  },[listStatus,appliedListSearch]);
   const loadDetail=useCallback(async(ref:string)=>{
     const details=await api<Detail>("providers/"+encodeURIComponent(ref));
     if(!details?.provider||!Array.isArray(details.centers))
@@ -112,11 +128,17 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     return details;
   },[]);
   useEffect(()=>{
-    if(!initial.current)return;
-    initial.current=false;
+    setLoading(true);setList([]);setNextListOffset(null);setSelected(null);
     void loadList().catch(e=>setError(e instanceof Error?e.message:"Providers unavailable."))
       .finally(()=>setLoading(false));
   },[loadList]);
+  async function loadMoreProviders(){
+    if(nextListOffset===null||loading||listPageLoading)return;
+    setListPageLoading(true);
+    try{await loadList(nextListOffset);}
+    catch(e){setError(e instanceof Error?e.message:"Additional providers are unavailable.");}
+    finally{setListPageLoading(false);}
+  }
   async function open(ref:string){
     setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
     setEditingProvider(false);setProviderProof("");setCenterProofs({});
