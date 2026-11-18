@@ -105,6 +105,17 @@ const checks=[
     s.activeStaffSql.includes("status IN ('PENDING_EDIT','ACTIVE','REVOKED')")&&
     s.doctorFees.includes("f.status='ACTIVE'")&&
     s.workflow.includes("UPDATE health_center_account_affiliation SET status='REVOKED'")],
+ [ "Foundation fee history locks eligibility and amount snapshot atomically",
+    s.doctorFees.includes('async list(bearer:string,doctorRef:string,associationRef:string)')&&
+    s.doctorFees.includes('await this.identity.assertCurrent(tx,actor,"health.doctors.view")')&&
+    s.doctorFees.includes("const eligible=provider.rows[0].status")&&
+    s.doctorFees.includes("AND id=$4 FOR SHARE")],
+ [ "Suspended doctor-center keeps historic fees but never allows new proposals",
+    s.doctorCenterWeb.includes('row.status==="SUSPENDED"?"View past fee history"')&&
+    s.doctorFees.includes('current:eligible&&f.status==="APPROVED"')],
+ [ "Async fee responses never cross assigned doctor or center selection",
+    s.doctorCenterWeb.includes("feeReadEpoch.current")&&
+    s.centerDoctorWeb.includes("feeReadEpoch.current")],
  [ "Readable named doctor center and fee Web controls",
     s.doctorWeb.includes("DoctorCenterManagement")&&
     s.doctorCenterWeb.includes("Approve association")&&
