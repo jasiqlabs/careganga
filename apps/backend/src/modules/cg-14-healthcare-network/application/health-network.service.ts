@@ -307,7 +307,8 @@ export class HealthNetworkService{
     if(!r.rows[0])throw new NotFoundException("Provider draft unavailable");
     const centers=await this.db.query(
       "SELECT id,center_code,display_name,center_type,address_line,state_ref,district_ref,"+
-      "block_ref,pin_code,latitude,longitude,time_zone,public_phone,status,version "+
+      "block_ref,pin_code,latitude,longitude,time_zone,public_phone,status,version,"+
+      "access_state,publication_state,public_slug,publication_generation "+
       "FROM health_center WHERE root_realm_id=$1 AND provider_id=$2 ORDER BY display_name,id LIMIT 100",
       [actor.realmId,ref]);
     return {provider:{providerRef:ref,code:r.rows[0].provider_code,name:r.rows[0].legal_name,
@@ -318,7 +319,9 @@ export class HealthNetworkService{
         centerRef:x.id,code:x.center_code,name:x.display_name,type:x.center_type,
         addressLine:x.address_line,stateRef:x.state_ref,districtRef:x.district_ref,
         blockRef:x.block_ref,pinCode:x.pin_code,latitude:x.latitude,longitude:x.longitude,
-        timeZone:x.time_zone,publicPhone:x.public_phone,status:x.status,version:x.version
+        timeZone:x.time_zone,publicPhone:x.public_phone,status:x.status,version:x.version,
+        accessState:x.access_state,publicationState:x.publication_state,
+        publicSlug:x.public_slug,publicationGeneration:x.publication_generation
       }))};
   }
   async updateProvider(bearer:string,providerRef:string,body:unknown){
