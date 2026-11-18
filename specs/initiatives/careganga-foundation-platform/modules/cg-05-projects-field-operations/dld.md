@@ -1,5 +1,10 @@
 # CG-05 — Detailed-Level Design: Projects, Assignments, Events & Field Visits
 
+### 2026-11-18 original `/upcoming-projects` public source contract
+
+**Evidence:** [47 screenshot source contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). CG-05 shall expose a Foundation-root-scoped **public-safe approved project projection** (not direct access to private project/task/beneficiary records): project slug, approved title/summary, validated category, planning status, public city/area, approved expected launch date, real owner-approved fundraiser goal if supplied by CG-07, and CG-19 rights-cleared media. Block withdrawn, private, closed or unapproved content. Filters use the true six Our Work categories, preserve statuses and empty results; project photo and tags render only when approved. `/upcoming-projects` and original category destinations are CG-18 Web-facing routes with **CG-05** as record owner. CG-07 resolves the actual Support Project link only after an eligible campaign/payment source exists; no inferred payment intent, amount, progress or URL. Existing CG-01/03 permissions, one project master, immutable changes, root isolation, idempotent public publication and revocation apply. Admin Project editor must own label/media/location/category/status/date/funding-goal linking; CG-18 only owns global shell/presentation. No new CMS project table, workflow or schema justified by screenshots alone.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
