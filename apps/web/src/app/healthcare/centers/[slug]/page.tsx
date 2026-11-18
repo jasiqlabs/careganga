@@ -11,7 +11,8 @@ type Center={
  hours:{weekday:number;opens:string;closes:string;service:string}[];
  declaredServices:string[];notice:string;
  approvedPresentation:null|{description:string;services:string[];facilities:string[];
-  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
+  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];
+  media:{fileRef:string;altText:string}[]};
 };
 const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const format=(value:string)=>value.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,letter=>letter.toUpperCase());
@@ -73,6 +74,18 @@ export default async function VerifiedCenterPage({params}:Params){
    {c.approvedPresentation&&<section className="cg-public-section">
      <h2>About this healthcare center</h2>
      <p>{c.approvedPresentation.description}</p>
+     {c.approvedPresentation.media.length>0&&<div
+       style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,250px),1fr))",gap:16}}>
+       {c.approvedPresentation.media.map(media=><figure key={media.fileRef}>
+         {/* eslint-disable-next-line @next/next/no-img-element */}
+         <img loading="lazy" decoding="async" width="480" height="300"
+          style={{maxWidth:"100%",height:"auto",borderRadius:12}}
+          alt={media.altText}
+          src={"/healthcare/centers/"+encodeURIComponent(slug)+"/photos/"+
+            encodeURIComponent(media.fileRef)}/>
+         <figcaption>{media.altText}</figcaption>
+       </figure>)}
+      </div>}
      {c.approvedPresentation.services.length>0&&<>
        <h3>Approved center services</h3>
        <ul>{c.approvedPresentation.services.map((x,i)=><li key={i}>{x}</li>)}</ul>
