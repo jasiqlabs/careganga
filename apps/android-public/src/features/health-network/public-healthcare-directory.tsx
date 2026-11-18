@@ -16,6 +16,8 @@ type Doctor={doctorRef:string;doctorName:string;centerSlug:string;
  centerName:string;address:string;pinCode:string;fee:Fee|null;
  specialties:string[];qualifications:string[];experienceYears:number};
 type Details={centerName:string;providerName:string;type:string;address:string;
+ approvedPresentation:null|{description:string;services:string[];facilities:string[];
+ hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
  pinCode:string;publicPhone:string|null;latitude:number|null;longitude:number|null;
  declaredServices:string[];hours:{weekday:number;opens:string;closes:string}[];
  timeZone:string;notice:string};
@@ -51,6 +53,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  const [category,setCategory]=useState(""),[minFee,setMinFee]=useState("");
  const [maxFee,setMaxFee]=useState(""),[cursor,setCursor]=useState("");
  const [selection,setSelection]=useState<Selection|null>(null);
+ const [resetVersion,setResetVersion]=useState(0);
  const [state,setState]=useState<State>({status:"LOADING",items:[],next:null,details:null});
  const seq=useRef(0);
  const load=useCallback(async(nextCursor="",append=false)=>{
@@ -102,7 +105,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    if(request===seq.current)setState(s=>({...s,status:"ERROR",details:null}));
   }
  },[]);
- useEffect(()=>{void load();return()=>{seq.current++;};},[mode]); // Search is applied explicitly
+ useEffect(()=>{void load();return()=>{seq.current++;};},[mode,resetVersion]); // Search is applied explicitly
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    if(status==="active"){
@@ -116,7 +119,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
   seq.current++;setSelection(null);setSearch("");setPin("");setCategory("");
   setSpecialty("");setMinFee("");setMaxFee("");
   // Same mode means no dependency change; explicitly refresh defaults via next action.
-  setState({status:"READY",items:[],next:null,details:null});
+  setState({status:"LOADING",items:[],next:null,details:null});
+  setResetVersion(v=>v+1);
  }
  function back(){
   seq.current++;
@@ -190,6 +194,24 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
      label("View directions",()=>void Linking.openURL(
       "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(
        centerDetails.latitude+","+centerDetails.longitude)))}
+    {centerDetails.approvedPresentation&&<>
+     <Text style={styles.cardTitle}>About this center</Text>
+     <Text>{centerDetails.approvedPresentation.description}</Text>
+     <Text style={styles.cardTitle}>Approved services</Text>
+     {centerDetails.approvedPresentation.services.map((v,i)=><Text key={i}>• {v}</Text>)}
+     <Text style={styles.cardTitle}>Facilities</Text>
+     {centerDetails.approvedPresentation.facilities.map((v,i)=><Text key={i}>• {v}</Text>)}
+     {!!centerDetails.approvedPresentation.hoursNote&&
+      <Text>Hours note: {centerDetails.approvedPresentation.hoursNote}</Text>}
+     {!!centerDetails.approvedPresentation.publicEmail&&
+      label("Email this center",()=>void Linking.openURL(
+       "mailto:"+centerDetails.approvedPresentation!.publicEmail))}
+     {centerDetails.approvedPresentation.faqs.length>0&&
+      <Text style={styles.cardTitle}>Center questions</Text>}
+     {centerDetails.approvedPresentation.faqs.map((f,i)=><View key={i}>
+      <Text style={styles.label}>{f.question}</Text><Text>{f.answer}</Text>
+     </View>)}
+    </>}
     <Text style={styles.cardTitle}>Declared services</Text>
     {centerDetails.declaredServices.map(s=><Text key={s}>• {nice(s)}</Text>)}
     <Text style={styles.cardTitle}>Working hours</Text>
