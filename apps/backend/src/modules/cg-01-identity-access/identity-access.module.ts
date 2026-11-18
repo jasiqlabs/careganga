@@ -1,4 +1,5 @@
 import { FoundationStructureIdentityFacade } from "./application/foundation-structure-identity.facade";
+import { HealthNetworkIdentityFacade } from "./application/health-network-identity.facade";
 import { Module } from "@nestjs/common";
 import { SessionService } from "./application/session.service";
 import { SessionController } from "./http/session.controller";
@@ -21,7 +22,7 @@ import { MobileVerificationController } from "./http/mobile-verification.control
 
 @Module({
   controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
-  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
-  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
+  providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
+  exports:[HealthNetworkIdentityFacade,SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
