@@ -18,6 +18,10 @@ export class HealthDoctorDraftController{
   create(@Headers("authorization")bearer:string,@Body()body:unknown){
     return this.doctors.create(bearer,body);
   }
+  @Get("eligible-centers")
+  eligibleCenters(@Headers("authorization")bearer:string,@Query("q")q?:string){
+    return this.doctors.eligibleCenters(bearer,q??"");
+  }
   @Get(":doctorRef")
   detail(@Headers("authorization")bearer:string,@Param("doctorRef")ref:string){
     return this.doctors.detail(bearer,ref);
@@ -43,6 +47,18 @@ export class HealthDoctorDraftController{
   @Get(":doctorRef/centers")
   centers(@Headers("authorization")bearer:string,@Param("doctorRef")ref:string){
     return this.doctors.centers(bearer,ref);
+  }
+  @Post(":doctorRef/centers/:associationRef/approve")
+  approveCenter(@Headers("authorization")bearer:string,
+    @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string,
+    @Body()body:unknown){
+    return this.doctors.approveCenter(bearer,doctorRef,associationRef,body);
+  }
+  @Post(":doctorRef/centers/:associationRef/suspend")
+  suspendCenter(@Headers("authorization")bearer:string,
+    @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string,
+    @Body()body:unknown){
+    return this.doctors.suspendCenter(bearer,doctorRef,associationRef,body);
   }
   @Post(":doctorRef/centers")
   proposeCenter(@Headers("authorization")bearer:string,
