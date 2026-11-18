@@ -66,6 +66,26 @@ export class HealthPublicCenterService{
       "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code LIMIT 6",
       [c.root_realm_id,c.id])
   ]);
+  // The optional descriptive content is a SECOND independently approved
+  // immutable source. A representative's private draft is never a public API.
+  const presentation=await tx.query<{source_snapshot:{
+    description:string;services:string[];facilities:string[];
+    hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]}}> (
+    "SELECT r.source_snapshot FROM health_center_content_publication cp "+
+    "JOIN health_center_content_revision r ON r.id=cp.approved_revision_id "+
+    "AND r.root_realm_id=cp.root_realm_id AND r.center_id=cp.center_id "+
+    "JOIN cg03_case cg ON cg.id=r.approval_case_ref "+
+    "AND cg.realm_id=r.root_realm_id AND cg.case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
+    "AND cg.health_content_revision_id=r.id AND cg.health_center_id=r.center_id "+
+    "AND cg.health_revision_no=r.revision_no AND cg.health_source_digest=r.source_digest "+
+    "AND cg.status='OWNER_COMPLETED' "+
+    "JOIN cg03_case_decision d ON d.id=cp.original_decision_ref "+
+    "AND d.realm_id=cg.realm_id AND d.case_id=cg.id "+
+    "AND d.action='APPROVE' AND d.actor_id<>cg.proposer_id "+
+    "AND d.fresh_password_verified_at IS NOT NULL "+
+    "WHERE cp.root_realm_id=$1 AND cp.center_id=$2 "+
+    "AND cp.withdrawn_at IS NULL FOR SHARE OF cp",
+    [c.root_realm_id,c.id]);
   // Revalidate the public generation after loading dependent rows so a
   // concurrent withdrawal does not return a stale approved projection.
   const fresh=await tx.query(
@@ -93,6 +113,7 @@ export class HealthPublicCenterService{
     hours:hours.rows.map(h=>({weekday:h.weekday,opens:h.open_local.slice(0,5),
       closes:h.close_local.slice(0,5),service:h.service_type})),
     declaredServices:services.rows.map(x=>x.capability_code),
+    approvedPresentation:presentation.rows[0]?.source_snapshot??null,
     notice:"Verified center information. Booking and online payment are not available here."};
   }catch(error){
     if(active)try{await tx.query("ROLLBACK");}catch{}
