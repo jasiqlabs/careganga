@@ -250,7 +250,12 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       await api("centers/"+encodeURIComponent(centerRef)+"/representatives","POST",{
         requestKey:crypto.randomUUID(),accountRef:account
       });
-      setNotice("Staff member assigned to edit this pending center only.");
+      const center=selected?.centers.find(c=>c.centerRef===centerRef);
+      setNotice(center?.status==="VERIFIED"?
+        center.accessState==="ENABLED"?
+          "Representative assigned to this active center only.":
+          "Representative recorded. Center access remains disabled until Foundation activation.":
+        "Staff member assigned to edit this pending center only.");
       setRepresentativeRefresh(previous=>previous+1);
       setAccount("");
     }catch(e){setError(e instanceof Error?e.message:"Staff assignment was not confirmed.");}
@@ -555,14 +560,14 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
           </div>}
           {canManage&&center.status==="PENDING"&&<button type="button" onClick={()=>void editCenter(center.centerRef)}>
             Edit pending center</button>}
-          {canSelectAccounts&&canManage&&center.status==="PENDING"&&<div className="toolbar">
+          {canSelectAccounts&&canManage&&["PENDING","VERIFIED"].includes(center.status)&&<div className="toolbar">
             <label className="field">Eligible representative
               <select value={account} onChange={e=>setAccount(e.target.value)}>
                 <option value="">Choose active staff</option>
                 {options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
               </select>
             </label>
-            <button type="button" disabled={!account||busy}
+            <button type="button" disabled={!account||busy||uncertain}
               onClick={()=>void assign(center.centerRef)}>Assign to this center</button>
           </div>}
           {center.status==="VERIFIED"&&
