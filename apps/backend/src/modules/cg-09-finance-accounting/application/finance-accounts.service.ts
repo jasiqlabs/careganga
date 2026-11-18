@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -293,6 +293,7 @@ export class FinanceAccountsService{
   if(end<start)fieldError("FINANCE_YEAR_DATE_INVALID","endOn");
   const data={name,start,end};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   await this.branches.requireFinanceRootScope(client,actor,"finance.accounts.manage");
    const claim=await this.claim(client,actor,"YEAR_CREATE",key,data);
    if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
    const inserted=await client.query<{id:string}>(`
@@ -313,6 +314,7 @@ export class FinanceAccountsService{
    fieldError("FINANCE_GROUP_CATEGORY_INVALID","category");
   const normalized={name,code,category:String(category),parent};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   await this.branches.requireFinanceRootScope(client,actor,"finance.accounts.manage");
    const claim=await this.claim(client,actor,"GROUP_CREATE",key,normalized);
    if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
    if(parent){
@@ -350,6 +352,7 @@ export class FinanceAccountsService{
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
    branchVersion:String(branchVersion??""),bankLabel,lastFour};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   if(!branch)await this.branches.requireFinanceRootScope(client,actor,"finance.accounts.manage");
    const claim=await this.claim(client,actor,"ACCOUNT_CREATE",key,data);
    if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
    const groupRow=await client.query<{category:string}>(`
@@ -404,6 +407,7 @@ export class FinanceAccountsService{
    const branchRefs=[...new Set(accounts.rows.map(a=>a.branch_id).filter((v):v is string=>v!==null))];
    if(branchRefs.length>1)throw new ConflictException({code:"FINANCE_ACCOUNT_SCOPE"});
    const branch=branchRefs[0]??null;
+   if(!branch)await this.branches.requireFinanceRootScope(client,actor,"finance.journals.post");
    if(branch){
     const branchVersion=body.branchVersion;
     if(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1)
@@ -431,6 +435,7 @@ export class FinanceAccountsService{
  /** Read immutable genuine posted manual journals; never label them paid. */
  async manualJournalHistory(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
+  const scope=await this.branches.financeReportScope(bearer,"finance.accounts.view");
   const rows=await this.db.query<{journalRef:string;description:string;
     postingDate:string;yearName:string;debitMinor:string;
     reversed:boolean;differentCreator:boolean}>(`
@@ -442,12 +447,14 @@ export class FinanceAccountsService{
    JOIN financial_year fy ON fy.id=j.financial_year_id
     AND fy.root_realm_id=j.root_realm_id
    JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id
+     AND ($3::boolean OR l.branch_id=ANY($4::uuid[]))
    LEFT JOIN finance_manual_journal_reversal r
     ON r.original_journal_id=j.id AND r.root_realm_id=j.root_realm_id
    WHERE j.root_realm_id=$1 AND j.posting_kind='GENERAL'
     AND j.source_ref=j.immutable_source_event_key
    GROUP BY j.id,fy.name,r.reversal_journal_id
-   ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,[actor.realmId,actor.accountId]);
+   ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,
+   [actor.realmId,actor.accountId,scope.all,scope.branchRefs]);
   return {journals:rows.rows,status:"POSTED_NOT_PAYMENT"};
  }
  async postGeneral(bearer:string,input:unknown):Promise<CommandResult>{
@@ -510,6 +517,7 @@ export class FinanceAccountsService{
    if(branchIds.length>1)
     throw new ConflictException({code:"FINANCE_ACCOUNT_SCOPE",field:"lines"});
    const branch=branchIds[0]??null;
+   if(!branch)await this.branches.requireFinanceRootScope(client,actor,"finance.journals.post");
    if(branch){
     const branchVersion=body.branchVersion;
     if(!Number.isSafeInteger(branchVersion)||Number(branchVersion)<1)
@@ -535,6 +543,7 @@ export class FinanceAccountsService{
   const expectedVersion=Number(body.expectedVersion);
   const payload={year,expectedVersion:String(expectedVersion),status:"CLOSED"};
   return this.transact(bearer,"finance.accounts.manage",async(client,actor)=>{
+   await this.branches.requireFinanceRootScope(client,actor,"finance.accounts.manage");
    const claim=await this.claim(client,actor,"YEAR_STATUS",key,payload);
    if(claim.duplicate)return {recordRef:claim.duplicate,confirmed:true,replayed:true};
    const found=await client.query<{status:string;version:number}>(`
@@ -571,9 +580,15 @@ export class FinanceAccountsService{
    if(current.version!==expectedVersion)
     throw new ConflictException({code:"FINANCE_STALE_RECORD"});
    if(current.status===status)throw new ConflictException({code:"FINANCE_STALE_RECORD"});
-   if(current.branch_id&&status==="ACTIVE")
-    await this.branches.requireFinanceActiveBranch(client,actor,current.branch_id,
+   if(current.branch_id){
+    await this.branches.requireFinanceActorBranch(client,actor,current.branch_id,
      "finance.accounts.manage");
+    if(status==="ACTIVE")
+     await this.branches.requireFinanceActiveBranch(client,actor,current.branch_id,
+      "finance.accounts.manage");
+   }else{
+    await this.branches.requireFinanceRootScope(client,actor,"finance.accounts.manage");
+   }
    await client.query(`
     UPDATE finance_account SET status=$1,version=version+1
     WHERE id=$2 AND root_realm_id=$3`,[status,account,actor.realmId]);
