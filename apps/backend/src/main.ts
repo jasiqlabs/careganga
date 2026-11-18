@@ -5,6 +5,10 @@ import { readConfig } from "./core/config/config";
 import { SafeErrorsFilter } from "./core/http/safe-errors.filter";
 import { correlateRequest } from "./core/observability/request-correlation";
 
+// Safely load environment files if present in cwd or workspace root
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
+try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../.env"); } catch {}
+
 async function bootstrap(): Promise<void> {
   const cfg = readConfig();
   // Signature verification must see exact SendGrid webhook bytes.
@@ -15,8 +19,9 @@ async function bootstrap(): Promise<void> {
   app.enableCors({ origin: cfg.webOrigin, credentials: false, methods: ["GET","POST","PATCH","DELETE"] });
   await app.listen(cfg.port, "0.0.0.0");
 }
-void bootstrap().catch(() => {
+void bootstrap().catch((error: unknown) => {
   // Fail closed without logging secrets or database connection strings.
-  process.stderr.write("CareGanga bootstrap failed; verify protected configuration and migrations.\n");
+  const reason = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`CareGanga bootstrap failed: ${reason}\nVerify protected configuration and migrations.\n`);
   process.exitCode = 1;
 });

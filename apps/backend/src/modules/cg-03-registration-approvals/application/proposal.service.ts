@@ -11,7 +11,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 export const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export const hash=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 type ProcessRow={id:string;version:number;first_reviewer_capability:string|null};
-type CaseRow={id:string;case_number:string;proposer_id:string;target_account_id:string;
+type CaseRow={id:string;case_number:string;process_id:string;proposer_id:string;target_account_id:string;
   target_role_id:string;account_name_snapshot:string;role_name_snapshot:string;
   process_version:number;proposal_revision:number;proposal_digest:string;request_digest:string;
   request_key:string;expected_access_version:string;expected_role_revision:number;

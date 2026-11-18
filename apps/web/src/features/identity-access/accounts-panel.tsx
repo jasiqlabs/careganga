@@ -240,7 +240,7 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
       {(["all","ACTIVE","SUSPENDED","DEACTIVATED"] as const).map(s=>
         <button type="button" aria-pressed={filter===s} key={s} disabled={loading}
           onClick={()=>void load(applied,0,s)}>{s==="all"?"All":s==="ACTIVE"?"Active":
-          s===?"Created":s==="SUSPENDED"?"Suspended":"Deactivated"}</button>)}
+          s==="SUSPENDED"?"Suspended":"Deactivated"}</button>)}
     </div>
     {notice&&<p role={notice.kind==="success"?"status":"alert"} className={"notice "+notice.kind}>
       {notice.text}</p>}
@@ -346,7 +346,7 @@ export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
                 setPending({kind:"revoke",target});requestKey.current=crypto.randomUUID();
               }}>Revoke current role</button>}
             </div>}
-            {canStatus&&target.status!==&&target.status!=="DEACTIVATED"&&<div className="toolbar">
+            {canStatus&&target.status!=="DEACTIVATED"&&<div className="toolbar">
               {target.status==="ACTIVE"?<button type="button" onClick={()=>{
                 setPending({kind:"status",target,status:"SUSPENDED"});requestKey.current=crypto.randomUUID();
               }}>Suspend account</button>:<button type="button" onClick={()=>{

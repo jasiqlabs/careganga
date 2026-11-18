@@ -1,44 +1,112 @@
-import {useCallback,useEffect,useState} from "react";
+import React, { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,AppState,Image,KeyboardAvoidingView,Platform,
-  Pressable,ScrollView,StyleSheet,Text,TextInput,View
+  ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform,
+  Pressable, ScrollView, StyleSheet, Text, TextInput, View
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
-import {careGangaTheme as theme} from "../../../packages/design-tokens/src/index";
-import {RecipientNotifications} from "../../../packages/native-communications/src/recipient-notifications";
-import {FoundationContactScreen} from "../src/features/support/foundation-contact-screen";
+import { careGangaTheme as theme } from "../../../packages/design-tokens/src/index";
 
-const KEY="cg_public_own_notice_session";
-const base=process.env.EXPO_PUBLIC_API_URL;
-async function nativeRequest(_token:string,path:string,opts:RequestInit={}){
-  if(!base||!/^https?:\/\//.test(base)||
-    (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
-    throw Error("UNAVAILABLE");
-  const timeout=AbortSignal.timeout(10000);
-  return fetch(new URL(path,base).toString(),{...opts,signal:timeout});
+const RecipientNotifications = lazy(() => import("../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
+const FoundationContactScreen = lazy(() => import("../src/features/support/foundation-contact-screen").then(m => ({ default: m.FoundationContactScreen })));
+
+class PublicScreenErrorBoundary extends Component<
+  { onExit: () => void; children: React.ReactNode },
+  { error: string | null }
+> {
+  state = { error: null as string | null };
+  static getDerivedStateFromError(error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("Cannot find native module") || msg.includes("ExpoCrypto")) {
+      return { error: "This app needs an update to complete startup. Please contact support." };
+    }
+    return { error: "Something went wrong. Please try again." };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <SafeAreaView style={styles.page}>
+          <View style={styles.content}>
+            <Text accessibilityRole="alert" style={styles.alert}>{this.state.error}</Text>
+            <Pressable accessibilityRole="button" style={styles.button} onPress={() => {
+              this.setState({ error: null });
+              this.props.onExit();
+            }}>
+              <Text>Back to CareGanga Foundation</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
 }
-const withToken=(token:string,path:string,opts:RequestInit={})=>
-  nativeRequest(token,path,{...opts,headers:{
-    Authorization:"Bearer "+token,...(opts.headers as Record<string,string>|undefined)
-  }});
-async function validate(token:string):Promise<string|null>{
-  const [me,access]=await Promise.all([
-    withToken(token,"/api/identity/me"),
-    withToken(token,"/api/access/effective")
-  ]);
-  if(me.status===401||access.status===401)return null;
-  if(!me.ok||!access.ok)throw Error("UNAVAILABLE");
-  const profile:unknown=await me.json(),rights:unknown=await access.json();
-  if(!profile||typeof profile!=="object"||
-    !("displayName" in profile)||typeof profile.displayName!=="string"||
-    !("scope" in profile)||profile.scope!=="Foundation"||
-    !rights||typeof rights!=="object"||
-    !("actions" in rights)||!Array.isArray(rights.actions)||
-    !rights.actions.some(x=>x&&typeof x==="object"&&"key" in x&&
-      x.key==="communications.notifications.view"))throw Error("DENIED");
+
+const KEY = "cg_public_own_notice_session";
+const base = process.env.EXPO_PUBLIC_API_URL;
+
+function resolvePublicEndpoint(path: string): string {
+  if (!base) throw new Error("UNAVAILABLE");
+  let resolvedBase = base;
+  if (Platform.OS === "android" && (resolvedBase.startsWith("http://localhost:") || resolvedBase.startsWith("http://127.0.0.1:"))) {
+    resolvedBase = resolvedBase.replace(/localhost|127\.0\.0\.1/, "10.0.2.2");
+  }
+  return new URL(path, resolvedBase).toString();
+}
+
+async function nativeRequest(_token: string, path: string, opts: RequestInit = {}): Promise<Response> {
+  if (!base || !/^https?:\/\//.test(base) ||
+    (process.env.NODE_ENV === "production" && !base.startsWith("https://")))
+    throw new Error("UNAVAILABLE");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    return await fetch(resolvePublicEndpoint(path), {
+      ...opts,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const withToken = (token: string, path: string, opts: RequestInit = {}) =>
+  nativeRequest(token, path, {
+    ...opts,
+    headers: {
+      Authorization: "Bearer " + token,
+      ...(opts.headers as Record<string, string> | undefined)
+    }
+  });
+
+async function validate(token: string): Promise<string | null> {
+  let me: Response, access: Response;
+  try {
+    [me, access] = await Promise.all([
+      withToken(token, "/api/identity/me"),
+      withToken(token, "/api/access/effective")
+    ]);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("TIMEOUT");
+    }
+    throw new Error("NETWORK_ERROR");
+  }
+  if (me.status === 401 || access.status === 401) return null;
+  if (!me.ok || !access.ok) throw new Error("BACKEND_UNAVAILABLE");
+  const profile: unknown = await me.json(), rights: unknown = await access.json();
+  if (!profile || typeof profile !== "object" ||
+    !("displayName" in profile) || typeof profile.displayName !== "string" ||
+    !("scope" in profile) || profile.scope !== "Foundation" ||
+    !rights || typeof rights !== "object" ||
+    !("actions" in rights) || !Array.isArray(rights.actions) ||
+    !rights.actions.some(x => x && typeof x === "object" && "key" in x &&
+      x.key === "communications.notifications.view")) {
+    throw new Error("PERMISSION_DENIED");
+  }
   return profile.displayName;
 }
+
 export default function PublicHome(){
   const [token,setToken]=useState<string|null>(null);
   const [person,setPerson]=useState<string|null>(null);
@@ -62,7 +130,16 @@ export default function PublicHome(){
         if(!active)return;
         if(name){setToken(stored);setPerson(name);}
         else revoke();
-      }catch{if(active)setMessage("Saved notice access cannot be verified right now.");}
+      }catch(err: unknown){
+        if(active){
+          if(err instanceof Error && err.message === "PERMISSION_DENIED"){
+            revoke();
+            setMessage("You don't have permission to access this section.");
+          } else {
+            setMessage("We’re unable to connect right now. Please try again shortly.");
+          }
+        }
+      }
       finally{if(active)setChecking(false);}
     })();
     return()=>{active=false};
@@ -78,9 +155,16 @@ export default function PublicHome(){
           const name=await validate(token);
           if(!active)return;
           if(!name)revoke();else setPerson(name);
-        }catch{
-          if(active){setPerson(null);
-            setMessage("Current notice permission could not be verified.");}
+        }catch(err: unknown){
+          if(active){
+            if(err instanceof Error && err.message === "PERMISSION_DENIED"){
+              revoke();
+              setMessage("You don't have permission to access this section.");
+            } else {
+              setPerson(null);
+              setMessage("We’re unable to connect right now. Please try again shortly.");
+            }
+          }
         }finally{if(active)setChecking(false);}
       })();
     });
@@ -91,27 +175,72 @@ export default function PublicHome(){
     setBusy(true);setMessage("");
     let issued:string|null=null;
     try{
-      const response=await nativeRequest("","/api/identity/login",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({identifier:email.trim(),password,deviceLabel:"Public Android own notices"})
-      });
-      if(!response.ok)throw Error("DENIED");
+      let response: Response;
+      try {
+        response=await nativeRequest("","/api/identity/login",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({identifier:email.trim(),password,deviceLabel:"Public Android own notices"})
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+          setMessage("The request is taking too long. Please try again.");
+          return;
+        }
+        setMessage("Internet connection unavailable. Please check your connection and try again.");
+        return;
+      }
+      if(response.status === 401){
+        setMessage("Incorrect mobile number/email or password.");
+        return;
+      }
+      if(response.status === 429){
+        setMessage("Too many attempts. Please try again shortly.");
+        return;
+      }
+      if(response.status >= 500){
+        setMessage("We’re unable to connect right now. Please try again shortly.");
+        return;
+      }
+      if(!response.ok){
+        setMessage("Sign-in unavailable. Please try again shortly.");
+        return;
+      }
       const result:unknown=await response.json();
       if(!result||typeof result!=="object"||
         !("sessionToken" in result)||typeof result.sessionToken!=="string"||
         !("expiresAt" in result)||typeof result.expiresAt!=="string"||
-        Date.parse(result.expiresAt)<=Date.now())throw Error("UNAVAILABLE");
+        Date.parse(result.expiresAt)<=Date.now()){
+        setMessage("Something went wrong. Please try again.");
+        return;
+      }
       issued=result.sessionToken;
-      const name=await validate(issued);
-      if(!name)throw Error("DENIED");
+      let name: string | null = null;
+      try {
+        name=await validate(issued);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === "PERMISSION_DENIED") {
+          setMessage("You don't have permission to access this section.");
+          return;
+        }
+        if (err instanceof Error && (err.message === "TIMEOUT" || err.name === "AbortError")) {
+          setMessage("The request is taking too long. Please try again.");
+          return;
+        }
+        setMessage("We’re unable to connect right now. Please try again shortly.");
+        return;
+      }
+      if(!name){
+        setMessage("Your session has expired. Please sign in again.");
+        return;
+      }
       await SecureStore.setItemAsync(KEY,issued);
       setPerson(name);setToken(issued);
       setPassword("");setNoticeOpen(true);
-    }catch{
+    }catch(err: unknown){
       if(issued){
         try{await withToken(issued,"/api/identity/logout",{method:"POST"});}catch{}
       }
-      setMessage("Sign-in or permission could not be verified.");
+      setMessage("Something went wrong. Please try again.");
     }finally{setBusy(false);}
   }
   async function signOut(){
@@ -125,13 +254,24 @@ export default function PublicHome(){
     }catch{setMessage("Sign-out not confirmed. Retry before using another account.");}
     finally{setBusy(false);}
   }
-  if(contactOpen)return <FoundationContactScreen onExit={()=>setContactOpen(false)}/>;
+  if(contactOpen)
+    return (
+      <PublicScreenErrorBoundary onExit={()=>setContactOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <FoundationContactScreen onExit={()=>setContactOpen(false)}/>
+        </Suspense>
+      </PublicScreenErrorBoundary>
+    );
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
       {token&&person&&noticeOpen&&!checking?
-        <RecipientNotifications token={token} makeRequest={withToken}
-          onExit={()=>setNoticeOpen(false)} onExpired={revoke}/>:
+        <PublicScreenErrorBoundary onExit={()=>setNoticeOpen(false)}>
+          <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+            <RecipientNotifications token={token} makeRequest={withToken}
+              onExit={()=>setNoticeOpen(false)} onExpired={revoke}/>
+          </Suspense>
+        </PublicScreenErrorBoundary>:
         <ScrollView keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}>
           <View style={styles.brandRow}>

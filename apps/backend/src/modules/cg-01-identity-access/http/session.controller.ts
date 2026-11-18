@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Inject, Post, Req, UseGuards } from "@nestjs/common";
 import { SessionService } from "../application/session.service";
 import { SessionGuard, type AuthenticatedRequest } from "./session.guard";
 import { randomUUID } from "node:crypto";
@@ -8,7 +8,7 @@ type SignInBody = { identifier?: unknown; password?: unknown; deviceLabel?: unkn
 
 @Controller("api/identity")
 export class SessionController {
-  constructor(private readonly service: SessionService) {}
+  constructor(@Inject(SessionService) private readonly service: SessionService) {}
 
   @Post("login")
   @HttpCode(200)

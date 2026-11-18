@@ -241,7 +241,7 @@ export function AccountsScreen({token,onExit,onExpired,createOnly=false}:{
             onPress={()=>void load(search,0,status)}>
             <Text style={filter===status?styles.activeText:styles.buttonText}>
               {status==="all"?"All":status==="DEACTIVATED"?"Deactivated":
-                status==="SUSPENDED"?"Suspended":status===?"Created":"Active"}
+                status==="SUSPENDED"?"Suspended":"Active"}
             </Text>
           </Pressable>)}</View>
         {canCreate&&<Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
@@ -348,7 +348,7 @@ export function AccountsScreen({token,onExit,onExpired,createOnly=false}:{
               <Text>Revoke current role</Text>
             </Pressable>}
           </>}
-          {canStatus&&row.status!==&&row.status!=="DEACTIVATED"&&!pending&&
+          {canStatus&&row.status!=="DEACTIVATED"&&!pending&&
             <View style={styles.group}>
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"status",row,

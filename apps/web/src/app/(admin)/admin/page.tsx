@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
+import { AuthWelcomeListener } from "../../../shared/auth-notification";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -64,6 +65,7 @@ export default async function AdminHome() {
   if (invalidSession) redirect("/admin/login");
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
+    <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}

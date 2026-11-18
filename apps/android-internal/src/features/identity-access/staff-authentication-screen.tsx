@@ -1,22 +1,55 @@
+import React, { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
-import { useCallback, useEffect, useState } from "react";
-import { RolesScreen } from "./roles-screen";
-import { SecurityPolicyScreen } from "./security-policy-screen";
-import { AccountsScreen } from "./accounts-screen";
-import { ChangePasswordScreen } from "./change-password-screen";
-import { RecoveryScreen } from "./recovery-screen";
-import { ProposalScreen } from "../registration-approvals/proposal-screen";
-import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
-import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
-import { NotificationsScreen } from "../communications/notifications-screen";
-import { FoundationNoticeAdminScreen } from "../communications/foundation-notice-admin-screen";
-import { FoundationSupportScreen } from "../support/foundation-support-screen";
-import { BranchRegistrationScreen } from "../foundation-structure/branch-registration-screen";
 import { identityRequest } from "./http-client";
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
+
+const RolesScreen = lazy(() => import("./roles-screen").then(m => ({ default: m.RolesScreen })));
+const SecurityPolicyScreen = lazy(() => import("./security-policy-screen").then(m => ({ default: m.SecurityPolicyScreen })));
+const AccountsScreen = lazy(() => import("./accounts-screen").then(m => ({ default: m.AccountsScreen })));
+const ChangePasswordScreen = lazy(() => import("./change-password-screen").then(m => ({ default: m.ChangePasswordScreen })));
+const RecoveryScreen = lazy(() => import("./recovery-screen").then(m => ({ default: m.RecoveryScreen })));
+const ProposalScreen = lazy(() => import("../registration-approvals/proposal-screen").then(m => ({ default: m.ProposalScreen })));
+const PrivateCaseEvidenceScreen = lazy(() => import("../documents/private-case-evidence-screen").then(m => ({ default: m.PrivateCaseEvidenceScreen })));
+const NotificationsScreen = lazy(() => import("../communications/notifications-screen").then(m => ({ default: m.NotificationsScreen })));
+const FoundationNoticeAdminScreen = lazy(() => import("../communications/foundation-notice-admin-screen").then(m => ({ default: m.FoundationNoticeAdminScreen })));
+const FoundationSupportScreen = lazy(() => import("../support/foundation-support-screen").then(m => ({ default: m.FoundationSupportScreen })));
+const BranchRegistrationScreen = lazy(() => import("../foundation-structure/branch-registration-screen").then(m => ({ default: m.BranchRegistrationScreen })));
+const RecipientNotifications = lazy(() => import("../../../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
+
+class ScreenErrorBoundary extends Component<
+  { onExit: () => void; children: React.ReactNode },
+  { error: string | null }
+> {
+  state = { error: null as string | null };
+  static getDerivedStateFromError(error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("Cannot find native module") || msg.includes("ExpoCrypto")) {
+      return { error: "This app needs an update to complete startup. Please contact support." };
+    }
+    return { error: "Something went wrong. Please try again." };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <SafeAreaView style={styles.page}>
+          <View style={styles.content}>
+            <Text accessibilityRole="alert" style={styles.message}>{this.state.error}</Text>
+            <Pressable accessibilityRole="button" style={[styles.button, styles.primaryButton]} onPress={() => {
+              this.setState({ error: null });
+              this.props.onExit();
+            }}>
+              <Text style={styles.primaryButtonText}>Back to staff access</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const STORE_KEY="cg_internal_root_session";
 const communicationRequest=(token:string,path:string,opts:RequestInit={})=>
@@ -43,10 +76,10 @@ async function currentRoleActions(token:string):Promise<string[]>{
   const data:unknown=await response.json();
   if(!data||typeof data!=="object"||!("actions" in data)||
      !Array.isArray(data.actions)||
-     !data.actions.every((a:unknown)=>Boolean(a)&&typeof a==="object"&&
-       "key" in a&&typeof a.key==="string"))
+     !data.actions.every((a:unknown)=>Boolean(a)&&typeof a==="object"&&a!==null&&
+       "key" in a&&typeof (a as {key:unknown}).key==="string"))
     throw new Error("Permissions cannot be verified right now.");
-  return data.actions.map((a:{key:string})=>a.key);
+  return (data.actions as {key:string}[]).map(a=>a.key);
 }
 export function StaffAuthenticationScreen(){
   const [email,setEmail]=useState("");
@@ -123,26 +156,54 @@ export function StaffAuthenticationScreen(){
     const request:CG01SignInRequest={identifier:email.trim(),password,deviceLabel:"Internal Android"};
     let issuedToken:string|null=null;
     try{
-      const response=await identityRequest("/api/identity/login",{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
-      });
+      let response: Response;
+      try {
+        response=await identityRequest("/api/identity/login",{
+          method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+          setMessage("The request is taking too long. Please try again.");
+          return;
+        }
+        setMessage("Internet connection unavailable. Please check your connection and try again.");
+        return;
+      }
+      if(response.status===401){
+        setMessage("Incorrect mobile number/email or password.");
+        return;
+      }
+      if(response.status===429){
+        setMessage("Too many attempts. Please try again shortly.");
+        return;
+      }
+      if(response.status>=500){
+        setMessage("We’re unable to connect right now. Please try again shortly.");
+        return;
+      }
       if(!response.ok){
-        setMessage(response.status===429?"Too many attempts. Please try later.":response.status===401?"Mobile number/email or password is incorrect.":"Sign-in unavailable. Please try again.");
+        setMessage("Sign-in unavailable. Please try again shortly.");
         return;
       }
       const data:CG01SessionCreated=await response.json();
       if(typeof data.sessionToken!=="string"||typeof data.expiresAt!=="string"||
         !Number.isFinite(new Date(data.expiresAt).getTime())||
-        new Date(data.expiresAt).getTime()<=Date.now())throw new Error("Sign-in confirmation is unavailable.");
+        new Date(data.expiresAt).getTime()<=Date.now()){
+        setMessage("Something went wrong. Please try again.");
+        return;
+      }
       issuedToken=data.sessionToken;
       const verified=await sessionView(issuedToken);
-      if(!verified)throw new Error("The new session could not be confirmed.");
+      if(!verified){
+        setMessage("Your session has expired. Please sign in again.");
+        return;
+      }
       // Don't persist or show a session until BOTH identity and effective access
       // are verified, so offline/invalid permission reads cannot look like success.
       const actions=await currentRoleActions(issuedToken);
       await SecureStore.setItemAsync(STORE_KEY,issuedToken);
       setRoleActions(actions);setToken(issuedToken);setActor(verified);setPassword("");
-    }catch{
+    }catch(err: unknown){
       setRoleActions([]);setActor(null);setToken(null);
       // If a session was issued but later bootstrap steps failed, avoid leaving a
       // needless server-side session alive. This is best effort, not a claimed logout.
@@ -152,7 +213,13 @@ export function StaffAuthenticationScreen(){
         });}catch{/* eventual server expiry still applies */}
         try{await SecureStore.deleteItemAsync(STORE_KEY);}catch{/* no sign-in displayed */}
       }
-      setMessage("Could not confirm sign-in. Check your connection and try again.");
+      if (err instanceof Error && err.name === "AbortError") {
+        setMessage("The request is taking too long. Please try again.");
+      } else if (err instanceof Error && (err.message.includes("Cannot find native module") || err.message.includes("ExpoCrypto"))) {
+        setMessage("This app needs an update to complete startup. Please contact support.");
+      } else {
+        setMessage("We’re unable to connect right now. Please try again shortly.");
+      }
     }finally{setState("idle");}
   }
   async function signOut(){
@@ -174,61 +241,138 @@ export function StaffAuthenticationScreen(){
     }catch{setMessage("Sign-out could not be confirmed. Please retry.");}
     finally{setState("idle");}
   }
-  if(recover) return <RecoveryScreen onExit={()=>setRecover(false)}/>;
-  if(changePasswordOpen&&token&&actor)return <ChangePasswordScreen token={token}
-    onExit={()=>setChangePasswordOpen(false)} onExpired={expireSession}
-    onChanged={()=>{expireSession();setChangePasswordOpen(false);
-      setMessage("Password changed. Sign in again.");}}/>;
-  if(accountsOpen&&token&&actor)return <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
-    createOnly={!roleActions.includes("accounts.view")}/>;
-  if(rolesOpen&&token&&actor)return <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>;
+  if(recover)
+    return (
+      <ScreenErrorBoundary onExit={()=>setRecover(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <RecoveryScreen onExit={()=>setRecover(false)}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
+  if(changePasswordOpen&&token&&actor)
+    return (
+      <ScreenErrorBoundary onExit={()=>setChangePasswordOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <ChangePasswordScreen token={token}
+            onExit={()=>setChangePasswordOpen(false)} onExpired={expireSession}
+            onChanged={()=>{expireSession();setChangePasswordOpen(false);
+              setMessage("Password changed. Sign in again.");}}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
+  if(accountsOpen&&token&&actor)
+    return (
+      <ScreenErrorBoundary onExit={closeAccounts}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
+            createOnly={!roleActions.includes("accounts.view")}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
+  if(rolesOpen&&token&&actor)
+    return (
+      <ScreenErrorBoundary onExit={closeRoles}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
-    return <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
-      canPropose={roleActions.includes("approvals.propose")}
-      onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setApprovalsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
+            canPropose={roleActions.includes("approvals.propose")}
+            canReview={roleActions.includes("approvals.view")}
+            onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(notificationsOpen&&token&&actor&&
     roleActions.includes("communications.notifications.view"))
-    return <NotificationsScreen token={token}
-      onExit={()=>setNotificationsOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setNotificationsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <NotificationsScreen token={token}
+            onExit={()=>setNotificationsOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(documentsOpen&&token&&actor&&
     roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")&&
     (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
-    return <PrivateCaseEvidenceScreen token={token}
-      canViewLetters={roleActions.includes("documents.letters.issue")}
-      onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setDocumentsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <PrivateCaseEvidenceScreen token={token}
+            canViewLetters={roleActions.includes("documents.letters.issue")}
+            onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(branchesOpen&&token&&actor&&roleActions.includes("foundation.branches.view"))
-    return <BranchRegistrationScreen token={token}
-      canManage={roleActions.includes("foundation.branches.manage")}
-      onExit={()=>setBranchesOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setBranchesOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <BranchRegistrationScreen token={token}
+            canManage={roleActions.includes("foundation.branches.manage")}
+            onExit={()=>setBranchesOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(communicationsOpen&&token&&actor&&
     roleActions.includes("communications.notifications.view"))
-    return <SafeAreaView style={{flex:1,backgroundColor:careGangaTheme.background}}>
-      <RecipientNotifications token={token} makeRequest={communicationRequest}
-        onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
-    </SafeAreaView>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setCommunicationsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <SafeAreaView style={{flex:1,backgroundColor:careGangaTheme.background}}>
+            <RecipientNotifications token={token} makeRequest={communicationRequest}
+              onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
+          </SafeAreaView>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(noticeAdminOpen&&token&&actor&&
     (roleActions.includes("communications.notices.manage")||
       roleActions.includes("communications.delivery.process")))
-    return <FoundationNoticeAdminScreen token={token}
-      mayManage={roleActions.includes("communications.notices.manage")}
-      mayApprove={roleActions.includes("communications.notices.approve")}
-      mayProcess={roleActions.includes("communications.delivery.process")}
-      mayViewDelivery={roleActions.includes("communications.delivery.view")}
-      maySelectAccounts={roleActions.includes("accounts.select")}
-      maySelectRoles={roleActions.includes("roles.select")}
-      onExit={()=>setNoticeAdminOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setNoticeAdminOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <FoundationNoticeAdminScreen token={token}
+            mayManage={roleActions.includes("communications.notices.manage")}
+            mayApprove={roleActions.includes("communications.notices.approve")}
+            mayProcess={roleActions.includes("communications.delivery.process")}
+            mayViewDelivery={roleActions.includes("communications.delivery.view")}
+            maySelectAccounts={roleActions.includes("accounts.select")}
+            maySelectRoles={roleActions.includes("roles.select")}
+            onExit={()=>setNoticeAdminOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(supportOpen&&token&&actor&&
     (roleActions.includes("support.cases.view")||
       roleActions.includes("support.faq.manage")))
-    return <FoundationSupportScreen token={token}
-      mayView={roleActions.includes("support.cases.view")}
-      mayManage={roleActions.includes("support.cases.manage")}
-      mayReply={roleActions.includes("support.cases.reply")}
-      mayFaq={roleActions.includes("support.faq.manage")}
-      mayChooseAccounts={roleActions.includes("accounts.select")}
-      onExit={()=>setSupportOpen(false)} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={()=>setSupportOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <FoundationSupportScreen token={token}
+            mayView={roleActions.includes("support.cases.view")}
+            mayManage={roleActions.includes("support.cases.manage")}
+            mayReply={roleActions.includes("support.cases.reply")}
+            mayFaq={roleActions.includes("support.faq.manage")}
+            mayChooseAccounts={roleActions.includes("accounts.select")}
+            onExit={()=>setSupportOpen(false)} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
-    return <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>;
+    return (
+      <ScreenErrorBoundary onExit={closePolicy}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
