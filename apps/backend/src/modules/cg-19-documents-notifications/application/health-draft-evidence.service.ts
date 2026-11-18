@@ -86,7 +86,7 @@ export class HealthDraftEvidenceService{
         "SELECT c.version FROM health_center c "+
         "JOIN health_provider p ON p.id=c.provider_id AND p.root_realm_id=c.root_realm_id "+
         "WHERE c.id=$1 AND c.root_realm_id=$2 AND p.id=$3 "+
-        "AND c.status='PENDING' AND p.status='PENDING' FOR SHARE OF c,p",
+        "AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') FOR SHARE OF c,p",
         [centerRef,actor.realmId,providerRef]);
       if(!r.rows[0])throw new NotFoundException("Current pending center unavailable");
       if(r.rows[0].version!==sourceVersion)
