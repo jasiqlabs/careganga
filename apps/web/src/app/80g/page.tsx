@@ -1,5 +1,3 @@
-import type {Metadata} from "next";
-import {CmsEditorialRoute,editorialMetadata} from "../../features/cms-public-content/cms-editorial-route";
-export const dynamic="force-dynamic";
-export async function generateMetadata():Promise<Metadata>{return editorialMetadata("80g");}
-export default function EditorialPage(){return <CmsEditorialRoute slug="80g"/>;}
+import {permanentRedirect} from "next/navigation";
+/** No duplicate outdated compliance SEO: original client route is the NGO landing. */
+export default function FormerProvisional80gRoute(){permanentRedirect("/ngo-information");}
