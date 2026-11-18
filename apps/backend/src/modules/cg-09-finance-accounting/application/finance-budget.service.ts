@@ -95,6 +95,7 @@ export class FinanceBudgetService{
   if(p.branchRef)
    await this.branches.requireFinanceBranchVersion(tx,actor,p.branchRef,
     p.branchVersion!,"finance.budgets.manage");
+  else await this.branches.requireFinanceRootScope(tx,actor,"finance.budgets.manage");
   const groups=await tx.query(
    "SELECT id FROM account_group WHERE root_realm_id=$1 "+
    "AND category='EXPENSE' AND code=$2 ORDER BY id LIMIT 1 FOR SHARE",
@@ -130,6 +131,10 @@ export class FinanceBudgetService{
    [ref,actor.realmId]);
   if(!rows.rows[0])
    throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
+  if(rows.rows[0].branch_id)
+   await this.branches.requireFinanceActorBranch(tx,actor,rows.rows[0].branch_id,
+    "finance.budgets.manage");
+  else await this.branches.requireFinanceRootScope(tx,actor,"finance.budgets.manage");
   return rows.rows[0];
  }
  async save(bearer:string,raw:unknown,budgetInput?:string){
@@ -326,12 +331,14 @@ export class FinanceBudgetService{
  }
  async eligibleExpenses(bearer:string,budgetInput:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
   const budgetRef=id(budgetInput);
   const budget=await this.db.query<{category_label:string;branch_id:string|null;
    financial_year_id:string;period_start:string;period_end:string;status:string}>(
    "SELECT category_label,branch_id,financial_year_id,period_start::text,"+
-   "period_end::text,status FROM finance_budget WHERE id=$1 AND root_realm_id=$2",
-   [budgetRef,actor.realmId]);
+   "period_end::text,status FROM finance_budget WHERE id=$1 AND root_realm_id=$2 "+
+   "AND ($3::boolean OR branch_id=ANY($4::uuid[]))",
+   [budgetRef,actor.realmId,scope.all,scope.branchRefs]);
   const b=budget.rows[0];
   if(!b||b.status!=="APPROVED")
    throw new ConflictException({code:"FINANCE_BUDGET_NOT_APPROVED"});
@@ -359,6 +366,7 @@ export class FinanceBudgetService{
  }
  async detail(bearer:string,budgetInput:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
   const budgetRef=id(budgetInput);
   const found=await this.db.query<{budgetNumber:string;status:string;version:number;
    name:string;category:string;ceilingMinor:string;financialYearRef:string;
@@ -367,8 +375,9 @@ export class FinanceBudgetService{
    "category_label AS category,approved_ceiling_minor::text AS \"ceilingMinor\","+
    "financial_year_id AS \"financialYearRef\",branch_id AS \"branchRef\","+
    "period_start::text AS start,period_end::text AS end,approval_case_id AS \"approvalCaseRef\" "+
-   "FROM finance_budget WHERE id=$1 AND root_realm_id=$2",
-   [budgetRef,actor.realmId]);
+   "FROM finance_budget WHERE id=$1 AND root_realm_id=$2 "+
+   "AND ($3::boolean OR branch_id=ANY($4::uuid[]))",
+   [budgetRef,actor.realmId,scope.all,scope.branchRefs]);
   const b=found.rows[0];
   if(!b)throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
   const totals=await this.db.query<{allocated:string;committed:string;released:string;utilized:string;applied:string}>(
@@ -393,6 +402,7 @@ export class FinanceBudgetService{
  }
  async list(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    throw new BadRequestException({code:"FINANCE_BUDGET_FILTER_INVALID",field:"offset"});
   const offset=Number(offsetInput??"0");
@@ -404,8 +414,9 @@ export class FinanceBudgetService{
    "approved_ceiling_minor::text AS \"ceilingMinor\",branch_id AS \"branchRef\","+
    "period_start::text AS \"periodStart\",period_end::text AS \"periodEnd\" "+
    "FROM finance_budget WHERE root_realm_id=$1 "+
+   "AND ($3::boolean OR branch_id=ANY($4::uuid[])) "+
    "ORDER BY created_at DESC,id DESC LIMIT 41 OFFSET $2",
-   [actor.realmId,offset]);
+   [actor.realmId,offset,scope.all,scope.branchRefs]);
   return {budgets:rows.rows.slice(0,40),nextOffset:rows.rows.length>40?offset+40:null};
  }
  /** B01 overview is one root-scoped projection over the ONLY budget event store.
@@ -413,6 +424,7 @@ export class FinanceBudgetService{
   */
  async dashboard(bearer:string){
   const actor=await this.actor(bearer);
+  const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
   const rows=await this.db.query<{total:number;drafts:number;submitted:number;approved:number;
    returned:number;rejected:number;archived:number;totalCeilingMinor:string;
    allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
@@ -430,7 +442,7 @@ export class FinanceBudgetService{
    "COALESCE(m.utilized,0) AS utilized "+
    "FROM finance_budget b LEFT JOIN movement m "+
    "ON m.budget_id=b.id AND m.root_realm_id=b.root_realm_id "+
-   "WHERE b.root_realm_id=$1) "+
+   "WHERE b.root_realm_id=$1 AND ($2::boolean OR b.branch_id=ANY($3::uuid[]))) "+
    "SELECT COUNT(*)::int AS total,"+
    "COUNT(*) FILTER(WHERE status='DRAFT')::int AS drafts,"+
    "COUNT(*) FILTER(WHERE status='SUBMITTED')::int AS submitted,"+
@@ -446,7 +458,7 @@ export class FinanceBudgetService{
    "FILTER(WHERE status='APPROVED'),0)::text AS \"availableMinor\","+
    "COALESCE(SUM(GREATEST(outstanding+utilized-approved_ceiling_minor,0)) "+
    "FILTER(WHERE status='APPROVED'),0)::text AS \"overBudgetMinor\" "+
-   "FROM fact",[actor.realmId]);
+   "FROM fact",[actor.realmId,scope.all,scope.branchRefs]);
   return {cards:rows.rows[0],explanation:
    "Approved ceilings and allocations are authorizations, not received funds. Utilized is matched original posted expense only."};
  }
