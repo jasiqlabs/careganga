@@ -27,3 +27,42 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}/>;
 }
+
+type OriginalMediaType="VIDEO"|"PUBLICATION";
+const originalMediaPath=(mediaType:OriginalMediaType)=>
+ mediaType==="VIDEO"?"/videos":"/publications";
+const originalMediaHeading=(section:Record<string,unknown>|undefined,mediaType:OriginalMediaType)=>{
+ const key=mediaType==="VIDEO"?"videosHeading":"publicationsHeading";
+ return typeof section?.[key]==="string"&&section[key].trim()?
+  section[key] as string:mediaType==="VIDEO"?"Videos":"Publications";
+};
+const originalMediaDescription=(section:Record<string,unknown>|undefined,mediaType:OriginalMediaType)=>{
+ const key=mediaType==="VIDEO"?"videosDescription":"publicationsDescription";
+ return typeof section?.[key]==="string"?section[key] as string:"";
+};
+/** Separate original visitor routes, one approved CG-18/CG-19 media source.
+ * Unpublished Gallery/media remain inaccessible; nothing is auto-seeded.
+ */
+export async function originalMediaMetadata(mediaType:OriginalMediaType):Promise<Metadata>{
+ const r=await publishedCmsPage("gallery");
+ if(r.state!=="PUBLISHED"||r.page.kind!=="GALLERY")
+  return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
+ const fields=r.page.sections.find(s=>s.kind==="GALLERY_GRID")?.fields;
+ return {title:originalMediaHeading(fields,mediaType),description:
+  originalMediaDescription(fields,mediaType)||r.page.seoDescription,
+  alternates:{canonical:originalMediaPath(mediaType)},
+  robots:{index:true,follow:true}};
+}
+export async function CmsOriginalMediaRoute({mediaType}:{mediaType:OriginalMediaType}){
+ const [r,navigation,home]=await Promise.all([
+  publishedCmsPage("gallery"),publishedCmsNavigation(),publishedCmsPage("home")]);
+ if(r.state==="NOT_PUBLISHED")notFound();
+ if(r.state!=="PUBLISHED"||r.page.kind!=="GALLERY")
+  return <main className="page main"><h1>Foundation media temporarily unavailable</h1>
+   <p>Approved media information could not be verified.</p>
+   <Link href="/">Return to the homepage</Link></main>;
+ return <CmsPublicPage page={{...r.page,canonicalPath:originalMediaPath(mediaType)}}
+  mediaScope={mediaType} navigation={navigation}
+  siteFooter={home.state==="PUBLISHED"?
+   home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null}/>;
+}
