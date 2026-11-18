@@ -104,7 +104,9 @@ function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
   })}</div>
  </section>;
 }
-function SiteFooter({data}:{data:Record<string,unknown>}){
+function SiteFooter({data,navigation}:{data:Record<string,unknown>;
+ navigation?:PublicCmsNavigation|null}){
+ const isPublished=(path:string)=>navigation?.publishedRoutes?.some(v=>v.path===path)===true;
  const phone=text(data.phone),email=text(data.email),number=phone.replace(/[^0-9]/g,"");
  const legal=["Terms & Conditions","Privacy Policy","Cookie Policy","Disclaimer",
   "Refund & Cancellation","Grievance Redressal","Copyright & Intellectual Property"];
@@ -119,10 +121,15 @@ function SiteFooter({data}:{data:Record<string,unknown>}){
       {phone&&<a href={"tel:"+phone.replace(/[^+0-9]/g,"")}>{phone}</a>}
       {email&&<a href={"mailto:"+email}>{email}</a>}</address>
     </div>
-    <div><h3>QUICK LINKS</h3><Link href="/about">About Us</Link>
+    <div><h3>QUICK LINKS</h3>
+     {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
+     {isPublished("/impact")&&<Link href="/impact">Our Impact</Link>}
+     {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
+     {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
      <Link href="/contact">Contact</Link></div>
     <div><h3>POLICIES & LEGAL</h3>
-     {legal.map(item=><span key={item}>{item}</span>)}</div>
+     {legal.map(item=><span key={item}>{item}</span>)}
+     {isPublished("/80g")&&<Link href="/80g">80G &amp; Registration</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
      <p className="cg-site-muted">Newsletter registration is not yet available.</p>
@@ -188,6 +195,6 @@ export function CmsPublicPage({page,navigation,siteFooter}:{
      return null;
     })}
   </div>
-  <SiteFooter data={footer}/>
+  <SiteFooter data={footer} navigation={navigation}/>
  </main>;
 }
