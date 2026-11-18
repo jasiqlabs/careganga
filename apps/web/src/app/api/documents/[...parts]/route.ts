@@ -38,6 +38,8 @@ function healthDraftEvidence(parts:string[],method:"GET"|"POST"){
   if(parts.length===4&&parts[1]==="intents"&&UUID.test(parts[2])&&
     parts[3]==="confirm")return method==="POST";
   if(parts.length===3&&parts[1]==="providers"&&UUID.test(parts[2]))return method==="GET";
+  if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
+    parts[3]==="download")return method==="GET";
   if(parts.length===4&&parts[1]==="files"&&UUID.test(parts[2])&&
     ["revoke","download"].includes(parts[3]))
     return method===(parts[3]==="revoke"?"POST":"GET");
@@ -106,7 +108,9 @@ async function proxy(request:NextRequest,parts:string[],method:"GET"|"POST"){
   const download=(parts.length===3&&
     (parts[0]==="files"||parts[0]==="letters")&&parts[2]==="download")||
     (parts.length===4&&["branch-evidence","active-branch-files","health-draft"].includes(parts[0])&&
-      parts[1]==="files"&&parts[3]==="download");
+      parts[1]==="files"&&parts[3]==="download")||
+    (parts.length===4&&parts[0]==="health-draft"&&parts[1]==="reviews"&&
+      parts[3]==="download");
   try{
     const path="/api/documents/"+parts.join("/");
     const target=new URL(path,process.env.BACKEND_URL);
