@@ -158,15 +158,18 @@ export function StaffAuthenticationScreen(){
         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
       });
       if(!response.ok){
-        const payload:unknown=response.status===400?await response.json().catch(()=>null):null;
+        const payload:unknown=[400,401].includes(response.status)?
+          await response.json().catch(()=>null):null;
         const data=payload&&typeof payload==="object"&&!Array.isArray(payload)?
           payload as Record<string,unknown>:{};
         const codes=new Set(["IDENTITY_IDENTIFIER_REQUIRED","IDENTITY_IDENTIFIER_INVALID",
           "IDENTITY_PASSWORD_REQUIRED","IDENTITY_PASSWORD_TOO_LONG"]);
-        const isSafe=response.status===400&&typeof data.code==="string"&&codes.has(data.code);
+        const isSafe=(response.status===400&&typeof data.code==="string"&&codes.has(data.code))||
+          (response.status===401&&data.code==="IDENTITY_LOGIN_INVALID");
         const field=isSafe&&(data.field==="identifier"||data.field==="password")?data.field:null;
         setLoginFieldError(field);
-        setMessage(isSafe&&typeof data.message==="string"&&data.message.length<=220?
+        setMessage(isSafe&&typeof data.message==="string"&&data.message.length>=16&&
+          data.message.length<=220?
           data.message:response.status===429?"Too many login attempts. Please try later.":
           response.status===401?"Mobile number/email or password is incorrect.":
           response.status===400?"Check your mobile/email and password details.":
