@@ -21,7 +21,7 @@ const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
  "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
- "GALLERY","ARTICLE","DOCUMENT","IMPACT"]);
+ "GALLERY","ARTICLE","DOCUMENT","IMPACT","CONTACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
 const NOTICE_CURRENT_SQL=
  "AND NOT EXISTS(SELECT 1 FROM cms_section_revision ns "+
@@ -69,7 +69,7 @@ type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
  "COMPLIANCE_FACTS"|"GALLERY_GRID"|"ARTICLE_BODY"|"HEALTHCARE_CATEGORIES"|"CONTACT_INFO";order:number;
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
- "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT"|"IMPACT";
+ "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT"|"IMPACT"|"CONTACT";
  altText:string;order:number};
 // Only reveal media when its exact authored section or indexed card still exists.
 const IMAGE_MIME=new Set(["image/jpeg","image/png","image/webp"]);
@@ -98,6 +98,8 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
    Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
   if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;
   if(a.role==="IMPACT")return s.kind==="IMPACT_GROUP"&&a.order===s.order;
+  if(a.role==="CONTACT")return s.kind==="CONTACT_INFO"&&
+   Number.isSafeInteger(a.order)&&a.order>=0&&a.order<3;
   if(a.role==="DOCUMENT")return s.kind==="COMPLIANCE_FACTS"&&
     Array.isArray(s.fields.documents)&&a.order<s.fields.documents.length;
   return false;
