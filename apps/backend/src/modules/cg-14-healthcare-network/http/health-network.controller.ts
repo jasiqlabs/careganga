@@ -1,13 +1,15 @@
 import {BadRequestException,Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {HealthNetworkService} from "../application/health-network.service";
 import {HealthDoctorFeesService} from "../application/health-doctor-fees.service";
+import {HealthDoctorDraftService} from "../application/health-doctor-draft.service";
 import {HealthReviewWorkflowService} from "../application/health-review-workflow.service";
 
 @Controller("api/v1/health-network")
 export class HealthNetworkController{
   constructor(private readonly network:HealthNetworkService,
     private readonly reviews:HealthReviewWorkflowService,
-    private readonly fees:HealthDoctorFeesService){}
+    private readonly fees:HealthDoctorFeesService,
+    private readonly doctors:HealthDoctorDraftService){}
   @Get("representatives/options")
   representatives(@Headers("authorization")bearer:string,@Query("search")search?:string){
     return this.network.representativeOptions(bearer,search);
@@ -134,6 +136,16 @@ export class HealthNetworkController{
     @Param("centerRef")ref:string,
     @Param("affiliationRef")affiliationRef:string,@Body()body:unknown){
     return this.network.revokeRepresentative(bearer,ref,affiliationRef,body);
+  }
+  @Get("my-centers/:centerRef/eligible-doctors")
+  ownEligibleDoctors(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Query("q")q?:string){
+    return this.doctors.ownEligibleDoctors(bearer,ref,q??"");
+  }
+  @Post("my-centers/:centerRef/doctors")
+  proposeOwnDoctor(@Headers("authorization")bearer:string,
+    @Param("centerRef")ref:string,@Body()body:unknown){
+    return this.doctors.proposeOwnCenter(bearer,ref,body);
   }
   @Get("my-centers/:centerRef/doctors")
   ownDoctors(@Headers("authorization")bearer:string,
