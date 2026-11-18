@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {Metadata} from "next";
 import {notFound} from "next/navigation";
 import {CmsPublicPage} from "./cms-public-page";
+import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 
 /** One SSR source for each approved Foundation editorial route.
@@ -88,23 +89,8 @@ export async function CmsOriginalNgoInformationRoute(){
   return <main className="page main"><h1>Foundation registration information unavailable</h1>
    <p>We cannot verify the current approved official information.</p>
    <Link href="/">Return to the homepage</Link></main>;
- const unavailable=["PAN Details","Registration Certificate","Annual Reports",
-  "Financial Reports","Transparency & Compliance","Policies & Documents"];
- const sidebar=<nav aria-label="Original NGO Information sections">
-  <p className="cg-site-ngo-breadcrumb"><Link href="/">Home</Link> / NGO Information</p>
-  <h2>NGO Information</h2>
-  <Link className="cg-site-ngo-selected" href="/ngo-information" aria-current="page">
-   80G Registration</Link>
-  {unavailable.map(label=><span className="cg-site-unavailable" aria-disabled="true"
-   title="Verified current Foundation source has not been published" key={label}>
-   {label}</span>)}
-  <div className="cg-site-ngo-secondary">
-   <span className="cg-site-unavailable" aria-disabled="true">Join Us</span>
-   <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>
-  </div>
- </nav>;
  return <CmsPublicPage page={{...r.page,canonicalPath:"/ngo-information"}}
-  sidebar={sidebar} navigation={navigation}
+  sidebar={<CmsNgoSidebar page={r.page}/>} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null}/>;
 }
