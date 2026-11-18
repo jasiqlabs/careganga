@@ -255,6 +255,16 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
    target_account_id,target_role_id,expected_access_version,expected_role_revision)=0)
 
 );
+-- The pre-existing healthcare-only invariant must recognize the third
+-- typed healthcare case. Other CG03 families still have no health source.
+ALTER TABLE cg03_case DROP CONSTRAINT cg03_case_health_only_source;
+ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_health_only_source CHECK(
+ case_kind IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION',
+  'HEALTH_DOCTOR_VERIFICATION')
+ OR num_nonnulls(health_provider_id,health_center_id,
+   health_provider_revision_id,health_center_revision_id,
+   health_revision_no,health_source_digest)=0
+);
 ALTER TABLE cg03_case ADD CONSTRAINT cg03_doctor_only_source CHECK(
  (case_kind='HEALTH_DOCTOR_VERIFICATION' AND
   health_doctor_id IS NOT NULL AND health_doctor_revision_id IS NOT NULL AND
