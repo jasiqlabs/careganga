@@ -14,11 +14,12 @@ async function api<T>(path:string,init?:RequestInit){
   typeof data.message==="string"?data.message:"Review outcome could not be confirmed.");
  return data as T;
 }
-export function CenterContentReviewInbox(){
+export function CenterContentReviewInbox({canPublish}:{canPublish:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
  const [remarks,setRemarks]=useState(""),[password,setPassword]=useState("");
+ const [publicationPassword,setPublicationPassword]=useState("");
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),key=useRef(""),epoch=useRef(0);
@@ -35,7 +36,8 @@ export function CenterContentReviewInbox(){
   const n=++epoch.current;setDetail(null);setError("");setNotice("");
   try{
    const data=await api<Detail>(encodeURIComponent(ref));
-   if(n===epoch.current){setDetail(data);setPassword("");key.current="";setUncertain(false);}
+   if(n===epoch.current){setDetail(data);setPassword("");setPublicationPassword("");
+    key.current="";setUncertain(false);}
   }catch(e){if(n===epoch.current)setError(
    e instanceof Error?e.message:"Current review unavailable.");}
  }
@@ -61,39 +63,43 @@ export function CenterContentReviewInbox(){
   finally{setBusy(false);}
  }
  async function publish(){
-  if(!detail||busy||uncertain||detail.status!=="PENDING_OWNER")return;
+  if(!detail||busy||uncertain||!canPublish||publicationPassword.length<8||
+    detail.status!=="PENDING_OWNER")return;
   setBusy(true);setError("");setNotice("");
   try{
    const ref=detail.caseRef;
    const r=await fetch("/api/health-network/my-centers/content/reviews/"+
     encodeURIComponent(ref)+"/apply",{
     method:"POST",credentials:"same-origin",cache:"no-store",
-    headers:{"Content-Type":"application/json"},body:"{}"
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({currentPassword:publicationPassword})
    });
    const data:unknown=await r.json().catch(()=>null);
    if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
     typeof data.message==="string"?data.message:
     "Publication was not confirmed. Refresh the original case.");
-   await load();await select(ref);
+   setPublicationPassword("");await load();await select(ref);
    setNotice("Independently approved center presentation was published.");
   }catch(e){setUncertain(true);setError(
    e instanceof Error?e.message:"Publication unconfirmed. Recheck the original case.");}
   finally{setBusy(false);}
  }
  async function withdraw(){
-  if(!detail||busy||uncertain||detail.status!=="OWNER_COMPLETED")return;
+  if(!detail||busy||uncertain||!canPublish||publicationPassword.length<8||
+    detail.status!=="OWNER_COMPLETED")return;
   setBusy(true);setError("");setNotice("");
   try{
    const r=await fetch("/api/health-network/my-centers/"+
     encodeURIComponent(detail.centerRef)+"/content/withdraw",{
     method:"POST",credentials:"same-origin",cache:"no-store",
-    headers:{"Content-Type":"application/json"},body:"{}"
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({currentPassword:publicationPassword})
    });
    const data:unknown=await r.json().catch(()=>null);
    if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
     typeof data.message==="string"?data.message:
     "Withdrawal was not confirmed. Recheck the published center.");
-   setNotice("Approved center presentation was withdrawn from public pages.");
+   setPublicationPassword("");setNotice("Approved center presentation was withdrawn from public pages.");
   }catch(e){setUncertain(true);setError(
    e instanceof Error?e.message:"Withdrawal outcome unconfirmed.");}
   finally{setBusy(false);}
@@ -121,13 +127,19 @@ export function CenterContentReviewInbox(){
    <p>Review: {detail.reference} · {detail.status.replaceAll("_"," ")}</p>
    {!detail.content&&<p>This review is not awaiting another decision.
     Refresh the original center status to check its outcome.</p>}
-   {detail.status==="PENDING_OWNER"&&
-     <button type="button" className="primary" disabled={busy||uncertain}
+   {canPublish&&["PENDING_OWNER","OWNER_COMPLETED"].includes(detail.status)&&
+    <label>Confirm publication change with your current Foundation password
+     <input type="password" autoComplete="current-password"
+      value={publicationPassword} disabled={busy}
+      onChange={e=>setPublicationPassword(e.target.value)}/>
+    </label>}
+   {detail.status==="PENDING_OWNER"&&canPublish&&
+     <button type="button" className="primary" disabled={busy||uncertain||publicationPassword.length<8}
       onClick={()=>void publish()}>
       Publish independently approved content
      </button>}
-   {detail.status==="OWNER_COMPLETED"&&
-     <button type="button" disabled={busy||uncertain}
+   {detail.status==="OWNER_COMPLETED"&&canPublish&&
+     <button type="button" disabled={busy||uncertain||publicationPassword.length<8}
       onClick={()=>void withdraw()}>
       Withdraw currently published center presentation
      </button>}
