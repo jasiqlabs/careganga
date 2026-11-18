@@ -47,7 +47,8 @@ export default async function HealthcareDoctorsPage(){
         canViewDocuments={keys.has("documents.files.view")}
         canViewFinance={keys.has("finance.accounts.view")}/>
       <main className="workspace">
-        <DoctorOnboarding canManage={keys.has("health.doctors.manage")}/>
+        <DoctorOnboarding canManage={keys.has("health.doctors.manage")}
+          canVerify={keys.has("health.doctors.verify")}/>
       </main>
     </div>;
   }catch(e){
