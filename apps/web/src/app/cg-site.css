@@ -344,3 +344,10 @@
  font-weight:850;letter-spacing:.07em}
 .cg-site-newsletter-button:disabled{cursor:not-allowed;opacity:.7}
 .cg-site-footer [aria-disabled="true"]{cursor:default;opacity:.7}
+
+
+.cg-site-policy-title{padding-bottom:.35rem}
+.cg-site-policy-title h1{font-family:Georgia,"Times New Roman",serif;
+ color:#183e34;font-size:clamp(2rem,4vw,3.4rem);line-height:1.12;margin:.35rem 0 .85rem}
+.cg-site-policy-title+.cg-site-article{padding-top:0}
+.cg-site-policy-title~.cg-site-article .cg-site-body{white-space:pre-wrap}
