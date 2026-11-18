@@ -224,14 +224,12 @@ function parseContent(raw:unknown):Content{
    out.heading=text(fields.heading??"Our team","heading",160,3);
    if(!Array.isArray(fields.members)||fields.members.length>15)
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"members"});
-   out.members=fields.members.map((member:unknown)=>{
-    const m=input(member,["name","designation","bio","consentConfirmed"]);
-    if(m.consentConfirmed!==true)
-     throw new BadRequestException({code:"CMS_TEAM_CONSENT_REQUIRED"});
-    return {name:text(m.name,"name",100,2),
-     designation:text(m.designation,"designation",100,2),
-     bio:text(m.bio??"","bio",600),consentConfirmed:true};
-   });
+   // CG-18 owns page layout, not permission to release a person's HR/member
+   // identity. CG-10/CG-04 verified active status and revocable consent do not
+   // yet have a delivered public projection. A CMS checkbox is not that source.
+   if(fields.members.length>0)
+    throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+   out.members=[];
   }else if(sec.kind==="FEATURE_CARDS"){
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
    out.heading=text(fields.heading,"heading",160,3);
@@ -1065,12 +1063,13 @@ export class CmsEditorialService{
     fields:v.section_kind==="ARTICLE_BODY"?
       Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):
+     v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
      v.section_kind==="GALLERY_GRID"?{...v.structured_fields,
       items:Array.isArray(v.structured_fields.items)?
        (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>
         item&&item.visible!==false?[{...item,originalIndex:index}]:[]):[]}:
      v.structured_fields})),
-   assets:visibleAssets.filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
+   assets:visibleAssets.filter(v=>v.role!=="TEAM").filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
  }
