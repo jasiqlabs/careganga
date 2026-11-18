@@ -29,6 +29,8 @@ const errors=new Set([
   "HEALTH_ERP_GRANT_INVALID","HEALTH_ERP_GRANT_CHANGED","HEALTH_ERP_GRANT_SOURCE_CHANGED"
 ]);
 function allowed(parts:string[],method:string){
+  if(parts.length===3&&parts[0]==="my-centers"&&parts[1]==="content"&&
+    parts[2]==="publishing")return method==="GET";
   if(parts[0]==="erp-grants"){
     if(parts.length===2&&parts[1]==="foundation")return method==="GET";
     if(parts.length===3&&parts[1]==="my-centers"&&UUID.test(parts[2]))
