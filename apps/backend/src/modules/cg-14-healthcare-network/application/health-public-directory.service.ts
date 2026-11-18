@@ -8,6 +8,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG=/^[a-z0-9][a-z0-9-]{2,79}$/;
 type Search={q:string;after:string;category:string;center:string;specialty:string;
   pin:string;state:string;district:string;block:string;facility:string;
+  service:string;day:number|null;
   minFee:number|null;maxFee:number|null;minExperience:number|null;maxExperience:number|null};
 type CenterRow={public_slug:string;center_name:string;provider_name:string;
   center_type:string;address:string;pin_code:string;public_phone:string|null;
@@ -30,7 +31,8 @@ function parse(value:unknown):Search{
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const x=value as Record<string,unknown>;
   if(Object.keys(x).some(k=>!["q","after","category","specialty","pin",
-    "state","district","block","facility","minExperience","maxExperience",
+    "state","district","block","facility","service","day",
+    "minExperience","maxExperience",
     "minFee","maxFee","center"].includes(k)))
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const q=safe(x.q,"q"),after=safe(x.after,"after",130),
@@ -38,7 +40,7 @@ function parse(value:unknown):Search{
     category=safe(x.category,"category",40),specialty=safe(x.specialty,"specialty",60),
     pin=safe(x.pin,"pin",6),state=safe(x.state,"state",36),
     district=safe(x.district,"district",36),block=safe(x.block,"block",36),
-    facility=safe(x.facility,"facility",80);
+    facility=safe(x.facility,"facility",80),service=safe(x.service,"service",30);
   if(after&&!SLUG.test(after)&&!/^([a-z0-9][a-z0-9-]{2,79})~([0-9a-f-]{36})$/.test(after)||
     center&&!SLUG.test(center)||pin&&!/^[1-9][0-9]{5}$/.test(pin)||
     state&&!UUID.test(state)||district&&!UUID.test(district)||
@@ -54,6 +56,11 @@ function parse(value:unknown):Search{
       throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:k});
     return Number(x[k])*100;
   };
+  if(service&&!["CONSULTATION","DIAGNOSTICS","PHARMACY","NURSING","SURGERY","EMERGENCY"].includes(service))
+   throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"service"});
+  const day=x.day===undefined?null:Number(x.day);
+  if(day!==null&&(typeof x.day!=="string"||!/^[0-6]$/.test(x.day)))
+   throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"day"});
   const minFee=amount("minFee"),maxFee=amount("maxFee");
   if(minFee!==null&&maxFee!==null&&minFee>maxFee)
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"maxFee"});
@@ -67,7 +74,7 @@ function parse(value:unknown):Search{
   const minExperience=years("minExperience"),maxExperience=years("maxExperience");
   if(minExperience!==null&&maxExperience!==null&&minExperience>maxExperience)
    throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"maxExperience"});
-  return {q,after,category,center,specialty,pin,state,district,block,facility,
+  return {q,after,category,center,specialty,pin,state,district,block,facility,service,day,
    minFee,maxFee,minExperience,maxExperience};
 }
 /**
@@ -144,7 +151,8 @@ export class HealthPublicDirectoryService{
       s.category||null,s.pin||null,s.state||null,s.district||null,
       s.after||null,s.specialty?("%"+escapeLike(s.specialty)+"%"):null,
       s.minFee,s.maxFee,s.center||null,s.minExperience,s.maxExperience,
-      s.block||null,s.facility?("%"+escapeLike(s.facility)+"%"):null
+      s.block||null,s.facility?("%"+escapeLike(s.facility)+"%"):null,
+      s.service||null,s.day
     ] as (string|number|null)[],
       common:"AND ($2::text IS NULL OR c.center_type=$2) "+
         "AND ($3::text IS NULL OR c.pin_code=$3) "+
@@ -165,7 +173,13 @@ export class HealthPublicDirectoryService{
         "JOIN LATERAL jsonb_array_elements_text("+
         "COALESCE(cr.source_snapshot->'facilities','[]'::jsonb)) facility(value) ON TRUE "+
         "WHERE cp.root_realm_id=c.root_realm_id AND cp.center_id=c.id "+
-        "AND cp.withdrawn_at IS NULL AND facility.value ILIKE $14 ESCAPE '\\')) "};
+        "AND cp.withdrawn_at IS NULL AND facility.value ILIKE $14 ESCAPE '\\')) "+
+        "AND ($15::text IS NULL OR EXISTS(SELECT 1 FROM health_center_capability cap "+
+        "WHERE cap.root_realm_id=c.root_realm_id AND cap.center_id=c.id "+
+        "AND cap.capability_code=$15)) "+
+        "AND ($16::integer IS NULL OR EXISTS(SELECT 1 FROM health_center_hours h "+
+        "WHERE h.root_realm_id=c.root_realm_id AND h.center_id=c.id "+
+        "AND h.weekday=$16)) "};
   }
   /** Public-safe location choices derive only from current eligible centers,
    * never expose private future centers or technical UUIDs as UI labels.
