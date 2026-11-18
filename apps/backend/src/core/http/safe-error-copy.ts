@@ -206,7 +206,11 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_DOCTOR_NOT_PENDING:"This doctor is no longer a pending editable draft.",
       HEALTH_DOCTOR_VERSION_CHANGED:"The doctor registration changed. Refresh and review the current details.",
       HEALTH_DOCTOR_UNAVAILABLE:"The requested private doctor record is unavailable to your role.",
-      HEALTH_DOCTOR_NOT_VERIFIED:"A doctor must have independent professional verification before joining a center."
+      HEALTH_DOCTOR_NOT_VERIFIED:"A doctor must have independent professional verification before joining a center.",
+      HEALTH_DOCTOR_EVIDENCE_INVALID:"Select a supported private professional document and check its details.",
+      HEALTH_DOCTOR_EVIDENCE_SOURCE_CHANGED:"The doctor registration or original proof changed. Refresh the current draft before continuing.",
+      HEALTH_DOCTOR_EVIDENCE_NOT_VERIFIED:"Choose an original clean scanned doctor license from CG-19.",
+      HEALTH_DOCTOR_EVIDENCE_REPLAY_CONFLICT:"This private doctor upload request was used for different details. Check its original status."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
