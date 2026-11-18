@@ -1,11 +1,12 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {CenterPhotoUploader} from "./center-photo-uploader";
 type Content={description:string;services:string[];facilities:string[];
- hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
+ hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];media:string[]};
 type Snapshot={centerRef:string;version:number;state:string;content:Content;
  reviewCaseRef:string|null;reviewStatus:string|null};
 const EMPTY:Content={description:"",services:[],facilities:[],
- hoursNote:"",publicEmail:"",faqs:[]};
+ hoursNote:"",publicEmail:"",faqs:[],media:[]};
 async function api<T>(ref:string,init?:RequestInit):Promise<T>{
  const r=await fetch("/api/health-network/my-centers/"+encodeURIComponent(ref)+"/content",{
   ...init,cache:"no-store",credentials:"same-origin"});
@@ -118,6 +119,10 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
       disabled={busy||snapshot.state==="SUBMITTED"}
       onChange={e=>change({publicEmail:e.target.value})}/></label>
    </div>
+   <CenterPhotoUploader key={centerRef} centerRef={centerRef}
+    version={snapshot.version} media={content.media??[]}
+    disabled={busy||snapshot.state==="SUBMITTED"}
+    onChange={media=>change({media})}/>
    <h3>Center-specific questions and answers</h3>
    {content.faqs.map((faq,i)=><div className="form-grid" key={i}>
     <label>Question {i+1}
