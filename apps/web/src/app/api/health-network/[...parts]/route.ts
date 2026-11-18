@@ -18,17 +18,22 @@ const errors=new Set([
   "HEALTH_DOCTOR_NOT_PENDING","HEALTH_DOCTOR_VERSION_CHANGED",
   "HEALTH_DOCTOR_UNAVAILABLE","HEALTH_DOCTOR_NOT_VERIFIED",
   "HEALTH_DOCTOR_REVIEW_INVALID","HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED",
-  "HEALTH_DOCTOR_REVIEW_UNAVAILABLE"
+  "HEALTH_DOCTOR_REVIEW_UNAVAILABLE","HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE",
+  "HEALTH_DOCTOR_ASSOCIATION_CHANGED"
 ]);
 function allowed(parts:string[],method:string){
   // Doctor drafts are private and permission-checked again in CG01/Nest.
   // No public routes, approval, fee, booking or consent claims are exposed.
   if(parts[0]==="doctors"){
     if(parts.length===1)return method==="GET"||method==="POST";
+    if(parts.length===2&&parts[1]==="eligible-centers")return method==="GET";
     if(parts.length===2&&UUID.test(parts[1]))
       return method==="GET"||method==="PATCH";
     if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="centers")
       return method==="GET"||method==="POST";
+    if(parts.length===5&&UUID.test(parts[1])&&parts[2]==="centers"&&
+      UUID.test(parts[3])&&["approve","suspend"].includes(parts[4]))
+      return method==="POST";
     if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="submit")
       return method==="POST";
     if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
