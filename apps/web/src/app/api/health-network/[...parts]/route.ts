@@ -19,6 +19,9 @@ function allowed(parts:string[],method:string){
     if(parts[0]==="providers")return method==="GET"||method==="POST";
     if(parts[0]==="geography"||parts[0]==="my-centers")return method==="GET";
   }
+  if(parts.length===2&&parts[0]==="representatives"&&parts[1]==="options"){
+    return method==="GET";
+  }
   if(parts.length===2&&UUID.test(parts[1])){
     if(parts[0]==="providers")return method==="GET";
     if(parts[0]==="my-centers")return method==="GET"||method==="PATCH";
