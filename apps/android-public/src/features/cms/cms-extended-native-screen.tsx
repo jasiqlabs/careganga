@@ -70,6 +70,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   return <View style={styles.section}>
    <Text style={styles.eyebrow}>Registration &amp; disclosures</Text>
    <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
+   {f.verification==="VERIFIED"&&!!text(f.badgeText)&&
+    <Text style={styles.source}>{text(f.badgeText)}</Text>}
+   {!!text(f.subtitle)&&<Text style={styles.orangeHeading}>{text(f.subtitle)}</Text>}
    <Text style={styles.body}>{text(f.summary)}</Text>
    <Text style={styles.value}>{f.verification==="VERIFIED"?
     "Document-supported Foundation declaration":
@@ -89,6 +92,10 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    })}
    {f.verification==="VERIFIED"&&url&&!rows(f.documents).length&&
     <Action title="Open approved proof" onPress={()=>open(url)}/>}
+   {!!text(f.importantNote)&&<View style={styles.item}>
+    <Text style={styles.itemTitle}>Important</Text>
+    <Text style={styles.body}>{text(f.importantNote)}</Text>
+   </View>}
    <Text style={styles.body}>{text(f.disclaimer)}</Text>
   </View>;
  }
@@ -175,6 +182,7 @@ const styles=StyleSheet.create({
  source:{fontSize:13,lineHeight:20,color:t.mutedText},
  highlight:{fontSize:24,fontWeight:"800",color:"#20824c"},
  quote:{fontSize:18,fontStyle:"italic",lineHeight:27,color:"#306b4a"},
+ orangeHeading:{fontSize:17,fontWeight:"800",color:"#bd5a12"},
  item:{borderRadius:10,backgroundColor:"#f2f7f0",padding:13,gap:7},
  itemTitle:{fontSize:18,fontWeight:"700",color:"#1c4a3a"},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
