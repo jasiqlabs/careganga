@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {Suspense} from "react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
+import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient} from "./cms-gallery-grid-client";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
@@ -15,16 +16,20 @@ const label=(source:unknown,asOf:unknown)=>source||asOf?
   <span> · Editorial information; not an audited financial statement</span>
  </p>:null;
 
-export function CmsImpactGroup({section,assets}:{
- section:PublicCmsSection;assets:Asset[]}){
+export function CmsImpactGroup({section,assets,navigation}:{
+ section:PublicCmsSection;assets:Asset[];navigation?:PublicCmsNavigation|null}){
  const f=section.fields,group=text(f.group),rows=records(f.items);
  const pic=assets.find(a=>a.role==="IMPACT"&&a.order===section.order);
  const tabular=["STATS","GROWTH","BREAKDOWN"].includes(group);
  const heading=text(f.heading);
  return <section className={"cg-site-content cg-site-impact-group cg-site-impact-"+group.toLowerCase()}>
   <div className="cg-site-impact-heading">
-   <p className="cg-site-eyebrow">{group.replaceAll("_"," ")}</p>
-   <h2>{heading}</h2>
+   <p className="cg-site-eyebrow">{group==="HERO"&&text(f.eyebrow)?
+    text(f.eyebrow):group.replaceAll("_"," ")}</p>
+   <h2>{heading}{group==="HERO"&&!!text(f.highlight)&&<>
+    {" "}<span className="cg-site-impact-highlight">{text(f.highlight)}</span></>}</h2>
+   {group==="HERO"&&!!text(f.quote)&&
+    <blockquote className="cg-site-impact-quote">{text(f.quote)}</blockquote>}
    {text(f.intro)&&<p>{text(f.intro)}</p>}
    {label(f.source,f.asOfDate)}
   </div>
@@ -45,11 +50,16 @@ export function CmsImpactGroup({section,assets}:{
   </div>:rows.length>0?<div className="cg-site-impact-grid">{rows.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
     <h3>{text(v.title)}</h3>{text(v.description)&&<p>{text(v.description)}</p>}
+    {group==="GEOGRAPHY"&&["HIGH","MEDIUM","EXPANDING"].includes(text(v.level))&&
+     <span className="cg-site-impact-reach">
+      {text(v.level).charAt(0)+text(v.level).slice(1).toLowerCase()} reach
+     </span>}
     {typeof v.percentage==="number"&&<strong>{v.percentage}%</strong>}
     {typeof v.value==="number"&&<strong>{v.value} {text(v.unit)}</strong>}
    </article>)}</div>:null}
-  {group==="CTA"&&text(f.ctaPath)&&text(f.ctaLabel)&&
-   ["/","/about","/contact","/impact","/gallery","/healthcare","/80g"].includes(text(f.ctaPath))&&
+  {["CTA","HERO"].includes(group)&&text(f.ctaPath)&&text(f.ctaLabel)&&
+   (["/","/contact"].includes(text(f.ctaPath))||
+    navigation?.publishedRoutes?.some(p=>p.path===text(f.ctaPath)))&&
    <Link className="cg-site-action" href={text(f.ctaPath)}>{text(f.ctaLabel)}</Link>}
  </section>;
 }
