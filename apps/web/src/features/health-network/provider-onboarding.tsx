@@ -11,7 +11,8 @@ type Row={providerRef:string;code:string;name:string;type:string;
 type Detail={provider:{providerRef:string;code:string;name:string;status:string;version:number;
  type:string;contactName:string;contactPhone:string;
  contactEmail:string|null;registrationRef:string|null};centers:{
- centerRef:string;code:string;name:string;type:string;status:string;version:number}[]};
+ centerRef:string;code:string;name:string;type:string;status:string;version:number;
+ accessState:string;publicationState:string;publicSlug:string|null;publicationGeneration:number}[]};
 type Option={value:string;label:string};
 type CenterDetail={centerRef:string;version:number;center:CenterDraft};
 const types=[["HOSPITAL","Hospital"],["CLINIC","Clinic"],
@@ -90,6 +91,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [centerProofs,setCenterProofs]=useState<Record<string,string>>({});
   const [accessPassword,setAccessPassword]=useState("");
   const [publicationPassword,setPublicationPassword]=useState("");
+  const [suspensionPassword,setSuspensionPassword]=useState("");
   const [publicSlug,setPublicSlug]=useState("");
   const reviewRequestKeys=useRef<Record<string,string>>({});
   const [existingBankProof,setExistingBankProof]=useState("");
@@ -118,7 +120,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   async function open(ref:string){
     setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
     setEditingProvider(false);setProviderProof("");setCenterProofs({});
-    setAccessPassword("");setPublicationPassword("");
+    setAccessPassword("");setPublicationPassword("");setSuspensionPassword("");
     try{
       await loadDetail(ref);
       if(canViewFinance){
@@ -316,6 +318,30 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         typeof e.status==="number"&&e.status<500))setUncertain(true);
     }finally{setBusy(false);}
   }
+  async function suspendOriginal(kind:"providers"|"centers",ref:string,version:number){
+    if(!canVerify||busy||uncertain||suspensionPassword.length<8)return;
+    setBusy(true);setError("");setNotice("");
+    const stable="suspend:"+kind+":"+ref;
+    if(!reviewRequestKeys.current[stable])
+      reviewRequestKeys.current[stable]=crypto.randomUUID();
+    try{
+      await api(kind+"/"+encodeURIComponent(ref)+"/suspend","POST",{
+        requestKey:reviewRequestKeys.current[stable],expectedVersion:version,
+        currentPassword:suspensionPassword
+      });
+      delete reviewRequestKeys.current[stable];
+      setSuspensionPassword("");
+      if(selected)await loadDetail(selected.provider.providerRef);
+      await loadList();
+      setNotice(kind==="providers"?
+        "Provider suspended. Its centers are no longer publicly visible or active.":
+        "Center suspended. Its access and public listing have been withdrawn.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Suspension outcome could not be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
   async function saveBank(){
     if(!selected||!bankProof||!canManageFinance||busy)return;
     setBusy(true);setError("");
@@ -378,6 +404,21 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         <h2>{selected.provider.name}</h2><p>Provider status: {selected.provider.status.replaceAll("_"," ")}.
           {selected.provider.status!=="VERIFIED"?" Centers cannot be publicly published.":""}</p>
         <p>Contact: {selected.provider.contactName} · {selected.provider.contactPhone}</p>
+        {canVerify&&selected.provider.status==="VERIFIED"&&
+          <div className="form-section">
+            <h3>Independent suspension</h3>
+            <p>Suspension withdraws all provider center access and public listings.
+              Restoration requires a fresh Foundation review.</p>
+            <label className="field">Confirm your password
+              <input type="password" minLength={8} autoComplete="current-password"
+                value={suspensionPassword} disabled={busy||uncertain}
+                onChange={e=>{setSuspensionPassword(e.target.value);
+                  delete reviewRequestKeys.current["suspend:providers:"+selected.provider.providerRef];}}/>
+            </label>
+            <button type="button" disabled={busy||uncertain||suspensionPassword.length<8}
+              onClick={()=>void suspendOriginal("providers",selected.provider.providerRef,
+                selected.provider.version)}>Suspend provider and its centers</button>
+          </div>}
         {canManage&&selected.provider.status==="PENDING"&&<button type="button" onClick={()=>{
           setProvider({providerCode:selected.provider.code,legalName:selected.provider.name,
             providerType:selected.provider.type,contactName:selected.provider.contactName,
@@ -414,6 +455,64 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" disabled={!account||busy}
               onClick={()=>void assign(center.centerRef)}>Assign to this center</button>
           </div>}
+          {center.status==="VERIFIED"&&
+            <div className="form-section">
+              <p><strong>Current center status:</strong> verified.
+                Access: {center.accessState==="ENABLED"?"Enabled":"Disabled"}.
+                Public listing: {center.publicationState==="PUBLISHED"?"Published":"Not published"}.
+              </p>
+              {center.publicationState==="PUBLISHED"&&center.publicSlug&&
+                <p><Link href={"/healthcare/centers/"+encodeURIComponent(center.publicSlug)}>
+                  View current public center page</Link></p>}
+              {canActivate&&<div className="form">
+                <label className="field">Confirm password for center access
+                  <input type="password" minLength={8} autoComplete="current-password"
+                    value={accessPassword} disabled={busy||uncertain}
+                    onChange={e=>{setAccessPassword(e.target.value);
+                      delete reviewRequestKeys.current["access:"+center.centerRef];}}/>
+                </label>
+                <button type="button" disabled={busy||uncertain||accessPassword.length<8}
+                  onClick={()=>void changeAccess(center.centerRef,center.version,
+                    center.accessState!=="ENABLED")}>
+                  {center.accessState==="ENABLED"?"Disable center access":"Enable verified center access"}
+                </button>
+              </div>}
+              {canPublish&&center.accessState==="ENABLED"&&<div className="form">
+                <label className="field">Public page address
+                  <input value={publicSlug} maxLength={80}
+                    placeholder={center.publicSlug??"clinic-location"}
+                    disabled={busy||uncertain}
+                    onChange={e=>{setPublicSlug(e.target.value.toLowerCase());
+                      delete reviewRequestKeys.current["publish:"+center.centerRef];}}/>
+                </label>
+                <label className="field">Confirm password for publication
+                  <input type="password" minLength={8} autoComplete="current-password"
+                    value={publicationPassword} disabled={busy||uncertain}
+                    onChange={e=>{setPublicationPassword(e.target.value);
+                      delete reviewRequestKeys.current["publish:"+center.centerRef];}}/>
+                </label>
+                <button type="button" disabled={busy||uncertain||
+                  publicationPassword.length<8||
+                  (center.publicationState!=="PUBLISHED"&&!publicSlug.trim())}
+                  onClick={()=>void changePublication(center.centerRef,center.version,
+                    center.publicationState!=="PUBLISHED")}>
+                  {center.publicationState==="PUBLISHED"?"Withdraw public listing":
+                    "Publish verified center"}
+                </button>
+              </div>}
+              {canVerify&&<div className="form">
+                <label className="field">Confirm password to suspend center
+                  <input type="password" minLength={8} autoComplete="current-password"
+                    value={suspensionPassword} disabled={busy||uncertain}
+                    onChange={e=>{setSuspensionPassword(e.target.value);
+                      delete reviewRequestKeys.current["suspend:centers:"+center.centerRef];}}/>
+                </label>
+                <button type="button" disabled={busy||uncertain||suspensionPassword.length<8}
+                  onClick={()=>void suspendOriginal("centers",center.centerRef,center.version)}>
+                  Suspend this center
+                </button>
+              </div>}
+            </div>}
           {canManage&&<CenterRepresentatives centerRef={center.centerRef}
             canRevoke={canManage} refresh={representativeRefresh}/>}
           {canManage&&center.status==="PENDING"&&
