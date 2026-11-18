@@ -16,11 +16,13 @@ const SHA=/^[0-9a-f]{64}$/;
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 const MAX_SIZE=10485760;
 type Input={doctorRef:string;sourceVersion:number;requestKey:string;
-  mime:string;sizeBytes:number;sha256:string};
+  mime:string;sizeBytes:number;sha256:string;
+  classification:"HEALTH_DOCTOR_LICENSE"|"HEALTH_DOCTOR_PORTRAIT"};
 type IntentRow={id:string;realm_id:string;health_doctor_id:string;
   health_source_version:number;requested_by:string;request_key:string;
   request_digest:string;mime:string;size_bytes:string;
-  expected_sha256:string;status:string;object_key:string;reserved_until:Date};
+  expected_sha256:string;status:string;object_key:string;reserved_until:Date;
+  classification:"HEALTH_DOCTOR_LICENSE"|"HEALTH_DOCTOR_PORTRAIT"};
 type FileRow={id:string;realm_id:string;health_doctor_id:string;
   health_source_version:number;original_mime:string;verified_size_bytes:string;
   verified_sha256:string;object_key:string;object_version:string;scan_status:string;
@@ -36,16 +38,21 @@ function parse(body:unknown):Input{
     throw new BadRequestException({code:"HEALTH_DOCTOR_EVIDENCE_INVALID"});
   const x=body as Record<string,unknown>;
   if(Object.keys(x).some(k=>!["doctorRef","sourceVersion","requestKey",
-    "mime","sizeBytes","sha256"].includes(k))||
+    "mime","sizeBytes","sha256","classification"].includes(k))||
     !Number.isSafeInteger(x.sourceVersion)||Number(x.sourceVersion)<1||
     !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||
     Number(x.sizeBytes)>MAX_SIZE||
     typeof x.mime!=="string"||!MIME.has(x.mime)||
+    (x.classification!==undefined&&
+      !["HEALTH_DOCTOR_LICENSE","HEALTH_DOCTOR_PORTRAIT"].includes(String(x.classification)))||
+    (x.classification==="HEALTH_DOCTOR_PORTRAIT"&&x.mime==="application/pdf")||
     typeof x.sha256!=="string"||!SHA.test(x.sha256))
     throw new BadRequestException({code:"HEALTH_DOCTOR_EVIDENCE_INVALID"});
   return {doctorRef:validId(x.doctorRef,"doctorRef"),
     sourceVersion:Number(x.sourceVersion),requestKey:validId(x.requestKey,"requestKey"),
-    mime:x.mime,sizeBytes:Number(x.sizeBytes),sha256:x.sha256};
+    mime:x.mime,sizeBytes:Number(x.sizeBytes),sha256:x.sha256,
+    classification:x.classification==="HEALTH_DOCTOR_PORTRAIT"?
+      "HEALTH_DOCTOR_PORTRAIT":"HEALTH_DOCTOR_LICENSE"};
 }
 
 @Injectable()
@@ -56,15 +63,19 @@ export class HealthDoctorPrivateEvidenceService{
     private readonly objects:PrivateObjectStorage,
     private readonly protectedOwner:ProtectedAccessOwnerService){}
   private async source(tx:PoolClient,actor:VerifiedFoundationActor,
-    doctorRef:string,sourceVersion:number){
+    doctorRef:string,sourceVersion:number,
+    classification:"HEALTH_DOCTOR_LICENSE"|"HEALTH_DOCTOR_PORTRAIT"="HEALTH_DOCTOR_LICENSE"){
     await this.identity.assertCurrent(tx,actor,"health.doctors.manage");
-    const doctor=await tx.query<{version:number}>(
-      "SELECT version FROM health_doctor "+
+    const doctor=await tx.query<{version:number;portrait_rights_status:string}>(
+      "SELECT version,portrait_rights_status FROM health_doctor "+
       "WHERE root_realm_id=$1 AND id=$2 AND status='PENDING' FOR SHARE",
       [actor.realmId,doctorRef]);
     if(!doctor.rows[0])throw new NotFoundException({code:"HEALTH_DOCTOR_NOT_PENDING"});
     if(doctor.rows[0].version!==sourceVersion)
       throw new ConflictException({code:"HEALTH_DOCTOR_EVIDENCE_SOURCE_CHANGED"});
+    if(classification==="HEALTH_DOCTOR_PORTRAIT"&&
+      doctor.rows[0].portrait_rights_status!=="CONSENT_PENDING")
+      throw new BadRequestException({code:"HEALTH_DOCTOR_EVIDENCE_INVALID",field:"classification"});
   }
   private async event(tx:PoolClient,actor:VerifiedFoundationActor,
     doctorRef:string,kind:string,intentRef:string|null,fileRef:string|null){
@@ -80,16 +91,17 @@ export class HealthDoctorPrivateEvidenceService{
     const tx=await this.db.connect();let open=false;let intent:IntentRow;
     try{
       await tx.query("BEGIN");open=true;
-      await this.source(tx,actor,input.doctorRef,input.sourceVersion);
+      await this.source(tx,actor,input.doctorRef,input.sourceVersion,input.classification);
       const created=await tx.query<IntentRow>(
         "INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,"+
         "request_key,mime,size_bytes,expected_sha256,request_digest,classification,"+
         "object_key,reserved_until,owner_kind,health_doctor_id,health_source_version) "+
-        "VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,'HEALTH_DOCTOR_LICENSE',$9,"+
-        "now()+interval '15 minutes','CG14_DOCTOR',$10,$11) "+
+        "VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,$9,$10,"+
+        "now()+interval '15 minutes','CG14_DOCTOR',$11,$12) "+
         "ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *",
         [actor.realmId,input.sourceVersion,actor.accountId,input.requestKey,input.mime,
-          input.sizeBytes,input.sha256,inputDigest,key,input.doctorRef,input.sourceVersion]);
+          input.sizeBytes,input.sha256,inputDigest,input.classification,key,
+          input.doctorRef,input.sourceVersion]);
       if(created.rows[0]){
         intent=created.rows[0];
         await this.event(tx,actor,input.doctorRef,"UPLOAD_INITIATED",intent.id,null);
@@ -156,7 +168,8 @@ export class HealthDoctorPrivateEvidenceService{
     const tx=await this.db.connect();
     try{
       await tx.query("BEGIN");
-      await this.source(tx,actor,row.health_doctor_id,row.health_source_version);
+      await this.source(tx,actor,row.health_doctor_id,row.health_source_version,
+        row.classification);
       await tx.query("COMMIT");
     }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}
     finally{tx.release();}
@@ -210,7 +223,8 @@ export class HealthDoctorPrivateEvidenceService{
       if(!locked.rows[0]||["REJECTED","EXPIRED"].includes(locked.rows[0].status)||
         locked.rows[0].reserved_until.getTime()<=Date.now())
         throw new ConflictException({code:"HEALTH_DOCTOR_EVIDENCE_SOURCE_CHANGED"});
-      await this.source(tx,actor,row.health_doctor_id,row.health_source_version);
+      await this.source(tx,actor,row.health_doctor_id,row.health_source_version,
+        row.classification);
       if(locked.rows[0].status!=="VALIDATED"){
         await tx.query(
           "UPDATE cg19_upload_intent SET status=$3,updated_at=now() "+
@@ -266,16 +280,16 @@ export class HealthDoctorPrivateEvidenceService{
       if(!source.rows[0])throw new NotFoundException({code:"HEALTH_DOCTOR_NOT_PENDING"});
       await this.identity.assertCurrent(tx,actor,"health.doctors.manage");
       const rows=await tx.query<{id:string;health_source_version:number;revision:number;
-        revoked_at:Date|null;scan_status:string;intent_status:string}>(
+        revoked_at:Date|null;scan_status:string;intent_status:string;classification:string}>(
         "SELECT f.id,f.health_source_version,f.revision,f.revoked_at,f.scan_status,"+
-        "i.status AS intent_status FROM cg19_stored_file f "+
+        "i.status AS intent_status,i.classification FROM cg19_stored_file f "+
         "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
         "WHERE f.realm_id=$1 AND f.health_doctor_id=$2 AND f.owner_kind='CG14_DOCTOR' "+
         "ORDER BY f.created_at DESC,f.id DESC LIMIT 50",
         [actor.realmId,ref]);
       await tx.query("COMMIT");
       return {files:rows.rows.map(f=>({
-        fileRef:f.id,fileVersion:f.revision,
+        fileRef:f.id,fileVersion:f.revision,classification:f.classification,
         status:f.revoked_at?"REVOKED":f.intent_status,
         cleanVerified:!f.revoked_at&&f.scan_status==="CLEAN_VERIFIED"&&
           f.intent_status==="VALIDATED",
