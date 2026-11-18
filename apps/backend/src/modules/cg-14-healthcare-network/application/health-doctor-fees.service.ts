@@ -263,6 +263,58 @@ export class HealthDoctorFeesService{
         message:"Center fee approved with immutable amount and validity history. No patient payment was created."};
     });
   }
+  async ownDoctors(bearer:string,centerRef:string){
+    const center=id(centerRef,"centerRef");
+    const actor=await this.sessions.requireAction(bearer,"health.centers.draft.edit");
+    return this.transact(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
+      await this.assertActiveOwnCenter(tx,actor,center);
+      const r=await tx.query<{association_ref:string;doctor_ref:string;name:string;
+        specialties:string[];version:number}>(
+        "SELECT dc.id AS association_ref,d.id AS doctor_ref,d.full_name AS name,"+
+        "d.specialties,dc.version FROM health_doctor_center dc "+
+        "JOIN health_doctor d ON d.root_realm_id=dc.root_realm_id AND d.id=dc.doctor_id "+
+        "WHERE dc.root_realm_id=$1 AND dc.center_id=$2 "+
+        "AND dc.affiliation_state='APPROVED' AND d.status='VERIFIED' "+
+        "ORDER BY d.normalized_name,dc.id LIMIT 50",
+        [actor.realmId,center]);
+      return {doctors:r.rows.map(x=>({
+        associationRef:x.association_ref,doctorRef:x.doctor_ref,
+        name:x.name,specialties:x.specialties,version:x.version
+      }))};
+    });
+  }
+  async ownFees(bearer:string,centerRef:string,doctorRef:string,associationRef:string){
+    const center=id(centerRef,"centerRef"),doctor=id(doctorRef,"doctorRef"),
+      association=id(associationRef,"associationRef");
+    const actor=await this.sessions.requireAction(bearer,"health.centers.draft.edit");
+    return this.transact(async tx=>{
+      await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
+      await this.assertActiveOwnCenter(tx,actor,center);
+      const a=await tx.query(
+        "SELECT id FROM health_doctor_center "+
+        "WHERE root_realm_id=$1 AND center_id=$2 AND doctor_id=$3 "+
+        "AND id=$4 AND affiliation_state='APPROVED' FOR SHARE",
+        [actor.realmId,center,doctor,association]);
+      if(!a.rowCount)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      const result=await tx.query<FeeRow>(
+        "SELECT id,fee_kind,consultation_mode,amount_minor,effective_from,"+
+        "effective_to,status,version FROM health_center_fee "+
+        "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
+        "ORDER BY created_at DESC,id DESC LIMIT 50",
+        [actor.realmId,association]);
+      const now=Date.now();
+      return {fees:result.rows.map(f=>({
+        feeRef:f.id,feeKind:f.fee_kind,consultationMode:f.consultation_mode,
+        amountMinor:Number(f.amount_minor),status:f.status,version:f.version,
+        effectiveFromUtc:f.effective_from.toISOString(),
+        effectiveToUtc:f.effective_to?.toISOString()??null,
+        current:f.status==="APPROVED"&&f.effective_from.getTime()<=now&&
+          (!f.effective_to||f.effective_to.getTime()>now)
+      }))};
+    });
+  }
   async list(bearer:string,doctorRef:string,associationRef:string){
     const doctor=id(doctorRef,"doctorRef"),associationId=id(associationRef,"associationRef");
     const actor=await this.sessions.requireAction(bearer,"health.doctors.view");
