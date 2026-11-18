@@ -11,6 +11,8 @@ const s={
   schema:read("apps/backend/db/migrations/1401_cg14_pending_provider_centers.sql"),
   evidenceSql:read("apps/backend/db/migrations/1402_cg19_health_draft_evidence.sql"),
   reviewSql:read("apps/backend/db/migrations/1403_cg14_original_provider_center_review.sql"),
+  doctorSql:read("apps/backend/db/migrations/1404_cg14_doctor_identity_and_center_affiliation.sql"),
+  feeSql:read("apps/backend/db/migrations/1405_cg14_doctor_center_immutable_fee_history.sql"),
   network:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-network.service.ts"),
   workflow:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-review-workflow.service.ts"),
   public:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-center.service.ts"),
@@ -43,6 +45,20 @@ const checks=[
  ["Only original approved decision applies",s.workflow.includes("this.review.approved(")&&s.workflow.includes("this.review.finish(")],
  ["Verified, access and publish separate",s.reviewSql.includes("publication_state")&&s.reviewSql.includes("access_state")&&s.workflow.includes("async publish(")],
  ["Provider and center suspension",s.workflow.includes("async suspendProvider(")&&s.workflow.includes("async suspendCenter(")],
+ ["Provider suspension also invalidates child verification",s.workflow.includes("UPDATE health_center SET status='SUSPENDED',access_state='DISABLED'")],
+ ["Provider and center suspension revoke scoped representatives",s.workflow.includes("UPDATE health_center_account_affiliation f")&&
+   s.workflow.includes("UPDATE health_center_account_affiliation SET status='REVOKED'")],
+ ["Concurrent finalizers exclusively lock original CG03 case",s.workflow.includes("case_kind=$3 FOR UPDATE")],
+ ["Protected review digest includes public center hours and services",s.workflow.includes("operatingHours:hours.rows.map(")&&
+   s.workflow.includes("declaredServices:capabilities.rows.map(")],
+ ["Anonymous center read protected by row lock",s.public.includes("LIMIT 1 FOR SHARE OF c")&&
+   s.public.includes('await tx.query("COMMIT")')],
+ ["US003 doctor is one root-scoped identity and current center association",s.doctorSql.includes("registration_number_normalized")&&
+   s.doctorSql.includes("UNIQUE(root_realm_id,registration_jurisdiction,registration_number_normalized)")&&
+   s.doctorSql.includes("UNIQUE(root_realm_id,doctor_id,center_id)")],
+ ["US003 approved fees cannot overlap and accepted history is guarded",s.feeSql.includes("CREATE EXTENSION IF NOT EXISTS btree_gist")&&
+   s.feeSql.includes("EXCLUDE USING gist")&&s.feeSql.includes("cg14_approved_fee_source_guard()")],
+
  ["Suspension withdraws current exposure",s.workflow.includes("publication_generation=publication_generation+1")],
  ["Suspended sources reopen PENDING for fresh review",s.workflow.includes("async reopenProvider(")&&
     s.workflow.includes("async reopenCenter(")&&
