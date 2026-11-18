@@ -3,6 +3,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 export type VerifiedVoucherDraftSource=Readonly<{
@@ -19,7 +20,8 @@ export type VerifiedVoucherDraftSource=Readonly<{
 export class FinanceVoucherSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  private async load(client:PoolClient,actor:VerifiedFoundationActor,reference:string,
   revision:number,capability:"finance.vouchers.manage"|"finance.vouchers.view"){
   await this.identity.assertCurrent(client,actor,capability);
@@ -27,14 +29,17 @@ export class FinanceVoucherSourceFacade{
     !Number.isSafeInteger(revision)||revision<1)
    throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
   const row=await client.query<{id:string;root_realm_id:string;version:number;
-    created_by:string;status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
-    SELECT v.id,v.root_realm_id,v.version,v.created_by,v.status,r.payload_digest
+    created_by:string;branch_id:string|null;status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
+    SELECT v.id,v.root_realm_id,v.version,v.created_by,v.branch_id,v.status,r.payload_digest
     FROM finance_voucher v JOIN finance_voucher_draft_revision r
       ON r.voucher_id=v.id AND r.root_realm_id=v.root_realm_id AND r.version=v.version
     WHERE v.id=$1 AND v.root_realm_id=$2 AND v.version=$3 FOR SHARE OF v,r`,
     [reference,actor.realmId,revision]);
   if(!row.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
   const v=row.rows[0];
+  if(v.branch_id)
+   await this.branches.requireFinanceActorBranch(client,actor,v.branch_id,capability);
+  else await this.branches.requireFinanceRootScope(client,actor,capability);
   return {voucherRef:v.id,rootRef:v.root_realm_id,revision:v.version,
    createdBy:v.created_by,status:v.status,sourceDigest:v.payload_digest};
  }
@@ -51,13 +56,17 @@ export class FinanceVoucherSourceFacade{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.vouchers.view");
    const found=await client.query<{id:string;root_realm_id:string;created_by:string;
-    status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
-    SELECT v.id,v.root_realm_id,v.created_by,v.status,r.payload_digest
+    branch_id:string|null;status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
+    SELECT v.id,v.root_realm_id,v.created_by,v.branch_id,v.status,r.payload_digest
     FROM finance_voucher_draft_revision r JOIN finance_voucher v
      ON v.id=r.voucher_id AND v.root_realm_id=r.root_realm_id
     WHERE v.id=$1 AND v.root_realm_id=$2 AND r.version=$3 FOR SHARE OF v,r`,
     [reference,actor.realmId,revision]);
    if(!found.rows[0])throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
+   if(found.rows[0].branch_id)
+    await this.branches.requireFinanceActorBranch(client,actor,found.rows[0].branch_id,
+     "finance.vouchers.view");
+   else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.view");
    await client.query("COMMIT");
    return {voucherRef:found.rows[0].id,rootRef:found.rows[0].root_realm_id,
     revision,createdBy:found.rows[0].created_by,status:found.rows[0].status,
