@@ -4,7 +4,8 @@ type Case={caseRef:string;reference:string;title:string;kind:string;status:strin
 type Detail={caseRef:string;reference:string;status:string;revision:number;
  kind:"HEALTH_PROVIDER_VERIFICATION"|"HEALTH_CENTER_VERIFICATION";
  source:null|{kind:string;source:Record<string,unknown>;proofStatus:string;sourceVersion:number}};
-const statusText=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,x=>x.toUpperCase());
+const statusText=(s:string)=>s.replace(/([a-z])([A-Z])/g,"$1 $2")
+ .replaceAll("_"," ").toLowerCase().replace(/\b\w/g,x=>x.toUpperCase());
 async function data<T>(url:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
  const r=await fetch(url,{method,credentials:"same-origin",cache:"no-store",
   ...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
@@ -14,7 +15,24 @@ async function data<T>(url:string,method:"GET"|"POST"="GET",body?:object):Promis
   value.message:"Review result could not be confirmed."),{status:r.status});
  return value as T;
 }
-const safeText=(v:unknown)=>typeof v==="string"?v:"Not specified";
+const dayLabels=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const safeText=(v:unknown):string=>{
+ if(typeof v==="string")return v;
+ if(typeof v==="number"&&Number.isFinite(v))return String(v);
+ if(Array.isArray(v))return v.length?
+   v.map(row=>{
+     if(typeof row==="string")return statusText(row);
+     if(row&&typeof row==="object"){
+       const x=row as Record<string,unknown>;
+       if(typeof x.weekday==="number"&&typeof x.opens==="string"&&
+         typeof x.closes==="string"&&typeof x.service==="string")
+         return (dayLabels[x.weekday]??"Day")+" "+x.opens+"–"+x.closes+
+           " ("+statusText(x.service)+")";
+     }
+     return "Declaration unavailable";
+   }).join("; "):"None declared";
+ return "Not specified";
+};
 export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
