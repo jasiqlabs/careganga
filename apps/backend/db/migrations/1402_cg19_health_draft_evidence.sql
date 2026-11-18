@@ -3,6 +3,11 @@
 -- no second object store, public bucket, upload/scanner or file master.
 ALTER TABLE health_center
   ADD CONSTRAINT uq_health_center_provider_source UNIQUE(root_realm_id,provider_id,id);
+-- Audited center changes must belong to the same provider in this root.
+ALTER TABLE health_network_event
+  ADD CONSTRAINT fk_health_event_original_center
+  FOREIGN KEY(root_realm_id,provider_id,center_id)
+  REFERENCES health_center(root_realm_id,provider_id,id) ON DELETE RESTRICT;
 
 ALTER TABLE cg19_upload_intent
   ADD COLUMN health_provider_id uuid,
