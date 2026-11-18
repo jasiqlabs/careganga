@@ -125,7 +125,7 @@ function parseContent(raw:unknown):Content{
  const seoTitle=text(v.seoTitle??v.title,"seoTitle",180,3);
  const seoDescription=text(v.seoDescription??"","seoDescription",300);
  const expectedPath=kind==="HOME"?"/":kind==="ABOUT"?"/about":
-  kind==="COMPLIANCE"?"/80g":kind==="ARTICLE"?"/blog/"+slug:
+  kind==="COMPLIANCE"?"/ngo-information":kind==="ARTICLE"?"/blog/"+slug:
   kind==="POLICY"?"/policies/"+slug:"/"+slug;
  const canonicalPath=v.canonicalPath??expectedPath;
  if(typeof canonicalPath!=="string"||canonicalPath!==expectedPath||
@@ -927,7 +927,7 @@ export class CmsEditorialService{
   const publishedRoutes=routes.rows.map(p=>({kind:p.kind,slug:p.slug,
    path:p.kind==="ARTICLE"?"/blog/"+p.slug:
     p.kind==="POLICY"?"/policies/"+p.slug:
-    p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/80g":"/"+p.slug}));
+    p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/ngo-information":"/"+p.slug}));
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
