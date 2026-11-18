@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {CenterSupportAttachments} from "./center-support-attachments";
 
 type Case={caseRef:string;subject:string;status:string;revision:number;updatedAt:string};
 type Detail={caseRef:string;subject:string;message:string;status:string;revision:number;
@@ -105,6 +106,9 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
    <h3>{detail.subject}</h3>
    <p>Status: {detail.status}</p>
    <p>{detail.message}</p>
+   <CenterSupportAttachments key={detail.caseRef} centerRef={centerRef}
+    caseRef={detail.caseRef} caseRevision={detail.revision}
+    closed={detail.status==="CLOSED"}/>
    <h4>Conversation</h4>
    {detail.replies.length===0&&<p>The Foundation has not yet replied.</p>}
    {detail.replies.map((item,i)=><p key={i}>{item.message}</p>)}
