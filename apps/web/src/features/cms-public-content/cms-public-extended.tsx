@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
+import {CmsGalleryGridClient} from "./cms-gallery-grid-client";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
@@ -91,26 +92,13 @@ export function CmsCompliance({section,assets}:{
 }
 export function CmsGallery({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
- const f=section.fields;
+ const fields=section.fields;
  return <section className="cg-site-content cg-site-gallery">
   <p className="cg-site-eyebrow">Media &amp; Resources</p>
-  <h1>{text(f.heading)}</h1>
-  <p>{text(f.description)}</p>
-  <div className="cg-site-gallery-grid">{records(f.items).map((v,i)=>{
-   const media=assets.find(a=>a.role==="GALLERY"&&a.order===i);
-   if(!media)return null;
-   return <article className="cg-site-gallery-card" key={i}>
-    {v.mediaType==="PHOTO"?photo(media,"cg-site-gallery-photo"):
-     v.mediaType==="VIDEO"?<video controls preload="none"
-      aria-label={media.altText} src={media.src}/>:
-     v.mediaType==="PUBLICATION"?<a href={media.src} download
-      className="cg-site-action">Read public document</a>:null}
-    <p className="cg-site-eyebrow">{text(v.category)}</p>
-    <h2>{text(v.title)}</h2>
-    <p>{text(v.caption)}</p>
-    {label(v.source,v.asOfDate)}
-   </article>;
-  })}</div>
+  <h1>{text(fields.heading)}</h1>
+  {text(fields.description)&&<p>{text(fields.description)}</p>}
+  <CmsGalleryGridClient fields={{heading:fields.heading,
+   description:fields.description,items:fields.items}} assets={assets}/>
  </section>;
 }
 export function CmsArticle({section,assets}:{
