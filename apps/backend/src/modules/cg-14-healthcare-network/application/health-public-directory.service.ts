@@ -39,7 +39,10 @@ function parse(value:unknown):Search{
   if(after&&!SLUG.test(after)&&!/^([a-z0-9][a-z0-9-]{2,79})~([0-9a-f-]{36})$/.test(after)||
     center&&!SLUG.test(center)||pin&&!/^[1-9][0-9]{5}$/.test(pin)||
     state&&!UUID.test(state)||district&&!UUID.test(district)||
-    category&&!["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"].includes(category))
+    category&&!["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
+      "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
+      "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"
+    ].includes(category))
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const amount=(k:"minFee"|"maxFee")=>{
     if(x[k]===undefined)return null;
