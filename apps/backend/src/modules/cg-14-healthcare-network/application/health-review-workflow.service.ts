@@ -275,6 +275,82 @@ export class HealthReviewWorkflowService{
    return {status:"PENDING",message:"Returned for correction. Update and re-upload current proof before resubmitting."};
   });
  }
+
+ /** Suspensions are explicit and one-way; only a subsequently reviewed
+  * original source may restore eligibility. This never silently unpublishes
+  * a center and later auto-restores its old access.
+  */
+ async suspendProvider(bearer:string,providerRef:string,body:unknown){
+  const data=input(body,["requestKey","expectedVersion","currentPassword"]);
+  const ref=id(providerRef,"providerRef"),key=id(data.requestKey,"requestKey"),
+    expected=vers(data.expectedVersion);
+  if(typeof data.currentPassword!=="string")
+   throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
+  const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,data.currentPassword as string);
+   const cmd=await this.command(tx,actor,"HEALTH_PROVIDER_SUSPEND",key,{ref,expected});
+   if(cmd.ref)return {status:"SUSPENDED",version:cmd.version,replayed:true};
+   // Center lock first agrees with the center publication lock order.
+   await tx.query(
+    "SELECT id FROM health_center WHERE root_realm_id=$1 AND provider_id=$2 "+
+    "ORDER BY id FOR UPDATE",[actor.realmId,ref]);
+   const found=await tx.query<{version:number;status:string}>(
+    "SELECT version,status FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
+    "FOR UPDATE",[actor.realmId,ref]);
+   if(!found.rows[0])throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+   if(found.rows[0].version!==expected)
+    throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+   if(found.rows[0].status!=="VERIFIED")
+    throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+   await tx.query(
+    "UPDATE health_center SET access_state='DISABLED',"+
+    "publication_state='UNPUBLISHED',publication_generation=publication_generation+1,"+
+    "version=version+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND provider_id=$2",[actor.realmId,ref]);
+   await tx.query(
+    "UPDATE health_provider SET status='SUSPENDED',version=version+1,"+
+    "updated_at=now() WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
+   await this.complete(tx,actor,cmd.id,ref,null,"HEALTH_PROVIDER_SUSPEND",ref,expected+1);
+   return {status:"SUSPENDED",version:expected+1,replayed:false,
+    message:"The provider and all its public centers have been suspended. A fresh review is required for restoration."};
+  });
+ }
+ async suspendCenter(bearer:string,centerRef:string,body:unknown){
+  const data=input(body,["requestKey","expectedVersion","currentPassword"]);
+  const ref=id(centerRef,"centerRef"),key=id(data.requestKey,"requestKey"),
+    expected=vers(data.expectedVersion);
+  if(typeof data.currentPassword!=="string")
+   throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
+  const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,data.currentPassword as string);
+   const cmd=await this.command(tx,actor,"HEALTH_CENTER_SUSPEND",key,{ref,expected});
+   if(cmd.ref)return {status:"SUSPENDED",version:cmd.version,replayed:true};
+   const found=await tx.query<{provider_id:string;version:number;status:string}>(
+    "SELECT provider_id,version,status FROM health_center "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,ref]);
+   if(!found.rows[0])throw new NotFoundException({code:"HEALTH_CENTER_UNAVAILABLE"});
+   if(found.rows[0].version!==expected)
+    throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+   if(found.rows[0].status!=="VERIFIED")
+    throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+   await tx.query(
+    "UPDATE health_center SET status='SUSPENDED',access_state='DISABLED',"+
+    "publication_state='UNPUBLISHED',publication_generation=publication_generation+1,"+
+    "version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,ref]);
+   await this.complete(tx,actor,cmd.id,found.rows[0].provider_id,ref,
+    "HEALTH_CENTER_SUSPEND",ref,expected+1);
+   return {status:"SUSPENDED",version:expected+1,replayed:false,
+    message:"The center is suspended. Its access and public listing have been withdrawn."};
+  });
+ }
+
  async access(bearer:string,centerRef:string,body:unknown){
   const data=input(body,["expectedVersion","enabled","currentPassword","requestKey"]);
   const ref=id(centerRef,"centerRef"),expected=vers(data.expectedVersion),
