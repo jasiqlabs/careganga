@@ -116,3 +116,6 @@ Dependencies: US-002
 - US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+
+## 18 November 2026 — original website receiving acceptance
+Receiving tests within original **US-001/002/003** QA: real partnered state, approved logos, original CSR hero/cards, withdrawal and enquiry. Reproduce original route **/collaboration; CSR Partner enquiries** using original screenshots **Batch02 021242, 021258 and 021318**. Perform authorized Admin source → permission and editable field errors → current review/publish → Web/native → correct revoke/denied/expired and true empty. The [47-screen owner map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md) is the QA index; do not add new US/QA IDs. **REFERENCE_ALIGNED; SOURCE INTEGRATION OPEN; RUNTIME/VISUAL QA NOT_RUN.**
