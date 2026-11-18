@@ -9,7 +9,8 @@ export type PublicDoctor={doctorRef:string;doctorName:string;qualifications:stri
  address:string;pinCode:string;fee:PublicFee|null};
 export type DirectoryResult<T>={state:"READY";items:T[];next:string|null}|
  {state:"UNAVAILABLE";items:[];next:null};
-const params=["q","after","category","specialty","pin","state","district","minFee","maxFee","center"];
+const params=["q","after","category","specialty","pin","state","district","block",
+ "facility","minExperience","maxExperience","minFee","maxFee","center"];
 export function directorySearch(search:Record<string,string|string[]|undefined>){
  const query=new URLSearchParams();
  for(const key of params){
