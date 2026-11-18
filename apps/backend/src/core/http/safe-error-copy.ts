@@ -193,6 +193,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_VERSION_CHANGED:"This draft changed elsewhere. Refresh and review the current details.",
       HEALTH_REPRESENTATIVE_NOT_ELIGIBLE:"Choose an active staff account with permission to edit pending center information.",
       HEALTH_REPRESENTATIVE_EXISTS:"This person already has access to edit the pending center.",
+      HEALTH_REPRESENTATIVE_REVOKED:"This person’s center edit access has already been withdrawn. Refresh the representative list.",
       HEALTH_EVIDENCE_INVALID:"Choose an eligible original private healthcare file and check its details.",
       HEALTH_EVIDENCE_REPLAY_CONFLICT:"This file request was previously used for different information. Check the original upload.",
       HEALTH_EVIDENCE_SOURCE_CHANGED:"The provider or center changed since the file was selected. Refresh and verify the current proof.",
