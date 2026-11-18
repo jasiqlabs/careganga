@@ -54,7 +54,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
     <label>Center type
      <select name="category" defaultValue={typeof raw.category==="string"?raw.category:""}>
       <option value="">All verified center types</option>
-      {(["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"] as const)
+      {(["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
+        "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
+        "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"] as const)
        .map(type=><option key={type} value={type}>{nice(type)}</option>)}
      </select>
     </label>
