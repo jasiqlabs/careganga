@@ -867,7 +867,7 @@ export class CmsEditorialService{
    "AND ($2::text='' OR p.slug>$2) "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=v.page_id "+
    "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
    "a.public_rights_status<>'VALIDATED' OR "+
@@ -914,7 +914,7 @@ export class CmsEditorialService{
    "AND n.body=body.structured_fields->>'body' "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=v.page_id "+
    "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
    "a.public_rights_status<>'VALIDATED' OR "+
@@ -963,7 +963,7 @@ export class CmsEditorialService{
    "AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=p.id "+
    "WHERE a.foundation_root_id=p.foundation_root_id "+
    "AND a.page_revision_id=pub.page_revision_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
@@ -1015,9 +1015,11 @@ export class CmsEditorialService{
     "WHERE page_revision_id=$1 ORDER BY order_no,id LIMIT 100",[x.revision_id]),
    this.db.query<{cg19_file_ref:string;role:string;alt_text:string;sort_order:number}>(
     "SELECT a.cg19_file_ref,a.role,a.alt_text,a.sort_order "+
-    "FROM cms_asset_placement a JOIN cg19_cms_media_file f "+
+    "FROM cms_asset_placement a JOIN cms_page_revision source_rev "+
+    "ON source_rev.id=a.page_revision_id AND source_rev.foundation_root_id=a.foundation_root_id "+
+    "JOIN cg19_cms_media_file f "+
     "ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id "+
-    "AND f.page_id=a.page_id "+
+    "AND f.page_id=source_rev.page_id "+
     "WHERE a.page_revision_id=$1 AND a.public_rights_status='VALIDATED' "+
     "AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL "+
     "AND f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
