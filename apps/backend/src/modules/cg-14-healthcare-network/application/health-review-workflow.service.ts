@@ -511,13 +511,20 @@ export class HealthReviewWorkflowService{
     "ELSE publication_state END,version=version+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,ref,data.enabled?"ENABLED":"DISABLED"]);
-   // The same Foundation decision activates only already assigned representatives.
-   // Disabling operational access removes the active entitlement immediately.
-   await tx.query(
-     "UPDATE health_center_account_affiliation SET status=$3,revision=revision+1 "+
-     "WHERE root_realm_id=$1 AND center_id=$2 AND status=$4",
-     [actor.realmId,ref,data.enabled?"ACTIVE":"PENDING_EDIT",
-       data.enabled?"PENDING_EDIT":"ACTIVE"]);
+   // Do not preserve usable assignment when the Foundation disables access.
+   // Re-enabling never resurrects revoked staff; Foundation must reassign.
+   if(data.enabled){
+     await tx.query(
+       "UPDATE health_center_account_affiliation SET status='ACTIVE',"+
+       "revision=revision+1 WHERE root_realm_id=$1 AND center_id=$2 "+
+       "AND status='PENDING_EDIT'",[actor.realmId,ref]);
+   }else{
+     await tx.query(
+       "UPDATE health_center_account_affiliation SET status='REVOKED',"+
+       "revoked_at=now(),revision=revision+1 "+
+       "WHERE root_realm_id=$1 AND center_id=$2 AND status='ACTIVE'",
+       [actor.realmId,ref]);
+   }
    await this.complete(tx,actor,cmd.id,c.rows[0].provider_id,ref,
       "HEALTH_CENTER_ACCESS",ref,next);
    return {status:data.enabled?"ENABLED":"DISABLED",version:next,replayed:false,
