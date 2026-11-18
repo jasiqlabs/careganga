@@ -256,8 +256,10 @@ export class CmsDraftMediaService{
   const files=await tx.query<{id:string;revision:number;expected_version:number}>(
    "SELECT a.id,f.revision,a.cg19_validated_version AS expected_version "+
    "FROM cms_asset_placement a "+
+   "JOIN cms_page_revision source_rev ON source_rev.id=a.page_revision_id "+
+   "AND source_rev.foundation_root_id=a.foundation_root_id "+
    "JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=source_rev.page_id "+
    "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
    "AND f.public_rights_confirmed=true "+
    "JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id "+
