@@ -452,7 +452,7 @@ export class HealthCenterContentService{
     "AND approved_revision_id=$4 RETURNING generation",
     [actor.realmId,center,request.generation,request.revision]);
    if(!publication.rows[0])
-    throw new ConflictException({code:"HEALTH_CONTENT_ALREADY_WITHDRAWN"});
+    throw new ConflictException({code:"HEALTH_CONTENT_PUBLICATION_CHANGED"});
    await tx.query(
     "INSERT INTO health_center_content_event(root_realm_id,center_id,actor_ref,"+
     "action_key,source_version) VALUES($1,$2,$3,'WITHDRAWN',$4)",
