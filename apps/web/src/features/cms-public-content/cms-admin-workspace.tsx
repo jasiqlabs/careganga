@@ -282,8 +282,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     [draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
      draft.memberBody].every(x=>x.trim().length>=3))&&
   draft.body.trim().length>=5&&
-  draft.team.every(x=>x.consentConfirmed&&x.name.trim().length>=2&&
-   x.designation.trim().length>=2);
+  draft.team.length===0;
  const draftIssue=draft.title.trim().length<3?
   "Enter a website page title of at least 3 characters.":
   draft.body.trim().length<5?
@@ -305,9 +304,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   draft.featureCards.some(card=>card.label.trim().length<2||
     card.title.trim().length<3||card.body.trim().length<5)?
   "Complete each solution card's category, title and description.":
-  draft.team.some(member=>!member.consentConfirmed||member.name.trim().length<2||
-    member.designation.trim().length<2)?
-  "Enter each public team member's name and designation and confirm display permission.":
+  draft.team.length>0?
+  "Remove manually entered team profiles. Public profiles need verified CG-10/CG-04 source and revocable consent before publication.":
   !okay?"Complete the remaining website content before saving.":null;
  async function send(c:Command){
   if(busy)return;
@@ -745,8 +743,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        onChange={e=>edit("footerNewsletterText",e.target.value)}/></label>
      </fieldset>
     </>}
-    <fieldset><legend>Public team members (with permission)</legend>
-      <p>Public profiles only. Private employee records and contact details are not copied into the website.</p>
+    <fieldset><legend>Public team directory — pending verified people source</legend>
+      <p role="status">Team names, photos and biographies will become publishable only through approved CG-10 staff or CG-04 volunteer/member records with revocable display consent. Existing manually entered profiles can be removed; a checkbox alone does not grant publication permission.</p>
       <label>Section heading<input disabled={!canManage} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
       <p>{draft.team.length} public profile{draft.team.length===1?"":"s"} in this draft</p>
@@ -781,18 +779,18 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <strong>{member.name||"Name not entered"}</strong>
         <span>{member.designation||"Designation not entered"}</span>
         {!!member.bio&&<p>{member.bio}</p>}
-        <small>{member.consentConfirmed?"Public-use permission confirmed":
+        <small>{member.consentConfirmed?"Editor consent claim (not source-verified)":
          "Permission required before publication"}</small>
        </div>}
        {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
         Remove profile</button>}
       </div>)}
-      {canManage&&draft.team.length<15&&<button type="button" onClick={()=>edit("team",[
+      {false&&canManage&&draft.team.length<15&&<button type="button" onClick={()=>edit("team",[
        ...draft.team,{name:"",designation:"",bio:"",consentConfirmed:false}])}>
        Add team member</button>}
      </fieldset>
      {!!selected&&selected.status==="DRAFT"&&canManage&&<fieldset>
-      <legend>Hero and team photographs</legend>
+      <legend>Page photographs</legend>
       <p>Upload only an original image the Foundation is authorized to publish.
        It must pass the private file scan before saving the draft.</p>
       <label>Placement<select value={uploadRole}
@@ -802,7 +800,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <option value="ABOUT">About / story photograph</option>
         <option value="PROMO">Volunteer promotional photograph</option>
         <option value="FEATURE">How We Help card photograph</option>
-        <option value="TEAM">Team member photograph</option></select></label>
+        </select></label>
        {(["HERO","MOBILE_HERO","TEAM","FEATURE"] as string[]).includes(uploadRole)&&
         <label>{uploadRole==="TEAM"?"Team member":uploadRole==="FEATURE"?"Solution card":"Hero slide"}
          <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
