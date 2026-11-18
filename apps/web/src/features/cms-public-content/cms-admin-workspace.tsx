@@ -30,7 +30,7 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  featuresEyebrow:string;featuresHeading:string;featuresBody:string;featureCards:FeatureCard[];
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
  memberTitle:string;memberBody:string;memberBenefits:string;
- footerMission:string;footerAddress:string;footerPhone:string;footerEmail:string;
+ footerMission:string;footerAddress:string;footerPhone:string;footerWhatsappNumber:string;footerEmail:string;
  footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
@@ -43,7 +43,7 @@ const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  featuresEyebrow:"",featuresHeading:"",featuresBody:"",featureCards:[],
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
  memberTitle:"",memberBody:"",memberBenefits:"",
- footerMission:"",footerAddress:"",footerPhone:"",footerEmail:"",footerNewsletterText:"",
+ footerMission:"",footerAddress:"",footerPhone:"",footerWhatsappNumber:"",footerEmail:"",footerNewsletterText:"",
  teamHeading:"Our team",team:[],assets:[],loginDesired:true,
  memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
@@ -81,7 +81,7 @@ function fromPage(p:PageDetail):Draft{
   volunteerBenefits:words(join.volunteerBenefits),memberTitle:val(join.memberTitle),
   memberBody:val(join.memberBody),memberBenefits:words(join.memberBenefits),
   footerMission:val(footer.mission),footerAddress:val(footer.address),
-  footerPhone:val(footer.phone),footerEmail:val(footer.email),
+  footerPhone:val(footer.phone),footerWhatsappNumber:val(footer.whatsappNumber),footerEmail:val(footer.email),
   footerNewsletterText:val(footer.newsletterText),
   teamHeading:val(team.heading)||"Our team",
   team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
@@ -129,10 +129,10 @@ function payload(d:Draft){
    memberBenefits:lines(d.memberBenefits)}});
  if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
- if(d.kind==="HOME"&&(d.footerMission||d.footerAddress||d.footerEmail||d.footerPhone))
+ if(d.kind==="HOME"&&(d.footerMission||d.footerAddress||d.footerEmail||d.footerPhone||d.footerWhatsappNumber))
   sections.push({kind:"SITE_FOOTER",order:90,
    fields:{mission:d.footerMission,address:d.footerAddress,
-    phone:d.footerPhone,email:d.footerEmail,newsletterText:d.footerNewsletterText}});
+    phone:d.footerPhone,whatsappNumber:d.footerWhatsappNumber,email:d.footerEmail,newsletterText:d.footerNewsletterText}});
  if(!sections.length)sections.push({kind:"RICH_TEXT",order:20,
   fields:{heading:d.title||"About the Foundation",body:d.body,variant:"STANDARD"}});
  return {kind:d.kind,slug:d.kind==="HOME"?"home":"about",title:d.title,
@@ -734,6 +734,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        value={draft.footerAddress} onChange={e=>edit("footerAddress",e.target.value)}/></label>
       <label>Phone<input disabled={!canManage} maxLength={32}
        value={draft.footerPhone} onChange={e=>edit("footerPhone",e.target.value)}/></label>
+      <label>Approved WhatsApp number (country code + number; leave blank to hide the WhatsApp button)<input disabled={!canManage} maxLength={16}
+       value={draft.footerWhatsappNumber} onChange={e=>edit("footerWhatsappNumber",e.target.value)}
+       placeholder="+919876543210"/></label>
+      <p>Confirm the WhatsApp destination with the client before publishing. The normal phone is not automatically a WhatsApp number.</p>
       <label>Email<input disabled={!canManage} maxLength={150}
        value={draft.footerEmail} onChange={e=>edit("footerEmail",e.target.value)}/></label>
       <label>Newsletter description<textarea disabled={!canManage} maxLength={250}
