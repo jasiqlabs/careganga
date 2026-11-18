@@ -170,10 +170,10 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope}:{
+export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
  siteFooter?:Record<string,unknown>|null;children?:ReactNode;
- mediaScope?:CmsMediaType}){
+ mediaScope?:CmsMediaType;sidebar?:ReactNode}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -185,7 +185,9 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope}:{
  return <main className="cg-site">
   <CmsSiteHeader navigation={navigation} contact={{
    address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
-  <div className="cg-site-sections">
+  <div className={sidebar?"cg-site-ngo-layout":undefined}>
+   {sidebar&&<aside className="cg-site-ngo-sidebar">{sidebar}</aside>}
+   <div className="cg-site-sections">
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
@@ -216,6 +218,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope}:{
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
+   </div>
   </div>
   {children}
   <SiteFooter data={footer} navigation={navigation}/>
