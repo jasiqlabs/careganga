@@ -5573,8 +5573,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG20 next canonical full expert planning review on 2026-11-15; review/fix actual source modules, SHA-bound delegated approvals, stop before CG22",
       "artifact": "modules/cg-20-mis-reporting/module.md",
-      "sha256": "d1c837aef5d6feb8806dbaa87bf48d8f516f074fd669c27b27277db3932b2eab",
-      "current_artifact_sha256": "d1c837aef5d6feb8806dbaa87bf48d8f516f074fd669c27b27277db3932b2eab",
+      "sha256": "dade0bac12a7b270f3c20a596d7b39089501d529102afc21b75fa4c58b334216",
+      "current_artifact_sha256": "dade0bac12a7b270f3c20a596d7b39089501d529102afc21b75fa4c58b334216",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-15T16:02:52.040Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-20-mis-reporting/module.md",
@@ -5612,15 +5612,23 @@
       "story_count": 5,
       "qa_count": 81,
       "task_definitions_sha256": "395fcc64ede91281bfbbe1ef2b01c290defb8ecd48f4b870375e2a88ed71f12b",
-      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress",
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "dade0bac12a7b270f3c20a596d7b39089501d529102afc21b75fa4c58b334216"
+      }
     },
     "uiux/cg-20-mis-reporting": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG20 next canonical full expert planning review on 2026-11-15; review/fix actual source modules, SHA-bound delegated approvals, stop before CG22",
       "artifact": "modules/cg-20-mis-reporting/uiux.md",
-      "sha256": "06df6baf7579957ff0c6209ef648bea998ab7e29753de11c1783593750fcbff5",
-      "current_artifact_sha256": "06df6baf7579957ff0c6209ef648bea998ab7e29753de11c1783593750fcbff5",
+      "sha256": "bdad9a687b267b23ea32228c4ff54f206c9fea51fd92a4dfc133047f5b1234a6",
+      "current_artifact_sha256": "bdad9a687b267b23ea32228c4ff54f206c9fea51fd92a4dfc133047f5b1234a6",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-15T16:02:52.040Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-20-mis-reporting/uiux.md",
@@ -5656,15 +5664,23 @@
       "formal_stage_gate": "BLOCKED_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_PRIVACY_DB_SECURITY_AND_REAL_RUNTIME_QA_NOT_RUN",
       "development_authority": "OWNER_DELEGATED_DESIGN_ONLY_NOT_RUNTIME_IMPLEMENTATION_OR_PRODUCTION_SIGNOFF",
       "story_count": 5,
-      "qa_count": 81
+      "qa_count": 81,
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "bdad9a687b267b23ea32228c4ff54f206c9fea51fd92a4dfc133047f5b1234a6"
+      }
     },
     "dld/cg-20-mis-reporting": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG20 next canonical full expert planning review on 2026-11-15; review/fix actual source modules, SHA-bound delegated approvals, stop before CG22",
       "artifact": "modules/cg-20-mis-reporting/dld.md",
-      "sha256": "9802a365b05d363e4b5c1def190f25365285d1f92063de0d3f5052afa3fcd120",
-      "current_artifact_sha256": "9802a365b05d363e4b5c1def190f25365285d1f92063de0d3f5052afa3fcd120",
+      "sha256": "1e505f8bec35570b46840b2feea45202f81a8838298d7bbb91243098d9bb7084",
+      "current_artifact_sha256": "1e505f8bec35570b46840b2feea45202f81a8838298d7bbb91243098d9bb7084",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-15T16:02:52.040Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-20-mis-reporting/dld.md",
@@ -5700,15 +5716,23 @@
       "formal_stage_gate": "BLOCKED_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_PRIVACY_DB_SECURITY_AND_REAL_RUNTIME_QA_NOT_RUN",
       "development_authority": "OWNER_DELEGATED_DESIGN_ONLY_NOT_RUNTIME_IMPLEMENTATION_OR_PRODUCTION_SIGNOFF",
       "story_count": 5,
-      "qa_count": 81
+      "qa_count": 81,
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "1e505f8bec35570b46840b2feea45202f81a8838298d7bbb91243098d9bb7084"
+      }
     },
     "tasks/cg-20-mis-reporting": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG20 next canonical full expert planning review on 2026-11-15; review/fix actual source modules, SHA-bound delegated approvals, stop before CG22",
       "artifact": "modules/cg-20-mis-reporting/tasks.md",
-      "sha256": "408b8f5b31655e7a55b0f63fce2b9c9cb9f12d6d73c6ade218b9ccca01290bf7",
-      "current_artifact_sha256": "408b8f5b31655e7a55b0f63fce2b9c9cb9f12d6d73c6ade218b9ccca01290bf7",
+      "sha256": "e94042b50039ae1234cb82ba601a51b0592dcd689c9fde463e67a3cddd1d41ba",
+      "current_artifact_sha256": "e94042b50039ae1234cb82ba601a51b0592dcd689c9fde463e67a3cddd1d41ba",
       "approved_by": "JASIQ AI Design Review Agent",
       "approved_at": "2026-11-15T16:02:52.040Z",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-20-mis-reporting/tasks.md",
@@ -5746,7 +5770,15 @@
       "story_count": 5,
       "qa_count": 81,
       "task_definitions_sha256": "395fcc64ede91281bfbbe1ef2b01c290defb8ecd48f4b870375e2a88ed71f12b",
-      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress",
+      "last_design_content_review": {
+        "date": "2026-11-18",
+        "method": "OWNER_DELEGATED_AI_DESIGN_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "current exact artifact; original website/Admin reference, scope ownership, existing QA evidence; no new story",
+        "actual_runtime_QA": "NOT_RUN",
+        "harness_resolver": "NOT_RUN",
+        "file_sha256": "e94042b50039ae1234cb82ba601a51b0592dcd689c9fde463e67a3cddd1d41ba"
+      }
     },
     "planning/cg-22-pharmacy-operations": {
       "status": "DELEGATED_APPROVED",
