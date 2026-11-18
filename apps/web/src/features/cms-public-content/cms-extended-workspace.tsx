@@ -31,6 +31,7 @@ const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
 const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/80g":
  kind==="ARTICLE"?"/blog/"+slug:kind==="POLICY"?"/policies/"+slug:"/"+slug;
 const slugFor=(kind:Kind)=>kind==="COMPLIANCE"?"80g":
+ kind==="IMPACT"?"our-impact":
  kind==="POLICY"?legalPages[0][0]:kind.toLowerCase();
 const group=(key:string,i:number):Section=>({kind:"IMPACT_GROUP",order:i,
  fields:{group:key,heading:"",intro:"",source:"",asOfDate:today(),items:[]}});
