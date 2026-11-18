@@ -369,7 +369,7 @@ export class HealthNetworkService{
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
         "AND f.center_id=c.id AND f.account_ref=$3 AND f.status='PENDING_EDIT' ":"")+
-      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status='PENDING' "+
+      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
       "LIMIT 1",own?[actor.realmId,ref,actor.accountId]:[actor.realmId,ref]);
     const x=rows.rows[0];
     if(!x)throw new NotFoundException("Pending center is unavailable");
@@ -487,7 +487,7 @@ export class HealthNetworkService{
       "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       "WHERE f.root_realm_id=$1 AND f.account_ref=$2 AND f.status='PENDING_EDIT' "+
-      "AND c.status='PENDING' AND p.status='PENDING' "+
+      "AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
       "ORDER BY c.display_name,c.id LIMIT 50",[actor.realmId,actor.accountId]);
     return {centers:r.rows.map(x=>({centerRef:x.id,name:x.display_name,
       providerName:x.legal_name,version:x.version,status:x.status}))};
@@ -503,7 +503,7 @@ export class HealthNetworkService{
       "JOIN health_center_account_affiliation f "+
       "ON f.root_realm_id=c.root_realm_id AND f.center_id=c.id AND f.status='PENDING_EDIT' "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status='PENDING' "+
+      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
       "AND f.account_ref=$3 LIMIT 1",[actor.realmId,ref,actor.accountId]);
     if(!rows.rows[0])throw new NotFoundException("This pending center is not assigned to you");
     const [hours,capabilities]=await Promise.all([
