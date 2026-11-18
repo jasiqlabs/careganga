@@ -272,6 +272,49 @@ export class HealthCenterContentService{
     message:"Submitted for independent Foundation review. Public content is unchanged."};
   });
  }
+ /** Publisher-only queue: never exposes reviewer-only evidence or staff identities.
+  * This is the same original CG03 case and current CG14 publication pointer.
+  */
+ async publishing(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
+  return this.run(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.centers.publish");
+   const rows=await tx.query<{case_ref:string;reference:string;status:string;
+     center_ref:string;center_name:string;approved_revision_ref:string;
+     publication_revision_ref:string|null;generation:number|null;
+     withdrawn_at:Date|null}>(
+    "SELECT original.id AS case_ref,original.case_number AS reference,"+
+    "original.status,c.id AS center_ref,c.display_name AS center_name,"+
+    "original.health_content_revision_id AS approved_revision_ref,"+
+    "pub.approved_revision_id AS publication_revision_ref,"+
+    "pub.generation,pub.withdrawn_at "+
+    "FROM cg03_case original "+
+    "JOIN health_center c ON c.id=original.health_center_id "+
+    "AND c.root_realm_id=original.realm_id "+
+    "JOIN health_provider p ON p.id=c.provider_id AND p.root_realm_id=c.root_realm_id "+
+    "JOIN health_center_content_revision rev ON rev.id=original.health_content_revision_id "+
+    "AND rev.root_realm_id=original.realm_id AND rev.center_id=c.id "+
+    "AND rev.approval_case_ref=original.id "+
+    "LEFT JOIN health_center_content_publication pub ON "+
+    "pub.root_realm_id=c.root_realm_id AND pub.center_id=c.id "+
+    "WHERE original.realm_id=$1 "+
+    "AND original.case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
+    "AND original.status IN('PENDING_OWNER','OWNER_COMPLETED') "+
+    "ORDER BY original.updated_at DESC,original.id DESC LIMIT 100",
+    [actor.realmId]);
+   return {cases:rows.rows.map(row=>{
+    const current=row.status==="OWNER_COMPLETED"&&
+      !!row.publication_revision_ref&&!row.withdrawn_at&&
+      row.publication_revision_ref===row.approved_revision_ref;
+    return {caseRef:row.case_ref,reference:row.reference,
+     centerRef:row.center_ref,centerName:row.center_name,
+     status:row.status,readyToPublish:row.status==="PENDING_OWNER"&&
+      current===false,
+     isCurrentPublished:current,publicationGeneration:current?row.generation:null,
+     approvedRevisionRef:current?row.approved_revision_ref:null};
+   })};
+  });
+ }
  async apply(bearer:string,caseRef:string,body:unknown){
   const ref=uuid(caseRef),password=this.publicationPassword(body);
   const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
