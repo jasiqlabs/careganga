@@ -250,7 +250,8 @@ export class HealthCenterErpGrantService{
    const rev=source.rows[0],g=grant.rows[0];
    if(!rev||rev.original_case_ref!==caseRef||
      g?.state!=="REQUESTED"||g.version!==rev.revision_no||
-     g.pending_revision_id!==rev.id)
+     g.pending_revision_id!==rev.id||
+     (request.expected!==null&&request.expected!==g.version))
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
    const proof=await this.approval.approved(tx,actor,{
     kind:"HEALTH_CENTER_ERP_GRANT",
