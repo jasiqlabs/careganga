@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 type Content={description:string;services:string[];facilities:string[];
  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
-type Snapshot={centerRef:string;version:number;state:string;content:Content};
+type Snapshot={centerRef:string;version:number;state:string;content:Content;
+ reviewCaseRef:string|null;reviewStatus:string|null};
 const EMPTY:Content={description:"",services:[],facilities:[],
  hoursNote:"",publicEmail:"",faqs:[]};
 async function api<T>(ref:string,init?:RequestInit):Promise<T>{
@@ -21,7 +22,7 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
  const [content,setContent]=useState<Content>(EMPTY);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
- const key=useRef(""),epoch=useRef(0);
+ const key=useRef(""),submitKey=useRef(""),epoch=useRef(0);
  const load=useCallback(async()=>{
   const n=++epoch.current;setError("");
   try{
@@ -33,7 +34,7 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
    e instanceof Error?e.message:"Current content could not be checked.");}
  },[centerRef]);
  useEffect(()=>{void load();return()=>{epoch.current++};},[load]);
- const change=(patch:Partial<Content>)=>{key.current="";setContent(s=>({...s,...patch}));};
+ const change=(patch:Partial<Content>)=>{key.current="";submitKey.current="";setContent(s=>({...s,...patch}));};
  async function save(){
   if(!snapshot||busy||uncertain||snapshot.state==="SUBMITTED")return;
   if(!key.current)key.current=crypto.randomUUID();
@@ -49,6 +50,43 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
     "This save may already exist. Check the original version before retrying.");}
   finally{setBusy(false);}
  }
+ async function submit(){
+  if(!snapshot||busy||uncertain||!["DRAFT","RETURNED"].includes(snapshot.state))return;
+  if(!submitKey.current)submitKey.current=crypto.randomUUID();
+  setBusy(true);setError("");setNotice("");
+  try{
+   const response=await fetch(
+    "/api/health-network/my-centers/"+encodeURIComponent(centerRef)+"/content/submit",{
+    method:"POST",cache:"no-store",credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:submitKey.current,expectedVersion:snapshot.version})
+   });
+   const data:unknown=await response.json().catch(()=>null);
+   if(!response.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
+    typeof data.message==="string"?data.message:
+    "The center content review could not be confirmed.");
+   submitKey.current="";await load();
+   setNotice("Your frozen center presentation was submitted for independent Foundation approval.");
+  }catch(e){setUncertain(true);setError(e instanceof Error?e.message:
+    "Review submission uncertain. Refresh the original center before retrying.");}
+  finally{setBusy(false);}
+ }
+ async function reopen(){
+  if(!snapshot?.reviewCaseRef||busy||uncertain)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const r=await fetch("/api/health-network/my-centers/"+
+    encodeURIComponent(centerRef)+"/content/reviews/"+
+    encodeURIComponent(snapshot.reviewCaseRef)+"/reopen",{
+    method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+    body:"{}"
+   });
+   if(!r.ok)throw Error("The returned content could not be reopened. Recheck the review status.");
+   await load();
+   setNotice("The submitted content is back in your private draft for correction.");
+  }catch(e){setError(e instanceof Error?e.message:"Reopen outcome uncertain.");}
+  finally{setBusy(false);}
+ }
  return <section className="form-section" aria-labelledby="center-presentation-heading">
   <h2 id="center-presentation-heading">My center presentation</h2>
   <p>Describe services, facilities and center-specific FAQs. Drafts are private.
@@ -56,7 +94,8 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
   {!!error&&<p role="alert" className="notice error">{error}</p>}
   {!!notice&&<p role="status" className="notice">{notice}</p>}
   {!snapshot?<button type="button" onClick={()=>void load()}>Recheck current content</button>:<>
-   <p>Draft: {snapshot.state.replaceAll("_"," ")} (version {snapshot.version}).</p>
+   <p>Draft: {snapshot.state.replaceAll("_"," ")} (version {snapshot.version}).
+    {snapshot.reviewStatus?" Original review: "+snapshot.reviewStatus.replaceAll("_"," "):""}</p>
    <div className="form-grid">
     <label>Center description
      <textarea value={content.description} rows={5} maxLength={1600}
@@ -101,6 +140,14 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
      Add question</button>
     <button type="button" disabled={busy||uncertain||snapshot.state==="SUBMITTED"}
      className="primary" onClick={()=>void save()}>{busy?"Saving…":"Save private draft"}</button>
+    {["DRAFT","RETURNED"].includes(snapshot.state)&&
+     <button type="button" disabled={busy||uncertain||content.description.trim().length<20||
+      content.services.length===0} onClick={()=>void submit()}>
+      Submit saved version for Foundation approval</button>}
+    {snapshot.state==="SUBMITTED"&&
+      ["RETURNED","REJECTED"].includes(snapshot.reviewStatus??"")&&
+      snapshot.reviewCaseRef&&<button type="button" disabled={busy||uncertain}
+       onClick={()=>void reopen()}>Reopen returned content for correction</button>}
     <button type="button" disabled={busy} onClick={()=>void load()}>Reload saved version</button>
    </div>
    <p>Only an approved independent Foundation review can make a future version public.
