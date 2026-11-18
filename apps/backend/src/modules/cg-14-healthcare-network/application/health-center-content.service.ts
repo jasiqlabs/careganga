@@ -68,6 +68,16 @@ export class HealthCenterContentService{
   private readonly scope:HealthCenterSupportScopeFacade,
   private readonly review:HealthCenterContentApprovalService,
   private readonly media:HealthCenterContentMediaService){}
+ private publicationPassword(body:unknown):string{
+  if(!body||typeof body!=="object"||Array.isArray(body))
+   throw new BadRequestException({code:"HEALTH_CONTENT_REVIEW_INVALID"});
+  const x=body as Record<string,unknown>;
+  if(Object.keys(x).some(k=>k!=="currentPassword")||
+    typeof x.currentPassword!=="string"||x.currentPassword.length<8||
+    Buffer.byteLength(x.currentPassword,"utf8")>1024)
+   throw new BadRequestException({code:"HEALTH_CONTENT_REVIEW_INVALID"});
+  return x.currentPassword;
+ }
  private async run<T>(fn:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();let active=false;
   try{
@@ -248,11 +258,13 @@ export class HealthCenterContentService{
     message:"Submitted for independent Foundation review. Public content is unchanged."};
   });
  }
- async apply(bearer:string,caseRef:string){
-  const ref=uuid(caseRef),actor=await this.sessions.requireAction(
-   bearer,"health.providers.verify");
+ async apply(bearer:string,caseRef:string,body:unknown){
+  const ref=uuid(caseRef),password=this.publicationPassword(body);
+  const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
+  await this.sessions.limitFoundationRootProof(actor);
   return this.run(async tx=>{
-   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.identity.assertCurrent(tx,actor,"health.centers.publish");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,password);
    // Discover references without locking; acquire parent → center → draft →
    // original approval locks in that order.
    const source=await tx.query<{health_provider_id:string;health_center_id:string;
@@ -361,11 +373,13 @@ export class HealthCenterContentService{
     message:"The reviewed changes are returned for correction. Public content remains unchanged."};
   });
  }
- async withdraw(bearer:string,centerRef:string){
-  const center=uuid(centerRef),actor=await this.sessions.requireAction(
-   bearer,"health.providers.verify");
+ async withdraw(bearer:string,centerRef:string,body:unknown){
+  const center=uuid(centerRef),password=this.publicationPassword(body);
+  const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
+  await this.sessions.limitFoundationRootProof(actor);
   return this.run(async tx=>{
-   await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+   await this.identity.assertCurrent(tx,actor,"health.centers.publish");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,password);
    const c=await tx.query<{provider_id:string}>(
     "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,center]);
