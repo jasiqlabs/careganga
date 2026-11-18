@@ -36,6 +36,24 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
     changeFrequency:"weekly",priority:0.55});
   }
  }
+ // Only currently approved 80G source documents create original NGO child URLs.
+ if(legal.state==="PUBLISHED"&&legal.page.kind==="COMPLIANCE"){
+  const fields=legal.page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields??{};
+  const docs=Array.isArray(fields.documents)?fields.documents:[];
+  const proof=(type:string)=>docs.some((item,i)=>{
+   if(!item||typeof item!=="object"||Array.isArray(item))return false;
+   return (item as {type?:unknown}).type===type&&
+    legal.page.assets.some(a=>a.role==="DOCUMENT"&&a.order===i&&Boolean(a.src));
+  });
+  const pan=typeof fields.pan==="string"&&/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(fields.pan);
+  const paths=[
+   ...(pan?["/ngo-information/pan-details"]:[]),
+   ...(proof("REGISTRATION")?["/ngo-information/registration-certificate"]:[]),
+   ...(proof("ANNUAL_REPORT")?["/ngo-information/annual-reports"]:[])
+  ];
+  for(const slug of paths)results.push({url:new URL(slug,origin).toString(),
+   changeFrequency:"weekly",priority:0.45});
+ }
  if(notices.available)results.push({url:new URL("/notices",origin).toString(),
   changeFrequency:"weekly",priority:0.55});
  if(articles.available)for(const article of articles.posts){
