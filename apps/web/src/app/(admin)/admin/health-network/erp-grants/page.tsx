@@ -23,15 +23,16 @@ export default async function HealthcareErpGrantsPage(){
     !Array.isArray(result.actions))throw Error("Invalid role");
   const allowed=new Set<string>(result.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
-  if(!allowed.has("health.providers.verify"))
+  const canReview=allowed.has("approvals.review")&&
+    allowed.has("health.providers.verify");
+  const canPublish=allowed.has("health.centers.publish");
+  if(!canReview&&!canPublish)
    return <main className="page main"><h1>Review restricted</h1>
     <p>Your current Foundation role cannot inspect private center permissions.</p>
     <Link href="/admin/health-network">Return to healthcare</Link></main>;
   return <main className="page main">
    <p><Link href="/admin/health-network">Back to healthcare management</Link></p>
-   <CenterErpGrantReviews
-    canReview={allowed.has("approvals.review")}
-    canPublish={allowed.has("health.centers.publish")}/>
+   <CenterErpGrantReviews canReview={canReview} canPublish={canPublish}/>
   </main>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
