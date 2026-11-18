@@ -37,6 +37,8 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
  },[centerRef]);
  useEffect(()=>{void load();return()=>{epoch.current++};},[load]);
  const change=(patch:Partial<Content>)=>{key.current="";submitKey.current="";setContent(s=>({...s,...patch}));};
+ const dirty=!!snapshot&&JSON.stringify(content)!==JSON.stringify(snapshot.content);
+
  async function save(){
   if(!snapshot||busy||uncertain||snapshot.state==="SUBMITTED")return;
   if(!key.current)key.current=crypto.randomUUID();
@@ -53,7 +55,8 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
   finally{setBusy(false);}
  }
  async function submit(){
-  if(!snapshot||busy||uncertain||!["DRAFT","RETURNED"].includes(snapshot.state))return;
+  if(!snapshot||busy||uncertain||dirty||
+    !["DRAFT","RETURNED"].includes(snapshot.state))return;
   if(!submitKey.current)submitKey.current=crypto.randomUUID();
   setBusy(true);setError("");setNotice("");
   try{
@@ -154,9 +157,12 @@ export function CenterContentEditor({centerRef}:{centerRef:string}){
      Add question</button>
     <button type="button" disabled={busy||uncertain||snapshot.state==="SUBMITTED"}
      className="primary" onClick={()=>void save()}>{busy?"Saving…":"Save private draft"}</button>
+    {dirty&&<p role="status">Save your latest description, photos and questions before
+     submitting for Foundation approval.</p>}
     {["DRAFT","RETURNED"].includes(snapshot.state)&&
-     <button type="button" disabled={busy||uncertain||content.description.trim().length<20||
-      content.services.length===0} onClick={()=>void submit()}>
+     <button type="button" disabled={busy||uncertain||dirty||
+      content.description.trim().length<20||content.services.length===0}
+      onClick={()=>void submit()}>
       Submit saved version for Foundation approval</button>}
     {snapshot.state==="SUBMITTED"&&
       ["RETURNED","REJECTED"].includes(snapshot.reviewStatus??"")&&
