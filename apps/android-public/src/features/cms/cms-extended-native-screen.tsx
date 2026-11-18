@@ -29,6 +29,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const actualMedia=mediaScope??mediaFilter;
  const [categoryFilter,setCategoryFilter]=useState("ALL");
  const [search,setSearch]=useState("");
+ const [openFaq,setOpenFaq]=useState<number|null>(null);
  const galleryItems=rows(f.items);
  const categories=Array.from(new Set(galleryItems.map(x=>text(x.category)).filter(Boolean))).sort();
  const galleryMatches=galleryItems.map((item,index)=>({item,
@@ -179,6 +180,57 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {Array.isArray(f.tags)&&<Text style={styles.source}>{f.tags.map(text).join(" · ")}</Text>}
   <Action title="Back to approved articles" onPress={onBackToNews}/>
  </View>;
+ if(section.kind==="CONTACT_INFO"){
+  const permitted=(value:unknown,hosts:string[])=>{
+   try{
+    const url=new URL(text(value));
+    return url.protocol==="https:"&&!url.username&&!url.password&&
+     !url.port&&!url.hash&&hosts.includes(url.hostname.toLowerCase())?
+     url.toString():null;
+   }catch{return null;}
+  };
+  const map=permitted(f.mapUrl,["www.google.com","google.com","maps.google.com"]);
+  const socialHosts:Record<string,string[]>={
+   Facebook:["facebook.com","www.facebook.com"],
+   Instagram:["instagram.com","www.instagram.com"],
+   YouTube:["youtube.com","www.youtube.com"]
+  };
+  return <View style={styles.section}>
+   <Text style={styles.eyebrow}>Contact the Foundation</Text>
+   <Text accessibilityRole="header" style={styles.title}>{text(f.heroTitle)}</Text>
+   {!!text(f.heroIntro)&&<Text style={styles.body}>{text(f.heroIntro)}</Text>}
+   {rows(f.inquiries).map((item,i)=><View key={i} style={styles.item}>
+    <Text style={styles.itemTitle}>{text(item.title)}</Text>
+    <Text style={styles.body}>{text(item.description)}</Text>
+   </View>)}
+   {[0,1,2].map(i=><View key={i}>{picture("CONTACT",i)}</View>)}
+   {!!text(f.officeHours)&&<Text style={styles.source}>
+    Foundation hours: {text(f.officeHours)}</Text>}
+   {map&&<Action title="View verified Foundation map"
+    onPress={()=>open(map)}/>}
+   {rows(f.faqs).length>0&&
+    <Text accessibilityRole="header" style={styles.itemTitle}>
+     Frequently Asked Questions</Text>}
+   {rows(f.faqs).map((item,i)=><View key={i} style={styles.item}>
+    <Pressable accessibilityRole="button"
+     accessibilityState={{expanded:openFaq===i}}
+     onPress={()=>setOpenFaq(current=>current===i?null:i)}>
+     <Text style={styles.itemTitle}>{text(item.question)}</Text>
+    </Pressable>
+    {openFaq===i&&<Text style={styles.body}>{text(item.answer)}</Text>}
+   </View>)}
+   {rows(f.socialLinks).map((entry,i)=>{
+    const network=text(entry.network);
+    const url=socialHosts[network]?
+     permitted(entry.url,socialHosts[network]):null;
+    return url?<Action key={i} title={"Follow on "+network}
+     onPress={()=>open(url)}/>:null;
+   })}
+   <Action title="Send a private message" onPress={onContact}/>
+   <Text style={styles.source}>Private messages use the Foundation's
+    existing contact-support service.</Text>
+  </View>;
+ }
  if(section.kind==="HEALTHCARE_CATEGORIES")return <View style={styles.section}>
   <Text style={styles.eyebrow}>Healthcare Assistance</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
