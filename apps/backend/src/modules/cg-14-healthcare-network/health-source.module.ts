@@ -7,5 +7,5 @@ import {HealthErpGrantReviewSourceFacade} from "./application/health-erp-grant-r
  * review engine, without importing or duplicating CG-14's workflow module.
  */
 @Module({providers:[HealthReviewSourceFacade,HealthDoctorReviewSourceFacade,HealthCenterContentReviewSourceFacade,HealthErpGrantReviewSourceFacade],
-  exports:[HealthReviewSourceFacade,HealthDoctorReviewSourceFacade,HealthCenterContentReviewSourceFacade]})
+  exports:[HealthReviewSourceFacade,HealthDoctorReviewSourceFacade,HealthCenterContentReviewSourceFacade,HealthErpGrantReviewSourceFacade]})
 export class HealthSourceModule{}
