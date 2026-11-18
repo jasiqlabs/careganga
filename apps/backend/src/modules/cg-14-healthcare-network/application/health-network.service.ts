@@ -571,6 +571,61 @@ export class HealthNetworkService{
         message:"The protected settlement reference was saved."};
     });
   }
+  async centerRepresentatives(bearer:string,centerRef:string){
+    const actor=await this.allowed(bearer,"health.providers.view");
+    const ref=uuid(centerRef,"centerRef");
+    return this.transact(async client=>{
+      await this.identity.assertCurrent(client,actor,"health.providers.view");
+      const center=await client.query<{id:string}>(
+        "SELECT c.id FROM health_center c JOIN health_provider p "+
+        "ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+        "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' "+
+        "AND p.status='PENDING' FOR SHARE OF c,p",
+        [actor.realmId,ref]);
+      if(!center.rows[0])throw new NotFoundException("Pending center unavailable");
+      const reps=await client.query<{id:string;account_ref:string;status:string;revision:number}>(
+        "SELECT id,account_ref,status,revision FROM health_center_account_affiliation "+
+        "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY created_at DESC,id DESC LIMIT 50",
+        [actor.realmId,ref]);
+      const labels=await this.identity.accountLabels(client,actor,reps.rows.map(x=>x.account_ref));
+      return {representatives:reps.rows.map(x=>({affiliationRef:x.id,
+        name:labels[x.account_ref]??"Former staff member",status:x.status,
+        version:x.revision}))};
+    });
+  }
+  async revokeRepresentative(bearer:string,centerRef:string,
+    affiliationRef:string,body:unknown){
+    const input=record(body,"representative");
+    only(input,["requestKey","expectedVersion"],"representative");
+    const ref=uuid(centerRef,"centerRef"),
+      assignment=uuid(affiliationRef,"affiliationRef"),
+      expected=version(input.expectedVersion);
+    const actor=await this.allowed(bearer,"health.providers.manage");
+    return this.transact(async client=>{
+      await this.identity.assertCurrent(client,actor,"health.providers.manage");
+      const cmd=await this.command(client,actor,"CENTER_REVOKE",input.requestKey,
+        {ref,assignment,expected});
+      if(cmd.replay)return {status:"REVOKED",version:cmd.replay.result_version,replayed:true};
+      const center=await this.canEdit(client,actor,ref,true);
+      const row=await client.query<{id:string;revision:number;status:string}>(
+        "SELECT id,revision,status FROM health_center_account_affiliation "+
+        "WHERE id=$1 AND root_realm_id=$2 AND center_id=$3 FOR UPDATE",
+        [assignment,actor.realmId,ref]);
+      if(!row.rows[0])throw new NotFoundException("Center representative unavailable");
+      if(row.rows[0].revision!==expected)
+        throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+      if(row.rows[0].status==="REVOKED")
+        throw new ConflictException({code:"HEALTH_REPRESENTATIVE_REVOKED"});
+      await client.query(
+        "UPDATE health_center_account_affiliation SET status='REVOKED',revoked_at=now(),"+
+        "revision=revision+1 WHERE id=$1 AND root_realm_id=$2",
+        [assignment,actor.realmId]);
+      await this.done(client,cmd.commandId,actor,"CENTER_REVOKE",
+        center.provider_id,ref,assignment,expected+1);
+      return {status:"REVOKED",version:expected+1,replayed:false,
+        message:"The representative can no longer edit this center."};
+    });
+  }
   async representativeOptions(bearer:string,search?:string){
     return this.representativeIdentity.eligibleRepresentativeOptions(bearer,search??"");
   }
