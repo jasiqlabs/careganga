@@ -23,7 +23,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/80g","/gallery","/healthcare"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/80g","/gallery","/videos","/publications","/healthcare"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -100,6 +100,7 @@ function CmsButton({title,onPress,secondary=false}:{
 export function PublicCmsContent({onContact,onLoginVisibility}: {
  onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home");
+ const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
@@ -160,6 +161,10 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
   const route=local(href);
   if(route==="/")setSlug("home");
   else if(route==="/contact")onContact();
+  else if((route==="/videos"||route==="/publications")&&
+   publishedPaths.includes("/gallery")){
+   setMediaScope(route==="/videos"?"VIDEO":"PUBLICATION");setSlug("gallery");
+  }
   // A CMS editorial CTA must not activate a destination that has
   // not been independently approved/published in the current source.
   else if(route&&publishedPaths.includes(route))setSlug(route.slice(1));
@@ -178,10 +183,15 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    {publishedPaths.includes("/about")&&<CmsButton title="About"
     onPress={()=>setSlug("about")} secondary={slug!=="about"}/>}
    {([["/our-impact","Impact","our-impact"],["/80g","80G","80g"],
-     ["/gallery","Gallery","gallery"],["/healthcare","Healthcare","healthcare"]] as const)
+     ["/healthcare","Healthcare","healthcare"]] as const)
       .filter(([path])=>publishedPaths.includes(path)).map(([,label,name])=>
        <CmsButton key={name} title={label} secondary={slug!==name}
         onPress={()=>setSlug(name)}/>)}
+   {publishedPaths.includes("/gallery")&&([
+    ["PHOTO","Gallery"],["VIDEO","Videos"],["PUBLICATION","Publications"]
+   ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
+    secondary={slug!=="gallery"||mediaScope!==scope}
+    onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
@@ -345,6 +355,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
        "HEALTHCARE_CATEGORIES"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
+      mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
       onBackToNews={()=>setSlug("articles")}/>;
     // Project teasers require CG05 original owner and cannot be invented.
     return null;
