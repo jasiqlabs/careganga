@@ -43,3 +43,21 @@ export class CenterSupportAttachmentController{
    disposition:'attachment; filename="private-support-attachment"'});
  }
 }
+
+@Controller("api/support/cases/:caseRef/attachments")
+export class SupportAgentAttachmentController{
+ constructor(private readonly files:CenterSupportAttachmentService){}
+ @Get()
+ list(@Headers("authorization")token:string,@Param("caseRef")ref:string){
+  return this.files.agentFiles(token,ref);
+ }
+ @Get("files/:fileRef")
+ @Header("Cache-Control","no-store, max-age=0, must-revalidate")
+ @Header("X-Content-Type-Options","nosniff")
+ async file(@Headers("authorization")token:string,@Param("caseRef")ref:string,
+  @Param("fileRef")file:string){
+  const doc=await this.files.agentDownload(token,ref,file);
+  return new StreamableFile(doc.bytes,{type:doc.mime,
+   disposition:'attachment; filename="private-support-attachment"'});
+ }
+}
