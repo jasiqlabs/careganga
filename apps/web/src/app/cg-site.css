@@ -510,3 +510,14 @@
 @media(max-width:850px){.cg-site-contact-inquiries{grid-template-columns:1fr 1fr}}
 @media(max-width:580px){.cg-site-contact-inquiries,.cg-site-contact-faq-grid{
  grid-template-columns:1fr}}
+
+/* Original three-photo Contact strip: only current, scanned and approved CG-19 imagery. */
+.cg-site-contact-photo-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:1rem;margin:2rem 0;align-items:stretch}
+.cg-site-contact-photo-strip img{display:block;aspect-ratio:5/4;
+ object-fit:cover;width:100%;max-height:19rem;border-radius:1rem;
+ box-shadow:0 8px 20px #122d2418}
+@media(max-width:650px){.cg-site-contact-photo-strip{
+ grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.cg-site-contact-photo-strip{grid-template-columns:1fr}
+ .cg-site-contact-photo-strip img{aspect-ratio:16/10}}
