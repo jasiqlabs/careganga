@@ -4,6 +4,7 @@ import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterDoctorFees} from "./center-doctor-fees";
 import {CenterSupportDesk} from "./center-support-desk";
+import {CenterContentEditor} from "./center-content-editor";
 
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string;
@@ -130,6 +131,8 @@ export function CenterDraftPortal(){
         disabled={saving} onChange={setDraft}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterDoctorFees key={active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+        <CenterContentEditor key={"content:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterSupportDesk key={"support:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState!=="ENABLED"&&
