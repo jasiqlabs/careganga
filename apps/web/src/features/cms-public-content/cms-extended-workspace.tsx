@@ -88,6 +88,11 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
  canManage:boolean;canPublish:boolean}){
  const [kind,setKind]=useState<Kind>("IMPACT");
  const [pages,setPages]=useState<Item[]>([]);
+ const [listSearch,setListSearch]=useState("");
+ const [listKind,setListKind]=useState<Kind|"ALL">("ALL");
+ const [listStatus,setListStatus]=useState("ALL");
+ const [editorOpen,setEditorOpen]=useState(false);
+ const [closePrompt,setClosePrompt]=useState(false);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [draft,setDraft]=useState<Draft>(initial("IMPACT"));
  const [busy,setBusy]=useState(false),[preview,setPreview]=useState(false);
@@ -109,18 +114,20 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
+   setEditorOpen(true);setClosePrompt(false);
    setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
    setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
     seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
     sections:detail.sections,assets:detail.assets});
-   setPreview(false);setPending(null);
+   setPreview(!canManage);setPending(null);
   }catch(e){setError(e instanceof Error?e.message:"Page could not be loaded.")}
   finally{setBusy(false);}
  };
  const begin=(k:Kind)=>{
   setKind(k);setSelected(null);setDraft(initial(k));setPreview(false);
+  setEditorOpen(true);setClosePrompt(false);
   setPending(null);setError("");setNotice("");
   setUploadRole(k==="IMPACT"?"IMPACT":k==="GALLERY"?"GALLERY":
    k==="COMPLIANCE"?"DOCUMENT":k==="ARTICLE"?"ARTICLE":"HERO");
@@ -229,6 +236,24 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
   seoDescription:selected.seoDescription,canonicalPath:pathFor(selected.kind,selected.slug),
   sections:selected.sections,assets:selected.assets
  });
+ const dirty=selected?Boolean(unsaved):
+  JSON.stringify(draft)!==JSON.stringify(initial(draft.kind));
+ const visible=pages.filter(p=>
+  (listKind==="ALL"||p.kind===listKind)&&
+  (listStatus==="ALL"||
+   (listStatus==="PUBLISHED"?p.publicStatus==="EFFECTIVE":
+    listStatus==="SCHEDULED"?p.publicStatus==="SCHEDULED":
+    p.draftStatus===listStatus))&&
+  (!listSearch.trim()||[p.title,p.slug,p.kind].some(v=>
+   v.toLocaleLowerCase().includes(listSearch.trim().toLocaleLowerCase()))));
+ const published=pages.filter(p=>p.publicStatus==="EFFECTIVE").length;
+ const scheduled=pages.filter(p=>p.publicStatus==="SCHEDULED").length;
+ const inReview=pages.filter(p=>p.draftStatus==="SUBMITTED").length;
+ const close=()=>{
+  if(pending||busy)return;
+  if(dirty){setClosePrompt(true);return;}
+  setEditorOpen(false);
+ };
  return <section className="cg-cms-workspace" aria-label="Impact, media and healthcare editor">
   <div className="cg-cms-toolbar"><div><h2>Impact, media & healthcare content</h2>
    <p>Editable original content. One private draft, independent review and public publication.</p>
