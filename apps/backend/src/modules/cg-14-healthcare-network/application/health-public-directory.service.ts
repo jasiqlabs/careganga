@@ -131,6 +131,19 @@ export class HealthPublicDirectoryService{
         "AND ($4::uuid IS NULL OR c.state_ref=$4) "+
         "AND ($5::uuid IS NULL OR c.district_ref=$5) "};
   }
+  /** Bounded, live sitemap projection. Never derive SEO from private drafts. */
+  async sitemap(){
+    const [center,doctor]=await Promise.all([
+      this.db.query<{public_slug:string}>(
+       "SELECT c.public_slug "+this.eligibleCenter+this.predicates+
+       "ORDER BY c.public_slug LIMIT 1000"),
+      this.db.query<{id:string}>(
+       "SELECT DISTINCT doc.id "+this.eligibleCenter+this.eligibleDoctor+
+       this.predicates+"ORDER BY doc.id LIMIT 1000")
+    ]);
+    return {centers:center.rows.map(x=>x.public_slug),
+      doctors:doctor.rows.map(x=>x.id)};
+  }
   async centers(input:unknown){
     const s=parse(input),f=this.filters(s);
     if(s.after.includes("~")||s.center||s.specialty||s.minFee!==null||s.maxFee!==null)
