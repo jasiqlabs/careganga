@@ -474,9 +474,10 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             <button type="button" onClick={()=>setEditingProvider(false)}>Cancel</button>
           </div>
         </form>}
-        <div className="toolbar">{canManage&&selected.provider.status==="PENDING"&&<button type="button" onClick={()=>{
+        <div className="toolbar">{canManage&&["PENDING","VERIFIED"].includes(selected.provider.status)&&
+          <button type="button" onClick={()=>{
           key.current="";setCenterEditor({centerRef:null,version:0,value:blankCenter()});
-        }}>Add location</button>}</div>
+        }}>Add pending location</button>}</div>
         {selected.centers.map(center=><section key={center.centerRef} className="form-section">
           <h3>{center.name}</h3>
           <p>{center.type.replaceAll("_"," ")} · {center.status.replaceAll("_"," ")}</p>
