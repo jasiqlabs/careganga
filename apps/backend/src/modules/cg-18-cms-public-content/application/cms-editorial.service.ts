@@ -9,7 +9,7 @@ import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
-import {extendedKinds,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
+import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
 import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -133,7 +133,7 @@ function parseContent(raw:unknown):Content{
     !Number.isSafeInteger(sec.order)||Number(sec.order)<0||Number(sec.order)>100)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"]"});
   if(extendedKinds.has(String(sec.kind))){
-   const parsed=parseExtendedSection(String(sec.kind),sec.fields);
+   const parsed=parseDraftExtendedSection(String(sec.kind),sec.fields);
    if(Buffer.byteLength(JSON.stringify(parsed),"utf8")>8192)
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections["+i+"].fields"});
    return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:parsed};
@@ -598,8 +598,12 @@ export class CmsEditorialService{
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no",
      [actor.realmId,rev.id]);
-    validateExtendedPage(page.kind,owned.rows.map(row=>({
-     kind:row.section_kind,order:row.order_no,fields:row.structured_fields})),
+    const submitted=owned.rows.map(row=>({
+     kind:row.section_kind,order:row.order_no,
+     fields:extendedKinds.has(row.section_kind)?
+      parseExtendedSection(row.section_kind,row.structured_fields):row.structured_fields
+    }));
+    validateExtendedPage(page.kind,submitted,
      assets.rows.map(a=>({role:a.role,order:a.sort_order})),true);
    }
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
