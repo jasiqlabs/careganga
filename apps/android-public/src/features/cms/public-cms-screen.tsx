@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
- StyleSheet,Text,View} from "react-native";
+ StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 type Fields=Record<string,unknown>;
@@ -66,6 +66,39 @@ async function publishedArticles():Promise<{available:boolean;posts:Article[]}>{
    typeof a.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(a.slug)&&
    a.path==="/blog/"+a.slug).slice(0,20)};
  }catch{return {available:false,posts:[]};}
+}
+type Notice={title:string;body:string;category:string;
+ priority:"NORMAL"|"IMPORTANT";publishedOn:string;expiresOn:string;path:string};
+async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
+ if(!base||!/^https?:\/\//.test(base)||
+   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+  return {available:false,notices:[]};
+ try{
+  const r=await fetch(new URL("/api/public/content/notices",base).toString(),
+   {cache:"no-store",signal:AbortSignal.timeout(9000)});
+  if(!r.ok)throw Error();
+  const raw:unknown=await r.json();
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw Error();
+  const data=raw as Record<string,unknown>;
+  if(data.schemaVersion!==1||!Array.isArray(data.notices)||data.notices.length>60)
+   throw Error();
+  const valid=(n:unknown):n is Notice=>{
+   if(!n||typeof n!=="object"||Array.isArray(n))return false;
+   const item=n as Record<string,unknown>;
+   return typeof item.title==="string"&&item.title.length<=120&&
+    typeof item.body==="string"&&item.body.length<=480&&
+    typeof item.category==="string"&&item.category.length<=80&&
+    (item.priority==="IMPORTANT"||item.priority==="NORMAL")&&
+    typeof item.publishedOn==="string"&&
+    /^\d{4}-\d{2}-\d{2}$/.test(item.publishedOn)&&
+    typeof item.expiresOn==="string"&&
+    /^\d{4}-\d{2}-\d{2}$/.test(item.expiresOn)&&
+    typeof item.path==="string"&&
+    /^\/blog\/[a-z0-9-]{1,70}$/.test(item.path);
+  };
+  if(!data.notices.every(valid))throw Error();
+  return {available:true,notices:data.notices};
+ }catch{return {available:false,notices:[]};}
 }
 async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
  if(!base||!/^https?:\/\//.test(base)||
