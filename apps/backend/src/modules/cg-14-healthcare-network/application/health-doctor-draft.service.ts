@@ -129,7 +129,7 @@ export class HealthDoctorDraftService{
       "actor_ref,action_key,record_version,command_id) VALUES($1,$2,$3,$4,$5,$6,$7)",
       [actor.realmId,doctorRef,centerRef,actor.accountId,action,version,commandId]);
   }
-  private async actor(bearer:string,action:"health.doctors.view"|"health.doctors.manage"){
+  private async actor(bearer:string,action:"health.doctors.view"|"health.doctors.manage"|"health.doctors.verify"){
     return this.sessions.requireAction(bearer,action);
   }
   async create(bearer:string,body:unknown){
@@ -256,6 +256,22 @@ export class HealthDoctorDraftService{
         status:"PENDING",replayed:false,
         message:"Center association proposed. It is not active or publicly visible."};
     });
+  }
+  async eligibleCenters(bearer:string,q=""){
+    const actor=await this.actor(bearer,"health.doctors.manage");
+    const term=q.trim();
+    if(term.length>80||CONTROL.test(term))
+      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"q"});
+    const r=await this.db.query<{id:string;display_name:string;legal_name:string;pin_code:string}>(
+      "SELECT c.id,c.display_name,p.legal_name,c.pin_code FROM health_center c "+
+      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+      "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' AND c.access_state='ENABLED' "+
+      "AND p.status='VERIFIED' AND "+
+      "($2::text='' OR c.display_name ILIKE ('%' || $2 || '%')) "+
+      "ORDER BY c.display_name,c.id LIMIT 50",
+      [actor.realmId,term]);
+    return {centers:r.rows.map(x=>({centerRef:x.id,name:x.display_name,
+      providerName:x.legal_name,pinCode:x.pin_code}))};
   }
   async approveCenter(bearer:string,doctorRef:string,associationRef:string,body:unknown){
     const doctorId=validId(doctorRef,"doctorRef");
