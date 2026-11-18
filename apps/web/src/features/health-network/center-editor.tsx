@@ -11,7 +11,11 @@ export type CenterDraft={
 type Option={value:string;label:string;level:string};
 const types=[
   ["HOSPITAL","Hospital"],["CLINIC","Clinic"],["DIAGNOSTIC_LAB","Diagnostic lab"],
-  ["PHARMACY","Pharmacy"],["NURSING","Nursing center"],["OTHER","Other facility"]
+  ["PHARMACY","Pharmacy"],["NURSING","Nursing center"],["OTHER","Other facility"],
+  ["POLYCLINIC","Polyclinic"],["DIAGNOSTIC_CENTER","Diagnostic center"],
+  ["DENTAL_CLINIC","Dental clinic"],["MEDICAL_LABORATORY","Medical laboratory"],
+  ["NURSING_HOME","Nursing home"],["ORTHOPEDIC_CLINIC","Orthopedic clinic"],
+  ["HOMEOPATHY_CLINIC","Homeopathy clinic"],["AYURVEDIC_CLINIC","Ayurvedic clinic"]
 ] as const;
 const services=[
   ["CONSULTATION","Consultations"],["DIAGNOSTICS","Diagnostics"],
