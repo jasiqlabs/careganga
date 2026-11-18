@@ -313,6 +313,13 @@ export class HealthDoctorFeesService{
     return this.transact(async tx=>{
       await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
       await this.assertActiveOwnCenter(tx,actor,center);
+      // Keep professional verification current under the same transaction;
+      // a suspended doctor's approved price is history, never 'current'.
+      const d=await tx.query(
+        "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status='VERIFIED' FOR SHARE",[actor.realmId,doctor]);
+      if(!d.rowCount)
+        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
       const a=await tx.query(
         "SELECT id FROM health_doctor_center "+
         "WHERE root_realm_id=$1 AND center_id=$2 AND doctor_id=$3 "+
