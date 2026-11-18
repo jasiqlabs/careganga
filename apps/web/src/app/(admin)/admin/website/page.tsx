@@ -52,7 +52,9 @@ export default async function WebsiteCmsAdmin(){
     <details className="cg-cms-extra" id="editorial-pages">
      <summary>Impact, 80G, Gallery, Articles, Contact &amp; Healthcare pages</summary>
      <CmsExtendedWorkspace canManage={actions.has("cms.content.manage")}
-      canPublish={actions.has("cms.content.publish")}/>
+      canPublish={actions.has("cms.content.publish")}
+      canViewNoticeSources={actions.has("cms.content.manage")&&
+       actions.has("communications.notices.manage")}/>
     </details>
    </main>
   </div>;
