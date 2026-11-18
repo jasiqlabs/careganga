@@ -18,6 +18,11 @@ const s={
  media:read("apps/backend/src/modules/cg-19-documents-notifications/application/health-center-content-media.service.ts"),
  mediaApi:read("apps/backend/src/modules/cg-19-documents-notifications/http/health-center-content-media.controller.ts"),
  support:read("apps/backend/src/modules/cg-19-documents-notifications/application/support.service.ts"),
+ attachment:read("apps/backend/src/modules/cg-19-documents-notifications/application/center-support-attachment.service.ts"),
+ attachmentHttp:read("apps/backend/src/modules/cg-19-documents-notifications/http/center-support-attachment.controller.ts"),
+ attachmentSql:read("apps/backend/db/migrations/1417_cg19_center_support_original_attachments.sql"),
+ attachmentCenter:read("apps/web/src/features/health-network/center-support-attachments.tsx"),
+ attachmentAgent:read("apps/web/src/features/support/foundation-support-attachments.tsx"),
  supportScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
  publicCenter:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-center.service.ts"),
  sql12:read("apps/backend/db/migrations/1412_cg14_center_content_drafts_and_cg19_support_scope.sql"),
@@ -69,7 +74,17 @@ const checks=[
  ["US005 exact current center support ownership",s.supportScope.includes("f.status='ACTIVE'")&&s.support.includes("async centerReply(")],
  ["US005 CG19 original support case not shadow table",s.sql12.includes("ALTER TABLE cg19_support_case ADD COLUMN center_id")&&!s.sql12.includes("CREATE TABLE health_center_support_case")],
  ["US005 no own-center BFF permissions bypass",s.supportBff.includes('parts[0]==="centers"')&&s.mediaBff.includes("cg_staff_session")],
- ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")],
+ ["US005 original CG19 support case attachments, no parallel master",s.attachmentSql.includes("CG19_SUPPORT")&&
+  s.attachmentSql.includes("FOREIGN KEY(support_case_id,realm_id)")&&
+  !s.attachmentSql.includes("CREATE TABLE health_support_file")],
+ ["US005 scanned source and double checked private download",s.attachment.includes("verifyPrivateObject")&&
+  s.attachment.includes("async download(")&&s.attachment.includes("async agentDownload(")&&
+  s.attachment.includes("after.revision!==before.revision")],
+ ["US005 center and Foundation staff have original guarded attachment UI",s.attachmentHttp.includes("SupportAgentAttachmentController")&&
+  s.attachmentCenter.includes("Upload securely")&&
+  s.attachmentAgent.includes("Refresh attachments")&&s.supportBff.includes('parts[4]==="attachments"')],
+ ["US005 editable human error catalog",s.errors.includes("HEALTH_CONTENT_REVIEW_INVALID")&&
+  s.errors.includes("HEALTH_CENTER_MEDIA_RIGHTS_CHANGED")&&s.errors.includes("CENTER_SUPPORT_FILE_CHANGED")],
  ["US005 restricted original center approval routes",s.contentApi.includes("content/reviews/:caseRef/apply")&&s.bff.includes('["submit","withdraw"].includes(parts[3])')],
  ["All original 94 story QA identifiers preserved",(()=>{
    const actual=new Set(s.tasks.match(/\bUS-00[1-5]-QA\d{2}\b/g)??[]);
