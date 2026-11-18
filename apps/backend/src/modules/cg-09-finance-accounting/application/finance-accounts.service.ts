@@ -255,7 +255,8 @@ export class FinanceAccountsService{
     ...a,branchName:a.branchRef?(branchLabels[a.branchRef]??"Branch unavailable"):null
   }));
   return {years:years.rows,groups:groups.rows,accounts:safeAccounts,
-   openingJournals:opening.rows,branches,categorySummary:categorySummary.rows,nextOffset:hasMore?offset+50:null};
+   openingJournals:opening.rows,branches,categorySummary:categorySummary.rows,
+   canManageFoundationFinance:scope.all,nextOffset:hasMore?offset+50:null};
  }
  /** Authenticated, root-scoped account search independent of the current table page.
   * Only display-safe account names/codes; never exposes bank account numbers.
