@@ -305,8 +305,8 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
    return error("document");
  }
  if(kind==="GALLERY"&&(types.length!==1||types[0]!=="GALLERY_GRID"||
-   (requireMedia&&(sections[0].fields.items as unknown[]).some((_,i)=>
-    !assets.some(a=>a.role==="GALLERY"&&a.order===i)))))
+   (requireMedia&&(sections[0].fields.items as Record<string,unknown>[]).some((entry,i)=>
+    entry.visible!==false&&!assets.some(a=>a.role==="GALLERY"&&a.order===i)))))
   return error("galleryMedia");
  if(kind==="ARTICLE"&&(types.length!==1||types[0]!=="ARTICLE_BODY"))
   return error("sections");
