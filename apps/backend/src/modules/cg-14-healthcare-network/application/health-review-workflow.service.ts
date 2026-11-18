@@ -318,4 +318,94 @@ export class HealthReviewWorkflowService{
        "Center access disabled and public listing withdrawn."};
   });
  }
+ /** Public exposure is a separate protected Foundation decision AFTER
+  * genuine CG-03 approved center evidence and independent access enabling.
+  */
+ async publish(bearer:string,centerRef:string,body:unknown){
+  const data=input(body,["requestKey","expectedVersion","published","slug","currentPassword"]);
+  const ref=id(centerRef,"centerRef"),key=id(data.requestKey,"requestKey"),
+    expected=vers(data.expectedVersion);
+  if(typeof data.published!=="boolean"||typeof data.currentPassword!=="string")
+    throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
+  const slug=data.published?String(data.slug??"").trim().toLowerCase():null;
+  if(data.published&&!/^[a-z0-9][a-z0-9-]{2,79}$/.test(slug??""))
+    throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"publicSlug"});
+  const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.centers.publish");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,
+     data.currentPassword as string);
+   const cmd=await this.command(tx,actor,"HEALTH_CENTER_PUBLICATION",key,
+     {ref,expected,published:data.published,slug});
+   if(cmd.ref)return {status:"PREVIOUSLY_CONFIRMED",version:cmd.version,replayed:true};
+   const center=await tx.query<{provider_id:string;version:number;status:string;
+     access_state:string;publication_generation:number;public_slug:string|null}>(
+     "SELECT provider_id,version,status,access_state,publication_generation,public_slug "+
+     "FROM health_center WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+     [actor.realmId,ref]);
+   const row=center.rows[0];
+   if(!row)throw new NotFoundException({code:"HEALTH_CENTER_UNAVAILABLE"});
+   if(row.version!==expected)throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+   if(data.published){
+    if(row.status!=="VERIFIED"||row.access_state!=="ENABLED")
+      throw new ConflictException({code:"HEALTH_CENTER_NOT_VERIFIED"});
+    const parent=await tx.query("SELECT id FROM health_provider "+
+      "WHERE root_realm_id=$1 AND id=$2 AND status='VERIFIED' FOR SHARE",
+      [actor.realmId,row.provider_id]);
+    if(!parent.rowCount)throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
+    const approved=await tx.query<{revision_id:string;decision_id:string;
+      proof_file_ref:string;source_version:number}>(
+      "SELECT revision.id AS revision_id,decision.id AS decision_id,"+
+      "revision.proof_file_ref,revision.source_version "+
+      "FROM health_center_revision revision "+
+      "JOIN cg03_case c ON c.id=revision.approval_case_ref "+
+      "AND c.realm_id=revision.root_realm_id AND c.case_kind='HEALTH_CENTER_VERIFICATION' "+
+      "AND c.health_center_id=revision.center_id "+
+      "AND c.health_center_revision_id=revision.id "+
+      "AND c.health_source_digest=revision.source_digest "+
+      "JOIN cg03_case_decision decision ON decision.case_id=c.id "+
+      "AND decision.realm_id=c.realm_id AND decision.action='APPROVE' "+
+      "AND decision.actor_id<>c.proposer_id "+
+      "AND decision.fresh_password_verified_at IS NOT NULL "+
+      "JOIN cg19_stored_file proof ON proof.id=revision.proof_file_ref "+
+      "AND proof.realm_id=revision.root_realm_id "+
+      "JOIN cg19_upload_intent intent ON intent.id=proof.upload_intent_id "+
+      "AND intent.realm_id=proof.realm_id "+
+      "WHERE revision.root_realm_id=$1 AND revision.provider_id=$2 "+
+      "AND revision.center_id=$3 AND c.status='OWNER_COMPLETED' "+
+      "AND proof.owner_kind='CG14_DRAFT' AND proof.revoked_at IS NULL "+
+      "AND proof.scan_status='CLEAN_VERIFIED' AND intent.status='VALIDATED' "+
+      "AND intent.classification='HEALTH_CENTER_LICENSE' "+
+      "ORDER BY revision.revision_no DESC LIMIT 1 FOR SHARE OF revision,c,decision,proof,intent",
+      [actor.realmId,row.provider_id,ref]);
+    if(!approved.rows[0])throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    const generation=row.publication_generation+1;
+    await tx.query(
+      "INSERT INTO health_center_publication(root_realm_id,center_id,"+
+      "verified_center_revision_id,original_final_decision_ref,published_by,generation) "+
+      "VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(root_realm_id,center_id) DO UPDATE "+
+      "SET verified_center_revision_id=EXCLUDED.verified_center_revision_id,"+
+      "original_final_decision_ref=EXCLUDED.original_final_decision_ref,"+
+      "published_by=EXCLUDED.published_by,generation=EXCLUDED.generation,changed_at=now()",
+      [actor.realmId,ref,approved.rows[0].revision_id,
+        approved.rows[0].decision_id,actor.accountId,generation]);
+    await tx.query("UPDATE health_center SET publication_state='PUBLISHED',"+
+      "public_slug=$3,publication_generation=$4,version=version+1,updated_at=now() "+
+      "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref,slug,generation]);
+   }else{
+    await tx.query("UPDATE health_center SET publication_state='UNPUBLISHED',"+
+      "publication_generation=publication_generation+1,version=version+1,updated_at=now() "+
+      "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
+   }
+   const next=expected+1;
+   await this.complete(tx,actor,cmd.id,row.provider_id,ref,
+     "HEALTH_CENTER_PUBLICATION",ref,next);
+   return {status:data.published?"PUBLISHED":"UNPUBLISHED",version:next,
+     replayed:false,message:data.published?
+       "The verified center listing is published. Doctor appointments are not enabled.":
+       "The center listing was withdrawn from public view."};
+  });
+ }
+
 }
