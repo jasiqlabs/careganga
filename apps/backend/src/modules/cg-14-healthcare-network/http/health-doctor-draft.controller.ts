@@ -2,12 +2,14 @@ import {
   BadRequestException,Body,Controller,Get,Headers,Param,Patch,Post,Query
 } from "@nestjs/common";
 import {HealthDoctorDraftService} from "../application/health-doctor-draft.service";
+import {HealthDoctorFeesService} from "../application/health-doctor-fees.service";
 import {HealthDoctorReviewWorkflowService} from "../application/health-doctor-review-workflow.service";
 
 @Controller("api/v1/health-network/doctors")
 export class HealthDoctorDraftController{
   constructor(private readonly doctors:HealthDoctorDraftService,
-    private readonly reviews:HealthDoctorReviewWorkflowService){}
+    private readonly reviews:HealthDoctorReviewWorkflowService,
+    private readonly fees:HealthDoctorFeesService){}
   @Get()
   list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
     if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
@@ -59,6 +61,23 @@ export class HealthDoctorDraftController{
     @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string,
     @Body()body:unknown){
     return this.doctors.suspendCenter(bearer,doctorRef,associationRef,body);
+  }
+  @Get(":doctorRef/centers/:associationRef/fees")
+  feesForCenter(@Headers("authorization")bearer:string,
+    @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string){
+    return this.fees.list(bearer,doctorRef,associationRef);
+  }
+  @Post(":doctorRef/centers/:associationRef/fees")
+  proposeFee(@Headers("authorization")bearer:string,
+    @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string,
+    @Body()body:unknown){
+    return this.fees.propose(bearer,doctorRef,associationRef,body);
+  }
+  @Post(":doctorRef/centers/:associationRef/fees/:feeRef/approve")
+  approveFee(@Headers("authorization")bearer:string,
+    @Param("doctorRef")doctorRef:string,@Param("associationRef")associationRef:string,
+    @Param("feeRef")feeRef:string,@Body()body:unknown){
+    return this.fees.approve(bearer,doctorRef,associationRef,feeRef,body);
   }
   @Post(":doctorRef/centers")
   proposeCenter(@Headers("authorization")bearer:string,
