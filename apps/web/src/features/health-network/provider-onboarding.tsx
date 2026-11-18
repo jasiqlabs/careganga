@@ -8,7 +8,8 @@ type ProviderDraft={providerCode:string;legalName:string;providerType:string;
 type Row={providerRef:string;code:string;name:string;type:string;
  status:string;version:number;centerCount:number};
 type Detail={provider:{providerRef:string;code:string;name:string;status:string;version:number;
- type:string;contactName:string;contactPhone:string};centers:{
+ type:string;contactName:string;contactPhone:string;
+ contactEmail:string|null;registrationRef:string|null};centers:{
  centerRef:string;code:string;name:string;type:string;status:string;version:number}[]};
 type Option={value:string;label:string};
 type CenterDetail={centerRef:string;version:number;center:CenterDraft};
@@ -28,6 +29,42 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
       raw.message:"Healthcare request cannot be confirmed."),{status:response.status});
   return raw as T;
 }
+function ProviderFields({value,onChange}:{value:ProviderDraft;
+ onChange:(next:ProviderDraft)=>void}){
+  const provider=value,setProvider=onChange;
+  return <div className="form-grid">
+        <label className="field">Provider code
+          <input required maxLength={24} value={provider.providerCode}
+            onChange={e=>setProvider({...provider,providerCode:e.target.value.toUpperCase()})}/>
+        </label>
+        <label className="field">Legal organization name
+          <input required maxLength={180} value={provider.legalName}
+            onChange={e=>setProvider({...provider,legalName:e.target.value})}/>
+        </label>
+        <label className="field">Organization type
+          <select value={provider.providerType} onChange={e=>setProvider({
+            ...provider,providerType:e.target.value})}>
+            {types.map(([key,label])=><option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <label className="field">Contact person
+          <input required maxLength={120} value={provider.contactName}
+            onChange={e=>setProvider({...provider,contactName:e.target.value})}/>
+        </label>
+        <label className="field">Registered contact number
+          <input required type="tel" maxLength={16} value={provider.contactPhone}
+            onChange={e=>setProvider({...provider,contactPhone:e.target.value})}/>
+        </label>
+        <label className="field">Email (optional)
+          <input type="email" maxLength={180} value={provider.contactEmail}
+            onChange={e=>setProvider({...provider,contactEmail:e.target.value})}/>
+        </label>
+        <label className="field">Registration reference (optional)
+          <input maxLength={120} value={provider.registrationRef}
+            onChange={e=>setProvider({...provider,registrationRef:e.target.value})}/>
+        </label>
+      </div>;
+}
 export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,canManageFinance}:{
  canManage:boolean;canSelectAccounts:boolean;canViewFinance:boolean;canManageFinance:boolean
 }){
@@ -36,6 +73,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   const [provider,setProvider]=useState(emptyProvider);
   const [centers,setCenters]=useState<CenterDraft[]>([blankCenter()]);
   const [mode,setMode]=useState<"list"|"create">("list");
+  const [editingProvider,setEditingProvider]=useState(false);
   const [centerEditor,setCenterEditor]=useState<{
     centerRef:string|null;version:number;value:CenterDraft}|null>(null);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -69,7 +107,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       .finally(()=>setLoading(false));
   },[loadList]);
   async function open(ref:string){
-    setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");
+    setError("");setNotice("");setCenterEditor(null);setBankProof("");setExistingBankProof("");setEditingProvider(false);
     try{
       await loadDetail(ref);
       if(canViewFinance){
@@ -102,6 +140,27 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       setError(e instanceof Error?e.message:"Provider save outcome uncertain.");
       if(!(e&&typeof e==="object"&&"status" in e&&
         typeof e.status==="number"&&e.status>=400&&e.status<500))
+        setUncertain(true);
+    }finally{setBusy(false);}
+  }
+  async function saveProvider(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!selected||!canManage||busy||uncertain)return;
+    setBusy(true);setError("");setNotice("");
+    if(!key.current)key.current=crypto.randomUUID();
+    try{
+      await api("providers/"+encodeURIComponent(selected.provider.providerRef),"PATCH",{
+        requestKey:key.current,expectedVersion:selected.provider.version,
+        provider:{...provider,contactEmail:provider.contactEmail||null,
+          registrationRef:provider.registrationRef||null}
+      });
+      key.current="";setEditingProvider(false);
+      await loadDetail(selected.provider.providerRef);await loadList();
+      setNotice("Pending provider details saved. Verification is still required.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Provider correction result cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+         typeof e.status==="number"&&e.status>=400&&e.status<500))
         setUncertain(true);
     }finally{setBusy(false);}
   }
@@ -194,38 +253,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     </div>}
     {mode==="create"&&canManage&&<form onSubmit={event=>void submitCreate(event)} className="form">
       <h2>Provider registration</h2>
-      <div className="form-grid">
-        <label className="field">Provider code
-          <input required maxLength={24} value={provider.providerCode}
-            onChange={e=>setProvider({...provider,providerCode:e.target.value.toUpperCase()})}/>
-        </label>
-        <label className="field">Legal organization name
-          <input required maxLength={180} value={provider.legalName}
-            onChange={e=>setProvider({...provider,legalName:e.target.value})}/>
-        </label>
-        <label className="field">Organization type
-          <select value={provider.providerType} onChange={e=>setProvider({
-            ...provider,providerType:e.target.value})}>
-            {types.map(([key,label])=><option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="field">Contact person
-          <input required maxLength={120} value={provider.contactName}
-            onChange={e=>setProvider({...provider,contactName:e.target.value})}/>
-        </label>
-        <label className="field">Registered contact number
-          <input required type="tel" maxLength={16} value={provider.contactPhone}
-            onChange={e=>setProvider({...provider,contactPhone:e.target.value})}/>
-        </label>
-        <label className="field">Email (optional)
-          <input type="email" maxLength={180} value={provider.contactEmail}
-            onChange={e=>setProvider({...provider,contactEmail:e.target.value})}/>
-        </label>
-        <label className="field">Registration reference (optional)
-          <input maxLength={120} value={provider.registrationRef}
-            onChange={e=>setProvider({...provider,registrationRef:e.target.value})}/>
-        </label>
-      </div>
+      <ProviderFields value={provider} onChange={setProvider}/>
       {centers.map((center,index)=><section key={index} className="form-section">
         <h3>Operating center {index+1}</h3>
         <CenterEditor value={center} disabled={busy} onChange={value=>
@@ -253,6 +281,24 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       {selected&&<section className="form-section">
         <h2>{selected.provider.name}</h2><p>Pending registration — no public listing is active.</p>
         <p>Contact: {selected.provider.contactName} · {selected.provider.contactPhone}</p>
+        {canManage&&<button type="button" onClick={()=>{
+          setProvider({providerCode:selected.provider.code,legalName:selected.provider.name,
+            providerType:selected.provider.type,contactName:selected.provider.contactName,
+            contactPhone:selected.provider.contactPhone,
+            contactEmail:selected.provider.contactEmail??"",
+            registrationRef:selected.provider.registrationRef??""});
+          key.current="";setEditingProvider(true);
+        }}>Edit pending provider</button>}
+        {editingProvider&&canManage&&<form className="form-section"
+          onSubmit={event=>void saveProvider(event)}>
+          <h3>Correct pending provider details</h3>
+          <ProviderFields value={provider} onChange={setProvider}/>
+          <div className="toolbar">
+            <button type="submit" className="primary" disabled={busy||uncertain}>
+              Save corrections</button>
+            <button type="button" onClick={()=>setEditingProvider(false)}>Cancel</button>
+          </div>
+        </form>}
         <div className="toolbar">{canManage&&<button type="button" onClick={()=>{
           key.current="";setCenterEditor({centerRef:null,version:0,value:blankCenter()});
         }}>Add location</button>}</div>
