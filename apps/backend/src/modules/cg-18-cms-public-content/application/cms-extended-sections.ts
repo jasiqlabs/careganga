@@ -6,7 +6,7 @@ import {BadRequestException} from "@nestjs/common";
  */
 export const extendedKinds=new Set([
  "IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID",
- "ARTICLE_BODY","HEALTHCARE_CATEGORIES"
+ "ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"
 ]);
 export const impactGroups=[
  "HERO","PILLARS","STATS","GROWTH","GEOGRAPHY",
@@ -97,7 +97,9 @@ function allowedSectionFields(kind:string):string[]{
   ["heading","category","excerpt","body","authorLabel","source","asOfDate","tags",
    "sourceNoticeRef","publicReleaseConfirmed"]:
   kind==="HEALTHCARE_CATEGORIES"?
-  ["heading","intro","categories","ctaLabel","ctaPath"]: [];
+  ["heading","intro","categories","ctaLabel","ctaPath"]:
+  kind==="CONTACT_INFO"?["heroTitle","heroIntro","inquiries","faqs","officeHours",
+   "mapUrl","socialLinks"]: [];
 
 }
 /**
@@ -269,6 +271,54 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    source:str(x.source,"source",160,3),asOfDate,
    tags:x.tags.map((v,i)=>str(v,"tags["+i+"]",40,2))};
  }
+ if(kind==="CONTACT_INFO"){
+  if(!Array.isArray(x.inquiries)||x.inquiries.length>3||
+     !Array.isArray(x.faqs)||x.faqs.length>8||
+     !Array.isArray(x.socialLinks)||x.socialLinks.length>3)
+   return error("contactDetails");
+  const inquiries=x.inquiries.map((v,i)=>{
+   const item=obj(v,"inquiries["+i+"]",["title","description"]);
+   return {title:str(item.title,"inquiries.title",100,3),
+    description:str(item.description,"inquiries.description",350,3)};
+  });
+  const faqs=x.faqs.map((v,i)=>{
+   const item=obj(v,"faqs["+i+"]",["question","answer"]);
+   return {question:str(item.question,"faqs.question",180,5),
+    answer:str(item.answer,"faqs.answer",1200,10)};
+  });
+  const approvedUrl=(raw:unknown,field:string,hosts:string[])=>{
+   if(raw===""||raw===null||raw===undefined)return "";
+   const value=str(raw,field,500,12);
+   try{
+    const url=new URL(value);
+    if(url.protocol!=="https:"||url.username||url.password||
+      url.port||url.hash||!hosts.includes(url.hostname.toLowerCase()))
+      return error(field);
+    return value;
+   }catch{return error(field);}
+  };
+  const socialLinks=x.socialLinks.map((v,i)=>{
+   const item=obj(v,"socialLinks["+i+"]",["network","url"]);
+   const network=str(item.network,"socialLinks.network",20,3);
+   const allowed:Record<string,string[]>={
+    Facebook:["facebook.com","www.facebook.com"],
+    Instagram:["instagram.com","www.instagram.com"],
+    YouTube:["youtube.com","www.youtube.com"]
+   };
+   if(!allowed[network])return error("socialLinks.network");
+   return {network,url:approvedUrl(item.url,"socialLinks.url",allowed[network])};
+  });
+  const heroTitle=str(x.heroTitle??"","heroTitle",180);
+  const heroIntro=str(x.heroIntro??"","heroIntro",800);
+  const officeHours=str(x.officeHours??"","officeHours",160);
+  // Do not publish an unverified always-staffed chat/hours promise.
+  if(/24\\s*\\/?\\s*7|24.hours|always.available/i.test(
+   [heroTitle,heroIntro,officeHours].join(" ")))return error("officeHours");
+  return {heroTitle,heroIntro,inquiries,faqs,officeHours,
+   mapUrl:approvedUrl(x.mapUrl,"mapUrl",
+    ["www.google.com","google.com","maps.google.com"]),
+   socialLinks};
+ }
  if(kind==="HEALTHCARE_CATEGORIES"){
   if(!Array.isArray(x.categories)||x.categories.length<1||
     x.categories.length>12)return error("categories");
@@ -305,7 +355,7 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   COMPLIANCE:["COMPLIANCE_FACTS"],
   GALLERY:["GALLERY_GRID"],
   ARTICLE:["ARTICLE_BODY"],
-  CONTACT:["RICH_TEXT","CTA"],
+  CONTACT:["RICH_TEXT","CTA","CONTACT_INFO"],
   HEALTHCARE:["HERO","RICH_TEXT","HEALTHCARE_CATEGORIES","CTA"],
   POLICY:["RICH_TEXT"]
  };
