@@ -33,6 +33,11 @@ export class HealthDoctorDraftController{
     @Body()body:unknown){
     return this.doctors.update(bearer,ref,body);
   }
+  @Post(":doctorRef/suspend")
+  suspendDoctor(@Headers("authorization")bearer:string,
+    @Param("doctorRef")ref:string,@Body()body:unknown){
+    return this.doctors.suspendDoctor(bearer,ref,body);
+  }
   @Post(":doctorRef/submit")
   submit(@Headers("authorization")bearer:string,@Param("doctorRef")ref:string,
     @Body()body:unknown){
