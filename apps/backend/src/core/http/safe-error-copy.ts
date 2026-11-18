@@ -233,6 +233,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_CONTENT_REVIEW_CONFLICT:"This Foundation content review changed. Reload the original case before deciding.",
       HEALTH_CONTENT_REVIEW_INVALID:"Choose a review decision and confirm with your current Foundation password.",
       HEALTH_CONTENT_ALREADY_WITHDRAWN:"This center presentation has already been withdrawn. Reload its public status.",
+      HEALTH_CONTENT_PUBLICATION_CHANGED:"The published center presentation changed. Refresh its current status before withdrawing.",
       HEALTH_CENTER_MEDIA_INVALID:"Choose a JPG or PNG under 3 MB from this center's current private draft.",
       HEALTH_CENTER_MEDIA_SOURCE_CHANGED:"The center photo or draft version changed. Refresh the original photo status.",
       HEALTH_CENTER_MEDIA_REQUEST_CONFLICT:"The original photo upload key was used for different details. Check its status.",
