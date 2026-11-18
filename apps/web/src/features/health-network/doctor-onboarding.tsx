@@ -258,8 +258,10 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     </section>
     {selected&&editing==="none"&&<section className="form-section">
       <h2>{selected.doctor.fullName}</h2>
-      <p>Verification: <strong>{label(selected.status)}</strong>.
+      <p>Professional verification: <strong>{label(selected.status)}</strong>.
         Only an independently approved registration can become eligible for association.</p>
+      <p>Public directory: <strong>Not published by this workflow</strong>.
+        This professional registration and private portrait are not a public doctor listing.</p>
       <p>Registration jurisdiction: {selected.doctor.registrationJurisdiction}</p>
       <p>Registration number: {selected.doctor.registrationNumber}</p>
       <p>Qualifications: {selected.doctor.qualifications.join(", ")||"Not entered"}</p>
