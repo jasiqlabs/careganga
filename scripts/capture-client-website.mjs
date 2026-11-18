@@ -57,7 +57,7 @@ try{
   const url=queue.shift();
   if(!url||seen.has(url))continue;
   seen.add(url);
-  const id=fileName(url),record={url,id,views:[],links:[],errors:[]};
+  const id=fileName(url),record={url,id,views:[],links:[],menus:[],errors:[]};
   for(const view of views){
    const ctx=await browser.newContext({
     viewport:view.viewport,isMobile:view.isMobile,hasTouch:view.isMobile,
@@ -133,6 +133,36 @@ try{
      JSON.stringify({url:finalUrl,httpStatus:response?.status()??null,
       viewport:view.viewport,snapshot},null,2));
     if(view.key==="desktop"){
+     // Hover-only public reference capture on homepage. Never click a link,
+     // submit a form, open Admin or request private records.
+     if(url===root.toString()){
+      const nav=page.locator("header nav, nav").first();
+      for(const label of ["About Us","Our Work","Media & Resources","Join Now"]){
+       try{
+        await nav.getByText(label,{exact:true}).first().hover({timeout:2500});
+        await page.waitForTimeout(250);
+        const links=await page.evaluate(()=>{
+         const displayed=el=>{const st=getComputedStyle(el);
+          return el.getClientRects().length>0&&st.display!=="none"&&st.visibility!=="hidden";};
+         return [...document.querySelectorAll('header a[href],nav a[href],'+
+          '[role="menu"] a[href],[class*="dropdown"] a[href],'+
+          '[class*="submenu"] a[href]')].filter(displayed).slice(0,90).map(a=>{
+           let href=null;
+           try{const u=new URL(a.getAttribute("href")||"",location.href);
+            if(u.protocol==="https:"||u.protocol==="http:"){
+             u.search="";u.hash="";u.username="";u.password="";href=u.toString();}
+           }catch{}
+           return {text:(a.textContent||"").trim().slice(0,120),href};
+          });
+        });
+        const safeLabel=label.toLowerCase().replace(/[^a-z]+/g,"-").replace(/-$/,"");
+        const screenshot=id+"-nav-"+safeLabel+"-open.png";
+        await page.screenshot({path:join(out,screenshot),fullPage:false,
+         animations:"disabled",timeout:10000});
+        record.menus.push({label,screenshot,visibleLinks:links});
+       }catch(error){record.menus.push({label,error:String(error)});}
+      }
+     }
      record.links=snapshot.links.map(x=>x.href);
      await writeFile(join(out,id+"-source.html"),await page.content(),"utf8");
      for(const x of record.links){
