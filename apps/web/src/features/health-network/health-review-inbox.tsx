@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 type Case={caseRef:string;reference:string;title:string;kind:string;status:string;revision:number};
 type Detail={caseRef:string;reference:string;status:string;revision:number;
- kind:"HEALTH_PROVIDER_VERIFICATION"|"HEALTH_CENTER_VERIFICATION";
+ kind:"HEALTH_PROVIDER_VERIFICATION"|"HEALTH_CENTER_VERIFICATION"|"HEALTH_DOCTOR_VERIFICATION";
  source:null|{kind:string;source:Record<string,unknown>;proofStatus:string;sourceVersion:number}};
 const statusText=(s:string)=>s.replace(/([a-z])([A-Z])/g,"$1 $2")
  .replaceAll("_"," ").toLowerCase().replace(/\b\w/g,x=>x.toUpperCase());
@@ -33,7 +33,7 @@ const safeText=(v:unknown):string=>{
    }).join("; "):"None declared";
  return "Not specified";
 };
-export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
+export function HealthReviewInbox({canManageProviders=false,canManageDoctors=false}:{canManageProviders?:boolean;canManageDoctors?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [decision,setDecision]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -110,7 +110,7 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
  async function apply(){
   if(!detail||busy||uncertain)return;
   const ref=detail.caseRef;
-  const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":"centers";
+  const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"doctors":"centers";
   setBusy(true);setError("");setNotice("");
   try{
    await data("/api/health-network/"+kind+"/reviews/"+encodeURIComponent(ref)+"/apply",
@@ -127,7 +127,7 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
  async function returnForCorrection(){
   if(!detail||busy||uncertain)return;
   const ref=detail.caseRef;
-  const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":"centers";
+  const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"doctors":"centers";
   setBusy(true);setError("");setNotice("");
   try{
    await data("/api/health-network/"+kind+"/reviews/"+
@@ -161,9 +161,10 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
       </label>
       <label className="field">Registration type
         <select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}>
-          <option value="ALL">Provider and center</option>
+          <option value="ALL">All healthcare registrations</option>
           <option value="HEALTH_PROVIDER_VERIFICATION">Provider</option>
           <option value="HEALTH_CENTER_VERIFICATION">Center</option>
+           <option value="HEALTH_DOCTOR_VERIFICATION">Doctor</option>
         </select>
       </label>
     </div>
@@ -190,7 +191,7 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
    <th>Registration</th><th>Kind</th><th>Status</th><th>Action</th></tr></thead><tbody>
    {cases.map(c=><tr key={c.caseRef}>
     <td>{c.reference}</td><td>{c.title}</td>
-    <td>{c.kind==="HEALTH_PROVIDER_VERIFICATION"?"Provider":"Center"}</td>
+    <td>{c.kind==="HEALTH_PROVIDER_VERIFICATION"?"Provider":c.kind==="HEALTH_DOCTOR_VERIFICATION"?"Doctor":"Center"}</td>
     <td>{statusText(c.status)}</td><td><button type="button"
      onClick={()=>void open(c.caseRef)}>Review</button></td>
    </tr>)}
@@ -209,7 +210,7 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
      </div>)}
     </dl>
     <p>Private evidence: {statusText(detail.source.proofStatus)}</p>
-    <a href={"/api/documents/health-draft/reviews/"+
+    <a href={(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"/api/documents/doctor-evidence/reviews/":"/api/documents/health-draft/reviews/")+
       encodeURIComponent(detail.caseRef)+"/download"}>
       Download original scanned evidence for review</a>
    </>}
@@ -241,12 +242,12 @@ export function HealthReviewInbox({canManage=false}:{canManage?:boolean}){
    {detail.status==="PENDING_OWNER"&&<button type="button" className="primary"
       disabled={busy||uncertain} onClick={()=>void apply()}>
      Apply approved registration</button>}
-   {canManage&&["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"
+   {(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canManageDoctors:canManageProviders)&&["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"
       disabled={busy||uncertain} onClick={()=>void returnForCorrection()}>
      Reopen for corrections</button>}
-   {!canManage&&["RETURNED","REJECTED"].includes(detail.status)&&
-     <p>Only a Foundation provider manager can reopen this application for new corrections.</p>}
-   <p>Only a verified and separately activated center can later be published. No approval creates a booking or payment.</p>
+   {!(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canManageDoctors:canManageProviders)&&["RETURNED","REJECTED"].includes(detail.status)&&
+     <p>Only an authorized Foundation registration manager can reopen this application for corrections.</p>}
+   <p>Doctor verification does not activate a center association or fee. Only separately approved centers can be published. No approval creates an appointment or payment.</p>
   </section>}
  </div>;
 }
