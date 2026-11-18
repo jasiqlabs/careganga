@@ -96,32 +96,41 @@ export class HealthDoctorFeesService{
       [commandId,ref,recordVersion]);
   }
   private async association(tx:PoolClient,actor:Actor,doctorRef:string,
-    associationRef:string,lock:boolean):Promise<Association>{
-    // Lock the specific doctor-center row first. Every fee write has
-    // this same lock order, preventing competing approvals at one center.
-    const q=await tx.query<Association>(
-      "SELECT a.id,a.version,a.affiliation_state,a.doctor_id,a.center_id "+
-      "FROM health_doctor_center a WHERE a.root_realm_id=$1 AND a.doctor_id=$2 "+
-      "AND a.id=$3 "+(lock?"FOR UPDATE":"FOR SHARE"),
-      [actor.realmId,doctorRef,associationRef]);
-    const row=q.rows[0];
-    if(!row)throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
-    if(row.affiliation_state!=="APPROVED")
-      throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
-    const state=await tx.query<{doctor_status:string;center_status:string;
-      access_state:string;provider_status:string}>(
-      "SELECT d.status AS doctor_status,c.status AS center_status,"+
-      "c.access_state,p.status AS provider_status FROM health_doctor d "+
-      "JOIN health_doctor_center a ON a.root_realm_id=d.root_realm_id "+
-      "AND a.doctor_id=d.id "+
+    associationRef:string,lock:boolean,ownCenter:string|null=null):Promise<Association>{
+    // Deterministic parent-to-child lock order shared by provider suspension,
+    // center suspension and global doctor suspension: provider, center, doctor,
+    // affiliation, then fee. Never lock an affiliation before its parent.
+    const refs=await tx.query<{center_id:string;provider_id:string}>(
+      "SELECT a.center_id,c.provider_id FROM health_doctor_center a "+
       "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
-      "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-      "WHERE d.root_realm_id=$1 AND d.id=$2 AND a.id=$3 FOR SHARE OF d,c,p",
-      [actor.realmId,doctorRef,associationRef]);
-    const s=state.rows[0];
-    if(!s||s.doctor_status!=="VERIFIED"||s.center_status!=="VERIFIED"||
-      s.access_state!=="ENABLED"||s.provider_status!=="VERIFIED")
+      "WHERE a.root_realm_id=$1 AND a.doctor_id=$2 AND a.id=$3 "+
+      "AND ($4::uuid IS NULL OR a.center_id=$4)",
+      [actor.realmId,doctorRef,associationRef,ownCenter]);
+    const ref=refs.rows[0];
+    if(!ref)throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+    const provider=await tx.query<{status:string}>(
+      "SELECT status FROM health_provider WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+      [actor.realmId,ref.provider_id]);
+    const center=await tx.query<{status:string;access_state:string}>(
+      "SELECT status,access_state FROM health_center WHERE root_realm_id=$1 "+
+      "AND provider_id=$2 AND id=$3 FOR SHARE",
+      [actor.realmId,ref.provider_id,ref.center_id]);
+    const doctor=await tx.query<{status:string}>(
+      "SELECT status FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+      [actor.realmId,doctorRef]);
+    if(provider.rows[0]?.status!=="VERIFIED"||
+      center.rows[0]?.status!=="VERIFIED"||
+      center.rows[0]?.access_state!=="ENABLED"||
+      doctor.rows[0]?.status!=="VERIFIED")
       throw new ConflictException({code:"HEALTH_DOCTOR_FEE_INELIGIBLE"});
+    const found=await tx.query<Association>(
+      "SELECT id,version,affiliation_state,doctor_id,center_id "+
+      "FROM health_doctor_center WHERE root_realm_id=$1 AND id=$2 "+
+      "AND doctor_id=$3 AND center_id=$4 "+(lock?"FOR UPDATE":"FOR SHARE"),
+      [actor.realmId,associationRef,doctorRef,ref.center_id]);
+    const row=found.rows[0];
+    if(!row||row.affiliation_state!=="APPROVED")
+      throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
     return row;
   }
   async propose(bearer:string,doctorRef:string,associationRef:string,body:unknown){
@@ -178,9 +187,7 @@ export class HealthDoctorFeesService{
       const cmd=await this.command(tx,actor,"DOCTOR_FEE_PROPOSE",key,input);
       if(cmd.replay)return {feeRef:cmd.replay.result_ref,version:cmd.replay.result_version,
         status:"PROPOSED",replayed:true};
-      const assoc=await this.association(tx,actor,doctor,associationId,true);
-      if(ownCenter&&assoc.center_id!==ownCenter)
-        throw new NotFoundException({code:"HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE"});
+      const assoc=await this.association(tx,actor,doctor,associationId,true,ownCenter);
       if(assoc.version!==expected)
         throw new ConflictException({code:"HEALTH_DOCTOR_ASSOCIATION_CHANGED"});
       const fee=await tx.query<{id:string;version:number}>(
