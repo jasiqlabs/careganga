@@ -8,6 +8,11 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
   // Protected Center Portal uses the original CG-19 case authority.
   // Backend rechecks the exact active CG-14 center account on every request.
+  if(parts.length===3&&parts[0]==="cases"&&UUID.test(parts[1])&&
+    parts[2]==="attachments"&&method==="GET")return "STAFF";
+  if(parts.length===5&&parts[0]==="cases"&&UUID.test(parts[1])&&
+    parts[2]==="attachments"&&parts[3]==="files"&&UUID.test(parts[4])&&
+    method==="GET")return "STAFF";
   if(parts.length>=5&&parts[0]==="centers"&&UUID.test(parts[1])&&
     parts[2]==="cases"&&UUID.test(parts[3])&&parts[4]==="attachments"){
     if(parts.length===5&&["GET","POST"].includes(method))return "STAFF";
@@ -127,8 +132,11 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
         status===400?"Check the entered information.":
         "Outcome unconfirmed. Check the original status before retrying.");
     }
-    if(access==="STAFF"&&parts.length===7&&
-       parts[0]==="centers"&&parts[4]==="attachments"&&parts[5]==="files"){
+    if(access==="STAFF"&&(
+      parts.length===7&&parts[0]==="centers"&&parts[4]==="attachments"&&
+       parts[5]==="files"||
+      parts.length===5&&parts[0]==="cases"&&parts[2]==="attachments"&&
+       parts[3]==="files")){
       const mime=result.headers.get("content-type");
       const len=Number(result.headers.get("content-length")??0);
       if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime??"")||
