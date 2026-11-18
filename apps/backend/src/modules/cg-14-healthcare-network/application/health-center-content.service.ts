@@ -78,6 +78,20 @@ export class HealthCenterContentService{
    throw new BadRequestException({code:"HEALTH_CONTENT_REVIEW_INVALID"});
   return x.currentPassword;
  }
+ private withdrawSource(body:unknown){
+  if(!body||typeof body!=="object"||Array.isArray(body))
+   throw new BadRequestException({code:"HEALTH_CONTENT_REVIEW_INVALID"});
+  const x=body as Record<string,unknown>;
+  if(Object.keys(x).some(k=>!["currentPassword","expectedGeneration",
+     "approvedRevisionRef"].includes(k))||
+     typeof x.currentPassword!=="string"||x.currentPassword.length<8||
+     Buffer.byteLength(x.currentPassword,"utf8")>1024||
+     !Number.isSafeInteger(x.expectedGeneration)||Number(x.expectedGeneration)<1||
+     typeof x.approvedRevisionRef!=="string")
+   throw new BadRequestException({code:"HEALTH_CONTENT_REVIEW_INVALID"});
+  return {password:x.currentPassword,generation:Number(x.expectedGeneration),
+   revision:uuid(x.approvedRevisionRef)};
+ }
  private async run<T>(fn:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();let active=false;
   try{
@@ -374,12 +388,12 @@ export class HealthCenterContentService{
   });
  }
  async withdraw(bearer:string,centerRef:string,body:unknown){
-  const center=uuid(centerRef),password=this.publicationPassword(body);
+  const center=uuid(centerRef),request=this.withdrawSource(body);
   const actor=await this.sessions.requireAction(bearer,"health.centers.publish");
   await this.sessions.limitFoundationRootProof(actor);
   return this.run(async tx=>{
    await this.identity.assertCurrent(tx,actor,"health.centers.publish");
-   await this.sessions.requireFreshFoundationRootProof(tx,actor,password);
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,request.password);
    const c=await tx.query<{provider_id:string}>(
     "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,center]);
@@ -391,8 +405,9 @@ export class HealthCenterContentService{
    const publication=await tx.query<{generation:number}>(
     "UPDATE health_center_content_publication SET withdrawn_at=now(),"+
     "generation=generation+1 WHERE root_realm_id=$1 AND center_id=$2 "+
-    "AND withdrawn_at IS NULL RETURNING generation",
-    [actor.realmId,center]);
+    "AND withdrawn_at IS NULL AND generation=$3 "+
+    "AND approved_revision_id=$4 RETURNING generation",
+    [actor.realmId,center,request.generation,request.revision]);
    if(!publication.rows[0])
     throw new ConflictException({code:"HEALTH_CONTENT_ALREADY_WITHDRAWN"});
    await tx.query(
