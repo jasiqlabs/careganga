@@ -280,20 +280,27 @@ export class HealthNetworkService{
         replayed:false,message:"Provider and pending centers saved. Verification has not begun."};
     });
   }
-  async list(bearer:string,offset=0){
+  async list(bearer:string,offset=0,status="ALL",search=""){
     const actor=await this.allowed(bearer,"health.providers.view");
-    if(!Number.isInteger(offset)||offset<0||offset>10000)
-      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"offset"});
+    if(!Number.isInteger(offset)||offset<0||offset>10000||
+      !["ALL","PENDING","SUBMITTED","RETURNED","REJECTED","VERIFIED","SUSPENDED"].includes(status)||
+      typeof search!=="string"||search.length>80)
+      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"search"});
     const rows=await this.db.query<{id:string;provider_code:string;legal_name:string;
       provider_type:string;status:string;version:number;centers:string}>(
       "SELECT p.id,p.provider_code,p.legal_name,p.provider_type,p.status,p.version,"+
       "(SELECT COUNT(*)::text FROM health_center c WHERE c.root_realm_id=p.root_realm_id "+
       "AND c.provider_id=p.id) AS centers "+
       "FROM health_provider p WHERE p.root_realm_id=$1 "+
-      "ORDER BY p.normalized_name,p.id LIMIT 50 OFFSET $2",[actor.realmId,offset]);
-    return {providers:rows.rows.map(x=>({providerRef:x.id,code:x.provider_code,name:x.legal_name,
+      "AND ($3::text='ALL' OR p.status=$3) "+
+      "AND ($4::text='' OR strpos(p.normalized_name,lower($4))>0 "+
+      "OR strpos(lower(p.provider_code),lower($4))>0) "+
+      "ORDER BY p.normalized_name,p.id LIMIT 51 OFFSET $2",
+      [actor.realmId,offset,status,search.trim()]);
+    return {providers:rows.rows.slice(0,50).map(x=>({
+      providerRef:x.id,code:x.provider_code,name:x.legal_name,
       type:x.provider_type,status:x.status,version:x.version,centerCount:Number(x.centers)})),
-      nextOffset:rows.rows.length===50?offset+50:null};
+      nextOffset:rows.rows.length>50?offset+50:null};
   }
   async provider(bearer:string,providerRef:string){
     const actor=await this.allowed(bearer,"health.providers.view");
