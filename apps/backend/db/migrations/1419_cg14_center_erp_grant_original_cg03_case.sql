@@ -116,7 +116,7 @@ CREATE TRIGGER cg14_erp_revision_immutable
  BEFORE UPDATE OR DELETE ON health_center_erp_grant_revision
  FOR EACH ROW EXECUTE FUNCTION cg14_erp_grant_revision_frozen();
 CREATE TRIGGER cg14_erp_command_immutable
- BEFORE DELETE ON health_center_erp_grant_command
+ BEFORE UPDATE OR DELETE ON health_center_erp_grant_command
  FOR EACH ROW EXECUTE FUNCTION cg19_support_immutable_evidence();
 CREATE TRIGGER cg14_erp_event_immutable
  BEFORE UPDATE OR DELETE ON health_center_erp_grant_event
