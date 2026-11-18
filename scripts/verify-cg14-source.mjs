@@ -44,6 +44,12 @@ const checks=[
  ["Verified, access and publish separate",s.reviewSql.includes("publication_state")&&s.reviewSql.includes("access_state")&&s.workflow.includes("async publish(")],
  ["Provider and center suspension",s.workflow.includes("async suspendProvider(")&&s.workflow.includes("async suspendCenter(")],
  ["Suspension withdraws current exposure",s.workflow.includes("publication_generation=publication_generation+1")],
+ ["Suspended sources reopen PENDING for fresh review",s.workflow.includes("async reopenProvider(")&&
+    s.workflow.includes("async reopenCenter(")&&
+    s.workflow.includes("HEALTH_PROVIDER_REOPEN")&&s.workflow.includes("HEALTH_CENTER_REOPEN")],
+ ["Returned and rejected original review can enter corrected new draft",s.workflow.includes('["RETURNED","REJECTED"].includes(c.state)')&&
+    s.cg03.includes("'REJECTED','PENDING_OWNER'")],
+
  ["Public checks real approval and evidence",s.public.includes("health_center_publication")&&s.public.includes("cg03_case_decision")&&s.public.includes("CLEAN_VERIFIED")],
  ["Public eligibility recheck after fields",s.public.includes("const fresh=await this.db.query(")&&s.public.includes("c.publication_generation=$3")],
  ["Public does not claim booking or payment",s.publicWeb.includes("Online booking, clinical advice and online payment are not offered")],
