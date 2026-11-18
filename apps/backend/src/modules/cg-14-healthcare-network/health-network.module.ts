@@ -5,6 +5,7 @@ import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/regis
 import {HealthReviewWorkflowService} from "./application/health-review-workflow.service";
 import {HealthPublicCenterService} from "./application/health-public-center.service";
 import {HealthPublicDirectoryService} from "./application/health-public-directory.service";
+import {HealthPublicRequestThrottleService} from "./application/health-public-request-throttle.service";
 import {HealthPublicDirectoryController} from "./http/health-public-directory.controller";
 import {HealthCenterContentService} from "./application/health-center-content.service";
 import {HealthCenterSupportScopeFacade} from "./application/health-center-support-scope.facade";
@@ -20,7 +21,7 @@ import {HealthDoctorReviewSourceFacade} from "./application/health-doctor-review
 
 @Module({
   imports:[IdentityAccessModule,DocumentsNotificationsModule,RegistrationApprovalsModule],
-  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthPublicDirectoryService,HealthCenterContentService,HealthCenterSupportScopeFacade,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
+  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthPublicDirectoryService,HealthPublicRequestThrottleService,HealthCenterContentService,HealthCenterSupportScopeFacade,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
   controllers:[HealthNetworkController,HealthPublicCenterController,HealthPublicDirectoryController,HealthCenterContentController,HealthDoctorDraftController],
   exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService]
 })
