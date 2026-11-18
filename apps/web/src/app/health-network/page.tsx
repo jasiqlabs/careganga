@@ -1,7 +1,7 @@
 import type {Metadata} from "next";
 import Link from "next/link";
 import {
-  directory,directorySearch,type PublicCenter,type PublicDoctor
+  directory,directorySearch,publicAreas,type PublicCenter,type PublicDoctor
 } from "../../features/health-network/public-directory-source";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={title:"Healthcare Centers & Doctors | CareGanga",
@@ -15,6 +15,11 @@ const rupee=(amount:number)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR",maximumFractionDigits:2}).format(amount/100);
 export default async function HealthcareDirectory({searchParams}:Props){
  const raw=await searchParams,tab=raw.tab==="doctors"?"doctors":"centers";
+ const areas=await publicAreas();
+ const states=areas.filter(x=>x.level==="STATE"),districts=areas.filter(x=>x.level==="DISTRICT"),
+  blocks=areas.filter(x=>x.level==="BLOCK");
+ const selectedState=typeof raw.state==="string"?raw.state:"",
+  selectedDistrict=typeof raw.district==="string"?raw.district:"";
  const query=directorySearch(raw);
  const result=tab==="doctors"?
   await directory<PublicDoctor>("doctors",query):
@@ -51,6 +56,25 @@ export default async function HealthcareDirectory({searchParams}:Props){
       inputMode="numeric" pattern="[1-9][0-9]{5}" maxLength={6}
       placeholder="Six-digit PIN"/>
     </label>
+    {states.length>0&&<label>State
+     <select name="state" defaultValue={selectedState}>
+      <option value="">All states</option>
+      {states.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+     </select>
+    </label>}
+    {districts.length>0&&<label>District
+     <select name="district" defaultValue={selectedDistrict}>
+      <option value="">All districts</option>
+      {districts.filter(a=>!selectedState||a.parentRef===selectedState)
+       .map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+     </select>
+    </label>}
+    {blocks.length>0&&<label>Block (optional)
+     <select name="block" defaultValue={typeof raw.block==="string"?raw.block:""}>
+      <option value="">All blocks</option>
+      {blocks.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+     </select>
+    </label>}
     <label>Center type
      <select name="category" defaultValue={typeof raw.category==="string"?raw.category:""}>
       <option value="">All verified center types</option>
