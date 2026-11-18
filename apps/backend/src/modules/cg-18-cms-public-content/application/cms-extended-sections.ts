@@ -40,7 +40,7 @@ const date=(v:unknown,field:string)=>{
 };
 const local=(v:unknown,field:string)=>{
  const x=str(v,field,120,1);
- if(!["/","/about","/contact","/impact","/gallery","/healthcare","/80g"].includes(x))
+ if(!["/","/about","/contact","/our-impact","/gallery","/healthcare","/80g"].includes(x))
   return error(field);
  return x;
 };
