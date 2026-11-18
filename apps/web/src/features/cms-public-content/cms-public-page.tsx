@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type {ReactNode} from "react";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsSiteHeader} from "./cms-site-header";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
@@ -152,9 +153,9 @@ function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter}:{
+export function CmsPublicPage({page,navigation,siteFooter,children}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
- siteFooter?:Record<string,unknown>|null}){
+ siteFooter?:Record<string,unknown>|null;children?:ReactNode}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -195,6 +196,7 @@ export function CmsPublicPage({page,navigation,siteFooter}:{
      return null;
     })}
   </div>
+  {children}
   <SiteFooter data={footer} navigation={navigation}/>
  </main>;
 }
