@@ -4,6 +4,8 @@ import {DocumentsNotificationsModule} from "../cg-19-documents-notifications/doc
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
 import {HealthReviewWorkflowService} from "./application/health-review-workflow.service";
 import {HealthPublicCenterService} from "./application/health-public-center.service";
+import {HealthPublicDirectoryService} from "./application/health-public-directory.service";
+import {HealthPublicDirectoryController} from "./http/health-public-directory.controller";
 import {HealthPublicCenterController} from "./http/health-public-center.controller";
 import {HealthNetworkService} from "./application/health-network.service";
 import {HealthNetworkController} from "./http/health-network.controller";
@@ -15,8 +17,8 @@ import {HealthDoctorReviewSourceFacade} from "./application/health-doctor-review
 
 @Module({
   imports:[IdentityAccessModule,DocumentsNotificationsModule,RegistrationApprovalsModule],
-  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
-  controllers:[HealthNetworkController,HealthPublicCenterController,HealthDoctorDraftController],
+  providers:[HealthNetworkService,HealthReviewWorkflowService,HealthPublicCenterService,HealthPublicDirectoryService,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService,HealthDoctorReviewSourceFacade],
+  controllers:[HealthNetworkController,HealthPublicCenterController,HealthPublicDirectoryController,HealthDoctorDraftController],
   exports:[HealthNetworkService,HealthReviewWorkflowService,HealthDoctorDraftService,HealthDoctorFeesService,HealthDoctorReviewWorkflowService]
 })
 export class HealthNetworkModule{}
