@@ -95,10 +95,19 @@ export class HealthCenterContentService{
     "WHERE rev.root_realm_id=$1 AND rev.center_id=$2 "+
     "ORDER BY rev.revision_no DESC,rev.id DESC LIMIT 1",
     [actor.realmId,center]);
+   const visible=await tx.query<{public_slug:string|null;published:boolean}>(
+    "SELECT c.public_slug,("+
+    "c.publication_state='PUBLISHED' AND c.access_state='ENABLED' "+
+    "AND pub.withdrawn_at IS NULL AND pub.approved_revision_id IS NOT NULL) AS published "+
+    "FROM health_center c LEFT JOIN health_center_content_publication pub "+
+    "ON pub.root_realm_id=c.root_realm_id AND pub.center_id=c.id "+
+    "WHERE c.root_realm_id=$1 AND c.id=$2",[actor.realmId,center]);
    return {centerRef:center,version:data?.version??0,state:data?.state??"DRAFT",
     content:data?.content??EMPTY,
     reviewCaseRef:previous.rows[0]?.approval_case_ref??null,
-    reviewStatus:previous.rows[0]?.status??null};
+    reviewStatus:previous.rows[0]?.status??null,
+    approvedPresentationPublished:visible.rows[0]?.published??false,
+    publicSlug:visible.rows[0]?.public_slug??null};
   });
  }
  async save(bearer:string,centerRef:string,body:unknown){
