@@ -33,8 +33,8 @@ function allowed(parts:string[],method:string){
     if(parts[0]==="centers"&&parts[2]==="representatives")return method==="GET"||method==="POST";
   }
   if(parts.length===3&&UUID.test(parts[1])){
-    if(parts[0]==="providers"&&parts[2]==="submit")return method==="POST";
-    if(parts[0]==="centers"&&["submit","access","publication"].includes(parts[2]))
+    if(parts[0]==="providers"&&["submit","suspend"].includes(parts[2]))return method==="POST";
+    if(parts[0]==="centers"&&["submit","access","publication","suspend"].includes(parts[2]))
       return method==="POST";
     if(parts[0]==="my-centers"&&parts[2]==="submit")return method==="POST";
   }
