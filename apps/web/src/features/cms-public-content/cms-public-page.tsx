@@ -109,7 +109,9 @@ function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
 function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  navigation?:PublicCmsNavigation|null}){
  const isPublished=(path:string)=>navigation?.publishedRoutes?.some(v=>v.path===path)===true;
- const phone=text(data.phone),email=text(data.email),number=phone.replace(/[^0-9]/g,"");
+ const phone=text(data.phone),email=text(data.email);
+ const whatsapp=text(data.whatsappNumber);
+ const number=/^\+?[1-9][0-9]{9,14}$/.test(whatsapp)?whatsapp.replace(/\D/g,""):"";
  const legal=[["Terms & Conditions","terms-and-conditions"],
   ["Privacy Policy","privacy-policy"],["Cookie Policy","cookie-policy"],
   ["Disclaimer","disclaimer"],["Refund & Cancellation","refund-and-cancellation"],
