@@ -41,8 +41,13 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    accessibilityLabel={img?.altText||"Foundation illustration"} resizeMode="cover"/>:null;
  };
  if(section.kind==="IMPACT_GROUP")return <View style={styles.section}>
-  <Text style={styles.eyebrow}>{text(f.group).replaceAll("_"," ")}</Text>
+  <Text style={styles.eyebrow}>{f.group==="HERO"&&text(f.eyebrow)?
+   text(f.eyebrow):text(f.group).replaceAll("_"," ")}</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
+  {f.group==="HERO"&&!!text(f.highlight)&&
+   <Text style={styles.highlight}>{text(f.highlight)}</Text>}
+  {f.group==="HERO"&&!!text(f.quote)&&
+   <Text style={styles.quote}>{text(f.quote)}</Text>}
   {!!text(f.intro)&&<Text style={styles.body}>{text(f.intro)}</Text>}
   {picture("IMPACT")}
   <Text style={styles.source}>Source: {text(f.source)} · {text(f.asOfDate)}
@@ -50,11 +55,13 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {rows(f.items).map((v,i)=><View key={i} style={styles.item}>
    <Text style={styles.itemTitle}>{text(v.title)}
     {typeof v.year==="number"?" ("+v.year+")":""}</Text>
+   {f.group==="GEOGRAPHY"&&["HIGH","MEDIUM","EXPANDING"].includes(text(v.level))&&
+    <Text style={styles.source}>Source-reported reach: {text(v.level).toLowerCase()}</Text>}
    {typeof v.value==="number"&&<Text style={styles.value}>{v.value} {text(v.unit)}</Text>}
    {typeof v.percentage==="number"&&<Text style={styles.value}>{v.percentage}%</Text>}
    <Text style={styles.body}>{text(v.description)}</Text>
   </View>)}
-  {f.group==="CTA"&&!!text(f.ctaLabel)&&
+  {(f.group==="CTA"||f.group==="HERO")&&!!text(f.ctaLabel)&&
    ["/","/about","/contact","/impact","/gallery","/healthcare","/80g"].includes(text(f.ctaPath))&&
    <Action title={text(f.ctaLabel)} onPress={()=>onNavigate(f.ctaPath)}/>}
  </View>;
@@ -166,6 +173,8 @@ const styles=StyleSheet.create({
  title:{fontSize:25,fontWeight:"800",color:"#1b4b38"},
  body:{fontSize:16,lineHeight:24,color:t.text},
  source:{fontSize:13,lineHeight:20,color:t.mutedText},
+ highlight:{fontSize:24,fontWeight:"800",color:"#20824c"},
+ quote:{fontSize:18,fontStyle:"italic",lineHeight:27,color:"#306b4a"},
  item:{borderRadius:10,backgroundColor:"#f2f7f0",padding:13,gap:7},
  itemTitle:{fontSize:18,fontWeight:"700",color:"#1c4a3a"},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
