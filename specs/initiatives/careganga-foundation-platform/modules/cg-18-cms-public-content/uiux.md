@@ -11,6 +11,22 @@ Preserve original CareGanga Admin shell: blue selected navigation within branded
 
 ## Screen/flow map
 
+### Whole original public website visual acceptance — 47 captures, 18 November
+
+**Binding reference:** [Original full 47-screenshot site-level UI/UX and page inventory](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); use original private ZIPs plus the 2026-11-15 Admin UI pack to compare source, *not* a generic coloured CMS mock. Each screenshot establishes structure, title treatment, gutters, colors, photo placement, header active state, footer, CTA, form sequence and first-load/empty states; hover/motion/mobile still need runtime original capture.
+
+- **Home/global:** creamy gold sticky navbar, 12 original top links/dropdowns, top social/contact strip, original logo, editorial serif titles, teal/nature and orange accents, hero/banner transitions, optional nonblocking branded loading/splash, floral/floating icon, WhatsApp and Donate, verified published footer/social/newsletter/legal links.
+- **Team & Impact:** `/about/team` half-image Leadership Directory hero, 5 geographic/designation selectors+search/reset/approval disclaimer and team/Join cards; `/our-impact` growth chart, geographical map/state/district filters, category percentage bars, source/zero states, success stories and updates.
+- **NGO:** dedicated left green-highlight NGO sidebar, breadcrumbs, authentic 80G/PAN visual/registration cards, proof thumbnails and View Document, annual/financial reports table/year/type and real empty state, preserved seven legal/policy labels. **Never seed the screenshot PAN, certificate numbers or verified-badge statuses**.
+- **Projects/Partnerships/Notices:** original project image-right-card layout with planned badges/dates/goal and owner's real Support CTA; corporate partnership dark hero and two original partner-card layouts; notice priority and category chips, approved details and list/empty state.
+- **Media:** separate Gallery, Videos, Publications landing pages with their own original hero titles, category chips, search fields and distinct empty states; an internal gallery type query is *not* the original full-page screen.
+- **Join:** membership/volunteer original full-bleed hero, tabs (apply/verify), benefits/tier/date/pricing from actual CG-04, four-step volunteer form with validation and responsive controls, never duplicate CG-04 applicant records.
+- **Contact:** dark green intro; inquiry purpose cards; verified chat panel; two-column original form and address/hours/map; image triptych; question-and-answer blocks and last CTA/footers, editable copy and real CG-19 support actions.
+- **Every admin-changeable visual** must be editable from the existing Foundation Admin (role-permitted draft, preview, approval, effective status), while real operational fields are edited in the proper existing module. Validate responsive Web/Public Android adaptations and original Admin layout, keyboard/focus/reduced motion, no arbitrary HTML or permanent broken original images.
+
+**Visual QA status:** none of the original 47 pages or videos has been runtime/pixel accepted on replacement. No extra CG-18 story; map gaps into the four original US QA cases and their cross-owner handoffs.
+
+
 **Screenshot-faithful public navigation and footer is required, not optional.** [Canonical original page/menu inventory](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md) contains 12 primary nav items, 6 Our Work children, 5 Media children, 2 Join children, 7 footer policies, 4 Quick Links, social and donation/WhatsApp/floating controls. Exactly one top-level menu label/entry changes: Blood Donation → Healthcare Assistance. About Us must retain the dropdown appearance, but its child options cannot be guessed. Media Videos/Publications must be selectable real filtered views; do not show inert labels when eligible published CG-19 media exists. Policy/legal copy and collaborator logos must be client-cleared before linking/rendering. Source-owned CG-04/05/07/08/14/15/17/19 links activate only with real approved destinations. CG-18 Admin previews the same menu/header/footer states in public Web and adapted Public Android. Add regression attention for keyboard/dropdown/mobile collapse, unknown route, broken click, stale publish, unreachable domain-owner link and original pixel/motion evidence. Do not increase the existing 4 story/76 QA count or silently declare acceptance.
 
 
