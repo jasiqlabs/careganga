@@ -444,6 +444,14 @@ export class HealthCenterContentMediaService{
    "JOIN cg03_case_decision cd ON cd.id=pub.original_final_decision_ref "+
    "AND cd.realm_id=cc.realm_id AND cd.case_id=cc.id AND cd.action='APPROVE' "+
    "AND cd.fresh_password_verified_at IS NOT NULL AND cd.actor_id<>cc.proposer_id "+
+   "JOIN cg19_stored_file center_proof ON center_proof.id=cv.proof_file_ref "+
+   "AND center_proof.realm_id=c.root_realm_id "+
+   "AND center_proof.owner_kind='CG14_DRAFT' "+
+   "AND center_proof.health_provider_id=p.id AND center_proof.health_center_id=c.id "+
+   "AND center_proof.revoked_at IS NULL AND center_proof.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent center_intent ON center_intent.id=center_proof.upload_intent_id "+
+   "AND center_intent.realm_id=center_proof.realm_id "+
+   "AND center_intent.status='VALIDATED' AND center_intent.classification='HEALTH_CENTER_LICENSE' "+
    "JOIN health_center_content_publication cp ON cp.center_id=c.id "+
    "AND cp.root_realm_id=c.root_realm_id AND cp.withdrawn_at IS NULL "+
    "JOIN health_center_content_revision rev ON rev.id=cp.approved_revision_id "+
