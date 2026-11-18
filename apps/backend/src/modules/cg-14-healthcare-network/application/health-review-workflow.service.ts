@@ -316,6 +316,14 @@ export class HealthReviewWorkflowService{
     "publication_state='UNPUBLISHED',publication_generation=publication_generation+1,"+
     "version=version+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND provider_id=$2",[actor.realmId,ref]);
+   // Do not resurrect old representative privileges after a subsequent
+   // provider and center review. Reassignment must be explicit.
+   await tx.query(
+    "UPDATE health_center_account_affiliation f "+
+    "SET status='REVOKED',revoked_at=now(),revision=revision+1 "+
+    "WHERE f.root_realm_id=$1 AND f.status='PENDING_EDIT' AND "+
+    "f.center_id IN(SELECT id FROM health_center WHERE root_realm_id=$1 AND provider_id=$2)",
+    [actor.realmId,ref]);
    await tx.query(
     "UPDATE health_provider SET status='SUSPENDED',version=version+1,"+
     "updated_at=now() WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
@@ -349,6 +357,11 @@ export class HealthReviewWorkflowService{
     "UPDATE health_center SET status='SUSPENDED',access_state='DISABLED',"+
     "publication_state='UNPUBLISHED',publication_generation=publication_generation+1,"+
     "version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,ref]);
+   await tx.query(
+    "UPDATE health_center_account_affiliation SET status='REVOKED',"+
+    "revoked_at=now(),revision=revision+1 "+
+    "WHERE root_realm_id=$1 AND center_id=$2 AND status='PENDING_EDIT'",
     [actor.realmId,ref]);
    await this.complete(tx,actor,cmd.id,found.rows[0].provider_id,ref,
     "HEALTH_CENTER_SUSPEND",ref,expected+1);
