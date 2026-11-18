@@ -140,7 +140,8 @@ if(fails)process.exitCode=1;
   s.erpGrant.includes("canUseOperations:false")],
  ["US005 protected Foundation applies, suspends or withdraws version",s.erpGrant.includes("this.approval.approved(")&&
   s.erpGrant.includes("requireFreshFoundationRootProof")&&
-  s.erpGrant.includes("'SUSPENDED'")&&s.erpGrant.includes("'WITHDRAWN'")],
+  s.erpGrant.includes('action:"SUSPENDED"|"WITHDRAWN"')&&
+  s.erpGrant.includes("version=version+1")],
  ["US005 deployment switches OFF or explicitly NOT_AVAILABLE",s.erpConfig.includes("CAREGANGA_ERP_PHARMACY_ENABLED")&&
   s.erpConfig.includes("available:false")&&s.erpGrant.includes("erpDeploymentCapabilities")],
  ["US005 center and Foundation views explicitly do not enable ERP",s.erpOwnUi.includes("Request independent Foundation approval")&&
