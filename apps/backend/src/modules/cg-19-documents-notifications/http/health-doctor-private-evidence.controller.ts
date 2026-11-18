@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {HealthDoctorPrivateEvidenceService} from "../application/health-doctor-private-evidence.service";
 
 @Controller("api/documents/doctor-evidence")
@@ -19,6 +19,15 @@ export class HealthDoctorPrivateEvidenceController{
   @Get("doctors/:doctorRef")
   list(@Headers("authorization")bearer:string,@Param("doctorRef")ref:string){
     return this.evidence.list(bearer,ref);
+  }
+  @Get("reviews/:caseRef/download")
+  @Header("Cache-Control","private, no-store")
+  @Header("X-Content-Type-Options","nosniff")
+  async downloadReview(@Headers("authorization")bearer:string,
+    @Param("caseRef")ref:string){
+    const result=await this.evidence.reviewDownload(bearer,ref);
+    return new StreamableFile(result.data,{type:result.mime,
+      disposition:'attachment; filename="Private-professional-review-proof"'});
   }
   @Post("files/:fileRef/revoke")
   revoke(@Headers("authorization")bearer:string,@Param("fileRef")ref:string,
