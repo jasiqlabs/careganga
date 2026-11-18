@@ -50,6 +50,11 @@ const files={
  contactRoute:read("apps/web/src/app/contact/page.tsx"),
  originalScreenshotTrace:read("docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md"),
  publicCmsController:read("apps/backend/src/modules/cg-18-cms-public-content/http/cms-editorial.controller.ts"),
+ ngoChildren:read("apps/web/src/features/cms-public-content/cms-ngo-pages.tsx"),
+ ngoAnnual:read("apps/web/src/features/cms-public-content/cms-ngo-annual-client.tsx"),
+ ngoChildRoute:read("apps/web/src/app/ngo-information/[section]/page.tsx"),
+ contactPhotoMigration:read("apps/backend/db/migrations/0941_cg18_original_contact_photography.sql"),
+ webSitemap:read("apps/web/src/app/sitemap.ts"),
  cg21Copy:read("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const checks=[
@@ -237,6 +242,28 @@ const checks=[
   files.web.includes('section.kind==="CONTACT_INFO"')&&
   files.contactRoute.includes("<Cg19PublicContactForm/>")&&
   files.cg21Copy.includes("CMS_INPUT_INVALID:")],
+
+ ["Original PAN registration and annual child routes reuse current CG18/19 source",
+  files.ngoChildRoute.includes("CmsNgoChildRoute")&&
+  files.ngoChildren.includes('publishedCmsPage("80g")')&&
+  files.ngoChildren.includes('allowed=new Set<Child>')&&
+  files.ngoChildren.includes('safeMediaPath(a.src)')&&
+  files.ngoAnnual.includes("Reset Filters")&&
+  files.webSitemap.includes('proof("REGISTRATION")')&&
+  files.webSitemap.includes('proof("ANNUAL_REPORT")')&&
+  !files.webSitemap.includes('"/ngo-information/financial-reports"')],
+
+ ["Original Contact three photos use the existing CG19 scan and safe public media",
+  files.contactPhotoMigration.includes("'CONTACT','OTHER'")&&
+  files.backend.includes('if(a.role==="CONTACT")')&&
+  files.backend.includes('a.order<3')&&
+  files.media.includes("a.role='CONTACT' AND sec.section_kind='CONTACT_INFO'")&&
+  files.media.includes("'ARTICLE','IMPACT','CONTACT')")&&
+  files.adminExtended.includes('value="CONTACT"')&&
+  files.publicExtended.includes('a.role==="CONTACT"')&&
+  files.web.includes('assets={assets}')&&
+  files.androidExtended.includes('picture("CONTACT",i)')&&
+  files.android.includes('contact:"CONTACT"')],
 
  ["CG21 administrator can edit original team-consent failure copy",
   files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
