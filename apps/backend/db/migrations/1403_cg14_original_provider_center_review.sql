@@ -67,6 +67,7 @@ CREATE TABLE health_center_revision(
  submitted_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,center_id,revision_no),
  UNIQUE(id,root_realm_id,provider_id,center_id),
+ UNIQUE(id,root_realm_id,center_id),
  FOREIGN KEY(root_realm_id,provider_id,center_id)
   REFERENCES health_center(root_realm_id,provider_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(proof_file_ref,root_realm_id,provider_id,center_id)
