@@ -32,6 +32,10 @@ export class HealthNetworkController{
     @Param("providerRef")ref:string,@Body()body:unknown){
     return this.network.createCenter(bearer,ref,body);
   }
+  @Get("centers/:centerRef")
+  center(@Headers("authorization")bearer:string,@Param("centerRef")ref:string){
+    return this.network.centerDraft(bearer,ref);
+  }
   @Patch("centers/:centerRef")
   updateCenter(@Headers("authorization")bearer:string,
     @Param("centerRef")ref:string,@Body()body:unknown){
