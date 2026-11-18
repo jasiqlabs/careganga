@@ -49,8 +49,7 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
   const [cases,setCases]=useState<Review[]>([]);
   const [detail,setDetail]=useState<Detail|null>(null);
   const [nextOffset,setNextOffset]=useState<number|null>(null);
-  const [kind,setKind]=useState<Kind|"ALL">(canDoctors&&canProviders?"ALL":
-    canDoctors?"HEALTH_DOCTOR_VERIFICATION":"HEALTH_PROVIDER_VERIFICATION");
+  const [kind,setKind]=useState<Kind|"ALL">(canDoctors&&!canProviders?"HEALTH_DOCTOR_VERIFICATION":"ALL");
   const [query,setQuery]=useState("");
   const [applied,setApplied]=useState("");
   const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -67,9 +66,10 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
   };
   const load=useCallback(async(offset=0)=>{
     const id=++serial.current;
-    const params=new URLSearchParams({offset:String(offset),kind,q:applied,status:"ALL"});
+    const params="?offset="+offset+"&kind="+encodeURIComponent(kind)+
+      "&q="+encodeURIComponent(applied)+"&status=ALL";
     const out=await request<{cases:Review[];nextOffset:number|null}>(
-      token,"/api/health/reviews?"+params.toString());
+      token,"/api/health/reviews"+params);
     if(id!==serial.current)return;
     if(!Array.isArray(out.cases)||out.cases.length>40)
       throw Error("The original review queue returned invalid results.");
@@ -127,7 +127,6 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
           action,remarks,currentPassword:password
         });
       requestKey.current="";setPassword("");
-      const ref=detail.caseRef;
       await refresh();
       setNotice("Independent reviewer decision recorded. Foundation application is a separate step.");
     }catch(e){
@@ -229,8 +228,13 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
                 <Pressable accessibilityRole="button" style={styles.button}
                   accessibilityState={{selected:kind==="HEALTH_PROVIDER_VERIFICATION"}}
                   onPress={()=>setKind("HEALTH_PROVIDER_VERIFICATION")}>
-                  <Text style={styles.link}>Providers & centers</Text></Pressable>
+                  <Text style={styles.link}>Providers</Text></Pressable>
               </>}
+              {canProviders&&<Pressable accessibilityRole="button" style={styles.button}
+                accessibilityState={{selected:kind==="HEALTH_CENTER_VERIFICATION"}}
+                onPress={()=>setKind("HEALTH_CENTER_VERIFICATION")}>
+                <Text style={styles.link}>Centers</Text>
+              </Pressable>}
               {canDoctors&&<Pressable accessibilityRole="button" style={styles.button}
                 accessibilityState={{selected:kind==="HEALTH_DOCTOR_VERIFICATION"}}
                 onPress={()=>setKind("HEALTH_DOCTOR_VERIFICATION")}>
