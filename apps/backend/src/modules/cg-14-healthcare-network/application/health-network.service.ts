@@ -540,19 +540,31 @@ export class HealthNetworkService{
       await this.identity.assertCurrent(client,actor,"health.providers.manage");
       const cmd=await this.command(client,actor,"CENTER_AFFILIATE",input.requestKey,{ref,accountRef});
       if(cmd.replay)return {affiliationRef:cmd.replay.result_ref,status:"PENDING_EDIT",replayed:true};
-      const center=await this.canEdit(client,actor,ref,true);
+      const centerResult=await client.query<{provider_id:string;status:string;access_state:string}>(
+        "SELECT c.provider_id,c.status,c.access_state FROM health_center c "+
+        "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+        "WHERE c.root_realm_id=$1 AND c.id=$2 "+
+        "AND ((c.status='PENDING' AND p.status IN('PENDING','VERIFIED')) "+
+        "OR (c.status='VERIFIED' AND p.status='VERIFIED')) FOR UPDATE OF c",
+        [actor.realmId,ref]);
+      const center=centerResult.rows[0];
+      if(!center)throw new NotFoundException("Center unavailable for representative assignment");
       await this.representativeIdentity.eligibleRepresentative(client,actor,accountRef);
+      const state=center.status==="VERIFIED"&&center.access_state==="ENABLED"?
+        "ACTIVE":"PENDING_EDIT";
       const inserted=await client.query<{id:string;revision:number}>(
-        "INSERT INTO health_center_account_affiliation(root_realm_id,center_id,account_ref,assigned_by) "+
-        "VALUES($1,$2,$3,$4) "+
+        "INSERT INTO health_center_account_affiliation(root_realm_id,center_id,account_ref,assigned_by,status) "+
+        "VALUES($1,$2,$3,$4,$5) "+
         "ON CONFLICT(root_realm_id,center_id,account_ref) WHERE status IN('PENDING_EDIT','ACTIVE') "+
         "DO NOTHING RETURNING id,revision",
-        [actor.realmId,ref,accountRef,actor.accountId]);
+        [actor.realmId,ref,accountRef,actor.accountId,state]);
       if(!inserted.rows[0])throw new ConflictException({code:"HEALTH_REPRESENTATIVE_EXISTS"});
       await this.done(client,cmd.commandId,actor,"CENTER_AFFILIATE",
         center.provider_id,ref,inserted.rows[0].id,inserted.rows[0].revision);
-      return {affiliationRef:inserted.rows[0].id,status:"PENDING_EDIT",replayed:false,
-        message:"Representative can edit this pending center only."};
+      return {affiliationRef:inserted.rows[0].id,status:state,replayed:false,
+        message:state==="ACTIVE"?
+          "Representative assigned to this active center only.":
+          "Representative assigned to this center pending Foundation activation."};
     });
   }
   async financeReference(bearer:string,providerRef:string){
@@ -627,8 +639,8 @@ export class HealthNetworkService{
       const center=await client.query<{id:string}>(
         "SELECT c.id FROM health_center c JOIN health_provider p "+
         "ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
-        "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' "+
-        "AND p.status='PENDING' FOR SHARE OF c,p",
+        "WHERE c.root_realm_id=$1 AND c.id=$2 "+
+        "AND c.status IN('PENDING','VERIFIED','SUSPENDED') FOR SHARE OF c,p",
         [actor.realmId,ref]);
       if(!center.rows[0])throw new NotFoundException("Pending center unavailable");
       const reps=await client.query<{id:string;account_ref:string;status:string;revision:number}>(
@@ -654,7 +666,11 @@ export class HealthNetworkService{
       const cmd=await this.command(client,actor,"CENTER_REVOKE",input.requestKey,
         {ref,assignment,expected});
       if(cmd.replay)return {status:"REVOKED",version:cmd.replay.result_version,replayed:true};
-      const center=await this.canEdit(client,actor,ref,true);
+      const centerResult=await client.query<{provider_id:string}>(
+        "SELECT provider_id FROM health_center WHERE root_realm_id=$1 AND id=$2 "+
+        "AND status IN('PENDING','VERIFIED') FOR SHARE",[actor.realmId,ref]);
+      const center=centerResult.rows[0];
+      if(!center)throw new NotFoundException("Center representative unavailable");
       const row=await client.query<{id:string;revision:number;status:string}>(
         "SELECT id,revision,status FROM health_center_account_affiliation "+
         "WHERE id=$1 AND root_realm_id=$2 AND center_id=$3 FOR UPDATE",
@@ -671,7 +687,7 @@ export class HealthNetworkService{
       await this.done(client,cmd.commandId,actor,"CENTER_REVOKE",
         center.provider_id,ref,assignment,expected+1);
       return {status:"REVOKED",version:expected+1,replayed:false,
-        message:"The representative can no longer edit this center."};
+        message:"The representative can no longer access this healthcare center."};
     });
   }
   async representativeOptions(bearer:string,search?:string){
