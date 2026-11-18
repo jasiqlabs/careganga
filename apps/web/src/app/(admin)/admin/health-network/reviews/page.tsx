@@ -28,7 +28,7 @@ export default async function HealthcareReviewsPage(){
    !Array.isArray(rights.actions))throw Error("Invalid current role");
   const keys=new Set<string>(rights.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
-  if(!keys.has("health.providers.verify")||!keys.has("approvals.review"))
+  if(!(keys.has("health.providers.verify")||keys.has("health.doctors.verify"))||!keys.has("approvals.review"))
    return <main className="page main"><h1>Independent review access restricted</h1>
     <p>Your current role cannot review healthcare registrations.</p>
     <Link href="/admin">My account</Link></main>;
@@ -42,7 +42,9 @@ export default async function HealthcareReviewsPage(){
     canViewApprovals={keys.has("approvals.view")}
     canViewDocuments={keys.has("documents.files.view")}
     canViewCms={keys.has("cms.content.view")}/>
-   <main className="workspace"><HealthReviewInbox canManage={keys.has("health.providers.manage")}/></main>
+   <main className="workspace"><HealthReviewInbox
+      canManageProviders={keys.has("health.providers.manage")}
+      canManageDoctors={keys.has("health.doctors.manage")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
