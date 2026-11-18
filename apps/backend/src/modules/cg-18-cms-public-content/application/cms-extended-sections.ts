@@ -87,7 +87,8 @@ function allowedSectionFields(kind:string):string[]{
    "eyebrow","highlight","quote"]:
   kind==="COMPLIANCE_FACTS"?
   ["heading","summary","issuer","pan","registrationNumber","approvalNumber",
-   "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer","documents"]:
+   "validFrom","validUntil","verifiedAsOf","source","verification","disclaimer","documents",
+   "badgeText","subtitle","importantNote"]:
   kind==="GALLERY_GRID"?
   ["heading","description","items"]:
   kind==="ARTICLE_BODY"?
@@ -183,6 +184,9 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   const out={
    heading:str(x.heading,"heading",180,3),
    summary:str(x.summary??"","summary",2000),
+   badgeText:str(x.badgeText??"","badgeText",70),
+   subtitle:str(x.subtitle??"","subtitle",180),
+   importantNote:str(x.importantNote??"","importantNote",650),
    issuer:str(x.issuer??"","issuer",160),
    pan,registrationNumber:str(x.registrationNumber??"","registrationNumber",100),
    approvalNumber:str(x.approvalNumber??"","approvalNumber",100),
