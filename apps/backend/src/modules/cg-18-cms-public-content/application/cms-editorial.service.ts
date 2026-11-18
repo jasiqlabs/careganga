@@ -19,7 +19,7 @@ const POLICY_SLUGS=new Set(["terms-and-conditions","privacy-policy","cookie-poli
  "copyright-and-intellectual-property"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
- "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES"]);
+ "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
  "GALLERY","ARTICLE","DOCUMENT","IMPACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
@@ -66,7 +66,7 @@ function path(v:unknown,field:string){
 }
 type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
  "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER"|"IMPACT_GROUP"|
- "COMPLIANCE_FACTS"|"GALLERY_GRID"|"ARTICLE_BODY"|"HEALTHCARE_CATEGORIES";order:number;
+ "COMPLIANCE_FACTS"|"GALLERY_GRID"|"ARTICLE_BODY"|"HEALTHCARE_CATEGORIES"|"CONTACT_INFO";order:number;
  fields:Record<string,unknown>};
 type Placement={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|
  "ABOUT"|"PROMO"|"FEATURE"|"GALLERY"|"ARTICLE"|"DOCUMENT"|"IMPACT";
