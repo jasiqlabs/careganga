@@ -25,9 +25,21 @@ const errors=new Set([
   "HEALTH_DOCTOR_FEE_STALE","HEALTH_DOCTOR_FEE_UNAVAILABLE",
   "HEALTH_DOCTOR_FEE_CHANGED","HEALTH_CONTENT_INVALID","HEALTH_CONTENT_REQUEST_CONFLICT",
   "HEALTH_CONTENT_VERSION_CHANGED","HEALTH_CONTENT_SOURCE_CHANGED",
-  "HEALTH_CONTENT_REVIEW_CONFLICT","HEALTH_CONTENT_REQUIRED","HEALTH_CONTENT_ALREADY_WITHDRAWN"
+  "HEALTH_CONTENT_REVIEW_CONFLICT","HEALTH_CONTENT_REQUIRED","HEALTH_CONTENT_ALREADY_WITHDRAWN",
+  "HEALTH_ERP_GRANT_INVALID","HEALTH_ERP_GRANT_CHANGED","HEALTH_ERP_GRANT_SOURCE_CHANGED"
 ]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="erp-grants"){
+    if(parts.length===2&&parts[1]==="foundation")return method==="GET";
+    if(parts.length===3&&parts[1]==="my-centers"&&UUID.test(parts[2]))
+      return method==="GET"||method==="POST";
+    if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
+       parts[3]==="apply")return method==="POST";
+    if(parts.length===5&&parts[1]==="foundation"&&UUID.test(parts[2])&&
+       ["LAB_ERP","PHARMACY_ERP","NURSING_ERP","OT_ERP"].includes(parts[3])&&
+       ["suspend","withdraw"].includes(parts[4]))return method==="POST";
+    return false;
+  }
   // Doctor drafts are private and permission-checked again in CG01/Nest.
   // No public routes, approval, fee, booking or consent claims are exposed.
   if(parts[0]==="doctors"){
