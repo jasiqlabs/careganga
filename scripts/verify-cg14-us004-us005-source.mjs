@@ -87,6 +87,16 @@ const checks=[
  ["US004 no invented booking slots",s.web.includes("Online appointments")&&s.native.includes("cannot confirm appointments")],
  ["US005 typed versioned draft+original CG03 case",s.sql12.includes("health_center_content_revision")&&s.sql13.includes("HEALTH_CENTER_CONTENT_REVIEW")],
  ["US005 independent protected reviewer decision",s.review.includes("requireFreshFoundationRootProof")&&s.review.includes("c.proposer_id===actor.accountId")],
+ ["US005 independent content detail avoids case-first deadlock and shows approved frozen snapshot",
+  s.review.includes('this.source.original(tx,actor,this.submission(snapshot))')&&
+  s.review.includes('"PENDING_OWNER"].includes(snapshot.status)')&&
+  s.review.includes('case_kind=\'HEALTH_CENTER_CONTENT_REVIEW\' FOR UPDATE')],
+ ["US005 ERP grant reviewer detail and decision parent-first lock consistency",
+  s.erpReview.includes('this.source.original(tx,actor,this.submission(snapshot))')&&
+  s.erpReview.includes('c.status!==snapshot.status')&&
+  s.erpGrant.includes('const peek=await tx.query<Revision>')],
+ ["US005 ERP command replay records cannot be changed",
+  s.erpSql.includes('BEFORE UPDATE OR DELETE ON health_center_erp_grant_command')],
  ["US005 exact source and stale version rejection",s.reviewSource.includes("input.revisionNo+1")&&s.content.includes("this.review.approved(")],
  ["US005 public content only frozen approved source",s.publicCenter.includes("cp.original_decision_ref")&&s.publicCenter.includes("source_snapshot")],
  ["US005 original scanned CG19 photo and rights",s.sql15.includes("cg19_center_content_media_rights")&&s.media.includes("verifyPrivateObject")],
