@@ -82,6 +82,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   // CG-14 US-001: permission alone never grants Center A/B access; affiliation is mandatory.
   {key:"health.providers.view",businessLabel:"View healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.providers.manage",businessLabel:"Register and manage healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.doctors.view",businessLabel:"View protected doctor registration drafts",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.doctors.manage",businessLabel:"Create and correct pending doctor registrations and propose associations",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.centers.draft.edit",businessLabel:"Edit my assigned pending healthcare center",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.providers.finance.view",businessLabel:"View protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.providers.finance.manage",businessLabel:"Manage protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
