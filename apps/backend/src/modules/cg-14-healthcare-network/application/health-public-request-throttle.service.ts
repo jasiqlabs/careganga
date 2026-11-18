@@ -50,8 +50,8 @@ function verifiedAddress(req:PeerRequest,scope:Kind):string{
 @Injectable()
 export class HealthPublicRequestThrottleService{
  constructor(@Inject(DATABASE)private readonly db:Pool){}
- async hit(req:PeerRequest,scope:Kind){
-  const address=verifiedAddress(req,scope);
+ async hit(req:object,scope:Kind){
+  const address=verifiedAddress(req as PeerRequest,scope);
   // HMAC digest is unlinkable without the protected deployment secret and
   // route-specific, so one public endpoint cannot inspect another's buckets.
   const bucket=createHmac("sha256",secret())
