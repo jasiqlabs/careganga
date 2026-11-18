@@ -293,3 +293,37 @@
 .cg-site-gallery-empty{border:1px dashed #aebdac;border-radius:1rem;padding:1.75rem}
 @media(max-width:540px){.cg-site-gallery-filters{flex-direction:column;align-items:stretch}
  .cg-site-gallery-tabs{display:grid;grid-template-columns:1fr 1fr}}
+
+
+/* Original CareGanga Contact source + the SAME CG19 private support endpoint.
+ * Do not let Admin form colors leak into the public cream/emerald site. */
+.cg-site-contact-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+ align-items:start;gap:1.3rem;padding-block:clamp(1.7rem,4vw,3.2rem)}
+.cg-site-contact-intro{grid-column:1/-1}
+.cg-site-contact-intro h2{font-family:Georgia,"Times New Roman",serif;
+ color:#17452d;font-size:clamp(1.8rem,3vw,2.6rem);margin:0 0 .5rem}
+.cg-site-contact-intro p{max-width:65ch;color:#53675a;font-size:1.05rem}
+.cg-site-contact-panel{background:#fff;border:1px solid #e2e9df;border-radius:1rem;
+ box-shadow:0 .5rem 1.5rem #1838230d;min-width:0;display:grid;gap:.8rem}
+.cg-site-contact-panel h2{font-family:Georgia,"Times New Roman",serif;color:#24533c;
+ font-size:clamp(1.3rem,2vw,1.7rem);margin:.2rem 0}
+.cg-site-contact-panel p{color:#426154;line-height:1.6}
+.cg-site-contact-fields{display:grid;gap:.85rem}
+.cg-site-contact-field{display:grid;gap:.35rem;min-width:0}
+.cg-site-contact-field label{font-size:.92rem;font-weight:700;color:#255442}
+.cg-site-contact-field input,.cg-site-contact-field textarea{
+ font:inherit;min-height:2.7rem;width:100%;min-width:0;max-width:100%;
+ border:1px solid #acbeb0;background:#fff;border-radius:.5rem;padding:.65rem .8rem;
+ color:#1c392d}
+.cg-site-contact-field textarea{resize:vertical;line-height:1.55;min-height:7rem}
+.cg-site-contact-button{background:#e6a333;color:#173a28;font-weight:750;
+ border:1px solid #e5aa4b;border-radius:.55rem;padding:.75rem 1.05rem;
+ min-height:2.8rem;cursor:pointer;width:fit-content;max-width:100%}
+.cg-site-contact-button:disabled{opacity:.5;cursor:not-allowed}
+.cg-site-contact-button:focus-visible,.cg-site-contact-field :focus-visible{
+ outline:3px solid #9e6d13;outline-offset:2px}
+.cg-site-contact-panel code{display:block;padding:.75rem;background:#f1f6ee;
+ border-radius:.4rem;color:#184c37;overflow-wrap:anywhere}
+.cg-site-contact-panel details{border-top:1px solid #dce9db;padding:.5rem 0}
+.cg-site-contact-layout>.cg-cms-error{grid-column:1/-1}
+@media(max-width:800px){.cg-site-contact-layout{grid-template-columns:1fr}}
