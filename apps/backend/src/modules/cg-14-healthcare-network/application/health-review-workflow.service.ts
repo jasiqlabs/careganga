@@ -351,6 +351,81 @@ export class HealthReviewWorkflowService{
   });
  }
 
+
+ /** Reopen only a suspended source as a new PENDING draft: the old final
+  * CG03 approval never reinstates it. Current evidence and independent
+  * review are required before VERIFIED can be applied again.
+  */
+ async reopenProvider(bearer:string,providerRef:string,body:unknown){
+  const data=input(body,["requestKey","expectedVersion","currentPassword"]);
+  const ref=id(providerRef,"providerRef"),key=id(data.requestKey,"requestKey"),
+    expected=vers(data.expectedVersion);
+  if(typeof data.currentPassword!=="string")
+    throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
+  const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+    await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+    await this.sessions.requireFreshFoundationRootProof(tx,actor,data.currentPassword as string);
+    const cmd=await this.command(tx,actor,"HEALTH_PROVIDER_REOPEN",key,{ref,expected});
+    if(cmd.ref)return {status:"PENDING",version:cmd.version,replayed:true};
+    const found=await tx.query<{version:number;status:string}>(
+      "SELECT version,status FROM health_provider "+
+      "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,ref]);
+    if(!found.rows[0])throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    if(found.rows[0].version!==expected)
+      throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+    if(found.rows[0].status!=="SUSPENDED")
+      throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    // Old centers stay individually UNPUBLISHED and access DISABLED,
+    // including while the parent moves through a new review.
+    await tx.query("UPDATE health_provider SET status='PENDING',"+
+      "version=version+1,updated_at=now() "+
+      "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
+    await this.complete(tx,actor,cmd.id,ref,null,"HEALTH_PROVIDER_REOPEN",ref,expected+1);
+    return {status:"PENDING",version:expected+1,replayed:false,
+      message:"The provider has reopened as a draft. New secure proof and independent verification are required; its centers remain unpublished."};
+  });
+ }
+ async reopenCenter(bearer:string,centerRef:string,body:unknown){
+  const data=input(body,["requestKey","expectedVersion","currentPassword"]);
+  const ref=id(centerRef,"centerRef"),key=id(data.requestKey,"requestKey"),
+    expected=vers(data.expectedVersion);
+  if(typeof data.currentPassword!=="string")
+    throw new BadRequestException({code:"HEALTH_REVIEW_INVALID"});
+  const actor=await this.sessions.requireAction(bearer,"health.providers.verify");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+    await this.identity.assertCurrent(tx,actor,"health.providers.verify");
+    await this.sessions.requireFreshFoundationRootProof(tx,actor,data.currentPassword as string);
+    const cmd=await this.command(tx,actor,"HEALTH_CENTER_REOPEN",key,{ref,expected});
+    if(cmd.ref)return {status:"PENDING",version:cmd.version,replayed:true};
+    const found=await tx.query<{provider_id:string;version:number;status:string;
+      access_state:string;publication_state:string}>(
+      "SELECT provider_id,version,status,access_state,publication_state "+
+      "FROM health_center WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+      [actor.realmId,ref]);
+    const row=found.rows[0];
+    if(!row)throw new NotFoundException({code:"HEALTH_CENTER_UNAVAILABLE"});
+    if(row.version!==expected)
+      throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+    if(row.status!=="SUSPENDED"||row.access_state!=="DISABLED"||
+       row.publication_state!=="UNPUBLISHED")
+      throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    const parent=await tx.query(
+      "SELECT id FROM health_provider WHERE root_realm_id=$1 AND id=$2 "+
+      "AND status='VERIFIED' FOR SHARE",[actor.realmId,row.provider_id]);
+    if(!parent.rowCount)throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
+    await tx.query("UPDATE health_center SET status='PENDING',"+
+      "version=version+1,updated_at=now() "+
+      "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
+    await this.complete(tx,actor,cmd.id,row.provider_id,ref,
+      "HEALTH_CENTER_REOPEN",ref,expected+1);
+    return {status:"PENDING",version:expected+1,replayed:false,
+      message:"The center is now a pending draft. A new scanned license and independent Foundation review are required before access or publication."};
+  });
+ }
+
  async access(bearer:string,centerRef:string,body:unknown){
   const data=input(body,["expectedVersion","enabled","currentPassword","requestKey"]);
   const ref=id(centerRef,"centerRef"),expected=vers(data.expectedVersion),
