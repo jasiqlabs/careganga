@@ -136,7 +136,7 @@ export class HealthPublicDirectoryService{
       "OR p.legal_name ILIKE $1 ESCAPE '\\') "+
       "AND ($6::text IS NULL OR c.public_slug>$6) "+
       "ORDER BY c.public_slug ASC LIMIT 21",
-      f.params);
+      f.params.slice(0,6));
     return {items:found.rows.slice(0,20).map(c=>({
       slug:c.public_slug,centerName:c.center_name,providerName:c.provider_name,
       type:c.center_type,address:c.address,pinCode:c.pin_code,publicPhone:c.public_phone,
