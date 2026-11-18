@@ -511,8 +511,8 @@ export class HealthNetworkService{
   async financeReference(bearer:string,providerRef:string){
     const actor=await this.allowed(bearer,"health.providers.finance.view");
     const ref=uuid(providerRef,"providerRef");
-    const found=await this.db.query<{masked_label:string;version:number;file_ok:boolean}>(
-      "SELECT f.masked_label,f.version, "+
+    const found=await this.db.query<{masked_label:string;protected_file_ref:string;version:number;file_ok:boolean}>(
+      "SELECT f.masked_label,f.protected_file_ref,f.version, "+
       "EXISTS(SELECT 1 FROM cg19_stored_file file JOIN cg19_upload_intent intent "+
       "ON intent.id=file.upload_intent_id AND intent.realm_id=file.realm_id "+
       "WHERE file.id=f.protected_file_ref AND file.realm_id=f.root_realm_id "+
@@ -525,7 +525,7 @@ export class HealthNetworkService{
       "WHERE f.root_realm_id=$1 AND f.provider_id=$2 AND p.status='PENDING'",
       [actor.realmId,ref]);
     return {reference:found.rows[0]&&found.rows[0].file_ok?{
-      maskedLabel:found.rows[0].masked_label,version:found.rows[0].version
+      maskedLabel:found.rows[0].masked_label,fileRef:found.rows[0].protected_file_ref,version:found.rows[0].version
     }:null};
   }
   async saveFinanceReference(bearer:string,providerRef:string,body:unknown){
