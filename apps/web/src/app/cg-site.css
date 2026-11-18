@@ -351,3 +351,17 @@
  color:#183e34;font-size:clamp(2rem,4vw,3.4rem);line-height:1.12;margin:.35rem 0 .85rem}
 .cg-site-policy-title+.cg-site-article{padding-top:0}
 .cg-site-policy-title~.cg-site-article .cg-site-body{white-space:pre-wrap}
+
+
+/* Original U23 Impact hero: separate green highlighted words and a modest
+ * editorial quote, only when the Foundation supplies approved source copy. */
+.cg-site-impact-hero .cg-site-impact-heading h2{
+ font-family:Georgia,"Times New Roman",serif;
+ font-size:clamp(2.1rem,4.5vw,3.9rem);line-height:1.12}
+.cg-site-impact-highlight{display:inline;color:#247d48;font-style:normal}
+.cg-site-impact-quote{font-family:Georgia,"Times New Roman",serif;font-style:italic;
+ color:#326d4d;line-height:1.5;font-size:clamp(1rem,2.2vw,1.25rem);
+ border-left:3px solid #b58c27;margin:.8rem 0;padding-left:1rem}
+.cg-site-impact-reach{display:inline-flex;align-self:flex-start;font-weight:700;
+ font-size:.78rem;letter-spacing:.03em;color:#215c3e;
+ background:#e7f4e9;border-radius:999px;padding:.25rem .65rem}
