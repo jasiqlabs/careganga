@@ -18,6 +18,15 @@ export class HealthNetworkController{
   provider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
     return this.network.provider(bearer,ref);
   }
+  @Get("providers/:providerRef/finance-reference")
+  financeReference(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
+    return this.network.financeReference(bearer,ref);
+  }
+  @Post("providers/:providerRef/finance-reference")
+  saveFinanceReference(@Headers("authorization")bearer:string,
+    @Param("providerRef")ref:string,@Body()body:unknown){
+    return this.network.saveFinanceReference(bearer,ref,body);
+  }
   @Post("providers/:providerRef/centers")
   addCenter(@Headers("authorization")bearer:string,
     @Param("providerRef")ref:string,@Body()body:unknown){
