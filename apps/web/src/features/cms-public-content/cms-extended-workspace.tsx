@@ -102,6 +102,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [listSearch,setListSearch]=useState("");
  const [listKind,setListKind]=useState<Kind|"ALL">("ALL");
  const [listStatus,setListStatus]=useState("ALL");
+ const [galleryCategory,setGalleryCategory]=useState("ALL");
+ const [galleryVisibility,setGalleryVisibility]=useState("ALL");
  const [editorOpen,setEditorOpen]=useState(false);
  const [closePrompt,setClosePrompt]=useState(false);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -126,6 +128,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    const detail=await api<Detail>("pages/"+p.pageRef);
    setSelected(detail);setKind(detail.kind);
    setEditorOpen(true);setClosePrompt(false);
+   setGalleryCategory("ALL");setGalleryVisibility("ALL");
    setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
@@ -548,7 +551,26 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       </>}
       {section.kind==="GALLERY_GRID"&&<>
        <Field name="Intro" value={f.description} large onChange={v=>change("description",v)}/>
-       {items(f.items).map((item,j)=><div className="cg-cms-team" key={j}>
+       <div className="cg-cms-actions" role="group" aria-label="Original gallery category filters">
+        <button type="button" aria-pressed={galleryCategory==="ALL"}
+         onClick={()=>setGalleryCategory("ALL")}>All ({items(f.items).length})</button>
+        {Array.from(new Set(items(f.items).map(item=>str(item.category)).filter(Boolean)))
+         .sort().map(name=><button key={name} type="button"
+          aria-pressed={galleryCategory===name}
+          onClick={()=>setGalleryCategory(name)}>{name} ({items(f.items)
+           .filter(item=>item.category===name).length})</button>)}
+       </div>
+       <div className="cg-cms-actions" role="group" aria-label="Original gallery publication filters">
+        {([["ALL","All"],["VISIBLE","Published after approval"],
+         ["HIDDEN","Hidden"]] as const).map(([value,label])=>
+         <button type="button" key={value} aria-pressed={galleryVisibility===value}
+          onClick={()=>setGalleryVisibility(value)}>{label}</button>)}
+       </div>
+       {items(f.items).map((item,j)=>({item,j})).filter(({item})=>
+        (galleryCategory==="ALL"||item.category===galleryCategory)&&
+        (galleryVisibility==="ALL"||(galleryVisibility==="VISIBLE"?
+         item.visible!==false:item.visible===false)))
+        .map(({item,j})=><div className="cg-cms-team" key={j}>
         <span className="cg-cms-muted">Gallery item {j+1} ·
          {item.visible===false?" Hidden from public":" Visible after approval"}</span>
         {item.mediaType==="PHOTO"&&
