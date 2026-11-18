@@ -37,9 +37,11 @@ const files={
  storage:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/verified-private-storage.ts"),
  scanner:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/clamav-scanner.ts"),
  originalNav:read("docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md"),
- galleryClient:read("apps/web/src/features/cms-public-content/cms-gallery-grid-client.tsx"),
  policyMigration:read("apps/backend/db/migrations/0940_cg18_original_footer_policy_editorial.sql"),
- policyRoute:read("apps/web/src/app/policies/[slug]/page.tsx")
+ policyRoute:read("apps/web/src/app/policies/[slug]/page.tsx"),
+ reuseMigration:read("apps/backend/db/migrations/0937_cg18_same_page_verified_media_reuse.sql"),
+ galleryClient:read("apps/web/src/features/cms-public-content/cms-gallery-grid-client.tsx"),
+ cg21Copy:read("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const checks=[
  ["All screenshot-driven content blocks validated by backend",
@@ -167,6 +169,25 @@ const checks=[
   files.web.includes('isPublished("/policies/"+slug)')&&
   files.android.includes('publishedPaths.includes("/policies/"+name)')&&
   files.publicSource.includes('source.kind==="POLICY"')],
+ ["Required 0937 same-page media FK is inserted from trusted revision and checked across owners",
+  files.reuseMigration.includes("ADD COLUMN page_id uuid")&&
+  files.reuseMigration.includes("ALTER COLUMN page_id SET NOT NULL")&&
+  files.backend.includes('"page_id,cg19_file_ref,cg19_validated_version')&&
+  files.backend.includes('"FROM cms_page_revision v WHERE v.id=$2 AND v.foundation_root_id=$1"')&&
+  (files.backend.match(/f.page_id=a.page_id/g)||[]).length===3&&
+  files.media.includes("f.page_id=a.page_id")&&
+  files.proof.includes("f.page_id=a.page_id")],
+ ["Original Gallery hidden state denies public item metadata and direct CG19 bytes",
+  files.extended.includes('"visible"]);')&&
+  files.extended.includes("visible:item.visible!==false")&&
+  files.backend.includes("item&&item.visible!==false?[{...item,originalIndex:index}]")&&
+  files.backend.includes('asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false')&&
+  files.media.includes("->>'visible') IS DISTINCT FROM 'false'")&&
+  files.galleryClient.includes("mediaOrder=Number.isSafeInteger(item.originalIndex)")&&
+  files.androidExtended.includes('typeof item.originalIndex==="number"')&&
+  files.adminExtended.includes("Show this item on the public site after independent approval")],
+ ["CG21 administrator can edit original team-consent failure copy",
+  files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
  ["Original newsletter cannot fake subscriber success before CG19 opt-in",
   files.web.includes('disabled className="cg-site-newsletter-button"')&&
   files.originalNav.includes("CG-19 owns any real opt-in receipt")]
