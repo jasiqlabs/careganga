@@ -40,9 +40,9 @@ function initial(kind:Kind):Draft{
    heading:"",category:"",excerpt:"",body:"",authorLabel:"",
    source:"",asOfDate:today(),tags:[]}}]:
   kind==="CONTACT"?[{kind:"RICH_TEXT",order:0,fields:{
-   heading:"Contact the Foundation",body:"",
+   heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
    eyebrow:"",variant:"STANDARD",highlights:[]}}]:
-  [{kind:"HERO",order:0,fields:{heading:"",subtitle:"",description:"",eyebrow:"",
+  [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
     tags:[],visible:true,headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
     headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
    {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
