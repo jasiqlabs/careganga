@@ -55,9 +55,27 @@ export class HealthReviewSourceFacade{
    */
   async reviewSnapshot(tx:PoolClient,actor:VerifiedFoundationActor,input:HealthSubmission){
     const proof=await this.original(tx,actor,input);
-    return {kind:input.kind,
-      source:proof.sourceSnapshot,
-      proofStatus:"PRIVATE_VERIFIED",
-      sourceVersion:proof.sourceVersion};
+    const source={...proof.sourceSnapshot};
+    if(input.kind==="HEALTH_CENTER_VERIFICATION"){
+      // Original CG02 owns geography. Show reviewers safe current human names,
+      // not raw state/district/block UUIDs or applicant supplied labels.
+      const refs=[source.stateRef,source.districtRef,source.blockRef]
+        .filter((x):x is string=>typeof x==="string");
+      const places=refs.length?
+        await tx.query<{id:string;display_name:string}>(
+          "SELECT id,display_name FROM geography_area "+
+          "WHERE root_realm_id=$1 AND id=ANY($2::uuid[])",
+          [actor.realmId,refs]):{rows:[] as {id:string;display_name:string}[]};
+      const names=new Map(places.rows.map(x=>[x.id,x.display_name]));
+      source.state=typeof source.stateRef==="string"?
+        names.get(source.stateRef)??"Area unavailable":"Area unavailable";
+      source.district=typeof source.districtRef==="string"?
+        names.get(source.districtRef)??"Area unavailable":"Area unavailable";
+      source.block=typeof source.blockRef==="string"?
+        names.get(source.blockRef)??"Area unavailable":"Not specified";
+      delete source.stateRef;delete source.districtRef;delete source.blockRef;
+    }
+    return {kind:input.kind,source,
+      proofStatus:"PRIVATE_VERIFIED",sourceVersion:proof.sourceVersion};
   }
 }
