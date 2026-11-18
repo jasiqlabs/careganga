@@ -215,7 +215,14 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED:"The original professional details or proof changed. Refresh the registration and submit a new review.",
       HEALTH_DOCTOR_REVIEW_UNAVAILABLE:"The original professional verification case is unavailable for this action.",
       HEALTH_DOCTOR_ASSOCIATION_UNAVAILABLE:"This doctor center association is not available for your current access.",
-      HEALTH_DOCTOR_ASSOCIATION_CHANGED:"The doctor center assignment changed. Refresh before approving or suspending it."
+      HEALTH_DOCTOR_ASSOCIATION_CHANGED:"The doctor center assignment changed. Refresh before approving or suspending it.",
+      HEALTH_DOCTOR_FEE_INVALID:"Enter a valid consultation fee, type and effective date.",
+      HEALTH_DOCTOR_FEE_INELIGIBLE:"This doctor and center must be active and verified before managing a fee.",
+      HEALTH_DOCTOR_FEE_OVERLAP:"Another approved fee already applies to this date. Refresh the price history.",
+      HEALTH_DOCTOR_FEE_REQUEST_CONFLICT:"This price request was already used for different details. Review the saved fee before retrying.",
+      HEALTH_DOCTOR_FEE_STALE:"The requested fee start time has passed or overlaps another price. Choose a future date.",
+      HEALTH_DOCTOR_FEE_UNAVAILABLE:"This center's fee proposal is unavailable for your current access.",
+      HEALTH_DOCTOR_FEE_CHANGED:"The consultation fee proposal changed. Refresh before approving."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
