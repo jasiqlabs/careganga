@@ -39,6 +39,7 @@ import {DeliveryService} from "./application/delivery.service";
 import {CommunicationProviders} from "./infrastructure/channel-providers";
 import {CommunicationWorker} from "./infrastructure/communication-worker";
 import {SupportService} from "./application/support.service";
+import {HealthCenterSupportScopeFacade} from "../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {SupportController} from "./http/support.controller";
 import {CommunicationsController,CommunicationProviderWebhookController} from
   "./http/communications.controller";
@@ -54,7 +55,7 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
   providers:[HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
     NotificationService,NoticeService,DeliveryService,
-    CommunicationProviders,CommunicationWorker,SupportService,
+    CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
   exports:[HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
 })
