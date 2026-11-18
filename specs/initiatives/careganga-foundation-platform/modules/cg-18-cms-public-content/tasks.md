@@ -3,7 +3,22 @@
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage:** Harness Planning / GREENFIELD · **DELEGATED_APPROVED (design-only)** by JASIQ AI Design Review Agent (15 Nov 2026) after full source review/fix/re-review of four actual owner-independent vertical CG-18 stories, 76 unique QA (US-001 20 / US-002 18 / US-003 20 / US-004 18), each with real PostgreSQL, backend/API, Admin Web, public Next.js, native Public Android, original UI, security/NFR and later-owner protections.
-**Development gate:** All four CG-18 current-source task definitions have delegated design approval only. PRD/HLD latest global review REQUIRED; authenticated Harness resolver, independent qualified CRITICAL DB/security review, actual migrations/backup/restore/EXPLAIN, predecessor implementation verification, code review, public/Admin Web and native Android device/runtime tests, source image/video pixel/motion QA and proposed NFR measurements NOT_RUN. Implementation remains BLOCKED/NOT_STARTED, no CI/GitHub Actions and no false code/test PASS.
+**Current development gate (18 November):** All four existing CG-18 stories have provisional source paths on the authorized shared CG-09 branch; historical 17-Nov NOT_STARTED reports below are superseded, not current status. FORMAL_SOURCE_COMPLETE remains NOT_PASSED. Latest-current design approval ledger, authenticated Harness resolver, independent qualified security/CRITICAL database review, PostgreSQL migration/backup/restore/EXPLAIN, full local backend/Web/Android builds, exact original visual comparison and 76 executed story QA remain OPEN. Real business data must remain with the appropriate original CG-02/04/05/07/08/09/19/20 owner; no static fake CMS substitute. No CI/GitHub Actions or false runtime PASS.
+
+## Current source gate — 18 November 2026: canonical QA and reviewer fixes
+
+**Historical 17-Nov source-stage snapshots below do not override this latest position.** Existing US-001–004 QA identifiers, text and 20 + 18 + 20 + 18 = 76 unique cases are unchanged.
+
+| Story | Latest source position | Original QA | Executed runtime QA | Outstanding original owner/visual requirements |
+| --- | --- | --- | --- | --- |
+| US-001 Home/About, menu/footer/hero | PROVISIONAL_SOURCE_REVIEWED | 20 | 0 | Admin C20–C26, exact original images, team and genuine other-owner links |
+| US-002 Impact and original NGO 80G | PROVISIONAL_SOURCE_REVIEWED | 18 | 0 | Genuine CG-02 tax/legal proof and CG-20 approved metrics/reports, original pixel and API evidence |
+| US-003 Media/Notices/Contact | PROVISIONAL_SOURCE_REVIEWED | 20 | 0 | Real media storage, photo rights, newsletter/chat, browser and device/visual evidence |
+| US-004 neutral Healthcare editorial | PROVISIONAL_SOURCE_REVIEWED | 18 | 0 | Actual CG-14/15/17 booking and benefits owned by later original modules |
+
+**Source fix and re-review on this branch:** CmsEditorialService.publicNotices now denies any linked media placement without explicit CG-19 publication placement rights VALIDATED, in addition to current CLEAN_VERIFIED scan/public_rights_confirmed/version and original notice approval, audience, exact text and expiry. Review existing US-003 QA08/09/11/13/14/16: later run current effective publish/withdraw/expiry/invalid placement/revoked direct media SQL and HTTP cases. No runtime or independent reviewer PASS claimed.
+
+**Branch sync:** the feature branch now contains main's V1 rules as an ancestor; latest verified upstream Harness main/pin is 96cd95d57acd9b0267d83f8c9d91c8994ac29927. Formal approval resolver and local build NOT_RUN.
 
 ## Latest US-001 source checkpoint — 17 November 2026 (after client screenshot implementation)
 
