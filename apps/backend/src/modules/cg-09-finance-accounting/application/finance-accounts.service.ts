@@ -159,6 +159,9 @@ export class FinanceAccountsService{
    throw new BadRequestException({code:"FINANCE_FILTER_INVALID"});
   const group=filters.groupRef?ref(filters.groupRef,"groupRef"):null;
   const branch=filters.branchRef?ref(filters.branchRef,"branchRef","FINANCE_SCOPE_INVALID"):null;
+  const scope=await this.branches.financeReportScope(bearer,"finance.accounts.view");
+  if(branch&&!scope.all&&!scope.branchRefs.includes(branch))
+   throw new ForbiddenException("This finance branch is not assigned to your account");
   const year=filters.yearRef?ref(filters.yearRef,"startOn","FINANCE_YEAR_CLOSED"):null;
   if(year){
    const found=await this.db.query("SELECT 1 FROM financial_year WHERE id=$1 AND root_realm_id=$2",
@@ -188,6 +191,7 @@ export class FinanceAccountsService{
        AND ($6::uuid IS NULL OR a.group_id=$6)
        AND ($7::uuid IS NULL OR a.branch_id=$7)
        AND ($8::text='ALL' OR a.status=$8)
+       AND ($9::boolean OR a.branch_id IS NULL OR a.branch_id=ANY($10::uuid[]))
      ORDER BY a.name,a.id LIMIT 51 OFFSET $3
     )
     SELECT a.id AS "accountRef",a.code,a.name,a.normal_side AS "normalSide",
@@ -202,23 +206,29 @@ export class FinanceAccountsService{
        THEN CASE WHEN a.normal_side='DEBIT'
          THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END
        ELSE 0 END),0)::text AS "openingMinor",
-      cb.display_label AS "bankLabel",cb.masked_details AS "maskedDetails"
+      CASE WHEN $9::boolean OR a.branch_id=ANY($10::uuid[])
+       THEN cb.display_label ELSE NULL END AS "bankLabel",
+      CASE WHEN $9::boolean OR a.branch_id=ANY($10::uuid[])
+       THEN cb.masked_details ELSE NULL END AS "maskedDetails"
     FROM page a JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id
     LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
+       AND ($9::boolean OR l.branch_id=ANY($10::uuid[]))
     LEFT JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id
     LEFT JOIN cash_bank_account cb ON cb.account_id=a.id AND cb.root_realm_id=a.root_realm_id
     GROUP BY a.id,a.code,a.name,a.normal_side,a.account_kind,a.scope_kind,a.branch_id,
       a.status,a.version,g.name,g.category,cb.display_label,cb.masked_details
     ORDER BY a.name,a.id`,
     [actor.realmId,search?"%"+search.replace(/[\\%_]/g,"\\$&")+"%":"",offset,
-     year,kind,group,branch,status]),
+     year,kind,group,branch,status,scope.all,scope.branchRefs]),
    this.db.query<{journalRef:string;postingDate:string;yearName:string;amountMinor:string}>(`
     SELECT j.id AS "journalRef",j.posting_date::text AS "postingDate",fy.name AS "yearName",
      MAX(l.debit_minor)::text AS "amountMinor"
     FROM journal j JOIN financial_year fy ON fy.id=j.financial_year_id
-    JOIN journal_line l ON l.journal_id=j.id
+    JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id
+      AND ($2::boolean OR l.branch_id=ANY($3::uuid[]))
     WHERE j.root_realm_id=$1 AND j.posting_kind='OPENING'
-    GROUP BY j.id,fy.name ORDER BY j.posting_date DESC,j.id DESC LIMIT 10`,[actor.realmId]),
+    GROUP BY j.id,fy.name ORDER BY j.posting_date DESC,j.id DESC LIMIT 10`,
+    [actor.realmId,scope.all,scope.branchRefs]),
    this.branches.financeBranches(bearer),
    this.db.query<{category:string;balanceMinor:string;accountCount:string}>(`
     SELECT g.category,
@@ -230,9 +240,12 @@ export class FinanceAccountsService{
       COUNT(DISTINCT a.id)::text AS "accountCount"
     FROM account_group g
     JOIN finance_account a ON a.group_id=g.id AND a.root_realm_id=g.root_realm_id
+      AND ($3::boolean OR a.branch_id IS NULL OR a.branch_id=ANY($4::uuid[]))
     LEFT JOIN journal_line l ON l.account_id=a.id AND l.root_realm_id=a.root_realm_id
+      AND ($3::boolean OR l.branch_id=ANY($4::uuid[]))
     LEFT JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id
-    WHERE g.root_realm_id=$1 GROUP BY g.category ORDER BY g.category`,[actor.realmId,year])
+    WHERE g.root_realm_id=$1 GROUP BY g.category ORDER BY g.category`,
+    [actor.realmId,year,scope.all,scope.branchRefs])
   ]);
   const hasMore=accounts.rows.length>50;
   const accountRows=accounts.rows.slice(0,50);
@@ -254,7 +267,7 @@ export class FinanceAccountsService{
    throw new BadRequestException({code:"FINANCE_ACCOUNT_SEARCH_INVALID"});
   const q=query?.trim()??"";
   const escaped="%"+q.replace(/[\\%_]/g,"\\$&")+"%";
-  const activeBranches=await this.branches.financeBranches(bearer);
+  const activeBranches=await this.branches.financeBranches(bearer,"finance.accounts.view");
   const labels=new Map(activeBranches.map(b=>[b.branchRef,b]));
   const activeBranchRefs=activeBranches.map(b=>b.branchRef);
   const rows=await this.db.query<{
