@@ -38,8 +38,17 @@ export class HealthCenterContentMediaController{
   return this.media.revokeRights(token,ref,body&&typeof body==="object"&&
    "expectedVersion" in body?body.expectedVersion:undefined);
  }
+ @Get("reviews/:caseRef/photos/:fileRef")
+ @Header("Cache-Control","no-store, max-age=0, must-revalidate")
+ @Header("X-Content-Type-Options","nosniff")
+ async reviewPhoto(@Headers("authorization")token:string,
+  @Param("caseRef")caseRef:string,@Param("fileRef")fileRef:string){
+  const safe=await this.media.reviewImage(token,caseRef,fileRef);
+  return new StreamableFile(safe.data,{type:safe.mime,
+   disposition:'inline; filename="private-review-photo"'});
+ }
  @Get("public/:slug/:fileRef")
- @Header("Cache-Control","public, no-store, max-age=0, must-revalidate")
+ @Header("Cache-Control","no-store, max-age=0, must-revalidate")
  @Header("X-Content-Type-Options","nosniff")
  async publicPhoto(@Param("slug")slug:string,@Param("fileRef")fileRef:string){
   const safe=await this.media.publicImage(slug,fileRef);
