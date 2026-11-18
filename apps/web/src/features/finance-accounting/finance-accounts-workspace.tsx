@@ -13,7 +13,8 @@ type Opening={journalRef:string;postingDate:string;yearName:string;amountMinor:s
 type PostingChoice={accountRef:string;code:string;name:string;branchRef:string|null;
  branchName:string|null;branchVersion:number|null};
 type Setup={years:Year[];groups:Group[];branches:Branch[];accounts:Account[];
- openingJournals:Opening[];categorySummary:{category:string;balanceMinor:string;accountCount:string}[];nextOffset:number|null};
+ openingJournals:Opening[];categorySummary:{category:string;balanceMinor:string;accountCount:string}[];
+ canManageFoundationFinance:boolean;nextOffset:number|null};
 type FormKind="year"|"group"|"account"|"opening";
 type Pending={key:string;kind:string;path:string;payload:Record<string,unknown>;method?:"POST"|"PATCH"};
 type SafeFailure={message:string;field:string|null;uncertain:boolean};
@@ -67,6 +68,7 @@ function Field({name,label,form,onChange,type="text",required=false,children,fai
 }
 export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVouchers,canManageVouchers,canViewEvidence,canUploadEvidence,canVerifyPayment}:{canManage:boolean;canPost:boolean;canReverse:boolean;canViewVouchers:boolean;canManageVouchers:boolean;canViewEvidence:boolean;canUploadEvidence:boolean;canVerifyPayment:boolean}){
  const [data,setData]=useState<Setup|null>(null);
+ const canFoundation=Boolean(data?.canManageFoundationFinance);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState("");
@@ -103,6 +105,7 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
    if(!result||!Array.isArray(result.accounts)||!Array.isArray(result.years)||
      !Array.isArray(result.groups)||!Array.isArray(result.branches)||
      !Array.isArray(result.openingJournals)||!Array.isArray(result.categorySummary)||
+     typeof result.canManageFoundationFinance!=="boolean"||
      !result.categorySummary.every(x=>x&&typeof x.category==="string"&&
        ["ASSET","LIABILITY","FUND","INCOME","EXPENSE"].includes(x.category)&&
        typeof x.balanceMinor==="string"&&/^-?[0-9]{1,25}$/.test(x.balanceMinor)&&
@@ -115,7 +118,9 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
  useEffect(()=>{void load();},[load]);
  function open(kind:FormKind){
   setDrawer(kind);setFailure(null);setSuccess("");setPending(null);setPendingNotFound(false);
-  setForm(blank());setPostingQuery("");setPostingResults([]);setPostingLoading(kind==="opening");
+  setForm(kind==="account"&&!data?.canManageFoundationFinance?
+   {...blank(),scopeKind:"BRANCH"}:blank());
+  setPostingQuery("");setPostingResults([]);setPostingLoading(kind==="opening");
   setPostingSaved({});setPostingMore(false);setPostingError("");
  }
  useEffect(()=>{
@@ -279,7 +284,8 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
     <h1>Accounts</h1><p>Foundation financial years, account groups, cash/bank accounts and opening balances.</p></div>
    <div className="cg-fin-header-actions">
     <button type="button" onClick={()=>void load()} disabled={loading}>Refresh</button>
-    {canManage&&<button className="primary" type="button" onClick={()=>open("account")}>+ Add Account</button>}
+    {canManage&&(canFoundation||Boolean(data?.branches.length))&&
+     <button className="primary" type="button" onClick={()=>open("account")}>+ Add Account</button>}
    </div>
   </header>
   {success&&<p className="cg-fin-success" role="status">{success}</p>}
@@ -298,8 +304,8 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
      <div><h2>{tab==="journals"?"General Journal Entries":tab==="vouchers"?"Finance Voucher Drafts":"Financial accounts & opening setup"}</h2>
       <p>{tab==="journals"?"Posted journal is not proof of a payment or voucher approval.":tab==="vouchers"?"Voucher drafts are not approved, posted or paid.":"Amounts are shown only from confirmed, posted finance records."}</p></div>
      <div className="cg-fin-toolbar-actions">
-      {canManage&&<button type="button" onClick={()=>open("year")}>+ Financial Year</button>}
-      {canManage&&<button type="button" onClick={()=>open("group")}>+ Account Group</button>}
+      {canManage&&canFoundation&&<button type="button" onClick={()=>open("year")}>+ Financial Year</button>}
+      {canManage&&canFoundation&&<button type="button" onClick={()=>open("group")}>+ Account Group</button>}
       {canPost&&<button type="button" onClick={()=>open("opening")}>+ Opening Entry</button>}
      </div>
     </div>
@@ -369,10 +375,10 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
        <td className="cg-fin-money">{rupees(a.openingMinor)}</td>
        <td className="cg-fin-money">{rupees(a.balanceMinor)}</td>
        <td><span className={"cg-fin-status "+(a.status==="ACTIVE"?"is-active":"")}>{a.status==="ACTIVE"?"Active":"Inactive"}</span></td>
-       {canManage&&<td><button type="button" disabled={busy}
+       {canManage&&<td>{(canFoundation||a.scopeKind==="BRANCH")&&<button type="button" disabled={busy}
         onClick={()=>setStatusConfirm({type:"account",ref:a.accountRef,name:a.name,
          expectedVersion:a.version,nextStatus:a.status==="ACTIVE"?"INACTIVE":"ACTIVE"})}>
-        {a.status==="ACTIVE"?"Deactivate":"Reactivate"}</button></td>}
+        {a.status==="ACTIVE"?"Deactivate":"Reactivate"}</button>}</td>}
       </tr>)}</tbody>
      </table>{!data.accounts.length&&!loading&&<p className="cg-fin-empty">No matching financial accounts. {canManage?"Choose Add Account to create your first account.":"Ask your Finance Administrator to create accounts."}</p>}</div>
      <div className="cg-fin-paging">
@@ -389,11 +395,11 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
        <td>{g.code}</td><td>{g.category.charAt(0)+g.category.slice(1).toLowerCase()}</td></tr>)}
      </tbody></table>{!data.groups.length&&<p className="cg-fin-empty">No account groups yet. Create one before adding accounts.</p>}</div>}
     {tab==="years"&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
-     <thead><tr><th>Financial year</th><th>Start</th><th>End</th><th>Status</th>{canManage&&<th>Action</th>}</tr></thead><tbody>
+     <thead><tr><th>Financial year</th><th>Start</th><th>End</th><th>Status</th>{canManage&&canFoundation&&<th>Action</th>}</tr></thead><tbody>
       {data.years.map(y=><tr key={y.yearRef}><td><strong>{y.name}</strong></td>
        <td>{y.startOn}</td><td>{y.endOn}</td>
        <td><span className={"cg-fin-status "+(y.status==="OPEN"?"is-active":"")}>{y.status==="OPEN"?"Open":"Closed"}</span></td>
-       {canManage&&<td>{y.status==="OPEN"?<button type="button" disabled={busy}
+       {canManage&&canFoundation&&<td>{y.status==="OPEN"?<button type="button" disabled={busy}
         onClick={()=>setStatusConfirm({type:"year",ref:y.yearRef,name:y.name,
          expectedVersion:y.version,nextStatus:"CLOSED"})}>Close year</button>:"Closed"}</td>}</tr>)}
      </tbody></table>{!data.years.length&&<p className="cg-fin-empty">No financial year exists. Add a financial year to begin.</p>}</div>}
@@ -516,7 +522,8 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
       </Field>
       <Field failure={failure} name="scopeKind" label="Account scope" form={form} onChange={change}>
        <select value={form.scopeKind} onChange={e=>change("scopeKind",e.target.value)}>
-        <option value="FOUNDATION">Foundation</option><option value="BRANCH">Branch</option>
+        {canFoundation&&<option value="FOUNDATION">Foundation</option>}
+        <option value="BRANCH">Branch</option>
        </select>
       </Field>
       {form.scopeKind==="BRANCH"&&<Field failure={failure} name="branchRef" label="Active branch" form={form} onChange={change} required>
