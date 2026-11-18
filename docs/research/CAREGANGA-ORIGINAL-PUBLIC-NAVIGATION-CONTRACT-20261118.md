@@ -47,7 +47,7 @@
 | Visible original label/control | Acceptance and owner |
 |---|---|
 | Quick Links: About Us, Campaigns, Donate, Contact | About/Contact current route; Campaigns/Donate only genuine CG-07 public entry and payment confirmation |
-| Policies & Legal: Terms & Conditions, Privacy Policy, Cookie Policy, Disclaimer, Refund & Cancellation, Grievance Redressal, Copyright & Intellectual Property | **7 client-approved legal content pages**; CG-18 owns approved editorial page/SEO/visibility and footer links; legal wording and applicability must be supplied/approved by client, **never hallucinated**. Current code only renders non-clickable labels |
+| Policies & Legal (seven original Footer Policies & Legal: Terms & Conditions, Privacy Policy, Cookie Policy, Disclaimer, Refund & Cancellation, Grievance Redressal, Copyright & Intellectual Property) | **7 client-approved legal content pages**; CG-18 owns approved editorial page/SEO/visibility and footer links; legal wording and applicability must be supplied/approved by client, **never hallucinated**. Current code only renders non-clickable labels |
 | Newsletter email and SUBSCRIBE | CG-18 owns original presentation. CG-19 owns any real opt-in receipt, unsubscribe and notification delivery; no fake subscribed success or contact-list duplication. Current code only states unavailable |
 | Facebook / Instagram / YouTube / CONNECT social icons | Show as links only when real Foundation-owned verified URL is configured; current glyphs are visual placeholders, not verified social destinations |
 | Floating DONATE NOW | CG-07 real enabled donation destination; preserve original position/shape in CG-18; never claim money received when clicking |

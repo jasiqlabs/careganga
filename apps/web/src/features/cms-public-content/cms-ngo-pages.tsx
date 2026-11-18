@@ -9,9 +9,10 @@ import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-cl
 type Child="pan-details"|"registration-certificate"|"annual-reports";
 const allowed=new Set<Child>(["pan-details","registration-certificate","annual-reports"]);
 const words=(v:unknown)=>typeof v==="string"?v:"";
-type RecordValue=Record<string,unknown>;
-const items=(raw:unknown):RecordValue[]=>Array.isArray(raw)?
- raw.filter(x=>x!==null&&typeof x==="object"&&!Array.isArray(x)).slice(0,6):[];
+type DocItem={type?:string;title?:string;asOfDate?:string;[key:string]:unknown};
+type ComplianceDoc=DocItem&{file?:PublicCmsPage["assets"][number]};
+const items=(raw:unknown):DocItem[]=>Array.isArray(raw)?
+ raw.filter((x):x is DocItem=>x!==null&&typeof x==="object"&&!Array.isArray(x)).slice(0,6):[];
 const safeMediaPath=(v:unknown)=>typeof v==="string"&&
  /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(v);
 const chapter:Record<Child,string>={
@@ -21,7 +22,7 @@ const chapter:Record<Child,string>={
 };
 const scope=(page:PublicCmsPage)=>{
  const fact=page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields??{};
- const docs=items(fact.documents).map((item,i)=>({
+ const docs:ComplianceDoc[]=items(fact.documents).map((item,i)=>({
   ...item,file:page.assets.find(a=>a.role==="DOCUMENT"&&a.order===i&&safeMediaPath(a.src))
  }));
  return {fact,docs};

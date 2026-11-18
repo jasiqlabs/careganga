@@ -113,7 +113,7 @@ export function FinanceNativeAdjustments({token,invoiceRef,canReview,canManage,
     onChange={setRefundPassword}/>
    <Action label="Approve and post refund bank journal" disabled={busy||!!pending||
     refundPassword.length<8||
-    !/^[A-Za-z0-9._/: -]{4,100}$/.test(transferReference.trim())
+    !/^[A-Za-z0-9._/: -]{4,100}$/.test(transferReference.trim())}
     onPress={()=>void execute({path:"/api/finance-accounting/invoices/refunds/"+
      data.refund!.refundRef+"/approve",label:"Refund approval",
      body:{requestKey:Crypto.randomUUID(),currentPassword:refundPassword,

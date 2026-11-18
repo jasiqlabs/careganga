@@ -11,8 +11,8 @@ const photo=(asset:Asset|undefined,cls:string)=>asset?.src?
  <img src={asset.src} alt={asset.altText} className={cls} loading="lazy"/>:null;
 const label=(source:unknown,asOf:unknown)=>source||asOf?
  <p className="cg-site-provenance">
-  {source&&<span>Source: {text(source)}</span>}
-  {asOf&&<span> · As of {text(asOf)}</span>}
+  {Boolean(source)&&<span>Source: {text(source)}</span>}
+  {Boolean(asOf)&&<span> · As of {text(asOf)}</span>}
   <span> · Editorial information; not an audited financial statement</span>
  </p>:null;
 

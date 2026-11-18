@@ -329,7 +329,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
        (form.type==="EXPENSE"?a.category==="EXPENSE":
         form.type==="CONTRA"?["CASH","BANK"].includes(a.kind):true))
        .map(a=>({value:a.accountRef,label:a.name+" · "+a.code+
-        (a.branchName?" ("+a.branchName+"):"")}))]}
+        (a.branchName?" ("+a.branchName+")":"")}))]}
      onChange={v=>update("debitAccountRef",v)}/>
     {["PAYMENT","CONTRA"].includes(form.type)?
      <Text style={s.hint}>Credit side is the chosen cash or bank account below.</Text>:
@@ -338,7 +338,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
        ...accounts.filter(a=>(!a.branchRef||a.branchRef===form.branchRef)&&
         (form.type==="EXPENSE"?a.category==="LIABILITY":true))
         .map(a=>({value:a.accountRef,label:a.name+" · "+a.code+
-         (a.branchName?" ("+a.branchName+"):"")}))]}
+         (a.branchName?" ("+a.branchName+")":"")}))]}
       onChange={v=>update("creditAccountRef",v)}/>}
     {accountMore&&<Text style={s.hint}>More accounts exist. Search by name or code.</Text>}
     <Text style={s.hint}>Posting is separately controlled; this form does not transfer money.</Text>

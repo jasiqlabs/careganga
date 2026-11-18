@@ -402,7 +402,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
       disabled={busy||Boolean(pending)||Boolean(cancelPending)}
       onClick={()=>{setCancelOpen(true);setCancelYear("");setCancelDate("");
        setCancelReason("");setCancelPassword("");}}>
-     Reverse unissued posted invoice</button>
+     Reverse unissued posted invoice</button>}
    </div>
    {active?.status==="REVERSED"&&<p role="status" className="cg-fin-notice">
      This posted invoice was reversed before issue. The original journal remains in the audit ledger.

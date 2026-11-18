@@ -348,7 +348,7 @@ export class FinanceAccountsService{
    fieldError("FINANCE_BRANCH_STALE","branchRef");
   const bankLabel=kind==="GENERAL"?null:label(body.bankLabel,"bankLabel",120);
   if(bankLabel&&/[0-9]{8,}/.test(bankLabel))fieldError("FINANCE_BANK_LABEL_INVALID","bankLabel");
-  const lastFour=kind==="BANK"&&body.bankLastFour?body.bankLastFour:"";
+  const lastFour=(kind==="BANK"&&typeof body.bankLastFour==="string")?body.bankLastFour:"";
   if(typeof lastFour!=="string"||(lastFour&&!/^[0-9]{4}$/.test(lastFour)))fieldError("FINANCE_BANK_LAST_FOUR","bankLastFour");
   const data={name,code,group,kind:String(kind),scope:String(scope),branch,
    branchVersion:String(branchVersion??""),bankLabel,lastFour};
@@ -464,13 +464,16 @@ export class FinanceAccountsService{
   const year=ref(body.financialYearRef,"financialYearRef","FINANCE_YEAR_CLOSED"),
     date=dateOnly(body.postingDate,"postingDate"),
     key=ref(body.requestKey,"requestKey");
-  if(typeof body.description!=="string"||
-    body.description.trim().length<3||body.description.trim().length>500)
-   fieldError("FINANCE_JOURNAL_MEMO_INVALID","description");
-  const memo=body.description.trim().replace(/\s+/g," ");
-  if(!Array.isArray(body.lines)||body.lines.length<2||body.lines.length>40)
-   fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
-  const parsed=body.lines.map((inputLine:unknown)=>{
+  const rawDesc=body.description;
+  if(typeof rawDesc!=="string"||
+    rawDesc.trim().length<3||rawDesc.trim().length>500)
+   throw new BadRequestException({code:"FINANCE_JOURNAL_MEMO_INVALID",field:"description"});
+  const memo=rawDesc.trim().replace(/\s+/g," ");
+  const rawLines=body.lines;
+  if(!Array.isArray(rawLines)||rawLines.length<2||rawLines.length>40)
+   throw new BadRequestException({code:"FINANCE_JOURNAL_LINES_INVALID",field:"lines"});
+  type ParsedLine={accountRef:string;debitMinor:string;creditMinor:string};
+  const parsed:ParsedLine[]=rawLines.map((inputLine:unknown):ParsedLine=>{
    const line=fields(inputLine,["accountRef","debit","credit"]);
    const accountRef=ref(line.accountRef,"lines","FINANCE_JOURNAL_LINES_INVALID");
    const parseSide=(value:unknown):string=>{
@@ -489,8 +492,8 @@ export class FinanceAccountsService{
     fieldError("FINANCE_JOURNAL_LINES_INVALID","lines");
    return {accountRef,debitMinor:debit,creditMinor:credit};
   });
-  const debitTotal=parsed.reduce((acc,l)=>acc+BigInt(l.debitMinor),0n);
-  const creditTotal=parsed.reduce((acc,l)=>acc+BigInt(l.creditMinor),0n);
+  const debitTotal=parsed.reduce((acc:bigint,l:ParsedLine)=>acc+BigInt(l.debitMinor),0n);
+  const creditTotal=parsed.reduce((acc:bigint,l:ParsedLine)=>acc+BigInt(l.creditMinor),0n);
   if(debitTotal<=0n||debitTotal!==creditTotal)
    fieldError("FINANCE_DEBITS_CREDITS","lines");
   const digestBody={year,date,memo,lines:JSON.stringify(parsed)};
@@ -505,7 +508,7 @@ export class FinanceAccountsService{
     throw new ConflictException({code:"FINANCE_YEAR_CLOSED",field:"financialYearRef"});
    if(date<fy.rows[0].start_on||date>fy.rows[0].end_on)
     fieldError("FINANCE_OPENING_DATE","postingDate");
-   const accountIds=[...new Set(parsed.map(l=>l.accountRef))];
+   const accountIds=[...new Set(parsed.map((l:ParsedLine)=>l.accountRef))];
    const accounts=await client.query<{id:string;status:string;scope_kind:string;branch_id:string|null}>(`
      SELECT id,status,scope_kind,branch_id FROM finance_account
      WHERE root_realm_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE`,
@@ -529,7 +532,7 @@ export class FinanceAccountsService{
    const id=await this.postings.postBalanced(client,actor,{
     financialYearRef:year,postingDate:date,sourceRef:key,eventKey:key,
     immutableDigest:digest(digestBody),kind:"GENERAL",description:memo,
-    lines:parsed.map(l=>({...l,branchRef:branch}))
+    lines:parsed.map((l:ParsedLine)=>({...l,branchRef:branch}))
    });
    await this.finish(client,actor,"GENERAL_POST",key,id,"GENERAL_JOURNAL_POSTED");
    return {recordRef:id,confirmed:true,replayed:false};

@@ -39,8 +39,8 @@ export async function renderOriginalFinanceCreditNote(x:FinanceCreditNotePdfSour
   {x:42,y:750,font,size:13,color:blue});
  page.drawLine({start:{x:42,y:737},end:{x:552,y:737},thickness:0.8,color:grey});
  let y=703;
- const row=(name:string,value:string)=>{
-  const line=clean(name+": "+value);
+ const row=(name:string,value:string="")=>{
+  const line=clean(value?name+": "+value:name);
   // Long original explanations wrap without exposing an extra private PDF page.
   const tokens=line.split(/\s+/);let current="";
   for(const token of tokens){

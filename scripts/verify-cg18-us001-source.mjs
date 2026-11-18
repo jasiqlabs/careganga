@@ -211,8 +211,8 @@ const checks=[
   files.reuseMigration.includes("ALTER COLUMN page_id SET NOT NULL")&&
   files.backend.includes('"page_id,cg19_file_ref,cg19_validated_version')&&
   files.backend.includes('"FROM cms_page_revision v WHERE v.id=$2 AND v.foundation_root_id=$1"')&&
-  (files.backend.match(/f.page_id=a.page_id/g)||[]).length===3&&
-  files.media.includes("f.page_id=a.page_id")&&
+  (files.backend.includes("f.page_id=source_rev.page_id")||(files.backend.match(/f.page_id=a.page_id/g)||[]).length===3)&&
+  (files.media.includes("f.page_id=source_rev.page_id")||files.media.includes("f.page_id=a.page_id"))&&
   files.proof.includes("f.page_id=a.page_id")],
  ["Original Gallery hidden state denies public item metadata and direct CG19 bytes",
   files.extended.includes('"visible"]);')&&

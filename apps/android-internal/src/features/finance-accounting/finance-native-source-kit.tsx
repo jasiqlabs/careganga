@@ -44,6 +44,34 @@ export const minorToRupees=(n:string|null|undefined)=>{
   (abs/100n).toString()+"."+(abs%100n).toString().padStart(2,"0");
  }catch{return "";}
 };
+export const financeNativeStyles=StyleSheet.create({
+ screen:{flex:1,backgroundColor:t.background},header:{
+  flexDirection:"row",alignItems:"center",gap:12,padding:14,
+  backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
+ back:{color:t.primary,fontSize:15,fontWeight:"700"},title:{
+  color:t.text,fontSize:19,fontWeight:"700"},scroll:{padding:15,gap:14},
+ card:{padding:15,gap:10,borderRadius:10,backgroundColor:t.surface,
+  borderWidth:1,borderColor:t.border},heading:{fontSize:16,fontWeight:"700",color:t.text},
+ text:{color:t.text,fontSize:13,lineHeight:19},
+ muted:{color:t.mutedText,fontSize:13,lineHeight:19},
+ alert:{fontSize:13,color:t.error,lineHeight:20},field:{gap:5},label:{
+  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:46,
+  borderWidth:1,borderColor:t.border,borderRadius:8,padding:10,
+  backgroundColor:t.surface,color:t.text,fontSize:14},
+ area:{minHeight:85,textAlignVertical:"top"},optionList:{flexDirection:"row",
+  flexWrap:"wrap",gap:6},option:{borderWidth:1,borderColor:t.border,
+  backgroundColor:t.surface,padding:9,minHeight:42,borderRadius:8,
+  justifyContent:"center"},selected:{borderColor:t.primary,
+  backgroundColor:t.background},optionText:{color:t.mutedText,fontSize:12},
+ selectedText:{color:t.primary,fontWeight:"700"},action:{
+  backgroundColor:t.primary,borderRadius:9,minHeight:48,paddingHorizontal:14,
+  paddingVertical:12,justifyContent:"center",alignItems:"center"},
+ actionText:{color:t.primaryText,fontSize:13,fontWeight:"700"},
+ secondary:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1},
+ secondaryText:{color:t.primary},disabled:{opacity:.5},
+ row:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8}
+});
+const s=financeNativeStyles;
 export function NativeFinanceAction({label,onPress,disabled=false,secondary=false}:{
  label:string;onPress:()=>void;disabled?:boolean;secondary?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress}
@@ -74,30 +102,3 @@ export function NativeFinanceOptions({label,value,options,onChange}:{
 export function NativeFinanceCard({children,title}:{children:ReactNode;title?:string}){
  return <View style={s.card}>{title&&<Text style={s.heading}>{title}</Text>}{children}</View>;
 }
-export const financeNativeStyles=StyleSheet.create({
- screen:{flex:1,backgroundColor:t.background},header:{
-  flexDirection:"row",alignItems:"center",gap:12,padding:14,
-  backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
- back:{color:t.primary,fontSize:15,fontWeight:"700"},title:{
-  color:t.text,fontSize:19,fontWeight:"700"},scroll:{padding:15,gap:14},
- card:{padding:15,gap:10,borderRadius:10,backgroundColor:t.surface,
-  borderWidth:1,borderColor:t.border},heading:{fontSize:16,fontWeight:"700",color:t.text},
- text:{color:t.text,fontSize:13,lineHeight:19},
- muted:{color:t.mutedText,fontSize:13,lineHeight:19},
- alert:{fontSize:13,color:t.error,lineHeight:20},field:{gap:5},label:{
-  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:46,
-  borderWidth:1,borderColor:t.border,borderRadius:8,padding:10,
-  backgroundColor:t.surface,color:t.text,fontSize:14},
- area:{minHeight:85,textAlignVertical:"top"},optionList:{flexDirection:"row",
-  flexWrap:"wrap",gap:6},option:{borderWidth:1,borderColor:t.border,
-  backgroundColor:t.surface,padding:9,minHeight:42,borderRadius:8,
-  justifyContent:"center"},selected:{borderColor:t.primary,
-  backgroundColor:t.background},optionText:{color:t.mutedText,fontSize:12},
- selectedText:{color:t.primary,fontWeight:"700"},action:{
-  backgroundColor:t.primary,borderRadius:9,minHeight:48,paddingHorizontal:14,
-  paddingVertical:12,justifyContent:"center",alignItems:"center"},
- actionText:{color:t.primaryText,fontSize:13,fontWeight:"700"},
- secondary:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1},
- secondaryText:{color:t.primary},disabled:{opacity:.5},
- row:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8}
-});

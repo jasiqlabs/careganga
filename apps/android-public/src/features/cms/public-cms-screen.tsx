@@ -517,5 +517,7 @@ const styles=StyleSheet.create({
  person:{borderWidth:1,borderColor:t.border,borderRadius:8,
   padding:12,gap:5,backgroundColor:"#f8fafc"},
  teamPhoto:{width:"100%",height:180,borderRadius:8},
- role:{fontWeight:"700",color:t.primary,fontSize:14}
+ role:{fontWeight:"700",color:t.primary,fontSize:14},
+ search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:46,
+  paddingHorizontal:12,color:t.text}
 });

@@ -33,7 +33,7 @@ const parse=(value:unknown):Input=>{
  const v=value as Record<string,unknown>;
  if(Object.keys(v).some(k=>!["voucherRef","voucherVersion","requestKey","proofPurpose","mime","sizeBytes","sha256"].includes(k))||
    typeof v.voucherRef!=="string"||!UUID.test(v.voucherRef)||
-   !["VOUCHER","PAYMENT",undefined].includes(v.proofPurpose)||
+   (v.proofPurpose !== undefined && v.proofPurpose !== "VOUCHER" && v.proofPurpose !== "PAYMENT") ||
    !Number.isSafeInteger(v.voucherVersion)||Number(v.voucherVersion)<1||
    typeof v.requestKey!=="string"||!UUID.test(v.requestKey)||
    typeof v.mime!=="string"||!MIME.has(v.mime)||

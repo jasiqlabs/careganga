@@ -27,7 +27,7 @@ export class SessionController {
       (typeof body.deviceLabel!=="string"||body.deviceLabel.length>60))
       throw new BadRequestException({code:"IDENTITY_DEVICE_INVALID"});
     return this.service.signIn({
-      identifier:body.identifier,password:body.password,
+      identifier,password:body.password,
       remoteAddress:request.ip ?? "unknown", deviceLabel:typeof body.deviceLabel === "string" ? body.deviceLabel : "Unknown device",
       correlationRef:request.cgRequestId??randomUUID()
     });

@@ -28,8 +28,8 @@ export default async function FinanceClaimReviewsPage(){
    typeof actor.roleName!=="string"||
    !access||typeof access!=="object"||!("actions" in access)||
    !Array.isArray(access.actions))throw Error("Access not verified");
-  const actions=access.actions.filter((v:unknown):v is {key:string}=>Boolean(v)&&
-   typeof v==="object"&&"key" in v&&typeof (v as {key:unknown}).key==="string")
+  const actions=access.actions.filter((v:unknown):v is {key:string}=>
+   v!==null&&typeof v==="object"&&"key" in (v as object)&&typeof (v as {key:unknown}).key==="string")
    .map(v=>v.key);
   const ready=["approvals.review","finance.claims.review","documents.files.view"]
    .every(k=>actions.includes(k));

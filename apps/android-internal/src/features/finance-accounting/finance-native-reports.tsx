@@ -16,7 +16,7 @@ type Ledger={accountName?:string;accountCode?:string;account?:string;category?:s
  invoiceNumber?:string;invoiceDate?:string;dueDate?:string;
  counterpartyName?:string;status?:string;totalMinor?:string;verifiedMinor?:string;
  outstandingMinor?:string};
-type Year={ref:string;name:string},Account={ref:string;code:string;name:string;kind:string};
+type Year={ref:string;name:string};type Account={ref:string;code:string;name:string;kind:string};
 type Bank={accountRef:string;name:string;code:string};
 type Branch={branchRef:string;name:string;code:string;version:number};
 type BankLine={journalRef:string;financialYearRef:string;postingDate:string;description:string;amountMinor:string};
@@ -430,7 +430,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
       disabled={busy} onPress={()=>void openStatement()}/>}
      {!!statementFileRef&&<Action label={inspected?
       "Statement inspection acknowledged":"I inspected the bank item, date and amount"}
-      secondary disabled={busy} onPress={()=>setInspected(v=>!v)}/>
+      secondary disabled={busy} onPress={()=>setInspected(v=>!v)}/>}
      <Options label="Protected decision" value={decision}
       options={[{ref:"VERIFY",label:"Verify exact match"},{ref:"REJECT",label:"Reject mismatch"}]}
       onChange={v=>setDecision(v as typeof decision)}/>

@@ -204,7 +204,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
          style={s.create} onPress={()=>setEditor({kind:"yearStatus",
            target:{ref:y.yearRef,name:y.name,status:y.status,version:y.version}})}>
         <Text style={s.createText}>Close financial year</Text>
-       </Pressable>
+       </Pressable>}
       </View>))}
    {!busy&&data&&category==="OPENING"&&
     (!data.openingJournals.length?<Text style={s.empty}>No opening entries are posted yet. An authorized staff member can post a balanced opening entry using the Opening Entry action.</Text>:
