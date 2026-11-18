@@ -18,7 +18,9 @@ ALTER TABLE cg19_upload_intent
   ADD CONSTRAINT cg19_health_intent_center_fk FOREIGN KEY(realm_id,health_provider_id,health_center_id)
     REFERENCES health_center(root_realm_id,provider_id,id) ON DELETE RESTRICT,
   ADD CONSTRAINT cg19_health_intent_identity_unique
-    UNIQUE(id,realm_id,health_provider_id,health_source_version);
+    UNIQUE(id,realm_id,health_provider_id,health_source_version),
+  ADD CONSTRAINT cg19_health_intent_center_identity_unique
+    UNIQUE(id,realm_id,health_provider_id,health_center_id,health_source_version);
 ALTER TABLE cg19_upload_intent
   DROP CONSTRAINT cg19_upload_intent_owner_kind_check,
   DROP CONSTRAINT cg19_intent_branch_source,
@@ -67,7 +69,13 @@ ALTER TABLE cg19_stored_file
   ADD CONSTRAINT cg19_health_file_intent_fk
     FOREIGN KEY(upload_intent_id,realm_id,health_provider_id,health_source_version)
     REFERENCES cg19_upload_intent(id,realm_id,health_provider_id,health_source_version)
-    ON DELETE RESTRICT;
+    ON DELETE RESTRICT,
+  ADD CONSTRAINT cg19_health_file_center_intent_fk
+    FOREIGN KEY(upload_intent_id,realm_id,health_provider_id,health_center_id,health_source_version)
+    REFERENCES cg19_upload_intent(id,realm_id,health_provider_id,health_center_id,health_source_version)
+    ON DELETE RESTRICT,
+  ADD CONSTRAINT cg19_health_file_provider_identity_unique
+    UNIQUE(id,realm_id,health_provider_id);
 ALTER TABLE cg19_stored_file
   DROP CONSTRAINT cg19_stored_file_owner_kind_check,
   DROP CONSTRAINT cg19_file_branch_source;
@@ -94,6 +102,14 @@ ALTER TABLE cg19_stored_file
 CREATE INDEX ix_cg19_health_verified_files
   ON cg19_stored_file(realm_id,health_provider_id,health_center_id,created_at DESC,id DESC)
   WHERE owner_kind='CG14_DRAFT';
+-- Financial evidence is also tied to the original provider by composite FK;
+-- source-level verification additionally requires CLEAN_VERIFIED, live and
+-- explicitly classified HEALTH_BANK_PROOF before the reference is created.
+ALTER TABLE health_provider_finance_ref
+  ADD CONSTRAINT fk_health_finance_original_file_provider
+  FOREIGN KEY(protected_file_ref,root_realm_id,provider_id)
+  REFERENCES cg19_stored_file(id,realm_id,health_provider_id)
+  ON DELETE RESTRICT;
 
 ALTER TABLE cg19_document_event
   ADD COLUMN health_provider_id uuid,
