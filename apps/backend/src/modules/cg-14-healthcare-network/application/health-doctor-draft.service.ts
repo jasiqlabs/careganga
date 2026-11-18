@@ -133,7 +133,7 @@ export class HealthDoctorDraftService{
       "actor_ref,action_key,record_version,command_id) VALUES($1,$2,$3,$4,$5,$6,$7)",
       [actor.realmId,doctorRef,centerRef,actor.accountId,action,version,commandId]);
   }
-  private async actor(bearer:string,action:"health.doctors.view"|"health.doctors.manage"|"health.doctors.verify"){
+  private async actor(bearer:string,action:"health.doctors.view"|"health.doctors.manage"|"health.doctors.verify"|"health.centers.draft.edit"){
     return this.sessions.requireAction(bearer,action);
   }
   async create(bearer:string,body:unknown){
