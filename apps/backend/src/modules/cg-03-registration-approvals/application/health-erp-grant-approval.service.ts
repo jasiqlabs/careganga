@@ -163,7 +163,8 @@ export class HealthErpGrantApprovalService{
    const c=rows.rows[0];
    if(!c||c.health_erp_revision_id!==snapshot.health_erp_revision_id||
      c.health_source_digest!==snapshot.health_source_digest||
-     c.health_revision_no!==snapshot.health_revision_no)
+     c.health_revision_no!==snapshot.health_revision_no||
+     c.status!==snapshot.status)
     throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
    await tx.query("COMMIT");active=false;
    return {caseRef:c.id,reference:c.case_number,status:c.status,
