@@ -27,6 +27,10 @@ function allowed(parts:string[],method:string){
       return method==="GET"||method==="PATCH";
     if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="centers")
       return method==="GET"||method==="POST";
+    if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="submit")
+      return method==="POST";
+    if(parts.length===4&&parts[1]==="reviews"&&UUID.test(parts[2])&&
+      ["apply","return-to-draft"].includes(parts[3]))return method==="POST";
     return false;
   }
   if(parts.length===1){
