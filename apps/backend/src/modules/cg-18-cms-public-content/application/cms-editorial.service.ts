@@ -414,8 +414,9 @@ export class CmsEditorialService{
    if(!placementMimeAllowed(asset,value.sections,proof.mime))
     throw new BadRequestException({code:"CMS_MEDIA_INVALID",field:"assets"});
    await tx.query("INSERT INTO cms_asset_placement(foundation_root_id,page_revision_id,"+
-    "cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,"+
-    "public_rights_status) VALUES($1,$2,$3,$4,$5,$6,$7,'VALIDATED')",
+    "page_id,cg19_file_ref,cg19_validated_version,role,alt_text,sort_order,"+
+    "public_rights_status) SELECT $1,$2,v.page_id,$3,$4,$5,$6,$7,'VALIDATED' "+
+    "FROM cms_page_revision v WHERE v.id=$2 AND v.foundation_root_id=$1",
     [actor.realmId,rev,asset.fileRef,asset.version,
      asset.role,asset.altText,asset.order]);
   }
@@ -859,7 +860,7 @@ export class CmsEditorialService{
    "AND ($2::text='' OR p.slug>$2) "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
    "WHERE a.page_revision_id=v.id AND a.foundation_root_id=p.foundation_root_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
@@ -905,7 +906,7 @@ export class CmsEditorialService{
    "AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
-   "AND f.realm_id=a.foundation_root_id AND f.page_revision_id=a.page_revision_id "+
+   "AND f.realm_id=a.foundation_root_id AND f.page_id=a.page_id "+
    "WHERE a.foundation_root_id=p.foundation_root_id "+
    "AND a.page_revision_id=pub.page_revision_id "+
    "AND (f.id IS NULL OR f.revoked_at IS NOT NULL OR "+
@@ -958,7 +959,7 @@ export class CmsEditorialService{
     "SELECT a.cg19_file_ref,a.role,a.alt_text,a.sort_order "+
     "FROM cms_asset_placement a JOIN cg19_cms_media_file f "+
     "ON f.id=a.cg19_file_ref AND f.realm_id=a.foundation_root_id "+
-    "AND f.page_revision_id=a.page_revision_id "+
+    "AND f.page_id=a.page_id "+
     "WHERE a.page_revision_id=$1 AND a.public_rights_status='VALIDATED' "+
     "AND a.cg19_validated_version=f.revision AND f.revoked_at IS NULL "+
     "AND f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
