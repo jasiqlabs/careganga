@@ -84,8 +84,8 @@ function NumberField({name,value,onChange,max}:{name:string;value:unknown;
 /** Reuses the ONE CG18 revision/CG03 independent approval/CG19 scanned media.
  * These are separate editorial forms for US-002–US-004, NOT a second CMS.
  */
-export function CmsExtendedWorkspace({canManage,canPublish}:{
- canManage:boolean;canPublish:boolean}){
+export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}:{
+ canManage:boolean;canPublish:boolean;canViewNoticeSources:boolean}){
  const [kind,setKind]=useState<Kind>("IMPACT");
  const [pages,setPages]=useState<Item[]>([]);
  const [listSearch,setListSearch]=useState("");
@@ -483,7 +483,7 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
          source:"",asOfDate:today(),mediaType:"PHOTO"})}>Add gallery item</button>}
       </>}
       {section.kind==="ARTICLE_BODY"&&<>
-       <details className="cg-cms-card">
+       {canViewNoticeSources&&<details className="cg-cms-card">
         <summary>Optional: publish an eligible original Foundation notice as an article</summary>
         <p>Only an active, already approved CG-19 all-staff notice can be selected.
          This makes an explicit public copy subject to separate CG-03 CMS approval.
@@ -518,7 +518,7 @@ export function CmsExtendedWorkspace({canManage,canPublish}:{
         {typeof f.sourceNoticeRef==="string"&&<p>Do not rewrite the original
          notice heading/body. Its cancellation or expiry will automatically hide
          this article from both public channels.</p>}
-       </details>
+       </details>}
        {(["category","authorLabel","source"] as const).map(key=><Field key={key}
         name={key.replace(/([A-Z])/g," $1")} value={f[key]}
         onChange={v=>change(key,v)}/>)}
