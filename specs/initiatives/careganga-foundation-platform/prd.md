@@ -200,6 +200,10 @@ The tables use stable **FR** IDs, priority MUST unless otherwise stated, client 
 
 ### 5E. Content, documents, reporting, operations and public channels
 
+**Public route parity acceptance (FR-066–069 / FR-076, 18 Nov):** Reproduce all client-screenshot-visible public main menu, three known open dropdowns, footer quick/legal links, newsletter, social/floating controls and their real page journeys exactly as established in [original public navigation contract](../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md). The contract is the single list of original labels (12 primary, six Our Work, five Media, two Join, seven footer legal). Assign UI/content to CG-18 and domain actions/data to existing CG-04/05/07/08/14/15/17/19; do **not** create new modules or new shadow payment, event, project, member, consent or health masters. The original About submenu entries, exact original URLs, policy wording, icon destination URLs and mobile motion are NOT_VERIFIED. Only Blood Donation top-level functionality changes to Healthcare Assistance; keep original Our Work → Healthcare. Every link is active only when its genuine authorized published destination exists; otherwise preserve label/disabled state and record gap for owner acceptance. Existing four CG-18 stories and QA counts remain unchanged.
+
+
+
 | ID | Owner | Actor / trigger | Required behaviour and observable outcome | Acceptance | Source |
 | --- | --- | --- | --- | --- | --- |
 | FR-066 | CG-18 | Admin edits Foundation site | Original homepage/About/hero/editorial public team/navigation/SEO and **three separate versioned Login/Profile, Membership Join, Volunteer Join visibility controls**. CG-18 US-001 introduces genuine CMS_PUBLICATION CG-03 case and CG-19 protected draft media adapter; public Web/Public Android share one approved revision. CG-04 US-002/003 later introduces actual Join destination and CG-05 US-001 real project teaser; no future master needed first | A-18 | CG-18-BR01–04,08–11,25–26 |
