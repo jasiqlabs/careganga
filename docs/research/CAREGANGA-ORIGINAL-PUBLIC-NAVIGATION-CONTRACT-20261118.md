@@ -71,3 +71,13 @@
 - **CG-04**: Member/Volunteer real registrations. **CG-05**: Our Work six filters/Upcoming Projects/Events. **CG-07**: Campaigns/Donate. **CG-08**: current real partnerships. **CG-14/15/17**: real healthcare directory/booking/benefits. **CG-19**: enquiry, media and optional real newsletter subscription consent/delivery. Source owner must make its link available when built and approved, without a duplicate CG-18 business master.
 
 **Status as of 18 November:** screenshot navigation inventory COVERED IN THIS FILE; actual full page/route/parity **OPEN**. Static source review is not runtime/pixel QA. This document must be used with PRD, HLD, CG-18 UIUX/DLD/tasks and receiving-owner task definitions; `main` remains untouched.
+
+
+## Source implementation checkpoint — 18 November (not runtime completion)
+
+- Original 12 primary labels, six Our Work labels, five Media, two Join and seven footer policy names are in the replacement source; this **does not** mean all pages work.
+- CG-18 Media **Videos** and **Publications / Reports** now link to real query-selected, currently approved Gallery filters (`/gallery?type=VIDEO` / `/gallery?type=PUBLICATION`); no invented original URL is claimed. Static source checks only, runtime and original pixel comparison NOT_RUN.
+- Seven original policy page types, draft authoring, strict nonempty-source submission, CG-03 approval, new migration `0940`, protected Next.js routes `/policies/[slug]`, publication-gated footer links and Public Android legal navigation are implemented **in source**. The client must provide/approve actual legal content, and each must be published before a link can become live. No policy text seeded, no existing policy URL verified from live original.
+- Newsletter email/button currently **display but intentionally disabled** until CG-19 real opted-in subscription intake, receipt and unsubscribe source is available. That is an identified **OPEN business gap**, not a hidden success.
+- CG-05 Our Work and Upcoming Projects/Events, CG-07 Campaigns/Donate, CG-08 verified Partnerships and CG-04 Member/Volunteer destinations remain owner-dependent; original About dropdown child items, social URLs and original policy bodies are still unobserved.
+- **Source-only preflight 16/16** narrowly selected original navigation/typed policy/media guard checks evaluated against the current GitHub source through read-only retrieval on 18 Nov. This is **not** `npm run verify:cg18-source`, a TypeScript build, Postgres migration, browser/mobile test or independent security review. **0/76 executable CG-18 QA**.
