@@ -321,6 +321,38 @@ export class HealthNetworkService{
         timeZone:x.time_zone,publicPhone:x.public_phone,status:x.status,version:x.version
       }))};
   }
+  async updateProvider(bearer:string,providerRef:string,body:unknown){
+    const input=record(body,"provider");
+    only(input,["requestKey","expectedVersion","provider"],"provider");
+    const ref=uuid(providerRef,"providerRef"),expected=version(input.expectedVersion);
+    const draft=parseProvider(input.provider);
+    const actor=await this.allowed(bearer,"health.providers.manage");
+    return this.transact(async client=>{
+      await this.identity.assertCurrent(client,actor,"health.providers.manage");
+      const cmd=await this.command(client,actor,"PROVIDER_UPDATE",input.requestKey,
+        {ref,expected,draft});
+      if(cmd.replay)return {providerRef:cmd.replay.result_ref,
+        version:cmd.replay.result_version,replayed:true,status:"PENDING"};
+      const source=await client.query<{version:number}>(
+        "SELECT version FROM health_provider WHERE root_realm_id=$1 "+
+        "AND id=$2 AND status='PENDING' FOR UPDATE",
+        [actor.realmId,ref]);
+      if(!source.rows[0])throw new NotFoundException("Pending provider unavailable");
+      if(source.rows[0].version!==expected)
+        throw new ConflictException({code:"HEALTH_VERSION_CHANGED"});
+      await client.query(
+        "UPDATE health_provider SET provider_code=$3,legal_name=$4,normalized_name=$5,"+
+        "provider_type=$6,contact_name=$7,contact_phone=$8,contact_email=$9,"+
+        "registration_ref=$10,version=version+1,updated_at=now() "+
+        "WHERE root_realm_id=$1 AND id=$2",
+        [actor.realmId,ref,draft.providerCode,draft.legalName,draft.legalName.toLowerCase(),
+         draft.providerType,draft.contactName,draft.contactPhone,draft.contactEmail,
+         draft.registrationRef]);
+      await this.done(client,cmd.commandId,actor,"PROVIDER_UPDATE",ref,null,ref,expected+1);
+      return {providerRef:ref,version:expected+1,replayed:false,status:"PENDING",
+        message:"Pending provider details saved. Verification has not begun."};
+    });
+  }
   async centerDraft(bearer:string,centerRef:string,own=false){
     const actor=await this.allowed(bearer,
       own?"health.centers.draft.edit":"health.providers.view");
