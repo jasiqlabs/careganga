@@ -148,7 +148,9 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
      placeholder="Six-digit PIN"/>
     <Text style={styles.label}>Center type</Text>
     <View style={styles.row}>
-     {["","HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"]
+     {["","HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
+      "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
+      "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"]
       .map(v=><View key={v}>{label(v?nice(v):"All",()=>setCategory(v),category===v)}</View>)}
     </View>
     {mode==="doctors"&&<>
