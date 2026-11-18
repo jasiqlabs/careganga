@@ -11,6 +11,8 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthReviewSourceFacade,type HealthSubmission,type HealthReviewKind}
  from "../../cg-14-healthcare-network/application/health-review-source.facade";
+import {HealthDoctorReviewSourceFacade,type DoctorSubmission}
+ from "../../cg-14-healthcare-network/application/health-doctor-review-source.facade";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIGEST=/^[a-f0-9]{64}$/;
@@ -19,10 +21,11 @@ const KINDS:HealthReviewKind[]=[
  "HEALTH_PROVIDER_VERIFICATION","HEALTH_CENTER_VERIFICATION"
 ];
 type CaseRow={
- id:string;realm_id:string;case_number:string;case_kind:HealthReviewKind;
+ id:string;realm_id:string;case_number:string;case_kind:HealthReviewKind|"HEALTH_DOCTOR_VERIFICATION";
  process_id:string;process_version:number;current_step:number;proposer_id:string;
  health_provider_id:string;health_center_id:string|null;
  health_provider_revision_id:string|null;health_center_revision_id:string|null;
+ health_doctor_id:string|null;health_doctor_revision_id:string|null;
  health_revision_no:number;health_source_digest:string;
  revision:number;status:string;request_key:string;request_digest:string;
 };
@@ -53,7 +56,8 @@ export class HealthVerificationApprovalService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
-  private readonly source:HealthReviewSourceFacade){}
+  private readonly source:HealthReviewSourceFacade,
+  private readonly doctorSource:HealthDoctorReviewSourceFacade){}
  /** Genuine CG-03 case. Caller CG-14 already pinned the immutable submitted
   * original revision and CG-19 proof inside its current transaction.
   */
@@ -119,6 +123,71 @@ export class HealthVerificationApprovalService{
      input.kind==="HEALTH_CENTER_VERIFICATION"?input.revisionRef:null,
      input.revisionNo,input.digest,process]);
   if(!created.rows[0])throw new ConflictException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+  await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
+    "step_ordinal,correlation_ref) VALUES($1,$2,$3,'SUBMITTED',1,$4)",
+    [actor.realmId,created.rows[0].id,actor.accountId,randomUUID()]);
+  return {caseRef:created.rows[0].id,caseNumber:created.rows[0].case_number,
+    replayed:false};
+ }
+ /** CG-03 owns the case, process and final decision; CG-14 only supplies
+  * a frozen professional revision linked to the original CG-19 licence.
+  */
+ async createDoctorCase(tx:PoolClient,actor:VerifiedFoundationActor,input:DoctorSubmission){
+  if(input.kind!=="HEALTH_DOCTOR_VERIFICATION"||
+    !ID.test(input.doctorRef)||!ID.test(input.revisionRef)||
+    !ID.test(input.requestKey)||!Number.isSafeInteger(input.revisionNo)||
+    input.revisionNo<1||!DIGEST.test(input.digest))
+    throw new BadRequestException({code:"HEALTH_DOCTOR_REVIEW_INVALID"});
+  const original=await this.doctorSource.original(tx,actor,input);
+  await this.protectedOwner.requireDistinctFinalReviewer(tx,actor.realmId,actor.accountId);
+  const lock=await tx.query("SELECT id FROM access_realm "+
+    "WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",[actor.realmId]);
+  if(!lock.rowCount)throw new ForbiddenException("Foundation unavailable");
+  const current=await tx.query<{process_id:string}>(
+    "SELECT process_id FROM cg03_health_process_current "+
+    "WHERE realm_id=$1 AND case_kind=$2 FOR SHARE",[actor.realmId,input.kind]);
+  let process=current.rows[0]?.process_id;
+  if(!process){
+    const version=await tx.query<{v:number}>(
+      "SELECT COALESCE(MAX(version),0)+1 AS v FROM cg03_process WHERE realm_id=$1",
+      [actor.realmId]);
+    const row=await tx.query<{id:string}>(
+      "INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,"+
+      "configured_by,process_kind) VALUES($1,$2,NULL,$3,$4) RETURNING id",
+      [actor.realmId,version.rows[0].v,actor.accountId,input.kind]);
+    await tx.query("INSERT INTO cg03_process_step(process_id,ordinal,capability_key,"+
+      "protected_root_required) VALUES($1,1,'approvals.review',true)",[row.rows[0].id]);
+    await tx.query("INSERT INTO cg03_health_process_current(realm_id,case_kind,process_id) "+
+      "VALUES($1,$2,$3)",[actor.realmId,input.kind,row.rows[0].id]);
+    process=row.rows[0].id;
+  }
+  const requestDigest=hash(["CG03_HEALTH_DOCTOR_VERIFY_V1",input.kind,
+    input.doctorRef,input.revisionRef,input.revisionNo,input.digest,input.requestKey]);
+  const previous=await tx.query<CaseRow>(
+    "SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind=$2 "+
+    "AND health_doctor_id=$3 AND health_revision_no=$4 FOR SHARE",
+    [actor.realmId,input.kind,input.doctorRef,input.revisionNo]);
+  if(previous.rows[0]){
+    const prior=previous.rows[0];
+    if(prior.proposer_id!==actor.accountId||
+      prior.request_key!==input.requestKey||prior.request_digest!==requestDigest)
+      throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED"});
+    return {caseRef:prior.id,caseNumber:prior.case_number,replayed:true};
+  }
+  const label=String(original.sourceSnapshot.fullName??"Doctor verification").slice(0,160);
+  const created=await tx.query<CaseRow>(
+    "INSERT INTO cg03_case(realm_id,case_number,process_id,process_version,"+
+    "proposer_id,target_account_id,target_role_id,account_name_snapshot,role_name_snapshot,"+
+    "expected_access_version,expected_role_revision,proposal_revision,proposal_digest,"+
+    "request_digest,request_key,case_kind,health_doctor_id,health_doctor_revision_id,"+
+    "health_revision_no,health_source_digest) "+
+    "SELECT $1,'CG-AP-'||lpad(nextval('cg03_public_case_sequence')::text,6,'0'),"+
+    "p.id,p.version,$2,NULL,NULL,$3,'Professional verification',NULL,NULL,"+
+    "$4,$5,$6,$7,$8,$9,$10,$11 FROM cg03_process p WHERE p.id=$12 RETURNING *",
+    [actor.realmId,actor.accountId,label,input.revisionNo,input.digest,
+      requestDigest,input.requestKey,input.kind,input.doctorRef,input.revisionRef,
+      input.revisionNo,input.digest,process]);
+  if(!created.rows[0])throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
   await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,"+
     "step_ordinal,correlation_ref) VALUES($1,$2,$3,'SUBMITTED',1,$4)",
     [actor.realmId,created.rows[0].id,actor.accountId,randomUUID()]);
