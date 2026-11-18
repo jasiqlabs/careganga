@@ -7,6 +7,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
@@ -52,7 +53,8 @@ export class HealthDoctorPrivateEvidenceService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
     private readonly identity:FoundationStructureIdentityFacade,
-    private readonly objects:PrivateObjectStorage){}
+    private readonly objects:PrivateObjectStorage,
+    private readonly protectedOwner:ProtectedAccessOwnerService){}
   private async source(tx:PoolClient,actor:VerifiedFoundationActor,
     doctorRef:string,sourceVersion:number){
     await this.identity.assertCurrent(tx,actor,"health.doctors.manage");
@@ -281,6 +283,56 @@ export class HealthDoctorPrivateEvidenceService{
       }))};
     }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}
     finally{tx.release();}
+  }
+  /** Exact-original case reviewer preview only. Never expose a guessed raw
+   * doctor document by its file UUID to a general healthcare reader.
+   */
+  async reviewDownload(bearer:string,caseRef:string){
+    const ref=validId(caseRef,"caseRef");
+    const actor=await this.sessions.requireAction(bearer,"approvals.review");
+    await this.sessions.requireAction(bearer,"health.doctors.verify");
+    const check=async()=>{
+      const tx=await this.db.connect();
+      try{
+        await tx.query("BEGIN");
+        await this.identity.assertCurrent(tx,actor,"health.doctors.verify");
+        await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+        const r=await tx.query<FileRow>(
+          "SELECT f.*,i.status AS intent_status FROM cg03_case c "+
+          "JOIN health_doctor_revision rev ON rev.id=c.health_doctor_revision_id "+
+          "AND rev.root_realm_id=c.realm_id AND rev.doctor_id=c.health_doctor_id "+
+          "AND rev.source_digest=c.health_source_digest AND rev.approval_case_ref=c.id "+
+          "JOIN health_doctor d ON d.id=rev.doctor_id AND d.root_realm_id=rev.root_realm_id "+
+          "JOIN cg19_stored_file f ON f.id=rev.proof_file_ref "+
+          "AND f.realm_id=rev.root_realm_id AND f.health_doctor_id=rev.doctor_id "+
+          "AND f.health_source_version=rev.source_version AND f.owner_kind='CG14_DOCTOR' "+
+          "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+          "WHERE c.id=$1 AND c.realm_id=$2 AND c.proposer_id<>$3 "+
+          "AND c.case_kind='HEALTH_DOCTOR_VERIFICATION' "+
+          "AND c.status IN('SUBMITTED','IN_REVIEW','PENDING_OWNER','OWNER_COMPLETED') "+
+          "AND d.status IN('SUBMITTED','VERIFIED') "+
+          "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+          "AND i.status='VALIDATED' AND i.classification='HEALTH_DOCTOR_LICENSE' "+
+          "LIMIT 1",[ref,actor.realmId,actor.accountId]);
+        if(!r.rows[0])throw new NotFoundException("Original private doctor proof unavailable");
+        await tx.query("COMMIT");
+        return r.rows[0];
+      }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}
+      finally{tx.release();}
+    };
+    const file=await check();
+    const bytes=await this.objects.readVerifiedPrivateObject({
+      objectKey:file.object_key,objectVersion:file.object_version,
+      maxBytes:Math.min(Number(file.verified_size_bytes),MAX_SIZE)
+    });
+    if(!Buffer.isBuffer(bytes)||bytes.length!==Number(file.verified_size_bytes)||
+      createHash("sha256").update(bytes).digest("hex")!==file.verified_sha256)
+      throw new ServiceUnavailableException("Private scanned doctor file changed");
+    const latest=await check();
+    if(latest.id!==file.id||latest.revision!==file.revision||
+      latest.object_version!==file.object_version)
+      throw new NotFoundException("Private doctor proof was changed or revoked");
+    return {data:bytes,mime:file.original_mime};
   }
   async revoke(bearer:string,fileRef:string,expectedRevision:unknown){
     if(!Number.isSafeInteger(expectedRevision)||Number(expectedRevision)<1)
