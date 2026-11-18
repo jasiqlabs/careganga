@@ -50,13 +50,15 @@ export class BranchSourceFacade{
     SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
     FOR SHARE`,[ensureId(branchRef),actor.realmId]);
   if(!row.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
+  await this.requireFinanceActorBranch(client,actor,branchRef,action);
  }
  /** One current CG02 manager/administrator authorization, reusable inside a
   * protected CG03/CG09 transaction without a second bearer token or fake master.
   */
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
-   "finance.invoices.review"|"finance.budgets.manage"):Promise<void>{
+   "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
+  "finance.journals.post"|"finance.vouchers.manage"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
   const source=await client.query<{manager_account_ref:string}>(
@@ -96,10 +98,12 @@ export class BranchSourceFacade{
   const actor=await this.sessions.requireAction(bearer,"finance.accounts.view");
   const unique=[...new Set(branchRefs)];
   if(unique.length===0)return {};
+  const scope=await this.financeReportScope(bearer,"finance.accounts.view");
   const labels=await this.db.query<{id:string;name:string}>(`
     SELECT id,name FROM branch
     WHERE root_realm_id=$1 AND id=ANY($2::uuid[])
-    ORDER BY name,id LIMIT 60`,[actor.realmId,unique]);
+      AND ($3::boolean OR id=ANY($4::uuid[]))
+    ORDER BY name,id LIMIT 60`,[actor.realmId,unique,scope.all,scope.branchRefs]);
   return Object.fromEntries(labels.rows.map(x=>[x.id,x.name]));
  }
  /** Authoritative CG-02 branch visibility for finance reports, selectors and CSV.
@@ -107,7 +111,10 @@ export class BranchSourceFacade{
   * see all. An ordinary branch manager sees only their real assigned branch(es);
   * finance.reports.view alone never silently grants Foundation-wide money.
   */
- async financeReportScope(bearer:string,capability:"finance.reports.view"|"finance.reconciliation.manage"|"finance.reconciliation.review"|"finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.review"|"finance.invoices.issue"="finance.reports.view"):Promise<{all:boolean;branchRefs:string[]}>{
+ async financeReportScope(bearer:string,capability:"finance.reports.view"|"finance.reconciliation.manage"|"finance.reconciliation.review"|"finance.invoices.view"|"finance.invoices.manage"|"finance.invoices.review"|"finance.invoices.issue"|
+  "finance.accounts.view"|"finance.accounts.manage"|"finance.journals.post"|
+  "finance.vouchers.view"|"finance.vouchers.manage"|"finance.budgets.view"|
+  "finance.budgets.manage"="finance.reports.view"):Promise<{all:boolean;branchRefs:string[]}>{
    const actor=await this.sessions.requireAction(bearer,capability);
    const protectedRole=await this.db.query<{allowed:boolean}>(`
      SELECT EXISTS(SELECT 1 FROM account_role ar
@@ -135,10 +142,7 @@ export class BranchSourceFacade{
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"|"finance.budgets.view"|"finance.budgets.manage"|"finance.reports.view"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{
    const actor=await this.sessions.requireAction(bearer,capability);
-   const scoped=["finance.reports.view","finance.invoices.view","finance.invoices.manage"].includes(capability);
-   const scope=scoped?await this.financeReportScope(bearer,capability as
-    "finance.reports.view"|"finance.invoices.view"|"finance.invoices.manage"):
-    {all:true,branchRefs:[] as string[]};
+   const scope=await this.financeReportScope(bearer,capability);
    const rows=await this.db.query<{id:string;name:string;branch_code:string;version:number}>(`
      SELECT id,name,branch_code,version FROM branch
      WHERE root_realm_id=$1 AND status='ACTIVE'
@@ -158,6 +162,8 @@ export class BranchSourceFacade{
    if(!rows.rows[0])throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
    if(rows.rows[0].version!==expectedVersion)
      throw new ConflictException({code:"FINANCE_BRANCH_STALE",field:"branchRef"});
+   await this.requireFinanceActorBranch(client,actor,branchRef,action as
+    "finance.accounts.manage"|"finance.journals.post"|"finance.vouchers.manage");
  }
  private async admin(bearer:string):Promise<boolean>{
    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
