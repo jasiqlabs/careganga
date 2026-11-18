@@ -102,7 +102,7 @@ export class HealthErpGrantApprovalService{
    "p.id,p.version,$2,NULL,NULL,$3,'Center optional capability',NULL,NULL,"+
    "$4,$5,$6,$7,'HEALTH_CENTER_ERP_GRANT',$8,$9,$10,$11,$12 "+
    "FROM cg03_process p WHERE p.id=$13 RETURNING *",
-   [actor.realmId,actor.accountId,proof.centerName+" · "+proof.capability,
+   [actor.realmId,actor.accountId,(proof.centerName+" · "+proof.capability).slice(0,160),
     input.revisionNo,input.digest,digest,input.requestKey,input.providerRef,
     input.centerRef,input.revisionRef,input.revisionNo,input.digest,process]);
   if(!result.rows[0])
