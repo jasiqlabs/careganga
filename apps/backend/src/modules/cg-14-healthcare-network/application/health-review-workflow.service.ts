@@ -162,10 +162,27 @@ export class HealthReviewWorkflowService{
      "HEALTH_CENTER_LICENSE");
    if(proof.health_source_version!==expected)
     throw new ConflictException({code:"HEALTH_EVIDENCE_SOURCE_CHANGED"});
+   // The public center displays these declarations, so they must be part
+   // of the SAME independently reviewed, immutable submitted revision.
+   // The center row lock prevents concurrent draft replacement while read.
+   const hours=await tx.query<{weekday:number;open_local:string;
+     close_local:string;service_type:string}>(
+     "SELECT weekday,open_local::text,close_local::text,service_type "+
+     "FROM health_center_hours WHERE root_realm_id=$1 AND center_id=$2 "+
+     "ORDER BY weekday,service_type,open_local,close_local LIMIT 42",
+     [actor.realmId,ref]);
+   const capabilities=await tx.query<{capability_code:string}>(
+     "SELECT capability_code FROM health_center_capability "+
+     "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code LIMIT 6",
+     [actor.realmId,ref]);
    const snapshot={displayName:row.display_name,centerCode:row.center_code,
     centerType:row.center_type,addressLine:row.address_line,
     stateRef:row.state_ref,districtRef:row.district_ref,blockRef:row.block_ref,
-    pinCode:row.pin_code,timeZone:row.time_zone,publicPhone:row.public_phone};
+    pinCode:row.pin_code,timeZone:row.time_zone,publicPhone:row.public_phone,
+    operatingHours:hours.rows.map(h=>({
+      weekday:h.weekday,opens:h.open_local.slice(0,5),
+      closes:h.close_local.slice(0,5),service:h.service_type
+    })),declaredServices:capabilities.rows.map(x=>x.capability_code)};
    const sha=digest(snapshot);
    const revision=await tx.query<{id:string}>(
     "INSERT INTO health_center_revision(root_realm_id,provider_id,center_id,"+
