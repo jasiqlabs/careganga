@@ -4,6 +4,10 @@ import {HealthNetworkService} from "../application/health-network.service";
 @Controller("api/v1/health-network")
 export class HealthNetworkController{
   constructor(private readonly network:HealthNetworkService){}
+  @Get("representatives/options")
+  representatives(@Headers("authorization")bearer:string,@Query("search")search?:string){
+    return this.network.representativeOptions(bearer,search);
+  }
   @Get("providers")
   list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
     if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
