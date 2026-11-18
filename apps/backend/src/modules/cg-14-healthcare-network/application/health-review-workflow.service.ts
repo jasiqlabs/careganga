@@ -341,6 +341,14 @@ export class HealthReviewWorkflowService{
     "WHERE f.root_realm_id=$1 AND f.status='PENDING_EDIT' AND "+
     "f.center_id IN(SELECT id FROM health_center WHERE root_realm_id=$1 AND provider_id=$2)",
     [actor.realmId,ref]);
+   // CG-14 doctor-to-center eligibility cannot survive provider suspension.
+   // The old association is never automatically reapproved after restoration.
+   await tx.query(
+    "UPDATE health_doctor_center SET affiliation_state='SUSPENDED',"+
+    "version=version+1,updated_at=now() WHERE root_realm_id=$1 "+
+    "AND center_id IN (SELECT id FROM health_center "+
+    "WHERE root_realm_id=$1 AND provider_id=$2) "+
+    "AND affiliation_state IN('PENDING','APPROVED')",[actor.realmId,ref]);
    await tx.query(
     "UPDATE health_provider SET status='SUSPENDED',version=version+1,"+
     "updated_at=now() WHERE root_realm_id=$1 AND id=$2",[actor.realmId,ref]);
@@ -380,6 +388,11 @@ export class HealthReviewWorkflowService{
     "revoked_at=now(),revision=revision+1 "+
     "WHERE root_realm_id=$1 AND center_id=$2 AND status='PENDING_EDIT'",
     [actor.realmId,ref]);
+   await tx.query(
+    "UPDATE health_doctor_center SET affiliation_state='SUSPENDED',"+
+    "version=version+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND center_id=$2 "+
+    "AND affiliation_state IN('PENDING','APPROVED')",[actor.realmId,ref]);
    await this.complete(tx,actor,cmd.id,found.rows[0].provider_id,ref,
     "HEALTH_CENTER_SUSPEND",ref,expected+1);
    return {status:"SUSPENDED",version:expected+1,replayed:false,
