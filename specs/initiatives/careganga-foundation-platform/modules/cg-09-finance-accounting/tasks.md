@@ -1,5 +1,16 @@
 # CG-09 — User Stories & Manual QA
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Original NGO Information financial reports and transparent financial data pages: `/ngo-information/financial-reports` table (financial year, report type, publication date, download/export) and public `/publications` approved financial/statutory documents. Frontend cards and yearly filters reuse actual source-authorized CG-09 records and CG-20 approved public reports, not client screenshot amounts.
+
+**One Foundation Admin / source contract:** CG-09 remains authoritative ledger/financial statement owner with branch/root-scope accounting; CG-20 handles authorized report projection/release, CG-19 scanned versioned downloadable PDFs and CG-18 design/breadcrumb/sidebar only. A role-permitted Finance/Admin user may mark exactly which reports are approved for public display; never expose raw ledger, donors, suppliers, payroll or protected journal lines by accident.
+
+**Per-story QA addition:** Trace public report type/year/empty and export, publication date/version after correction, safe PDF download, scoped finance authorization, revocation, no unverified 80G/financial claim, CSV injection safe export, query limits, Admin public-visibility approval, original screenshot alignment and device QA NOT_RUN. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Mandatory developer sequence:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — check completed predecessor modules and current Harness approvals before executing any story.
 
 **Stage (owner-simple V1, 17 Nov 2026, latest correction):** Six of six original Foundation finance user stories have source paths. Issued full-value credit note, genuine outgoing refund approval, exact referenced bank-statement verification, protected PDF, and current CG02 branch authorization are now authored on this SAME feature branch in migration **0930** and services/screens. No direct bank API is required for the owner-approved manual-statement V1. **Formal SOURCE_COMPLETE is NOT granted**: independent security/DB/UI review, current-hash Harness approval and actual build/DB/device/visual/provider QA are NOT_RUN. CG05/CG12 real project/vendor cross-owner source and CG07 original donor certificate/receipt are NOT implemented by CG09; these are owned cross-module work, not optional omissions. Original 71 QA definitions remain unchanged.

@@ -1,5 +1,16 @@
 # CG-08 — Csr Funding
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding original UI evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Preserve the original screenshot's content arrangement and route, rather than generic CMS presentation; this is **planning and QA**, not implemented or reviewed source.
+
+**Existing owner & screenshot page:** Public `/collaboration` is the original Partnerships destination, with dark green Corporate Partners hero, reasons-to-partner cards, collaborator logos/cards, Partner With Us/Meet Our Partners, Let's Collaborate CTA and verified email contact. Milaap/Ketto appear in original screenshots but cannot be asserted active without current owner approval and logo rights.
+
+**One Foundation Admin / source contract:** Existing CG-08 CSR/partner Admin owns the current approved corporate/partner identity, partnership state, nature of relationship, start/end and public-display right; it maintains optional partner enquiry assignment to real CG-19 private contact source. CG-18 CMS owns editorial layout, hero, card captions, photos and menu. No duplicate partner master or guessed contractual state.
+
+**Per-story QA addition:** Add current-source partner list/display-right/withdrawal, anonymized private enquiry, source revocation, role-scoped Admin edit and approval, public `/collaboration` click/Back, mobile/desktop dark hero and cards, neutral unpublished empty state. No outside brand or partner claim without proof; source and runtime tests tracked separately. No invented source data or duplicate DB. Preserve existing story count and QA IDs, record receiving-owner QA delta before implementation.
+
+
 **Canonical development order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) — required dependency/approval gate before selecting a story; a module may not import or rely on a later owner.
 
 **Authority:** [PRD](../../prd.md) FR-020, FR-021, FR-022, [HLD](../../hld.md), [source BR](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md) CG-08-BR01–CG-08-BR08, [visual audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B02.  
