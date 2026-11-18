@@ -52,7 +52,8 @@ export function CmsGalleryGridClient({fields,assets}:{
   {matches.length===0?<p className="cg-site-gallery-empty">
    No approved media matches these filters. Try another category or search.</p>:
    <div className="cg-site-gallery-grid">{matches.map(({item,index})=>{
-    const original=assets.find(a=>a.role==="GALLERY"&&a.order===index);
+    const mediaOrder=Number.isSafeInteger(item.originalIndex)?Number(item.originalIndex):index;
+    const original=assets.find(a=>a.role==="GALLERY"&&a.order===mediaOrder);
     if(!original?.src)return null;
     const type=text(item.mediaType);
     return <article className="cg-site-gallery-card" key={index}>
