@@ -186,7 +186,20 @@ export function CmsHealthcare({section}:{
 export function CmsContactInfo({section}:{section:PublicCmsSection}){
  const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
  const social=records(f.socialLinks);
- const map=text(f.mapUrl);
+ const secure=(value:unknown,hosts:string[])=>{
+  const entry=text(value);
+  try{
+   const url=new URL(entry);
+   return url.protocol==="https:"&&!url.username&&!url.password&&!url.port&&!url.hash&&
+    hosts.includes(url.hostname.toLowerCase())?entry:"";
+  }catch{return "";}
+ };
+ const map=secure(f.mapUrl,["www.google.com","google.com","maps.google.com"]);
+ const allowedSocial:Record<string,string[]>={
+  Facebook:["facebook.com","www.facebook.com"],
+  Instagram:["instagram.com","www.instagram.com"],
+  YouTube:["youtube.com","www.youtube.com"]
+ };
  return <section className="cg-site-contact-original cg-site-content">
   <header className="cg-site-contact-hero">
    <p className="cg-site-eyebrow">Contact the Foundation</p>
@@ -214,8 +227,10 @@ export function CmsContactInfo({section}:{section:PublicCmsSection}){
   </section>}
   {social.length>0&&<section className="cg-site-contact-social">
    <h2>Follow the Foundation</h2>
-   <div>{social.filter(link=>text(link.url)&&text(link.network))
-    .map((link,i)=><a key={i} href={text(link.url)}
+   <div>{social.filter(link=>allowedSocial[text(link.network)]&&
+     secure(link.url,allowedSocial[text(link.network)]))
+    .map((link,i)=><a key={i}
+     href={secure(link.url,allowedSocial[text(link.network)])}
      target="_blank" rel="noopener noreferrer">{text(link.network)}</a>)}</div>
   </section>}
  </section>;
