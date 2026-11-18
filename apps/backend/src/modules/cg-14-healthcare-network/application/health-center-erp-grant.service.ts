@@ -106,15 +106,20 @@ export class HealthCenterErpGrantService{
   return this.run(async tx=>{
    await this.centerScope.assertCurrent(tx,actor,center);
    const r=await tx.query<{capability:Capability;state:string;version:number;
-    pending_revision_id:string;approved_revision_id:string|null}>(
-    "SELECT capability,state,version,pending_revision_id,approved_revision_id "+
-    "FROM health_center_erp_grant "+
-    "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability",
+    pending_revision_id:string;approved_revision_id:string|null;
+    review_status:string|null}>(
+    "SELECT g.capability,g.state,g.version,g.pending_revision_id,"+
+    "g.approved_revision_id,review.status AS review_status "+
+    "FROM health_center_erp_grant g "+
+    "LEFT JOIN cg03_case review ON review.realm_id=g.root_realm_id "+
+    "AND review.health_erp_revision_id=g.pending_revision_id "+
+    "AND review.case_kind='HEALTH_CENTER_ERP_GRANT' "+
+    "WHERE g.root_realm_id=$1 AND g.center_id=$2 ORDER BY g.capability",
     [actor.realmId,center]);
    return {capabilities:CAPABILITIES.map(cap=>{
     const row=r.rows.find(x=>x.capability===cap),deployment=this.deployment(cap);
     return {capability:cap,state:row?.state??"NOT_REQUESTED",
-     version:row?.version??0,
+     version:row?.version??0,reviewStatus:row?.review_status??null,
      deployment:deployment.status,requestedGlobal:deployment.requested,
      effective:false,canUseOperations:false,
      message:deployment.status==="OFF"?
