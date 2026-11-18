@@ -30,8 +30,11 @@ function allowed(parts:string[],method:string){
   if(parts.length===3&&UUID.test(parts[1])){
     if(parts[0]==="providers"&&parts[2]==="centers")return method==="POST";
     if(parts[0]==="providers"&&parts[2]==="finance-reference")return method==="GET"||method==="POST";
-    if(parts[0]==="centers"&&parts[2]==="representatives")return method==="POST";
+    if(parts[0]==="centers"&&parts[2]==="representatives")return method==="GET"||method==="POST";
   }
+  if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="representatives"&&UUID.test(parts[3])&&parts[4]==="revoke")
+    return method==="POST";
   return false;
 }
 async function proxy(request:NextRequest,parts:string[],method:string){
