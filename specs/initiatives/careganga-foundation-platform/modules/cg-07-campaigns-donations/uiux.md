@@ -1,5 +1,9 @@
 # CG-07 — CareGanga UI/UX Design
 
+### 2026-11-18 client-screenshot original fundraiser visual receiving acceptance
+Source: [47 captured originals](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Original gold navigation Campaigns item, orange floating Donate Now pill, repeated footers and the `/upcoming-projects` coloured `Support Project` buttons must appear consistently on desktop, scroll, mobile and Public Android where supported. Cards display genuine approved goal, planned date, type and source-allowed CTA; on missing/expired funding they display an honest no-donation-action state, **not** a dead orange button or simulated payment. Keep donor UX/error text accurate and editable through CG-21 and protected Admin. Full original Campaigns content was NOT CAPTURED, so exact layout is evidence-pending, and no pixel accept is inferred.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
