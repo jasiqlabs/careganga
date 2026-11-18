@@ -35,7 +35,11 @@ const files={
  notice:read("apps/backend/src/modules/cg-19-documents-notifications/application/notice.service.ts"),
  noticeSource:read("apps/backend/src/modules/cg-19-documents-notifications/application/cms-public-notice-source.service.ts"),
  storage:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/verified-private-storage.ts"),
- scanner:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/clamav-scanner.ts")
+ scanner:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/clamav-scanner.ts"),
+ originalNav:read("docs/research/CAREGANGA-ORIGINAL-PUBLIC-NAVIGATION-CONTRACT-20261118.md"),
+ galleryClient:read("apps/web/src/features/cms-public-content/cms-gallery-grid-client.tsx"),
+ policyMigration:read("apps/backend/db/migrations/0940_cg18_original_footer_policy_editorial.sql"),
+ policyRoute:read("apps/web/src/app/policies/[slug]/page.tsx")
 };
 const checks=[
  ["All screenshot-driven content blocks validated by backend",
@@ -137,7 +141,35 @@ const checks=[
   files.extended.includes('"ANNUAL_REPORT"')&&
   files.extended.includes('role==="DOCUMENT"&&a.order===i')&&
   files.backend.includes('s.fields.documents.length')&&
-  files.publicExtended.includes("Published original reports")]
+  files.publicExtended.includes("Published original reports")],
+ ["Original 12 primary public navigation labels, no invented Blood Bank lifecycle",
+  ["Home","About Us","Our Work","NGO Information","Campaigns","Upcoming Projects",
+   "Partnerships","Events","Media & Resources","Join Now","Healthcare Assistance","Contact Us"]
+    .every(name=>files.header.includes(name))&&!files.header.includes("Blood Donation")],
+ ["Screenshot-original Our Work six / Media five / Join two retained",
+  ["All Projects","Education","Healthcare","Livelihood","Social Welfare",
+   "Community Development","News & Updates","Gallery","Videos",
+   "Publications / Reports","Blog","Become a Member","Become a Volunteer"]
+    .every(name=>files.header.includes(name))],
+ ["Original Media Videos/PDFs are approved-gallery linkable filtered views",
+  files.header.includes('"/gallery?type=VIDEO"')&&
+  files.header.includes('"/gallery?type=PUBLICATION"')&&
+  files.galleryClient.includes("useSearchParams()")&&
+  files.galleryClient.includes('["PHOTO","VIDEO","PUBLICATION"].includes')],
+ ["All original seven footer policies are editable via same CMS and CG03 approval",
+  files.originalNav.includes("seven original Footer Policies & Legal")&&
+  files.policyMigration.includes("'POLICY'")&&
+  files.backend.includes('if(page.kind==="POLICY")')&&
+  files.backend.includes("POLICY_SLUGS")&&
+  files.adminExtended.includes('kind==="POLICY"')&&
+  files.policyRoute.includes('source.page.kind!=="POLICY"')],
+ ["Original footer legal links and native legal buttons only after effective publish",
+  files.web.includes('isPublished("/policies/"+slug)')&&
+  files.android.includes('publishedPaths.includes("/policies/"+name)')&&
+  files.publicSource.includes('source.kind==="POLICY"')],
+ ["Original newsletter cannot fake subscriber success before CG19 opt-in",
+  files.web.includes('disabled className="cg-site-newsletter-button"')&&
+  files.originalNav.includes("CG-19 owns any real opt-in receipt")]
 ];
 let errors=0;
 for(const [label,ok] of checks){
@@ -145,4 +177,4 @@ for(const [label,ok] of checks){
  if(!ok)errors++;
 }
 assert.equal(errors,0,"Source wiring assertions failed");
-console.log("CG-18 US-001–004 static source wiring assertions passed; all 76 original runtime QA remain NOT EXECUTED. Public CG19 notice release and qualified original-pixel fidelity are not covered by this static guard.");
+console.log("CG-18 US-001–004 original website/navigation static source-presence checks are green ONLY if all checks above pass; 76 original runtime QA, live Web/Android/DB, full original URLs, About dropdown and pixel fidelity remain NOT EXECUTED/NOT VERIFIED.");
