@@ -15,7 +15,7 @@ export function directorySearch(search:Record<string,string|string[]|undefined>)
  const query=new URLSearchParams();
  for(const key of params){
   const value=search[key];
-  if(typeof value==="string"&&value.length<=80&&
+  if(typeof value==="string"&&value.length<=(key==="after"?130:80)&&
     !/[\u0000-\u001f\u007f]/.test(value)&&value.trim())
    query.set(key,value.trim());
  }
