@@ -180,6 +180,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CMS_MEDIA_NOT_VALIDATED:"Wait for the original media file and malware scan to be verified before publication.",
       CMS_HERO_IMAGE_REQUIRED:"Show at least one homepage banner and add a verified desktop image to every visible banner before submitting.",
       CMS_TEAM_CONSENT_REQUIRED:"Confirm each person's consent before publishing their name, biography or photograph on the public website.",
+      CMS_TEAM_SOURCE_NOT_READY:"Public team profiles need a currently approved employee or volunteer record and permission. Save this page without team profiles for now."
        CMS_COMPLIANCE_EVIDENCE_EXPIRED:"The supporting 80G document is expired, withdrawn or not verified. Confirm the current official proof before publishing.",
        CMS_ORIGINAL_NOTICE_UNAVAILABLE:"The selected Foundation notice was changed, withdrawn or expired. Choose the current approved original before publishing.",
       FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status."
