@@ -835,8 +835,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}
      {selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
-      onClick={()=>command("Draft saved","pages/"+selected.pageRef+"/draft","PUT",
-       {content:payload(draft),expectedVersion:selected.version})}>Save draft</button>}
+      onClick={()=>command(selected.status==="DRAFT"?"Draft saved":
+       "New draft revision created","pages/"+selected.pageRef+"/draft","PUT",
+       {content:payload(draft),expectedVersion:selected.version})}>
+       {selected.status==="DRAFT"?"Save draft":"Create next draft revision"}</button>}
      {selected&&selected.status==="DRAFT"&&canManage&&<button
       disabled={busy||!!pending||unsaved||heroPhotoMissing} type="button"
       onClick={()=>command("Submitted for approval","pages/"+selected.pageRef+"/submit","POST",
