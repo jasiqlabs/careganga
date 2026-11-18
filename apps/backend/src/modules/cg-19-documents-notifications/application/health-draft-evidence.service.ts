@@ -61,7 +61,7 @@ export class HealthDraftEvidenceService{
     private readonly identity:FoundationStructureIdentityFacade,
     private readonly objects:PrivateObjectStorage){}
   private permission(classification:Classification,mutate:boolean,centerRef:string|null){
-    if(classification==="HEALTH_BANK_PROOF")return mutate?"health.providers.manage":"health.providers.finance.view";
+    if(classification==="HEALTH_BANK_PROOF")return mutate?"health.providers.finance.manage":"health.providers.finance.view";
     if(centerRef)return mutate?"health.centers.draft.edit":"health.centers.draft.edit";
     return mutate?"health.providers.manage":"health.providers.view";
   }
