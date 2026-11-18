@@ -55,6 +55,7 @@ const files={
  ngoChildRoute:read("apps/web/src/app/ngo-information/[section]/page.tsx"),
  contactPhotoMigration:read("apps/backend/db/migrations/0941_cg18_original_contact_photography.sql"),
  webSitemap:read("apps/web/src/app/sitemap.ts"),
+ publicMediaController:read("apps/backend/src/modules/cg-19-documents-notifications/http/cms-draft-media.controller.ts"),
  cg21Copy:read("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const checks=[
@@ -231,6 +232,16 @@ const checks=[
   files.noticeRoute.includes("CmsPublicNoticeBoard")&&
   files.noticeBoard.includes("Reset Filters")&&
   files.header.includes('text==="News & Updates"?"/notices"')],
+
+ ["Original MP4 video byte ranges retain CG19 verification and do not cache rights",
+  files.publicMediaController.includes("await this.media.publicBytes(ref)")&&
+  files.publicMediaController.includes("requestedRange:string|undefined")&&
+  files.publicMediaController.includes("Accept-Ranges")&&
+  files.publicMediaController.includes("Content-Range")&&
+  files.publicMediaController.includes("response.status(206)")&&
+  files.publicMediaController.includes("response.status(416)")&&
+  files.publicMediaController.includes('Cache-Control","no-store"')&&
+  files.publicMediaController.includes("Number.isSafeInteger")],
 
  ["Original Contact uses one authorized editable section and real CG19 support",
   files.extended.includes('if(kind==="CONTACT_INFO")')&&
