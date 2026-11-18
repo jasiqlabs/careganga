@@ -1,5 +1,9 @@
 # CG-07 — Detailed-Level Design
 
+### 2026-11-18 source-backed original Donate/Support CTA contract
+Reference [47 screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). Expose one root-scoped approved campaign/public donation-entry projection consumed by CG-18 header/footer/hero and CG-05 `/upcoming-projects` cards; no CG-18 mirror table or direct CMS amount-handling. Conditional link activation requires approved campaign/project association, current fundraising eligibility and validated intended recipient; on withdrawal/expiry, linked Donate and Support Project become inactive immediately. Show genuine campaign goal only when a current CG-07 source confirms amount/currency; payments retain original CG-07 idempotency and CG-09 one-time posting, CG-19 real receipts. Actual Foundation Admin (campaign editor) owns public summary, target, beneficiary-safe media/eligibility and status; CG-18 Admin owns only labels/theme/layout. Unknown original Campaigns URL and details stay NOT_VERIFIED until captured; never silently create screenshots-as-money.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
