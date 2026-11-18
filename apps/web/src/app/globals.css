@@ -947,3 +947,17 @@ button:disabled { cursor:wait; opacity:.65; }
  .cg-cms-list-controls{display:grid;grid-template-columns:1fr}
  .cg-cms-drawer .cg-cms-team{grid-template-columns:1fr}
 }
+
+
+/* Original U23 client Page Facts: live, compact, responsive editorial counts. */
+.cg-cms-impact-facts{background:var(--cg-surface);border:1px solid var(--cg-border);
+ border-radius:.85rem;padding:.95rem 1rem;margin:.6rem 0 1.2rem}
+.cg-cms-impact-facts h4{font-size:1rem;margin:0 0 .7rem;color:var(--cg-text)}
+.cg-cms-impact-facts dl{display:grid;gap:.1rem;margin:0}
+.cg-cms-impact-facts dl>div{display:flex;gap:1rem;justify-content:space-between;
+ padding:.5rem 0;border-top:1px solid var(--cg-border)}
+.cg-cms-impact-facts dt{font-size:.78rem;letter-spacing:.03em;
+ text-transform:uppercase;color:var(--cg-muted);font-weight:600}
+.cg-cms-impact-facts dd{margin:0;font-weight:750;font-variant-numeric:tabular-nums;
+ color:var(--cg-text)}
+.cg-cms-impact-facts p{font-size:.8rem;color:var(--cg-muted);margin:.65rem 0 0}
