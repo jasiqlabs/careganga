@@ -9,13 +9,14 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {HealthCenterSupportScopeFacade} from "./health-center-support-scope.facade";
 import {HealthCenterContentApprovalService} from "../../cg-03-registration-approvals/application/health-center-content-approval.service";
 import type {CenterContentSubmission} from "./health-center-content-review-source.facade";
+import {HealthCenterContentMediaService} from "../../cg-19-documents-notifications/application/health-center-content-media.service";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Content={description:string;services:string[];facilities:string[];
- hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
+ hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[];media:string[]};
 type Draft={version:number;state:string;content:Content};
 const EMPTY:Content={description:"",services:[],facilities:[],
- hoursNote:"",publicEmail:"",faqs:[]};
+ hoursNote:"",publicEmail:"",faqs:[],media:[]};
 const uuid=(v:unknown)=>{if(typeof v!=="string"||!UUID.test(v))
  throw new BadRequestException({code:"HEALTH_CONTENT_INVALID"});return v;};
 const field=(v:unknown,max:number,min=0)=>{
@@ -30,7 +31,7 @@ function parse(value:unknown):Content{
   throw new BadRequestException({code:"HEALTH_CONTENT_INVALID"});
  const x=value as Record<string,unknown>;
  if(Object.keys(x).some(k=>!["description","services","facilities","hoursNote",
-  "publicEmail","faqs"].includes(k)))throw new BadRequestException({code:"HEALTH_CONTENT_INVALID"});
+  "publicEmail","faqs","media"].includes(k)))throw new BadRequestException({code:"HEALTH_CONTENT_INVALID"});
  const strings=(v:unknown,maxCount:number,maxLength:number)=>{
   if(!Array.isArray(v)||v.length>maxCount)return null;
   const items=v.map(a=>field(a,maxLength,2));
@@ -49,11 +50,15 @@ function parse(value:unknown):Content{
  });
  if(new Set(faqs.map(f=>f.question.toLowerCase())).size!==faqs.length)
   throw new BadRequestException({code:"HEALTH_CONTENT_INVALID"});
+ const media=x.media??[];
+ if(!Array.isArray(media)||media.length>8||media.some(f=>typeof f!=="string"||!UUID.test(f))||
+   new Set(media).size!==media.length)
+  throw new BadRequestException({code:"HEALTH_CONTENT_INVALID",field:"media"});
  const publicEmail=field(x.publicEmail,180);
  if(publicEmail&&!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(publicEmail))
   throw new BadRequestException({code:"HEALTH_CONTENT_INVALID",field:"publicEmail"});
  return {description:field(x.description,1600),services,facilities,
-  hoursNote:field(x.hoursNote,320),publicEmail,faqs};
+  hoursNote:field(x.hoursNote,320),publicEmail,faqs,media};
 }
 @Injectable()
 export class HealthCenterContentService{
@@ -61,7 +66,8 @@ export class HealthCenterContentService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly scope:HealthCenterSupportScopeFacade,
-  private readonly review:HealthCenterContentApprovalService){}
+  private readonly review:HealthCenterContentApprovalService,
+  private readonly media:HealthCenterContentMediaService){}
  private async run<T>(fn:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();let active=false;
   try{
@@ -131,6 +137,11 @@ export class HealthCenterContentService{
    const row=existing.rows[0];
    if((row?.version??0)!==expected||row?.state==="SUBMITTED")
     throw new ConflictException({code:"HEALTH_CONTENT_VERSION_CHANGED"});
+   for(const file of value.media){
+    const proof=await this.media.prove(tx,actor,center,expected,file);
+    if(!proof.rights)
+     throw new ConflictException({code:"HEALTH_CENTER_MEDIA_RIGHTS_INVALID"});
+   }
    const saved=await tx.query<{version:number}>(
     "INSERT INTO health_center_content_draft(root_realm_id,center_id,version,"+
     "state,content,updated_by) VALUES($1,$2,1,'DRAFT',$3::jsonb,$4) "+
@@ -193,6 +204,11 @@ export class HealthCenterContentService{
    const snapshot=parse(d.content);
    if(snapshot.description.length<20||snapshot.services.length===0)
     throw new BadRequestException({code:"HEALTH_CONTENT_REQUIRED"});
+   for(const file of snapshot.media){
+    const proof=await this.media.prove(tx,actor,center,expected,file);
+    if(!proof.rights)
+     throw new ConflictException({code:"HEALTH_CENTER_MEDIA_RIGHTS_INVALID"});
+   }
    const digest=createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
    const revision=await tx.query<{id:string}>(
     "INSERT INTO health_center_content_revision(root_realm_id,center_id,"+
@@ -259,7 +275,8 @@ export class HealthCenterContentService{
     "SELECT version,state,content FROM health_center_content_draft "+
     "WHERE root_realm_id=$1 AND center_id=$2 FOR UPDATE",
     [actor.realmId,c.health_center_id]);
-   if(draft.rows[0]?.state!=="SUBMITTED")
+   if(draft.rows[0]?.state!=="SUBMITTED"||
+     draft.rows[0].version!==c.health_revision_no+1)
     throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
    const evidence=await tx.query(
     "SELECT id FROM health_center_content_revision "+
@@ -269,6 +286,17 @@ export class HealthCenterContentService{
      c.health_revision_no,c.health_source_digest]);
    if(!evidence.rowCount)
     throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
+   const immutable=await tx.query<{source_snapshot:Content}>(
+    "SELECT source_snapshot FROM health_center_content_revision "+
+    "WHERE root_realm_id=$1 AND center_id=$2 AND id=$3",
+    [actor.realmId,c.health_center_id,c.health_content_revision_id]);
+   if(!immutable.rows[0])
+    throw new ConflictException({code:"HEALTH_CONTENT_SOURCE_CHANGED"});
+   for(const file of parse(immutable.rows[0].source_snapshot).media){
+    const proof=await this.media.prove(tx,actor,c.health_center_id,c.health_revision_no,file);
+    if(!proof.rights)
+     throw new ConflictException({code:"HEALTH_CENTER_MEDIA_RIGHTS_INVALID"});
+   }
    const decision=await this.review.approved(tx,actor,input);
    await tx.query(
     "INSERT INTO health_center_content_publication(root_realm_id,center_id,"+
