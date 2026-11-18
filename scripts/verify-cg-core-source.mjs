@@ -82,6 +82,61 @@ if(Object.values(sources).every(p=>present(p))){
   native.includes("publishedNotices()")&&native.includes('setNgoScope("80g")')&&
   native.includes('contact:"CONTACT"'));
 }
+// Risk-based source regression for the formal Finance branch-isolation finding.
+// These confirm expected guards exist; they do NOT execute RBAC/DB scenarios.
+const financeGuards={
+ branch:"apps/backend/src/modules/cg-02-foundation-structure/application/branch-source.facade.ts",
+ accounts:"apps/backend/src/modules/cg-09-finance-accounting/application/finance-accounts.service.ts",
+ voucherList:"apps/backend/src/modules/cg-09-finance-accounting/application/finance-voucher-draft.service.ts",
+ voucherDashboard:"apps/backend/src/modules/cg-09-finance-accounting/application/finance-voucher-dashboard.service.ts",
+ voucherSource:"apps/backend/src/modules/cg-09-finance-accounting/application/finance-voucher-source.facade.ts",
+ budget:"apps/backend/src/modules/cg-09-finance-accounting/application/finance-budget.service.ts",
+ webFinance:"apps/web/src/features/finance-accounting/finance-accounts-workspace.tsx",
+ nativeFinance:"apps/android-internal/src/features/finance-accounting/finance-accounts-screen.tsx",
+ nativeEditor:"apps/android-internal/src/features/finance-accounting/finance-setup-editor.tsx"
+};
+for(const [key,path] of Object.entries(financeGuards))
+ check("Finance branch owner source exists: "+key,present(path));
+if(Object.values(financeGuards).every(path=>present(path))){
+ const src=Object.fromEntries(Object.entries(financeGuards)
+  .map(([key,path])=>[key,read(path)]));
+ check("CG02 scope rejects unauthorized account and voucher branch writes",
+  src.branch.includes("async requireFinanceActorBranch(")&&
+  src.branch.includes("await this.requireFinanceActorBranch(client,actor,branchRef,action)")&&
+  src.branch.includes("async requireFinanceRootScope("));
+ check("CG02 never returns every branch to an ordinary Finance reader",
+  src.branch.includes("const scope=await this.financeReportScope(bearer,capability)")&&
+  src.branch.includes("id=ANY($3::uuid[])"));
+ check("CG09 accounts restrict list balances/labels and Foundation writes",
+  src.accounts.includes('financeReportScope(bearer,"finance.accounts.view")')&&
+  src.accounts.includes("a.branch_id=ANY($10::uuid[])")&&
+  src.accounts.includes('THEN cb.masked_details ELSE NULL END AS "maskedDetails"')&&
+  src.accounts.includes('requireFinanceRootScope(client,actor,"finance.accounts.manage")')&&
+  src.accounts.includes('requireFinanceRootScope(client,actor,"finance.journals.post")'));
+ check("CG09 voucher dashboard summary/month/categories respect CG02",
+  src.voucherDashboard.includes('financeReportScope(bearer,"finance.vouchers.view")')&&
+  src.voucherDashboard.includes("v.branch_id=ANY($3::uuid[])")&&
+  src.voucherDashboard.includes("branch_id=ANY($3::uuid[])"));
+ check("CG09 voucher lists/details and drafts deny foreign and root records",
+  src.voucherList.includes('financeReportScope(bearer,"finance.vouchers.view")')&&
+  src.voucherList.includes("v.branch_id=ANY($4::uuid[])")&&
+  src.voucherList.includes("v.branch_id=ANY($5::uuid[])")&&
+  src.voucherList.includes('requireFinanceRootScope(client,actor,"finance.vouchers.manage")')&&
+  src.voucherList.includes("old.rows[0].branch_id"));
+ check("CG09 source facade prevents historic/current cross-branch voucher reads",
+  src.voucherSource.includes("await this.branches.requireFinanceActorBranch(client,actor,v.branch_id,capability)")&&
+  src.voucherSource.includes("await this.branches.requireFinanceRootScope(client,actor,capability)")&&
+  src.voucherSource.includes('requireFinanceRootScope(client,actor,"finance.vouchers.view")'));
+ check("CG09 budget CRUD/list/dashboard respects original CG02 scope",
+  src.budget.includes('requireFinanceRootScope(tx,actor,"finance.budgets.manage")')&&
+  src.budget.includes('financeReportScope(bearer,"finance.budgets.view")')&&
+  src.budget.includes("b.branch_id=ANY($3::uuid[])"));
+ check("Finance staff Web and native actions hide Foundation-wide access",
+  src.webFinance.includes("canManageFoundationFinance")&&
+  src.webFinance.includes("canManage&&canFoundation")&&
+  src.nativeFinance.includes("canManage&&canFoundation")&&
+  src.nativeEditor.includes('scopeKind:data.canManageFoundationFinance?"FOUNDATION":"BRANCH"'));
+}
 const positives=findings.filter(x=>x.passed).length;
 console.log(`CareGanga static core preflight: ${positives}/${findings.length}; ${totalQA} original QA IDs checked.`);
 for(const x of findings)if(!x.passed)console.error("SOURCE_FAIL: "+x.label);
