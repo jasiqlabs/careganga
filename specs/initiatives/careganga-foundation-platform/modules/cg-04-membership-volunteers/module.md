@@ -1,5 +1,18 @@
 # CG-04 — Members, Membership Programs & Volunteers
 
+### 2026-11-18 original client public website receiving-owner acceptance
+
+**Binding evidence:** [original 47-screenshot public page/content/admin parity](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). 47 client public captures (10 previous, 12+18+7 new), plus the client's pre-existing Admin reference pack. This is a **design/QA receiving-owner handoff, not implementation approval, a new story, or runtime QA**.
+
+**Required original public page scope:** Actual original `/membership` and `/volunteer` public pages, approved member/volunteer verification, and public Team Directory participation where consented.
+
+**Domain/technical source contract:** One existing CG-04 member/volunteer master: published tier version/fee/benefit source, application/approval/identity-document handling, public member/volunteer verification, volunteer four-step submission, PIN/state/district/availability/interests and optional referral. Never invent prices, acceptance, payment proof or a duplicate CMS registration table. CG-09 handles actual fee; CG-19 files and CG-03 approvals stay in their respective owners.
+
+**Screen and Admin UI acceptance:** Original Membership hero, Membership Cards/Verify Membership tabs, search/Annual/Lifetime/Honorary/Student filters, plan cards, benefit list, View Details/Apply Now; Volunteer dark hero/How It Works, Application Form/Verify Volunteer tabs, four-step progress, personal/contact/address/referral fields. Preserve screenshot composition and CG-21 field-specific editable errors; narrow layout and Android per owned channel.
+
+**QA and independent review:** Existing CG-04 QA must trace original /membership and /volunteer flow with tier selection/real price, apply/verify ID, scoped applicant PII, optional referral, PIN locality mapping and location fallbacks, unique approval/issuance, sensitive proof only through CG-19, responsiveness and original screenshot comparison. Add source trace to **existing** story QA and owner-to-CG-18 receiving integration tests; do not mark them passed, do not create duplicate data masters. Independent review + executable Web/Android/DB/manual visual QA remain pending.
+
+
 **Canonical order:** [DEVELOPMENT_ORDER.md](../../DEVELOPMENT_ORDER.md) · **Requirements:** [Foundation BR CG-04-BR01–11](../../../../../docs/business-requirements/01-FOUNDATION-OPERATIONS-BR.md), [PRD FR-009–011](../../prd.md), [HLD](../../hld.md), [original 167-screen Admin audit](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) B09–B10, U11–U17, U42, B41–B42, C50, A04/A09, UI-G04. **Working designs:** [DLD](dld.md) · [UI/UX](uiux.md) · [60 detailed QA](tasks.md).
 **Status:** DELEGATED_APPROVED — DESIGN ONLY (15 Nov 2026), after self-disclosed source review/fix/re-review of all three full-stack stories, original screenshot controls, current PRD/HLD and receiving-owner integration; 60 unique planned manual QA (20 per story). No source code, SQL, device, live, PNG/video/motion, performance or Play QA executed. Current global PRD/HLD REVIEW_REQUIRED; Harness authenticated stage resolver NOT_RUN. Implementation remains BLOCKED pending formal gates and actual preceding source delivery.
 
