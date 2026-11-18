@@ -1,5 +1,5 @@
 import type {MetadataRoute} from "next";
-import {publishedCmsPage,publishedCmsArticles} from "../features/cms-public-content/cms-public-source";
+import {publishedCmsPage,publishedCmsArticles,publishedCmsNotices} from "../features/cms-public-content/cms-public-source";
 export const dynamic="force-dynamic";
 /** Origin URL is the actually configured public host, not an invented route.
  * Pages stay out of search results until their current CG03/CG19 approved
@@ -14,10 +14,10 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   if(origin.protocol!=="https:"||origin.username||origin.password||
     origin.search||origin.hash||origin.pathname!=="/")return [];
  }catch{return [];}
- const [home,about,impact,legal,gallery,healthcare,articles]=await Promise.all([
+ const [home,about,impact,legal,gallery,healthcare,articles,notices]=await Promise.all([
   publishedCmsPage("home"),publishedCmsPage("about"),publishedCmsPage("our-impact"),
   publishedCmsPage("80g"),publishedCmsPage("gallery"),
-  publishedCmsPage("healthcare"),publishedCmsArticles()]);
+  publishedCmsPage("healthcare"),publishedCmsArticles(),publishedCmsNotices()]);
  const results:MetadataRoute.Sitemap=[];
  for(const item of [home,about,impact,legal,gallery,healthcare]){
   if(item.state!=="PUBLISHED")continue;
@@ -36,6 +36,8 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
     changeFrequency:"weekly",priority:0.55});
   }
  }
+ if(notices.available)results.push({url:new URL("/notices",origin).toString(),
+  changeFrequency:"weekly",priority:0.55});
  if(articles.available)for(const article of articles.posts){
   if(!/^\/blog\/[a-z0-9-]{1,70}$/.test(article.path))continue;
   results.push({url:new URL(article.path,origin).toString(),
