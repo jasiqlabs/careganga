@@ -182,6 +182,9 @@ export function CmsPublicPage({page,navigation,siteFooter,children}:{
   <CmsSiteHeader navigation={navigation} contact={{
    address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
   <div className="cg-site-sections">
+   {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
+    <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
+   </header>}
    {heroes.length>0&&<CmsHeroCarousel slides={heroes}/>}
    {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER")
     .map((section,i)=>{
