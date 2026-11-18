@@ -775,7 +775,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       </select></label>
       {["IMPACT","GALLERY","DOCUMENT","CONTACT"].includes(uploadRole)&&<label>Placement position<select
        value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-       {(draft.kind==="CONTACT"?[0,1,2]:
+       {(draft.kind==="CONTACT"?[{title:"Original photo 1"},{title:"Original photo 2"},
+          {title:"Original photo 3"}]:
         draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
          items(draft.sections[0]?.fields.documents):items(draft.sections[0]?.fields.items))
         .map((value,i)=><option value={i} key={i}>{draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?
