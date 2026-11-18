@@ -107,3 +107,7 @@ Enforce CG-01 action and **actually implemented source-resource scope** for list
 
 ## Original Notice and Contact receiving source — 18 November 2026
 Original /notices Batch02 021339/021359 is an explicitly public read-only CG-19 original notice projection joined only with independent current effective CG-18 Article publication and publicReleaseConfirmed. Current original audience must remain ALL_ACTIVE, approved, active, not expired, exact title and body and media-safe. CG-19 still owns all recipients/channel/notice state; no shadow public notice master. Original /contact Batch03 021809–022004 remains one CG-19 private case/form; CG-18 extends only editable public FAQs, inquiry cards, location/social copy. Public notices and support must deny private data even with guessed URL, outdated version or revoked publication. Runtime SQL/privacy/provider/asset QA NOT_RUN.
+
+### 18 November — original NGO child and Contact photo parity source checkpoint
+
+CG19's single source media relation supports new original CG18 Contact photo placements without changing the scanner/rights/storage model. The new Contact role is allowed only at positions 0..2 in CONTACT_INFO; public media SQL enforces this and image MIME after original current CG18 publication proof. Verify direct media revocation across stale URL and CG19 upload source, not only JSX presence. NGO legal source links use exact preexisting current CG19 validated DOCUMENT placements, never an anonymous file table or unverified PDF. Integration/runtime and DB QA pending.
