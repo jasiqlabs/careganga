@@ -53,7 +53,9 @@ function allowed(parts:string[],method:string){
     return false;
   }
   if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
-    parts[2]==="doctors")return method==="GET";
+    parts[2]==="eligible-doctors")return method==="GET";
+  if(parts[0]==="my-centers"&&parts.length===3&&UUID.test(parts[1])&&
+    parts[2]==="doctors")return method==="GET"||method==="POST";
   if(parts[0]==="my-centers"&&parts.length===7&&UUID.test(parts[1])&&
     parts[2]==="doctors"&&UUID.test(parts[3])&&parts[4]==="associations"&&
     UUID.test(parts[5])&&parts[6]==="fees")
