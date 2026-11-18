@@ -7,7 +7,8 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG=/^[a-z0-9][a-z0-9-]{2,79}$/;
 type Search={q:string;after:string;category:string;center:string;specialty:string;
-  pin:string;state:string;district:string;minFee:number|null;maxFee:number|null};
+  pin:string;state:string;district:string;block:string;facility:string;
+  minFee:number|null;maxFee:number|null;minExperience:number|null;maxExperience:number|null};
 type CenterRow={public_slug:string;center_name:string;provider_name:string;
   center_type:string;address:string;pin_code:string;public_phone:string|null;
   latitude:string|null;longitude:string|null};
@@ -29,16 +30,19 @@ function parse(value:unknown):Search{
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const x=value as Record<string,unknown>;
   if(Object.keys(x).some(k=>!["q","after","category","specialty","pin",
-    "state","district","minFee","maxFee","center"].includes(k)))
+    "state","district","block","facility","minExperience","maxExperience",
+    "minFee","maxFee","center"].includes(k)))
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
   const q=safe(x.q,"q"),after=safe(x.after,"after",130),
     center=safe(x.center,"center",80),
     category=safe(x.category,"category",40),specialty=safe(x.specialty,"specialty",60),
     pin=safe(x.pin,"pin",6),state=safe(x.state,"state",36),
-    district=safe(x.district,"district",36);
+    district=safe(x.district,"district",36),block=safe(x.block,"block",36),
+    facility=safe(x.facility,"facility",80);
   if(after&&!SLUG.test(after)&&!/^([a-z0-9][a-z0-9-]{2,79})~([0-9a-f-]{36})$/.test(after)||
     center&&!SLUG.test(center)||pin&&!/^[1-9][0-9]{5}$/.test(pin)||
     state&&!UUID.test(state)||district&&!UUID.test(district)||
+    block&&!UUID.test(block)||
     category&&!["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER",
       "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
       "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"
@@ -53,7 +57,18 @@ function parse(value:unknown):Search{
   const minFee=amount("minFee"),maxFee=amount("maxFee");
   if(minFee!==null&&maxFee!==null&&minFee>maxFee)
     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"maxFee"});
-  return {q,after,category,center,specialty,pin,state,district,minFee,maxFee};
+  const years=(k:"minExperience"|"maxExperience")=>{
+    if(x[k]===undefined)return null;
+    if(typeof x[k]!=="string"||!/^(0|[1-9][0-9]?)$/.test(x[k])||
+      Number(x[k])>70)
+     throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:k});
+    return Number(x[k]);
+  };
+  const minExperience=years("minExperience"),maxExperience=years("maxExperience");
+  if(minExperience!==null&&maxExperience!==null&&minExperience>maxExperience)
+   throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID",field:"maxExperience"});
+  return {q,after,category,center,specialty,pin,state,district,block,facility,
+   minFee,maxFee,minExperience,maxExperience};
 }
 /**
  * The standalone anonymous public directory is sourced exclusively from
@@ -128,11 +143,29 @@ export class HealthPublicDirectoryService{
     return {params:[s.q?("%"+escapeLike(s.q)+"%"):null,
       s.category||null,s.pin||null,s.state||null,s.district||null,
       s.after||null,s.specialty?("%"+escapeLike(s.specialty)+"%"):null,
-      s.minFee,s.maxFee] as (string|number|null)[],
+      s.minFee,s.maxFee,s.center||null,s.minExperience,s.maxExperience,
+      s.block||null,s.facility?("%"+escapeLike(s.facility)+"%"):null
+    ] as (string|number|null)[],
       common:"AND ($2::text IS NULL OR c.center_type=$2) "+
         "AND ($3::text IS NULL OR c.pin_code=$3) "+
         "AND ($4::uuid IS NULL OR c.state_ref=$4) "+
-        "AND ($5::uuid IS NULL OR c.district_ref=$5) "};
+        "AND ($5::uuid IS NULL OR c.district_ref=$5) "+
+        "AND ($13::uuid IS NULL OR c.block_ref=$13) "+
+        "AND ($14::text IS NULL OR EXISTS("+
+        "SELECT 1 FROM health_center_content_publication cp "+
+        "JOIN health_center_content_revision cr ON cr.id=cp.approved_revision_id "+
+        "AND cr.root_realm_id=cp.root_realm_id AND cr.center_id=cp.center_id "+
+        "JOIN cg03_case review ON review.id=cr.approval_case_ref "+
+        "AND review.realm_id=cr.root_realm_id "+
+        "AND review.case_kind='HEALTH_CENTER_CONTENT_REVIEW' "+
+        "AND review.status='OWNER_COMPLETED' "+
+        "JOIN cg03_case_decision decision ON decision.id=cp.original_decision_ref "+
+        "AND decision.realm_id=review.realm_id AND decision.case_id=review.id "+
+        "AND decision.action='APPROVE' "+
+        "JOIN LATERAL jsonb_array_elements_text("+
+        "COALESCE(cr.source_snapshot->'facilities','[]'::jsonb)) facility(value) ON TRUE "+
+        "WHERE cp.root_realm_id=c.root_realm_id AND cp.center_id=c.id "+
+        "AND cp.withdrawn_at IS NULL AND facility.value ILIKE $14 ESCAPE '\\')) "};
   }
   /** Bounded, live sitemap projection. Never derive SEO from private drafts. */
   async sitemap(){
@@ -149,7 +182,8 @@ export class HealthPublicDirectoryService{
   }
   async centers(input:unknown){
     const s=parse(input),f=this.filters(s);
-    if(s.after.includes("~")||s.center||s.specialty||s.minFee!==null||s.maxFee!==null)
+    if(s.after.includes("~")||s.center||s.specialty||s.minFee!==null||s.maxFee!==null||
+      s.minExperience!==null||s.maxExperience!==null)
       throw new BadRequestException({code:"HEALTH_PUBLIC_FILTER_INVALID"});
     const found=await this.db.query<CenterRow>(
       "SELECT c.public_slug,c.display_name AS center_name,p.legal_name AS provider_name,"+
@@ -159,7 +193,7 @@ export class HealthPublicDirectoryService{
       "OR p.legal_name ILIKE $1 ESCAPE '\\') "+
       "AND ($6::text IS NULL OR c.public_slug>$6) "+
       "ORDER BY c.public_slug ASC LIMIT 21",
-      f.params.slice(0,6));
+      f.params);
     return {items:found.rows.slice(0,20).map(c=>({
       slug:c.public_slug,centerName:c.center_name,providerName:c.provider_name,
       type:c.center_type,address:c.address,pinCode:c.pin_code,publicPhone:c.public_phone,
@@ -188,8 +222,10 @@ export class HealthPublicDirectoryService{
       "AND ($6::text IS NULL OR (c.public_slug,doc.id)>"+
       "(split_part($6,'~',1),split_part($6,'~',2)::uuid)) "+
       "AND ($10::text IS NULL OR c.public_slug=$10) "+
+      "AND ($11::smallint IS NULL OR doc.experience_years >= $11) "+
+      "AND ($12::smallint IS NULL OR doc.experience_years <= $12) "+
       "ORDER BY c.public_slug,doc.id LIMIT 21",
-      [...f.params,s.center||null]);
+      f.params);
     return {items:rows.rows.slice(0,20).map(this.safeDoctor),
       next:rows.rows.length>20?
         rows.rows[19].center_slug+"~"+rows.rows[19].doctor_ref:null,
