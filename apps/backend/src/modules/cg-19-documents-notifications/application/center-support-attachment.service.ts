@@ -266,6 +266,64 @@ export class CenterSupportAttachmentService{
    throw new NotFoundException("This support attachment was withdrawn");
   return {bytes,mime:before.original_mime};
  }
+ /** Original CG-19 Foundation support agent view of center attachments, without
+  * acquiring or impersonating a representative's current center affiliation.
+  */
+ async agentFiles(bearer:string,caseRef:string){
+  const ref=valid(caseRef),actor=await this.sessions.requireAction(
+   bearer,"support.cases.view");
+  const rows=await this.db.query<{id:string;revision:number;
+     original_mime:string;verified_size_bytes:string;created_at:Date}>(
+   "SELECT f.id,f.revision,f.original_mime,f.verified_size_bytes,f.created_at "+
+   "FROM cg19_support_case support "+
+   "JOIN cg19_stored_file f ON f.support_case_id=support.id "+
+   "AND f.realm_id=support.realm_id AND f.health_center_id=support.center_id "+
+   "AND f.owner_kind='CG19_SUPPORT' AND f.scan_status='CLEAN_VERIFIED' "+
+   "AND f.revoked_at IS NULL "+
+   "JOIN cg19_upload_intent intent ON intent.id=f.upload_intent_id "+
+   "AND intent.realm_id=f.realm_id AND intent.status='VALIDATED' "+
+   "WHERE support.realm_id=$1 AND support.id=$2 "+
+   "AND support.source_channel='CENTER_PORTAL' "+
+   "ORDER BY f.created_at DESC,f.id DESC LIMIT 20",
+   [actor.realmId,ref]);
+  return {files:rows.rows.map(f=>({fileRef:f.id,fileVersion:f.revision,
+   mime:f.original_mime,sizeBytes:Number(f.verified_size_bytes),
+   createdAt:f.created_at.toISOString()}))};
+ }
+ private async agentOriginal(bearer:string,caseRef:string,fileRef:string){
+  const actor=await this.sessions.requireAction(bearer,"support.cases.view"),
+    ref=valid(caseRef),file=valid(fileRef);
+  const row=await this.db.query<Saved>(
+   "SELECT f.id,f.revision,f.object_key,f.object_version,f.verified_size_bytes,"+
+   "f.verified_sha256,f.original_mime,f.revoked_at,f.scan_status,"+
+   "intent.status FROM cg19_support_case support "+
+   "JOIN cg19_stored_file f ON f.realm_id=support.realm_id "+
+   "AND f.support_case_id=support.id AND f.health_center_id=support.center_id "+
+   "AND f.owner_kind='CG19_SUPPORT' AND f.id=$3 "+
+   "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent intent ON intent.id=f.upload_intent_id "+
+   "AND intent.realm_id=f.realm_id AND intent.status='VALIDATED' "+
+   "WHERE support.realm_id=$1 AND support.id=$2 "+
+   "AND support.source_channel='CENTER_PORTAL'",
+   [actor.realmId,ref,file]);
+  if(!row.rows[0])throw new NotFoundException("Original private support attachment unavailable");
+  return row.rows[0];
+ }
+ async agentDownload(bearer:string,caseRef:string,fileRef:string){
+  const before=await this.agentOriginal(bearer,caseRef,fileRef);
+  let bytes:Buffer;
+  try{bytes=await this.objects.readVerifiedPrivateObject({
+   objectKey:before.object_key,objectVersion:before.object_version,
+   maxBytes:Math.min(Number(before.verified_size_bytes),10*1024*1024)
+  });}catch{throw new ServiceUnavailableException("Original support attachment unavailable");}
+  if(!Buffer.isBuffer(bytes)||bytes.length!==Number(before.verified_size_bytes)||
+    createHash("sha256").update(bytes).digest("hex")!==before.verified_sha256)
+   throw new ServiceUnavailableException("Original support attachment unavailable");
+  const after=await this.agentOriginal(bearer,caseRef,fileRef);
+  if(after.revision!==before.revision||after.object_version!==before.object_version)
+   throw new NotFoundException("Original private attachment was revoked");
+  return {bytes,mime:before.original_mime};
+ }
  async revoke(bearer:string,centerRef:string,caseRef:string,fileRef:string,version:unknown){
   const center=valid(centerRef),ref=valid(caseRef),file=valid(fileRef);
   if(!Number.isSafeInteger(version)||Number(version)<1)
