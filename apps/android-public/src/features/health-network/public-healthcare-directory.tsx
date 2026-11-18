@@ -51,7 +51,9 @@ const label=(title:string,onPress:()=>void,active=false)=>(
 export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  const [mode,setMode]=useState<Mode>("centers"),[search,setSearch]=useState("");
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
- const [category,setCategory]=useState(""),[minFee,setMinFee]=useState("");
+ const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
+ const [minExperience,setMinExperience]=useState(""),[maxExperience,setMaxExperience]=useState("");
+ const [minFee,setMinFee]=useState("");
  const [maxFee,setMaxFee]=useState(""),[cursor,setCursor]=useState("");
  const [selection,setSelection]=useState<Selection|null>(null);
  const [resetVersion,setResetVersion]=useState(0);
@@ -65,8 +67,11 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    if(search.trim())query.set("q",search.trim().slice(0,80));
    if(pin.trim())query.set("pin",pin.trim().slice(0,6));
    if(category)query.set("category",category);
+   if(facility.trim())query.set("facility",facility.trim().slice(0,80));
    if(mode==="doctors"){
     if(specialty.trim())query.set("specialty",specialty.trim().slice(0,60));
+    if(minExperience)query.set("minExperience",minExperience);
+    if(maxExperience)query.set("maxExperience",maxExperience);
     if(minFee)query.set("minFee",minFee);
     if(maxFee)query.set("maxFee",maxFee);
    }
@@ -88,7 +93,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    if(request!==seq.current)return;
    setState(s=>({...s,status:"ERROR",next:null,details:null}));
   }
- },[mode,search,pin,category,specialty,minFee,maxFee]);
+ },[mode,search,pin,category,facility,specialty,minFee,maxFee,
+  minExperience,maxExperience]);
  const show=useCallback(async(item:Selection)=>{
   const request=++seq.current;
   setSelection(item);
@@ -118,6 +124,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  },[selection,show,load]);
  function reset(){
   seq.current++;setSelection(null);setSearch("");setPin("");setCategory("");
+  setFacility("");setMinExperience("");setMaxExperience("");
   setSpecialty("");setMinFee("");setMaxFee("");
   // Same mode means no dependency change; explicitly refresh defaults via next action.
   setState({status:"LOADING",items:[],next:null,details:null});
@@ -153,10 +160,22 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
       "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"]
       .map(v=><View key={v}>{label(v?nice(v):"All",()=>setCategory(v),category===v)}</View>)}
     </View>
+    <Text style={styles.label}>Available facilities</Text>
+    <TextInput accessibilityLabel="Filter by approved center facilities"
+     value={facility} onChangeText={setFacility} maxLength={80}
+     style={styles.input} placeholder="e.g. Wheelchair access"/>
     {mode==="doctors"&&<>
      <Text style={styles.label}>Specialty</Text>
      <TextInput accessibilityLabel="Filter doctors by specialty" style={styles.input}
       value={specialty} onChangeText={setSpecialty} maxLength={60}/>
+     <Text style={styles.label}>Minimum years of experience</Text>
+     <TextInput accessibilityLabel="Minimum years of experience"
+      style={styles.input} keyboardType="number-pad" value={minExperience}
+      onChangeText={setMinExperience} maxLength={2}/>
+     <Text style={styles.label}>Maximum years of experience</Text>
+     <TextInput accessibilityLabel="Maximum years of experience"
+      style={styles.input} keyboardType="number-pad" value={maxExperience}
+      onChangeText={setMaxExperience} maxLength={2}/>
      <Text style={styles.label}>Minimum consultation fee (₹)</Text>
      <TextInput accessibilityLabel="Minimum approved consultation fee" style={styles.input}
       keyboardType="number-pad" value={minFee} onChangeText={setMinFee} maxLength={7}/>
