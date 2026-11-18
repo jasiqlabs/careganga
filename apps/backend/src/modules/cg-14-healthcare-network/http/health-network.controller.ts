@@ -18,6 +18,11 @@ export class HealthNetworkController{
   createProvider(@Headers("authorization")bearer:string,@Body()body:unknown){
     return this.network.createProvider(bearer,body);
   }
+  @Patch("providers/:providerRef")
+  updateProvider(@Headers("authorization")bearer:string,
+    @Param("providerRef")ref:string,@Body()body:unknown){
+    return this.network.updateProvider(bearer,ref,body);
+  }
   @Get("providers/:providerRef")
   provider(@Headers("authorization")bearer:string,@Param("providerRef")ref:string){
     return this.network.provider(bearer,ref);
