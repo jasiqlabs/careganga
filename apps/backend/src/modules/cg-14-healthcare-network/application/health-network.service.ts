@@ -361,15 +361,15 @@ export class HealthNetworkService{
       id:string;provider_id:string;center_code:string;display_name:string;center_type:string;
       address_line:string;state_ref:string;district_ref:string;block_ref:string|null;
       pin_code:string;latitude:string|null;longitude:string|null;time_zone:string;
-      public_phone:string|null;version:number;status:string
+      public_phone:string|null;version:number;status:string;provider_status:string
     }>(
       "SELECT c.id,c.provider_id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,c.time_zone,"+
-      "c.public_phone,c.version,c.status FROM health_center c "+
+      "c.public_phone,c.version,c.status,p.status AS provider_status FROM health_center c "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
         "AND f.center_id=c.id AND f.account_ref=$3 AND f.status='PENDING_EDIT' ":"")+
-      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
+      "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') AND p.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') "+
       "LIMIT 1",own?[actor.realmId,ref,actor.accountId]:[actor.realmId,ref]);
     const x=rows.rows[0];
     if(!x)throw new NotFoundException("Pending center is unavailable");
@@ -380,7 +380,7 @@ export class HealthNetworkService{
     const capabilities=await this.db.query<{capability_code:string}>(
       "SELECT capability_code FROM health_center_capability "+
       "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code",[actor.realmId,ref]);
-    return {centerRef:x.id,providerRef:x.provider_id,version:x.version,status:x.status,
+    return {centerRef:x.id,providerRef:x.provider_id,version:x.version,status:x.status,providerStatus:x.provider_status,
       center:{centerCode:x.center_code,displayName:x.display_name,centerType:x.center_type,
         addressLine:x.address_line,stateRef:x.state_ref,districtRef:x.district_ref,
         blockRef:x.block_ref,pinCode:x.pin_code,
@@ -487,7 +487,7 @@ export class HealthNetworkService{
       "JOIN health_center c ON c.root_realm_id=f.root_realm_id AND c.id=f.center_id "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       "WHERE f.root_realm_id=$1 AND f.account_ref=$2 AND f.status='PENDING_EDIT' "+
-      "AND c.status='PENDING' AND p.status IN('PENDING','VERIFIED') "+
+      "AND c.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') AND p.status IN('PENDING','SUBMITTED','RETURNED','VERIFIED') "+
       "ORDER BY c.display_name,c.id LIMIT 50",[actor.realmId,actor.accountId]);
     return {centers:r.rows.map(x=>({centerRef:x.id,name:x.display_name,
       providerName:x.legal_name,version:x.version,status:x.status}))};
