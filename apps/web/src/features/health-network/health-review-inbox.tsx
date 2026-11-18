@@ -155,7 +155,7 @@ export function HealthReviewInbox(){
    {detail.status==="PENDING_OWNER"&&<button type="button" className="primary"
       disabled={busy||uncertain} onClick={()=>void apply()}>
      Apply approved registration</button>}
-   {detail.status==="RETURNED"&&<button type="button"
+   {["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"
       disabled={busy||uncertain} onClick={()=>void returnForCorrection()}>
      Reopen for corrections</button>}
    <p>Only a verified and separately activated center can later be published. No approval creates a booking or payment.</p>
