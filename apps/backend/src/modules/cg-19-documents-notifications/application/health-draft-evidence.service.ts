@@ -310,8 +310,8 @@ export class HealthDraftEvidenceService{
       await client.query("BEGIN");
       const current=await client.query<{version:number}>(
         center?"SELECT version FROM health_center WHERE root_realm_id=$1 AND id=$2 AND provider_id=$3 AND status='PENDING'":
-          "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$3 AND status='PENDING'",
-        [actor.realmId,center,ref]);
+          "SELECT version FROM health_provider WHERE root_realm_id=$1 AND id=$2 AND status='PENDING'",
+        center?[actor.realmId,center,ref]:[actor.realmId,ref]);
       if(!current.rows[0])throw new NotFoundException("Pending source unavailable");
       await this.source(client,actor,ref,center,current.rows[0].version,admin,action);
       const r=await client.query<FileRow>(
