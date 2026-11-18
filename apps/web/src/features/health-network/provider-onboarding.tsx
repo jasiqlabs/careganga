@@ -342,6 +342,30 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         typeof e.status==="number"&&e.status<500))setUncertain(true);
     }finally{setBusy(false);}
   }
+  async function reopenOriginal(kind:"providers"|"centers",ref:string,version:number){
+    if(!canVerify||busy||uncertain||suspensionPassword.length<8)return;
+    setBusy(true);setError("");setNotice("");
+    const stable="reopen:"+kind+":"+ref;
+    if(!reviewRequestKeys.current[stable])
+      reviewRequestKeys.current[stable]=crypto.randomUUID();
+    try{
+      await api(kind+"/"+encodeURIComponent(ref)+"/reopen","POST",{
+        requestKey:reviewRequestKeys.current[stable],expectedVersion:version,
+        currentPassword:suspensionPassword
+      });
+      delete reviewRequestKeys.current[stable];
+      setSuspensionPassword("");
+      if(selected)await loadDetail(selected.provider.providerRef);
+      await loadList();
+      setNotice(kind==="providers"?
+        "Provider reopened as a draft. A new secure proof and independent review are mandatory.":
+        "Center reopened as a draft. New license verification is required; it is not active or published.");
+    }catch(e){
+      setError(e instanceof Error?e.message:"Reopening cannot be confirmed.");
+      if(!(e&&typeof e==="object"&&"status" in e&&
+        typeof e.status==="number"&&e.status<500))setUncertain(true);
+    }finally{setBusy(false);}
+  }
   async function saveBank(){
     if(!selected||!bankProof||!canManageFinance||busy)return;
     setBusy(true);setError("");
@@ -419,6 +443,19 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
               onClick={()=>void suspendOriginal("providers",selected.provider.providerRef,
                 selected.provider.version)}>Suspend provider and its centers</button>
           </div>}
+        {canVerify&&selected.provider.status==="SUSPENDED"&&
+          <div className="form-section">
+            <h3>Reopen for a new independent review</h3>
+            <p>The original approval is not restored. Centers remain disabled and unpublished.</p>
+            <label className="field">Confirm your current password
+              <input type="password" minLength={8} autoComplete="current-password"
+                value={suspensionPassword} disabled={busy||uncertain}
+                onChange={e=>setSuspensionPassword(e.target.value)}/>
+            </label>
+            <button type="button" disabled={busy||uncertain||suspensionPassword.length<8}
+              onClick={()=>void reopenOriginal("providers",selected.provider.providerRef,
+                selected.provider.version)}>Reopen provider as pending</button>
+          </div>}
         {canManage&&selected.provider.status==="PENDING"&&<button type="button" onClick={()=>{
           setProvider({providerCode:selected.provider.code,legalName:selected.provider.name,
             providerType:selected.provider.type,contactName:selected.provider.contactName,
@@ -443,6 +480,18 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         {selected.centers.map(center=><section key={center.centerRef} className="form-section">
           <h3>{center.name}</h3>
           <p>{center.type.replaceAll("_"," ")} · {center.status.replaceAll("_"," ")}</p>
+          {canVerify&&center.status==="SUSPENDED"&&<div className="form-section">
+            <p>This center is suspended, not approved for new access or public listing.</p>
+            <label className="field">Confirm your current password
+              <input type="password" minLength={8} autoComplete="current-password"
+                value={suspensionPassword} disabled={busy||uncertain}
+                onChange={e=>setSuspensionPassword(e.target.value)}/>
+            </label>
+            <button type="button" disabled={busy||uncertain||suspensionPassword.length<8}
+              onClick={()=>void reopenOriginal("centers",center.centerRef,center.version)}>
+              Reopen center for new licence review
+            </button>
+          </div>}
           {canManage&&center.status==="PENDING"&&<button type="button" onClick={()=>void editCenter(center.centerRef)}>
             Edit pending center</button>}
           {canSelectAccounts&&canManage&&center.status==="PENDING"&&<div className="toolbar">
