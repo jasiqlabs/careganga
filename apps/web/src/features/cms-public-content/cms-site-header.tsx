@@ -57,9 +57,9 @@ export function CmsSiteHeader({navigation,contact}:{
      className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>:
      <span className="cg-site-unavailable">About Us</span>}
     <Menu label="Our Work" items={work.map(text=>({text}))}/>
-    {isPublished("/impact")?<Link href="/impact"
-     className={pathname==="/impact"?"cg-site-active":undefined}>NGO Information</Link>:
-     <span className="cg-site-unavailable">NGO Information</span>}
+    {isPublished("/ngo-information")?<Link href="/ngo-information"
+     className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
+     <span className="cg-site-unavailable" aria-disabled="true">NGO Information</span>}
     <span className="cg-site-unavailable">Campaigns</span>
     <span className="cg-site-unavailable">Upcoming Projects</span>
     <span className="cg-site-unavailable">Partnerships</span>
