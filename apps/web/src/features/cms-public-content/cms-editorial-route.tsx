@@ -66,3 +66,43 @@ export async function CmsOriginalMediaRoute({mediaType}:{mediaType:OriginalMedia
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null}/>;
 }
+
+/** Original screenshot NGO Information 80G landing. CG-02 owns the legal
+ * source, CG-19 verified proof and CG-18 only the approved presentation.
+ * Other sidebar pages are intentionally not fake active destinations.
+ */
+export async function originalNgoInformationMetadata():Promise<Metadata>{
+ const r=await publishedCmsPage("80g");
+ if(r.state!=="PUBLISHED"||r.page.kind!=="COMPLIANCE")
+  return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
+ return {title:r.page.seoTitle,description:r.page.seoDescription,
+  alternates:{canonical:"/ngo-information"},robots:{index:true,follow:true}};
+}
+export async function CmsOriginalNgoInformationRoute(){
+ const [r,navigation,home]=await Promise.all([
+  publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home")]);
+ if(r.state==="NOT_PUBLISHED")notFound();
+ if(r.state!=="PUBLISHED"||r.page.kind!=="COMPLIANCE")
+  return <main className="page main"><h1>Foundation registration information unavailable</h1>
+   <p>We cannot verify the current approved official information.</p>
+   <Link href="/">Return to the homepage</Link></main>;
+ const unavailable=["PAN Details","Registration Certificate","Annual Reports",
+  "Financial Reports","Transparency & Compliance","Policies & Documents"];
+ const sidebar=<nav aria-label="Original NGO Information sections">
+  <p className="cg-site-ngo-breadcrumb"><Link href="/">Home</Link> / NGO Information</p>
+  <h2>NGO Information</h2>
+  <Link className="cg-site-ngo-selected" href="/ngo-information" aria-current="page">
+   80G Registration</Link>
+  {unavailable.map(label=><span className="cg-site-unavailable" aria-disabled="true"
+   title="Verified current Foundation source has not been published" key={label}>
+   {label}</span>)}
+  <div className="cg-site-ngo-secondary">
+   <span className="cg-site-unavailable" aria-disabled="true">Join Us</span>
+   <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>
+  </div>
+ </nav>;
+ return <CmsPublicPage page={{...r.page,canonicalPath:"/ngo-information"}}
+  sidebar={sidebar} navigation={navigation}
+  siteFooter={home.state==="PUBLISHED"?
+   home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null}/>;
+}
