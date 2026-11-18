@@ -140,7 +140,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    setEditorOpen(true);setClosePrompt(false);
    setPreviewMediaScope("PHOTO");setGalleryCategory("ALL");setGalleryVisibility("ALL");
    setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
-    detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":"HERO");
+    detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":
+    detail.kind==="CONTACT"?"CONTACT":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
    setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
     seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
@@ -155,7 +156,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   setEditorOpen(true);setClosePrompt(false);
   setPending(null);setError("");setNotice("");
   setUploadRole(k==="IMPACT"?"IMPACT":k==="GALLERY"?"GALLERY":
-   k==="COMPLIANCE"?"DOCUMENT":k==="ARTICLE"?"ARTICLE":"HERO");
+   k==="COMPLIANCE"?"DOCUMENT":k==="ARTICLE"?"ARTICLE":
+   k==="CONTACT"?"CONTACT":"HERO");
  };
  const edit=(index:number,fields:Record<string,unknown>)=>{
   setDraft(d=>({...d,sections:d.sections.map((v,i)=>i===index?{...v,fields}:v)}));
@@ -760,21 +762,23 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       kind:"RICH_TEXT",order:d.sections.length,fields:{heading:"",body:"",
        eyebrow:"",variant:"STANDARD",highlights:[]}}]}))}>
       Add legal text section</button>}
-    {selected?.status==="DRAFT"&&draft.kind!=="CONTACT"&&draft.kind!=="POLICY"&&
+    {selected?.status==="DRAFT"&&draft.kind!=="POLICY"&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
       <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>
        {draft.kind==="IMPACT"?<option value="IMPACT">Impact group photo</option>:
         draft.kind==="GALLERY"?<option value="GALLERY">Gallery item</option>:
         draft.kind==="COMPLIANCE"?<option value="DOCUMENT">Official proof scan or PDF</option>:
+        draft.kind==="CONTACT"?<option value="CONTACT">Contact photo strip</option>:
         draft.kind==="HEALTHCARE"?<option value="HERO">Healthcare hero photograph</option>:
         <option value="ARTICLE">Article cover photo</option>}
       </select></label>
-      {["IMPACT","GALLERY","DOCUMENT"].includes(uploadRole)&&<label>Placement position<select
+      {["IMPACT","GALLERY","DOCUMENT","CONTACT"].includes(uploadRole)&&<label>Placement position<select
        value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-       {(draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
+       {(draft.kind==="CONTACT"?[0,1,2]:
+        draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
          items(draft.sections[0]?.fields.documents):items(draft.sections[0]?.fields.items))
-        .map((value,i)=><option value={i} key={i}>{draft.kind==="IMPACT"?
+        .map((value,i)=><option value={i} key={i}>{draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?
          str((value as Section).fields.group):str((value as Record<string,unknown>).title)||"Item "+(i+1)}</option>)}
       </select></label>}
       <Field name="Accessible image/document description" value={uploadAlt}
