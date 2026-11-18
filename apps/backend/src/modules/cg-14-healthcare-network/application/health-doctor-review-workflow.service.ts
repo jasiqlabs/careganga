@@ -152,7 +152,12 @@ export class HealthDoctorReviewWorkflowService{
         [actor.realmId,ref]);
       const c=q.rows[0];
       if(!c)throw new NotFoundException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
-      if(c.status==="OWNER_COMPLETED")return {status:"VERIFIED",replayed:true};
+      if(c.status==="OWNER_COMPLETED"){
+        const latest=await tx.query<{status:string}>(
+          "SELECT status FROM health_doctor WHERE root_realm_id=$1 AND id=$2",
+          [actor.realmId,c.health_doctor_id]);
+        return {status:latest.rows[0]?.status??"UNAVAILABLE",replayed:true};
+      }
       if(c.status!=="PENDING_OWNER")
         throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
       const input:DoctorSubmission&{caseRef:string}={
@@ -197,17 +202,18 @@ export class HealthDoctorReviewWorkflowService{
       if(!c)throw new NotFoundException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
       if(!["RETURNED","REJECTED"].includes(c.status))
         throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_UNAVAILABLE"});
+      const cmd=await this.command(tx,actor,"DOCTOR_RETURN",ref,{
+        doctorRef:c.health_doctor_id,revisionRef:c.health_doctor_revision_id,
+        revisionNo:c.health_revision_no,digest:c.health_source_digest});
+      if(cmd.replay)
+        return {status:"PENDING",version:cmd.replay.result_version,replayed:true};
       const doctor=await tx.query<{version:number;status:string}>(
         "SELECT version,status FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
         [actor.realmId,c.health_doctor_id]);
       if(!doctor.rows[0]||doctor.rows[0].status!=="SUBMITTED"||
         doctor.rows[0].version!==c.health_revision_no+1)
         throw new ConflictException({code:"HEALTH_DOCTOR_REVIEW_SOURCE_CHANGED"});
-      const cmd=await this.command(tx,actor,"DOCTOR_RETURN",ref,{
-        doctorRef:c.health_doctor_id,revisionRef:c.health_doctor_revision_id,
-        revisionNo:c.health_revision_no,digest:c.health_source_digest});
-      if(cmd.replay)
-        return {status:"PENDING",version:cmd.replay.result_version,replayed:true};
+
       await tx.query(
         "UPDATE health_doctor SET status='PENDING',version=version+1,"+
         "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
