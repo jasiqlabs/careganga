@@ -1,5 +1,9 @@
 # CG-BR-200 — Integrated Healthcare Assistance
 
+### 18 Nov 2026 public-site replacement boundary
+Reference the [47 screenshot original public website parity contract](../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). The client original uses 'Blood Donation' in the **11th top-level navigation slot**; the approved CareGanga greenfield requirement replaces that destination **entirely with Healthcare Assistance**, including neutral editorial and actual CG-14/15/17 provider/services/assistance/settlement operations. **Do not re-introduce a blood-donation operational module, blood bank, registration or lifecycle** on account of blood-camp images or outdated original membership benefits shown in reference screenshots. The original **Our Work > Healthcare** filter remains a CG-05 project category. Any public healthcare provider, slot, pricing/benefit, medical claim, patient information and staff availability comes only from the current authorized healthcare owner and its Admin controls; CG-18 owns editorial presentation. Original screenshot visuals/photographs, if permitted, guide look and feel without implying verified healthcare services. No clinical/financial source is duplicated in CMS.
+
+
 **Part of:** [CareGanga Master Business Requirements](00-MASTER-BUSINESS-REQUIREMENTS.md)  
 **Status:** Consolidated business requirements · Delegated default policies recorded in CG-BR-900  
 **Business domains:** CG-14 Healthcare Network, CG-15 Patients and Appointments, CG-16 Diagnostics and Center Services, CG-17 Assistance/Billing/Settlement, CG-22 Partner Pharmacy, CG-23 Nursing, CG-24 OT & Procedures (optional ERP)  
