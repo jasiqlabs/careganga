@@ -148,7 +148,8 @@ export class HealthCenterErpGrantService{
     if(oldCommand.rows[0].request_digest!==digest||!oldCommand.rows[0].case_ref)
      throw new ConflictException({code:"HEALTH_ERP_GRANT_CHANGED"});
     return {caseRef:oldCommand.rows[0].case_ref,
-     version:oldCommand.rows[0].revision_no,state:"REQUESTED",replayed:true};
+     version:oldCommand.rows[0].revision_no,state:"PREVIOUSLY_CONFIRMED",
+     replayed:true,message:"The earlier request was recovered. Recheck the live center status."};
    }
    const existing=await tx.query<Grant>(
     "SELECT state,version,pending_revision_id,approved_revision_id,original_decision_ref "+
