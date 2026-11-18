@@ -27,7 +27,10 @@ const files={
  publicSource:read("apps/web/src/features/cms-public-content/cms-public-source.ts"),
  androidExtended:read("apps/android-public/src/features/cms/cms-extended-native-screen.tsx"),
  adminRoute:read("apps/web/src/app/(admin)/admin/website/page.tsx"),
- routeImpact:read("apps/web/src/app/impact/page.tsx"),
+ routeImpact:read("apps/web/src/app/our-impact/page.tsx"),
+ routeVideos:read("apps/web/src/app/videos/page.tsx"),
+ routePublications:read("apps/web/src/app/publications/page.tsx"),
+ mediaRenderer:read("apps/web/src/features/cms-public-content/cms-editorial-route.tsx"),
  route80g:read("apps/web/src/app/80g/page.tsx"),
  routeGallery:read("apps/web/src/app/gallery/page.tsx"),
  routeBlog:read("apps/web/src/app/blog/page.tsx"),
@@ -148,6 +151,10 @@ const checks=[
   ["Home","About Us","Our Work","NGO Information","Campaigns","Upcoming Projects",
    "Partnerships","Events","Media & Resources","Join Now","Healthcare Assistance","Contact Us"]
     .every(name=>files.header.includes(name))&&!files.header.includes("Blood Donation")],
+ ["Original /our-impact is canonical across validated server CMS and public SSR",
+  files.backend.includes('IMPACT:"our-impact"')&&
+  files.publicSource.includes('slug!=="our-impact"')&&
+  files.routeImpact.includes('slug="our-impact"')],
  ["Original NGO Information navigation never opens unrelated Impact",
   !files.header.includes('href="/impact"')&&
   files.header.includes('isPublished("/ngo-information")')&&
@@ -158,11 +165,16 @@ const checks=[
    "Community Development","News & Updates","Gallery","Videos",
    "Publications / Reports","Blog","Become a Member","Become a Volunteer"]
     .every(name=>files.header.includes(name))],
- ["Original Media Videos/PDFs are approved-gallery linkable filtered views",
-  files.header.includes('"/gallery?type=VIDEO"')&&
-  files.header.includes('"/gallery?type=PUBLICATION"')&&
-  files.galleryClient.includes("useSearchParams()")&&
-  files.galleryClient.includes('["PHOTO","VIDEO","PUBLICATION"].includes')],
+ ["Original Videos and Publications use distinct safe visitor URLs and one approved media source",
+  files.header.includes('"/videos"')&&
+  files.header.includes('"/publications"')&&
+  files.routeVideos.includes('CmsOriginalMediaRoute mediaType="VIDEO"')&&
+  files.routePublications.includes('CmsOriginalMediaRoute mediaType="PUBLICATION"')&&
+  files.mediaRenderer.includes('publishedCmsPage("gallery")')&&
+  files.galleryClient.includes('mediaType==="PUBLICATION"')&&
+  files.galleryClient.includes('originalIndex')&&
+  files.adminExtended.includes('Videos page heading')&&
+  files.extended.includes('videosEmptyText')],
  ["All original seven footer policies are editable via same CMS and CG03 approval",
   files.originalNav.includes("seven original Footer Policies & Legal")&&
   files.policyMigration.includes("'POLICY'")&&
