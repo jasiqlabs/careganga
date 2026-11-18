@@ -673,9 +673,14 @@ export class HealthNetworkService{
       actor=await this.allowed(bearer,"health.centers.draft.edit");
     }
     const rows=await this.db.query<{id:string;display_name:string;level:string}>(
-      "SELECT id,display_name,level FROM geography_area WHERE root_realm_id=$1 "+
-      "AND status='ACTIVE' AND level=$2 AND "+
-      "($3::uuid IS NULL OR parent_area_id=$3) ORDER BY display_name,id LIMIT 100",
+      "SELECT area.id,area.display_name,area.level FROM geography_area area "+
+      "WHERE area.root_realm_id=$1 AND area.status='ACTIVE' AND area.level=$2 AND "+
+      "($3::uuid IS NULL OR area.parent_area_id=$3 OR "+
+      "(area.level='BLOCK' AND EXISTS(SELECT 1 FROM geography_area parent "+
+      "WHERE parent.id=area.parent_area_id AND parent.root_realm_id=area.root_realm_id "+
+      "AND parent.level='SUBDIVISION' AND parent.status='ACTIVE' "+
+      "AND parent.parent_area_id=$3))) "+
+      "ORDER BY area.display_name,area.id LIMIT 100",
       [actor.realmId,level,parentRef?uuid(parentRef,"parentRef"):null]);
     return {options:rows.rows.map(x=>({value:x.id,label:x.display_name,level:x.level}))};
   }
