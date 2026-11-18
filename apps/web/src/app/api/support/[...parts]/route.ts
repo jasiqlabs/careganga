@@ -96,7 +96,7 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
       const copy=source&&typeof source==="object"&&!Array.isArray(source)&&
         "message" in source&&typeof source.message==="string"&&
         source.message.length>=8&&source.message.length<=240&&
-        !/[<>\\u0000-\\u001f\\u007f]/.test(source.message)?source.message:null;
+        !/[<>\u0000-\u001f\u007f]/.test(source.message)?source.message:null;
       if(copy)return fail(status,copy);
       return fail(status,status===409?"Original record changed. Refresh before retrying.":
         status===401?"Sign in again.":
