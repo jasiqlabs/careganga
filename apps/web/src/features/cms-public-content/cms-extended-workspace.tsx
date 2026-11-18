@@ -234,11 +234,16 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   }catch(e){setError(e instanceof Error?e.message:"Verification could not be confirmed.");}
   finally{setBusy(false);}
  }
+ const galleryItems=items(draft.sections.find(section=>section.kind==="GALLERY_GRID")?.fields.items);
  const previewPage:PublicCmsPage={schemaVersion:1,effectiveGeneration:"PRIVATE_DRAFT",
   kind:draft.kind,slug:draft.slug,title:draft.title,seoTitle:draft.seoTitle,
   seoDescription:draft.seoDescription,canonicalPath:pathFor(draft.kind,draft.slug),
-  lastPublishedAt:"",sections:draft.sections,
-  assets:draft.assets.map(a=>({...a,
+  lastPublishedAt:"",sections:draft.sections.map(section=>section.kind==="GALLERY_GRID"?
+   {...section,fields:{...section.fields,items:items(section.fields.items)
+     .flatMap((entry,index)=>entry.visible===false?[]:[{...entry,originalIndex:index}])}}:
+   section),
+  assets:draft.assets.filter(a=>a.role!=="GALLERY"||
+    galleryItems[a.order]?.visible!==false).map(a=>({...a,
    src:(a.role==="GALLERY"||a.role==="DOCUMENT"?
     "/api/cms-file-preview/":"/api/cms-image-preview/")+a.fileRef}))};
  const unsaved=selected&&JSON.stringify(content(draft))!==JSON.stringify({
