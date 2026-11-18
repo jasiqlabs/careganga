@@ -196,7 +196,10 @@ export class HealthReviewWorkflowService{
     health_revision_no:number;health_source_digest:string;status:string}>(
     "SELECT id,health_provider_id,health_center_id,health_provider_revision_id,"+
     "health_center_revision_id,health_revision_no,health_source_digest,status "+
-    "FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind=$3 FOR SHARE",
+    // Serialize finalization at the original case row before touching the
+    // provider/center entity; concurrent shared case locks can deadlock
+    // during CG03.finish() after one caller has won the entity lock.
+    "FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind=$3 FOR UPDATE",
     [actor.realmId,caseRef,kind]);
   const c=found.rows[0];
   if(!c)throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
