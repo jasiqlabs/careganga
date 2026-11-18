@@ -350,6 +350,7 @@ export class CmsDraftMediaService{
    "AND pub.foundation_root_id=a.foundation_root_id "+
    "JOIN cms_page_effective active ON active.publication_id=pub.id "+
    "AND active.foundation_root_id=pub.foundation_root_id "+
+   "AND active.page_id=pub.page_id "+
    "WHERE f.id=$1 AND f.revoked_at IS NULL AND "+
    "f.scan_status='CLEAN_VERIFIED' AND f.public_rights_confirmed=true "+
    "AND a.cg19_validated_version=f.revision "+
