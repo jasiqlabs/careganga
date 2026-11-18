@@ -406,6 +406,14 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("eyebrow",v)}/>
       </>}
       {section.kind==="IMPACT_GROUP"&&<>
+       {groupName==="HERO"&&<>
+        <Field name="Eyebrow (original U23 header)" value={f.eyebrow}
+         onChange={v=>change("eyebrow",v)}/>
+        <Field name="Highlighted words (green)" value={f.highlight}
+         onChange={v=>change("highlight",v)}/>
+        <Field name="Optional handwritten quote" value={f.quote} large
+         onChange={v=>change("quote",v)}/>
+       </>}
        <Field name="Explanation" value={f.intro} large onChange={v=>change("intro",v)}/>
        <Field name="Data or editorial source" value={f.source} onChange={v=>change("source",v)}/>
        <Field name="Source date" type="date" value={f.asOfDate}
@@ -420,7 +428,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          onChange={e=>change("claimsFullBreakdown",e.target.checked)}/>
         This is a complete 100% breakdown (percentages must total exactly 100)
        </label>}
-       {groupName==="CTA"&&<><Field name="Button label (optional)" value={f.ctaLabel}
+       {["HERO","CTA"].includes(groupName)&&<><Field name="Button label (optional)" value={f.ctaLabel}
         onChange={v=>change("ctaLabel",v)}/>
         <Field name="Existing public destination" value={f.ctaPath}
          onChange={v=>change("ctaPath",v)}/></>}
@@ -428,12 +436,34 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         <Field name="Label" value={v.title} onChange={x=>changeItem(index,j,{title:x})}/>
         <Field name="Description" value={v.description}
          onChange={x=>changeItem(index,j,{description:x})}/>
-        {["STATS","GROWTH"].includes(groupName)&&<NumberField name="Value" value={v.value}
-         onChange={x=>changeItem(index,j,{value:x})}/>}
+        {["STATS","GROWTH"].includes(groupName)&&<>
+         <NumberField name="Value" value={v.value}
+          onChange={x=>changeItem(index,j,{value:x})}/>
+         <Field name="Unit (if applicable)" value={v.unit}
+          onChange={x=>changeItem(index,j,{unit:x})}/>
+        </>}
         {groupName==="GROWTH"&&<NumberField name="Year" value={v.year}
          onChange={x=>changeItem(index,j,{year:x})}/>}
         {groupName==="BREAKDOWN"&&<NumberField name="Percentage" value={v.percentage}
          max={100} onChange={x=>changeItem(index,j,{percentage:x})}/>}
+        {groupName==="GEOGRAPHY"&&<>
+         <label>State / region impact level<select value={str(v.level)||"EXPANDING"}
+          onChange={e=>changeItem(index,j,{level:e.target.value})}>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="EXPANDING">Expanding</option>
+         </select></label>
+         <p className="cg-cms-muted">Label actual state reach from a dated source;
+          the level is editorial, not a verified geographic survey.</p>
+         {(["latitude","longitude"] as const).map(key=><label key={key}>
+          Optional map pin {key}
+          <input type="number" step="0.000001"
+           min={key==="latitude"?-90:-180} max={key==="latitude"?90:180}
+           value={typeof v[key]==="number"?String(v[key]):""}
+           onChange={e=>changeItem(index,j,{[key]:
+            e.target.value===""?undefined:Number(e.target.value)})}/>
+         </label>)}
+        </>}
         {groupName==="STORIES"&&<label className="cg-cms-consent">
          <input type="checkbox" checked={v.consentConfirmed===true}
           onChange={e=>changeItem(index,j,{consentConfirmed:e.target.checked})}/>
@@ -446,6 +476,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          ...(["STATS","GROWTH"].includes(groupName)?{value:0}:{}),
          ...(groupName==="GROWTH"?{year:new Date().getUTCFullYear()}:{}),
          ...(groupName==="BREAKDOWN"?{percentage:0}:{}),
+         ...(groupName==="GEOGRAPHY"?{level:"EXPANDING"}:{}),
          ...(groupName==="STORIES"?{consentConfirmed:false}:{})})}>
         Add {groupName.toLowerCase()} item</button>}
       </>}
