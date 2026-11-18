@@ -1,5 +1,16 @@
 # CG-19 — Documents Notifications
 
+### 2026-11-18 original public website source/visual/QA handoff
+
+**Binding evidence:** [47 client public screenshots](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md); all original screenshots preserved in the private CareGanga Library. This is a requirements and QA refinement inside the existing CG-19 stories, **not** source implementation or a new module.
+
+**Exact original-facing pages:** `/notices` Notice & Announcement Board has keyword search, priority and category filters (General, Announcements, Events, Updates, Emergency, Policy), real approved announcement cards, effective date and Read Details. `/contact` shows a genuine private message form and an existing support chat entry (24/7 must only be advertised when operational). Separate `/gallery`, `/videos`, `/publications` and NGO proof links consume only CG-19 scanned, rights-cleared, public-released files. Newsletter Subscribe must use a real opt-in/unsubscribe owner before activation; never fake success.
+
+**One Foundation Admin, single data owner:** Current CG-19 role-permitted Admin is the source for validated uploads, public document/media rights and version, explicitly public notices and expiry/withdrawal, received contact/support cases and any real newsletter consent. CG-18 owns the page visual/editorial presentation only; use CG-03 independent publication review where applicable. Never copy staff-only notices, private contact messages, original legal IDs or source files into public CMS records.
+
+**Original UI / QA addition:** Trace published vs internal-only/expired notices, search/priority/category/reset, visible detail and original empty states, PDF/video MIME and public-byte revocation, contact form field-level CG-21 errors, saved/private support receipt and unavailable-chat state, opted-in newsletter only, real document download and desktop/narrow Web/public Android screenshot parity. Executed runtime QA, pixel approval and qualified independent review **NOT_RUN**; preserve existing story numbering and QA counts pending revised case mapping.
+
+
 ## 16 Nov 2026 simple-auth cross-owner change — source-review required
 
 **Current evidence:** Implemented changes on `feature/cg01-simple-auth-brickops-style-20261116` only; latest SHA-bound design re-review, qualified independent review, Web/Android build, PostgreSQL concurrency and live QA **NOT_RUN**. Historic main-integration records below remain factual; do not interpret them as this amendment's completion.
