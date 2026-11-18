@@ -54,6 +54,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  const [mode,setMode]=useState<Mode>("centers"),[search,setSearch]=useState("");
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
+ const [service,setService]=useState(""),[day,setDay]=useState("");
  const [minExperience,setMinExperience]=useState(""),[maxExperience,setMaxExperience]=useState("");
  const [minFee,setMinFee]=useState("");
  const [maxFee,setMaxFee]=useState(""),[cursor,setCursor]=useState("");
@@ -77,6 +78,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    if(region.district)query.set("district",region.district.value);
    if(region.block)query.set("block",region.block.value);
    if(category)query.set("category",category);
+   if(service)query.set("service",service);
+   if(day)query.set("day",day);
    if(facility.trim())query.set("facility",facility.trim().slice(0,80));
    if(mode==="doctors"){
     if(specialty.trim())query.set("specialty",specialty.trim().slice(0,60));
@@ -103,7 +106,7 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
    if(request!==seq.current)return;
    setState(s=>({...s,status:"ERROR",next:null,details:null}));
   }
- },[mode,search,pin,category,facility,specialty,minFee,maxFee,
+ },[mode,search,pin,category,facility,service,day,specialty,minFee,maxFee,
   minExperience,maxExperience,region]);
  const show=useCallback(async(item:Selection)=>{
   const request=++seq.current;
@@ -147,7 +150,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
  },[selection,show,load]);
  function reset(){
   seq.current++;setSelection(null);setSearch("");setPin("");setCategory("");
-  setFacility("");setMinExperience("");setMaxExperience("");
+  setFacility("");setService("");setDay("");
+  setMinExperience("");setMaxExperience("");
   setRegion({state:null,district:null,block:null});setAreaQuery("");
   setSpecialty("");setMinFee("");setMaxFee("");
   // Same mode means no dependency change; explicitly refresh defaults via next action.
@@ -207,6 +211,18 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
       "POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY",
       "NURSING_HOME","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"]
       .map(v=><View key={v}>{label(v?nice(v):"All",()=>setCategory(v),category===v)}</View>)}
+    </View>
+    <Text style={styles.label}>Recorded center services</Text>
+    <View style={styles.row}>
+     {["","CONSULTATION","DIAGNOSTICS","PHARMACY","NURSING","SURGERY","EMERGENCY"]
+      .map(v=><View key={v}>{label(v?nice(v):"All services",
+       ()=>setService(v),service===v)}</View>)}
+    </View>
+    <Text style={styles.label}>Working weekday (not live availability)</Text>
+    <View style={styles.row}>
+     {["","0","1","2","3","4","5","6"].map(v=><View key={v}>
+      {label(v?weekdays[Number(v)]:"Any day",()=>setDay(v),day===v)}
+     </View>)}
     </View>
     <Text style={styles.label}>Available facilities</Text>
     <TextInput accessibilityLabel="Filter by approved center facilities"
