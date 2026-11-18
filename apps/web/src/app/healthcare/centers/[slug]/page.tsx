@@ -10,6 +10,8 @@ type Center={
  timeZone:string;latitude:number|null;longitude:number|null;
  hours:{weekday:number;opens:string;closes:string;service:string}[];
  declaredServices:string[];notice:string;
+ approvedPresentation:null|{description:string;services:string[];facilities:string[];
+  hoursNote:string;publicEmail:string;faqs:{question:string;answer:string}[]};
 };
 const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const format=(value:string)=>value.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,letter=>letter.toUpperCase());
@@ -68,6 +70,28 @@ export default async function VerifiedCenterPage({params}:Params){
           encodeURIComponent(c.latitude+","+c.longitude)}
          target="_blank" rel="noopener noreferrer">View location on maps</a></p>}
    </section>
+   {c.approvedPresentation&&<section className="cg-public-section">
+     <h2>About this healthcare center</h2>
+     <p>{c.approvedPresentation.description}</p>
+     {c.approvedPresentation.services.length>0&&<>
+       <h3>Approved center services</h3>
+       <ul>{c.approvedPresentation.services.map((x,i)=><li key={i}>{x}</li>)}</ul>
+     </>}
+     {c.approvedPresentation.facilities.length>0&&<>
+       <h3>Facilities</h3>
+       <ul>{c.approvedPresentation.facilities.map((x,i)=><li key={i}>{x}</li>)}</ul>
+     </>}
+     {c.approvedPresentation.hoursNote&&
+       <p>Center hours note: {c.approvedPresentation.hoursNote}</p>}
+     {c.approvedPresentation.publicEmail&&
+       <p>Email: <a href={"mailto:"+c.approvedPresentation.publicEmail}>
+        {c.approvedPresentation.publicEmail}</a></p>}
+     {c.approvedPresentation.faqs.length>0&&<>
+       <h3>Frequently asked questions about this center</h3>
+       <dl>{c.approvedPresentation.faqs.map((f,i)=>
+         <div key={i}><dt><strong>{f.question}</strong></dt><dd>{f.answer}</dd></div>)}</dl>
+     </>}
+   </section>}
    {doctors.state==="READY"&&doctors.items.length>0&&<section className="cg-public-section">
      <h2>Currently verified doctors at this center</h2>
      <ul>{doctors.items.map(d=><li key={d.doctorRef}>
