@@ -2,7 +2,7 @@ import Link from "next/link";
 import {Suspense} from "react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
-import {CmsGalleryGridClient} from "./cms-gallery-grid-client";
+import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown)=>Array.isArray(v)?v.filter(x=>!!x&&typeof x==="object"&&!Array.isArray(x))
@@ -126,16 +126,23 @@ export function CmsCompliance({section,assets}:{
    Confirm tax applicability with the issuing authority.</p>
  </section>;
 }
-export function CmsGallery({section,assets}:{
- section:PublicCmsSection;assets:Asset[]}){
+export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
+ section:PublicCmsSection;assets:Asset[];mediaScope?:CmsMediaType}){
  const fields=section.fields;
+ const heading=mediaScope==="VIDEO"?fields.videosHeading:
+  mediaScope==="PUBLICATION"?fields.publicationsHeading:fields.heading;
+ const intro=mediaScope==="VIDEO"?fields.videosDescription:
+  mediaScope==="PUBLICATION"?fields.publicationsDescription:fields.description;
  return <section className="cg-site-content cg-site-gallery">
   <p className="cg-site-eyebrow">Media &amp; Resources</p>
-  <h1>{text(fields.heading)}</h1>
-  {text(fields.description)&&<p>{text(fields.description)}</p>}
-  <Suspense fallback={<p role="status">Loading approved gallery filters…</p>}>
-   <CmsGalleryGridClient fields={{heading:fields.heading,
-    description:fields.description,items:fields.items}} assets={assets}/>
+  <h1>{text(heading)||text(fields.heading)}</h1>
+  {text(intro)&&<p>{text(intro)}</p>}
+  <Suspense fallback={<p role="status">Loading approved media filters…</p>}>
+   <CmsGalleryGridClient fields={{
+    heading:fields.heading,description:fields.description,items:fields.items,
+    photosEmptyText:fields.photosEmptyText,videosEmptyText:fields.videosEmptyText,
+    publicationsEmptyText:fields.publicationsEmptyText}}
+    mediaType={mediaScope} assets={assets}/>
   </Suspense>
  </section>;
 }
