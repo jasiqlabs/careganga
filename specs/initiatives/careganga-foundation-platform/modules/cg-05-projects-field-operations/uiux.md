@@ -1,5 +1,10 @@
 # CG-05 — UI/UX Specification: Projects, Tasks, Activities, Field Visits
 
+### 2026-11-18 original Upcoming Projects and Our Work page-specific UI acceptance
+
+Follow [the 47-capture golden public website register](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md), especially original `/upcoming-projects` Batch 02: gold/cream sticky nav, full-width documentary photo/soft wave hero, oversized serif Upcoming Projects heading, stacked off-white rounded image-left/project-right cards, planned/category badges, locality, coloured title, succinct summary, chips, launch date, verified real funding goal and orange Support Project CTA. The design must remain responsive on narrow Web and source-based Public Android. Retain the six Our Work submenu labels and selected category state. **No screenshot name, goal, photo, launch date, Blood Donation funding flow or support claim is hard-coded as live data.** The Foundation Admin Project module edits these source fields; the CG-18 CMS edits the hero/footer/section visuals without a shadow business master. Events original page visual remains evidence-pending. Compare screenshot states (hover, scroll, empty/project cards, broken/unavailable media, focus, navigation) only during real runtime visual QA.
+
+
 ### 2026-11-18 original client public website receiving-owner acceptance
 
 **Evidence:** [original 47-screenshot public page/content/Admin contract](../../../../../docs/research/CAREGANGA-CLIENT-PUBLIC-WEBSITE-FULL-PAGE-PARITY-20261118.md). This is a same-story requirements/DLD/UI/QA receiving-owner amendment, not code delivery, not a new story or an independent QA pass.
