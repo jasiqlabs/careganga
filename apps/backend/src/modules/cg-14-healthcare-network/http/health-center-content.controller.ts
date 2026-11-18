@@ -23,11 +23,13 @@ export class HealthCenterContentController{
   return this.content.reopen(token,center,caseRef);
  }
  @Post("content/reviews/:caseRef/apply")
- apply(@Headers("authorization")token:string,@Param("caseRef")caseRef:string){
-  return this.content.apply(token,caseRef);
+ apply(@Headers("authorization")token:string,@Param("caseRef")caseRef:string,
+  @Body()body:unknown){
+  return this.content.apply(token,caseRef,body);
  }
  @Post(":centerRef/content/withdraw")
- withdraw(@Headers("authorization")token:string,@Param("centerRef")center:string){
-  return this.content.withdraw(token,center);
+ withdraw(@Headers("authorization")token:string,@Param("centerRef")center:string,
+  @Body()body:unknown){
+  return this.content.withdraw(token,center,body);
  }
 }
