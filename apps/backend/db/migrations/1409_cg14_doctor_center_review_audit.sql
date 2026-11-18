@@ -6,5 +6,6 @@ ALTER TABLE health_doctor_event
 ALTER TABLE health_doctor_event
   ADD CONSTRAINT health_doctor_event_action_key_check CHECK(action_key IN (
     'DOCTOR_DRAFT_CREATE','DOCTOR_DRAFT_UPDATE','DOCTOR_CENTER_PROPOSE',
+    'DOCTOR_SUBMIT','DOCTOR_VERIFY','DOCTOR_RETURN',
     'DOCTOR_CENTER_APPROVE','DOCTOR_CENTER_SUSPEND'
   ));
