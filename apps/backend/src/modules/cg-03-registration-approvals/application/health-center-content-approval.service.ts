@@ -153,7 +153,7 @@ export class HealthCenterContentApprovalService{
    if(["SUBMITTED","IN_REVIEW"].includes(c.status))
     content=(await this.source.original(tx,actor,this.submission(c))).source;
    await tx.query("COMMIT");active=false;
-   return {caseRef:c.id,reference:c.case_number,
+   return {caseRef:c.id,reference:c.case_number,centerRef:c.health_center_id,
     title:c.account_name_snapshot,status:c.status,revision:c.revision,
     content,requiresIndependentReviewer:true};
   }catch(e){if(active)try{await tx.query("ROLLBACK");}catch{};throw e;}
