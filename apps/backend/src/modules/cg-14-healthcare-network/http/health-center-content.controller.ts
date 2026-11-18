@@ -3,6 +3,10 @@ import {HealthCenterContentService} from "../application/health-center-content.s
 @Controller("api/v1/health-network/my-centers")
 export class HealthCenterContentController{
  constructor(private readonly content:HealthCenterContentService){}
+ @Get("content/publishing")
+ publisherQueue(@Headers("authorization")token:string){
+  return this.content.publishing(token);
+ }
  @Get(":centerRef/content")
  own(@Headers("authorization")token:string,@Param("centerRef")center:string){
   return this.content.own(token,center);
