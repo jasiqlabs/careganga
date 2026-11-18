@@ -269,13 +269,17 @@ export class HealthVerificationApprovalService{
     await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
     const found=await tx.query<CaseRow>(
       "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind "+
-      "IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') FOR SHARE",
+      "IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION',"+
+      "'HEALTH_DOCTOR_VERIFICATION') FOR SHARE",
       [actor.realmId,caseRef]);
     const c=found.rows[0];
     if(!c)throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    await this.requireKind(bearer,c.case_kind);
     let source:null|Awaited<ReturnType<HealthReviewSourceFacade["reviewSnapshot"]>>=null;
     if(c.status==="SUBMITTED"||c.status==="IN_REVIEW")
-      source=await this.source.reviewSnapshot(tx,actor,this.submission(c));
+      source=c.case_kind==="HEALTH_DOCTOR_VERIFICATION"?
+        await this.doctorSource.reviewSnapshot(tx,actor,this.doctorSubmission(c)):
+        await this.source.reviewSnapshot(tx,actor,this.submission(c));
     await tx.query("COMMIT");
     return {caseRef:c.id,reference:c.case_number,status:c.status,
       revision:c.revision,kind:c.case_kind,source};
@@ -289,14 +293,17 @@ export class HealthVerificationApprovalService{
   const tx=await this.db.connect();
   try{
     await tx.query("BEGIN");
-    await this.identity.assertCurrent(tx,actor,"health.providers.verify");
     await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
     const found=await tx.query<CaseRow>(
       "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind "+
-      "IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION') FOR UPDATE",
+      "IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION',"+
+      "'HEALTH_DOCTOR_VERIFICATION') FOR UPDATE",
       [actor.realmId,caseRef]);
     const c=found.rows[0];
     if(!c)throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
+    await this.requireKind(bearer,c.case_kind);
+    await this.identity.assertCurrent(tx,actor,c.case_kind==="HEALTH_DOCTOR_VERIFICATION"?
+      "health.doctors.verify":"health.providers.verify");
     if(c.proposer_id===actor.accountId)
       throw new ForbiddenException("The registration must be reviewed by a different person");
     const previous=await tx.query<{actor_id:string;request_digest:string;
@@ -315,7 +322,9 @@ export class HealthVerificationApprovalService{
     if(c.revision!==request.expectedRevision||
       !["SUBMITTED","IN_REVIEW"].includes(c.status))
       throw new ConflictException({code:"HEALTH_REVIEW_CONFLICT"});
-    await this.source.original(tx,actor,this.submission(c));
+    if(c.case_kind==="HEALTH_DOCTOR_VERIFICATION")
+      await this.doctorSource.original(tx,actor,this.doctorSubmission(c));
+    else await this.source.original(tx,actor,this.submission(c));
     const step=await tx.query(
       "SELECT ordinal FROM cg03_process_step WHERE process_id=$1 AND "+
       "ordinal=$2 AND capability_key='approvals.review' AND "+
