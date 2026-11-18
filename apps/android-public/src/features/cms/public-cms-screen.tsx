@@ -11,6 +11,14 @@ type CmsSource={schemaVersion:number;effectiveGeneration:string;kind:string;
  lastPublishedAt:string;sections:Section[];assets:Asset[]};
 type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";page:CmsSource|null};
 const base=process.env.EXPO_PUBLIC_API_URL;
+const legalPages=[
+ ["terms-and-conditions","Terms & Conditions"],["privacy-policy","Privacy Policy"],
+ ["cookie-policy","Cookie Policy"],["disclaimer","Disclaimer"],
+ ["refund-and-cancellation","Refund & Cancellation"],
+ ["grievance-redressal","Grievance Redressal"],
+ ["copyright-and-intellectual-property","Copyright & Intellectual Property"]
+] as const;
+const isPolicySlug=(s:string)=>legalPages.some(x=>x[0]===s);
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
@@ -33,8 +41,10 @@ async function published(slug:string):Promise<Result>{
   if(data.schemaVersion!==1||data.slug!==slug||
      data.kind!==({home:"HOME",about:"ABOUT",impact:"IMPACT",
        "80g":"COMPLIANCE",gallery:"GALLERY",healthcare:"HEALTHCARE"} as Record<string,string>)[slug]&&
+       !(data.kind==="POLICY"&&isPolicySlug(slug))&&
        !(data.kind==="ARTICLE"&&
-         !["home","about","impact","80g","gallery","healthcare"].includes(slug))||
+         !["home","about","impact","80g","gallery","healthcare"].includes(slug)&&
+         !isPolicySlug(slug))||
      typeof data.title!=="string"||!Array.isArray(data.sections)||
      !Array.isArray(data.assets)||typeof data.effectiveGeneration!=="string")
    throw Error();
@@ -69,7 +79,8 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
     result.schemaVersion!==1)return {login:false,paths:[]};
   const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
-  const valid=new Set(["/about","/impact","/80g","/gallery","/healthcare"]);
+  const valid=new Set(["/about","/impact","/80g","/gallery","/healthcare",
+   ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
     (valid.has(p)||/^\/blog\/[a-z0-9-]{1,70}$/.test(p))).slice(0,100):[];
@@ -89,6 +100,7 @@ function CmsButton({title,onPress,secondary=false}:{
 export function PublicCmsContent({onContact,onLoginVisibility}: {
  onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home");
+ const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
   available:false,posts:[]});
@@ -170,6 +182,13 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Contact" onPress={onContact} secondary/>
+   {legalPages.some(([name])=>publishedPaths.includes("/policies/"+name))&&
+    <CmsButton title={policiesExpanded?"Hide legal policies":"Policies & Legal"}
+     secondary onPress={()=>setPoliciesExpanded(v=>!v)}/>}
+   {policiesExpanded&&legalPages.filter(([name])=>
+     publishedPaths.includes("/policies/"+name)).map(([name,title])=>
+     <CmsButton key={name} title={title} secondary={slug!==name}
+      onPress={()=>setSlug(name)}/>)}
   </View>
   {loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    slug==="articles"?<View style={styles.card}>
