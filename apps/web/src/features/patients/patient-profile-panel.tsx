@@ -129,7 +129,7 @@ export function PatientProfilePanel(){
     </div>
     {profile&&<aside style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
      <strong>Your Virtual Patient ID: {profile.virtualPatientId}</strong>
-     <p>Profile: {profile.profileStatus} · Patient-care consent:
+     <p>Profile: {profile.profileStatus==="PROVISIONAL"?"Contact-verified; identity verification pending":profile.profileStatus} · Patient-care consent:
       {profile.consentGranted?" Granted":" Withdrawn"}</p>
     </aside>}
     {!profile&&<p>You do not yet have a CareGanga patient profile.
