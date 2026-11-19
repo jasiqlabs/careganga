@@ -6,9 +6,9 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 type Kind="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
-type Record={fileRef:string;classification:Kind;mime:string;
+type PatientFileItem={fileRef:string;classification:Kind;mime:string;
  sizeBytes:number;version:number;revoked:boolean;createdAt:string};
-type Page={files:Record[];next:string|null};
+type Page={files:PatientFileItem[];next:string|null};
 type Intent={uploadRef:string;status:string;uploadReady?:boolean;
  uploadUrl?:string;uploadHeaders?:Record<string,string>;
  cleanVerified?:boolean;fileRef?:string|null};
@@ -40,7 +40,7 @@ const formats=["application/pdf","image/jpeg","image/png","image/webp"];
 export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
  token:string;consentGranted:boolean;onExpired:()=>void
 }){
- const [rows,setRows]=useState<Record[]>([]),[next,setNext]=useState<string|null>(null);
+ const [rows,setRows]=useState<PatientFileItem[]>([]),[next,setNext]=useState<string|null>(null);
  const [kind,setKind]=useState<Kind>("PATIENT_MEDICAL_REPORT");
  const [selected,setSelected]=useState<File|null>(null),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -147,7 +147,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
   }catch(e){setError(e instanceof Error?e.message:"Original upload unavailable.");}
   finally{setBusy(false);}
  }
- async function readFile(row:Record){
+ async function readFile(row:PatientFileItem){
   if(busy||row.revoked)return;
   setBusy(true);setError("");clearPreview();
   try{
@@ -173,7 +173,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
   }catch(e){setError(e instanceof Error?e.message:"Private document cannot be viewed.");}
   finally{setBusy(false);}
  }
- async function revoke(row:Record){
+ async function revoke(row:PatientFileItem){
   if(busy||row.revoked)return;
   setBusy(true);setError("");
   try{
