@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
+import {NativeClinicianVisitHistory} from "./native-clinician-visit-history";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type ClinicianAssignment={centerRef:string;doctorRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
@@ -355,6 +356,11 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
       No private clinical documents or medical notes are included.</Text>
     </View>}
     {!a.consentGranted&&<Text style={styles.help}>Care consent withdrawn. New check-in and private documents are unavailable.</Text>}
+     {a.consentGranted&&a.visitRef&&canClinicalManage&&
+      clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&
+      <NativeClinicianVisitHistory key={center+":"+a.appointmentRef}
+       token={token} centerRef={center} bookingRef={a.appointmentRef}
+       onExpired={onExpired}/>}
     {canCancel&&a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
      (cancelPending===a.appointmentRef?
       <View style={styles.card}>
