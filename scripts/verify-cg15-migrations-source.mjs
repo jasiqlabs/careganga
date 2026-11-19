@@ -23,7 +23,8 @@ const files=[
  "1428_cg15_in_person_patient_identity_verification.sql",
  "1429_cg15_patient_center_intake_claim.sql",
  "1430_cg15_patient_assisted_booking_authorization.sql",
- "1431_cg15_patient_claim_attempt_throttle.sql"
+ "1431_cg15_patient_claim_attempt_throttle.sql",
+ "1432_cg15_center_day_appointment_index.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
@@ -135,6 +136,11 @@ for(const name of files){
    !source.includes("cg15_assisted_booking_code_immutable")||
    !source.includes("WHERE consumed_at IS NULL AND revoked_at IS NULL")))
   result.errors.push("Patient-authorized clinic booking proof source is incomplete");
+ if(name.startsWith("1432")&&
+  (!source.includes("CREATE INDEX ix_cg15_appointment_center_local_day")||
+   !source.includes("((start_at AT TIME ZONE time_zone)::date)")||
+   !source.includes("root_realm_id,center_id")))
+  result.errors.push("The original center-local appointment-day index is incomplete");
  if(name.startsWith("1431")&&
   (!source.includes("CREATE TABLE cg15_patient_claim_attempt_throttle")||
    !source.includes("PRIMARY KEY(root_realm_id,account_id)")||
