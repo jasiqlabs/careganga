@@ -10,6 +10,8 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {DoctorLeaveApprovalService} from "../../cg-03-registration-approvals/application/doctor-leave-approval.service";
+import type {DoctorLeaveSubmission} from "./doctor-leave-review-source.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
@@ -125,7 +127,8 @@ export class DoctorScheduleService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
-  private readonly ownCenter:HealthCenterSupportScopeFacade){}
+  private readonly ownCenter:HealthCenterSupportScopeFacade,
+  private readonly leaveReview:DoctorLeaveApprovalService){}
  private async transaction<T>(fn:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();let started=false;
   try{
@@ -509,14 +512,27 @@ export class DoctorScheduleService{
    // LEAVE requires the original independent CG03 approval adapter before
    // status ACTIVE. A proposed leave never silently removes booked patients.
    const state=input.kind==="LEAVE"?"PENDING":"ACTIVE";
+   const hash=digest([ref,input.kind,input.start.toISOString(),
+    input.end.toISOString(),input.reason]);
    const row=await tx.query<{id:string}>(
     "INSERT INTO cg15_schedule_exception(root_realm_id,schedule_id,doctor_id,"+
     "center_id,association_id,kind,state,start_at,end_at,reason,"+
-    "version,proposed_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1,$11) RETURNING id",
+    "source_digest,version,proposed_by) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,1,$12) RETURNING id",
     [actor.realmId,curr.id,src.doctor_id,src.center_id,ref,input.kind,state,
-     input.start,input.end,input.reason,actor.accountId]);
-   const hash=digest([ref,input.kind,input.start.toISOString(),
-    input.end.toISOString(),input.reason]);
+     input.start,input.end,input.reason,hash,actor.accountId]);
+   let reviewRef:string|null=null,reference:string|null=null;
+   if(input.kind==="LEAVE"){
+    const original:DoctorLeaveSubmission={kind:"CG15_DOCTOR_LEAVE",
+     doctorRef:src.doctor_id,centerRef:src.center_id,
+     exceptionRef:row.rows[0].id,revisionNo:1,digest:hash,requestKey:input.key};
+    const caseRow=await this.leaveReview.create(tx,actor,original);
+    reviewRef=caseRow.caseRef;reference=caseRow.reference;
+    await tx.query(
+     "UPDATE cg15_schedule_exception SET original_case_ref=$3,version=version+1 "+
+     "WHERE root_realm_id=$1 AND id=$2 AND original_case_ref IS NULL",
+     [actor.realmId,row.rows[0].id,reviewRef]);
+   }
    await tx.query(
     "INSERT INTO cg15_schedule_event(root_realm_id,schedule_id,exception_id,"+
     "actor_ref,action_key,source_digest,request_key) "+
@@ -524,8 +540,9 @@ export class DoctorScheduleService{
     [actor.realmId,curr.id,row.rows[0].id,actor.accountId,hash,input.key]);
    await this.done(tx,cmd.id,row.rows[0].id,1);
    return {status:state,exceptionRef:row.rows[0].id,
+    reviewReference:reference,
     message:state==="PENDING"?
-     "Doctor leave requested. It does not block appointments until independent approval.":
+     "Doctor leave sent to a separate Foundation reviewer. It will not block appointments before approval.":
      "Center-specific time block recorded. Existing bookings are not cancelled."};
   });
  }
