@@ -18,6 +18,7 @@ type Daily={status:string;day:string;doctorName:string;centerName:string;
  timeZone:string;centerSlug:string;slots:Slot[];message:string;
  consultationFeeMinor:string|null};
 type Choices={centerChoices:{centerName:string;centerSlug:string;
+ address:string;pinCode:string;consultationFeeMinor:string|null;
  timeZone:string;startAt:string;endAt:string;bookable:false}[];
  message:string};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -124,7 +125,9 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
      <p>No matching verified working time was found.</p>:
      <ul>{alternatives.centerChoices.map(c=><li key={c.centerSlug}>
       <Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>
-       {c.centerName}</Link> ({c.timeZone}) — preview only
+       {c.centerName}</Link> — {c.address}, {c.pinCode}.
+      Current approved consultation: {displayFee(c.consultationFeeMinor)}.
+      Time zone: {c.timeZone}. Preview only
      </li>)}</ul>}
    </>}
    <p>Online appointment booking, confirmation, cancellation and payment
