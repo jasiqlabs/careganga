@@ -98,7 +98,7 @@ export function NativeConsultationHistory(){
  if(reschedule)return <View style={styles.page}>
   {button("Back to my appointments",()=>{setReschedule(null);void refresh();})}
   <Text style={styles.heading}>Choose a new consultation</Text>
-  <DoctorSchedulePreview doctorRef={reschedule.doctorRef}
+  <PublicHealthcareDirectory onExit={()=>{setReschedule(null);void refresh();}}
    reschedule={{bookingRef:reschedule.bookingRef,expectedVersion:reschedule.version}}/>
  </View>;
  return <View style={styles.page}>
