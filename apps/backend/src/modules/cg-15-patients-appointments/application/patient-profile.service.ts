@@ -202,6 +202,119 @@ export class PatientProfileService{
   }catch(e){if(tx)await c.query("ROLLBACK");throw e;}
   finally{c.release();}
  }
+ /** Existing clinic provisional intake is claimed ONLY with a staff-
+  * issued, person-specific one-time proof and the patient's own verified CG01
+  * account + freshly accepted consent. Never match by phone or name.
+  */
+ async claimCenterIntake(bearer:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer);
+  const v=record(input);
+  only(v,["virtualPatientId","claimCode","consentAccepted","consentVersion"]);
+  if(typeof v.virtualPatientId!=="string"||
+    !/^CGP-[A-F0-9]{16}$/.test(v.virtualPatientId)||
+    typeof v.claimCode!=="string"||
+    !/^CGC-[A-F0-9]{24}$/.test(v.claimCode)||
+    v.consentAccepted!==true||
+    typeof v.consentVersion!=="string"||!VERSION.test(v.consentVersion))
+   throw new BadRequestException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+  const display=v.virtualPatientId,claimDigest=createHash("sha256")
+   .update(v.claimCode).digest("hex");
+  const c=await this.db.connect();let active=false;
+  try{
+   await c.query("BEGIN");active=true;
+   await this.activeAccount(c,actor,true);
+   const linked=await this.owned(c,actor,true);
+   const rows=await c.query<{
+    id:string;patient_id:string;center_id:string;issued_by_account:string;
+    request_key:string;claimed_at:Date|null;claimed_by_account:string|null;
+    revoked_at:Date|null;expires_at:Date;profile_status:string;revision:number
+   }>(
+    "SELECT cl.id,cl.patient_id,cl.center_id,cl.issued_by_account,"+
+    "cl.request_key,cl.claimed_at,cl.claimed_by_account,cl.revoked_at,"+
+    "cl.expires_at,p.profile_status,p.revision "+
+    "FROM cg15_patient_center_claim cl "+
+    "JOIN cg15_patient p ON p.root_realm_id=cl.root_realm_id AND p.id=cl.patient_id "+
+    "WHERE cl.root_realm_id=$1 AND p.virtual_display_id=$2 AND cl.claim_digest=$3 "+
+    "FOR UPDATE OF cl,p",
+    [actor.realmId,display,claimDigest]);
+   const source=rows.rows[0];
+   if(!source)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   if(source.claimed_at){
+    if(source.claimed_by_account!==actor.accountId||linked?.id!==source.patient_id)
+     throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+    await c.query("COMMIT");active=false;
+    return this.present(linked);
+   }
+   if(linked)
+    throw new ConflictException({code:"CG15_PATIENT_ALREADY_REGISTERED"});
+   const terms=policy();
+   if(!terms.available||v.consentVersion!==terms.version)
+    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED"});
+   if(source.revoked_at||source.expires_at.getTime()<=Date.now()||
+    source.profile_status!=="PROVISIONAL")
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   // The center and issuing receptionist must still be current/authorized
+   // within this transaction; a suspended location may not bind new patients.
+   const staff=await c.query(
+    "SELECT 1 FROM health_center center_source "+
+    "JOIN health_provider provider_source ON provider_source.root_realm_id=center_source.root_realm_id "+
+    "AND provider_source.id=center_source.provider_id "+
+    "JOIN health_center_account_affiliation affiliation "+
+    "ON affiliation.root_realm_id=center_source.root_realm_id "+
+    "AND affiliation.center_id=center_source.id AND affiliation.account_ref=$3 "+
+    "JOIN account reviewer ON reviewer.realm_id=affiliation.root_realm_id "+
+    "AND reviewer.id=affiliation.account_ref "+
+    "WHERE center_source.root_realm_id=$1 AND center_source.id=$2 "+
+    "AND center_source.status='VERIFIED' AND center_source.access_state='ENABLED' "+
+    "AND provider_source.status='VERIFIED' AND affiliation.status='ACTIVE' "+
+    "AND reviewer.status='ACTIVE' LIMIT 1",
+    [actor.realmId,source.center_id,source.issued_by_account]);
+   if(!staff.rowCount)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   await c.query(
+    "INSERT INTO cg15_patient_account_link(root_realm_id,patient_id,account_id,proof_type) "+
+    "VALUES($1,$2,$3,'CG01_VERIFIED_ACCOUNT_CONTACT')",
+    [actor.realmId,source.patient_id,actor.accountId]);
+   await c.query(
+    "INSERT INTO cg15_patient_consent(root_realm_id,patient_id,revision_no,purpose,"+
+    "terms_version,granted,recorded_by_account) "+
+    "VALUES($1,$2,$3,'PATIENT_CARE',$4,true,$5)",
+    [actor.realmId,source.patient_id,source.revision+1,terms.version,actor.accountId]);
+   const tokenDigest=createHash("sha256").update(randomBytes(32)).digest("hex");
+   const proof=await c.query<{id:string}>(
+    "INSERT INTO cg15_patient_identity_challenge(root_realm_id,patient_id,"+
+    "issued_by_account,token_digest,expires_at,used_at) "+
+    "VALUES($1,$2,$3,$4,now()+interval '15 minutes',now()) RETURNING id",
+    [actor.realmId,source.patient_id,actor.accountId,tokenDigest]);
+   await c.query(
+    "INSERT INTO cg15_patient_identity_event(root_realm_id,patient_id,center_id,"+
+    "challenge_id,verified_by_account,request_key,request_digest,identity_checked_in_person) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,true)",
+    [actor.realmId,source.patient_id,source.center_id,proof.rows[0].id,
+     source.issued_by_account,source.request_key,
+     createHash("sha256").update(source.id+":"+claimDigest).digest("hex")]);
+   const saved=await c.query<PersonRow>(
+    "UPDATE cg15_patient SET profile_status='VERIFIED',revision=revision+1,"+
+    "updated_at=now() WHERE root_realm_id=$1 AND id=$2 RETURNING id",
+    [actor.realmId,source.patient_id]);
+   if(!saved.rowCount)throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   await c.query(
+    "INSERT INTO cg15_patient_change_event(root_realm_id,patient_id,revision_no,"+
+    "action,actor_account_id) VALUES($1,$2,$3,'IDENTITY_VERIFIED',$4)",
+    [actor.realmId,source.patient_id,source.revision+1,source.issued_by_account]);
+   await c.query(
+    "UPDATE cg15_patient_center_claim SET claimed_at=now(),claimed_by_account=$3 "+
+    "WHERE root_realm_id=$1 AND id=$2 AND claimed_at IS NULL AND revoked_at IS NULL",
+    [actor.realmId,source.id,actor.accountId]);
+   const own=await this.owned(c,actor);
+   if(!own)throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   await c.query("COMMIT");active=false;
+   return this.present(own);
+  }catch(e){if(active)await c.query("ROLLBACK");throw e;}
+  finally{c.release();}
+ }
+
  async beginIdentityVerification(bearer:string){
   const actor=await this.identity.verifySession(bearer);
   const c=await this.db.connect();let tx=false;
