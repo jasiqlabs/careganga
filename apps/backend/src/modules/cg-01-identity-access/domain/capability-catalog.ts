@@ -84,6 +84,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"health.visits.manage",businessLabel:"Check in and manage my center's consultation queue",group:"Healthcare visits",assignable:true,sensitive:true},
   {key:"health.visits.clinical.manage",businessLabel:"Advance consulting and completed visit states at an assigned center",group:"Healthcare visits",assignable:true,sensitive:true},
   {key:"health.appointments.cancel",businessLabel:"Cancel confirmed appointments at my assigned healthcare center",group:"Healthcare appointments",assignable:true,sensitive:true},
+  {key:"health.appointments.override",businessLabel:"Authorize exceptional cancellation before consultation begins",group:"Healthcare appointments",assignable:false,sensitive:true},
   {key:"health.patients.intake",businessLabel:"Register provisional patients at my assigned healthcare center",group:"Healthcare patient intake",assignable:true,sensitive:true},
   {key:"health.schedules.view",businessLabel:"View verified doctor-center schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
   {key:"health.schedules.manage",businessLabel:"Manage approved doctor-center weekly schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
