@@ -241,7 +241,31 @@ const checks=[
  ["center queue limit applies after exact original center-local date predicate",
   s.queue.includes("(a.start_at AT TIME ZONE a.time_zone)::date=$3::date")&&
   !s.queue.includes("interval '48 hours'")&&
-  s.queue.includes("LIMIT 201")],
+  s.queue.includes("LIMIT 101")&&
+  s.queue.includes("afterRaw.split")&&s.queue.includes("last.start_at.toISOString()")],
+ ["true person-specific identity gate required for any consultation booking",
+  s.service.includes('patient.profile_status!=="VERIFIED"')&&
+  s.service.includes("!patient.identity_verified")&&
+  s.service.includes("cg15_patient_identity_event")],
+ ["lost-response original hold and confirmation replay uses exact own-account key",
+  s.service.includes("async holdByRequest(")&&
+  s.service.includes("async confirmationByRequest(")&&
+  s.bookingCtrl.includes('Get("holds/by-request/:requestKey")')&&
+  s.bookingCtrl.includes('Get("confirmations/by-request/:requestKey")')&&
+  s.webBooking.includes("confirmations/by-request/")&&
+  s.nativeBooking.includes("holds/by-request/")],
+ ["center queue pages in Web and Internal Android use validated cursor",
+  s.queue.includes("afterRaw.split")&&
+  s.queue.includes("LIMIT 101")&&
+  s.queueCtrl.includes('@Query("after")after?:string')&&
+  s.queueBff.includes('params.set("after",after)')&&
+  s.webQueue.includes("Next 100")&&
+  s.nativeQueue.includes("Next 100")],
+ ["H15 real geography and server-center filters survive >200 centers",
+  s.admin.includes("centerChoicesComplete")&&
+  s.admin.includes("centerSearch.trim()")&&
+  s.adminBff.includes('"centerSearch"')&&
+  s.webAdmin.includes("Filter centers")],
  ["original H15 patient and booking search is root-protected and strictly bounded",
   s.admin.includes('requireAction(bearer,"health.patients.admin.view")')&&
   s.admin.includes("position(lower($10::text)")&&
