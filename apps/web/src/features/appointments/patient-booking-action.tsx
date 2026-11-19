@@ -28,6 +28,7 @@ async function submit<T>(path:string,data:Record<string,unknown>):Promise<T>{
 }
 export function PatientBookingAction(p:Props){
  const [hold,setHold]=useState<Hold|null>(null);
+ const [review,setReview]=useState(false);
  const [confirmed,setConfirmed]=useState<Confirmed|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -86,7 +87,7 @@ export function PatientBookingAction(p:Props){
    });
    if(value.status!=="HELD"||Date.parse(value.expiresAt)<=Date.now())
     throw Error("This reservation expired. Refresh the availability before retrying.");
-   setHold(value);setUncertain(false);setMessage("Time reserved temporarily. Confirm before it expires.");
+   setHold(value);setReview(false);setUncertain(false);setMessage("Time reserved temporarily. Review the doctor, center, time and fee before confirming.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?e.status:null;
    // An explicit HTTP 4xx is a rejected write, not a lost response.
@@ -96,9 +97,9 @@ export function PatientBookingAction(p:Props){
   }finally{setBusy(false);}
  }
  async function confirm(){
-  if(busy||uncertain||!hold)return;
+  if(busy||uncertain||!hold||!review)return;
   if(Date.parse(hold.expiresAt)<=Date.now()){
-   setMessage("Your temporary reservation expired. Refresh and select a current time.");return;
+   setReview(false);setMessage("Your temporary reservation expired. Refresh and select a current time.");return;
   }
   setBusy(true);setMessage("");
    if(!confirmKey.current){
@@ -112,7 +113,7 @@ export function PatientBookingAction(p:Props){
     paymentMode:"PAY_AT_CENTER",
      ...(confirmedReason.current?{reasonForVisit:confirmedReason.current}:{})
    });
-   setConfirmed(value);setUncertain(false);
+   setConfirmed(value);setReview(false);setUncertain(false);
    const document=await issuePatientSlip(value.bookingRef);
    setMessage(document==="ISSUED"?
     "Appointment confirmed. Your private consultation slip is issued. Payment is due at the center.":
@@ -171,7 +172,7 @@ export function PatientBookingAction(p:Props){
    if(holdKey.current){
     const original=await recover<Hold>("holds/by-request/"+holdKey.current);
     if(original&&original.status==="HELD"&&Date.parse(original.expiresAt)>Date.now()){
-     setHold(original);setUncertain(false);
+     setHold(original);setReview(false);setUncertain(false);
      setMessage(confirmKey.current?
       "The original hold still exists. You can safely retry confirmation using the same request.":
       "The original time is reserved. Confirm before it expires.");
@@ -182,13 +183,13 @@ export function PatientBookingAction(p:Props){
      return;
     }
     if(original?.status==="EXPIRED"||original?.status==="CANCELLED"){
-     holdKey.current=null;confirmKey.current=null;setHold(null);setUncertain(false);
+     holdKey.current=null;confirmKey.current=null;setHold(null);setReview(false);setUncertain(false);
      setMessage("The old hold expired. Select and reserve a currently available time.");
      return;
     }
     // No committed original was found. Reuse the SAME request key on the
     // next attempt so an in-flight hold cannot create a duplicate booking.
-    setHold(null);setUncertain(false);
+    setHold(null);setReview(false);setUncertain(false);
     setMessage("No committed hold was found yet. You can retry this reservation using its original request key.");
     return;
    }
@@ -204,7 +205,7 @@ export function PatientBookingAction(p:Props){
   <p style={{margin:"0 0 8px"}}>Consultation: {currency(p.feeMinor)} ·
    <strong> Pay at center</strong>. No online charge or Foundation benefit is claimed.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
-   {!confirmed&&!uncertain&&<label style={{display:"grid",gap:4,marginBlock:8}}>
+   {!confirmed&&!uncertain&&!review&&<label style={{display:"grid",gap:4,marginBlock:8}}>
     Reason for consultation (optional, private)
     <textarea value={reasonForVisit} rows={2} maxLength={300}
      disabled={busy||!!confirmKey.current}
@@ -220,8 +221,27 @@ export function PatientBookingAction(p:Props){
     <button disabled={busy} type="button" onClick={()=>void checkOriginal()}>
      Check original booking request</button>
     <Link href="/patients/me">My patient profile</Link>
-   </div>:hold?<button type="button" disabled={busy}
-    onClick={()=>void confirm()}>Confirm appointment — payment due at center</button>:
+   </div>:hold?(review?
+    <div className="form-section" aria-label="Review actual consultation before confirming">
+     <h3>Review consultation before booking</h3>
+     <p>Doctor: <strong>{p.doctorName}</strong></p>
+     <p>Healthcare center: <strong>{p.centerName}</strong></p>
+     <p>Consultation time: {new Date(p.startAt).toLocaleString("en-IN",{
+      timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
+     <p>Total consultation fee: <strong>{currency(hold.consultationFeeMinor)}</strong>.
+      The full amount is due at the center. No payment has been collected.</p>
+     <p>Optional private consultation reason: {reasonForVisit.trim()?
+      "Included in the private booking":"Not provided"}.</p>
+     <button type="button" className="primary" disabled={busy}
+      onClick={()=>void confirm()}>
+      Confirm reviewed appointment — pay at center</button>
+     <button type="button" disabled={busy}
+      onClick={()=>setReview(false)}>Back to edit private reason</button>
+     <p>This hold expires at {new Date(hold.expiresAt).toLocaleString("en-IN")}.
+      You are not booked until confirmation succeeds.</p>
+    </div>:
+    <button type="button" disabled={busy}
+     onClick={()=>setReview(true)}>Review doctor, center, time and fee</button>):
    <button type="button" disabled={busy} onClick={()=>void makeHold()}>
     {busy?"Checking…":"Reserve this appointment time"}</button>}
   <section aria-label="Authorize reception staff to book">
