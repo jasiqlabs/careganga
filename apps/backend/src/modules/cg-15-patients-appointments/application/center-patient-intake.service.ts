@@ -145,6 +145,13 @@ export class CenterPatientIntakeService{
     return {status:"ALREADY_ISSUED",virtualPatientId:display,
      message:"The prior code was issued but cannot be redisplayed. If it was lost, request a new code with a fresh request key."};
    }
+   const recentlyIssued=await tx.query<{id:string}>(
+    "SELECT id FROM cg15_patient_center_claim WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 AND claimed_at IS NULL AND revoked_at IS NULL "+
+    "AND created_at>now()-interval '30 seconds' LIMIT 1",
+    [actor.realmId,patient.patient_id]);
+   if(recentlyIssued.rowCount)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_TOO_SOON"});
    await tx.query(
     "UPDATE cg15_patient_center_claim SET revoked_at=now() "+
     "WHERE root_realm_id=$1 AND patient_id=$2 AND claimed_at IS NULL AND revoked_at IS NULL",
