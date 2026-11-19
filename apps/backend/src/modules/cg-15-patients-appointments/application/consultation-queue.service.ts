@@ -127,8 +127,8 @@ export class ConsultationQueueService{
    // membership are revalidated inside this exact read transaction.
    await this.scope(tx,actor,center);
    await this.centers.assertCurrent(tx,actor,center,"health.visits.clinical.manage");
-   const source=await tx.query<{patient_id:string;doctor_id:string}>(
-    "SELECT a.patient_id,a.doctor_id FROM cg15_consultation_appointment a "+
+   const source=await tx.query<{patient_id:string;doctor_id:string;start_at:Date}>(
+    "SELECT a.patient_id,a.doctor_id,a.start_at FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id "+
     "AND p.id=a.patient_id "+
     "JOIN cg15_visit_queue v ON v.root_realm_id=a.root_realm_id "+
@@ -157,12 +157,11 @@ export class ConsultationQueueService{
     "FROM cg15_consultation_appointment a "+
     "WHERE a.root_realm_id=$1 AND a.center_id=$2 "+
     "AND a.patient_id=$3 AND a.doctor_id=$4 "+
-    "AND (a.start_at,a.id)<=(SELECT start_at,id FROM "+
-    "cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$5) "+
-    "AND ($6::timestamptz IS NULL OR "+
-    "(a.start_at,a.id)<($6::timestamptz,$7::uuid)) "+
+    "AND (a.start_at,a.id)<=($5::timestamptz,$6::uuid) "+
+    "AND ($7::timestamptz IS NULL OR "+
+    "(a.start_at,a.id)<($7::timestamptz,$8::uuid)) "+
     "ORDER BY a.start_at DESC,a.id DESC LIMIT 26",
-    [actor.realmId,center,src.patient_id,src.doctor_id,booking,at,prior]);
+    [actor.realmId,center,src.patient_id,src.doctor_id,src.start_at,booking,at,prior]);
    const page=visitRows.rows.slice(0,25);
    await tx.query("COMMIT");open=false;
    return {appointmentRef:booking,items:page.map(x=>({
