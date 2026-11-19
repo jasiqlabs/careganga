@@ -121,6 +121,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [districtRef,setDistrictRef]=useState("");
  const [blockRef,setBlockRef]=useState("");
  const [chosenCenter,setChosenCenter]=useState("");
+ const [statusFilter,setStatusFilter]=useState("");
+ const [specialtyFilter,setSpecialtyFilter]=useState("");
  const [metrics,setMetrics]=useState<Metrics|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [tab,setTab]=useState<ScheduleTab>("WEEKLY");
@@ -152,6 +154,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     if(blockRef)params.set("blockRef",blockRef);
     if(chosenCenter)params.set("centerRef",chosenCenter);
     if(appliedSearch)params.set("search",appliedSearch);
+    if(statusFilter)params.set("status",statusFilter);
+    if(specialtyFilter.trim())params.set("specialty",specialtyFilter.trim());
    }
    const url=base+(params.size?"?"+params.toString():"");
    const response=await api<{doctors:Row[];metrics:Metrics;
@@ -165,7 +169,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
     "The approved doctor list is currently unavailable.");
   }}
- },[base,channel,stateRef,districtRef,blockRef,chosenCenter,appliedSearch]);
+ },[base,channel,stateRef,districtRef,blockRef,chosenCenter,appliedSearch,statusFilter,specialtyFilter]);
  useEffect(()=>{
   setSelected(null);setTab("WEEKLY");setRoster([]);setMetrics(null);setWindows([]);
   setCopyTarget("");
@@ -532,6 +536,31 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     </label>
     {!placesComplete&&<p role="status">More verified centers exist than can
      be shown in this filter. Narrow your location to choose a center.</p>}
+   </div>}
+   {channel==="foundation"&&<div className="form-grid"
+    aria-label="Filter current doctor schedule state and real medical specialization">
+    <label>Schedule status
+     <select value={statusFilter} disabled={working}
+      onChange={e=>setStatusFilter(e.target.value)}>
+      <option value="">All schedule statuses</option>
+      <option value="ACTIVE">Active schedules</option>
+      <option value="SUSPENDED">Suspended schedules</option>
+      <option value="NOT_SCHEDULED">Not yet scheduled</option>
+     </select>
+    </label>
+    <label>Doctor specialization (current source)
+     <input type="search" value={specialtyFilter}
+      onChange={e=>setSpecialtyFilter(e.target.value)}
+      maxLength={80} disabled={working}
+      placeholder="Search verified specialization"/>
+    </label>
+    <button type="button" disabled={working||loading||
+     !(stateRef||districtRef||blockRef||chosenCenter||statusFilter||
+       specialtyFilter||search||appliedSearch)}
+     onClick={()=>{setStateRef("");setDistrictRef("");setBlockRef("");
+      setChosenCenter("");setStatusFilter("");setSpecialtyFilter("");
+      setSearch("");setAppliedSearch("");}}>
+     Reset all H07 filters</button>
    </div>}
    <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search.trim());}}
     aria-label="Search all approved doctors">
