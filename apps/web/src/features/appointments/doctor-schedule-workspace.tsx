@@ -44,7 +44,7 @@ function pathFor(channel:Channel,centerRef?:string){
  * not in the Foundation reviewer's device zone. Reject missing and ambiguous
  * DST hours rather than moving a doctor leave interval silently. */
 function centerTime(v:string,zone:string){
- if(!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(v))
+ if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(v))
   throw Error("Choose a valid date and time for this center.");
  const nominal=Date.parse(v+":00Z");
  if(!Number.isFinite(nominal))
