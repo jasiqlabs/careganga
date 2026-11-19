@@ -150,7 +150,7 @@ export class PublicPatientSignupService{
    if(saved.account_id){
     await tx.query("COMMIT");open=false;
     return {status:"ACCOUNT_CREATED" as const,
-     nextStep:"SIGN_IN_THEN_VERIFY_REGISTERED_MOBILE" as const};
+     nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
    }
    const role=await tx.query<{id:string}>(
     "SELECT r.id FROM role r WHERE r.realm_id=$1 "+
@@ -168,8 +168,8 @@ export class PublicPatientSignupService{
     throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_CODE_INVALID"});
    const newAccount=await tx.query<{id:string}>(
     "INSERT INTO account(realm_id,display_name,normalized_mobile,"+
-    "normalized_email,contact_phone,status) "+
-    "VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id",
+    "normalized_email,contact_phone,contact_phone_verified_at,status) "+
+    "VALUES($1,$2,$3,$4,$5,now(),'ACTIVE') RETURNING id",
     [root,safeFirst+" "+safeLast,digits,normalizedEmail,"+91"+digits]);
    const id=newAccount.rows[0].id;
    const passwordHash=await hashPassword(password);
@@ -184,7 +184,7 @@ export class PublicPatientSignupService{
     "WHERE root_realm_id=$1 AND request_key=$2",[root,requestKey,id]);
    await tx.query("COMMIT");open=false;
    return {status:"ACCOUNT_CREATED" as const,
-    nextStep:"SIGN_IN_THEN_VERIFY_REGISTERED_MOBILE" as const};
+    nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
   }catch(error){
    if(open)await tx.query("ROLLBACK");
    if(error&&typeof error==="object"&&"code" in error&&error.code==="23505")
