@@ -355,6 +355,39 @@ export function FoundationPatientBookings(){
       <p><strong>Status:</strong> {statusName(selectedBooking.bookingStatus)}</p>
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
        · {statusName(selectedBooking.collectionStatus)}</p>
+      {selectedBooking.bookingStatus==="CONFIRMED"&&
+       new Date(selectedBooking.startAt).getTime()>Date.now()&&
+       <section className="form-section"
+        aria-label="Protected Foundation appointment cancellation override">
+        <h3>Exceptional cancellation review</h3>
+        <p>Only a protected Foundation administrator may cancel a confirmed
+         appointment after the normal cancellation cutoff or while its center
+         is suspended, provided the consultation has not started. Every change
+         uses the real appointment version and an immutable actor/reason audit.
+         The doctor reservation is released; previous clinical outcomes cannot
+         be rewritten. Sending a patient notification is a separate operation.</p>
+        <label>Confirm your current Foundation password
+         <input type="password" autoComplete="current-password"
+          value={overridePassword} onChange={e=>setOverridePassword(e.target.value)}
+          maxLength={1024} disabled={overrideBusy||overrideUncertain}/>
+        </label>
+        <label><input type="checkbox" checked={overrideAcknowledged}
+         onChange={e=>setOverrideAcknowledged(e.target.checked)}
+         disabled={overrideBusy||overrideUncertain}/>
+         I reviewed this exact appointment, its patient, doctor, date and
+         current status, and authorize an exceptional cancellation.
+        </label>
+        <button type="button" disabled={overrideBusy||overrideUncertain||
+         !overrideAcknowledged||overridePassword.length<8||loading}
+         onClick={()=>void applyFoundationOverride()}>
+         {overrideBusy?"Checking original cancellation…":"Confirm exceptional cancellation"}
+        </button>
+       </section>}
+      {!!overrideMessage&&<p role="status" className="notice">{overrideMessage}</p>}
+      {overrideUncertain&&<button type="button" disabled={loading||overrideBusy}
+       onClick={()=>void refreshOverrideSource()}>
+       Refresh original booking before another cancellation
+      </button>}
       <p>Original CareGanga appointment record — not a receipt, prescription,
        government Health ID or evidence of financial assistance.</p>
       <button type="button" disabled={historyBusy||!currentHistory}
