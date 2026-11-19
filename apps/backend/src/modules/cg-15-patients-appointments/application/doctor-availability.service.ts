@@ -20,10 +20,10 @@ type Schedule={
 };
 type PreviewSlot={startAt:string;endAt:string;startLocal:string;
  endLocal:string;bookable:boolean};
-type DayPreview={status:string;bookingEnabled:false;day:string;
+type DayPreview={status:string;bookingEnabled:boolean;day:string;
  centerRef:string;centerName:string;doctorName:string;timeZone:string;
  slots:PreviewSlot[];message:string;centerSlug?:string;
- consultationFeeMinor?:string|null;consultationCurrency?:string};
+ consultationFeeMinor?:string|null;consultationFeeVersion?:number|null;consultationCurrency?:string};
 type Window={schedule_id:string;weekday:number;open_local:string;close_local:string};
 type Block={kind:string;center_id:string;start_at:Date;end_at:Date};
 const validId=(v:unknown)=>{
