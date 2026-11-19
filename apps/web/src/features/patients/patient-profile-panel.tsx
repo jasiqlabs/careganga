@@ -5,6 +5,8 @@ type Profile={virtualPatientId:string;firstName:string;lastName:string;
  dateOfBirth:string|null;profileStatus:string;version:number;
  consentGranted:boolean;consentVersion:string|null};
 type Consent={available:boolean;version:string|null;text:string|null};
+type Contact={hasNumber:boolean;verified:boolean;providerConfigured:boolean;maskedContact:string|null};
+type Verification={status:string;message?:string};
 type ApiError={message?:string};
 async function request<T>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>{
  const response=await fetch("/api/patients/"+path,{method,cache:"no-store",
@@ -27,10 +29,14 @@ export function PatientProfilePanel(){
  const [first,setFirst]=useState(""),[last,setLast]=useState("");
  const [dob,setDob]=useState(""),[agree,setAgree]=useState(false);
  const [message,setMessage]=useState("");
+ const [contact,setContact]=useState<Contact|null>(null);
+ const [verificationCode,setVerificationCode]=useState("");
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
   const response=await fetch("/api/patients/me",{cache:"no-store"});
-  if(response.status===401){setSignedIn(false);setProfile(null);return;}
+  if(response.status===401){setSignedIn(false);setProfile(null);setContact(null);return;}
+  const status=await request<Contact>("mobile/status");
+  setContact(status);
   setSignedIn(true);
   if(response.status===404){setProfile(null);return;}
   if(!response.ok)throw Error("Your patient profile could not be checked. Try again.");
@@ -64,9 +70,34 @@ export function PatientProfilePanel(){
  async function logout(){
   await act(async()=>{
    await request<{signedOut:boolean}>("logout","POST");
-   setSignedIn(false);setProfile(null);setPassword("");setAgree(false);
+   setSignedIn(false);setProfile(null);setContact(null);setPassword("");setAgree(false);
    pendingRegistration.current=null;
    setMessage("Signed out of your patient profile.");
+  });
+ }
+ async function startVerification(){
+  await act(async()=>{
+   const result=await request<Verification>("mobile/start","POST",{});
+   setMessage(result.status==="ALREADY_VERIFIED"?"Your mobile contact is verified.":
+    result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
+    "A verification code was requested. Delivery is not guaranteed; check your phone.":
+    "The verification request outcome is uncertain. Check before retrying.");
+   await refresh();
+  });
+ }
+ async function confirmVerification(){
+  await act(async()=>{
+   if(!/^\d{4,10}$/.test(verificationCode))
+    throw Error("Enter the verification code received on your phone.");
+   const result=await request<Verification>("mobile/confirm","POST",{code:verificationCode});
+   if(result.status!=="VERIFIED"){
+    setMessage(result.status==="NOT_VERIFIED"?
+     "That code could not be verified. Check the code and try again.":
+     "Verification status is uncertain. Check current contact status before retrying.");
+    return;
+   }
+   setVerificationCode("");await refresh();
+   setMessage("Your account mobile contact is verified.");
   });
  }
  async function register(){
@@ -134,6 +165,27 @@ export function PatientProfilePanel(){
     </aside>}
     {!profile&&<p>You do not yet have a CareGanga patient profile.
      Verified contact and approved patient-care consent are required to create one.</p>}
+    {!profile&&<section aria-label="Verify registered account contact"
+     style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
+     <h2>Verify your account mobile contact</h2>
+     {contact?.verified?<p>Your existing CareGanga contact is verified.</p>:
+      !contact?.hasNumber?<p>Your existing account does not have a verification contact recorded.
+       Ask CareGanga Foundation to update your registered contact before creating a patient profile.</p>:
+      !contact?.providerConfigured?<p>Mobile verification is not configured yet.
+       Patient registration is unavailable until the Foundation enables verification.</p>:
+      <div style={{display:"grid",gap:12}}>
+       <p>A code will be sent to your account's saved contact
+        {contact.maskedContact?" ending "+contact.maskedContact:""}.
+        This does not grant access to another family member's patient profile.</p>
+       <button type="button" disabled={busy} onClick={()=>void startVerification()}>
+        Request verification code</button>
+       <label>One-time code
+        <input inputMode="numeric" autoComplete="one-time-code" value={verificationCode}
+         onChange={e=>setVerificationCode(e.target.value)} maxLength={10}/></label>
+       <button type="button" disabled={busy||!/^\\d{4,10}$/.test(verificationCode)}
+        onClick={()=>void confirmVerification()}>Verify code</button>
+      </div>}
+    </section>}
     <form onSubmit={e=>{e.preventDefault();void (profile?save():register());}}
      style={{display:"grid",gap:12}}>
      <label>First name
@@ -154,7 +206,7 @@ export function PatientProfilePanel(){
        </>:<p role="alert">Approved patient-consent text is not configured.
         Registration is temporarily unavailable.</p>}
      </div>}
-     <button type="submit" disabled={busy||(!profile&&(!policy.available||!agree))}>
+     <button type="submit" disabled={busy||(!profile&&(!policy.available||!agree||!contact?.verified))}>
       {busy?"Saving…":profile?"Save patient details":"Create my patient profile"}
      </button>
     </form>
