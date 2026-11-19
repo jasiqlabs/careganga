@@ -31,6 +31,16 @@ export class PatientProfileController{
   return this.patients.beginAssistedBooking(token,body);
  }
 
+ @Post("me/second-account-link-code")
+ @Header("Cache-Control","private, no-store")
+ issueSecondAccountLink(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.patients.issueSecondAccountLink(token,body);
+ }
+ @Post("me/accept-second-account")
+ @Header("Cache-Control","private, no-store")
+ acceptSecondAccountLink(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.patients.acceptSecondAccountLink(token,body);
+ }
  @Post("me/claim-intake")
  @Header("Cache-Control","private, no-store")
  claimCenterIntake(@Headers("authorization")token:string,@Body()body:unknown){
