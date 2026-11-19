@@ -22,6 +22,9 @@ const s={
  originalSource:read("apps/backend/src/modules/cg-15-patients-appointments/application/doctor-leave-review-source.facade.ts"),
  reviewer:read("apps/backend/src/modules/cg-03-registration-approvals/application/doctor-leave-approval.service.ts"),
  reviewerApi:read("apps/backend/src/modules/cg-03-registration-approvals/http/doctor-leave-approval.controller.ts"),
+ cg03Decisions:read("apps/backend/src/modules/cg-03-registration-approvals/application/committed-decision-source.service.ts"),
+ cg19Source:read("apps/backend/src/modules/cg-19-documents-notifications/application/notification.service.ts"),
+ cg19Worker:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/communication-worker.ts"),
  web:read("apps/web/src/features/appointments/doctor-schedule-workspace.tsx"),
  webReview:read("apps/web/src/features/appointments/doctor-leave-review-workspace.tsx"),
  webAdmin:read("apps/web/src/app/(admin)/admin/health-network/schedules/page.tsx"),
@@ -103,6 +106,20 @@ const tests=[
   s.controller.includes("centerSave")&&s.controller.includes("applyLeave")],
  ["source: private CSRF Web BFF",s.webApi.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
   s.webApi.includes('cookies()).get("cg_staff_session")')],
+ ["source: existing CG03 doctor leave decision is notified/recovered by bounded CG19 root worker",
+  s.reviewer.includes("case_kind='CG15_DOCTOR_LEAVE'")&&
+  s.reviewer.includes("INSERT INTO cg03_case_decision")&&
+  s.cg03Decisions.includes("JOIN cg03_case c ON c.id=d.case_id")&&
+  s.cg03Decisions.includes("recipientRef:row.proposer_id")&&
+  s.cg03Decisions.includes("Math.min(25,Math.max(1,limit))")&&
+  s.cg19Source.includes("async captureCommittedDecisions(realm:string)")&&
+  s.cg19Source.includes("this.decisions.after(client,realm")&&
+  s.cg19Source.includes("ON CONFLICT DO NOTHING RETURNING id")&&
+  s.cg19Worker.includes("LISTEN cg19_decision_committed")&&
+  s.cg19Worker.includes("captureCommittedDecisions(realm)")&&
+  s.cg19Worker.includes("captureCommittedDecisions(this.rootRef)")&&
+  s.cg19Worker.includes("setInterval(()=>{void this.periodic();},60000)")&&
+  !s.service.includes("setInterval(")],
  ["source: original CG03 reviewer Web BFF",s.reviewBff.includes("doctor-leave-reviews")&&
   s.reviewBff.includes("current")],
  ["source: H07 Foundation Web and Center Portal",s.web.includes("Weekly working hours")&&
