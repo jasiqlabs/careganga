@@ -4,6 +4,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
  startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
@@ -48,6 +49,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
  const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
+ const [selectedSlip,setSelectedSlip]=useState<Item|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const commands=useRef<Map<string,string>>(new Map()),seq=useRef(0),selectedCenter=useRef("");
@@ -64,7 +66,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
      (after?"&after="+encodeURIComponent(after):""));
    if(stamp!==seq.current||selectedCenter.current!==c)return;
-   setItems(data.items);setCursor(after);setNextCursor(data.next);setUncertain(false);
+   setItems(data.items);setSelectedSlip(null);setCursor(after);setNextCursor(data.next);setUncertain(false);
   }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
  },[token,fail]);
  useEffect(()=>{
@@ -214,6 +216,13 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
     <Text style={styles.help}>No consultations were returned for this date.</Text>}
    {center&&items.length>0&&visible.length===0&&
     <Text style={styles.help}>No consultations match these filters.</Text>}
+   {selectedSlip&&<View style={styles.card}>
+    {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
+    <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
+    <NativeCenterConsultationSlip token={token}
+     bookingRef={selectedSlip.appointmentRef}
+     bookingStatus={selectedSlip.bookingStatus} onExpired={onExpired}/>
+   </View>}
    {visible.map(a=><View key={a.appointmentRef} style={styles.card}>
     <Text style={styles.title}>{a.patientName}</Text>
     <Text style={styles.help}>Doctor: {a.doctorName}</Text>
@@ -226,6 +235,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      {a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
      {["ARRIVED","WAITING"].includes(a.visitStatus??"")&&
       button("No show",()=>void change(a,"NO_SHOW"),busy||uncertain)}
+     {!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
+      button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
     </View>
    </View>)}
    {center&&items.length>0&&<View style={styles.card}>
