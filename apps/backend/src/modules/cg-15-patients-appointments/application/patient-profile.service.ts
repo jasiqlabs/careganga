@@ -268,7 +268,14 @@ export class PatientProfileService{
     "WHERE center_source.root_realm_id=$1 AND center_source.id=$2 "+
     "AND center_source.status='VERIFIED' AND center_source.access_state='ENABLED' "+
     "AND provider_source.status='VERIFIED' AND affiliation.status='ACTIVE' "+
-    "AND reviewer.status='ACTIVE' LIMIT 1",
+    "AND reviewer.status='ACTIVE' "+
+    "AND EXISTS(SELECT 1 FROM account_role staff_role "+
+    "JOIN role assigned ON assigned.id=staff_role.role_id AND assigned.active=true "+
+    "WHERE staff_role.account_id=reviewer.id AND staff_role.realm_id=reviewer.realm_id "+
+    "AND staff_role.revoked_at IS NULL AND "+
+    "(assigned.is_protected OR EXISTS(SELECT 1 FROM role_grant grant_source "+
+    "WHERE grant_source.role_id=assigned.id "+
+    "AND grant_source.capability_key='health.patients.intake'))) LIMIT 1",
     [actor.realmId,source.center_id,source.issued_by_account]);
    if(!staff.rowCount)
     throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
