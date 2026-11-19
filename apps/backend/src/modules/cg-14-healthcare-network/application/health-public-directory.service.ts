@@ -154,7 +154,7 @@ export class HealthPublicDirectoryService{
     "AND fee.doctor_center_id=assoc.id AND fee.status='APPROVED' "+
     "AND fee.fee_kind='CONSULTATION' AND fee.consultation_mode='IN_PERSON' "+
     "AND fee.effective_from<=now() AND (fee.effective_to IS NULL OR fee.effective_to>now()) "+
-    "ORDER BY fee.effective_from DESC LIMIT 1) current_fee ON TRUE ";
+    "ORDER BY fee.effective_from DESC LIMIT 1) fee ON TRUE ";
   private filters(s:Search){
     return {params:[s.q?("%"+escapeLike(s.q)+"%"):null,
       s.category||null,s.pin||null,s.state||null,s.district||null,
