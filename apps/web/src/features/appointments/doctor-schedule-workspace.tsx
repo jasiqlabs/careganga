@@ -3,6 +3,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Channel="foundation"|"center";
 type Row={associationRef:string;doctorRef:string;centerRef:string;doctorName:string;
  centerName:string;specialties:string[];status:string;version:number};
+type Place={centerRef:string;centerName:string;stateRef:string;stateName:string;
+ districtRef:string;districtName:string;blockRef:string|null;blockName:string|null};
 type Metrics={totalAppointments:string;workingSessionsToday:string;
  doctorsOnActiveLeave:string};
 type Window={weekday:number;startLocal:string;endLocal:string};
@@ -79,6 +81,12 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
 }){
  const base=pathFor(channel,centerRef);
  const [roster,setRoster]=useState<Row[]>([]);
+ const [placeChoices,setPlaceChoices]=useState<Place[]>([]);
+ const [placesComplete,setPlacesComplete]=useState(true);
+ const [stateRef,setStateRef]=useState("");
+ const [districtRef,setDistrictRef]=useState("");
+ const [blockRef,setBlockRef]=useState("");
+ const [chosenCenter,setChosenCenter]=useState("");
  const [metrics,setMetrics]=useState<Metrics|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [loading,setLoading]=useState(true),[working,setWorking]=useState(false);
@@ -96,17 +104,29 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const loadRoster=useCallback(async()=>{
   const n=++seq.current;
   try{
-   const response=await api<{doctors:Row[];metrics:Metrics}>(base);
+   const params=new URLSearchParams();
+   if(channel==="foundation"){
+    if(stateRef)params.set("stateRef",stateRef);
+    if(districtRef)params.set("districtRef",districtRef);
+    if(blockRef)params.set("blockRef",blockRef);
+    if(chosenCenter)params.set("centerRef",chosenCenter);
+   }
+   const url=base+(params.size?"?"+params.toString():"");
+   const response=await api<{doctors:Row[];metrics:Metrics;
+    geographyComplete?:boolean;centerChoices?:Place[]}>(url);
    if(n!==seq.current)return;
    setRoster(response.doctors);setMetrics(response.metrics??null);
+   setPlaceChoices(response.centerChoices??[]);
+   setPlacesComplete(response.geographyComplete!==false);
    setLoading(false);setError("");setUncertain(false);
   }catch(e){if(n===seq.current){
    setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
     "The approved doctor list is currently unavailable.");
   }}
- },[base]);
+ },[base,channel,stateRef,districtRef,blockRef,chosenCenter]);
  useEffect(()=>{
-  setSelected(null);setRoster([]);setMetrics(null);setWindows([]);setCopyTarget("");
+  setSelected(null);setRoster([]);setMetrics(null);setWindows([]);
+  setCopyTarget("");
   setCopyReview(null);weekKey.current="";
   exceptionKey.current="";setLoading(true);
   void loadRoster();return()=>{seq.current++;};
@@ -251,6 +271,22 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   {label:"Centers in current list",value:String(new Set(roster.map(x=>x.centerRef)).size)},
   {label:"Doctors on active leave",value:metrics?.doctorsOnActiveLeave??"Loading…"}
  ];
+ const matchingPlaces=placeChoices.filter(p=>
+  (!stateRef||p.stateRef===stateRef)&&
+  (!districtRef||p.districtRef===districtRef)&&
+  (!blockRef||p.blockRef===blockRef));
+ const stateOptions=Array.from(new Map(placeChoices.map(p=>[
+  p.stateRef,{ref:p.stateRef,name:p.stateName}
+ ])).values());
+ const districtOptions=Array.from(new Map(placeChoices.filter(p=>
+  !stateRef||p.stateRef===stateRef).map(p=>[
+   p.districtRef,{ref:p.districtRef,name:p.districtName}
+ ])).values());
+ const blockOptions=Array.from(new Map(placeChoices.filter(p=>
+  (!stateRef||p.stateRef===stateRef)&&
+  (!districtRef||p.districtRef===districtRef)&&p.blockRef).map(p=>[
+   p.blockRef!,{ref:p.blockRef!,name:p.blockName??"Unnamed block"}
+ ])).values());
  const result=roster.filter(x=>
   (x.doctorName+" "+x.centerName+" "+x.specialties.join(" "))
    .toLowerCase().includes(search.trim().toLowerCase()));
@@ -281,6 +317,43 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     the live source, not from this limited list. Use location filters to narrow
     a large list.</p>
    <h2>Doctor and center</h2>
+   {channel==="foundation"&&<div className="form-grid"
+    aria-label="Filter approved schedules by current healthcare location">
+    <label>State
+     <select value={stateRef} onChange={e=>{setStateRef(e.target.value);
+      setDistrictRef("");setBlockRef("");setChosenCenter("");}}
+      disabled={working}>
+      <option value="">All states</option>
+      {stateOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
+     </select>
+    </label>
+    <label>District
+     <select value={districtRef} onChange={e=>{
+      setDistrictRef(e.target.value);setBlockRef("");setChosenCenter("");
+     }} disabled={working||!stateRef}>
+      <option value="">All districts</option>
+      {districtOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
+     </select>
+    </label>
+    <label>Block
+     <select value={blockRef} onChange={e=>{
+      setBlockRef(e.target.value);setChosenCenter("");
+     }} disabled={working||!districtRef}>
+      <option value="">All blocks</option>
+      {blockOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
+     </select>
+    </label>
+    <label>Healthcare center
+     <select value={chosenCenter} onChange={e=>setChosenCenter(e.target.value)}
+      disabled={working||!stateRef}>
+      <option value="">All eligible centers</option>
+      {matchingPlaces.map(p=><option key={p.centerRef} value={p.centerRef}>
+       {p.centerName}</option>)}
+     </select>
+    </label>
+    {!placesComplete&&<p role="status">More verified centers exist than can
+     be shown in this filter. Narrow your location to choose a center.</p>}
+   </div>}
    <label>Search approved doctors, clinics or specialties
     <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
       maxLength={80} placeholder="Doctor or healthcare center"/>
