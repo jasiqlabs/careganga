@@ -302,6 +302,15 @@ const checks=[
   s.nativeQueue.includes('canCancel&&a.bookingStatus==="CONFIRMED"')&&
   s.nativeQueue.includes('reason:"CENTER_REQUEST"')&&
   s.internalApp.includes('canCancel={roleActions.includes("health.appointments.cancel")}')],
+ ["latest patient-care consent is enforced for center QR, check-in and queue identity",
+  s.queue.includes('AND pc.purpose=\'PATIENT_CARE\' ORDER BY pc.revision_no DESC LIMIT 1)=true')&&
+  s.queue.includes("CASE WHEN consent.granted IS TRUE THEN p.first_name ELSE NULL END")&&
+  s.queue.includes('consentGranted:x.consent_granted')&&
+  s.queue.includes("FROM cg15_patient_consent WHERE root_realm_id=$1")&&
+  s.queue.includes("FOR SHARE")&&
+  s.webQueue.includes("item.consentGranted&&item.bookingStatus")&&
+  s.nativeQueue.includes('row.consentGranted')&&
+  s.nativeQueue.includes('a.consentGranted&&!["CANCELLED","NO_SHOW"]')],
  ["no-show marks only original NEVER-arrived booking after its scheduled end",
   s.queue.includes("async markNoShow(")&&
   s.queue.includes('booking.booking_state!=="CONFIRMED"')&&
