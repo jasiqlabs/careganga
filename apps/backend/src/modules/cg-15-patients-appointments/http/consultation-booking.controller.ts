@@ -26,6 +26,13 @@ export class ConsultationBookingController{
  staffConfirm(@Headers("authorization")bearer:string,@Body()input:unknown){
   return this.bookings.confirmForCenter(bearer,input);
  }
+ @Post("staff/centers/:centerRef/bookings/:bookingRef/cancel")
+ @Header("Cache-Control","private, no-store")
+ staffCancel(@Headers("authorization")bearer:string,
+  @Param("centerRef")centerRef:string,@Param("bookingRef")bookingRef:string,
+  @Body()input:unknown){
+  return this.bookings.cancelForCenter(bearer,centerRef,bookingRef,input);
+ }
  @Get("staff/holds/by-request/:requestKey")
  @Header("Cache-Control","private, no-store")
  staffHoldRequest(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
