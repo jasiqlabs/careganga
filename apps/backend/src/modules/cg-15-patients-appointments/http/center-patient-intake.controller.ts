@@ -12,7 +12,13 @@ export class CenterPatientIntakeController{
  options(@Headers("authorization")bearer:string){
   return this.intake.options(bearer);
  }
- @Post("my-centers/:centerRef/intakes")
+ @Post("my-centers/:centerRef/verify-identity")
+ @Header("Cache-Control","private, no-store")
+ verifyIdentity(@Headers("authorization")bearer:string,
+  @Param("centerRef")centerRef:string,@Body()body:unknown){
+  return this.intake.verifyIdentity(bearer,centerRef,body);
+ }
+
  @Header("Cache-Control","private, no-store")
  create(@Headers("authorization")bearer:string,
   @Param("centerRef")centerRef:string,@Body()body:unknown){
