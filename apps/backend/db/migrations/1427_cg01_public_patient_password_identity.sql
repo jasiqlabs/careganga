@@ -81,4 +81,4 @@ BEGIN
  ) THEN
   RAISE EXCEPTION 'Public patient role requires an active no-grant identity';
  END IF;
-END $cg01$;
+END; $cg01$;
