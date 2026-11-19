@@ -94,15 +94,22 @@ export class ConsultationQueueService{
    await this.scope(tx,actor,center);
    const r=await tx.query<{
     id:string;booking_display_id:string;doctor_id:string;doctor_name:string;booking_state:string;revision:number;
-    start_at:Date;end_at:Date;time_zone:string;first_name:string;last_name:string;
-    visit_id:string|null;queue_token:string|null;queue_state:string|null;visit_version:number|null
+    start_at:Date;end_at:Date;time_zone:string;first_name:string|null;last_name:string|null;
+    consent_granted:boolean;visit_id:string|null;queue_token:string|null;
+    queue_state:string|null;visit_version:number|null
    }>(
     "SELECT a.id,a.booking_display_id,a.doctor_id,a.doctor_name,a.booking_state,a.revision,"+
-    "a.start_at,a.end_at,a.time_zone,p.first_name,p.last_name,"+
+    "a.start_at,a.end_at,a.time_zone,"+
+    "CASE WHEN consent.granted IS TRUE THEN p.first_name ELSE NULL END AS first_name,"+
+    "CASE WHEN consent.granted IS TRUE THEN p.last_name ELSE NULL END AS last_name,"+
+    "COALESCE(consent.granted,false) AS consent_granted,"+
     "q.id AS visit_id,q.queue_token,q.state AS queue_state,q.revision AS visit_version "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
     "LEFT JOIN cg15_visit_queue q ON q.root_realm_id=a.root_realm_id AND q.appointment_id=a.id "+
+    "LEFT JOIN LATERAL (SELECT pc.granted FROM cg15_patient_consent pc "+
+    "WHERE pc.root_realm_id=a.root_realm_id AND pc.patient_id=a.patient_id "+
+    "AND pc.purpose='PATIENT_CARE' ORDER BY pc.revision_no DESC LIMIT 1) consent ON true "+
     "WHERE a.root_realm_id=$1 AND a.center_id=$2 AND "+
     "(a.start_at AT TIME ZONE a.time_zone)::date=$3::date "+
     "AND ($4::timestamptz IS NULL OR "+
@@ -114,7 +121,9 @@ export class ConsultationQueueService{
    return {day:dayRaw,next:r.rows.length>100&&last?
     last.start_at.toISOString()+"|"+last.id:null,items:page
     .map(x=>({appointmentRef:x.id,bookingId:x.booking_display_id,
-      doctorRef:x.doctor_id,doctorName:x.doctor_name,patientName:x.first_name+" "+x.last_name,
+      doctorRef:x.doctor_id,doctorName:x.doctor_name,
+      patientName:x.consent_granted?x.first_name+" "+x.last_name:"Patient consent withdrawn",
+      consentGranted:x.consent_granted,
       startAt:x.start_at.toISOString(),endAt:x.end_at.toISOString(),
       timeZone:x.time_zone,bookingStatus:x.booking_state,bookingVersion:x.revision,
       visitRef:x.visit_id,queueToken:x.queue_token,visitStatus:x.queue_state,visitVersion:x.visit_version}))};
@@ -144,6 +153,9 @@ export class ConsultationQueueService{
     "JOIN cg15_consultation_appointment a "+
     "ON a.root_realm_id=d.root_realm_id AND a.id=d.appointment_id "+
     "WHERE d.root_realm_id=$1 AND a.center_id=$2 AND d.qr_digest=$3 "+
+    "AND (SELECT pc.granted FROM cg15_patient_consent pc "+
+    "WHERE pc.root_realm_id=a.root_realm_id AND pc.patient_id=a.patient_id "+
+    "AND pc.purpose='PATIENT_CARE' ORDER BY pc.revision_no DESC LIMIT 1)=true "+
     "AND d.status='ISSUED' AND d.revoked_at IS NULL "+
     "AND d.source_revision=a.terms_revision "+
     "AND a.booking_state IN('CONFIRMED','ARRIVED','WAITING','IN_CONSULTATION') "+
@@ -195,6 +207,19 @@ export class ConsultationQueueService{
     throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
    if(booking.start_at.getTime()>Date.now()+3*3600000||
     booking.end_at.getTime()<Date.now()-12*3600000)
+    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   // Serialize current patient-care consent with the patient-owned change.
+   // A withdrawn consent blocks new check-in without erasing lawful history.
+   const patient=await tx.query(
+    "SELECT id FROM cg15_patient WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+    [actor.realmId,booking.patient_id]);
+   if(!patient.rowCount)throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   const activeConsent=await tx.query<{granted:boolean}>(
+    "SELECT granted FROM cg15_patient_consent WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 AND purpose='PATIENT_CARE' "+
+    "ORDER BY revision_no DESC LIMIT 1",
+    [actor.realmId,booking.patient_id]);
+   if(activeConsent.rows[0]?.granted!==true)
     throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
    const day=localDay(booking.start_at,booking.time_zone);
    // A single center/date advisory lock serializes the next token across staff.
