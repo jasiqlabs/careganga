@@ -214,6 +214,9 @@ export function FoundationPatientBookings(){
     min-height:0!important;padding:18px!important;border:none!important;
     background:#fff!important;color:#111!important;}
    .cg15-print-scope button{display:none!important;}
+   .cg15-print-scope [aria-label="Protected Foundation appointment cancellation override"]{
+    display:none!important;visibility:hidden!important;
+   }
    .cg15-print-scope p{break-inside:avoid;}
    .cg15-print-scope article{break-inside:avoid;}
   }`}</style>
