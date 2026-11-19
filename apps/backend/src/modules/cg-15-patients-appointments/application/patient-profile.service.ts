@@ -522,16 +522,16 @@ export class PatientProfileService{
   // Meter every attempt in its OWN committed transaction. Rolling back an
   // invalid link must never reset its brute-force counter.
   const attempts=await this.db.query<{attempts:number}>(
-    "INSERT INTO cg15_patient_claim_attempt_throttle("+
+    "INSERT INTO cg15_patient_second_link_attempt("+
     "root_realm_id,account_id,window_started_at,attempts) VALUES($1,$2,now(),1) "+
     "ON CONFLICT(root_realm_id,account_id) DO UPDATE SET "+
-    "attempts=CASE WHEN cg15_patient_claim_attempt_throttle.window_started_at "+
+    "attempts=CASE WHEN cg15_patient_second_link_attempt.window_started_at "+
     "<now()-interval '15 minutes' THEN 1 ELSE "+
-    "LEAST(cg15_patient_claim_attempt_throttle.attempts+1,2147483645) END,"+
+    "LEAST(cg15_patient_second_link_attempt.attempts+1,2147483645) END,"+
     "window_started_at=CASE WHEN "+
-    "cg15_patient_claim_attempt_throttle.window_started_at "+
+    "cg15_patient_second_link_attempt.window_started_at "+
     "<now()-interval '15 minutes' THEN now() ELSE "+
-    "cg15_patient_claim_attempt_throttle.window_started_at END RETURNING attempts",
+    "cg15_patient_second_link_attempt.window_started_at END RETURNING attempts",
    [actor.realmId,actor.accountId]);
   if((attempts.rows[0]?.attempts??7)>6)
    throw new HttpException({code:"CG15_PATIENT_IDENTITY_RATE_LIMIT"},429);
