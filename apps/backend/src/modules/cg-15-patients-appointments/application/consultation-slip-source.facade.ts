@@ -111,8 +111,20 @@ export class ConsultationSlipSourceFacade{
   */
  async activeForToken(rootRef:string,bookingRef:string,version:number){
   const rows=await this.db.query<{status:string;end_at:Date;revision:number}>(
-   "SELECT booking_state AS status,end_at,terms_revision AS revision "+
-   "FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
+   "SELECT a.booking_state AS status,a.end_at,a.terms_revision AS revision "+
+   "FROM cg15_consultation_appointment a "+
+   "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
+   "WHERE a.root_realm_id=$1 AND a.id=$2 AND p.profile_status='VERIFIED' "+
+   "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof "+
+   "WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) "+
+   "AND EXISTS(SELECT 1 FROM cg15_patient_account_link l "+
+   "JOIN account owner ON owner.id=l.account_id AND owner.realm_id=l.root_realm_id "+
+   "WHERE l.root_realm_id=p.root_realm_id AND l.patient_id=p.id "+
+   "AND l.revoked_at IS NULL AND owner.status='ACTIVE') "+
+   "AND (SELECT consent.granted FROM cg15_patient_consent consent "+
+   "WHERE consent.root_realm_id=p.root_realm_id AND consent.patient_id=p.id "+
+   "AND consent.purpose='PATIENT_CARE' "+
+   "ORDER BY consent.revision_no DESC LIMIT 1)=true",
    [rootRef,bookingRef]);
   const row=rows.rows[0];
   return !!row&&row.revision===version&&
