@@ -1,5 +1,5 @@
 import {
- BadRequestException,ConflictException,Inject,Injectable,NotFoundException
+ BadRequestException,ConflictException,HttpException,Inject,Injectable,NotFoundException
 } from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
@@ -223,6 +223,36 @@ export class ConsultationQueueService{
   try{
    await tx.query("BEGIN");open=true;
    await this.scope(tx,actor,center);
+   // Exact assigned-center staff only. Atomic fixed-window account budget is
+   // serialized in PostgreSQL across all application instances, not process
+   // memory. Invalid scans count too; never store the QR, digest or patient.
+   const meter=await tx.query<{attempts:number}>(
+    "INSERT INTO cg15_center_qr_verify_budget("+
+    "root_realm_id,actor_account_id,center_id,window_started_at,attempts) "+
+    "VALUES($1,$2,$3,now(),1) "+
+    "ON CONFLICT(root_realm_id,actor_account_id,center_id) DO UPDATE SET "+
+    "attempts=CASE WHEN cg15_center_qr_verify_budget.window_started_at "+
+    "<=now()-interval '15 minutes' THEN 1 ELSE "+
+    "LEAST(cg15_center_qr_verify_budget.attempts+1,2147483645) END,"+
+    "limited_requests=CASE WHEN cg15_center_qr_verify_budget.window_started_at "+
+    "<=now()-interval '15 minutes' THEN 0 ELSE "+
+    "LEAST(cg15_center_qr_verify_budget.limited_requests+"+
+    "CASE WHEN cg15_center_qr_verify_budget.attempts>=24 THEN 1 ELSE 0 END,"+
+    "2147483645) END,"+
+    "last_rejected_at=CASE WHEN cg15_center_qr_verify_budget.window_started_at "+
+    "<=now()-interval '15 minutes' THEN NULL "+
+    "WHEN cg15_center_qr_verify_budget.attempts>=24 THEN now() ELSE "+
+    "cg15_center_qr_verify_budget.last_rejected_at END,"+
+    "window_started_at=CASE WHEN cg15_center_qr_verify_budget.window_started_at "+
+    "<=now()-interval '15 minutes' THEN now() ELSE "+
+    "cg15_center_qr_verify_budget.window_started_at END "+
+    "RETURNING attempts",
+    [actor.realmId,actor.accountId,center]);
+   if((meter.rows[0]?.attempts??25)>24){
+    // Commit ONLY the abuse budget; no appointment lookup or patient access.
+    await tx.query("COMMIT");open=false;
+    throw new HttpException({code:"CG15_QUEUE_RATE_LIMIT"},429);
+   }
    const r=await tx.query<{
     id:string;booking_display_id:string;patient_display_name:string;
     doctor_name:string;start_at:Date;end_at:Date;time_zone:string;
@@ -244,6 +274,10 @@ export class ConsultationQueueService{
     "AND a.end_at<now()+interval '30 days' LIMIT 1",
     [actor.realmId,center,tokenHash]);
    const item=r.rows[0];
+   await tx.query(
+    "INSERT INTO cg15_center_qr_verification_audit("+
+    "root_realm_id,actor_account_id,center_id,outcome) VALUES($1,$2,$3,$4)",
+    [actor.realmId,actor.accountId,center,item?"VALID":"DENIED"]);
    await tx.query("COMMIT");open=false;
    if(!item)return {valid:false};
    return {valid:true,bookingRef:item.id,bookingId:item.booking_display_id,
