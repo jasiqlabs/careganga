@@ -13,6 +13,12 @@ export class PatientProfileController{
  @Get("me")
  @Header("Cache-Control","private, no-store")
  me(@Headers("authorization")token:string){return this.patients.me(token);}
+ @Post("me/assisted-booking-code")
+ @Header("Cache-Control","private, no-store")
+ beginAssistedBooking(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.patients.beginAssistedBooking(token,body);
+ }
+
  @Post("me/claim-intake")
  @Header("Cache-Control","private, no-store")
  claimCenterIntake(@Headers("authorization")token:string,@Body()body:unknown){
