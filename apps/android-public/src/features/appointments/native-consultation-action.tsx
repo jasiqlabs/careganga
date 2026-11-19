@@ -7,7 +7,7 @@ const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Hold={holdRef:string;status:string;expiresAt:string;
  consultationFeeMinor:string;feeVersion:number};
-type Booking={bookingId:string;startAt:string;bookingStatus:string;
+type Booking={bookingId:string;startAt:string;centerRef:string;version:number;bookingStatus:string;
  consultationFeeMinor:string;collectionStatus:string};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
@@ -138,11 +138,17 @@ export function NativeConsultationAction(p:Props){
     // Rescheduling is identified by the original booking ref; never infer
     // its outcome from a different doctor's appointment or a cached list.
     const current=await original<Booking>("me/"+p.reschedule.bookingRef,t);
-    if(current&&current.startAt===p.startAt){
+    if(current&&current.startAt===p.startAt&&current.centerRef===p.centerRef){
      setBooking(current);setMessage("Your original booking reflects the selected new time.");
      setUncertain(false);return;
     }
-    setMessage("The original booking does not yet show the new time. Check again before retrying.");
+    if(current?.bookingStatus==="CONFIRMED"&&
+     current.version===p.reschedule.expectedVersion){
+     setUncertain(false);
+     setMessage("The original booking is unchanged. Retrying uses the same original request key.");
+     return;
+    }
+    setMessage("The original booking has changed or cannot be checked. Refresh before taking another action.");
     return;
    }
    setMessage("The original booking reference is unavailable. Refresh the selected time.");
