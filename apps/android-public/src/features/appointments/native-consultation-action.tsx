@@ -21,10 +21,11 @@ async function post<T>(path:string,data:Record<string,unknown>,token:string):Pro
   headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
   body:JSON.stringify(data)});
  const result:unknown=await r.json().catch(()=>null);
- if(!r.ok)throw Error(result&&typeof result==="object"&&"message" in result&&
+ if(!r.ok)throw Object.assign(new Error(result&&typeof result==="object"&&"message" in result&&
   typeof result.message==="string"?result.message:
   r.status===401?"Sign in to your patient account to continue.":
-  "The reservation outcome is uncertain. Check your appointments.");
+  r.status===409?"The selected time or fee changed. Refresh the original schedule.":
+  "The reservation outcome is uncertain. Check your appointments."),{status:r.status});
  return result as T;
 }
 async function original<T>(path:string,token:string):Promise<T|null>{
@@ -44,7 +45,7 @@ export function NativeConsultationAction(p:Props){
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
  const [staffBusy,setStaffBusy]=useState(false);
- const [staffCode,setStaffCode]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
+ const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const label=(s:string,run:()=>void)=>(
@@ -55,7 +56,7 @@ export function NativeConsultationAction(p:Props){
  );
  async function token(){
   const t=await SecureStore.getItemAsync(KEY);
-  if(!t)throw Error("Sign in using My Patient Profile on CareGanga before booking.");
+  if(!t)throw Object.assign(new Error("Sign in using My Patient Profile on CareGanga before booking."),{status:401});
   return t;
  }
  async function reschedule(){
@@ -71,7 +72,9 @@ export function NativeConsultationAction(p:Props){
     paymentMode:"PAY_AT_CENTER"},t);
    setBooking(result);setMessage("Your original appointment was rescheduled, with payment due at the center.");
   }catch(e){
-   setUncertain(true);setMessage(e instanceof Error?e.message:
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage(e instanceof Error?e.message:
     "The reschedule result is uncertain. Check original booking.");
   }finally{setBusy(false);}
  }
@@ -89,7 +92,9 @@ export function NativeConsultationAction(p:Props){
    setHold(result);setUncertain(false);
    setMessage("Time reserved temporarily. Confirm before it expires.");
   }catch(e){
-   setUncertain(true);setMessage(e instanceof Error?e.message:"Reservation status is uncertain.");
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage(e instanceof Error?e.message:"Reservation status is uncertain.");
   }finally{setBusy(false);}
  }
  async function confirm(){
@@ -107,7 +112,9 @@ export function NativeConsultationAction(p:Props){
     paymentMode:"PAY_AT_CENTER"},t);
    setBooking(result);setMessage("Appointment confirmed. Pay at your healthcare center.");
   }catch(e){
-   setUncertain(true);setMessage(e instanceof Error?e.message:"Confirmation is uncertain.");
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage(e instanceof Error?e.message:"Confirmation is uncertain.");
   }finally{setBusy(false);}
  }
  async function authorizeCenterStaff(){
@@ -128,7 +135,8 @@ export function NativeConsultationAction(p:Props){
      !("authorizationCode" in data)||typeof data.authorizationCode!=="string"||
      !("expiresAt" in data)||typeof data.expiresAt!=="string")
      throw Error("The receptionist code cannot be confirmed.");
-    setStaffCode({authorizationCode:data.authorizationCode,expiresAt:data.expiresAt});
+    setStaffCode({centerRef:p.centerRef,authorizationCode:data.authorizationCode,
+     expiresAt:data.expiresAt});
     setStaffMessage("One-time booking consent was issued for this exact center.");
   }catch(e){setStaffMessage(e instanceof Error?e.message:
    "Patient verification or center authorization is unavailable.");}
