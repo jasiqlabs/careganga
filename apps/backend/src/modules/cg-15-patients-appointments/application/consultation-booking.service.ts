@@ -399,7 +399,7 @@ export class ConsultationBookingService{
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
- async confirm(bearer:string,input:unknown){
+ async confirm(bearer:string,input:unknown,assisted=false){
   const actor=await this.identity.verifySession(bearer);
   const v=body(input,["requestKey","holdRef","acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
   const key=uuid(v.requestKey),id=uuid(v.holdRef);
@@ -411,12 +411,14 @@ export class ConsultationBookingService{
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
-   const holdSource=await tx.query<{doctor_id:string}>(
-    "SELECT doctor_id FROM cg15_consultation_hold "+
+   const holdSource=await tx.query<{doctor_id:string;center_id:string}>(
+    "SELECT doctor_id,center_id FROM cg15_consultation_hold "+
     "WHERE root_realm_id=$1 AND id=$2 AND created_by_account=$3",
     [actor.realmId,id,actor.accountId]);
    if(!holdSource.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    await this.doctorLock(tx,actor,holdSource.rows[0].doctor_id);
+   if(assisted)await this.centerScope.assertCurrent(
+    tx,actor,holdSource.rows[0].center_id,"health.patients.intake");
    const old=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
     "AND created_by_account=$2 AND confirmation_key=$3 FOR UPDATE",
@@ -435,8 +437,10 @@ export class ConsultationBookingService{
    if(!hold)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    if(hold.status!=="HELD"||ms(hold.expires_at)<=Date.now())
     throw new ConflictException({code:"CG15_BOOKING_HOLD_EXPIRED"});
+   const staffPatient=assisted?
+    await this.currentAssistedPatient(tx,actor,hold.patient_id):undefined;
    const current=await this.eligible(tx,actor,hold.doctor_id,hold.center_id,
-    hold.start_at,hold.end_at);
+    hold.start_at,hold.end_at,staffPatient);
    if(current.patient.id!==hold.patient_id||current.source.association_ref!==hold.association_id||
     current.slot.scheduleId!==hold.schedule_id||
     current.slot.revisionId!==hold.schedule_revision_id)
