@@ -9,12 +9,16 @@ const money=(minor:string)=>new Intl.NumberFormat("en-IN",{style:"currency",
  currency:"INR"}).format(Number(minor)/100);
 export function MyConsultationHistory(){
  const [items,setItems]=useState<Booking[]>([]);
+ const [statusFilter,setStatusFilter]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [nextCursor,setNextCursor]=useState<string|null>(null),[moreBusy,setMoreBusy]=useState(false);
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const keys=useRef<Map<string,string>>(new Map());
  const refresh=useCallback(async()=>{
-  const r=await fetch("/api/consultations/me",{cache:"no-store",credentials:"same-origin"});
+  const query=new URLSearchParams();
+  if(statusFilter)query.set("status",statusFilter);
+  const r=await fetch("/api/consultations/me"+(query.size?"?"+query.toString():""),{
+   cache:"no-store",credentials:"same-origin"});
   const data:unknown=await r.json().catch(()=>null);
   if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
    typeof data.message==="string"?data.message:"Your appointment history cannot be confirmed.");
@@ -22,9 +26,10 @@ export function MyConsultationHistory(){
    throw Error("Your appointments could not be verified.");
   setItems((data as Result).items);setNextCursor((data as Result).next);
   setUncertain(false);
- },[]);
+ },[statusFilter]);
  useEffect(()=>{
   let active=true;
+  setLoading(true);setItems([]);setNextCursor(null);
   void refresh().catch(e=>{if(active)setNotice(e instanceof Error?e.message:
    "Your appointments are temporarily unavailable.");})
    .finally(()=>{if(active)setLoading(false);});
@@ -34,8 +39,10 @@ export function MyConsultationHistory(){
   if(moreBusy||busy||!nextCursor)return;
   setMoreBusy(true);setNotice("");
   try{
-   const r=await fetch("/api/consultations/me?after="+
-    encodeURIComponent(nextCursor),{cache:"no-store",credentials:"same-origin"});
+   const query=new URLSearchParams({after:nextCursor});
+   if(statusFilter)query.set("status",statusFilter);
+   const r=await fetch("/api/consultations/me?"+query.toString(),{
+    cache:"no-store",credentials:"same-origin"});
    const raw:unknown=await r.json().catch(()=>null);
    if(!r.ok||!raw||typeof raw!=="object"||!("items" in raw)||
     !Array.isArray(raw.items))
@@ -75,13 +82,26 @@ export function MyConsultationHistory(){
  return <section aria-label="My consultations" style={{marginTop:24}}>
   <h2>My consultations</h2>
   <p>Only consultations linked to this patient account are shown. A booking is not a receipt.</p>
+  <label>Filter my appointment status
+   <select value={statusFilter} disabled={busy||uncertain}
+    onChange={e=>setStatusFilter(e.target.value)}>
+    <option value="">All appointments</option>
+    <option value="CONFIRMED">Confirmed</option>
+    <option value="ARRIVED">Checked in</option>
+    <option value="WAITING">Waiting</option>
+    <option value="IN_CONSULTATION">In consultation</option>
+    <option value="COMPLETED">Completed</option>
+    <option value="NO_SHOW">Not attended</option>
+    <option value="CANCELLED">Cancelled</option>
+   </select>
+  </label>
   {loading&&<p>Checking your current appointment history…</p>}
   {!!notice&&<p role="alert" aria-live="polite">{notice}</p>}
   <button disabled={busy} type="button" onClick={()=>{
    setLoading(true);void refresh().catch(e=>setNotice(String(e)))
     .finally(()=>setLoading(false));
   }}>Refresh my appointments</button>
-  {!loading&&items.length===0&&<p>No confirmed consultations were found for this account.</p>}
+  {!loading&&items.length===0&&<p>No appointments match the selected status.</p>}
   <div style={{display:"grid",gap:12}}>
    {items.map(a=><article key={a.bookingRef}
     style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
