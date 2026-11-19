@@ -80,6 +80,12 @@ export class ConsultationBookingController{
   @Param("bookingRef")ref:string,@Body()body:unknown){
   return this.bookings.reschedule(bearer,ref,body);
  }
+ @Get("me/:bookingRef/reschedule/by-request/:requestKey")
+ @Header("Cache-Control","private, no-store")
+ rescheduleByRequest(@Headers("authorization")bearer:string,
+  @Param("bookingRef")ref:string,@Param("requestKey")key:string){
+  return this.bookings.rescheduleByRequest(bearer,ref,key);
+ }
  @Get("me")
  @Header("Cache-Control","private, no-store")
  mine(@Headers("authorization")bearer:string,@Query("limit")limit?:string,
