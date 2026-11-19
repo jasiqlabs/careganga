@@ -78,6 +78,15 @@ const checks=[
   s.web.includes('"registration","POST"')&&
   s.web.includes('"me","PATCH"')&&
   s.web.includes('"me/consent","POST"')],
+ ["Web uses original CG01 contact verify start/confirm before registration",
+  s.webProxy.includes('route==="mobile/confirm"')&&
+  s.web.includes('"mobile/confirm","POST"')&&
+  s.web.includes("!contact?.verified")],
+ ["native uses original CG01 mobile proof, never client-side fake VERIFIED",
+  s.native.includes('"/api/identity/mobile/verify/start"')&&
+  s.native.includes('"/api/identity/mobile/verify/confirm"')&&
+  s.native.includes("r.data?.status!==\"VERIFIED\"")&&
+  s.native.includes("!contact?.verified")],
  ["Web reuses registration key for uncertain same payload",
   s.web.includes("pendingRegistration.current.key")&&
   s.web.includes("pendingRegistration.current?.digest!==digest")],
