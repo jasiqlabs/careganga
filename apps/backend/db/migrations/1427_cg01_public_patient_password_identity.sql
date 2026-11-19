@@ -11,7 +11,7 @@ BEGIN
   ON CONFLICT(realm_id,normalized_name) DO NOTHING;
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg01_root_patient_public_role
  AFTER INSERT ON access_realm FOR EACH ROW
  EXECUTE FUNCTION cg01_ensure_patient_public_role();
@@ -31,7 +31,7 @@ BEGIN
   RAISE EXCEPTION 'Public patient role cannot be edited';
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg01_patient_public_role_frozen BEFORE UPDATE OR DELETE
  ON role FOR EACH ROW EXECUTE FUNCTION cg01_patient_public_role_immutable();
 
@@ -43,7 +43,7 @@ BEGIN
   RAISE EXCEPTION 'Public patient accounts cannot receive staff capability grants';
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg01_patient_public_role_grant_denied
  BEFORE INSERT OR UPDATE ON role_grant FOR EACH ROW
  EXECUTE FUNCTION cg01_patient_public_role_no_grant();
