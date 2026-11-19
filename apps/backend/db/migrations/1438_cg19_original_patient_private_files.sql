@@ -53,6 +53,7 @@ CREATE TABLE cg19_patient_private_file(
  created_at timestamptz NOT NULL DEFAULT now(),
  revoked_at timestamptz,
  PRIMARY KEY(realm_id,id),
+ UNIQUE(realm_id,id,patient_id),
  UNIQUE(realm_id,intent_id),
  FOREIGN KEY(realm_id,intent_id,patient_id)
   REFERENCES cg19_patient_file_intent(realm_id,id,patient_id) ON DELETE RESTRICT,
@@ -74,12 +75,12 @@ CREATE TABLE cg19_patient_file_event(
  PRIMARY KEY(realm_id,id),
  FOREIGN KEY(realm_id,intent_id,patient_id)
   REFERENCES cg19_patient_file_intent(realm_id,id,patient_id) ON DELETE RESTRICT,
- FOREIGN KEY(realm_id,file_id)
-  REFERENCES cg19_patient_private_file(realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(realm_id,file_id,patient_id)
+  REFERENCES cg19_patient_private_file(realm_id,id,patient_id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_account_id,realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- CHECK((file_id IS NULL AND action='INTENT_CREATED') OR
-  (file_id IS NOT NULL AND action<>'INTENT_CREATED'))
+ CHECK((file_id IS NULL AND action IN('INTENT_CREATED','UPLOAD_REJECTED')) OR
+  (file_id IS NOT NULL AND action IN('UPLOAD_VERIFIED','FILE_REVOKED')))
 );
 CREATE INDEX ix_cg19_patient_file_events ON cg19_patient_file_event
  (realm_id,patient_id,created_at DESC,id DESC);
@@ -105,3 +106,17 @@ CREATE TRIGGER cg19_patient_scanned_file_frozen BEFORE UPDATE
  EXECUTE FUNCTION cg19_patient_file_identity_frozen();
 COMMENT ON TABLE cg19_patient_private_file IS
  'Patient-owned, scanner-verified private object metadata in existing CG19 storage; never a diagnosis or clinician-issued prescription';
+
+-- Protect upload identity even when retries change only transport status.
+CREATE FUNCTION cg19_patient_intent_identity_frozen() RETURNS trigger
+ LANGUAGE plpgsql AS $$
+BEGIN
+ IF (to_jsonb(NEW)-'status'-'storage_reservation_ref'-'updated_at')
+    IS DISTINCT FROM (to_jsonb(OLD)-'status'-'storage_reservation_ref'-'updated_at') THEN
+  RAISE EXCEPTION 'Patient upload source identity cannot change';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg19_patient_intent_frozen BEFORE UPDATE
+ ON cg19_patient_file_intent FOR EACH ROW
+ EXECUTE FUNCTION cg19_patient_intent_identity_frozen();
