@@ -97,7 +97,10 @@ export function MyConsultationHistory(){
        onClick={()=>void cancel(a)}>Cancel appointment</button>
       <Link href={"/health-network/doctors/"+encodeURIComponent(a.doctorRef)+
        "/schedule?reschedule="+encodeURIComponent(a.bookingRef)+
-       "&version="+a.version}>Reschedule — choose new time</Link>
+       "&version="+a.version}>Reschedule — keep doctor</Link>
+      <Link href={"/health-network?tab=doctors&reschedule="+
+       encodeURIComponent(a.bookingRef)+"&version="+a.version}>
+       Change doctor or time</Link>
      </>}
      <Link href={"/patients/me/appointments/"+encodeURIComponent(a.bookingRef)}>
       Appointment details</Link>
