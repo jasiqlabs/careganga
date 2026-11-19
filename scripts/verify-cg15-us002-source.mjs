@@ -12,6 +12,8 @@ const s={
  module:read("apps/backend/src/modules/cg-15-patients-appointments/patients-appointments.module.ts"),
  throttle:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-public-request-throttle.service.ts"),
  doctors:read("apps/web/src/app/health-network/doctors/[doctorRef]/page.tsx"),
+ healthcareEditorial:read("apps/web/src/features/cms-public-content/cms-editorial-route.tsx"),
+ cmsPage:read("apps/web/src/features/cms-public-content/cms-public-page.tsx"),
  publicWeb:read("apps/web/src/app/health-network/doctors/[doctorRef]/schedule/page.tsx"),
  publicAndroid:read("apps/android-public/src/features/health-network/doctor-schedule-preview.tsx"),
  nativeEntry:read("apps/android-public/src/features/health-network/public-healthcare-directory.tsx"),
@@ -76,6 +78,15 @@ const checks=[
   s.publicWeb.includes("slot-first?doctorRef=")&&
   s.publicWeb.includes("not live booking availability")&&
   !s.publicWeb.includes('>Confirm appointment</button>')],
+ ["source: published CG18 healthcare landing links to real CG15 consultation action only after approval",
+  s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED")notFound()')&&
+  s.healthcareEditorial.includes('if(page.state!=="PUBLISHED")return')&&
+  s.healthcareEditorial.includes('slug==="healthcare"')&&
+  s.healthcareEditorial.includes('href="/health-network?tab=doctors"')&&
+  s.healthcareEditorial.includes('book an appointment')&&
+  s.cmsPage.includes("{children}")&&
+  s.doctors.includes("View available times & book an in-person appointment")&&
+  s.publicWeb.includes("<PatientBookingAction")],
  ["source: native client uses original Public Android verified doctor",s.nativeEntry.includes("DoctorSchedulePreview")&&
   s.nativeEntry.includes('selection?.kind==="doctor"')&&
   s.publicAndroid.includes("EXPO_PUBLIC_API_URL")],
