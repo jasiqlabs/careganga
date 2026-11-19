@@ -165,7 +165,10 @@ CREATE INDEX ix_cg15_schedule_event_history
 -- The exact proposed doctor, center, dates, reason and digest never change.
 CREATE FUNCTION cg15_exception_source_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF TG_OP='DELETE' OR NEW.id IS DISTINCT FROM OLD.id OR
+ IF TG_OP='DELETE' THEN
+  RAISE EXCEPTION 'Original doctor schedule exception cannot be deleted';
+ END IF;
+ IF NEW.id IS DISTINCT FROM OLD.id OR
   NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
   NEW.schedule_id IS DISTINCT FROM OLD.schedule_id OR
   NEW.doctor_id IS DISTINCT FROM OLD.doctor_id OR
@@ -182,8 +185,33 @@ BEGIN
    NEW.original_case_ref IS DISTINCT FROM OLD.original_case_ref) OR
   (OLD.approved_case_ref IS NOT NULL AND
    NEW.approved_case_ref IS DISTINCT FROM OLD.approved_case_ref) OR
-  NEW.version<>OLD.version+1 THEN
+  NEW.version<>OLD.version+1 OR NEW.updated_at<OLD.updated_at THEN
   RAISE EXCEPTION 'Original doctor schedule exception cannot be rewritten';
+ END IF;
+ IF NEW.state IS DISTINCT FROM OLD.state AND NOT (
+    OLD.kind='LEAVE' AND OLD.state='PENDING' AND NEW.state='ACTIVE'
+      AND NEW.original_case_ref IS NOT NULL
+      AND NEW.approved_case_ref=NEW.original_case_ref
+   OR NEW.state='CANCELLED' AND (
+      OLD.kind='LEAVE' AND OLD.state='PENDING'
+      OR OLD.kind<>'LEAVE' AND OLD.state='ACTIVE'
+   )
+ ) THEN
+  RAISE EXCEPTION 'Invalid healthcare schedule exception transition';
+ END IF;
+ IF NEW.approved_case_ref IS DISTINCT FROM OLD.approved_case_ref AND NOT (
+   OLD.approved_case_ref IS NULL AND NEW.kind='LEAVE'
+   AND OLD.state='PENDING' AND NEW.state='ACTIVE'
+   AND NEW.approved_case_ref=NEW.original_case_ref
+ ) THEN
+  RAISE EXCEPTION 'Approved doctor leave source cannot be rewritten';
+ END IF;
+ IF NEW.original_case_ref IS DISTINCT FROM OLD.original_case_ref AND NOT (
+   OLD.kind='LEAVE' AND OLD.state='PENDING'
+   AND OLD.original_case_ref IS NULL AND NEW.original_case_ref IS NOT NULL
+   AND NEW.state='PENDING' AND NEW.approved_case_ref IS NULL
+ ) THEN
+  RAISE EXCEPTION 'Original doctor leave case may be linked only once';
  END IF;
  RETURN NEW;
 END $$;
