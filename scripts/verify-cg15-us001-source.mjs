@@ -34,6 +34,19 @@ const s={
  tracker:read("specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md")
 };
 const tests=[
+ ["source: 1420 migration has one valid exception/command/event definition",[
+  "cg15_schedule_exception(","cg15_schedule_command(","cg15_schedule_event("
+ ].every(t=>s.schema.split("CREATE TABLE "+t).length===2)&&
+  s.schema.includes("source_digest char(64) NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}$')")&&
+  s.schema.includes("version integer NOT NULL CHECK(version BETWEEN 1 AND 2147483646)")],
+ ["source: 1420 all PLPGSQL dollar delimiters balanced",(
+  s.schema.match(/AS \\$\\$/g)??[]).length===3&&
+  (s.schema.match(/END \\$\\$;/g)??[]).length===3],
+ ["source: original leave transitions fail closed at database boundary",
+  s.schema.includes("NEW.state IS DISTINCT FROM OLD.state")&&
+  s.schema.includes("NEW.approved_case_ref=NEW.original_case_ref")&&
+  s.schema.includes("Original doctor leave case may be linked only once")],
+
  ["source: no copied doctor/provider",s.schema.includes("REFERENCES health_doctor_center(root_realm_id,doctor_id,center_id,id)")&&
   !s.schema.includes("CREATE TABLE cg15_doctor(")],
  ["source: center and doctor exact foreign key",s.schema.includes("UNIQUE(root_realm_id,doctor_id,center_id,id)")&&
