@@ -11,9 +11,9 @@ type Stats={totalPatients:number;activePatients:number;totalBookings:number;
  todayBookings:number;completed:number;pending:number};
 type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[];
  states:StateChoice[];districts:DistrictChoice[];centerTypes:string[];
- geographyComplete:boolean};
+ geographyComplete:boolean;centerChoicesComplete:boolean};
 type Query={status:string;centerRef:string;after:string;day:string;
- stateRef:string;districtRef:string;centerType:string;search:string};
+ stateRef:string;districtRef:string;centerType:string;search:string;centerSearch:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
  consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
@@ -40,8 +40,9 @@ const centerTime=(iso:string,zone:string)=>{
 };
 export function FoundationPatientBookings(){
  const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",
- stateRef:"",districtRef:"",centerType:"",search:""});
+ stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});
  const [searchDraft,setSearchDraft]=useState("");
+ const [centerDraft,setCenterDraft]=useState("");
  const [result,setResult]=useState<Result|null>(null);
  const [selected,setSelected]=useState("");
  const [history,setHistory]=useState<OriginalHistory|null>(null);
@@ -57,6 +58,7 @@ export function FoundationPatientBookings(){
   if(q.districtRef)params.set("districtRef",q.districtRef);
   if(q.centerType)params.set("centerType",q.centerType);
   if(q.search)params.set("search",q.search);
+  if(q.centerSearch)params.set("centerSearch",q.centerSearch);
   if(q.after)params.set("after",q.after);
   params.set("limit","20");
   const r=await fetch("/api/appointments/admin/patients?"+params.toString(),{
@@ -144,8 +146,11 @@ export function FoundationPatientBookings(){
   </div>
   <section className="form-section" aria-label="Source-backed booking filters">
    {!result?.geographyComplete&&result&&
-    <p role="status">Location choices are too numerous to list safely.
-     Use the current booking list while a narrower, verified location search is configured.</p>}
+    <p role="status">The original location categories exceed the safe single-response limit.
+     Narrow by a specific center name to find an existing booking.</p>}
+   {!result?.centerChoicesComplete&&result&&
+    <p role="status">More than 100 healthcare centers match.
+     Select a state, district or facility type, or search by center name.</p>}
    <form onSubmit={e=>{e.preventDefault();
     const value=searchDraft.trim();
     if(value&&value.length<2){setMessage("Enter at least two characters to search.");return;}
@@ -176,6 +181,17 @@ export function FoundationPatientBookings(){
        {x.districtName}</option>)}
      </select>
     </label>
+    <form onSubmit={e=>{e.preventDefault();
+      update({centerSearch:centerDraft.trim(),centerRef:""});}}
+     style={{display:"flex",gap:8,alignItems:"end",flexWrap:"wrap"}}>
+     <label>Find healthcare center
+      <input type="search" value={centerDraft} maxLength={60}
+       onChange={e=>setCenterDraft(e.target.value)}
+       placeholder="Center name"/></label>
+     <button type="submit">Filter centers</button>
+     <button type="button" onClick={()=>{setCenterDraft("");
+      update({centerSearch:"",centerRef:""});}}>Clear center search</button>
+    </form>
     <label>Healthcare center
      <select value={query.centerRef} onChange={e=>update({centerRef:e.target.value})}>
       <option value="">All centers</option>
@@ -203,8 +219,8 @@ export function FoundationPatientBookings(){
      <input type="date" value={query.day}
       onChange={e=>update({day:e.target.value})}/>
     </label>
-    <button type="button" onClick={()=>{setSearchDraft("");setMessage("");setQuery({status:"",centerRef:"",after:"",day:"",
-      stateRef:"",districtRef:"",centerType:"",search:""});}}>
+    <button type="button" onClick={()=>{setSearchDraft("");setCenterDraft("");setMessage("");setQuery({status:"",centerRef:"",after:"",day:"",
+      stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});}}>
      Reset filters</button>
    </div>
   </section>
