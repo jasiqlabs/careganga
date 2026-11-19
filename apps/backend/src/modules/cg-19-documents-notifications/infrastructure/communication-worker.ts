@@ -56,22 +56,46 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       await this.periodic();
     }catch{/* Durable replay cursor and due rows retain recovery state. */}
   }
+  /**
+   * Recover original committed appointment/queue events for ALL Foundation
+   * roots, including those missed while LISTEN was disconnected. The global
+   * pending-only index makes idle work one bounded lookup rather than a
+   * center/doctor/root poll. Each root still uses the original CG19
+   * transaction, SKIP LOCKED source claim and source-key deduplication.
+   */
+  private async reconcilePendingAppointments(){
+    const due=await this.db.query<{realm_id:string}>(`
+      SELECT realm_id FROM cg19_appointment_event_outbox
+      WHERE state='PENDING'
+      ORDER BY recorded_at,realm_id,event_id LIMIT 64
+    `);
+    const roots=[...new Set(due.rows.map(row=>row.realm_id))].slice(0,8);
+    for(const root of roots){
+      for(let batch=0;batch<4&&!this.stopped;batch++){
+        const captured=await this.source.captureCommittedAppointments(root);
+        if(!captured.more)break;
+      }
+    }
+  }
   private async periodic(){
     if(this.busy||this.stopped)return;
     this.busy=true;
     try{
-      // One bounded durable source check per minute recovers a lost LISTEN
-      // hint or more than 1000 events after a long outage.
+      // Preserve the original CG03 decision cursor and bounded recovery.
+      // Appointment/visit reconciliation is global; rootRef is NOT sufficient
+      // because one process can serve multiple Foundation roots.
       if(this.rootRef){
         for(let batch=0;batch<4&&!this.stopped;batch++){
           const decisions=await this.source.captureCommittedDecisions(this.rootRef);
-          const appointments=await this.source.captureCommittedAppointments(this.rootRef);
-          if(!decisions.more&&!appointments.more)break;
+          if(!decisions.more)break;
         }
       }
+      await this.reconcilePendingAppointments();
+      // CG19's existing global due-only delivery/notice processing is separate
+      // from appointment source capture; no provider send without a due claim.
       await this.delivery.tick();
     }
-    catch{/* Fail closed: no fabricated delivered state or hidden queue success. */}
+    catch{/* Durable source rows remain PENDING after an unsuccessful attempt. */}
     finally{this.busy=false;}
   }
   async onModuleDestroy(){
