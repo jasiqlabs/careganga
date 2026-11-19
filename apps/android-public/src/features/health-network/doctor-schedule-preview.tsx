@@ -167,7 +167,9 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
      <Text style={style.help}>{c.centerName}, {c.address}, {c.pinCode}.
       {money(c.consultationFeeMinor)}. {c.timeZone}.</Text>
      {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&
-      <NativeConsultationAction doctorRef={doctorRef} centerRef={c.centerRef}
+      <NativeConsultationAction key={[doctorRef,c.centerRef,c.startAt,c.endAt,
+                c.consultationFeeMinor,c.consultationFeeVersion].join("|")}
+                 doctorRef={doctorRef} centerRef={c.centerRef}
        doctorName={options?.doctorName??"Doctor"} centerName={c.centerName}
        startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
        feeMinor={c.consultationFeeMinor} feeVersion={c.consultationFeeVersion} reschedule={reschedule}/>}
