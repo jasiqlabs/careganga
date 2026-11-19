@@ -128,14 +128,32 @@ export class PublicPatientSignupService{
   await this.attempt(remote,digits,key,"finish");
   const signature=hash(key,JSON.stringify({safeFirst,safeLast,digits,
    normalizedEmail,password,code}));
+  // Keep external SMS verification and password hashing OUTSIDE PostgreSQL
+  // transactions; recheck the idempotency key under a row lock before insert.
+  const realm=await this.db.query<{id:string}>(
+   "SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT'");
+  if(!realm.rows[0])throw new ServiceUnavailableException({
+   code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+  const root=realm.rows[0].id;
+  const replay=await this.db.query<Command>(
+   "SELECT request_digest,account_id FROM cg01_public_patient_signup_command "+
+   "WHERE root_realm_id=$1 AND request_key=$2",
+   [root,requestKey]);
+  if(replay.rows[0]){
+   if(replay.rows[0].request_digest!==signature)
+    throw new ConflictException({code:"CG01_PUBLIC_SIGNUP_CONFLICT"});
+   if(replay.rows[0].account_id)
+    return {status:"ACCOUNT_CREATED" as const,
+     nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
+  }
+  const check=await this.provider("VerificationCheck",
+   new URLSearchParams({To:"+91"+digits,Code:code}));
+  if(check!=="approved")
+   throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_CODE_INVALID"});
+  const passwordHash=await hashPassword(password);
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
-   const realm=await tx.query<{id:string}>(
-    "SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT'");
-   if(!realm.rows[0])throw new ServiceUnavailableException({
-    code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
-   const root=realm.rows[0].id;
    await tx.query(
     "INSERT INTO cg01_public_patient_signup_command(root_realm_id,request_key,request_digest) "+
     "VALUES($1,$2,$3) ON CONFLICT(root_realm_id,request_key) DO NOTHING",
@@ -159,20 +177,14 @@ export class PublicPatientSignupService{
     "FOR SHARE OF r",[root]);
    if(!role.rows[0])throw new ServiceUnavailableException({
     code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
-   // Possession of the number is proven BEFORE inserting a login identity.
-   // Replays of a committed same-key source return above without reusing a
-   // consumed Twilio code, while a new command must pass provider proof.
-   const check=await this.provider("VerificationCheck",
-    new URLSearchParams({To:"+91"+digits,Code:code}));
-   if(check!=="approved")
-    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_CODE_INVALID"});
+   // Verified SMS proof was obtained before BEGIN. Concurrent requests
+   // with the same key are reconciled by the FOR UPDATE replay above.
    const newAccount=await tx.query<{id:string}>(
     "INSERT INTO account(realm_id,display_name,normalized_mobile,"+
     "normalized_email,contact_phone,contact_phone_verified_at,status) "+
     "VALUES($1,$2,$3,$4,$5,now(),'ACTIVE') RETURNING id",
     [root,safeFirst+" "+safeLast,digits,normalizedEmail,"+91"+digits]);
    const id=newAccount.rows[0].id;
-   const passwordHash=await hashPassword(password);
    await tx.query(
     "INSERT INTO identity_credential(account_id,password_hash) VALUES($1,$2)",
     [id,passwordHash]);
