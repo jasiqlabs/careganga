@@ -138,6 +138,73 @@ export function FoundationPatientBookings(){
   (!query.stateRef||c.stateRef===query.stateRef)&&
   (!query.districtRef||c.districtRef===query.districtRef)&&
   (!query.centerType||c.centerType===query.centerType))??[];
+ async function refreshOverrideSource(){
+  setLoading(true);setOverrideMessage("");
+  try{
+   const latest=await load(query);
+   setResult(latest);
+   setSelected(old=>latest.items.some(x=>x.bookingRef===old)?
+    old:latest.items[0]?.bookingRef??"");
+   setOverrideUncertain(false);
+   setOverridePassword("");setOverrideAcknowledged(false);
+   setMessage("Current original appointment list checked. Review the selected booking again.");
+  }catch(e){
+   setOverrideMessage(e instanceof Error?e.message:
+    "Current original appointment could not be checked.");
+   setOverrideUncertain(true);
+  }finally{setLoading(false);}
+ }
+ async function applyFoundationOverride(){
+  const item=selectedBooking;
+  if(!item||item.bookingStatus!=="CONFIRMED"||
+   new Date(item.startAt).getTime()<=Date.now()||
+   !Number.isSafeInteger(item.bookingVersion)||item.bookingVersion<1||
+   overrideBusy||overrideUncertain||!overrideAcknowledged||
+   overridePassword.length<8)return;
+  const requestKey=overrideKey.current||crypto.randomUUID();
+  overrideKey.current=requestKey;
+  setOverrideBusy(true);setOverrideMessage("");
+  try{
+   const response=await fetch(
+    "/api/appointments/admin/bookings/"+encodeURIComponent(item.bookingRef)+
+     "/cancel-override",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({requestKey,expectedVersion:item.bookingVersion,
+      reason:"FOUNDATION_OVERRIDE",currentPassword:overridePassword})
+    });
+   const data:unknown=await response.json().catch(()=>null);
+   if(!response.ok){
+    const msg=data&&typeof data==="object"&&"message" in data&&
+     typeof data.message==="string"?data.message:
+      "The original cancellation state could not be verified.";
+    if([400,401,403,404,409,429].includes(response.status)){
+     overrideKey.current="";
+     setOverrideUncertain(false);
+    }else setOverrideUncertain(true);
+    setOverrideMessage(msg);
+    return;
+   }
+   if(!data||typeof data!=="object"||!("bookingStatus" in data)||
+    data.bookingStatus!=="CANCELLED"){
+    setOverrideUncertain(true);
+    setOverrideMessage("The original cancellation result is uncertain. Refresh before retrying.");
+    return;
+   }
+   overrideKey.current="";
+   setOverrideUncertain(false);
+   setOverrideMessage("Protected Foundation cancellation committed. The original appointment audit was updated; notification delivery is separate.");
+   const updated=await load(query);
+   setResult(updated);
+   setSelected(current=>updated.items.some(x=>x.bookingRef===current)?
+    current:updated.items[0]?.bookingRef??"");
+  }catch{
+   setOverrideUncertain(true);
+   setOverrideMessage("The original cancellation may have committed. Refresh the appointment before another action.");
+  }finally{
+   setOverridePassword("");setOverrideAcknowledged(false);setOverrideBusy(false);
+  }
+ }
  return <section className="role-workspace" aria-label="Patient and booking management">
   <style>{`@media print{
    body *{visibility:hidden!important;}
