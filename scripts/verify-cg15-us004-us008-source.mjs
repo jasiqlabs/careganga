@@ -49,6 +49,8 @@ const s={
  webPublic:read("apps/web/src/app/health-network/doctors/[doctorRef]/schedule/page.tsx"),
  webQr:read("apps/web/src/features/appointments/appointment-status-verifier.tsx"),
  nativeBooking:read("apps/android-public/src/features/appointments/native-consultation-action.tsx"),
+ nativeDirectory:read("apps/android-public/src/features/health-network/public-healthcare-directory.tsx"),
+ webDirectory:read("apps/web/src/app/health-network/page.tsx"),
  nativeHistory:read("apps/android-public/src/features/appointments/native-consultation-history.tsx"),
  nativeSlots:read("apps/android-public/src/features/health-network/doctor-schedule-preview.tsx"),
  nativeQueue:read("apps/android-internal/src/features/appointments/native-center-visit-queue.tsx"),
@@ -268,6 +270,23 @@ const checks=[
   s.bookingCtrl.includes('Get("confirmations/by-request/:requestKey")')&&
   s.webBooking.includes("confirmations/by-request/")&&
   s.nativeBooking.includes("holds/by-request/")],
+ ["cross-doctor reschedule locks both doctors, atomically preserves old slot and exact key recovery",
+  s.service.includes('v.doctorRef===undefined?null:uuid(v.doctorRef)')&&
+  s.service.includes('new Set([doctor.rows[0].doctor_id,newDoctorId])')&&
+  s.service.includes('this.eligible(tx,actor,newDoctorId,center,start,end)')&&
+  s.service.includes('"SET doctor_id=$3,center_id=$4,"')===false&&
+  s.service.includes('doctor_id=$3,center_id=$4')&&
+  s.service.includes('async rescheduleByRequest(')&&
+  s.service.includes("action='RESCHEDULED' AND request_key=$3")&&
+  s.bookingCtrl.includes('Get("me/:bookingRef/reschedule/by-request/:requestKey")')&&
+  s.webBff.includes('p[2]==="reschedule"&&p[3]==="by-request"')&&
+  s.webReschedule.includes("doctorRef:p.doctorRef")&&
+  s.webReschedule.includes("/reschedule/by-request/")&&
+  s.nativeBooking.includes("doctorRef:p.doctorRef")&&
+  s.nativeBooking.includes("/reschedule/by-request/")&&
+  s.webDirectory.includes("Choose a time with this doctor")&&
+  s.nativeDirectory.includes("reschedule={reschedule}")&&
+  s.nativeHistory.includes("<PublicHealthcareDirectory")],
  ["staff cancellation uses explicit CG01 grant, current center scope, original lock and one event",
   s.roles.includes('key:"health.appointments.cancel"')&&
   s.centerScope.includes('"health.appointments.cancel"')&&
