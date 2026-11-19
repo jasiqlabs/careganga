@@ -5,6 +5,8 @@ type Context={params:Promise<{parts:string[]}>};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const acceptable=(p:string[],method:string)=>
  method==="POST"&&p.length===1&&["holds","confirm"].includes(p[0])||
+ method==="POST"&&p.length===5&&p[0]==="centers"&&ID.test(p[1])&&
+ p[2]==="bookings"&&ID.test(p[3])&&p[4]==="cancel"||
  method==="GET"&&p.length===3&&p[0]==="centers"&&ID.test(p[1])&&p[2]==="doctors"||
  method==="GET"&&p.length===5&&p[0]==="centers"&&ID.test(p[1])&&
  p[2]==="doctor"&&ID.test(p[3])&&p[4]==="slots"||
