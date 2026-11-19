@@ -116,6 +116,16 @@ const tests=[
   s.web.includes("Other centers and old confirmed bookings have not changed")&&
   s.service.includes("this.noOtherCenterOverlap(tx,actor,src,input.mode,input.windows)")&&
   s.service.includes("this.hours(tx,actor,src.center_id,input.windows)")],
+ ["source: only in-person V1 schedule can be installed, even by raw API",
+  s.service.includes('mode!=="IN_PERSON"')&&
+  s.web.includes('consultationMode:"IN_PERSON"')],
+ ["source: approved leave exposes actual overlapping booked references without cancelling them",
+  s.service.includes("ARRAY(SELECT a.booking_display_id FROM cg15_consultation_appointment a")&&
+  s.service.includes("COUNT(*)::integer")&&
+  s.service.includes("impactedBookingIds:impacted.rows.slice(0,25)")&&
+  s.webReview.includes("Confirmed bookings affected")&&
+  s.webReview.includes("impactAcknowledged!==item.caseRef")&&
+  s.webReview.includes("I reviewed the affected bookings and will arrange individual follow-up")],
  ["source: protected two-role Foundation leave UX",s.webReview.includes("Record independent CG-03 decision")&&
   s.webReview.includes("Apply approved leave")&&
   s.webReviewPage.includes("canReview")],
