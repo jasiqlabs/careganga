@@ -7,7 +7,7 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
- startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
+ startAt:string;endAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
@@ -116,11 +116,15 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
   if(!commands.current.has(reference))commands.current.set(reference,Crypto.randomUUID());
   setBusy(true);setMessage("");
   try{
-   if(next==="CHECK_IN"){
-    await request(token,"my-centers/"+encodeURIComponent(center)+"/check-in","POST",{
+   if(next==="CHECK_IN"||next==="NO_SHOW"){
+    const path=next==="CHECK_IN"?"check-in":"no-show";
+    const outcome=await request<Record<string,unknown>>(token,
+     "my-centers/"+encodeURIComponent(center)+"/"+path,"POST",{
      requestKey:commands.current.get(reference),appointmentRef:item.appointmentRef,
      expectedVersion:item.bookingVersion
     });
+    if(next==="NO_SHOW"&&outcome.bookingStatus!=="NO_SHOW")
+     throw Error("The original missed-booking status could not be confirmed.");
    }else{
     if(!item.visitRef||!item.visitVersion)throw Error("Current visit could not be confirmed.");
     await request(token,"my-centers/"+encodeURIComponent(center)+"/visits/"+
@@ -283,8 +287,9 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
      {a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
      {a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
-     {["ARRIVED","WAITING"].includes(a.visitStatus??"")&&
-      button("No show",()=>void change(a,"NO_SHOW"),busy||uncertain)}
+     {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
+      Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
+      button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
      {!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
       button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
     </View>
