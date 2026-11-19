@@ -17,6 +17,7 @@ CREATE TABLE cg15_patient_second_account_link_code(
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  patient_id uuid NOT NULL,
  issued_by_account uuid NOT NULL,
+ recipient_account_id uuid NOT NULL,
  code_digest char(64) NOT NULL CHECK(code_digest ~ '^[a-f0-9]{64}$'),
  expires_at timestamptz NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
@@ -33,6 +34,8 @@ CREATE TABLE cg15_patient_second_account_link_code(
  FOREIGN KEY(root_realm_id,patient_id)
   REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(issued_by_account,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(recipient_account_id,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(used_by_account,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT
@@ -54,6 +57,7 @@ BEGIN
     NEW.id IS DISTINCT FROM OLD.id OR
     NEW.patient_id IS DISTINCT FROM OLD.patient_id OR
     NEW.issued_by_account IS DISTINCT FROM OLD.issued_by_account OR
+    NEW.recipient_account_id IS DISTINCT FROM OLD.recipient_account_id OR
     NEW.code_digest IS DISTINCT FROM OLD.code_digest OR
     NEW.expires_at IS DISTINCT FROM OLD.expires_at OR
     NEW.created_at IS DISTINCT FROM OLD.created_at OR
