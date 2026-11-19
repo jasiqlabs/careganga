@@ -386,7 +386,9 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    <h2>{selected.doctorName} — {selected.centerName}</h2>
    <p><strong>{clean(selected.status)}</strong>. Time zone: {selected.timeZone}.
     Schedule revision: {selected.version===0?"Not saved":selected.version}.
-    Working hours are private until actual booking availability is implemented.</p>
+    Staff edits do not reserve an appointment. Public slot availability is
+    calculated separately from the current verified doctor/center, accepted
+    fees, approved leave and existing confirmed reservations.</p>
    <h3>Weekly working hours</h3>
    <p>Add morning and afternoon sessions separately, as on the original
     CareGanga Doctor Schedule screen. Each session must fit inside verified
