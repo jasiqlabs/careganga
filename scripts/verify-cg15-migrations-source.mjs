@@ -31,7 +31,8 @@ const files=[
  "1436_cg14_verified_clinician_account_link.sql",
  "1437_cg15_private_consultation_intent_consent.sql",
  "1438_cg19_patient_owned_private_files.sql",
- "1439_cg15_private_patient_optional_details.sql"
+ "1439_cg15_private_patient_optional_details.sql",
+ "1440_cg19_patient_specific_clinical_file_grants.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
@@ -150,6 +151,17 @@ for(const name of files){
    !source.includes("cg15_qr_verification_audit_immutable")||
    !source.includes("REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT")))
   result.errors.push("Original center QR verification abuse guard/audit source is incomplete");
+ if(name.startsWith("1440")&&
+  (!source.includes("CREATE TABLE cg19_patient_clinical_file_grant(")||
+   !source.includes("FOREIGN KEY(realm_id,appointment_id,patient_id)")||
+   !source.includes("care_consent_revision integer NOT NULL")||
+   !source.includes("appointment_revision integer NOT NULL")||
+   !source.includes("CREATE TABLE cg19_patient_clinical_file_grant_command(")||
+   !source.includes("cg19_patient_clinical_file_grant_change_guard")||
+   !source.includes("cg19_patient_clinical_file_grant_event_guard")||
+   !source.includes("CREATE TABLE cg19_patient_clinical_file_read_event(")||
+   !source.includes("cg19_patient_clinical_read_event_guard")))
+  result.errors.push("Original patient-accepted exact-booking CG19 scanned-file consent and nonclinical access audit source missing");
  if(name.startsWith("1439")&&
   (!source.includes("CREATE TABLE cg15_patient_private_details(")||
    !source.includes("CREATE TABLE cg15_patient_private_details_event(")||
