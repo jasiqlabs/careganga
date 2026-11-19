@@ -151,8 +151,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    if(r.data?.status!=="ACCOUNT_CREATED")
     throw Error("Account registration could not be confirmed.");
    signupCommand.current=null;setSignupPassword("");setSignupCode("");setPassword("");
-   setIdentifier(payload.mobile);setSignupOpen(false);
-   setMessage("Patient account created with verified mobile contact. Sign in with your mobile and password, then create your patient profile.");
+   setIdentifier(payload.email||payload.mobile);setSignupOpen(false);
+   setMessage("Patient account created with verified contact. Sign in using your email (if provided) or your mobile login and password. A shared phone does not link private patient records.");
   });
  }
  function signIn(){
