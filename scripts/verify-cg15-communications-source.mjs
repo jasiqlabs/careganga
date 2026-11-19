@@ -60,8 +60,20 @@ const checks=[
  ["worker catches original transactional NOTIFY and bounded recovery",
   src.worker.includes("LISTEN cg19_appointment_committed")&&
   src.worker.includes("captureCommittedAppointments(realm)")&&
-  src.worker.includes("captureCommittedAppointments(this.rootRef)")&&
+  src.worker.includes("await this.reconcilePendingAppointments()")&&
+  !src.worker.includes("captureCommittedAppointments(this.rootRef)")&&
   src.worker.includes("UNLISTEN cg19_appointment_committed")],
+ ["original committed booking/cancellation source leads to only real CG19 transport",
+  src.db.includes("AFTER INSERT ON cg15_appointment_event")&&
+  src.captured.includes("async captureCommittedAppointments(realm:string)")&&
+  src.captured.includes("INSERT INTO cg19_notification(")&&
+  src.captured.includes("'CG15_APPOINTMENT'")&&
+  src.captured.includes("ON CONFLICT DO NOTHING RETURNING id")&&
+  src.worker.includes("await this.delivery.tick()")&&
+  src.delivery.includes('row.source_kind==="CG15_APPOINTMENT"')&&
+  src.delivery.includes("this.providers.send(")&&
+  src.delivery.includes("cg19_delivery_receipt")&&
+  src.delivery.includes('state="DELIVERED"')===false],
  ["one cross-root bounded missed queue/appointment source recovery, no per-root idle polling",
   src.worker.includes("private async reconcilePendingAppointments()")&&
   src.worker.includes("SELECT realm_id FROM cg19_appointment_event_outbox")&&
