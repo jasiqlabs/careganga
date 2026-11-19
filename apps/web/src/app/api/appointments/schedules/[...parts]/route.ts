@@ -58,10 +58,12 @@ async function route(req:NextRequest,parts:string[],method:string){
  }
  const url=new URL("/api/v1/appointments/schedules/"+parts.join("/"),backend);
  if(method==="GET"&&parts.length===1&&parts[0]==="admin"){
-  const center=req.nextUrl.searchParams.get("centerRef");
-  if(center){
-   if(!ID.test(center))return response(400,"Choose a valid center.");
-   url.searchParams.set("centerRef",center);
+  for(const name of ["centerRef","stateRef","districtRef","blockRef"]){
+   const value=req.nextUrl.searchParams.get(name);
+   if(value!==null&&value!==""){
+    if(!ID.test(value))return response(400,"Choose a valid healthcare location.");
+    url.searchParams.set(name,value);
+   }
   }
  }
  try{
