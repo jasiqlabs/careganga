@@ -3,6 +3,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DAY=/^\d{4}-\d{2}-\d{2}$/;
 const STATE=new Set(["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION",
  "COMPLETED","NO_SHOW","CANCELLED"]);
 type Summary={patients:string;active_patients:string;bookings:string;
@@ -61,16 +62,20 @@ export class PatientAdminOverviewService{
  async overview(bearer:string,query:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   if(!query||typeof query!=="object"||Array.isArray(query)||
-   Object.keys(query).some(k=>!["centerRef","status","after","limit"].includes(k)))
+   Object.keys(query).some(k=>!["centerRef","status","after","limit","day"].includes(k)))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const center=query.centerRef===undefined?"":query.centerRef;
   const status=query.status===undefined?"":query.status;
   const after=query.after===undefined?"":query.after;
   const limit=query.limit===undefined?20:Number(query.limit);
+  const day=query.day===undefined?"":query.day;
   if(typeof center!=="string"||center!==""&&!ID.test(center)||
    typeof status!=="string"||status!==""&&!STATE.has(status)||
    typeof after!=="string"||after!==""&&!ID.test(after)||
-   !Number.isSafeInteger(limit)||limit<1||limit>50)
+   !Number.isSafeInteger(limit)||limit<1||limit>50||
+   typeof day!=="string"||day!==""&&
+    (!DAY.test(day)||!Number.isFinite(Date.parse(day+"T00:00:00Z"))||
+     new Date(day+"T00:00:00Z").toISOString().slice(0,10)!==day))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const tx=await this.db.connect();
   try{
@@ -98,8 +103,9 @@ export class PatientAdminOverviewService{
     "AND ($2::uuid IS NULL OR a.center_id=$2) "+
     "AND ($3::text='' OR a.booking_state=$3) "+
     "AND ($4::uuid IS NULL OR a.id<$4) "+
+    "AND ($6::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date=$6::date) "+
     "ORDER BY a.id DESC LIMIT $5",
-    [actor.realmId,center||null,status,after||null,limit+1]);
+    [actor.realmId,center||null,status,after||null,limit+1,day||null]);
    const choices=await tx.query<{center_id:string;center_name:string}>(
     "SELECT DISTINCT center_id,center_name FROM cg15_consultation_appointment "+
     "WHERE root_realm_id=$1 ORDER BY center_name,center_id LIMIT 51",
