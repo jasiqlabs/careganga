@@ -61,7 +61,7 @@ const checks=[
   !s.source.includes("this.dayForCenter(doctorRef,center.center_id,day)")],
  ["source: consistent typed safe advisory response",s.source.includes("type DayPreview=")&&
   s.source.includes("type PreviewSlot=")&&s.source.includes("bookingEnabled:false")&&
-  s.source.includes("bookable:false")],
+  s.source.includes("bookable:bookingEnabled")],
  ["source: no fake booking payment or patient writes",!s.source.includes("INSERT INTO appointment")&&
   !s.source.includes("INSERT INTO patient")&&
   !s.source.includes("UPDATE health_center_fee")],
@@ -74,9 +74,10 @@ const checks=[
   s.module.includes("DoctorAvailabilityController")],
  ["source: Web current CG14 verified profile with advisory link",s.doctors.includes("publicDoctor(doctorRef)")&&
   s.doctors.includes("/schedule")],
- ["source: Web two real preview modes with no booking button",s.publicWeb.includes("center-first?doctorRef=")&&
+ ["source: Web two current preview modes and guarded real booking action",s.publicWeb.includes("center-first?doctorRef=")&&
   s.publicWeb.includes("slot-first?doctorRef=")&&
-  s.publicWeb.includes("not live booking availability")&&
+  s.publicWeb.includes("<PatientBookingAction")&&
+  s.publicWeb.includes("Appointments are confirmed only after final review")&&
   !s.publicWeb.includes('>Confirm appointment</button>')],
  ["source: published CG18 healthcare landing links to real CG15 consultation action only after approval",
   s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED")notFound()')&&
