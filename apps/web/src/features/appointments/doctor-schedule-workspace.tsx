@@ -6,8 +6,8 @@ type Row={associationRef:string;doctorRef:string;centerRef:string;doctorName:str
  centerName:string;specialties:string[];status:string;version:number};
 type Place={centerRef:string;centerName:string;stateRef:string;stateName:string;
  districtRef:string;districtName:string;blockRef:string|null;blockName:string|null};
-type Metrics={totalAppointments:string;workingSessionsToday:string;
- doctorsOnActiveLeave:string};
+type Metrics={totalDoctors:string;activeSchedules:string;mappedCenters:string;
+ totalAppointments:string;workingSessionsToday:string;doctorsOnActiveLeave:string};
 type Window={weekday:number;startLocal:string;endLocal:string};
 type BulkCopyTarget={associationRef:string;centerName:string;doctorRef:string;
  centerRef:string;timeZone:string;version:number;eligible:boolean;reason:string;
@@ -434,12 +434,12 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  }
  function busyOrUncertain(){return working||uncertain;}
  const summary=[
-  {label:"Doctors in current list",value:String(new Set(roster.map(x=>x.doctorRef)).size)},
-  {label:"Active schedules in list",value:String(roster.filter(x=>x.status==="ACTIVE").length)},
-  {label:"Today's working sessions",value:metrics?.workingSessionsToday??"Loading…"},
-  {label:"Total consultation bookings",value:metrics?.totalAppointments??"Loading…"},
-  {label:"Centers in current list",value:String(new Set(roster.map(x=>x.centerRef)).size)},
-  {label:"Doctors on active leave",value:metrics?.doctorsOnActiveLeave??"Loading…"}
+  {label:"Total Doctors",value:metrics?.totalDoctors??"Loading…"},
+  {label:"Active Schedule",value:metrics?.activeSchedules??"Loading…"},
+  {label:"Today's Working Sessions",value:metrics?.workingSessionsToday??"Loading…"},
+  {label:"Total Appointments",value:metrics?.totalAppointments??"Loading…"},
+  {label:"Clinics Mapped",value:metrics?.mappedCenters??"Loading…"},
+  {label:"On Leave",value:metrics?.doctorsOnActiveLeave??"Loading…"
  ];
  const matchingPlaces=placeChoices.filter(p=>
   (!stateRef||p.stateRef===stateRef)&&
@@ -505,10 +505,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      <strong style={{fontSize:22}}>{item.value}</strong>
     </div>)}
    </div>
-   <p>The doctor-center list is limited to 100 current associations. Appointment,
-    working-session and approved-leave totals are calculated separately from
-    the live source, not from this limited list. Use location filters to narrow
-    a large list.</p>
+   <p>Doctors, active schedules and mapped clinics use all currently approved
+    associations matching the chosen roster filters, not just the first 100
+    displayed. Appointments, today's scheduled working sessions and active
+    leave use the selected geography and center, across all matching
+    appointments. Working sessions are not a guarantee of an open booking slot.</p>
    </div>
    <div className="cg15-h07-body" aria-label="Current doctor roster and editable schedule">
     <div className="form-section">
