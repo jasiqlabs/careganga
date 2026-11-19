@@ -36,9 +36,25 @@ const s={
  errors:read("apps/backend/src/core/http/safe-error-copy.ts"),
  env:read(".env.example"),
  rootPackage:read("package.json"),
+ clinician:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-clinician-identity.service.ts"),
+ clinicalQueue:read("apps/backend/src/modules/cg-15-patients-appointments/application/consultation-queue.service.ts"),
+ clinicalController:read("apps/backend/src/modules/cg-15-patients-appointments/http/consultation-queue.controller.ts"),
+ clinicalProxy:read("apps/web/src/app/api/appointments/queue/[...parts]/route.ts"),
  tracker:read("specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md")
 };
 const checks=[
+ ["source: signed-in verified real doctor sees only current consented Center A care",
+  s.clinician.includes("assertCurrentAppointmentClinician(")&&
+  s.clinician.includes("l.account_id=$2 AND l.doctor_id=$4")&&
+  s.clinicalQueue.includes("async clinicalHistory(")&&
+  s.clinicalQueue.includes("this.clinicians.assertCurrentAppointmentClinician(")&&
+  s.clinicalQueue.includes("AND a.center_id=$2 AND a.id=$3")&&
+  s.clinicalQueue.includes("AND a.patient_id=$3 AND a.doctor_id=$4")&&
+  s.clinicalQueue.includes("AND c.purpose='PATIENT_CARE'")&&
+  s.clinicalQueue.includes("p.profile_status='VERIFIED'")&&
+  s.clinicalController.includes('clinical-history')&&
+  s.clinicalProxy.includes('"clinical-history"')],
+
  ["one root-qualified patient source with separate unique human ID",
   s.db.includes("CREATE TABLE cg15_patient (")&&
   s.db.includes("PRIMARY KEY(root_realm_id,id)")&&
