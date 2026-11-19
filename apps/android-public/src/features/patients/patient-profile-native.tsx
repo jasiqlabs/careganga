@@ -59,6 +59,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
  const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
+ const [claimDisplay,setClaimDisplay]=useState(""),[claimCode,setClaimCode]=useState("");
+ const [claimAgree,setClaimAgree]=useState(false);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
@@ -238,6 +240,20 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    setProfile(r.data);setMessage(granted?"Consent was recorded.":"Consent withdrawal was recorded.");
   });
  }
+ function claimClinicIntake(){
+  if(!token)return;
+  void run(async()=>{
+   if(!contact?.verified||!policy.available||!claimAgree)
+    throw Error("Verify your account and accept the current patient-care consent.");
+   const r=await invoke<Patient>("/api/v1/patients/me/claim-intake","POST",{
+    virtualPatientId:claimDisplay,claimCode,
+    consentAccepted:claimAgree,consentVersion:policy.version},token);
+   if(!r.data)throw Error("The original center claim could not be verified.");
+   setProfile(r.data);setFirst(r.data.firstName);setLast(r.data.lastName);
+   setDob(r.data.dateOfBirth??"");setClaimCode("");setClaimAgree(false);
+   setMessage("Your original clinic patient record was linked to this verified account.");
+  });
+ }
  function issueIdentityProof(){
   if(!token||!profile||profile.profileStatus!=="PROVISIONAL")return;
   void run(async()=>{
@@ -338,6 +354,21 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
         {button("Verify code",confirmVerification,
          busy||!/^\d{4,10}$/.test(verificationCode))}
        </View>}
+     </View>}
+     {!profile&&<View style={styles.field}>
+      <Text style={styles.subtitle}>Already registered at a clinic?</Text>
+      <Text>Ask the authorized receptionist to check your identity document
+       and give you the one-time claim code. Your mobile number alone never
+       claims or merges another person's patient record.</Text>
+      {field("Existing Virtual Patient ID",claimDisplay,v=>setClaimDisplay(v.trim().toUpperCase()))}
+      {field("One-time claim code from clinic",claimCode,v=>setClaimCode(v.trim().toUpperCase()))}
+      <Text>{policy.available?policy.text:
+       "Approved patient consent is not configured for account claims."}</Text>
+      {policy.available&&button(claimAgree?"Consent accepted":"I accept patient-care consent",
+       ()=>setClaimAgree(!claimAgree),busy)}
+      {button("Claim my existing clinic patient record",claimClinicIntake,
+       busy||!contact?.verified||!policy.available||!claimAgree||
+        !/^CGP-[A-F0-9]{16}$/.test(claimDisplay)||!/^CGC-[A-F0-9]{24}$/.test(claimCode))}
      </View>}
      {field("First name",first,setFirst)}
      {field("Last name",last,setLast)}
