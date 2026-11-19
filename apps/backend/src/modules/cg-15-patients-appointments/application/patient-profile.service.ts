@@ -241,7 +241,7 @@ export class PatientProfileService{
    if(!source)
     throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
    if(source.claimed_at){
-    if(source.claimed_by_account!==actor.accountId||linked?.id!==source.patient_id)
+    if(!linked||source.claimed_by_account!==actor.accountId||linked.id!==source.patient_id)
      throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
     await c.query("COMMIT");active=false;
     return this.present(linked);
