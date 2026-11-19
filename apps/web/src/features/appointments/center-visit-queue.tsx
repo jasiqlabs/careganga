@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
- patientName:string;startAt:string;endAt:string;timeZone:string;
+ patientName:string;consentGranted:boolean;startAt:string;endAt:string;timeZone:string;
  bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
 type Queue={day:string;items:Item[];next:string|null};
@@ -262,7 +262,9 @@ export function CenterVisitQueue(){
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN",{
      timeZone:item.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
-    <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>
+    {item.consentGranted?
+     <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>:
+     <p role="status">Patient care consent was withdrawn. Private documents and new check-in are unavailable.</p>}
     {canCancel&&item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
      (cancelPending===item.appointmentRef?
       <div className="notice">
@@ -274,7 +276,7 @@ export function CenterVisitQueue(){
       <button type="button" disabled={busy||uncertain}
        onClick={()=>setCancelPending(item.appointmentRef)}>Cancel center booking</button>)}
     <div className="toolbar">
-     {item.bookingStatus==="CONFIRMED"&&<button type="button" disabled={busy||uncertain}
+     {item.consentGranted&&item.bookingStatus==="CONFIRMED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
      {item.visitStatus==="ARRIVED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"WAITING")}>Move to waiting</button>}
