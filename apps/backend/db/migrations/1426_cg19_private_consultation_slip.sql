@@ -67,6 +67,6 @@ BEGIN
   RAISE EXCEPTION 'Invalid consultation slip transition';
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg19_consultation_slip_source_frozen BEFORE UPDATE OR DELETE
  ON cg19_consultation_slip FOR EACH ROW EXECUTE FUNCTION cg19_consultation_slip_source_guard();
