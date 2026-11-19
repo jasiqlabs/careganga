@@ -67,7 +67,9 @@ function parseWeek(body:unknown){
   "effectiveFrom","effectiveUntil","windows"]);
  const key=uuid(x.requestKey),expected=vnum(x.expectedVersion,true);
  const slot=vnum(x.slotMinutes),mode=x.consultationMode;
- if(slot<5||slot>180||slot%5||!["IN_PERSON","VIDEO"].includes(String(mode)))
+ // CG-15 V1 books in-person consultations only; do not let raw API
+ // callers install unsupported VIDEO schedules behind the UI.
+ if(slot<5||slot>180||slot%5||mode!=="IN_PERSON")
   throw new BadRequestException({code:"CG15_SCHEDULE_INVALID"});
  const start=date(x.effectiveFrom);
  const end=x.effectiveUntil===null||x.effectiveUntil===undefined?
