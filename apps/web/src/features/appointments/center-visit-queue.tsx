@@ -7,6 +7,8 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:st
  bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
 type Queue={day:string;items:Item[];next:string|null};
+type Summary={centerRef:string;day:string;total:number;confirmed:number;arrived:number;
+ waiting:number;inConsultation:number;completed:number;noShow:number;cancelled:number};
 type VerifiedSlip={valid:boolean;bookingRef?:string;bookingId?:string;
  patientName?:string;doctorName?:string;bookingStatus?:string;
  startAt?:string;timeZone?:string;canCheckIn?:boolean};
@@ -36,6 +38,7 @@ export function CenterVisitQueue(){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[day,setDay]=useState(isoToday());
  const [items,setItems]=useState<Item[]>([]);
+ const [summary,setSummary]=useState<Summary|null>(null);
  const [cursor,setCursor]=useState(""),[nextCursor,setNextCursor]=useState<string|null>(null);
  const [previousCursors,setPreviousCursors]=useState<string[]>([]);
  const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
@@ -51,13 +54,21 @@ export function CenterVisitQueue(){
  const requestSerial=useRef(0),selectedCenterRef=useRef("");
  const load=useCallback(async(c:string,d:string,after="")=>{
   const serial=++requestSerial.current;
-  if(!c){setItems([]);setQueueLoading(false);return;}
+  if(!c){setItems([]);setSummary(null);setQueueLoading(false);return;}
   setQueueLoading(true);
+  if(!after)setSummary(null);
   try{
    const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d)+
     (after?"&after="+encodeURIComponent(after):""));
    if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
    setItems(rows.items);setCursor(after);setNextCursor(rows.next);setUncertain(false);
+   if(!after){
+    void get<Summary>("my-centers/"+encodeURIComponent(c)+
+     "/summary?date="+encodeURIComponent(d)).then(data=>{
+      if(serial===requestSerial.current&&c===selectedCenterRef.current&&
+       data.centerRef===c&&data.day===d)setSummary(data);
+     }).catch(()=>{if(serial===requestSerial.current)setSummary(null);});
+   }
   }finally{
    if(serial===requestSerial.current)setQueueLoading(false);
   }
@@ -92,7 +103,8 @@ export function CenterVisitQueue(){
   return()=>{alive=false;};
  },[]);
  useEffect(()=>{
-  if(!center){requestSerial.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setQueueLoading(false);return;}
+  if(!center){requestSerial.current++;setItems([]);setSummary(null);
+   setCursor("");setNextCursor(null);setPreviousCursors([]);setQueueLoading(false);return;}
   let active=true;
   setPreviousCursors([]);setCursor("");setNextCursor(null);
   void load(center,day).catch(e=>{
@@ -204,20 +216,33 @@ export function CenterVisitQueue(){
       if(next&&!today){setMessage("The selected center's local time zone is unavailable.");return;}
       if(today)setDay(today);
       selectedCenterRef.current=e.target.value;requestSerial.current++;
-      setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");setCancelPending(null);
+      setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");setCancelPending(null);
        setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
        {x.centerName}</option>)}
      </select></label>
     <label>Consultation date
-     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setDay(e.target.value);setUncertain(false);setCancelPending(null);}}/>
     </label>
     <button type="button" disabled={busy||!center}
      onClick={()=>void load(center,day,cursor).catch(e=>setMessage(e instanceof Error?e.message:"The queue cannot be refreshed."))}>
      Refresh current queue</button>
    </div>
+   {center&&summary&&summary.centerRef===center&&summary.day===day&&
+    <section aria-label="Original center daily attendance totals" className="form-section">
+     <h3>Consultations for {day}</h3>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:10}}>
+      {([["Total",summary.total],["Confirmed",summary.confirmed],
+        ["Checked in",summary.arrived],["Waiting",summary.waiting],
+        ["With doctor",summary.inConsultation],["Completed",summary.completed],
+        ["Missed",summary.noShow],["Cancelled",summary.cancelled]] as const)
+        .map(([label,value])=><div key={label}><strong>{value}</strong><p>{label}</p></div>)}
+     </div>
+     <p>Verified totals cover all appointments at this assigned center on its local day,
+      including records outside the currently displayed 100-row page.</p>
+    </section>}
    {center&&<section aria-label="Verify an appointment QR at my center"
     style={{border:"1px solid #d7dfdb",borderRadius:12,padding:12}}>
     <h3>Verify a consultation QR code</h3>
