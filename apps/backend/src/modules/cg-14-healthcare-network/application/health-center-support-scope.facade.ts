@@ -11,10 +11,11 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 @Injectable()
 export class HealthCenterSupportScopeFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
- async assertCurrent(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string){
+ async assertCurrent(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string,
+  action="health.centers.draft.edit"){
   if(!UUID.test(centerRef))
    throw new NotFoundException("Your healthcare center is unavailable");
-  await this.identity.assertCurrent(tx,actor,"health.centers.draft.edit");
+  await this.identity.assertCurrent(tx,actor,action);
   // Parent first, then center, then current affiliation to avoid suspension
   // races and preserve the same lock order as CG-14 doctor/fee ownership.
   const ref=await tx.query<{provider_id:string}>(
