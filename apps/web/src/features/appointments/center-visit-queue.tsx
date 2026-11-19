@@ -56,19 +56,17 @@ export function CenterVisitQueue(){
   const serial=++requestSerial.current;
   if(!c){setItems([]);setSummary(null);setQueueLoading(false);return;}
   setQueueLoading(true);
-  if(!after)setSummary(null);
+  setSummary(null);
   try{
    const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d)+
     (after?"&after="+encodeURIComponent(after):""));
    if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
    setItems(rows.items);setCursor(after);setNextCursor(rows.next);setUncertain(false);
-   if(!after){
-    void get<Summary>("my-centers/"+encodeURIComponent(c)+
-     "/summary?date="+encodeURIComponent(d)).then(data=>{
-      if(serial===requestSerial.current&&c===selectedCenterRef.current&&
-       data.centerRef===c&&data.day===d)setSummary(data);
-     }).catch(()=>{if(serial===requestSerial.current)setSummary(null);});
-   }
+   void get<Summary>("my-centers/"+encodeURIComponent(c)+
+    "/summary?date="+encodeURIComponent(d)).then(data=>{
+     if(serial===requestSerial.current&&c===selectedCenterRef.current&&
+      data.centerRef===c&&data.day===d)setSummary(data);
+    }).catch(()=>{if(serial===requestSerial.current)setSummary(null);});
   }finally{
    if(serial===requestSerial.current)setQueueLoading(false);
   }
