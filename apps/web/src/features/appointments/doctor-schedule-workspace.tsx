@@ -478,7 +478,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    .cg15-h07-body{display:grid;grid-template-columns:minmax(270px,32%) minmax(0,1fr);gap:16px;align-items:start}
    .cg15-h07-roster-list{display:grid;gap:8px}
    .cg15-h07-roster-list button{text-align:left;white-space:normal;min-height:44px}
-   .cg15-h07-roster-list button[aria-pressed="true"]{border-color:var(--cg-primary,#1767ac);font-weight:700}
+   .cg15-h07-roster-list button[aria-pressed="true"]{border-color:currentColor;font-weight:700}
    .cg15-h07-body .role-table-wrap{overflow-x:auto;max-width:100%}
    @media(max-width:860px){.cg15-h07-body{grid-template-columns:minmax(0,1fr)}}
   `}</style>
@@ -595,7 +595,9 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     {result.map(r=><button type="button" key={r.associationRef}
      disabled={working} aria-pressed={selected?.associationRef===r.associationRef}
      onClick={()=>void select(r.associationRef)}>
-      {r.doctorName} — {r.centerName} · {clean(r.status)}
+      <strong>{r.doctorName}</strong> — {r.centerName} · {clean(r.status)}
+      {!!r.specialties.length&&<small style={{display:"block"}}>
+       {r.specialties.join(" · ")}</small>}
      </button>)}
    </div>
   </div>
@@ -707,7 +709,20 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      <thead><tr><th>Day</th><th>Current working sessions</th>
       <th>Action</th></tr></thead>
      <tbody>{weekdays.map(day=><tr key={day.day}>
-      <th scope="row">{day.label}</th>
+      <th scope="row">
+       <span>{day.label}</span>
+       {canManage&&<label style={{display:"block",fontWeight:400}}>
+        <input type="checkbox" disabled={working||uncertain}
+         checked={windows.some(w=>w.weekday===day.day)}
+         onChange={e=>{
+          setWindows(old=>e.target.checked?
+           old.some(w=>w.weekday===day.day)?old:
+            [...old,{weekday:day.day,startLocal:"",endLocal:""}]:
+            old.filter(w=>w.weekday!==day.day));
+          weekKey.current="";
+         }}/> Available
+       </label>}
+      </th>
       <td><div className="form-grid">{windows.filter(w=>w.weekday===day.day)
        .map((w,i)=><div className="toolbar" key={day.day+":"+i}>
         <label>Opens
