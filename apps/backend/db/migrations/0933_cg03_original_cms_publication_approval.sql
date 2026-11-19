@@ -142,7 +142,7 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
    target_role_id IS NULL AND
    expected_access_version IS NULL AND
    expected_role_revision IS NULL)
-));
+);
 ALTER TABLE cg03_case ADD CONSTRAINT fk_cg03_cms_page_root
  FOREIGN KEY(cms_page_id,realm_id) REFERENCES cms_page(id,foundation_root_id)
  ON DELETE RESTRICT;

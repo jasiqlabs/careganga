@@ -88,7 +88,7 @@ export function NotificationsScreen({token,onExit,onExpired}:Props){
     <View style={styles.row}>
       <Pressable accessibilityRole="button" style={styles.button}
         onPress={onExit} disabled={busy}><Text>Back</Text></Pressable>
-      <Text accessibilityRole="header" style={styles.title}>My notifications</Text>
+      <Text accessibilityRole="header" style={styles.title}>Notices &amp; Notifications</Text>
     </View>
     <Text style={styles.muted}>Current Foundation account only.
       No contacts or notices from another account are shown.</Text>

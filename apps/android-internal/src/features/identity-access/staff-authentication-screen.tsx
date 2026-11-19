@@ -1,16 +1,29 @@
-import React, { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
+import React, { Component, Suspense, lazy, useCallback, useEffect, useState, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { identityRequest } from "./http-client";
-import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Animated, BackHandler } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import type { CG01SessionCreated,CG01SessionView,CG01SignInRequest } from "@careganga/api-contracts";
+import type { CG01SessionCreated, CG01SessionView, CG01SignInRequest } from "@careganga/api-contracts";
+import { AuthAmbientBackground } from "./auth-ambient-background";
+import { LoginBranding } from "./login-branding";
+import { LoginHeroSection } from "./login-hero-section";
+import { LoginInput } from "./login-input";
+import { LoginSubmitButton } from "./login-submit-button";
+import { SecureAccessFooter } from "./secure-access-footer";
+import { IconPadlockShieldLarge, IconAlertCircle } from "./auth-icons";
+import { InternalDashboardScreen } from "../dashboard/internal-dashboard-screen";
+import type { ModuleActionHandlers } from "../dashboard/dashboard-modules";
+
+import { RecoveryScreen } from "./recovery-screen";
+import { AuthToast, useAuthToast } from "./auth-toast";
+import { AccessDeniedScreen } from "./access-denied-screen";
 
 const RolesScreen = lazy(() => import("./roles-screen").then(m => ({ default: m.RolesScreen })));
 const SecurityPolicyScreen = lazy(() => import("./security-policy-screen").then(m => ({ default: m.SecurityPolicyScreen })));
 const AccountsScreen = lazy(() => import("./accounts-screen").then(m => ({ default: m.AccountsScreen })));
 const ChangePasswordScreen = lazy(() => import("./change-password-screen").then(m => ({ default: m.ChangePasswordScreen })));
-const RecoveryScreen = lazy(() => import("./recovery-screen").then(m => ({ default: m.RecoveryScreen })));
+const MyAccountScreen = lazy(() => import("./my-account-screen").then(m => ({ default: m.MyAccountScreen })));
 const ProposalScreen = lazy(() => import("../registration-approvals/proposal-screen").then(m => ({ default: m.ProposalScreen })));
 const PrivateCaseEvidenceScreen = lazy(() => import("../documents/private-case-evidence-screen").then(m => ({ default: m.PrivateCaseEvidenceScreen })));
 const NotificationsScreen = lazy(() => import("../communications/notifications-screen").then(m => ({ default: m.NotificationsScreen })));
@@ -44,8 +57,8 @@ class ScreenErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <SafeAreaView style={styles.page}>
-          <View style={styles.content}>
+        <SafeAreaView style={styles.dashboardPage}>
+          <View style={styles.dashboardContent}>
             <Text accessibilityRole="alert" style={styles.message}>{this.state.error}</Text>
             <Pressable accessibilityRole="button" style={[styles.button, styles.primaryButton]} onPress={() => {
               this.setState({ error: null });
@@ -61,445 +74,700 @@ class ScreenErrorBoundary extends Component<
   }
 }
 
-const STORE_KEY="cg_internal_root_session";
-const communicationRequest=(token:string,path:string,opts:RequestInit={})=>
-  identityRequest(path,{...opts,headers:{
-    Authorization:"Bearer "+token,...(opts.headers as Record<string,string>|undefined)
-  }});
-async function sessionView(token:string):Promise<CG01SessionView|null>{
-  const response=await identityRequest("/api/identity/me",{headers:{Authorization:"Bearer "+token}});
-  if(response.status===401)return null;
-  if(!response.ok)throw new Error("The session cannot be verified right now.");
-  const data:unknown=await response.json();
-  if(!data || typeof data!=="object" || !("displayName" in data)
+const STORE_KEY = "cg_internal_root_session";
+const communicationRequest = (token: string, path: string, opts: RequestInit = {}) =>
+  identityRequest(path, {
+    ...opts, headers: {
+      Authorization: "Bearer " + token, ...(opts.headers as Record<string, string> | undefined)
+    }
+  });
+async function sessionView(token: string): Promise<CG01SessionView | null> {
+  const response = await identityRequest("/api/identity/me", { headers: { Authorization: "Bearer " + token } });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error("The session cannot be verified right now.");
+  const data: unknown = await response.json();
+  if (!data || typeof data !== "object" || !("displayName" in data)
     || !("roleName" in data) || !("scope" in data)
-    || typeof data.displayName!=="string"||typeof data.roleName!=="string"||data.scope!=="Foundation")
+    || typeof data.displayName !== "string" || typeof data.roleName !== "string" || data.scope !== "Foundation")
     throw new Error("Session details could not be verified.");
   return data as CG01SessionView;
 }
-async function currentRoleActions(token:string):Promise<string[]>{
-  const response=await identityRequest("/api/access/effective",{
-    headers:{Authorization:"Bearer "+token}
+async function currentRoleActions(token: string): Promise<string[]> {
+  const response = await identityRequest("/api/access/effective", {
+    headers: { Authorization: "Bearer " + token }
   });
-  if(response.status===401)throw new Error("SESSION_EXPIRED");
-  if(!response.ok)throw new Error("Permissions cannot be verified right now.");
-  const data:unknown=await response.json();
-  if(!data||typeof data!=="object"||!("actions" in data)||
-     !Array.isArray(data.actions)||
-     !data.actions.every((a:unknown)=>a!==null&&typeof a==="object"&&
-       "key" in a&&typeof (a as {key:unknown}).key==="string"))
+  if (response.status === 401) throw new Error("SESSION_EXPIRED");
+  if (!response.ok) throw new Error("Permissions cannot be verified right now.");
+  const data: unknown = await response.json();
+  if (!data || typeof data !== "object" || !("actions" in data) ||
+    !Array.isArray(data.actions) ||
+    !data.actions.every((a: unknown) => a !== null && typeof a === "object" &&
+      "key" in a && typeof (a as { key: unknown }).key === "string"))
     throw new Error("Permissions cannot be verified right now.");
-  return (data.actions as {key:string}[]).map(a=>a.key);
+  return (data.actions as { key: string }[]).map(a => a.key);
 }
-export function StaffAuthenticationScreen(){
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
-  const [token,setToken]=useState<string|null>(null);
-  const [actor,setActor]=useState<CG01SessionView|null>(null);
-  const [state,setState]=useState<"checking"|"idle"|"busy">("checking");
-  const [message,setMessage]=useState("");
-  const [loginFieldError,setLoginFieldError]=useState<"identifier"|"password"|null>(null);
-  const [recover,setRecover]=useState(false);
-  const [changePasswordOpen,setChangePasswordOpen]=useState(false);
-  const [accountsOpen,setAccountsOpen]=useState(false);
-  const [rolesOpen,setRolesOpen]=useState(false);
-  const [policyOpen,setPolicyOpen]=useState(false);
-  const [approvalsOpen,setApprovalsOpen]=useState(false);
-  const [documentsOpen,setDocumentsOpen]=useState(false);
-  const [branchesOpen,setBranchesOpen]=useState(false);
-  const [financeOpen,setFinanceOpen]=useState(false);
-  const [voucherOnlyOpen,setVoucherOnlyOpen]=useState(false);
-  const [financeReviewOpen,setFinanceReviewOpen]=useState(false);
-  const [financeClaimsOpen,setFinanceClaimsOpen]=useState(false);
-  const [financeClaimReviewsOpen,setFinanceClaimReviewsOpen]=useState(false);
-  const [invoiceOpen,setInvoiceOpen]=useState(false);
-  const [invoiceReviewOpen,setInvoiceReviewOpen]=useState(false);
-  const [budgetOpen,setBudgetOpen]=useState(false);
-  const [budgetReviewOpen,setBudgetReviewOpen]=useState(false);
-  const [reportsOpen,setReportsOpen]=useState(false);
-  const [communicationsOpen,setCommunicationsOpen]=useState(false);
-  const [notificationsOpen,setNotificationsOpen]=useState(false);
-  const [supportOpen,setSupportOpen]=useState(false);
-  const [noticeAdminOpen,setNoticeAdminOpen]=useState(false);
-  const [roleActions,setRoleActions]=useState<string[]>([]);
-  const closeRoles=useCallback(()=>setRolesOpen(false),[]);
-  const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
-  const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
-  const closeFinance=useCallback(()=>setFinanceOpen(false),[]);
-  const closeVouchers=useCallback(()=>setVoucherOnlyOpen(false),[]);
-  const closeFinanceReview=useCallback(()=>setFinanceReviewOpen(false),[]);
-  const closeFinanceClaims=useCallback(()=>setFinanceClaimsOpen(false),[]);
-  const closeFinanceClaimReviews=useCallback(()=>setFinanceClaimReviewsOpen(false),[]);
-  const closeInvoices=useCallback(()=>setInvoiceOpen(false),[]);
-  const closeInvoiceReviews=useCallback(()=>setInvoiceReviewOpen(false),[]);
-  const closeBudgets=useCallback(()=>setBudgetOpen(false),[]);
-  const closeBudgetReviews=useCallback(()=>setBudgetReviewOpen(false),[]);
-  const closeReports=useCallback(()=>setReportsOpen(false),[]);
-  const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);setInvoiceOpen(false);setInvoiceReviewOpen(false);
-    setBudgetOpen(false);setBudgetReviewOpen(false);setReportsOpen(false);
-    void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
-  },[]);
-  useEffect(()=>{
-    let active=true;
-    void (async()=>{
+export function StaffAuthenticationScreen() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [actor, setActor] = useState<CG01SessionView | null>(null);
+  const [state, setState] = useState<"checking" | "idle" | "busy">("checking");
+  const [message, setMessage] = useState("");
+  const [loginFieldError, setLoginFieldError] = useState<"identifier" | "password" | "all" | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [recover, setRecover] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const [rolesOpen, setRolesOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [approvalsOpen, setApprovalsOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [branchesOpen, setBranchesOpen] = useState(false);
+  const [financeOpen, setFinanceOpen] = useState(false);
+  const [voucherOnlyOpen, setVoucherOnlyOpen] = useState(false);
+  const [financeReviewOpen, setFinanceReviewOpen] = useState(false);
+  const [financeClaimsOpen, setFinanceClaimsOpen] = useState(false);
+  const [financeClaimReviewsOpen, setFinanceClaimReviewsOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceReviewOpen, setInvoiceReviewOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [budgetReviewOpen, setBudgetReviewOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [communicationsOpen, setCommunicationsOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [noticeAdminOpen, setNoticeAdminOpen] = useState(false);
+  const [roleActions, setRoleActions] = useState<string[]>([]);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
+  const closeRoles = useCallback(() => setRolesOpen(false), []);
+  const closePolicy = useCallback(() => setPolicyOpen(false), []);
+  const closeAccounts = useCallback(() => setAccountsOpen(false), []);
+  const closeFinance = useCallback(() => setFinanceOpen(false), []);
+  const closeVouchers = useCallback(() => setVoucherOnlyOpen(false), []);
+  const closeFinanceReview = useCallback(() => setFinanceReviewOpen(false), []);
+  const closeFinanceClaims = useCallback(() => setFinanceClaimsOpen(false), []);
+  const closeFinanceClaimReviews = useCallback(() => setFinanceClaimReviewsOpen(false), []);
+  const closeInvoices = useCallback(() => setInvoiceOpen(false), []);
+  const closeInvoiceReviews = useCallback(() => setInvoiceReviewOpen(false), []);
+  const closeBudgets = useCallback(() => setBudgetOpen(false), []);
+  const closeBudgetReviews = useCallback(() => setBudgetReviewOpen(false), []);
+  const closeReports = useCallback(() => setReportsOpen(false), []);
+  const expireSession = useCallback(() => {
+    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
+    void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
+  }, []);
+
+  // Hardware Back button closes open sub-screens and returns to dashboard
+  useEffect(() => {
+    const isAnySubScreenOpen =
+      accountOpen ||
+      accountsOpen ||
+      rolesOpen ||
+      policyOpen ||
+      approvalsOpen ||
+      documentsOpen ||
+      notificationsOpen ||
+      communicationsOpen ||
+      noticeAdminOpen ||
+      supportOpen ||
+      financeReviewOpen ||
+      voucherOnlyOpen ||
+      financeClaimReviewsOpen ||
+      financeClaimsOpen ||
+      invoiceOpen ||
+      invoiceReviewOpen ||
+      budgetOpen ||
+      budgetReviewOpen ||
+      reportsOpen ||
+      financeOpen ||
+      branchesOpen ||
+      changePasswordOpen;
+
+    if (!isAnySubScreenOpen) return;
+
+    const onBackPress = () => {
+      setAccountOpen(false);
+      setAccountsOpen(false);
+      setRolesOpen(false);
+      setPolicyOpen(false);
+      setApprovalsOpen(false);
+      setDocumentsOpen(false);
+      setNotificationsOpen(false);
+      setCommunicationsOpen(false);
+      setNoticeAdminOpen(false);
+      setSupportOpen(false);
+      setFinanceReviewOpen(false);
+      setVoucherOnlyOpen(false);
+      setFinanceClaimReviewsOpen(false);
+      setFinanceClaimsOpen(false);
+      setInvoiceOpen(false);
+      setInvoiceReviewOpen(false);
+      setBudgetOpen(false);
+      setBudgetReviewOpen(false);
+      setReportsOpen(false);
+      setFinanceOpen(false);
+      setBranchesOpen(false);
+      setChangePasswordOpen(false);
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [
+    accountOpen,
+    accountsOpen,
+    rolesOpen,
+    policyOpen,
+    approvalsOpen,
+    documentsOpen,
+    notificationsOpen,
+    communicationsOpen,
+    noticeAdminOpen,
+    supportOpen,
+    financeReviewOpen,
+    voucherOnlyOpen,
+    financeClaimReviewsOpen,
+    financeClaimsOpen,
+    invoiceOpen,
+    invoiceReviewOpen,
+    budgetOpen,
+    budgetReviewOpen,
+    reportsOpen,
+    financeOpen,
+    branchesOpen,
+    changePasswordOpen
+  ]);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
       try {
-        const stored=await SecureStore.getItemAsync(STORE_KEY);
-        if(!stored){if(active)setState("idle");return;}
-        const verified=await sessionView(stored);
-        if(!active)return;
-        if(!verified){await SecureStore.deleteItemAsync(STORE_KEY);setActor(null);setToken(null);}
+        const stored = await SecureStore.getItemAsync(STORE_KEY);
+        if (!stored) { if (active) setState("idle"); return; }
+        const verified = await sessionView(stored);
+        if (!active) return;
+        if (!verified) { await SecureStore.deleteItemAsync(STORE_KEY); setActor(null); setToken(null); }
         else {
-          const actions=await currentRoleActions(stored);
-          if(active){setRoleActions(actions);setToken(stored);setActor(verified);}
+          const actions = await currentRoleActions(stored);
+          if (active) { setRoleActions(actions); setToken(stored); setActor(verified); }
         }
       } catch {
-        if(active)setMessage("Access cannot be verified right now. Protected information remains hidden.");
-      }finally{if(active)setState("idle");}
+        if (active) setMessage("Access cannot be verified right now. Protected information remains hidden.");
+      } finally { if (active) setState("idle"); }
     })();
-    return()=>{active=false;};
-  },[]);
+    return () => { active = false; };
+  }, []);
 
   // Event-driven authorization check on resume, without background polling.
-  useEffect(()=>{
-    if(!token)return;
-    let active=true;
-    const subscription=AppState.addEventListener("change",state=>{
-      if(state!=="active")return;
-      setState("checking");setActor(null);setRoleActions([]);
-      void (async()=>{
-        try{
-          const fresh=await sessionView(token);
-          if(!active)return;
-          if(!fresh){expireSession();}
-          else {const actions=await currentRoleActions(token);if(active){setRoleActions(actions);setActor(fresh);}}
-        }catch{
-          if(active){setActor(null);setMessage("Access cannot be verified. Protected information remains hidden.");}
-        }finally{
-          if(active)setState("idle");
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    const subscription = AppState.addEventListener("change", state => {
+      if (state !== "active") return;
+      setState("checking"); setActor(null); setRoleActions([]);
+      void (async () => {
+        try {
+          const fresh = await sessionView(token);
+          if (!active) return;
+          if (!fresh) { expireSession(); }
+          else { const actions = await currentRoleActions(token); if (active) { setRoleActions(actions); setActor(fresh); } }
+        } catch {
+          if (active) { setActor(null); setMessage("Access cannot be verified. Protected information remains hidden."); }
+        } finally {
+          if (active) setState("idle");
         }
       })();
     });
-    return()=>{active=false;subscription.remove();};
-  },[token,expireSession]);
-  async function signIn(){
-    if(state==="busy")return;
-    setState("busy");setMessage("");setLoginFieldError(null);
-    const request:CG01SignInRequest={identifier:email.trim(),password,deviceLabel:"Internal Android"};
-    let issuedToken:string|null=null;
-    try{
+    return () => { active = false; subscription.remove(); };
+  }, [token, expireSession]);
+
+  const { toast, showToast, hideToast } = useAuthToast();
+  const cardAnim = useRef(new Animated.Value(24)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const focusedFieldRef = useRef<"identifier" | "password" | null>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "android" ? "keyboardDidShow" : "keyboardWillShow",
+      (e) => {
+        const height = e.endCoordinates.height;
+        setKeyboardHeight(height);
+        if (focusedFieldRef.current) {
+          const targetY = focusedFieldRef.current === "identifier" ? 210 : 280;
+          scrollRef.current?.scrollTo({ y: targetY, animated: true });
+        }
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "android" ? "keyboardDidHide" : "keyboardWillHide",
+      () => {
+        setKeyboardHeight(0);
+        focusedFieldRef.current = null;
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const onFieldFocus = useCallback((field: "identifier" | "password") => {
+    focusedFieldRef.current = field;
+    const targetY = field === "identifier" ? 210 : 280;
+    scrollRef.current?.scrollTo({ y: targetY, animated: true });
+  }, []);
+
+  useEffect(() => {
+    if (!actor && !recover) {
+      Animated.parallel([
+        Animated.timing(cardOpacity, {
+          toValue: 1,
+          duration: 550,
+          delay: 150,
+          useNativeDriver: true
+        }),
+        Animated.timing(cardAnim, {
+          toValue: 0,
+          duration: 550,
+          delay: 150,
+          useNativeDriver: true
+        })
+      ]).start();
+    }
+  }, [actor, recover, cardAnim, cardOpacity]);
+
+  async function signIn() {
+    if (state === "busy") return;
+    setState("busy"); setMessage(""); setLoginFieldError(null);
+    const trimmedId = email.trim();
+    if (!trimmedId || !password) {
+      const field = !trimmedId && !password ? "all" : !trimmedId ? "identifier" : "password";
+      setLoginFieldError(field);
+      const emptyMsg = !trimmedId && !password
+        ? "Please enter both your identifier and password to continue."
+        : !trimmedId
+          ? "Please enter your mobile number or email to continue."
+          : "Please enter your password to continue.";
+      setMessage(emptyMsg);
+      showToast({
+        type: "error",
+        title: "Required Fields Missing",
+        message: emptyMsg
+      });
+      setState("idle");
+      return;
+    }
+    const request: CG01SignInRequest = { identifier: trimmedId, password, deviceLabel: "Internal Android" };
+    let issuedToken: string | null = null;
+    try {
       let response: Response;
       try {
-        response=await identityRequest("/api/identity/login",{
-          method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request)
+        response = await identityRequest("/api/identity/login", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request)
         });
       } catch (err: unknown) {
         if (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted") || err.message?.includes("timeout"))) {
-          setMessage("The request is taking too long. Please try again.");
+          const timeoutMsg = "The request is taking too long. Please try again.";
+          setMessage(timeoutMsg);
+          showToast({ type: "error", title: "Request Timeout", message: timeoutMsg });
           return;
         }
         if (err instanceof Error && (err.message.includes("API configuration error") || err.message === "Authentication service unavailable")) {
-          setMessage("Authentication service is currently unavailable. Please check settings.");
+          const svcMsg = "Authentication service is currently unavailable. Please check settings.";
+          setMessage(svcMsg);
+          showToast({ type: "error", title: "Service Unavailable", message: svcMsg });
           return;
         }
-        setMessage("Unable to connect to server. Please check your connection and try again.");
+        const netMsg = "We’re unable to connect right now. Please check your network and try again.";
+        setMessage(netMsg);
+        showToast({ type: "error", title: "Connection Failed", message: netMsg });
         return;
       }
-      if(!response.ok){
-        const payload:unknown=[400,401].includes(response.status)?
-          await response.json().catch(()=>null):null;
-        const data=payload&&typeof payload==="object"&&!Array.isArray(payload)?
-          payload as Record<string,unknown>:{};
-        const codes=new Set(["IDENTITY_IDENTIFIER_REQUIRED","IDENTITY_IDENTIFIER_INVALID",
-          "IDENTITY_PASSWORD_REQUIRED","IDENTITY_PASSWORD_TOO_LONG"]);
-        const isSafe=(response.status===400&&typeof data.code==="string"&&codes.has(data.code))||
-          (response.status===401&&data.code==="IDENTITY_LOGIN_INVALID");
-        const field=isSafe&&(data.field==="identifier"||data.field==="password")?data.field:null;
+      if (!response.ok) {
+        const payload: unknown = [400, 401].includes(response.status) ?
+          await response.json().catch(() => null) : null;
+        const data = payload && typeof payload === "object" && !Array.isArray(payload) ?
+          payload as Record<string, unknown> : {};
+        const codes = new Set(["IDENTITY_IDENTIFIER_REQUIRED", "IDENTITY_IDENTIFIER_INVALID",
+          "IDENTITY_PASSWORD_REQUIRED", "IDENTITY_PASSWORD_TOO_LONG"]);
+        const isSafe = (response.status === 400 && typeof data.code === "string" && codes.has(data.code)) ||
+          (response.status === 401 && data.code === "IDENTITY_LOGIN_INVALID");
+        const isInvalidCreds = response.status === 401;
+        const field: "identifier" | "password" | "all" | null = isSafe && (data.field === "identifier" || data.field === "password")
+          ? data.field
+          : isInvalidCreds
+            ? "all"
+            : null;
         setLoginFieldError(field);
-        setMessage(isSafe&&typeof data.message==="string"&&data.message.length>=16&&
-          data.message.length<=220?
-          data.message:response.status===429?"Too many login attempts. Please try later.":
-          response.status===401?"Mobile number/email or password is incorrect.":
-          response.status===400?"Check your mobile/email and password details.":
-          response.status===403?"Access is not authorized. Please contact an administrator.":
-          response.status===404?"Authentication service is currently unavailable. Please try again shortly.":
-          response.status>=500?"We’re unable to connect right now. Please try again shortly.":
-          "Sign-in could not be confirmed. Check your details and retry.");
+        const errMsg = isSafe && typeof data.message === "string" && data.message.length >= 16 && data.message.length <= 220
+          ? data.message
+          : response.status === 429 ? "Too many login attempts. Please try later."
+            : response.status === 401 ? "The mobile number, email, or password you entered is incorrect. Please check and try again."
+              : response.status === 400 ? "Check your mobile/email and password details."
+                : response.status === 403 ? "Access is not authorized. Please contact an administrator."
+                  : response.status === 404 ? "Authentication service is currently unavailable. Please try again shortly."
+                    : response.status >= 500 ? "We’re unable to connect right now. Please try again shortly."
+                      : "Sign-in could not be confirmed. Check your details and retry.";
+        setMessage(errMsg);
+        showToast({
+          type: "error",
+          title: response.status === 401 ? "Invalid Credentials" : "Sign In Failed",
+          message: errMsg
+        });
         return;
       }
-      const data:CG01SessionCreated=await response.json();
-      if(typeof data.sessionToken!=="string"||typeof data.expiresAt!=="string"||
-        !Number.isFinite(new Date(data.expiresAt).getTime())||
-        new Date(data.expiresAt).getTime()<=Date.now()){
+      const data: CG01SessionCreated = await response.json();
+      if (typeof data.sessionToken !== "string" || typeof data.expiresAt !== "string" ||
+        !Number.isFinite(new Date(data.expiresAt).getTime()) ||
+        new Date(data.expiresAt).getTime() <= Date.now()) {
         setMessage("Something went wrong. Please try again.");
+        showToast({ type: "error", title: "Sign In Error", message: "Something went wrong. Please try again." });
         return;
       }
-      issuedToken=data.sessionToken;
-      const verified=await sessionView(issuedToken);
-      if(!verified){
+      issuedToken = data.sessionToken;
+      const verified = await sessionView(issuedToken);
+      if (!verified) {
         setMessage("Your session has expired. Please sign in again.");
+        showToast({ type: "error", title: "Session Expired", message: "Your session has expired. Please sign in again." });
         return;
       }
       // Don't persist or show a session until BOTH identity and effective access
       // are verified, so offline/invalid permission reads cannot look like success.
-      const actions=await currentRoleActions(issuedToken);
-      await SecureStore.setItemAsync(STORE_KEY,issuedToken);
-      setRoleActions(actions);setToken(issuedToken);setActor(verified);setPassword("");
-    }catch(err: unknown){
-      setRoleActions([]);setActor(null);setToken(null);
+      const actions = await currentRoleActions(issuedToken);
+      await SecureStore.setItemAsync(STORE_KEY, issuedToken);
+      setRoleActions(actions); setToken(issuedToken); setActor(verified); setPassword("");
+      showToast({
+        type: "success",
+        title: "Welcome Back",
+        message: `Signed in successfully as ${verified.displayName || "Staff Member"}.`
+      });
+    } catch (err: unknown) {
+      setRoleActions([]); setActor(null); setToken(null);
       // If a session was issued but later bootstrap steps failed, avoid leaving a
       // needless server-side session alive. This is best effort, not a claimed logout.
-      if(issuedToken){
-        try{await identityRequest("/api/identity/logout",{
-          method:"POST",headers:{Authorization:"Bearer "+issuedToken}
-        });}catch{/* eventual server expiry still applies */}
-        try{await SecureStore.deleteItemAsync(STORE_KEY);}catch{/* no sign-in displayed */}
+      if (issuedToken) {
+        try {
+          await identityRequest("/api/identity/logout", {
+            method: "POST", headers: { Authorization: "Bearer " + issuedToken }
+          });
+        } catch {/* eventual server expiry still applies */ }
+        try { await SecureStore.deleteItemAsync(STORE_KEY); } catch {/* no sign-in displayed */ }
       }
-      if (err instanceof Error && err.name === "AbortError") {
-        setMessage("The request is taking too long. Please try again.");
-      } else if (err instanceof Error && (err.message.includes("Cannot find native module") || err.message.includes("ExpoCrypto"))) {
-        setMessage("This app needs an update to complete startup. Please contact support.");
-      } else {
-        setMessage("We’re unable to connect right now. Please try again shortly.");
-      }
-    }finally{setState("idle");}
+      const failMsg = err instanceof Error && err.name === "AbortError"
+        ? "The request is taking too long. Please try again."
+        : err instanceof Error && (err.message.includes("Cannot find native module") || err.message.includes("ExpoCrypto"))
+          ? "This app needs an update to complete startup. Please contact support."
+          : "We’re unable to connect right now. Please try again shortly.";
+      setMessage(failMsg);
+      showToast({ type: "error", title: "Connection Failed", message: failMsg });
+    } finally { setState("idle"); }
   }
-  async function signOut(){
-    if(state==="busy"||!token)return;
-    setState("busy");setMessage("");
-    try{
-      const response=await identityRequest("/api/identity/logout",{
-        method:"POST",headers:{Authorization:"Bearer "+token}
+  async function signOut() {
+    if (state === "busy" || !token) return;
+    setState("busy"); setMessage("");
+    try {
+      const response = await identityRequest("/api/identity/logout", {
+        method: "POST", headers: { Authorization: "Bearer " + token }
       });
-      if(!response.ok)throw new Error("Server revocation not confirmed");
+      if (!response.ok) throw new Error("Server revocation not confirmed");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);setInvoiceOpen(false);setInvoiceReviewOpen(false);setBudgetOpen(false);setBudgetReviewOpen(false);setReportsOpen(false);
-      try{
+      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
+      try {
         await SecureStore.deleteItemAsync(STORE_KEY);
-      }catch{
+      } catch {
         setMessage("Signed out. Local session cleanup could not be confirmed and will be retried.");
       }
-    }catch{setMessage("Sign-out could not be confirmed. Please retry.");}
-    finally{setState("idle");}
+    } catch { setMessage("Sign-out could not be confirmed. Please retry."); }
+    finally { setState("idle"); }
   }
-  if(recover)
+  if (recover)
     return (
-      <ScreenErrorBoundary onExit={()=>setRecover(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <RecoveryScreen onExit={()=>setRecover(false)}/>
+      <ScreenErrorBoundary onExit={() => setRecover(false)}>
+        <RecoveryScreen onExit={() => setRecover(false)} />
+      </ScreenErrorBoundary>
+    );
+  if (accountOpen && token && actor)
+    return (
+      <ScreenErrorBoundary onExit={closeAccount}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <MyAccountScreen
+            actor={actor}
+            token={token}
+            roleActions={roleActions}
+            onExit={closeAccount}
+            onOpenChangePassword={() => {
+              setAccountOpen(false);
+              setChangePasswordOpen(true);
+            }}
+            onSignOut={() => void signOut()}
+            onExpired={expireSession}
+          />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(changePasswordOpen&&token&&actor)
+  if (changePasswordOpen && token && actor)
     return (
-      <ScreenErrorBoundary onExit={()=>setChangePasswordOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setChangePasswordOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <ChangePasswordScreen token={token}
-            onExit={()=>setChangePasswordOpen(false)} onExpired={expireSession}
-            onChanged={()=>{expireSession();setChangePasswordOpen(false);
-              setMessage("Password changed. Sign in again.");}}/>
+            onExit={() => setChangePasswordOpen(false)} onExpired={expireSession}
+            onChanged={() => {
+              expireSession(); setChangePasswordOpen(false);
+              setMessage("Password changed. Sign in again.");
+            }} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(accountsOpen&&token&&actor)
+  if (accountsOpen && token && actor) {
+    if (!roleActions.includes("accounts.view") && !roleActions.includes("accounts.create"))
+      return (
+        <AccessDeniedScreen
+          reason="You cannot view staff accounts."
+          onMyAccount={closeAccounts}
+        />
+      );
     return (
       <ScreenErrorBoundary onExit={closeAccounts}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
-            createOnly={!roleActions.includes("accounts.view")}/>
+            createOnly={!roleActions.includes("accounts.view")} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(rolesOpen&&token&&actor)
+  }
+  if (rolesOpen && token && actor) {
+    if (!roleActions.includes("roles.view"))
+      return (
+        <AccessDeniedScreen
+          reason="Your current account does not have permission to view roles."
+          onMyAccount={closeRoles}
+        />
+      );
     return (
       <ScreenErrorBoundary onExit={closeRoles}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession}/>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(approvalsOpen&&token&&actor&&(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
+  }
+  if (approvalsOpen && token && actor) {
+    if (!roleActions.includes("approvals.view") && !roleActions.includes("approvals.propose"))
+      return (
+        <AccessDeniedScreen
+          reason="Protected approval records require permission."
+          onMyAccount={() => setApprovalsOpen(false)}
+        />
+      );
     return (
-      <ScreenErrorBoundary onExit={()=>setApprovalsOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setApprovalsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
             canPropose={roleActions.includes("approvals.propose")}
             canReview={roleActions.includes("approvals.review")}
-            onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>
+            onExit={() => setApprovalsOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(notificationsOpen&&token&&actor&&
-    roleActions.includes("communications.notifications.view"))
+  }
+  if (notificationsOpen && token && actor) {
+    if (!roleActions.includes("communications.notifications.view"))
+      return (
+        <AccessDeniedScreen
+          reason="Notices are restricted to your current Foundation role."
+          onMyAccount={() => setNotificationsOpen(false)}
+        />
+      );
     return (
-      <ScreenErrorBoundary onExit={()=>setNotificationsOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setNotificationsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <NotificationsScreen token={token}
-            onExit={()=>setNotificationsOpen(false)} onExpired={expireSession}/>
+            onExit={() => setNotificationsOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(documentsOpen&&token&&actor&&
-    roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")&&
-    (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose")))
+  }
+  if (documentsOpen && token && actor) {
+    if (!roleActions.includes("documents.files.view") || !roleActions.includes("documents.files.manage") ||
+      (!roleActions.includes("approvals.view") && !roleActions.includes("approvals.propose")))
+      return (
+        <AccessDeniedScreen
+          reason="Private files require current case and document permission."
+          onMyAccount={() => setDocumentsOpen(false)}
+        />
+      );
     return (
-      <ScreenErrorBoundary onExit={()=>setDocumentsOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setDocumentsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <PrivateCaseEvidenceScreen token={token}
             canViewLetters={roleActions.includes("documents.letters.issue")}
-            onExit={()=>setDocumentsOpen(false)} onExpired={expireSession}/>
+            onExit={() => setDocumentsOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(invoiceReviewOpen&&token&&actor&&
-    roleActions.includes("approvals.review")&&roleActions.includes("finance.invoices.review"))
+  }
+  if (invoiceReviewOpen && token && actor &&
+    roleActions.includes("approvals.review") && roleActions.includes("finance.invoices.review"))
     return (
       <ScreenErrorBoundary onExit={closeInvoiceReviews}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeProtectedReview token={token} kind="INVOICE"
             canConfigure={roleActions.includes("approvals.process.manage")}
-            onExit={closeInvoiceReviews} onExpired={expireSession}/>
+            onExit={closeInvoiceReviews} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(budgetReviewOpen&&token&&actor&&
-    roleActions.includes("approvals.review")&&roleActions.includes("finance.budgets.review"))
+  if (budgetReviewOpen && token && actor &&
+    roleActions.includes("approvals.review") && roleActions.includes("finance.budgets.review"))
     return (
       <ScreenErrorBoundary onExit={closeBudgetReviews}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeProtectedReview token={token} kind="BUDGET"
             canConfigure={roleActions.includes("approvals.process.manage")}
-            onExit={closeBudgetReviews} onExpired={expireSession}/>
+            onExit={closeBudgetReviews} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(invoiceOpen&&token&&actor&&
+  if (invoiceOpen && token && actor &&
     roleActions.includes("finance.invoices.view"))
     return (
       <ScreenErrorBoundary onExit={closeInvoices}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeInvoices token={token}
             canManage={roleActions.includes("finance.invoices.manage")}
             canIssue={roleActions.includes("finance.invoices.issue")}
             canPost={roleActions.includes("finance.journals.post")}
-            canCancel={roleActions.includes("finance.invoices.review")&&
-             roleActions.includes("finance.journals.post")&&roleActions.includes("approvals.review")}
-            onExit={closeInvoices} onExpired={expireSession}/>
+            canCancel={roleActions.includes("finance.invoices.review") &&
+              roleActions.includes("finance.journals.post") && roleActions.includes("approvals.review")}
+            onExit={closeInvoices} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(budgetOpen&&token&&actor&&
+  if (budgetOpen && token && actor &&
     roleActions.includes("finance.budgets.view"))
     return (
       <ScreenErrorBoundary onExit={closeBudgets}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeBudgets token={token}
             canManage={roleActions.includes("finance.budgets.manage")}
-            onExit={closeBudgets} onExpired={expireSession}/>
+            onExit={closeBudgets} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(reportsOpen&&token&&actor&&roleActions.includes("finance.reports.view"))
+  if (reportsOpen && token && actor && roleActions.includes("finance.reports.view"))
     return (
       <ScreenErrorBoundary onExit={closeReports}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeReports token={token}
-            canReconcile={roleActions.includes("finance.reconciliation.manage")&&roleActions.includes("documents.files.manage")}
-            canUploadStatement={roleActions.includes("finance.reconciliation.manage")&&
+            canReconcile={roleActions.includes("finance.reconciliation.manage") && roleActions.includes("documents.files.manage")}
+            canUploadStatement={roleActions.includes("finance.reconciliation.manage") &&
               roleActions.includes("documents.files.manage")}
-            canReview={roleActions.includes("finance.reconciliation.review")&&
-              roleActions.includes("approvals.review")&&
+            canReview={roleActions.includes("finance.reconciliation.review") &&
+              roleActions.includes("approvals.review") &&
               roleActions.includes("documents.files.view")}
-            onExit={closeReports} onExpired={expireSession}/>
+            onExit={closeReports} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(financeClaimReviewsOpen&&token&&actor&&
-    ["finance.claims.review","approvals.review","documents.files.view"]
-      .every(x=>roleActions.includes(x)))
+  if (financeClaimReviewsOpen && token && actor &&
+    ["finance.claims.review", "approvals.review", "documents.files.view"]
+      .every(x => roleActions.includes(x)))
     return (
       <ScreenErrorBoundary onExit={closeFinanceClaimReviews}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceClaimNativeReviewer token={token}
-            onExit={closeFinanceClaimReviews} onExpired={expireSession}/>
+            onExit={closeFinanceClaimReviews} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(financeClaimsOpen&&token&&actor&&
-    (roleActions.includes("finance.claims.view")||roleActions.includes("finance.claims.create")))
+  if (financeClaimsOpen && token && actor &&
+    (roleActions.includes("finance.claims.view") || roleActions.includes("finance.claims.create")))
     return (
       <ScreenErrorBoundary onExit={closeFinanceClaims}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceExpenseClaimsScreen token={token}
             canView={roleActions.includes("finance.claims.view")}
             canCreate={roleActions.includes("finance.claims.create")}
-            canUploadBill={roleActions.includes("finance.claims.create")&&roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
-            onExit={closeFinanceClaims} onExpired={expireSession}/>
+            canUploadBill={roleActions.includes("finance.claims.create") && roleActions.includes("documents.files.manage") && roleActions.includes("documents.files.view")}
+            onExit={closeFinanceClaims} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(financeReviewOpen&&token&&actor&&roleActions.includes("approvals.review")&&
-    roleActions.includes("finance.vouchers.view")&&roleActions.includes("documents.files.view"))
+  if (financeReviewOpen && token && actor && roleActions.includes("approvals.review") &&
+    roleActions.includes("finance.vouchers.view") && roleActions.includes("documents.files.view"))
     return (
       <ScreenErrorBoundary onExit={closeFinanceReview}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceVoucherNativeReviewer token={token}
-            onExit={closeFinanceReview} onExpired={expireSession}/>
+            onExit={closeFinanceReview} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(voucherOnlyOpen&&token&&actor&&roleActions.includes("finance.vouchers.view"))
+  if (voucherOnlyOpen && token && actor && roleActions.includes("finance.vouchers.view"))
     return (
       <ScreenErrorBoundary onExit={closeVouchers}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceVoucherOnlyScreen token={token}
             canManage={roleActions.includes("finance.vouchers.manage")}
             canViewEvidence={roleActions.includes("documents.files.view")}
-            canUploadEvidence={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
+            canUploadEvidence={roleActions.includes("documents.files.manage") && roleActions.includes("documents.files.view")}
             canPost={roleActions.includes("finance.journals.post")}
-            canVerifyPayment={roleActions.includes("approvals.review")&&roleActions.includes("documents.files.view")}
-            onExit={closeVouchers} onExpired={expireSession}/>
+            canVerifyPayment={roleActions.includes("approvals.review") && roleActions.includes("documents.files.view")}
+            onExit={closeVouchers} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(financeOpen&&token&&actor&&roleActions.includes("finance.accounts.view"))
+  if (financeOpen && token && actor && roleActions.includes("finance.accounts.view"))
     return (
       <ScreenErrorBoundary onExit={closeFinance}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <FinanceAccountsScreen token={token} canManage={roleActions.includes("finance.accounts.manage")} canPost={roleActions.includes("finance.journals.post")} canReverse={roleActions.includes("finance.journals.post")&&roleActions.includes("approvals.review")} canViewVouchers={roleActions.includes("finance.vouchers.view")} canManageVouchers={roleActions.includes("finance.vouchers.manage")} canViewEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} canVerifyPayment={roleActions.includes("approvals.review")&&roleActions.includes("documents.files.view")} onExit={closeFinance} onExpired={expireSession}/>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <FinanceAccountsScreen token={token} canManage={roleActions.includes("finance.accounts.manage")} canPost={roleActions.includes("finance.journals.post")} canReverse={roleActions.includes("finance.journals.post") && roleActions.includes("approvals.review")} canViewVouchers={roleActions.includes("finance.vouchers.view")} canManageVouchers={roleActions.includes("finance.vouchers.manage")} canViewEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.manage") && roleActions.includes("documents.files.view")} canVerifyPayment={roleActions.includes("approvals.review") && roleActions.includes("documents.files.view")} onExit={closeFinance} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(branchesOpen&&token&&actor&&roleActions.includes("foundation.branches.view"))
+  if (branchesOpen && token && actor) {
+    if (!roleActions.includes("foundation.branches.view"))
+      return (
+        <AccessDeniedScreen
+          reason="Branch management is restricted to your Foundation role."
+          onMyAccount={() => setBranchesOpen(false)}
+        />
+      );
     return (
-      <ScreenErrorBoundary onExit={()=>setBranchesOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setBranchesOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <BranchRegistrationScreen token={token}
             canManage={roleActions.includes("foundation.branches.manage")}
-            onExit={()=>setBranchesOpen(false)} onExpired={expireSession}/>
+            onExit={() => setBranchesOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(communicationsOpen&&token&&actor&&
+  }
+  if (communicationsOpen && token && actor &&
     roleActions.includes("communications.notifications.view"))
     return (
-      <ScreenErrorBoundary onExit={()=>setCommunicationsOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <SafeAreaView style={{flex:1,backgroundColor:careGangaTheme.background}}>
+      <ScreenErrorBoundary onExit={() => setCommunicationsOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: careGangaTheme.background }}>
             <RecipientNotifications token={token} makeRequest={communicationRequest}
-              onExit={()=>setCommunicationsOpen(false)} onExpired={expireSession}/>
+              onExit={() => setCommunicationsOpen(false)} onExpired={expireSession} />
           </SafeAreaView>
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(noticeAdminOpen&&token&&actor&&
-    (roleActions.includes("communications.notices.manage")||
+  if (noticeAdminOpen && token && actor &&
+    (roleActions.includes("communications.notices.manage") ||
       roleActions.includes("communications.delivery.process")))
     return (
-      <ScreenErrorBoundary onExit={()=>setNoticeAdminOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setNoticeAdminOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FoundationNoticeAdminScreen token={token}
             mayManage={roleActions.includes("communications.notices.manage")}
             mayApprove={roleActions.includes("communications.notices.approve")}
@@ -507,186 +775,481 @@ export function StaffAuthenticationScreen(){
             mayViewDelivery={roleActions.includes("communications.delivery.view")}
             maySelectAccounts={roleActions.includes("accounts.select")}
             maySelectRoles={roleActions.includes("roles.select")}
-            onExit={()=>setNoticeAdminOpen(false)} onExpired={expireSession}/>
+            onExit={() => setNoticeAdminOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(supportOpen&&token&&actor&&
-    (roleActions.includes("support.cases.view")||
-      roleActions.includes("support.faq.manage")))
+  if (supportOpen && token && actor) {
+    if (!roleActions.includes("support.cases.view") && !roleActions.includes("support.faq.manage"))
+      return (
+        <AccessDeniedScreen
+          reason="Your role does not permit Foundation support."
+          onMyAccount={() => setSupportOpen(false)}
+        />
+      );
     return (
-      <ScreenErrorBoundary onExit={()=>setSupportOpen(false)}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+      <ScreenErrorBoundary onExit={() => setSupportOpen(false)}>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FoundationSupportScreen token={token}
             mayView={roleActions.includes("support.cases.view")}
             mayManage={roleActions.includes("support.cases.manage")}
             mayReply={roleActions.includes("support.cases.reply")}
             mayFaq={roleActions.includes("support.faq.manage")}
             mayChooseAccounts={roleActions.includes("accounts.select")}
-            onExit={()=>setSupportOpen(false)} onExpired={expireSession}/>
+            onExit={() => setSupportOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  if(policyOpen&&token&&actor&&roleActions.includes("identity.security-policy.manage"))
+  }
+  if (policyOpen && token && actor) {
+    if (!roleActions.includes("identity.security-policy.manage"))
+      return (
+        <AccessDeniedScreen
+          reason="Security Policy is restricted to the Foundation Super Admin."
+          onMyAccount={closePolicy}
+        />
+      );
     return (
       <ScreenErrorBoundary onExit={closePolicy}>
-        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession}/>
+        <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+          <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
-  return <SafeAreaView style={styles.page}>
-    <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={styles.page}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={styles.brandBar}><Image source={require("../../../assets/careganga-mark.png")} accessibilityLabel="CareGanga Foundation" style={styles.brandImage}/><View><Text style={styles.brand}>CAREGANGA</Text><Text style={styles.brandSub}>FOUNDATION</Text></View></View>
-        <Text accessibilityRole="header" style={styles.title}>Foundation staff access</Text>
-        {state==="checking"?<ActivityIndicator accessibilityLabel="Verifying saved session"/>:actor?
-          <View style={styles.formCard}>
-            <Text accessibilityRole="header" style={styles.cardTitle}>Signed in: {actor.displayName}</Text>
-            <Text>Role: {actor.roleName}</Text>
-            <Text>Access: {actor.scope}</Text>
-            {(roleActions.includes("accounts.view")||(roleActions.includes("accounts.create")&&roleActions.includes("roles.assign")))&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setAccountsOpen(true)}>
-              <Text style={styles.buttonText}>Users Management</Text>
-            </Pressable>}
-            {roleActions.includes("roles.view")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setRolesOpen(true)}><Text style={styles.buttonText}>Roles & permissions</Text></Pressable>}
-            {roleActions.includes("identity.security-policy.manage")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setPolicyOpen(true)}>
-              <Text style={styles.buttonText}>Security Policy</Text>
-            </Pressable>}
-            {(roleActions.includes("approvals.view")||roleActions.includes("approvals.propose"))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setApprovalsOpen(true)}>
-                <Text style={styles.buttonText}>Registration & Approval</Text>
-              </Pressable>}
-            {roleActions.includes("documents.files.view")&&
-              roleActions.includes("documents.files.manage")&&
-              (roleActions.includes("approvals.view")||roleActions.includes("approvals.propose"))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setDocumentsOpen(true)}>
-                <Text style={styles.buttonText}>Private Case Documents</Text>
-              </Pressable>}
-            {roleActions.includes("communications.notifications.view")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setNotificationsOpen(true)}>
-                <Text style={styles.buttonText}>My Notices & Notifications</Text>
-              </Pressable>}
-            {roleActions.includes("communications.notifications.view")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setCommunicationsOpen(true)}>
-                <Text style={styles.buttonText}>My Foundation notices</Text>
-              </Pressable>}
-            {(roleActions.includes("communications.notices.manage")||
-              roleActions.includes("communications.delivery.process"))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setNoticeAdminOpen(true)}>
-                <Text style={styles.buttonText}>Manage Foundation notices</Text>
-              </Pressable>}
-            {(roleActions.includes("support.cases.view")||
-              roleActions.includes("support.faq.manage"))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>setSupportOpen(true)}>
-                <Text style={styles.buttonText}>Contact Messages & Help</Text>
-              </Pressable>}
-            {roleActions.includes("approvals.review")&&
-               roleActions.includes("finance.vouchers.view")&&roleActions.includes("documents.files.view")&&
-               <Pressable accessibilityRole="button" style={styles.button}
-                 onPress={()=>setFinanceReviewOpen(true)}>
-                 <Text style={styles.buttonText}>Finance Voucher Reviews</Text>
-               </Pressable>}
-            {roleActions.includes("finance.vouchers.view")&&
-               !roleActions.includes("finance.accounts.view")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setVoucherOnlyOpen(true)}>
-              <Text style={styles.buttonText}>Finance Voucher Drafts</Text>
-            </Pressable>}
-            {["finance.claims.review","approvals.review","documents.files.view"]
-               .every(x=>roleActions.includes(x))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setFinanceClaimReviewsOpen(true)}>
-               <Text style={styles.buttonText}>Expense Claim Reviews</Text>
-              </Pressable>}
-            {(roleActions.includes("finance.claims.view")||
-               roleActions.includes("finance.claims.create"))&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setFinanceClaimsOpen(true)}>
-               <Text style={styles.buttonText}>Expense Claims</Text>
-              </Pressable>}
-            {roleActions.includes("finance.invoices.view")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setInvoiceOpen(true)}>
-               <Text style={styles.buttonText}>Invoices & Receipts</Text></Pressable>}
-            {roleActions.includes("finance.invoices.review")&&roleActions.includes("approvals.review")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setInvoiceReviewOpen(true)}>
-               <Text style={styles.buttonText}>Protected Invoice Reviews</Text></Pressable>}
-            {roleActions.includes("finance.budgets.view")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setBudgetOpen(true)}>
-               <Text style={styles.buttonText}>Foundation Budgets</Text></Pressable>}
-            {roleActions.includes("finance.budgets.review")&&roleActions.includes("approvals.review")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setBudgetReviewOpen(true)}>
-               <Text style={styles.buttonText}>Protected Budget Reviews</Text></Pressable>}
-            {roleActions.includes("finance.reports.view")&&
-              <Pressable accessibilityRole="button" style={styles.button}
-               onPress={()=>setReportsOpen(true)}>
-               <Text style={styles.buttonText}>Finance Ledger & Reports</Text></Pressable>}
-            {roleActions.includes("finance.accounts.view")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setFinanceOpen(true)}>
-              <Text style={styles.buttonText}>Finance Accounts & Years</Text>
-            </Pressable>}
-            {roleActions.includes("foundation.branches.view")&&<Pressable accessibilityRole="button"
-              style={styles.button} onPress={()=>setBranchesOpen(true)}>
-              <Text style={styles.buttonText}>Branches & registration</Text>
-            </Pressable>}
-            <Pressable accessibilityRole="button" style={styles.button}
-              onPress={()=>setChangePasswordOpen(true)}>
-              <Text style={styles.buttonText}>Change password</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={state==="busy"} onPress={()=>void signOut()} style={styles.button}>
-              <Text style={styles.buttonText}>Sign out</Text>
-            </Pressable>
-          </View>:
-          <View style={styles.formCard}>
-            <Text style={styles.helper}>Sign in with your registered mobile number or email.</Text>
-            <Text style={styles.label}>Mobile number or email</Text>
-            <TextInput accessibilityLabel="Mobile number or email" autoCapitalize="none" autoComplete="username" keyboardType="default" value={email} onChangeText={v=>{setEmail(v);if(loginFieldError==="identifier"){setLoginFieldError(null);setMessage("");}}} style={[styles.input,loginFieldError==="identifier"&&styles.invalidInput]}/>
-            {loginFieldError==="identifier"&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
-            <Text style={styles.label}>Password</Text>
-            <TextInput accessibilityLabel="Password" secureTextEntry autoComplete="current-password" value={password} onChangeText={v=>{setPassword(v);if(loginFieldError==="password"){setLoginFieldError(null);setMessage("");}}} style={[styles.input,loginFieldError==="password"&&styles.invalidInput]}/>
-            {loginFieldError==="password"&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
-            <Pressable accessibilityRole="button" disabled={state==="busy"||!email.trim()||!password} onPress={()=>void signIn()} style={[styles.button,styles.primaryButton]}>
-              <Text style={styles.primaryButtonText}>{state==="busy"?"Verifying…":"Sign in"}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={()=>setRecover(true)} style={styles.button}>
-              <Text style={styles.buttonText}>Recover account</Text>
-            </Pressable>
-          </View>}
-        {!!message&&!loginFieldError&&<Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </SafeAreaView>;
+  }
+
+  if (state === "checking") {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <AuthAmbientBackground />
+        <View style={styles.checkingCenter}>
+          <LoginBranding />
+          <ActivityIndicator size="large" color="#00E5FF" style={{ marginTop: 24 }} accessibilityLabel="Verifying saved session" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (actor && token) {
+    const handlers: ModuleActionHandlers = {
+      openDashboard: () => {
+        setAccountOpen(false);
+        setAccountsOpen(false);
+        setRolesOpen(false);
+        setPolicyOpen(false);
+        setApprovalsOpen(false);
+        setDocumentsOpen(false);
+        setNotificationsOpen(false);
+        setCommunicationsOpen(false);
+        setNoticeAdminOpen(false);
+        setSupportOpen(false);
+        setFinanceReviewOpen(false);
+        setVoucherOnlyOpen(false);
+        setFinanceClaimReviewsOpen(false);
+        setFinanceClaimsOpen(false);
+        setInvoiceOpen(false);
+        setInvoiceReviewOpen(false);
+        setBudgetOpen(false);
+        setBudgetReviewOpen(false);
+        setReportsOpen(false);
+        setFinanceOpen(false);
+        setBranchesOpen(false);
+        setChangePasswordOpen(false);
+      },
+      openAccount: () => setAccountOpen(true),
+      openAccounts: () => setAccountsOpen(true),
+      openRoles: () => setRolesOpen(true),
+      openPolicy: () => setPolicyOpen(true),
+      openApprovals: () => setApprovalsOpen(true),
+      openDocuments: () => setDocumentsOpen(true),
+      openNotifications: () => setNotificationsOpen(true),
+      openCommunications: () => setCommunicationsOpen(true),
+      openNoticeAdmin: () => setNoticeAdminOpen(true),
+      openSupport: () => setSupportOpen(true),
+      openFinanceReview: () => setFinanceReviewOpen(true),
+      openVoucherOnly: () => setVoucherOnlyOpen(true),
+      openFinanceClaimReviews: () => setFinanceClaimReviewsOpen(true),
+      openFinanceClaims: () => setFinanceClaimsOpen(true),
+      openInvoice: () => setInvoiceOpen(true),
+      openInvoiceReview: () => setInvoiceReviewOpen(true),
+      openBudget: () => setBudgetOpen(true),
+      openBudgetReview: () => setBudgetReviewOpen(true),
+      openReports: () => setReportsOpen(true),
+      openFinance: () => setFinanceOpen(true),
+      openBranches: () => setBranchesOpen(true),
+      openChangePassword: () => setChangePasswordOpen(true)
+    };
+
+    return (
+      <InternalDashboardScreen
+        actor={actor}
+        token={token}
+        roleActions={roleActions}
+        handlers={handlers}
+        onSignOut={() => void signOut()}
+        message={message}
+      />
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {/* Deep Navy Glowing Background with Ambient Waves */}
+      <AuthAmbientBackground />
+
+      {/* Top-Right Scoped Auth Toast Notification */}
+      <AuthToast toast={toast} onDismiss={hideToast} />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        enabled={Platform.OS === "ios"}
+        style={styles.keyboardContainer}
+      >
+        <ScrollView
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          contentContainerStyle={[
+            styles.scrollContent,
+            keyboardHeight > 0 && { paddingBottom: keyboardHeight + 36 }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Branding */}
+          <LoginBranding />
+
+          {/* Healthcare Hero Section with Frosted Glass 3-Service Pill Bar */}
+          <LoginHeroSection />
+
+          {/* White Login Card */}
+          <Animated.View
+            style={[
+              styles.loginCard,
+              {
+                opacity: cardOpacity,
+                transform: [{ translateY: cardAnim }]
+              }
+            ]}
+          >
+            {/* Top Centered Lock Badge */}
+            <View style={styles.cardLockBadgeWrap}>
+              <IconPadlockShieldLarge size={52} />
+            </View>
+
+            {/* Heading & Subtitle */}
+            <Text accessibilityRole="header" style={styles.cardHeading}>
+              Sign in to your Account
+            </Text>
+            <Text style={styles.cardSubheading}>
+              Access your CareGanga account to manage services, records and more.
+            </Text>
+
+            {/* Field 1: Mobile Number or Email */}
+            <LoginInput
+              label="Mobile Number or Email"
+              iconType="user"
+              placeholder="Enter mobile number or email"
+              autoCapitalize="none"
+              autoComplete="username"
+              keyboardType="default"
+              value={email}
+              error={loginFieldError === "identifier" || loginFieldError === "all" ? message : null}
+              onFocus={() => onFieldFocus("identifier")}
+              onChangeText={v => {
+                setEmail(v);
+                if (loginFieldError) {
+                  setLoginFieldError(null);
+                  setMessage("");
+                }
+              }}
+            />
+
+            {/* Field 2: Password */}
+            <LoginInput
+              label="Password"
+              iconType="lock"
+              isPassword
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              value={password}
+              error={loginFieldError === "password" || loginFieldError === "all" ? (loginFieldError === "all" ? true : message) : null}
+              hideErrorMessage={loginFieldError === "all"}
+              onFocus={() => onFieldFocus("password")}
+              onChangeText={v => {
+                setPassword(v);
+                if (loginFieldError) {
+                  setLoginFieldError(null);
+                  setMessage("");
+                }
+              }}
+            />
+
+            {/* Options Row: Remember Me & Forgot Password */}
+            <View style={styles.optionsRow}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: rememberMe }}
+                accessibilityLabel="Remember me"
+                onPress={() => setRememberMe(v => !v)}
+                style={styles.rememberBox}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Text style={styles.checkboxCheckmark}>✓</Text>}
+                </View>
+                <Text style={styles.rememberText}>Remember me</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Forgot Password"
+                onPress={() => setRecover(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.forgotPasswordLink}>Forgot Password?</Text>
+              </Pressable>
+            </View>
+
+            {/* Global Error Banner */}
+            {!!message && !loginFieldError && (
+              <View style={styles.globalErrorBanner} accessibilityRole="alert">
+                <IconAlertCircle size={16} color="#DC2626" />
+                <Text style={styles.globalErrorText}>{message}</Text>
+              </View>
+            )}
+
+            {/* Primary Action Button: Blue-to-Green Gradient CTA */}
+            <LoginSubmitButton
+              label="Sign In"
+              loadingLabel="Signing in..."
+              loading={state === "busy"}
+              disabled={state === "busy" || !email.trim() || !password}
+              onPress={() => void signIn()}
+              style={{ marginTop: 6 }}
+            />
+
+            {/* Secure Access Footer with Contact Support Link */}
+            <SecureAccessFooter
+              onContactSupport={() => {
+                setMessage("For support, please contact your CareGanga Foundation administrator or email support@careganga.org.");
+              }}
+            />
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
-const styles=StyleSheet.create({
-  invalidInput:{borderColor:careGangaTheme.error},
-  page:{flex:1,backgroundColor:careGangaTheme.background},
-  content:{minHeight:"100%",padding:24,gap:14,justifyContent:"center",width:"100%",maxWidth:680,alignSelf:"center"},
-  brandBar:{flexDirection:"row",alignItems:"center",gap:12,marginBottom:8},
-  brandImage:{width:48,height:48,borderRadius:24},
-  brandMark:{width:46,height:46,borderRadius:23,backgroundColor:careGangaTheme.sidebar,alignItems:"center",justifyContent:"center"},
-  brandLetter:{color:careGangaTheme.sidebarText,fontWeight:"800",fontSize:16},
-  brand:{fontWeight:"800",fontSize:18,letterSpacing:.8,color:careGangaTheme.sidebar},
-  brandSub:{fontWeight:"700",fontSize:10,letterSpacing:2,color:careGangaTheme.mutedText},
-  title:{fontSize:25,fontWeight:"700",marginBottom:8,color:careGangaTheme.text},
-  formCard:{gap:12,padding:20,backgroundColor:careGangaTheme.surface,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:12},
-  cardTitle:{fontSize:18,fontWeight:"700",color:careGangaTheme.text},
-  helper:{fontSize:14,color:careGangaTheme.mutedText},
-  label:{fontWeight:"600",color:careGangaTheme.text},
-  input:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,paddingHorizontal:12,backgroundColor:careGangaTheme.surface,color:careGangaTheme.text},
-  button:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,borderRadius:7,justifyContent:"center",alignItems:"center",padding:12},
-  buttonText:{fontWeight:"600",color:careGangaTheme.text},
-  primaryButton:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
-  primaryButtonText:{color:careGangaTheme.primaryText,fontWeight:"700"},
-  message:{marginTop:10,padding:10,borderWidth:1,borderColor:careGangaTheme.border,backgroundColor:careGangaTheme.surface,color:careGangaTheme.error}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#03132B"
+  },
+  keyboardContainer: {
+    flex: 1
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 36,
+    alignItems: "center"
+  },
+  checkingCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24
+  },
+  loginCard: {
+    width: "100%",
+    maxWidth: 480,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 26,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 8
+  },
+  cardLockBadgeWrap: {
+    alignSelf: "center",
+    marginBottom: 8
+  },
+  cardHeading: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#0F172A",
+    textAlign: "center",
+    letterSpacing: -0.2
+  },
+  cardSubheading: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 20,
+    lineHeight: 18,
+    paddingHorizontal: 10
+  },
+  optionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 2,
+    marginBottom: 16
+  },
+  rememberBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  checkboxChecked: {
+    backgroundColor: "#16A34A",
+    borderColor: "#16A34A"
+  },
+  checkboxCheckmark: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900",
+    marginTop: -1
+  },
+  rememberText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#1E293B"
+  },
+  forgotPasswordLink: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#1D4ED8"
+  },
+  globalErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    gap: 8
+  },
+  globalErrorText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: "#DC2626",
+    fontWeight: "600"
+  },
+  dashboardPage: {
+    flex: 1,
+    backgroundColor: careGangaTheme.background
+  },
+  dashboardContent: {
+    minHeight: "100%",
+    padding: 24,
+    gap: 14,
+    justifyContent: "center",
+    width: "100%",
+    maxWidth: 680,
+    alignSelf: "center"
+  },
+  brandBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8
+  },
+  brandImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24
+  },
+  brandMark: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: careGangaTheme.sidebar,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  brandLetter: {
+    color: careGangaTheme.sidebarText,
+    fontWeight: "800",
+    fontSize: 16
+  },
+  brand: {
+    fontWeight: "800",
+    fontSize: 18,
+    letterSpacing: 0.8,
+    color: careGangaTheme.sidebar
+  },
+  brandSub: {
+    fontWeight: "700",
+    fontSize: 10,
+    letterSpacing: 2,
+    color: careGangaTheme.mutedText
+  },
+  title: {
+    fontSize: 25,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: careGangaTheme.text
+  },
+  formCard: {
+    gap: 12,
+    padding: 20,
+    backgroundColor: careGangaTheme.surface,
+    borderWidth: 1,
+    borderColor: careGangaTheme.border,
+    borderRadius: 12
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: careGangaTheme.text
+  },
+  button: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: careGangaTheme.border,
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 12
+  },
+  buttonText: {
+    fontWeight: "600",
+    color: careGangaTheme.text
+  },
+  primaryButton: {
+    backgroundColor: careGangaTheme.primary,
+    borderColor: careGangaTheme.primary
+  },
+  primaryButtonText: {
+    color: careGangaTheme.primaryText,
+    fontWeight: "700"
+  },
+  message: {
+    marginTop: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: careGangaTheme.border,
+    backgroundColor: careGangaTheme.surface,
+    color: careGangaTheme.error
+  }
 });

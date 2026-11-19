@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { FoundationStructurePanel } from "../../../../features/foundation-structure/foundation-structure-panel";
+import { AccessDeniedView } from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function FoundationStructurePage(){
@@ -29,9 +30,8 @@ export default async function FoundationStructurePage(){
       .filter((x):x is {key:string}=>Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&typeof (x as {key:unknown}).key==="string")
       .map(x=>x.key);
     const canView=actions.some(key=>["foundation.profile.view","foundation.geography.view","foundation.departments.view"].includes(key));
-    if(!canView)return <main className="page main"><h1>Foundation access not permitted</h1>
-      <p>You do not have permission to view this Foundation information.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    if(!canView)
+      return <AccessDeniedView reason="You do not have permission to view this Foundation information." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={actions.includes("finance.accounts.view")} canViewVouchers={actions.includes("finance.vouchers.view")} active="foundation" displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={actions.includes("roles.view")}

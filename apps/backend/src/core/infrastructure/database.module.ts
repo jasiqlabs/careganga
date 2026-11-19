@@ -19,7 +19,7 @@ export class DatabaseLifecycle implements OnModuleDestroy {
         connectionString: readConfig().databaseUrl,
         max: 12,
         idleTimeoutMillis: 30_000,
-        connectionTimeoutMillis: 5_000,
+        connectionTimeoutMillis: 15_000,
         application_name: "careganga-backend"
       });
       pool.on("error", (err: unknown) => {

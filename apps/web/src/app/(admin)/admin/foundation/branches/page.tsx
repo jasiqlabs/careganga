@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {BranchDraftPanel} from "../../../../../features/foundation-structure/branch-draft-panel";
 import {OperatingBranchesPanel} from "../../../../../features/foundation-structure/operating-branches-panel";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function BranchRegistrationPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -28,9 +29,7 @@ export default async function BranchRegistrationPage(){
     const keys=(permissions.actions as unknown[]).filter((x):x is {key:string}=>
       !!x&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
     if(!keys.includes("foundation.branches.view"))
-      return <main className="page main"><h1>Branch access not permitted</h1>
-        <p>Your current role does not permit branch registration.</p>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Your current role does not permit branch registration." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="branches" displayName={person.displayName}
         roleName={person.roleName}

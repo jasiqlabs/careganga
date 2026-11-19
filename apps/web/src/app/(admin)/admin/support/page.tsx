@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {FoundationSupportWorkspace} from "../../../../features/support/foundation-support-workspace";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function FoundationSupportPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -32,9 +33,8 @@ export default async function FoundationSupportPage(){
       .map(x=>x.key);
     const view=keys.includes("support.cases.view"),
       faq=keys.includes("support.faq.manage");
-    if(!view&&!faq)return <main className="page main">
-      <h1>Access denied</h1><p>Your role does not permit Foundation support.</p>
-      <Link href="/admin">My account</Link></main>;
+    if(!view&&!faq)
+      return <AccessDeniedView reason="Your role does not permit Foundation support." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="support" displayName={person.displayName}
         roleName={person.roleName}
