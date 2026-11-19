@@ -872,7 +872,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
        target's current schedule before another change.</p>
      </div>}
     </section>}
-   {canManage&&<div className="toolbar">
+   {canManage&&<div className="toolbar cg15-h07-save-bar"
+    aria-label="Save or discard verified doctor working hours">
     <button type="button" className="primary" onClick={()=>void saveWeek()}
      disabled={working||uncertain||!from||!slot||windows.length===0||
       windows.some(w=>!w.startLocal||!w.endLocal)}>
