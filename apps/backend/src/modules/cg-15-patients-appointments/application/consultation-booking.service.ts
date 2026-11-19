@@ -12,6 +12,7 @@ import {HealthPublicDirectoryService,type HealthScheduleEligibleSource}
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {DoctorAvailabilityService} from "./doctor-availability.service";
+import {prepareConsultationReason} from "./booking-intent-protection";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/;
@@ -482,13 +483,18 @@ export class ConsultationBookingService{
  }
  async confirm(bearer:string,input:unknown,assisted=false){
   const actor=await this.identity.verifySession(bearer);
-  const v=body(input,["requestKey","holdRef","acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
+  const v=body(input,["requestKey","holdRef","acceptedFeeMinor","acceptedFeeVersion","paymentMode",
+   ...(assisted?[]:["reasonForVisit"])]);
   const key=uuid(v.requestKey),id=uuid(v.holdRef);
   const fee=String(v.acceptedFeeMinor??"");
   if(!/^\d{1,11}$/.test(fee)||!Number.isSafeInteger(v.acceptedFeeVersion)||
    v.paymentMode!=="PAY_AT_CENTER")
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
-  const signature=SHA({holdRef:id,fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER"});
+  const reason=prepareConsultationReason(v.reasonForVisit,assisted);
+  // Preserve the prior signature when the optional reason was not entered.
+  const signature=SHA({holdRef:id,fee,feeVersion:v.acceptedFeeVersion,
+   paymentMode:"PAY_AT_CENTER",
+   ...(reason?{reasonDigest:reason.signatureDigest}:{})});
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
@@ -580,6 +586,29 @@ export class ConsultationBookingService{
    await tx.query(
     "UPDATE cg15_consultation_hold SET status='CONSUMED',updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,id]);
+   // Current patient share lock prevents simultaneous consent withdrawal
+   // from silently changing the consent version used to confirm this booking.
+   const consent=await tx.query<{revision_no:number;terms_version:string;
+    recorded_at:Date;granted:boolean}>(
+    "SELECT revision_no,terms_version,recorded_at,granted "+
+    "FROM cg15_patient_consent WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 AND purpose='PATIENT_CARE' "+
+    "ORDER BY revision_no DESC LIMIT 1",
+    [actor.realmId,hold.patient_id]);
+   const care=consent.rows[0];
+   if(!care?.granted)
+    throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
+   const secret=reason?reason.encrypt(actor.realmId,booking.rows[0].id):null;
+   await tx.query(
+    "INSERT INTO cg15_consultation_private_intent("+
+    "root_realm_id,appointment_id,patient_id,purpose,consent_revision,"+
+    "consent_terms_version,consent_recorded_at,reason_ciphertext,"+
+    "reason_iv,reason_auth_tag,key_version,recorded_by_account) "+
+    "VALUES($1,$2,$3,'PATIENT_CARE',$4,$5,$6,$7,$8,$9,$10,$11)",
+    [actor.realmId,booking.rows[0].id,hold.patient_id,
+     care.revision_no,care.terms_version,care.recorded_at,
+     secret?.ciphertext??null,secret?.iv??null,
+     secret?.tag??null,secret?"v1":null,actor.accountId]);
    await this.event(tx,actor,booking.rows[0],0,"CONFIRMED",key,null);
    await tx.query("COMMIT");open=false;
    return presentBooking(booking.rows[0]);
