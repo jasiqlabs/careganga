@@ -57,6 +57,7 @@ const s={
  nativeQueue:read("apps/android-internal/src/features/appointments/native-center-visit-queue.tsx"),
  internalApp:read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx"),
  webQueue:read("apps/web/src/features/appointments/center-visit-queue.tsx"),
+ qrCamera:read("apps/web/src/features/appointments/center-qr-camera-scanner.tsx"),
  queueBff:read("apps/web/src/app/api/appointments/queue/[...parts]/route.ts"),
  webAdmin:read("apps/web/src/features/appointments/foundation-patient-bookings.tsx"),
  adminPage:read("apps/web/src/app/(admin)/admin/health-network/patients/page.tsx"),
@@ -185,6 +186,20 @@ const checks=[
   s.nativeQueue.includes("Original booking history")&&
   s.webQueue.includes("auditSerial.current++")&&
   s.nativeQueue.includes("auditSerial.current++")],
+ ["source: original center QR camera capture never bypasses verified own-center route",
+  s.qrCamera.includes('navigator.mediaDevices.getUserMedia')&&
+  s.qrCamera.includes('API.getSupportedFormats()')&&
+  s.qrCamera.includes('detect(element)')&&
+  s.qrCamera.includes('OPAQUE.test(value)')&&
+  s.qrCamera.includes('camera.getTracks().forEach(track=>track.stop())')&&
+  s.qrCamera.includes('stream.current?.getTracks().forEach(track=>track.stop())')&&
+  s.qrCamera.includes('if(!window.isSecureContext')&&
+  s.webQueue.includes('import {CenterQrCameraScanner}')&&
+  s.webQueue.includes('<CenterQrCameraScanner disabled={busy||uncertain||!center}')&&
+  s.webQueue.includes('verifySlip(code)')&&
+  s.webQueue.includes('"/verify-slip","POST",{token:code}')&&
+  s.queue.includes('async verifySlipAtMyCenter(')&&
+  s.queue.includes('await this.scope(tx,actor,center)')],
  ["source: assigned-center QR verifier has atomic bounded attempts and immutable no-token audit",
   s.qrBudgetDb.includes("CREATE TABLE cg15_center_qr_verify_budget")&&
   s.qrBudgetDb.includes("PRIMARY KEY(root_realm_id,actor_account_id,center_id)")&&
