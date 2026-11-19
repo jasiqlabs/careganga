@@ -272,6 +272,10 @@ export class ConsultationQueueService{
    const ap=ar.rows[0];
    if(!ap||ap.booking_state!==old.state)
     throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   // A receptionist must never mark a future/ongoing consultation NO_SHOW
+   // while its original scheduled interval has not even finished.
+   if(nextState==="NO_SHOW"&&ap.end_at.getTime()>Date.now())
+    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
    const changed=await tx.query<Visit>(
     "UPDATE cg15_visit_queue SET state=$3,revision=revision+1,"+
     "updated_at=now(),actor_account_id=$4 WHERE root_realm_id=$1 AND id=$2 RETURNING *",
