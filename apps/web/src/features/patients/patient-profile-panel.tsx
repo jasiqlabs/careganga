@@ -31,6 +31,8 @@ export function PatientProfilePanel(){
  const [signupFirst,setSignupFirst]=useState(""),[signupLast,setSignupLast]=useState("");
  const [signupMobile,setSignupMobile]=useState(""),[signupEmail,setSignupEmail]=useState("");
  const [signupPassword,setSignupPassword]=useState("");
+ const [signupCode,setSignupCode]=useState("");
+ const [signupRequestedMobile,setSignupRequestedMobile]=useState("");
  const [first,setFirst]=useState(""),[last,setLast]=useState("");
  const [dob,setDob]=useState(""),[agree,setAgree]=useState(false);
  const [message,setMessage]=useState("");
@@ -66,11 +68,23 @@ export function PatientProfilePanel(){
   catch(e){setMessage(e instanceof Error?e.message:"The result could not be confirmed.");}
   finally{setBusy(false);}
  }
+ async function requestSignupCode(){
+  await act(async()=>{
+   const mobile=signupMobile.trim();
+   if(!/^[6-9][0-9]{9}$/.test(mobile))
+    throw Error("Enter a valid 10-digit Indian mobile number.");
+   const result=await request<{status:string}>("signup/start","POST",{mobile});
+   if(result.status!=="CODE_REQUESTED_UNCONFIRMED_DELIVERY")
+    throw Error("The code request could not be confirmed. Please retry.");
+   setSignupRequestedMobile(mobile);
+   setMessage("A mobile verification code was requested. Delivery is not guaranteed. Enter the received code before creating an account.");
+  });
+ }
  async function createAccount(){
   await act(async()=>{
    const payload={firstName:signupFirst.trim(),lastName:signupLast.trim(),
     mobile:signupMobile.trim(),email:signupEmail.trim()||null,
-    password:signupPassword};
+    password:signupPassword,code:signupCode.trim()};
    const signature=JSON.stringify(payload);
    if(signupCommand.current?.digest!==signature)
     signupCommand.current={digest:signature,key:crypto.randomUUID()};
@@ -79,7 +93,7 @@ export function PatientProfilePanel(){
    });
    if(result.status!=="ACCOUNT_CREATED")
     throw Error("Your account could not be confirmed. Please check the original request.");
-   signupCommand.current=null;setSignupPassword("");setPassword("");
+   signupCommand.current=null;setSignupPassword("");setSignupCode("");setPassword("");
    setIdentifier(payload.mobile);setSignupMode(false);
    setMessage("Your CareGanga patient account was created. Sign in and verify your registered mobile before creating a patient profile.");
   });
@@ -174,7 +188,7 @@ export function PatientProfilePanel(){
      autoComplete="family-name" onChange={e=>setSignupLast(e.target.value)}/></label>
     <label>Registered mobile number (10 digits)
      <input required inputMode="numeric" pattern="[6-9][0-9]{9}" value={signupMobile}
-      maxLength={10} autoComplete="tel" onChange={e=>setSignupMobile(e.target.value)}/></label>
+      maxLength={10} autoComplete="tel" onChange={e=>{setSignupMobile(e.target.value);setSignupRequestedMobile("");setSignupCode("");}}/></label>
     <label>Email (optional)
      <input type="email" value={signupEmail} maxLength={254}
       autoComplete="email" onChange={e=>setSignupEmail(e.target.value)}/></label>
@@ -182,11 +196,20 @@ export function PatientProfilePanel(){
      <input type="password" required minLength={8} maxLength={1024}
       autoComplete="new-password" value={signupPassword}
       onChange={e=>setSignupPassword(e.target.value)}/></label>
-    <p>This creates a password account only. After signing in, you must
-     verify the mobile contact using the original CareGanga verification service.
-     It does not create a verified clinical identity or appointment.</p>
+    <p>Prove this mobile number belongs to you before creating an account.
+     This does not establish a verified clinical identity or create an appointment.</p>
+    <button type="button" disabled={busy||!/^[6-9][0-9]{9}$/.test(signupMobile)}
+     onClick={()=>void requestSignupCode()}>
+     {busy?"Checking…":"Send mobile verification code"}</button>
+    {signupRequestedMobile===signupMobile.trim()&&<label>Verification code received
+     <input type="text" required inputMode="numeric" pattern="[0-9]{4,10}"
+      maxLength={10} autoComplete="one-time-code" value={signupCode}
+      onChange={e=>setSignupCode(e.target.value)}/></label>}
+    <p>After signup, sign in with your usual mobile and password.
+     Ordinary login does not require an extra verification factor.</p>
     <button type="submit" disabled={busy||!signupFirst.trim()||!signupLast.trim()||
-     !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8}>
+     !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8||
+      signupRequestedMobile!==signupMobile.trim()||!/^[0-9]{4,10}$/.test(signupCode)}>
      {busy?"Checking…":"Create patient account"}</button>
     <button type="button" disabled={busy} onClick={()=>setSignupMode(false)}>
      Already registered? Sign in</button>
