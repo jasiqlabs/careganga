@@ -376,10 +376,38 @@ export class DoctorScheduleService{
     "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
     [actor.realmId,channel==="center"?ownRef:centerRef??null]);
+   const counts=await tx.query<{appointments:string;today_sessions:string;
+    active_leave_doctors:string}>(
+    "SELECT "+
+    "(SELECT COUNT(*)::text FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=$1 AND ($2::uuid IS NULL OR a.center_id=$2)) "+
+    "AS appointments,"+
+    "(SELECT COUNT(*)::text FROM cg15_doctor_schedule s "+
+    "JOIN cg15_schedule_revision r ON r.root_realm_id=s.root_realm_id "+
+    "AND r.schedule_id=s.id AND r.id=s.current_revision_id "+
+    "JOIN cg15_schedule_weekly_window w ON w.root_realm_id=s.root_realm_id "+
+    "AND w.schedule_id=s.id AND w.revision_id=r.id "+
+    "WHERE s.root_realm_id=$1 AND ($2::uuid IS NULL OR s.center_id=$2) "+
+    "AND s.consultation_mode='IN_PERSON' AND s.status='ACTIVE' "+
+    "AND r.effective_from<=(now() AT TIME ZONE s.time_zone)::date "+
+    "AND (r.effective_until IS NULL OR "+
+    "r.effective_until>(now() AT TIME ZONE s.time_zone)::date) "+
+    "AND w.weekday=EXTRACT(DOW FROM (now() AT TIME ZONE s.time_zone))::integer) "+
+    "AS today_sessions,"+
+    "(SELECT COUNT(DISTINCT e.doctor_id)::text "+
+    "FROM cg15_schedule_exception e WHERE e.root_realm_id=$1 "+
+    "AND ($2::uuid IS NULL OR e.center_id=$2) "+
+    "AND e.kind='LEAVE' AND e.state='ACTIVE' "+
+    "AND e.start_at<=now() AND e.end_at>now()) AS active_leave_doctors",
+    [actor.realmId,channel==="center"?ownRef:centerRef??null]);
+   const metric=counts.rows[0];
    return {doctors:rows.rows.map(r=>({associationRef:r.association_id,
     doctorRef:r.doctor_id,centerRef:r.center_id,doctorName:r.doctor_name,
     centerName:r.center_name,specialties:r.specialties,status:r.status,
-    version:r.version??0,scheduleMode:r.schedule_mode}))};
+    version:r.version??0,scheduleMode:r.schedule_mode})),
+    metrics:{totalAppointments:metric?.appointments??"0",
+     workingSessionsToday:metric?.today_sessions??"0",
+     doctorsOnActiveLeave:metric?.active_leave_doctors??"0"}};
   });
  }
  async detail(bearer:string,channel:Channel,associationRef:string,
