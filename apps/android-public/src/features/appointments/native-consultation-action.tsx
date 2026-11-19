@@ -221,7 +221,8 @@ export function NativeConsultationAction(p:Props){
     {staffBusy?"Checking…":"Give center one-time booking permission"}</Text>
   </Pressable>
   {!!staffMessage&&<Text accessibilityRole="alert" style={style.text}>{staffMessage}</Text>}
-  {staffCode&&<Text selectable style={style.text}>Show your Virtual Patient ID
+  {staffCode&&staffCode.centerRef===p.centerRef&&
+   <Text selectable style={style.text}>Show your Virtual Patient ID
    and code {staffCode.authorizationCode} only to assigned staff at this center.
    Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.</Text>}
  </View>;
