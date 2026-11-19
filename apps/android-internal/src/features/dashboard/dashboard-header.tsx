@@ -14,6 +14,7 @@ export interface DashboardHeaderProps {
   displayName: string;
   roleName: string;
   hasNotifications?: boolean;
+  hideWelcome?: boolean;
   onOpenDrawer: () => void;
   onOpenNotifications: () => void;
 }
@@ -22,6 +23,7 @@ export function DashboardHeader({
   displayName,
   roleName,
   hasNotifications = true,
+  hideWelcome = false,
   onOpenDrawer,
   onOpenNotifications
 }: DashboardHeaderProps) {
@@ -46,7 +48,13 @@ export function DashboardHeader({
   }, [glowAnim]);
 
   return (
-    <View style={[styles.headerContainer, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.headerContainer,
+        { paddingTop: insets.top + 8 },
+        hideWelcome && styles.headerContainerCompact
+      ]}
+    >
       {/* Background Deep Navy Base */}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#03132B" }]} />
 
@@ -65,31 +73,33 @@ export function DashboardHeader({
       <View style={styles.glowWaveArc3} pointerEvents="none" />
 
       {/* Top Bar Row: Hamburger - Branding - Notification */}
-      <View style={styles.topBar}>
-        {/* Left: Hamburger Menu Icon */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open navigation menu"
-          onPress={onOpenDrawer}
-          style={styles.iconButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <IconMenu size={22} color="#FFFFFF" />
-        </Pressable>
+      <View style={[styles.topBar, hideWelcome && styles.topBarCompact]}>
+        <View style={styles.brandCluster}>
+          {/* Left: Hamburger Menu Icon */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open navigation menu"
+            onPress={onOpenDrawer}
+            style={styles.iconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconMenu size={22} color="#FFFFFF" />
+          </Pressable>
 
-        {/* Center: CareGanga Logo Emblem + Wordmark */}
-        <View style={styles.brandingBox}>
-          <Image
-            source={require("../../../assets/careganga-mark.png")}
-            accessibilityLabel="CareGanga Foundation"
-            style={styles.logoMark}
-          />
-          <View style={styles.brandTextBox}>
-            <View style={styles.brandTitleRow}>
-              <Text style={styles.brandCare}>Care</Text>
-              <Text style={styles.brandGanga}>Ganga</Text>
+          {/* CareGanga Logo Emblem + Wordmark immediately beside hamburger */}
+          <View style={styles.brandingBox}>
+            <Image
+              source={require("../../../assets/careganga-mark.png")}
+              accessibilityLabel="CareGanga Foundation"
+              style={styles.logoMark}
+            />
+            <View style={styles.brandTextBox}>
+              <View style={styles.brandTitleRow}>
+                <Text style={styles.brandCare}>Care</Text>
+                <Text style={styles.brandGanga}>Ganga</Text>
+              </View>
+              <Text style={styles.brandSubtitle}>Foundation</Text>
             </View>
-            <Text style={styles.brandSubtitle}>Foundation</Text>
           </View>
         </View>
 
@@ -108,17 +118,19 @@ export function DashboardHeader({
       </View>
 
       {/* Welcome Section */}
-      <View style={styles.welcomeSection}>
-        <Text style={styles.welcomePrefix}>Welcome back,</Text>
-        <Text style={styles.userName} numberOfLines={1}>
-          {displayName || "Staff Member"} 👋
-        </Text>
+      {!hideWelcome && (
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomePrefix}>Welcome back,</Text>
+          <Text style={styles.userName} numberOfLines={1}>
+            {displayName || "Staff Member"} 👋
+          </Text>
 
-        {/* Role Pill Badge */}
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleBadgeText}>{roleName || "Authorized Staff"}</Text>
+          {/* Role Pill Badge */}
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>{roleName || "Authorized Staff"}</Text>
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -131,6 +143,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     overflow: "hidden"
+  },
+  headerContainerCompact: {
+    paddingBottom: 12,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0
+  },
+  topBarCompact: {
+    marginBottom: 0
   },
   glowAmbientBlob: {
     position: "absolute",
@@ -183,6 +203,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 16
+  },
+  brandCluster: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flexShrink: 1
   },
   iconButton: {
     width: 38,

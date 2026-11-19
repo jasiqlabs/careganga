@@ -1,541 +1,612 @@
 "use client";
+
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import {roleColorOptions, roleColor} from "../../../../../packages/design-tokens/src/index";
+import { AnimatePresence } from "framer-motion";
+import type {
+  Role,
+  Group,
+  RoleSummary,
+  RoleList,
+  AuditEvent,
+  FormMode,
+  RoleStatus,
+  RoleKind,
+  Notice
+} from "./roles-permissions/roles-permissions-types";
+import { roleColorOptions } from "../../../../../packages/design-tokens/src/index";
+import { RolesStatisticsCards } from "./roles-permissions/roles-statistics-cards";
+import { RolesSearchFilterPanel } from "./roles-permissions/roles-search-filter-panel";
+import { RolesListPanel } from "./roles-permissions/roles-list-panel";
+import { PermissionManagerPanel } from "./roles-permissions/permission-manager-panel";
+import { RoleDetailsPanel } from "./roles-permissions/role-details-panel";
+import { CreateRoleDrawer } from "./roles-permissions/create-role-drawer";
+import { RoleDetailsDrawer } from "./roles-permissions/role-details-drawer";
+import { RetireRoleModal } from "./roles-permissions/retire-role-modal";
+import { AccessHistoryView } from "./roles-permissions/access-history-view";
+import {
+  RolesStatisticsCardsSkeleton,
+  RolesSearchFilterPanelSkeleton,
+  RolesListPanelSkeleton,
+  PermissionManagerPanelSkeleton,
+  RoleDetailsPanelSkeleton
+} from "./roles-permissions/roles-permissions-skeletons";
 
-type Role={
-  roleRef:string;name:string;description:string;colorKey:string|null;
-  protected:boolean;active:boolean;revision:number;assignedCount:number;actionKeys:string[]
-};
-type Capability={key:string;businessLabel:string;group:string;assignable:boolean;sensitive:boolean};
-type Group={group:string;actions:Capability[]};
-type RoleSummary={
-  totalRoles:number;implementedActions:number;activeRoles:number;
-  inactiveRoles:number;customRoles:number;systemRoles:number
-};
-type RoleList={roles:Role[];total:number;offset:number;limit:number;summary:RoleSummary};
-type AuditEvent={occurredAt:string;actorDisplay:string;actionLabel:string;targetDisplay:string;outcome:string};
-type FormMode="create"|"edit"|"copy";
-type RoleStatus="all"|"active"|"retired";
-type RoleKind="all"|"system"|"custom";
-type Notice={text:string;kind:"error"|"success"|"uncertain"};
-
-async function read<T>(path:string):Promise<T>{
-  const response=await fetch("/api/access/"+path,{cache:"no-store",credentials:"same-origin"});
-  if(!response.ok)throw new Error(response.status===401?"Your session expired. Sign in again."
-    :response.status===403?"You don't have permission to view this information."
-    :"The information is unavailable. Try refreshing.");
+async function read<T>(path: string): Promise<T> {
+  const response = await fetch("/api/access/" + path, { cache: "no-store", credentials: "same-origin" });
+  if (!response.ok) {
+    throw new Error(
+      response.status === 401
+        ? "Your session expired. Sign in again."
+        : response.status === 403
+        ? "You don't have permission to view this information."
+        : "The information is unavailable. Try refreshing."
+    );
+  }
   return response.json() as Promise<T>;
 }
-export function RolesPanel(){
-  const [roles,setRoles]=useState<Role[]>([]);
-  const [selectedRoleRef,setSelectedRoleRef]=useState<string|null>(null);
-  const [groups,setGroups]=useState<Group[]>([]);
-  const [actions,setActions]=useState<string[]>([]);
-  const [search,setSearch]=useState("");
-  const [appliedSearch,setAppliedSearch]=useState("");
-  const [tab,setTab]=useState<RoleStatus>("all");
-  const [roleKind,setRoleKind]=useState<RoleKind>("all");
-  const [total,setTotal]=useState(0);
-  const [summary,setSummary]=useState<RoleSummary|null>(null);
-  const [offset,setOffset]=useState(0);
-  const [loading,setLoading]=useState(true);
-  const [notice,setNotice]=useState<Notice|null>(null);
-  const [editor,setEditor]=useState<{mode:FormMode;source?:Role}|null>(null);
-  const [pendingRetire,setPendingRetire]=useState<Role|null>(null);
-  const [details,setDetails]=useState<Role|null>(null);
-  const [selected,setSelected]=useState<string[]>([]);
-  const [copySearch,setCopySearch]=useState("");
-  const [copyCandidates,setCopyCandidates]=useState<Role[]>([]);
-  const [copyLoading,setCopyLoading]=useState(false);
-  const [copyError,setCopyError]=useState("");
-  const [name,setName]=useState("");
-  const [description,setDescription]=useState("");
-  const [colorKey,setColorKey]=useState("blue");
-  const [saving,setSaving]=useState(false);
-  const [history,setHistory]=useState<AuditEvent[]|null>(null);
-  const [historyCursor,setHistoryCursor]=useState<string|null>(null);
-  const searchInput=useRef<HTMLInputElement>(null);
-  const requestKey=useRef("");
-  const latestRead=useRef(0); // Older overlapping responses must never restore revoked role content.
-  const copyRead=useRef(0);
-  const auditRead=useRef(0);
-  const lastResumeCheck=useRef(0);
-  const dialogRef=useRef<HTMLElement|null>(null);
-  const savingRef=useRef(false);
-  useEffect(()=>{savingRef.current=saving;},[saving]);
-  const editorOpen=Boolean(editor),retireOpen=Boolean(pendingRetire),detailsOpen=Boolean(details);
 
-  const purgeProtected=useCallback((message:string)=>{
-    // A denial from any restricted endpoint invalidates all protected view state.
-    ++latestRead.current;++copyRead.current;++auditRead.current;
-    setRoles([]);setGroups([]);setActions([]);setCopyCandidates([]);setSummary(null);
+export function RolesPanel() {
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRoleRef, setSelectedRoleRef] = useState<string | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [actions, setActions] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [tab, setTab] = useState<RoleStatus>("all");
+  const [roleKind, setRoleKind] = useState<RoleKind>("all");
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<RoleSummary | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [editor, setEditor] = useState<{ mode: FormMode; source?: Role } | null>(null);
+  const [pendingRetire, setPendingRetire] = useState<Role | null>(null);
+  const [details, setDetails] = useState<Role | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [copySearch, setCopySearch] = useState("");
+  const [copyCandidates, setCopyCandidates] = useState<Role[]>([]);
+  const [copyLoading, setCopyLoading] = useState(false);
+  const [copyError, setCopyError] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [colorKey, setColorKey] = useState("blue");
+  const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<AuditEvent[] | null>(null);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+
+  const searchInput = useRef<HTMLInputElement>(null);
+  const requestKey = useRef("");
+  const latestRead = useRef(0);
+  const copyRead = useRef(0);
+  const auditRead = useRef(0);
+  const lastResumeCheck = useRef(0);
+
+  const purgeProtected = useCallback((message: string) => {
+    ++latestRead.current;
+    ++copyRead.current;
+    ++auditRead.current;
+    setRoles([]);
+    setGroups([]);
+    setActions([]);
+    setCopyCandidates([]);
+    setSummary(null);
     setSelectedRoleRef(null);
-    setHistory(null);setHistoryCursor(null);setEditor(null);setPendingRetire(null);setDetails(null);
-    setLoading(false);setCopyLoading(false);
-    setNotice({kind:"error",text:message});
-  },[]);
+    setHistory(null);
+    setHistoryCursor(null);
+    setEditor(null);
+    setPendingRetire(null);
+    setDetails(null);
+    setLoading(false);
+    setCopyLoading(false);
+    setNotice({ kind: "error", text: message });
+  }, []);
 
-  const load=useCallback(async(searchText:string,skip:number,status:RoleStatus="all",kind:RoleKind="all")=>{
-    const generation=++latestRead.current;
-    setLoading(true);setNotice(null);setDetails(null);
-    try{
-      const params=new URLSearchParams({search:searchText,limit:"30",offset:String(skip),status,type:kind});
-      const [list,catalog,effective]=await Promise.all([
-        read<RoleList>("roles?"+params),
-        read<{groups:Group[]}>("capabilities"),
-        read<{actions:{key:string}[]}>("effective")
-      ]);
-      if(generation!==latestRead.current)return;
-      setRoles(list.roles);setGroups(catalog.groups);
-      setSelectedRoleRef(previous=>list.roles.some(r=>r.roleRef===previous)?previous:list.roles[0]?.roleRef??null);
-      setActions(effective.actions.map(x=>x.key));setTotal(list.total);setSummary(list.summary);
-      setOffset(skip);
-    }catch(e){
-      if(generation!==latestRead.current)return;
-      purgeProtected(e instanceof Error?e.message:"Information unavailable.");
-    }finally{if(generation===latestRead.current)setLoading(false);}
-  },[purgeProtected]);
+  const load = useCallback(
+    async (searchText: string, skip: number, status: RoleStatus = "all", kind: RoleKind = "all") => {
+      const generation = ++latestRead.current;
+      setLoading(true);
+      setNotice(null);
+      setDetails(null);
+      try {
+        const params = new URLSearchParams({
+          search: searchText,
+          limit: "30",
+          offset: String(skip),
+          status,
+          type: kind
+        });
+        const [list, catalog, effective] = await Promise.all([
+          read<RoleList>("roles?" + params),
+          read<{ groups: Group[] }>("capabilities"),
+          read<{ actions: { key: string }[] }>("effective")
+        ]);
+        if (generation !== latestRead.current) return;
+        setRoles(list.roles);
+        setGroups(catalog.groups);
+        setSelectedRoleRef((previous) =>
+          list.roles.some((r) => r.roleRef === previous) ? previous : list.roles[0]?.roleRef ?? null
+        );
+        setActions(effective.actions.map((x) => x.key));
+        setTotal(list.total);
+        setSummary(list.summary);
+        setOffset(skip);
+      } catch (e) {
+        if (generation !== latestRead.current) return;
+        purgeProtected(e instanceof Error ? e.message : "Information unavailable.");
+      } finally {
+        if (generation === latestRead.current) setLoading(false);
+      }
+    },
+    [purgeProtected]
+  );
 
-  useEffect(()=>{void load("",0);},[load]);
-  // Revalidate on focus/resume without a background polling loop.
-  useEffect(()=>{
-    const onFocus=()=>{
-      if(document.visibilityState!=="visible")return;
-      // Browser focus and visibility may fire for the same user action.
-      const now=Date.now();
-      if(now-lastResumeCheck.current<1200)return;
-      lastResumeCheck.current=now;
-      void load(appliedSearch,offset,tab,roleKind);
+  useEffect(() => {
+    void load("", 0);
+  }, [load]);
+
+  // Focus revalidation
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastResumeCheck.current < 1200) return;
+      lastResumeCheck.current = now;
+      void load(appliedSearch, offset, tab, roleKind);
     };
-    window.addEventListener("focus",onFocus);
-    document.addEventListener("visibilitychange",onFocus);
-    return()=>{window.removeEventListener("focus",onFocus);
-      document.removeEventListener("visibilitychange",onFocus);};
-  },[load,appliedSearch,offset,tab,roleKind]);
-  useEffect(()=>{
-    const shortcut=(event:KeyboardEvent)=>{
-      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
-        event.preventDefault();searchInput.current?.focus();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [load, appliedSearch, offset, tab, roleKind]);
+
+  // Ctrl+K keyboard shortcut
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInput.current?.focus();
       }
     };
-    document.addEventListener("keydown",shortcut);
-    return()=>document.removeEventListener("keydown",shortcut);
-  },[]);
+    document.addEventListener("keydown", shortcut);
+    return () => document.removeEventListener("keydown", shortcut);
+  }, []);
 
-  // Keyboard focus stays inside the current drawer and returns to its trigger.
-  useEffect(()=>{
-    if(!editorOpen&&!retireOpen&&!detailsOpen)return;
-    const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
-    const first=dialogRef.current?.querySelector<HTMLElement>("input:not([disabled]),button:not([disabled])");
-    first?.focus();
-    const keyDown=(event:KeyboardEvent)=>{
-      const dialog=dialogRef.current;
-      if(!dialog)return;
-      if(event.key==="Escape"){
-        if(savingRef.current)return;
-        event.preventDefault();setEditor(null);setPendingRetire(null);setDetails(null);
-        return;
-      }
-      if(event.key!=="Tab")return;
-      const items=Array.from(dialog.querySelectorAll<HTMLElement>(
-        'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
-      )).filter(el=>el.getClientRects().length>0);
-      if(!items.length){event.preventDefault();return;}
-      const firstItem=items[0],lastItem=items[items.length-1];
-      if(event.shiftKey&&document.activeElement===firstItem){event.preventDefault();lastItem.focus();}
-      else if(!event.shiftKey&&document.activeElement===lastItem){event.preventDefault();firstItem.focus();}
-    };
-    document.addEventListener("keydown",keyDown);
-    return()=>{document.removeEventListener("keydown",keyDown);previous?.focus();};
-  },[editorOpen,retireOpen,detailsOpen]);
-  async function findCopySources(searchText:string) {
-    const identityGeneration=latestRead.current,request=++copyRead.current;
-    setCopyLoading(true);setCopyError("");
+  async function findCopySources(searchText: string) {
+    const identityGeneration = latestRead.current;
+    const request = ++copyRead.current;
+    setCopyLoading(true);
+    setCopyError("");
     try {
-      // Search only on explicit user action. Never poll or load a whole account directory.
-      const params=new URLSearchParams({search:searchText,status:"active",limit:"50",offset:"0"});
-      const response=await read<RoleList>("roles?"+params.toString());
-      if(identityGeneration!==latestRead.current||request!==copyRead.current)return;
-      setCopyCandidates(response.roles.filter(r=>r.active&&!r.protected));
-    } catch(error) {
-      if(identityGeneration!==latestRead.current||request!==copyRead.current)return;
-      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+      const params = new URLSearchParams({ search: searchText, status: "active", limit: "50", offset: "0" });
+      const response = await read<RoleList>("roles?" + params.toString());
+      if (identityGeneration !== latestRead.current || request !== copyRead.current) return;
+      setCopyCandidates(response.roles.filter((r) => r.active && !r.protected));
+    } catch (error) {
+      if (identityGeneration !== latestRead.current || request !== copyRead.current) return;
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
         purgeProtected(error.message);
-      else {setCopyCandidates([]);setCopyError("Eligible roles could not be loaded. Try searching again.");}
-    } finally {if(request===copyRead.current)setCopyLoading(false);}
+      } else {
+        setCopyCandidates([]);
+        setCopyError("Eligible roles could not be loaded. Try searching again.");
+      }
+    } finally {
+      if (request === copyRead.current) setCopyLoading(false);
+    }
   }
-  function selectCopySource(roleRef:string){
-    if(!editor||saving)return;
-    const source=copyCandidates.find(r=>r.roleRef===roleRef)||
-      (editor.source?.roleRef===roleRef?editor.source:undefined);
-    if(!roleRef){setEditor({mode:"create"});setSelected([]);return;}
-    if(!source||source.protected||!source.active)return;
-    setEditor({mode:"copy",source});
-    const eligible=new Set(groups.flatMap(g=>g.actions.filter(c=>c.assignable||c.key==="roles.manage").map(c=>c.key)));
-    setSelected(source.actionKeys.filter(key=>eligible.has(key)));
+
+  function selectCopySource(roleRef: string) {
+    if (!editor || saving) return;
+    const source = copyCandidates.find((r) => r.roleRef === roleRef) ||
+      (editor.source?.roleRef === roleRef ? editor.source : undefined);
+    if (!roleRef) {
+      setEditor({ mode: "create" });
+      setSelected([]);
+      return;
+    }
+    if (!source || source.protected || !source.active) return;
+    setEditor({ mode: "copy", source });
+    const eligible = new Set(
+      groups.flatMap((g) => g.actions.filter((c) => c.assignable || c.key === "roles.manage").map((c) => c.key))
+    );
+    setSelected(source.actionKeys.filter((key) => eligible.has(key)));
   }
-  function open(mode:FormMode,source?:Role){
-    if(!actions.includes("roles.manage"))return;
-    if(source?.protected)return;
-    setEditor({mode,source});
-    if(mode!=="edit"){setCopySearch("");void findCopySources("");}
-    setName(mode==="copy"?(source?source.name+" copy":""):source?.name??"");
-    setDescription(source?.description??"");
-    setColorKey(source?.colorKey&&roleColorOptions.some(x=>x.key===source.colorKey)?source.colorKey:"blue");
-    const allowed=new Set(groups.flatMap(x=>x.actions.filter(a=>a.assignable||a.key==="roles.manage").map(a=>a.key)));
-    setSelected(source?.actionKeys.filter(k=>allowed.has(k))??[]);
-    requestKey.current=crypto.randomUUID();
+
+  function open(mode: FormMode, source?: Role) {
+    if (!actions.includes("roles.manage")) return;
+    if (source?.protected) return;
+    setEditor({ mode, source });
+    if (mode !== "edit") {
+      setCopySearch("");
+      void findCopySources("");
+    }
+    setName(mode === "copy" ? (source ? source.name + " copy" : "") : source?.name ?? "");
+    setDescription(source?.description ?? "");
+    setColorKey(source?.colorKey && roleColorOptions.some((x) => x.key === source.colorKey) ? source.colorKey : "blue");
+    const allowed = new Set(
+      groups.flatMap((x) => x.actions.filter((a) => a.assignable || a.key === "roles.manage").map((a) => a.key))
+    );
+    setSelected(source?.actionKeys.filter((k) => allowed.has(k)) ?? []);
+    requestKey.current = crypto.randomUUID();
     setNotice(null);
   }
-  const canManage=actions.includes("roles.manage");
-  const canAudit=actions.includes("access.audit.view");
-  const selectedRole=roles.find(role=>role.roleRef===selectedRoleRef)??null;
-  const allAssignable=groups.flatMap(g=>g.actions).filter(c=>c.assignable||c.key==="roles.manage");
 
-  async function mutate(path:string,method:"POST"|"PATCH",body:unknown){
-    let result:Response;
+  const canManage = actions.includes("roles.manage");
+  const canAudit = actions.includes("access.audit.view");
+  const selectedRole = roles.find((role) => role.roleRef === selectedRoleRef) ?? null;
+
+  async function mutate(path: string, method: "POST" | "PATCH", body: unknown) {
+    let result: Response;
     try {
-      result=await fetch("/api/access/"+path,{
-        method,headers:{"Content-Type":"application/json"},credentials:"same-origin",
-        body:JSON.stringify(body)
+      result = await fetch("/api/access/" + path, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body)
       });
     } catch {
-      // A dropped connection after commit is not a rejected write.
       throw new Error("UNCERTAIN");
     }
-    if(!result.ok){
-      if(result.status===503)throw new Error("UNCERTAIN");
-      if(result.status===409){
-        const data=await result.json() as {code?:string};
-        const message:Record<string,string>={
-          DUPLICATE_ROLE:"A role with this name already exists. Choose another name.",
-          STALE_ROLE:"This role changed elsewhere. Refresh before saving.",
-          ROLE_RETIRED:"This role was already retired.",
-          ROLE_ASSIGNED:"Reassign assigned accounts before retiring this role.",
-          REPLAY_CONFLICT:"This request reference was already used. Refresh before retrying."
+    if (!result.ok) {
+      if (result.status === 503) throw new Error("UNCERTAIN");
+      if (result.status === 409) {
+        const data = (await result.json()) as { code?: string };
+        const message: Record<string, string> = {
+          DUPLICATE_ROLE: "A role with this name already exists. Choose another name.",
+          STALE_ROLE: "This role changed elsewhere. Refresh before saving.",
+          ROLE_RETIRED: "This role was already retired.",
+          ROLE_ASSIGNED: "Reassign assigned accounts before retiring this role.",
+          REPLAY_CONFLICT: "This request reference was already used. Refresh before retrying."
         };
-        throw new Error(data.code&&message[data.code]?message[data.code]:
-          "This role changed elsewhere. Refresh before retrying.");
+        throw new Error(
+          data.code && message[data.code]
+            ? message[data.code]
+            : "This role changed elsewhere. Refresh before retrying."
+        );
       }
-      if(result.status===403)throw new Error("You don't have permission for this action.");
-      if(result.status===401)throw new Error("Your session expired. Sign in again.");
+      if (result.status === 403) throw new Error("You don't have permission for this action.");
+      if (result.status === 401) throw new Error("Your session expired. Sign in again.");
       throw new Error("Check your changes and try again.");
     }
   }
-  async function save(event:FormEvent<HTMLFormElement>){
+
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if(!editor||saving)return;
-    setSaving(true);setNotice(null);
-    const source=editor.source;
-    const payload={name:name.trim(),description:description.trim(),colorKey,
-      actionKeys:selected,requestKey:requestKey.current,
-      ...(editor.mode!=="create"&&source?{expectedRevision:source.revision}:{})};
-    const path=editor.mode==="edit"&&source?"roles/"+source.roleRef:
-      editor.mode==="copy"&&source?"roles/"+source.roleRef+"/copy":"roles";
-    const method=editor.mode==="edit"?"PATCH":"POST";
-    try{
-      await mutate(path,method,payload);
-      setEditor(null);requestKey.current="";
-      await load(appliedSearch,offset,tab,roleKind);
-      setNotice({kind:"success",text:"Role change saved."});
-    }catch(error){
-      if(error instanceof Error&&/session expired|permission/i.test(error.message)){
+    if (!editor || saving) return;
+    setSaving(true);
+    setNotice(null);
+    const source = editor.source;
+    const payload = {
+      name: name.trim(),
+      description: description.trim(),
+      colorKey,
+      actionKeys: selected,
+      requestKey: requestKey.current,
+      ...(editor.mode !== "create" && source ? { expectedRevision: source.revision } : {})
+    };
+    const path =
+      editor.mode === "edit" && source
+        ? "roles/" + source.roleRef
+        : editor.mode === "copy" && source
+        ? "roles/" + source.roleRef + "/copy"
+        : "roles";
+    const method = editor.mode === "edit" ? "PATCH" : "POST";
+    try {
+      await mutate(path, method, payload);
+      setEditor(null);
+      requestKey.current = "";
+      await load(appliedSearch, offset, tab, roleKind);
+      setNotice({ kind: "success", text: "Role change saved." });
+    } catch (error) {
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
         purgeProtected(error.message);
-      }else if(error instanceof Error&&error.message==="UNCERTAIN"){
-        setNotice({kind:"uncertain",text:"The result could not be confirmed. Refresh the list before submitting another change."});
-      }else if(!(error instanceof Error&&/session expired|permission/i.test(error.message)))
-        setNotice({kind:"error",text:error instanceof Error?error.message:"Unable to save the role."});
-    }finally{setSaving(false);}
+      } else if (error instanceof Error && error.message === "UNCERTAIN") {
+        setNotice({
+          kind: "uncertain",
+          text: "The result could not be confirmed. Refresh the list before submitting another change."
+        });
+      } else if (!(error instanceof Error && /session expired|permission/i.test(error.message))) {
+        setNotice({ kind: "error", text: error instanceof Error ? error.message : "Unable to save the role." });
+      }
+    } finally {
+      setSaving(false);
+    }
   }
-  async function retire(role:Role){
-    if(!canManage||role.protected||role.assignedCount>0||!role.active)return;
-    setSaving(true);setNotice(null);
-    try{
-      await mutate("roles/"+role.roleRef+"/retire","POST",{
-        expectedRevision:role.revision,requestKey:crypto.randomUUID()
+
+  async function handleSaveRolePermissions(role: Role, newActionKeys: string[]) {
+    if (!canManage || role.protected) return;
+    setSaving(true);
+    setNotice(null);
+    const payload = {
+      name: role.name,
+      description: role.description,
+      colorKey: role.colorKey,
+      actionKeys: newActionKeys,
+      requestKey: crypto.randomUUID(),
+      expectedRevision: role.revision
+    };
+    try {
+      await mutate("roles/" + role.roleRef, "PATCH", payload);
+      await load(appliedSearch, offset, tab, roleKind);
+      setNotice({ kind: "success", text: `Permissions updated successfully for "${role.name}".` });
+    } catch (error) {
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
+        purgeProtected(error.message);
+      } else if (error instanceof Error && error.message === "UNCERTAIN") {
+        setNotice({
+          kind: "uncertain",
+          text: "The result could not be confirmed. Refresh the list before submitting another change."
+        });
+      } else {
+        setNotice({
+          kind: "error",
+          text: error instanceof Error ? error.message : "Unable to update role permissions."
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function retire(role: Role) {
+    if (!canManage || role.protected || role.assignedCount > 0 || !role.active) return;
+    setSaving(true);
+    setNotice(null);
+    try {
+      await mutate("roles/" + role.roleRef + "/retire", "POST", {
+        expectedRevision: role.revision,
+        requestKey: crypto.randomUUID()
       });
-      await load(appliedSearch,offset,tab,roleKind);
+      await load(appliedSearch, offset, tab, roleKind);
       setPendingRetire(null);
-      setNotice({kind:"success",text:"Role retired."});
-    }catch(error){
-      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+      setNotice({ kind: "success", text: "Role retired." });
+    } catch (error) {
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
         purgeProtected(error.message);
-      else setNotice({kind:"error",text:error instanceof Error&&error.message==="UNCERTAIN"?
-        "Could not confirm retirement. Refresh the list before retrying.":
-        error instanceof Error?error.message:"Role could not be retired."});
-    }finally{setSaving(false);}
-  }
-  async function audit(){
-    const identityGeneration=latestRead.current,request=++auditRead.current;
-    setHistory(null);setNotice(null);
-    try{
-      const result=await read<{events:AuditEvent[];nextCursor:string|null}>("audit?limit=30");
-      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
-      setHistory(result.events);setHistoryCursor(result.nextCursor);
-    }catch(error){
-      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
-      if(error instanceof Error&&/session expired|permission/i.test(error.message))
-        purgeProtected(error.message);
-      else setNotice({kind:"error",text:error instanceof Error?error.message:"History unavailable."});
+      } else {
+        setNotice({
+          kind: "error",
+          text:
+            error instanceof Error && error.message === "UNCERTAIN"
+              ? "Could not confirm retirement. Refresh the list before retrying."
+              : error instanceof Error
+              ? error.message
+              : "Role could not be retired."
+        });
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function moreHistory(){
-    if(!historyCursor)return;
-    const identityGeneration=latestRead.current,request=++auditRead.current;
-    try{
-      const result=await read<{events:AuditEvent[];nextCursor:string|null}>(
-        "audit?limit=30&cursor="+encodeURIComponent(historyCursor));
-      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
-      setHistory(old=>[...(old??[]),...result.events]);
+  async function audit() {
+    const identityGeneration = latestRead.current;
+    const request = ++auditRead.current;
+    setHistory(null);
+    setNotice(null);
+    try {
+      const result = await read<{ events: AuditEvent[]; nextCursor: string | null }>("audit?limit=30");
+      if (identityGeneration !== latestRead.current || request !== auditRead.current) return;
+      setHistory(result.events);
       setHistoryCursor(result.nextCursor);
-    }catch(error){
-      if(identityGeneration!==latestRead.current||request!==auditRead.current)return;
-      if(error instanceof Error&&/session expired|permission/i.test(error.message))
+    } catch (error) {
+      if (identityGeneration !== latestRead.current || request !== auditRead.current) return;
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
         purgeProtected(error.message);
-      else setNotice({kind:"error",text:"More security history could not be confirmed."});
+      } else {
+        setNotice({ kind: "error", text: error instanceof Error ? error.message : "History unavailable." });
+      }
     }
   }
 
-  return <div className="role-workspace">
-    <header className="topbar">
-      <div><h1>Roles & permissions</h1><p>Foundation staff access</p></div>
-      <div className="toolbar"><Link href="/admin">My account</Link><Link href="/">View site</Link></div>
-    </header>
-    <section aria-label="Foundation role statistics" className="kpi-grid">
-      {([
-        ["Total Roles",summary?.totalRoles],
-        ["Current Permission Actions",summary?.implementedActions],
-        ["Active Roles",summary?.activeRoles],
-        ["Inactive Roles",summary?.inactiveRoles],
-        ["Custom Roles",summary?.customRoles],
-        ["System Roles",summary?.systemRoles]
-      ] as const).map(([label,value])=><div className="kpi" key={label}>
-        <small>{label}</small><strong>{value??"—"}</strong>
-      </div>)}
-    </section>
-    <div className="toolbar">
-      <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search);void load(search,0,tab,roleKind);}}
-        className="search-row">
-        <label htmlFor="role-search">Find roles</label>
-        <input id="role-search" ref={searchInput} value={search} maxLength={80}
-          placeholder="Search by role name (Ctrl+K)" onChange={e=>setSearch(e.target.value)}/>
-        <button type="submit" disabled={loading}>Search</button>
-      </form>
-      {canManage&&<button type="button" className="primary" onClick={()=>open("create")}>Create role</button>}
-      {canAudit&&<button type="button" onClick={()=>void audit()}>Access history</button>}
-    </div>
-    <div className="toolbar role-kind-filter">
-      <label htmlFor="role-kind">Role type</label>
-      <select id="role-kind" value={roleKind} disabled={loading}
-        onChange={event=>{const next=event.target.value as RoleKind;
-          setRoleKind(next);void load(appliedSearch,0,tab,next);}}>
-        <option value="all">All types</option>
-        <option value="system">System roles</option>
-        <option value="custom">Custom roles</option>
-      </select>
-    </div>
-    <div className="toolbar" role="group" aria-label="Filter roles">
-      {(["all","active","retired"] as const).map(k=><button key={k} type="button"
-        aria-pressed={tab===k} onClick={()=>{setTab(k);void load(appliedSearch,0,k,roleKind);}}>
-        {k==="all"?"All roles":k==="active"?"Active":"Retired"}</button>)}
-    </div>
-    {notice&&<p className={notice.kind==="error"?"error":"notice"} role={notice.kind==="error"?"alert":"status"}>{notice.text}</p>}
-    {loading?<p role="status">Loading verified roles…</p>:
-      !roles.length?<div className="role-empty" role="status">
-        <strong>No matching roles</strong><p>Try another role name or status.</p>
-      </div>:
-      <div className="role-three-pane">
-        <section className="role-pane role-pane-list" aria-labelledby="roles-list-title">
-          <header className="role-pane-heading"><div>
-            <h2 id="roles-list-title">Roles list</h2><p>{total} matching roles</p>
-          </div></header>
-          <div className="role-list-options" aria-label="Foundation roles">
-            {roles.map(role=><button key={role.roleRef} type="button"
-              aria-current={selectedRoleRef===role.roleRef?"true":undefined}
-              className={"role-list-option"+(selectedRoleRef===role.roleRef?" is-active":"")}
-              onClick={()=>setSelectedRoleRef(role.roleRef)}>
-              <span className="role-dot role-dot-large" aria-hidden="true"
-                style={{backgroundColor:roleColor(role.colorKey)}}/>
-              <span className="role-list-option-text">
-                <strong>{role.name}</strong>
-                <span>{role.protected?"Protected":role.active?"Active":"Retired"} · {role.assignedCount} assigned</span>
-              </span>
-              <span className="role-list-chevron" aria-hidden="true">›</span>
-            </button>)}
-          </div>
-        </section>
-        <section className="role-pane role-pane-permissions" aria-labelledby="permissions-title">
-          <header className="role-pane-heading">
-            <div><h2 id="permissions-title">Permission Manager</h2>
-              <p>Current Foundation permissions</p></div>
-            <span className="role-permission-count">{selectedRole?.protected?"Protected":(selectedRole?.actionKeys.length??0)+" allowed"}</span>
-          </header>
-          {selectedRole&&<div className="role-permission-grid">
-            {selectedRole.protected?<p className="permission-note">
-              This is a protected Foundation role. Its authority is enforced by the identity service.
-              It cannot be edited, copied or retired here.
-            </p>:groups.length?groups.map(group=><details className="role-permission-details"
-                key={group.group} open>
-                <summary>{group.group}</summary>
-                <ul>{group.actions.map(action=><li key={action.key} className="role-permission-line">
-                  <span>{action.businessLabel}</span>
-                  <span className={"role-permission-status"+(selectedRole.actionKeys.includes(action.key)?" granted":"")}>
-                    {selectedRole.actionKeys.includes(action.key)?"Allowed":"Not granted"}
-                  </span>
-                </li>)}</ul>
-              </details>):<p>No assignable permissions are available.</p>}
-          </div>}
-        </section>
-        <aside className="role-pane role-pane-detail" aria-label="Selected role details">
-          <header className="role-pane-heading"><div>
-            <h2>Role Details</h2><p>Foundation access</p>
-          </div></header>
-          {selectedRole&&<div className="role-detail-content">
-            <span className="role-dot role-dot-avatar" aria-hidden="true"
-              style={{backgroundColor:roleColor(selectedRole.colorKey)}}/>
-            <h3>{selectedRole.name}</h3>
-            <p className="role-meta">{selectedRole.protected?"Protected system role":
-              selectedRole.active?"Active custom role":"Retired custom role"}</p>
-            {selectedRole.description&&<p>{selectedRole.description}</p>}
-            <dl>
-              <div><dt>Scope</dt><dd>Foundation</dd></div>
-              <div><dt>Assigned accounts</dt><dd>{selectedRole.assignedCount}</dd></div>
-              <div><dt>Allowed actions</dt><dd>{selectedRole.protected?"Protected":selectedRole.actionKeys.length}</dd></div>
-            </dl>
-            <div className="role-detail-actions">
-              <button type="button" onClick={()=>setDetails(selectedRole)}>View details</button>
-              {canManage&&!selectedRole.protected&&selectedRole.active&&<>
-                <button type="button" onClick={()=>open("edit",selectedRole)}>Edit role</button>
-                <button type="button" onClick={()=>open("copy",selectedRole)}>Copy role</button>
-                <button type="button" disabled={selectedRole.assignedCount>0||saving}
-                  onClick={()=>setPendingRetire(selectedRole)}>Retire role</button>
-              </>}
-              {canAudit&&<button type="button" onClick={()=>void audit()}>View role activity</button>}
-            </div>
-          </div>}
-        </aside>
-      </div>
+  async function moreHistory() {
+    if (!historyCursor) return;
+    const identityGeneration = latestRead.current;
+    const request = ++auditRead.current;
+    try {
+      const result = await read<{ events: AuditEvent[]; nextCursor: string | null }>(
+        "audit?limit=30&cursor=" + encodeURIComponent(historyCursor)
+      );
+      if (identityGeneration !== latestRead.current || request !== auditRead.current) return;
+      setHistory((old) => [...(old ?? []), ...result.events]);
+      setHistoryCursor(result.nextCursor);
+    } catch (error) {
+      if (identityGeneration !== latestRead.current || request !== auditRead.current) return;
+      if (error instanceof Error && /session expired|permission/i.test(error.message)) {
+        purgeProtected(error.message);
+      } else {
+        setNotice({ kind: "error", text: "More security history could not be confirmed." });
+      }
     }
-    {!loading&&total>30&&<div className="toolbar">
-      <button disabled={offset<=0} onClick={()=>void load(appliedSearch,Math.max(0,offset-30),tab,roleKind)}>Previous</button>
-      <span>{offset+1}–{Math.min(offset+30,total)} of {total}</span>
-      <button disabled={offset+30>=total} onClick={()=>void load(appliedSearch,offset+30,tab,roleKind)}>Next</button>
-    </div>}
-    {history&&<section aria-labelledby="history-title">
-      <h2 id="history-title">Foundation access history</h2>
-      {!history.length?<p>No recent security events.</p>:<ul>{history.map((event,i)=>
-        <li key={event.occurredAt+"-"+i}>
-          <strong>{event.actionLabel}</strong> — {event.targetDisplay} ({event.outcome}).
-          <small> {new Date(event.occurredAt).toLocaleString()} · {event.actorDisplay}</small>
-        </li>)}</ul>}
-      {historyCursor&&<button type="button" onClick={()=>void moreHistory()}>Load more history</button>}
-    </section>}
-    {details&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="role-details-title"
-        className="role-drawer" ref={dialogRef}>
-        <header className="topbar">
-          <h2 id="role-details-title">{details.name}</h2>
-          <button type="button" onClick={()=>setDetails(null)}>Close</button>
-        </header>
-        <p>{details.protected?"Protected Foundation role":details.active?"Active custom role":"Retired role"}</p>
-        <p>Scope: Foundation</p>
-        {details.description&&<p>{details.description}</p>}
-        <p>{details.assignedCount} assigned accounts</p>
-        {details.protected?<p>Protected administrative authority. This role cannot be edited, copied or retired here.</p>:
-          groups.map(group=>{
-            const selected=group.actions.filter(action=>details.actionKeys.includes(action.key));
-            return selected.length?<section key={group.group} className="permission-group"
-              aria-label={group.group}>
-              <h3>{group.group}</h3>
-              <ul>{selected.map(action=><li key={action.key}>{action.businessLabel}</li>)}</ul>
-            </section>:null;
-          })}
-        {!details.protected&&!details.actionKeys.length&&<p>No assignable permissions are currently granted.</p>}
-      </section>
-    </div>}
-    {pendingRetire&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="retire-role-title" className="role-drawer" ref={dialogRef}>
-        <h2 id="retire-role-title">Retire {pendingRetire.name}?</h2>
-        <p>The role will no longer be available for new assignments.</p>
-        <p>Any existing assignments must be reassigned before retirement is permitted.</p>
-        <div className="toolbar">
-          <button type="button" disabled={saving} onClick={()=>setPendingRetire(null)}>Cancel</button>
-          <button type="button" className="primary" disabled={saving}
-            onClick={()=>void retire(pendingRetire)}>{saving?"Retiring…":"Confirm retirement"}</button>
+  }
+
+  const handleExportRoles = () => {
+    if (!roles.length) return;
+    const headers = ["Role Name", "Type", "Status", "Assigned Accounts", "Allowed Actions Count", "Description"];
+    const rows = roles.map((r) => [
+      `"${r.name.replace(/"/g, '""')}"`,
+      `"${r.protected ? "System" : "Custom"}"`,
+      `"${r.active ? "Active" : "Retired"}"`,
+      r.assignedCount,
+      r.actionKeys.length,
+      `"${(r.description || "").replace(/"/g, '""')}"`
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `careganga-roles-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="cg-rp-workspace">
+      {/* Background refresh progress bar */}
+      {loading && roles.length > 0 && <div className="cg-rp-refresh-bar" />}
+
+      {/* Notice Banner */}
+      {notice && (
+        <div className={`cg-rp-notice ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
+          <span>{notice.text}</span>
         </div>
-      </section>
-    </div>}
-    {editor&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="role-editor-title" className="role-drawer" ref={dialogRef}>
-        <header className="topbar">
-          <h2 id="role-editor-title">{editor.mode==="create"?"Create role":editor.mode==="edit"?"Edit role":"Copy role"}</h2>
-          <button type="button" disabled={saving} onClick={()=>setEditor(null)} aria-label="Close role editor">Close</button>
-        </header>
-        <form className="form" onSubmit={e=>void save(e)}>
-          <label className="field">Role name<input required minLength={2} maxLength={80}
-            value={name} onChange={e=>setName(e.target.value)}/></label>
-          <label className="field">Description<textarea maxLength={350}
-            value={description} onChange={e=>setDescription(e.target.value)} rows={3}/></label>
-          {editor.mode!=="edit"&&<div className="copy-source">
-            <label className="field">Copy permissions from
-              <select aria-label="Copy permissions from existing role" disabled={saving||copyLoading}
-                value={editor.mode==="copy"?editor.source?.roleRef??"":""}
-                onChange={event=>selectCopySource(event.target.value)}>
-                <option value="">Start with no permissions</option>
-                {[...copyCandidates,...(editor.source&&!copyCandidates.some(x=>x.roleRef===editor.source?.roleRef)?[editor.source]:[])]
-                  .filter(role=>role.active&&!role.protected).map(role=>
-                    <option key={role.roleRef} value={role.roleRef}>{role.name}</option>)}
-              </select>
-            </label>
-            <div className="search-row">
-              <label htmlFor="copy-source-search">Find a role to copy</label>
-              <input id="copy-source-search" value={copySearch} maxLength={80}
-                onChange={event=>setCopySearch(event.target.value)}
-                placeholder="Role name"/>
-              <button type="button" disabled={copyLoading||saving}
-                onClick={()=>void findCopySources(copySearch)}>{copyLoading?"Finding…":"Find role"}</button>
+      )}
+
+      {/* Initial Cold Loading Skeleton */}
+      {loading && roles.length === 0 ? (
+        <>
+          <RolesStatisticsCardsSkeleton />
+          <RolesSearchFilterPanelSkeleton />
+          <div className="cg-rp-three-col-layout">
+            <RolesListPanelSkeleton />
+            <PermissionManagerPanelSkeleton />
+            <div className="cg-rp-panel-detail-wrapper">
+              <RoleDetailsPanelSkeleton />
             </div>
-            {copyError&&<p className="error" role="alert">{copyError}</p>}
-          </div>}
-          <p className="field">Applies to: <strong>Entire foundation</strong></p>
-          <fieldset className="role-color-fieldset">
-            <legend>Colour</legend>
-            <div className="role-color-options" role="radiogroup" aria-label="Role colour">
-              {roleColorOptions.map(option=><label key={option.key}
-                className={"role-color-choice"+(colorKey===option.key?" is-selected":"")}
-                title={option.name}>
-                <input type="radio" name="roleColor" value={option.key}
-                  checked={colorKey===option.key} disabled={saving}
-                  onChange={()=>setColorKey(option.key)}
-                  aria-label={option.name}/>
-                <span aria-hidden="true" className="role-color-circle"
-                  style={{backgroundColor:option.hex}}/>
-              </label>)}
-            </div>
-          </fieldset>
-          {editor.mode==="copy"&&<p>Only permitted role actions are copied. No people or special administrator rights are copied.</p>}
-          {groups.filter(group=>group.actions.some(cap=>cap.assignable)).map(group=>
-            <fieldset key={group.group} className="permission-group">
-              <legend>{group.group}</legend>
-              {group.actions.filter(cap=>cap.assignable||cap.key==="roles.manage").map(cap=><label key={cap.key} className="permission-row">
-                <input type="checkbox" disabled={editor.mode==="copy"}
-                  checked={selected.includes(cap.key)}
-                  onChange={e=>setSelected(prev=>e.target.checked?[...prev,cap.key]:prev.filter(k=>k!==cap.key))}/>
-                <span>{cap.businessLabel}</span>
-              </label>)}
-            </fieldset>)}
-          <p>Administrator-only permissions are managed by the system.</p>
-          <p>{selected.filter(k=>allAssignable.some(c=>c.key===k)).length} permitted actions selected</p>
-          <div className="toolbar">
-            <button type="button" disabled={saving} onClick={()=>setEditor(null)}>Cancel</button>
-            <button className="primary" type="submit" disabled={saving||!name.trim()}>
-              {saving?"Saving…":"Save role"}
-            </button>
           </div>
-        </form>
-      </section>
-    </div>}
-  </div>;
+        </>
+      ) : history !== null ? (
+        /* Access History Screen View (Reference 2) */
+        <AccessHistoryView
+          history={history}
+          historyCursor={historyCursor}
+          onMoreHistory={moreHistory}
+          onBackToDashboard={() => setHistory(null)}
+        />
+      ) : (
+        /* Main Roles & Permissions Dashboard (Reference 1) */
+        <>
+          {/* SECTION A — ROLE STATISTICS (6 Cards) */}
+          <RolesStatisticsCards summary={summary} loading={loading} />
+
+          {/* SECTION B — SEARCH & FILTER PANEL */}
+          <RolesSearchFilterPanel
+            search={search}
+            setSearch={setSearch}
+            searchInputRef={searchInput}
+            roleKind={roleKind}
+            setRoleKind={(kind) => {
+              setRoleKind(kind);
+              void load(appliedSearch, 0, tab, kind);
+            }}
+            tab={tab}
+            setTab={(newTab) => {
+              setTab(newTab);
+              void load(appliedSearch, 0, newTab, roleKind);
+            }}
+            loading={loading}
+            canManage={canManage}
+            canAudit={canAudit}
+            onSearchSubmit={(e) => {
+              e.preventDefault();
+              setAppliedSearch(search);
+              void load(search, 0, tab, roleKind);
+            }}
+            onClearAll={() => {
+              setSearch("");
+              setAppliedSearch("");
+              setTab("all");
+              setRoleKind("all");
+              void load("", 0, "all", "all");
+            }}
+            onCreateRole={() => open("create")}
+            onViewHistory={() => void audit()}
+            onExport={handleExportRoles}
+          />
+
+          {/* SECTION C — THREE-COLUMN MAIN WORKSPACE */}
+          <div className="cg-rp-three-col-layout">
+            {/* C1. LEFT PANEL — ROLES LIST */}
+            <RolesListPanel
+              roles={roles}
+              total={total}
+              offset={offset}
+              selectedRoleRef={selectedRoleRef}
+              onSelectRole={(ref) => setSelectedRoleRef(ref)}
+              onPageChange={(newOffset) => void load(appliedSearch, newOffset, tab, roleKind)}
+              loading={loading}
+            />
+
+            {/* C2. CENTER PANEL — PERMISSION MANAGER */}
+            <PermissionManagerPanel
+              roles={roles}
+              selectedRole={selectedRole}
+              groups={groups}
+              canManage={canManage}
+              onSelectRole={(ref) => setSelectedRoleRef(ref)}
+              onSaveRolePermissions={handleSaveRolePermissions}
+              saving={saving}
+            />
+
+            {/* C3. RIGHT PANEL — ROLE DETAILS */}
+            <div className="cg-rp-panel-detail-wrapper">
+              <RoleDetailsPanel
+                selectedRole={selectedRole}
+                canManage={canManage}
+                canAudit={canAudit}
+                saving={saving}
+                onViewDetails={(role) => setDetails(role)}
+                onEditRole={(role) => open("edit", role)}
+                onCopyRole={(role) => open("copy", role)}
+                onRetireRole={(role) => setPendingRetire(role)}
+                onViewActivity={() => void audit()}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* PHASE 2 — CREATE / EDIT / COPY ROLE DRAWER */}
+      <AnimatePresence>
+        {editor && (
+          <CreateRoleDrawer
+            editor={editor}
+            groups={groups}
+            copyCandidates={copyCandidates}
+            copyLoading={copyLoading}
+            copyError={copyError}
+            saving={saving}
+            onClose={() => setEditor(null)}
+            onSave={save}
+            name={name}
+            setName={setName}
+            description={description}
+            setDescription={setDescription}
+            colorKey={colorKey}
+            setColorKey={setColorKey}
+            selected={selected}
+            setSelected={setSelected}
+            onFindCopySources={(s) => void findCopySources(s)}
+            onSelectCopySource={selectCopySource}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Role Details Drawer */}
+      <AnimatePresence>
+        {details && (
+          <RoleDetailsDrawer
+            details={details}
+            groups={groups}
+            onClose={() => setDetails(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Retire Role Confirmation Modal */}
+      <AnimatePresence>
+        {pendingRetire && (
+          <RetireRoleModal
+            role={pendingRetire}
+            saving={saving}
+            onCancel={() => setPendingRetire(null)}
+            onConfirm={() => void retire(pendingRetire)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

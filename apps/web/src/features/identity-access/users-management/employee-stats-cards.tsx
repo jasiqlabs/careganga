@@ -8,6 +8,7 @@ import {
   UserXIcon,
   TrendingUpIcon
 } from "./users-management-icons";
+import { EmployeeStatsCardsSkeleton } from "./users-management-skeletons";
 
 interface EmployeeStatsCardsProps {
   summary?: {
@@ -21,6 +22,10 @@ interface EmployeeStatsCardsProps {
 }
 
 export function EmployeeStatsCards({ summary, loading = false }: EmployeeStatsCardsProps) {
+  if (loading && !summary) {
+    return <EmployeeStatsCardsSkeleton />;
+  }
+
   const cards = [
     {
       id: "total",

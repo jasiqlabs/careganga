@@ -86,39 +86,91 @@ export function auditOutcomeLabel(outcome: string): string {
 }
 
 /**
- * Format a human-readable employee ID e.g. CGF/VOL/2026/CF2B
- * Uses deterministic hashing of the real accountRef to guarantee stability.
+ * Authoritative employee identifier helper.
+ * Returns verified employee ID if present on the account record, or a neutral fallback.
+ * Never invents fabricated deterministic strings.
  */
-export function formatEmployeeId(account: CG01AccountView): string {
-  const roleUpper = (account.roleName || "").toUpperCase();
-  let code = "VOL";
-  if (roleUpper.includes("ADMIN")) code = "ADM";
-  else if (roleUpper.includes("DISTRICT")) code = "DST";
-  else if (roleUpper.includes("STATE")) code = "STA";
-  else if (roleUpper.includes("COORDINATOR")) code = "CRD";
-  else if (roleUpper.includes("STAFF")) code = "STF";
-  else if (roleUpper.includes("DIRECTOR") || roleUpper.includes("MANAGER")) code = "MGR";
+export function formatEmployeeId(account: CG01AccountView, fallback = "Not assigned"): string {
+  const customId = (account as unknown as { employeeId?: string; staffId?: string }).employeeId ||
+    (account as unknown as { employeeId?: string; staffId?: string }).staffId;
+  if (typeof customId === "string" && customId.trim()) {
+    return customId.trim();
+  }
+  return fallback;
+}
 
-  const raw = account.accountRef.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  const hash = (raw.slice(-4) || "0100").padStart(4, "A");
-  return `CGF/${code}/2026/${hash}`;
+export interface UserInternalNote {
+  id: string;
+  text: string;
+  createdAt: string;
+  author: string;
 }
 
 /**
- * Format ISO date string into readable e.g. "04 Nov 2026"
+ * Format ISO date string into readable e.g. "19 Nov 2026"
  */
-export function formatDisplayDate(isoString?: string | null): string {
-  if (!isoString) return "04 Nov 2026";
+export function formatDisplayDate(isoString?: string | null, fallback = "—"): string {
+  if (!isoString) return fallback;
   try {
     const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "04 Nov 2026";
+    if (isNaN(d.getTime())) return fallback;
     const day = String(d.getDate()).padStart(2, "0");
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = months[d.getMonth()];
     const year = d.getFullYear();
     return `${day} ${month} ${year}`;
   } catch {
-    return "04 Nov 2026";
+    return fallback;
+  }
+}
+
+/**
+ * Format ISO date string into readable e.g. "19 Nov 2026, 06:11 PM"
+ */
+export function formatDisplayDateTime(isoString?: string | null, fallback = "—"): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const day = String(d.getDate()).padStart(2, "0");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = String(hours).padStart(2, "0");
+    return `${day} ${month} ${year}, ${strHours}:${minutes} ${ampm}`;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Format relative elapsed time e.g. "5 hr ago" or "Just now"
+ */
+export function formatRelativeTime(isoString?: string | null, fallback = "—"): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    if (diffMs < 0) return "Just now";
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} hr ago`;
+    const diffDays = Math.floor(diffHr / 24);
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 30) return `${diffDays} days ago`;
+    return formatDisplayDate(isoString, fallback);
+  } catch {
+    return fallback;
   }
 }
 

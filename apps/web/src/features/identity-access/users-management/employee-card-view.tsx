@@ -28,6 +28,7 @@ import {
   getAvatarColor
 } from "./users-management-types";
 import type { ViewMode, Density } from "./users-management-types";
+import { EmployeeCardViewSkeleton } from "./users-management-skeletons";
 
 interface EmployeeCardViewProps {
   accounts: CG01AccountView[];
@@ -169,19 +170,17 @@ export function EmployeeCardView({
       </div>
 
       {/* Grid Container */}
-      <div className="cg-um-cards-grid">
-        {loading && accounts.length === 0 ? (
-          <div className="cg-um-empty-state col-span-full">
-            <span className="cg-um-spinner" aria-hidden="true" />
-            <p>Loading employee cards…</p>
-          </div>
-        ) : accounts.length === 0 ? (
-          <div className="cg-um-empty-state col-span-full">
-            <h3>No employees found</h3>
-            <p>No matching staff accounts found for this criteria.</p>
-          </div>
-        ) : (
-          accounts.map(row => {
+      {loading && accounts.length === 0 ? (
+        <EmployeeCardViewSkeleton cards={6} />
+      ) : (
+        <div className="cg-um-cards-grid">
+          {accounts.length === 0 ? (
+            <div className="cg-um-empty-state col-span-full">
+              <h3>No employees found</h3>
+              <p>No matching staff accounts found for this criteria.</p>
+            </div>
+          ) : (
+            accounts.map(row => {
             const empId = formatEmployeeId(row);
             const isSelected = selectedRefs.has(row.accountRef);
             const avatarTheme = getAvatarColor(row.displayName);
@@ -371,9 +370,9 @@ export function EmployeeCardView({
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          }))}
+        </div>
+      )}
 
       {/* Pagination Footer */}
       <div className="cg-um-table-footer">

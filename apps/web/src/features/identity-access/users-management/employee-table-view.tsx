@@ -228,14 +228,53 @@ export function EmployeeTableView({
           </thead>
           <tbody>
             {loading && accounts.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="cg-um-table-status-cell">
-                  <div className="cg-um-loading-skeleton-row">
-                    <span className="cg-um-spinner" aria-hidden="true" />
-                    <span>Verifying and loading staff directory…</span>
-                  </div>
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={idx} className="cg-um-table-row cg-um-row-skeleton">
+                  <td>
+                    <div className="cg-um-skeleton" style={{ width: "1rem", height: "1rem", borderRadius: "0.25rem" }} />
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "0.85rem", width: "7rem" }} />
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                      <div className="cg-um-skeleton" style={{ width: "2.1rem", height: "2.1rem", borderRadius: "9999px", flexShrink: 0 }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", width: "9rem" }}>
+                        <div className="cg-um-skeleton" style={{ height: "0.85rem", width: "85%" }} />
+                        <div className="cg-um-skeleton" style={{ height: "0.7rem", width: "65%" }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", width: "7rem" }}>
+                      <div className="cg-um-skeleton" style={{ height: "0.8rem", width: "75%" }} />
+                      <div className="cg-um-skeleton" style={{ height: "0.65rem", width: "55%" }} />
+                    </div>
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "1.3rem", width: "5rem", borderRadius: "9999px" }} />
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "0.8rem", width: "4rem" }} />
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "0.8rem", width: "5.5rem" }} />
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "1.3rem", width: "4.5rem", borderRadius: "9999px" }} />
+                  </td>
+                  <td>
+                    <div className="cg-um-skeleton" style={{ height: "0.8rem", width: "3.5rem" }} />
+                  </td>
+                  <td className="text-right">
+                    <div style={{ display: "inline-flex", gap: "0.35rem", justifyContent: "flex-end" }}>
+                      <div className="cg-um-skeleton" style={{ width: "1.85rem", height: "1.85rem", borderRadius: "0.35rem" }} />
+                      <div className="cg-um-skeleton" style={{ width: "1.85rem", height: "1.85rem", borderRadius: "0.35rem" }} />
+                      <div className="cg-um-skeleton" style={{ width: "1.85rem", height: "1.85rem", borderRadius: "0.35rem" }} />
+                    </div>
+                  </td>
+                </tr>
+              ))
             ) : accounts.length === 0 ? (
               <tr>
                 <td colSpan={10} className="cg-um-table-status-cell">

@@ -18,6 +18,8 @@ export interface AuthenticatedAppShellProps {
   onSignOut: () => void;
   activeTabId?: string;
   onOpenDashboard?: () => void;
+  onBack?: () => boolean | void;
+  hideWelcome?: boolean;
   children: React.ReactNode;
 }
 
@@ -33,6 +35,8 @@ export function AuthenticatedAppShell({
   onSignOut,
   activeTabId = "dashboard",
   onOpenDashboard,
+  onBack,
+  hideWelcome = false,
   children
 }: AuthenticatedAppShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -49,13 +53,21 @@ export function AuthenticatedAppShell({
         setIsMoreOpen(false);
         return true;
       }
+      if (onBack) {
+        const handled = onBack();
+        if (handled) return true;
+      }
+      if (activeTabId !== "dashboard" && onOpenDashboard) {
+        onOpenDashboard();
+        return true;
+      }
       // On dashboard: prevent accidental app exit or premature logout
       return true;
     };
 
     const backSub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => backSub.remove();
-  }, [isDrawerOpen, isMoreOpen]);
+  }, [isDrawerOpen, isMoreOpen, onBack, activeTabId, onOpenDashboard]);
 
   // Resolve all authorized modules for drawer directory and bottom navigation
   const authorizedModules = useMemo(() => {
@@ -94,6 +106,7 @@ export function AuthenticatedAppShell({
         displayName={actor.displayName}
         roleName={actor.roleName}
         hasNotifications={canViewNotifications}
+        hideWelcome={hideWelcome}
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenNotifications={handleOpenNotifications}
       />
