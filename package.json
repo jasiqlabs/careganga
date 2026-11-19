@@ -28,7 +28,8 @@
     "verify:cg15-migrations-source": "node scripts/verify-cg15-migrations-source.mjs",
     "verify:cg15-communications-source": "node scripts/verify-cg15-communications-source.mjs",
     "verify:cg15-clinician-source": "node scripts/verify-cg15-clinician-source.mjs",
-    "verify:cg15-private-purpose-source": "node scripts/verify-cg15-private-purpose-source.mjs"
+    "verify:cg15-private-purpose-source": "node scripts/verify-cg15-private-purpose-source.mjs",
+    "verify:cg15-native-documents-source": "node scripts/verify-cg15-native-documents-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
