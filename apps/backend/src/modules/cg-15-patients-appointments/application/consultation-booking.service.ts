@@ -687,7 +687,8 @@ export class ConsultationBookingService{
    }
    if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
     old.start_at.getTime()<=Date.now()+changeCutoffMs()||
-    (old.start_at.getTime()===start.getTime()&&old.center_id===center))
+    (old.start_at.getTime()===start.getTime()&&old.center_id===center&&
+     old.doctor_id===newDoctorId))
     throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
    // Original old slot is released and new slot is acquired in ONE transaction.
    // A failure of exclusion/fee/consent rolls back both changes.
