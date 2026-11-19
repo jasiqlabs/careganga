@@ -55,6 +55,12 @@ const s={
  tracker:read("specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md")
 };
 const checks=[
+ ["visit appointment root+center+event consistency enforced at database boundary",
+  s.db4.includes("UNIQUE(root_realm_id,id,center_id)")&&
+  s.db6.includes("FOREIGN KEY(root_realm_id,appointment_id,center_id)")&&
+  s.db6.includes("REFERENCES cg15_consultation_appointment(root_realm_id,id,center_id)")&&
+  s.db6.includes("UNIQUE(root_realm_id,id,appointment_id)")&&
+  s.db6.includes("FOREIGN KEY(root_realm_id,visit_id,appointment_id)")],
  ["global doctor interval exclusion exists at PostgreSQL boundary",
   s.db4.includes("cg15_global_doctor_time_nonoverlap")&&
   s.db4.includes("tstzrange(start_at,end_at,'[)') WITH &&")],
