@@ -43,6 +43,7 @@ async function original<T>(path:string,token:string):Promise<T|null>{
 }
 export function NativeConsultationAction(p:Props){
  const [hold,setHold]=useState<Hold|null>(null);
+ const [review,setReview]=useState(false);
  const [booking,setBooking]=useState<Booking|null>(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
@@ -129,7 +130,7 @@ export function NativeConsultationAction(p:Props){
     acceptedFeeMinor:p.feeMinor,acceptedFeeVersion:p.feeVersion,paymentMode:"PAY_AT_CENTER"},t);
    if(result.status!=="HELD"||Date.parse(result.expiresAt)<=Date.now())
     throw Error("This time is no longer reserved. Refresh the doctor schedule.");
-   setHold(result);setUncertain(false);
+   setHold(result);setReview(false);setUncertain(false);
    setMessage("Time reserved temporarily. Confirm before it expires.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?e.status:null;
@@ -138,9 +139,9 @@ export function NativeConsultationAction(p:Props){
   }finally{setBusy(false);}
  }
  async function confirm(){
-  if(busy||uncertain||!hold)return;
+  if(busy||uncertain||!hold||!review)return;
   if(Date.parse(hold.expiresAt)<=Date.now()){
-   setMessage("Temporary reservation expired. Choose a current time.");return;
+   setReview(false);setMessage("Temporary reservation expired. Choose a current time.");return;
   }
   setBusy(true);setMessage("");
   if(!confirmKey.current){
@@ -154,7 +155,7 @@ export function NativeConsultationAction(p:Props){
     acceptedFeeMinor:hold.consultationFeeMinor,acceptedFeeVersion:hold.feeVersion,
     paymentMode:"PAY_AT_CENTER",
     ...(confirmedReason.current?{reasonForVisit:confirmedReason.current}:{})},t);
-   setBooking(result);setUncertain(false);
+   setBooking(result);setReview(false);setUncertain(false);
    const slip=await issuePatientSlip(result.bookingRef,t);
    setMessage(slip==="ISSUED"?
     "Appointment confirmed. Your private consultation slip is issued. Pay at your center.":
@@ -207,17 +208,17 @@ export function NativeConsultationAction(p:Props){
    if(holdKey.current&&!p.reschedule){
     const found=await original<Hold>("holds/by-request/"+holdKey.current,t);
     if(found?.status==="HELD"&&Date.parse(found.expiresAt)>Date.now()){
-     setHold(found);setUncertain(false);
+     setHold(found);setReview(false);setUncertain(false);
      setMessage("The original time is still reserved. Confirm using the same request.");return;
     }
     if(found?.status==="CONSUMED"){
      setMessage("The original hold was used. Check the same booking again before any action.");return;
     }
     if(found?.status==="EXPIRED"||found?.status==="CANCELLED"){
-     holdKey.current=null;confirmKey.current=null;setHold(null);setUncertain(false);
+     holdKey.current=null;confirmKey.current=null;setHold(null);setReview(false);setUncertain(false);
      setMessage("Previous hold expired. Select a current time.");return;
     }
-    setHold(null);setUncertain(false);
+    setHold(null);setReview(false);setUncertain(false);
     setMessage("No committed hold was found. Retrying uses the same original request key.");return;
    }
    if(p.reschedule){
@@ -250,7 +251,7 @@ export function NativeConsultationAction(p:Props){
   <Text style={style.text}>Consultation ₹{(Number(p.feeMinor)/100).toFixed(2)}.
    Payment due at center. No online payment.</Text>
   {!!message&&<Text accessibilityRole="alert" style={style.text}>{message}</Text>}
-  {!booking&&!uncertain&&!p.reschedule&&<View style={{gap:4}}>
+  {!booking&&!uncertain&&!p.reschedule&&!review&&<View style={{gap:4}}>
    <Text style={style.text}>Reason for visit (optional, private)</Text>
    <TextInput multiline value={reasonForVisit} maxLength={300}
     editable={!busy&&!confirmKey.current}
@@ -273,7 +274,22 @@ export function NativeConsultationAction(p:Props){
     </Pressable>
    </View>:
    p.reschedule?label(busy?"Checking…":"Accept fee and reschedule",()=>void reschedule()):
-   hold?label(busy?"Checking…":"Confirm pay-at-center appointment",()=>void confirm()):
+   hold?(review?<View style={{gap:8}}>
+    <Text style={style.heading}>Review doctor and appointment before confirming</Text>
+    <Text style={style.text}>Doctor: {p.doctorName}</Text>
+    <Text style={style.text}>Center: {p.centerName}</Text>
+    <Text style={style.text}>Date and time: {new Date(p.startAt).toLocaleString(
+     "en-IN",{timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</Text>
+    <Text style={style.text}>Full consultation: ₹{(Number(hold.consultationFeeMinor)/100).toFixed(2)}.
+     Payment will be due at the center; this app has not charged you.</Text>
+    <Text style={style.text}>Optional private reason:
+     {reasonForVisit.trim()?" Included with this consultation":" Not provided"}</Text>
+    {label("Confirm reviewed appointment — pay at center",()=>void confirm())}
+    {label("Back to edit the reason",()=>setReview(false))}
+    <Text style={style.text}>Your time is held until
+     {new Date(hold.expiresAt).toLocaleString("en-IN")}. There is no
+     confirmed appointment until the original booking succeeds.</Text>
+   </View>:label("Review doctor, center, time and fee",()=>setReview(true))):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
   <Text style={style.text}>At this healthcare center, you can choose to have
    assigned reception staff book one consultation using a patient-issued code.</Text>
