@@ -10,6 +10,8 @@ const read=p=>readFileSync(resolve(dir,p),"utf8");
 const s={
  db:read("apps/backend/db/migrations/1422_cg15_patient_self_consent.sql"),
  intakeDb:read("apps/backend/db/migrations/1423_cg15_center_provisional_patient_intake.sql"),
+ identityDb:read("apps/backend/db/migrations/1428_cg15_in_person_patient_identity_verification.sql"),
+ claimDb:read("apps/backend/db/migrations/1429_cg15_patient_center_intake_claim.sql"),
  intakeService:read("apps/backend/src/modules/cg-15-patients-appointments/application/center-patient-intake.service.ts"),
  intakeController:read("apps/backend/src/modules/cg-15-patients-appointments/http/center-patient-intake.controller.ts"),
  intakeProxy:read("apps/web/src/app/api/appointments/patients/[...parts]/route.ts"),
@@ -187,6 +189,35 @@ const checks=[
   s.service.includes("const oldCommand=await c.query<CommandRow>")&&
   s.service.indexOf("const oldCommand=await c.query<CommandRow>")<
    s.service.indexOf("const terms=policy()")],
+ ["patient identity proof and source-audit event are distinct from CG01 phone proof",
+  s.identityDb.includes("cg15_patient_identity_challenge")&&
+  s.identityDb.includes("cg15_patient_identity_event")&&
+  s.identityDb.includes("IDENTITY_VERIFIED")&&
+  s.service.includes("beginIdentityVerification(bearer:string)")&&
+  s.service.includes("randomBytes(12)")],
+ ["authorized receptionist verifies person in person using original patient code",
+  s.intakeService.includes("async verifyIdentity(")&&
+  s.intakeService.includes('this.scope(tx,actor,centerRef)')&&
+  s.intakeService.includes("identityCheckedInPerson:true")&&
+  s.intakeController.includes('Post("my-centers/:centerRef/verify-identity")')&&
+  s.intakeWorkspace.includes("Record verified identity")],
+ ["provisional receptionist patient claim remains an explicit current-authorized proof",
+  s.claimDb.includes("cg15_patient_center_claim")&&
+  s.claimDb.includes("cg15_patient_center_claim_immutable")&&
+  s.intakeService.includes("async issueClaim(")&&
+  s.service.includes("async claimCenterIntake(")&&
+  s.intakeController.includes('Post("my-centers/:centerRef/claims")')&&
+  s.ctrl.includes('Post("me/claim-intake")')],
+ ["both Web and Android patient can claim real original center patient",
+  s.web.includes('request<Profile>("me/claim-intake"')&&
+  s.native.includes('"/api/v1/patients/me/claim-intake"')&&
+  s.intakeWeb.includes("Give patient a one-time claim code")&&
+  s.webProxy.includes('route==="me/claim-intake"')],
+ ["one signed-in clinical patient identity, never a same-phone automatic merge",
+  s.service.includes("if(linked)")&&
+  s.service.includes("CG15_PATIENT_ALREADY_REGISTERED")&&
+  !s.service.includes("WHERE normalized_mobile=")&&
+  s.service.includes("cg15_patient_identity_event")],
  ["source preflight exposed as explicit local npm command",
   s.rootPackage.includes("verify:cg15-us003-source")],
  ["16 original US003 case definitions preserved with separate progress",
