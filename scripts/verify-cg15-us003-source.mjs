@@ -14,6 +14,10 @@ const s={
  intakeController:read("apps/backend/src/modules/cg-15-patients-appointments/http/center-patient-intake.controller.ts"),
  intakeProxy:read("apps/web/src/app/api/appointments/patients/[...parts]/route.ts"),
  intakeWeb:read("apps/web/src/features/patients/center-patient-intake-panel.tsx"),
+ intakeWorkspace:read("apps/web/src/features/patients/center-patient-intake-workspace.tsx"),
+ intakeAdminPage:read("apps/web/src/app/(admin)/admin/health-network/patient-intake/page.tsx"),
+ adminHome:read("apps/web/src/app/(admin)/admin/page.tsx"),
+ adminNav:read("apps/web/src/shared/foundation-admin-nav.tsx"),
  centerPortal:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
  centerScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
  capability:read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts"),
@@ -157,6 +161,32 @@ const checks=[
  ["original error catalogue includes center and intake not found outcomes",
   s.errors.includes("CG15_PATIENT_CENTER_UNAVAILABLE")&&
   s.errors.includes("CG15_PATIENT_INTAKE_NOT_FOUND")],
+ ["intake-only role lists verified own-center choices with no draft-edit dependency",
+  s.intakeService.includes('this.sessions.requireAction(bearer,"health.patients.intake")')&&
+  s.intakeService.includes("a.account_ref=$2 AND a.status='ACTIVE'")&&
+  s.intakeService.includes("c.access_state='ENABLED'")&&
+  s.intakeController.includes('Get("my-centers/intake-options")')],
+ ["intake-only role reachable in permissioned H15 route without center edit",
+  s.intakeAdminPage.includes('actions.has("health.patients.intake")')&&
+  s.intakeAdminPage.includes("CenterPatientIntakeWorkspace")&&
+  !s.intakeAdminPage.includes('actions.has("health.centers.draft.edit")')],
+ ["real assigned center selector, no caller-provided arbitrary center entry",
+  s.intakeWorkspace.includes("my-centers/intake-options")&&
+  s.intakeWorkspace.includes("centers.some(x=>x.centerRef===chosen)")],
+ ["sidebar healthcare section visibility follows CG01 action",
+  s.adminNav.includes("healthPatientIntake")&&
+  s.adminNav.includes('allowed("health.patients.intake",canViewPatientIntake)')&&
+  s.adminNav.includes('{name:"HEALTHCARE",keys:')],
+ ["receptionist dashboard shows permitted patient intake only",
+  s.adminHome.includes("canIntakePatients")&&
+  s.adminHome.includes('x.key==="health.patients.intake"')],
+ ["replay checks existing command before requiring new consent version",
+  s.intakeService.includes("const prior=await tx.query<Intake>")&&
+  s.intakeService.indexOf("const prior=await tx.query<Intake>")<
+   s.intakeService.indexOf("const version=configuredConsent()")&&
+  s.service.includes("const oldCommand=await c.query<CommandRow>")&&
+  s.service.indexOf("const oldCommand=await c.query<CommandRow>")<
+   s.service.indexOf("const terms=policy()")],
  ["source preflight exposed as explicit local npm command",
   s.rootPackage.includes("verify:cg15-us003-source")],
  ["16 original US003 case definitions preserved with separate progress",
