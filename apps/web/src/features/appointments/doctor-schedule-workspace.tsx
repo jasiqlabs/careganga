@@ -105,7 +105,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [uncertain,setUncertain]=useState(false),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
  const [windows,setWindows]=useState<Window[]>([]);
- const [slot,setSlot]=useState("30"),[from,setFrom]=useState(""),[until,setUntil]=useState("");
+ const [slot,setSlot]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [kind,setKind]=useState<"LEAVE"|"BLOCK"|"HOLIDAY">("LEAVE");
  const [blockFrom,setBlockFrom]=useState(""),[blockUntil,setBlockUntil]=useState("");
  const [reason,setReason]=useState("");
@@ -156,7 +156,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   try{
    const detail=await api<Detail>(base+"/"+encodeURIComponent(ref));
    if(n!==seq.current)return;
-   setSelected(detail);setWindows(detail.windows);setSlot(String(detail.slotMinutes));
+   setSelected(detail);setWindows(detail.windows);
+   setSlot(detail.slotMinutes>0?String(detail.slotMinutes):"");
    setCopyTarget("");setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
    setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
    setFrom(detail.effectiveFrom??"");setUntil(detail.effectiveUntil??"");
@@ -174,7 +175,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   weekKey.current="";
  }
  function add(day:number){
-  setWindows(old=>[...old,{weekday:day,startLocal:"09:00",endLocal:"10:00"}]);
+  setWindows(old=>[...old,{weekday:day,startLocal:"",endLocal:""}]);
   weekKey.current="";
  }
  function drop(day:number,index:number){
@@ -346,7 +347,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  }
  async function saveWeek(){
   if(!selected||!canManage||working||uncertain||windows.length===0||
-   !from||!slot)return;
+   windows.some(w=>!w.startLocal||!w.endLocal)||!from||!slot)return;
   if(!weekKey.current)weekKey.current=crypto.randomUUID();
   setWorking(true);setError("");setNotice("");
   try{
@@ -534,6 +535,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <label>Consultation slot duration
      <select value={slot} disabled={!canManage||working||uncertain}
       onChange={e=>{setSlot(e.target.value);weekKey.current="";}}>
+      <option value="">Choose verified slot duration</option>
       {[5,10,15,20,30,40,45,60,90,120,180].map(v=>
        <option key={v} value={v}>{v} minutes</option>)}
      </select>
@@ -664,7 +666,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     </section>}
    {canManage&&<div className="toolbar">
     <button type="button" className="primary" onClick={()=>void saveWeek()}
-     disabled={working||uncertain||!from||windows.length===0}>
+     disabled={working||uncertain||!from||!slot||windows.length===0||
+      windows.some(w=>!w.startLocal||!w.endLocal)}>
      {working?"Saving…":"Save verified working hours"}</button>
     <button type="button" disabled={working}
      onClick={()=>void select(selected.associationRef)}>Discard unsaved changes</button>
