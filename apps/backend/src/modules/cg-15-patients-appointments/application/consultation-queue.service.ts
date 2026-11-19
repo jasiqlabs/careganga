@@ -73,7 +73,25 @@ export class ConsultationQueueService{
    "AND p.status='VERIFIED' AND c.status='VERIFIED' "+
    "AND c.access_state='ENABLED' ORDER BY c.display_name,c.id LIMIT 40",
    [actor.realmId,actor.accountId]);
-  return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name,timeZone:row.time_zone}))};
+  // Role alone is not a doctor identity. Expose only the signed-in
+  // clinician's currently accepted, approved doctor-center choices to
+  // hide clinical buttons for unrelated appointments on both clients.
+  const own=await this.db.query<{doctor_id:string;center_id:string}>(
+   "SELECT DISTINCT l.doctor_id,assoc.center_id FROM health_doctor_account_link l "+
+   "JOIN health_doctor d ON d.root_realm_id=l.root_realm_id "+
+   "AND d.id=l.doctor_id AND d.status='VERIFIED' "+
+   "JOIN health_doctor_center assoc ON assoc.root_realm_id=d.root_realm_id "+
+   "AND assoc.doctor_id=d.id AND assoc.affiliation_state='APPROVED' "+
+   "AND assoc.approved_from<=now() "+
+   "AND (assoc.approved_to IS NULL OR assoc.approved_to>now()) "+
+   "JOIN health_center_account_affiliation a ON a.root_realm_id=l.root_realm_id "+
+   "AND a.center_id=assoc.center_id AND a.account_ref=l.account_id "+
+   "AND a.status='ACTIVE' "+
+   "WHERE l.root_realm_id=$1 AND l.account_id=$2 "+
+   "AND l.status='ACTIVE' AND l.accepted_at IS NOT NULL LIMIT 40",
+   [actor.realmId,actor.accountId]);
+  return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name,timeZone:row.time_zone})),
+   clinicianAssignments:own.rows.map(row=>({doctorRef:row.doctor_id,centerRef:row.center_id}))};
  }
  /** Aggregate-only daily attendance for the staff member's ACTUAL center.
   * Unlike page-level UI counts, this covers every recorded booking on the
