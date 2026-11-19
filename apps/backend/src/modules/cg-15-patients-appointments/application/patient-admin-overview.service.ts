@@ -45,6 +45,7 @@ export class PatientAdminOverviewService{
     (raw[name] as string).length<=220?raw[name] as string:null;
    const amount=field("feeMinor");
    return {status:field("status"),startAt:field("startAt"),endAt:field("endAt"),
+    centerName:field("centerName"),reason:field("reason"),
     consultationFeeMinor:amount&&/^\d{1,11}$/.test(amount)?amount:null};
   };
   return {bookingId:appointment.rows[0].booking_display_id,
