@@ -13,7 +13,7 @@ type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[];
  states:StateChoice[];districts:DistrictChoice[];centerTypes:string[];
  geographyComplete:boolean};
 type Query={status:string;centerRef:string;after:string;day:string;
- stateRef:string;districtRef:string;centerType:string};
+ stateRef:string;districtRef:string;centerType:string;search:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
  consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
@@ -40,7 +40,8 @@ const centerTime=(iso:string,zone:string)=>{
 };
 export function FoundationPatientBookings(){
  const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",
- stateRef:"",districtRef:"",centerType:""});
+ stateRef:"",districtRef:"",centerType:"",search:""});
+ const [searchDraft,setSearchDraft]=useState("");
  const [result,setResult]=useState<Result|null>(null);
  const [selected,setSelected]=useState("");
  const [history,setHistory]=useState<OriginalHistory|null>(null);
@@ -55,6 +56,7 @@ export function FoundationPatientBookings(){
   if(q.stateRef)params.set("stateRef",q.stateRef);
   if(q.districtRef)params.set("districtRef",q.districtRef);
   if(q.centerType)params.set("centerType",q.centerType);
+  if(q.search)params.set("search",q.search);
   if(q.after)params.set("after",q.after);
   params.set("limit","20");
   const r=await fetch("/api/appointments/admin/patients?"+params.toString(),{
@@ -144,6 +146,19 @@ export function FoundationPatientBookings(){
    {!result?.geographyComplete&&result&&
     <p role="status">Location choices are too numerous to list safely.
      Use the current booking list while a narrower, verified location search is configured.</p>}
+   <form onSubmit={e=>{e.preventDefault();
+    const value=searchDraft.trim();
+    if(value&&value.length<2){setMessage("Enter at least two characters to search.");return;}
+    setMessage("");update({search:value});
+   }} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"end"}}>
+    <label>Find a patient or booking
+     <input type="search" value={searchDraft} maxLength={80}
+      onChange={e=>setSearchDraft(e.target.value)}
+      placeholder="Patient name, Virtual Patient ID, or booking ID"
+      aria-label="Search own Foundation patient bookings"/>
+    </label>
+    <button type="submit">Search bookings</button>
+   </form>
    <div className="toolbar">
     <label>State
      <select value={query.stateRef} onChange={e=>update({
@@ -188,8 +203,8 @@ export function FoundationPatientBookings(){
      <input type="date" value={query.day}
       onChange={e=>update({day:e.target.value})}/>
     </label>
-    <button type="button" onClick={()=>setQuery({status:"",centerRef:"",after:"",day:"",
-      stateRef:"",districtRef:"",centerType:""})}>
+    <button type="button" onClick={()=>{setSearchDraft("");setMessage("");setQuery({status:"",centerRef:"",after:"",day:"",
+      stateRef:"",districtRef:"",centerType:"",search:""});}}>
      Reset filters</button>
    </div>
   </section>
