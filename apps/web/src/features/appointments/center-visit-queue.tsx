@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {CenterConsultationSlip} from "./center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
  patientName:string;startAt:string;bookingStatus:string;bookingVersion:number;
@@ -202,6 +203,7 @@ export function CenterVisitQueue(){
     <p>Doctor: {item.doctorName}</p>
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN")}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
+    <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>
     <div className="toolbar">
      {item.bookingStatus==="CONFIRMED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
