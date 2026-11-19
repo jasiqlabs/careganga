@@ -185,19 +185,41 @@ export class PatientClinicalFileSharingService{
    await this.ownFile(c,actor,file,patient,false);
    const rows=await c.query<{id:string;status:string;revision:number;
     booking_display_id:string;doctor_name:string;center_name:string;
-    granted_at:Date;revoked_at:Date|null}>(
-    "SELECT g.id,g.status,g.revision,a.booking_display_id,a.doctor_name,"+
-    "a.center_name,g.granted_at,g.revoked_at "+
+    granted_at:Date;revoked_at:Date|null;currently_authorized:boolean}>(
+    "SELECT g.id,g.status,g.revision,a.booking_display_id,"+
+    "doctor.full_name AS doctor_name,center.display_name AS center_name,"+
+    "g.granted_at,g.revoked_at, "+
+    "(g.status='ACTIVE' AND g.revoked_at IS NULL "+
+    "AND a.doctor_id=g.doctor_id AND a.center_id=g.center_id "+
+    "AND a.revision=g.appointment_revision AND f.revoked_at IS NULL "+
+    "AND EXISTS(SELECT 1 FROM cg15_patient_account_link owner "+
+    "WHERE owner.root_realm_id=g.realm_id AND owner.patient_id=g.patient_id "+
+    "AND owner.account_id=g.granted_by_account AND owner.revoked_at IS NULL) "+
+    "AND (SELECT x.revision_no FROM cg15_patient_consent x "+
+    "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
+    "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1) "+
+    "=g.care_consent_revision "+
+    "AND (SELECT x.granted FROM cg15_patient_consent x "+
+    "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
+    "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1)=true "+
+    ") AS currently_authorized "+
     "FROM cg19_patient_clinical_file_grant g "+
     "JOIN cg15_consultation_appointment a ON a.root_realm_id=g.realm_id "+
     "AND a.id=g.appointment_id AND a.patient_id=g.patient_id "+
+    "JOIN health_doctor doctor ON doctor.root_realm_id=g.realm_id "+
+    "AND doctor.id=g.doctor_id "+
+    "JOIN health_center center ON center.root_realm_id=g.realm_id "+
+    "AND center.id=g.center_id "+
+    "JOIN cg19_patient_private_file f ON f.realm_id=g.realm_id "+
+    "AND f.id=g.file_id AND f.patient_id=g.patient_id "+
     "WHERE g.realm_id=$1 AND g.patient_id=$2 AND g.file_id=$3 "+
     "ORDER BY g.granted_at DESC,g.id DESC LIMIT 30",
     [actor.realmId,patient,file]);
    return {shares:rows.rows.map(x=>({grantRef:x.id,status:x.status,
     version:x.revision,bookingId:x.booking_display_id,
     doctorName:x.doctor_name,centerName:x.center_name,
-    grantedAt:x.granted_at.toISOString(),revoked:!!x.revoked_at}))};
+    grantedAt:x.granted_at.toISOString(),revoked:!!x.revoked_at,
+    currentlyAuthorized:x.currently_authorized}))};
   });
  }
  async revoke(bearer:string,grantRaw:string,raw:unknown){
