@@ -43,7 +43,8 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
    return fail(400,"Select a valid consultation date.");
   params.set("date",day);
   const after=req.nextUrl.searchParams.get("after");
-  if(after!==null){if(after.length>70)return fail(400,"Invalid queue page.");
+  if(after!==null){if(parts.length!==2||after.length>70)
+    return fail(400,"Invalid queue page.");
    params.set("after",after);}
  }
  try{
