@@ -6,11 +6,13 @@ import {DoctorScheduleService} from "./application/doctor-schedule.service";
 import {DoctorScheduleController} from "./http/doctor-schedule.controller";
 import {DoctorAvailabilityService} from "./application/doctor-availability.service";
 import {DoctorAvailabilityController} from "./http/doctor-availability.controller";
+import {PatientProfileService} from "./application/patient-profile.service";
+import {PatientProfileController} from "./http/patient-profile.controller";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
- providers:[DoctorScheduleService,DoctorAvailabilityService],
- controllers:[DoctorScheduleController,DoctorAvailabilityController],
+ providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService],
+ controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController],
  exports:[DoctorScheduleService]
 })
 export class PatientsAppointmentsModule{}
