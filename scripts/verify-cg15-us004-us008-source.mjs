@@ -47,6 +47,7 @@ const s={
  catalog:read("apps/backend/src/core/http/safe-error-copy.ts"),
  env:read(".env.example"),
  pkg:read("package.json"),
+ signup:read("apps/backend/src/modules/cg-01-identity-access/application/public-patient-signup.service.ts"),
  tracker:read("specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md")
 };
 const checks=[
@@ -59,7 +60,8 @@ const checks=[
   s.db4.includes("REFERENCES cg15_schedule_revision(root_realm_id,schedule_id,id)")],
  ["booking never claims online paid or CG17 subsidy",
   s.db4.includes("CHECK(payment_mode='PAY_AT_CENTER')")&&
-  s.db4.includes("CHECK(collection_state='DUE_AT_CENTER')")],
+  s.db4.includes("CHECK(collection_state IN('DUE_AT_CENTER','NOT_COLLECTIBLE'))")&&
+  s.db4.includes("booking_state='CANCELLED' AND collection_state='NOT_COLLECTIBLE'")],
  ["hold configured 5–10 minutes or fail closed",
   s.service.includes("CG15_HOLD_MINUTES")&&s.service.includes("value<5||value>10")&&
   s.env.includes("CG15_HOLD_MINUTES=")],
@@ -186,6 +188,18 @@ const checks=[
   s.catalog.includes("CG19_SLIP_UNAVAILABLE")],
  ["explicit local checker command",
   s.pkg.includes("verify:cg15-us004-us008-source")],
+ ["pre-signup ownership SMS must be approved before CG01 account insertion",
+  s.signup.includes('this.provider("VerificationCheck"')&&
+  s.signup.includes('if(check!=="approved")')&&
+  s.signup.indexOf('if(check!=="approved")')<
+   s.signup.indexOf('"INSERT INTO account(')],
+ ["consultation center QR only after current CG14 assigned scope",
+  s.queue.includes('async verifySlipAtMyCenter(')&&
+  s.queue.includes('this.scope(tx,actor,center)')&&
+  s.queue.includes('d.source_revision=a.terms_revision')],
+ ["cancelled consultation releases liability not paid",
+  s.service.includes("collection_state='NOT_COLLECTIBLE'")&&
+  s.service.includes("changeCutoffMs()")],
  ["all 128 original QA identifiers preserved",
   Array.from({length:8},(_,i)=>i+1).every(n=>
    Array.from({length:16},(_,k)=>
