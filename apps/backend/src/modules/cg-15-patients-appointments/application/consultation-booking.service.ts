@@ -20,11 +20,11 @@ type Hold={id:string;patient_id:string;doctor_id:string;center_id:string;associa
  expires_at:Date;created_by_account:string;request_digest:string};
 type Booking={id:string;booking_display_id:string;patient_id:string;doctor_id:string;
  center_id:string;association_id:string;hold_id:string;reservation_id:string;
- start_at:Date;end_at:Date;time_zone:string;doctor_name:string;center_name:string;
+ start_at:Date;end_at:Date;time_zone:string;patient_display_name:string;doctor_name:string;center_name:string;
  center_address:string;fee_minor:string;fee_version:number;
  booking_state:string;collection_state:string;payment_mode:string;revision:number;terms_revision:number;
  confirmation_digest:string;created_at:Date;updated_at:Date};
-type Patient={id:string;profile_status:string;consent_granted:boolean|null;verified:Date|null};
+type Patient={id:string;profile_status:string;consent_granted:boolean|null;verified:Date|null;first_name:string;last_name:string};
 type Slot={scheduleId:string;revisionId:string;minutes:number};
 type Accepted={actor:VerifiedFoundationActor;patient:Patient;source:HealthScheduleEligibleSource;
  feeMinor:string;feeVersion:number;slot:Slot};
@@ -84,7 +84,7 @@ function presentBooking(v:Booking){return {
  bookingRef:v.id,bookingId:v.booking_display_id,
  doctorRef:v.doctor_id,centerRef:v.center_id,
  startAt:v.start_at.toISOString(),endAt:v.end_at.toISOString(),
- timeZone:v.time_zone,doctorName:v.doctor_name,centerName:v.center_name,
+ timeZone:v.time_zone,patientName:v.patient_display_name,doctorName:v.doctor_name,centerName:v.center_name,
  centerAddress:v.center_address,consultationFeeMinor:v.fee_minor,
  feeVersion:v.fee_version,consultationCurrency:"INR" as const,
  bookingStatus:v.booking_state,termsVersion:v.terms_revision,paymentMode:v.payment_mode,
@@ -98,7 +98,7 @@ export class ConsultationBookingService{
   private readonly directory:HealthPublicDirectoryService){}
  private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor,requireConsent=true){
   const r=await tx.query<Patient>(
-   "SELECT p.id,p.profile_status,a.contact_phone_verified_at AS verified,"+
+   "SELECT p.id,p.profile_status,p.first_name,p.last_name,a.contact_phone_verified_at AS verified,"+
    "(SELECT c.granted FROM cg15_patient_consent c "+
    "WHERE c.root_realm_id=p.root_realm_id AND c.patient_id=p.id "+
    "AND c.purpose='PATIENT_CARE' ORDER BY c.revision_no DESC LIMIT 1) AS consent_granted "+
@@ -317,14 +317,14 @@ export class ConsultationBookingService{
    const booking=await tx.query<Booking>(
     "INSERT INTO cg15_consultation_appointment("+
     "root_realm_id,booking_display_id,patient_id,doctor_id,center_id,association_id,"+
-    "hold_id,reservation_id,start_at,end_at,time_zone,doctor_name,center_name,"+
+    "hold_id,reservation_id,start_at,end_at,time_zone,patient_display_name,doctor_name,center_name,"+
     "center_address,fee_minor,fee_version,created_by_account,confirmation_key,"+
     "confirmation_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *",
     [actor.realmId,"CGA-"+randomBytes(8).toString("hex").toUpperCase(),
      hold.patient_id,hold.doctor_id,hold.center_id,hold.association_id,hold.id,
      reservation.rows[0].id,hold.start_at,hold.end_at,hold.time_zone,
-     current.source.doctor_name,current.source.center_name,current.source.address,
+     current.patient.first_name+" "+current.patient.last_name,current.source.doctor_name,current.source.center_name,current.source.address,
      fee,hold.fee_version,actor.accountId,key,signature]);
    await tx.query(
     "UPDATE cg15_doctor_reservation SET status='CONFIRMED' WHERE root_realm_id=$1 AND id=$2",
