@@ -3,7 +3,7 @@ import {Alert,Pressable,StyleSheet,Text,View,BackHandler} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
-import {DoctorSchedulePreview} from "../health-network/doctor-schedule-preview";
+import {PublicHealthcareDirectory} from "../health-network/public-healthcare-directory";
 import {NativeAppointmentDocuments} from "./native-appointment-documents";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
