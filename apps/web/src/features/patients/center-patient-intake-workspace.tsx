@@ -1,6 +1,8 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import {CenterPatientIntakePanel} from "./center-patient-intake-panel";
+import {CenterAssistedConsultationBooking}
+ from "../appointments/center-assisted-consultation-booking";
 
 type Center={centerRef:string;centerName:string;providerName:string};
 type Options={centers:Center[]};
@@ -119,6 +121,7 @@ export function CenterPatientIntakeWorkspace(){
     </form>
    </section>
    <CenterPatientIntakePanel centerRef={chosen} key={chosen}/>
+   <CenterAssistedConsultationBooking centerRef={chosen} key={"booking:"+chosen}/>
   </>}
  </div>;
 }
