@@ -6,6 +6,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
 import {NativeClinicianVisitHistory} from "./native-clinician-visit-history";
+import {NativeClinicianSharedPatientFiles} from "./native-clinician-shared-patient-files";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type ClinicianAssignment={centerRef:string;doctorRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
@@ -359,6 +360,11 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
      {a.consentGranted&&a.visitRef&&canClinicalManage&&
       clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&
       <NativeClinicianVisitHistory key={center+":"+a.appointmentRef}
+       token={token} centerRef={center} bookingRef={a.appointmentRef}
+       onExpired={onExpired}/>}
+     {a.consentGranted&&a.visitRef&&canClinicalManage&&
+      clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&
+      <NativeClinicianSharedPatientFiles key={"file:"+center+":"+a.appointmentRef}
        token={token} centerRef={center} bookingRef={a.appointmentRef}
        onExpired={onExpired}/>}
     {canCancel&&a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
