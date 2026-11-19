@@ -26,7 +26,20 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
  </main>;
  return <CmsPublicPage page={page.page} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
-   home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}/>;
+   home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}>
+  {slug==="healthcare"&&<section className="cg-site-content"
+   aria-label="Verified healthcare consultation booking">
+   <h2>Find an approved doctor and request a consultation</h2>
+   <p>CareGanga lists only currently verified healthcare providers and doctors.
+    Where live working hours and consultation fees are available, an eligible
+    patient can request an in-person appointment. Payment is due at the
+    healthcare center, not through an online checkout.</p>
+   <Link className="cg-site-action" href="/health-network?tab=doctors">
+    View verified doctors &amp; book an appointment</Link>
+   <p>Bookings depend on a current available slot and final confirmation.
+    This is not an approval for financial assistance.</p>
+  </section>}
+ </CmsPublicPage>;
 }
 
 type OriginalMediaType="VIDEO"|"PUBLICATION";
