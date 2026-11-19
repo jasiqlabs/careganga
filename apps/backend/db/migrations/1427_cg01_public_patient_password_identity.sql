@@ -50,3 +50,29 @@ CREATE TRIGGER cg01_patient_public_role_grant_denied
 
 -- Prevent an attacker from providing any other role ID to the public
 -- registration source. The CG01 service always resolves by protected name.
+
+CREATE TABLE cg01_public_patient_signup_command(
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ request_key uuid NOT NULL,
+ request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+ account_id uuid,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,request_key),
+ FOREIGN KEY(account_id,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE UNIQUE INDEX ux_cg01_public_signup_account
+ ON cg01_public_patient_signup_command(root_realm_id,account_id)
+ WHERE account_id IS NOT NULL;
+
+DO $cg01$
+BEGIN
+ IF EXISTS(
+  SELECT 1 FROM role r
+  WHERE r.normalized_name='careganga patient'
+   AND (r.is_protected OR NOT r.active OR
+    EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id))
+ ) THEN
+  RAISE EXCEPTION 'Public patient role requires an active no-grant identity';
+ END IF;
+END $cg01$;
