@@ -217,6 +217,36 @@ export class DoctorScheduleService{
    [actor.realmId,assoc.doctor_id]);
   if(!proof.rows[0]?.eligible)
    throw new ConflictException({code:"CG15_SCHEDULE_INELIGIBLE"});
+  // A center's current original licence must also remain scanned, approved
+  // and unrevoked. A stale CG14 VERIFIED status alone does not confer access.
+  const centerProof=await tx.query<{eligible:boolean}>(
+   "SELECT EXISTS(SELECT 1 FROM health_center_revision rev "+
+   "JOIN cg03_case cg ON cg.realm_id=rev.root_realm_id "+
+   "AND cg.id=rev.approval_case_ref "+
+   "AND cg.case_kind='HEALTH_CENTER_VERIFICATION' "+
+   "AND cg.status='OWNER_COMPLETED' AND cg.health_center_id=rev.center_id "+
+   "AND cg.health_center_revision_id=rev.id "+
+   "AND cg.health_source_digest=rev.source_digest "+
+   "JOIN cg03_case_decision decision ON decision.realm_id=cg.realm_id "+
+   "AND decision.case_id=cg.id AND decision.action='APPROVE' "+
+   "AND decision.fresh_password_verified_at IS NOT NULL "+
+   "AND decision.actor_id<>cg.proposer_id "+
+   "JOIN cg19_stored_file proof ON proof.id=rev.proof_file_ref "+
+   "AND proof.realm_id=rev.root_realm_id "+
+   "AND proof.health_center_id=rev.center_id "+
+   "AND proof.health_provider_id=rev.provider_id "+
+   "AND proof.owner_kind='CG14_DRAFT' AND proof.revoked_at IS NULL "+
+   "AND proof.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent intent ON intent.id=proof.upload_intent_id "+
+   "AND intent.realm_id=proof.realm_id AND intent.status='VALIDATED' "+
+   "AND intent.classification='HEALTH_CENTER_LICENSE' "+
+   "WHERE rev.root_realm_id=$1 AND rev.provider_id=$2 "+
+   "AND rev.center_id=$3 AND rev.revision_no=(SELECT MAX(other.revision_no) "+
+   "FROM health_center_revision other WHERE other.root_realm_id=rev.root_realm_id "+
+   "AND other.center_id=rev.center_id)) AS eligible",
+   [actor.realmId,assoc.provider_id,assoc.center_id]);
+  if(!centerProof.rows[0]?.eligible)
+   throw new ConflictException({code:"CG15_SCHEDULE_INELIGIBLE"});
   return {...assoc,time_zone:c.rows[0].time_zone};
  }
  private async command(tx:PoolClient,actor:Actor,action:string,
@@ -255,7 +285,6 @@ export class DoctorScheduleService{
  }
  private async noOtherCenterOverlap(tx:PoolClient,actor:Actor,src:Source,
   mode:string,windows:Window[]){
-  if(mode!=="IN_PERSON")return;
   const rows=await tx.query<{time_zone:string;weekday:number;
    open_local:string;close_local:string}>(
    "SELECT other.time_zone,w.weekday,w.open_local::text,"+
@@ -264,11 +293,12 @@ export class DoctorScheduleService{
    "ON w.root_realm_id=other.root_realm_id AND w.schedule_id=other.id "+
    "AND w.revision_id=other.current_revision_id "+
    "WHERE other.root_realm_id=$1 AND other.doctor_id=$2 "+
-   "AND other.association_id<>$3 AND other.status='ACTIVE' "+
-   "AND other.consultation_mode='IN_PERSON' FOR SHARE OF other",
-   [actor.realmId,src.doctor_id,src.id]);
-  // Safe V1: cross-timezone weekly recurrence is ambiguous at DST edges,
-  // so require one time zone across concurrent in-person center schedules.
+   "AND NOT(other.association_id=$3 AND other.consultation_mode=$4) "+
+   "AND other.status='ACTIVE' FOR SHARE OF other",
+   [actor.realmId,src.doctor_id,src.id,mode]);
+  // Safe V1: cross-timezone weekly recurrence is ambiguous at DST edges.
+  // One doctor cannot have overlapping VIDEO and IN_PERSON schedules either.
+  // Conservatively require a common zone across active mode/center schedules.
   if(rows.rows.some(r=>r.time_zone!==src.time_zone))
    throw new ConflictException({code:"CG15_SCHEDULE_TIMEZONE_CONFLICT"});
   if(rows.rows.some(r=>windows.some(w=>w.weekday===r.weekday&&
