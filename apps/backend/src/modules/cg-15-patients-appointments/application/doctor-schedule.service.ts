@@ -309,12 +309,15 @@ export class DoctorScheduleService{
    throw new ConflictException({code:"CG15_SCHEDULE_DOCTOR_CONFLICT"});
  }
  async roster(bearer:string,channel:Channel,centerRef?:string,
-  geo?:{stateRef?:string;districtRef?:string;blockRef?:string}){
+  geo?:{stateRef?:string;districtRef?:string;blockRef?:string;search?:string}){
   const ownRef=channel==="center"?uuid(centerRef):null;
   const actor=await this.actor(bearer,channel,false);
   const stateRef=channel==="foundation"&&geo?.stateRef?uuid(geo.stateRef):null;
   const districtRef=channel==="foundation"&&geo?.districtRef?uuid(geo.districtRef):null;
   const blockRef=channel==="foundation"&&geo?.blockRef?uuid(geo.blockRef):null;
+  const search=channel==="foundation"?(geo?.search??"").trim():"";
+  if(search.length>80||/[\u0000-\u001f\u007f<>]/.test(search))
+   throw new BadRequestException({code:"CG15_SCHEDULE_INVALID"});
   if(channel==="foundation"&&centerRef)uuid(centerRef);
   return this.transaction(async tx=>{
    await this.identity.assertCurrent(tx,actor,
@@ -338,6 +341,9 @@ export class DoctorScheduleService{
     "AND ($3::uuid IS NULL OR c.state_ref=$3) "+
     "AND ($4::uuid IS NULL OR c.district_ref=$4) "+
     "AND ($5::uuid IS NULL OR c.block_ref=$5) "+
+    "AND ($6::text='' OR position(lower($6) in lower(d.full_name))>0 "+
+    "OR position(lower($6) in lower(c.display_name))>0 "+
+    "OR position(lower($6) in lower(array_to_string(d.specialties,' ')))>0) "+
     "AND p.status='VERIFIED' AND c.status='VERIFIED' "
     "AND c.access_state='ENABLED' AND d.status='VERIFIED' "+
     "AND assoc.affiliation_state='APPROVED' "+
@@ -383,7 +389,7 @@ export class DoctorScheduleService{
     "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
     [actor.realmId,channel==="center"?ownRef:centerRef??null,
-     stateRef,districtRef,blockRef]);
+     stateRef,districtRef,blockRef,search]);
    const counts=await tx.query<{appointments:string;today_sessions:string;
     active_leave_doctors:string}>(
     "SELECT "+
