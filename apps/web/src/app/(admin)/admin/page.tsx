@@ -24,6 +24,7 @@ export default async function AdminHome() {
   let canViewVouchers=false;
   let canViewHealthcare=false;
   let canEditOwnCenter=false;
+  let canIntakePatients=false;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -42,6 +43,7 @@ export default async function AdminHome() {
           canViewVouchers=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.vouchers.view");
           canViewHealthcare=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.providers.view");
           canEditOwnCenter=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.centers.draft.edit");
+          canIntakePatients=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.patients.intake");
           canViewAccounts=Array.isArray(effective.actions)&&
             (effective.actions.some(x=>x.key==="accounts.view")||
               (effective.actions.some(x=>x.key==="accounts.create")&&
@@ -75,11 +77,12 @@ export default async function AdminHome() {
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
-      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers} canViewHealthNetwork={canViewHealthcare}/>
+      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers} canViewHealthNetwork={canViewHealthcare} canViewPatientIntake={canIntakePatients}/>
     <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
     <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p>
       {canViewHealthcare&&<p><Link href="/admin/health-network">Healthcare provider registrations</Link></p>}
       {canEditOwnCenter&&<p><Link href="/center">My healthcare center</Link></p>}
+      {canIntakePatients&&<p><Link href="/admin/health-network/patient-intake">Register a provisional patient</Link></p>}
       <SignOutButton/></section>
     </main>
   </div>;
