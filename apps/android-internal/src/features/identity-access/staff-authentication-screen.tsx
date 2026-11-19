@@ -9,6 +9,7 @@ import { RecoveryScreen } from "./recovery-screen";
 import { ProposalScreen } from "../registration-approvals/proposal-screen";
 import { HealthcareNativeReview } from "../registration-approvals/healthcare-native-review";
 import { DoctorLeaveNativeReview } from "../registration-approvals/doctor-leave-native-review";
+import {NativeCenterVisitQueue} from "../appointments/native-center-visit-queue";
 import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
 import { RecipientNotifications } from "../../../../../packages/native-communications/src/recipient-notifications";
 import { NotificationsScreen } from "../communications/notifications-screen";
@@ -75,6 +76,7 @@ export function StaffAuthenticationScreen(){
   const [approvalsOpen,setApprovalsOpen]=useState(false);
   const [healthReviewsOpen,setHealthReviewsOpen]=useState(false);
   const [doctorLeaveReviewsOpen,setDoctorLeaveReviewsOpen]=useState(false);
+  const [patientQueueOpen,setPatientQueueOpen]=useState(false);
   const [documentsOpen,setDocumentsOpen]=useState(false);
   const [branchesOpen,setBranchesOpen]=useState(false);
   const [financeOpen,setFinanceOpen]=useState(false);
@@ -95,6 +97,7 @@ export function StaffAuthenticationScreen(){
   const closeRoles=useCallback(()=>setRolesOpen(false),[]);
   const closeHealthReviews=useCallback(()=>setHealthReviewsOpen(false),[]);
   const closeDoctorLeaveReviews=useCallback(()=>setDoctorLeaveReviewsOpen(false),[]);
+  const closePatientQueue=useCallback(()=>setPatientQueueOpen(false),[]);
   const closePolicy=useCallback(()=>setPolicyOpen(false),[]);
   const closeAccounts=useCallback(()=>setAccountsOpen(false),[]);
   const closeFinance=useCallback(()=>setFinanceOpen(false),[]);
@@ -108,7 +111,7 @@ export function StaffAuthenticationScreen(){
   const closeBudgetReviews=useCallback(()=>setBudgetReviewOpen(false),[]);
   const closeReports=useCallback(()=>setReportsOpen(false),[]);
   const expireSession=useCallback(()=>{
-    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setHealthReviewsOpen(false);setDoctorLeaveReviewsOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);setInvoiceOpen(false);setInvoiceReviewOpen(false);
+    setActor(null);setToken(null);setRoleActions([]);setRolesOpen(false);setAccountsOpen(false);setPolicyOpen(false);setApprovalsOpen(false);setHealthReviewsOpen(false);setDoctorLeaveReviewsOpen(false);setPatientQueueOpen(false);setDocumentsOpen(false);setCommunicationsOpen(false);setNotificationsOpen(false);setSupportOpen(false);setNoticeAdminOpen(false);setBranchesOpen(false);setFinanceOpen(false);setVoucherOnlyOpen(false);setFinanceReviewOpen(false);setFinanceClaimsOpen(false);setFinanceClaimReviewsOpen(false);setInvoiceOpen(false);setInvoiceReviewOpen(false);
     setBudgetOpen(false);setBudgetReviewOpen(false);setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(()=>undefined);
   },[]);
@@ -239,6 +242,9 @@ export function StaffAuthenticationScreen(){
       canPropose={roleActions.includes("approvals.propose")}
       canReview={roleActions.includes("approvals.review")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
+  if(patientQueueOpen&&token&&actor&&roleActions.includes("health.visits.manage"))
+    return <NativeCenterVisitQueue token={token} onExit={closePatientQueue}
+      onExpired={expireSession}/>;
   if(doctorLeaveReviewsOpen&&token&&actor&&
     roleActions.includes("approvals.review")&&roleActions.includes("health.schedules.view"))
     return <DoctorLeaveNativeReview token={token}
@@ -378,6 +384,11 @@ export function StaffAuthenticationScreen(){
               <Pressable accessibilityRole="button" style={styles.button}
                 onPress={()=>setApprovalsOpen(true)}>
                 <Text style={styles.buttonText}>Registration & Approval</Text>
+              </Pressable>}
+            {roleActions.includes("health.visits.manage")&&
+              <Pressable accessibilityRole="button" style={styles.button}
+                onPress={()=>setPatientQueueOpen(true)}>
+                <Text style={styles.buttonText}>My Consultation Queue</Text>
               </Pressable>}
             {roleActions.includes("approvals.review")&&
               roleActions.includes("health.schedules.view")&&
