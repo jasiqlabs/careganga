@@ -9,12 +9,12 @@ export async function GET(request:NextRequest){
  if(!backend)return NextResponse.json({message:"Patient management is unavailable."},
   {status:503,headers:{"Cache-Control":"private, no-store"}});
  const allowed=new URLSearchParams();
- for(const key of ["centerRef","status","after","limit","day","stateRef","districtRef","centerType"]){
+ for(const key of ["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search"]){
   const value=request.nextUrl.searchParams.get(key);
   if(value!==null)allowed.set(key,value.slice(0,50));
  }
  if([...request.nextUrl.searchParams.keys()].some(key=>
-  !["centerRef","status","after","limit","day","stateRef","districtRef","centerType"].includes(key)))
+  !["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search"].includes(key)))
   return NextResponse.json({message:"Invalid patient filter."},{status:400});
  try{
   const response=await fetch(new URL("/api/v1/appointments/admin/patients?"+
