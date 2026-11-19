@@ -11,7 +11,7 @@ export type OriginalConsultationSlip={
  consultationFeeMinor:string;bookingStatus:string;collectionStatus:"DUE_AT_CENTER";
 };
 type SourceRow={root_realm_id:string;id:string;booking_display_id:string;
- revision:number;terms_revision:number;first_name:string;last_name:string;doctor_name:string;
+ revision:number;terms_revision:number;patient_display_name:string;doctor_name:string;
  center_name:string;center_address:string;start_at:Date;end_at:Date;
  time_zone:string;fee_minor:string;booking_state:string;collection_state:"DUE_AT_CENTER"};
 @Injectable()
@@ -29,7 +29,7 @@ export class ConsultationSlipSourceFacade{
   if(!UUID.test(id))throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
   const rows=await this.db.query<SourceRow>(
    "SELECT a.root_realm_id,a.id,a.booking_display_id,a.revision,a.terms_revision,"+
-   "p.first_name,p.last_name,a.doctor_name,a.center_name,a.center_address,"+
+   "a.patient_display_name,a.doctor_name,a.center_name,a.center_address,"+
    "a.start_at,a.end_at,a.time_zone,a.fee_minor::text,a.booking_state,a.collection_state "+
    "FROM cg15_consultation_appointment a "+
    "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
@@ -45,7 +45,7 @@ export class ConsultationSlipSourceFacade{
   if(!row)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
   const value={rootRef:row.root_realm_id,bookingRef:row.id,
    bookingId:row.booking_display_id,sourceVersion:row.terms_revision,
-   patientName:row.first_name+" "+row.last_name,
+   patientName:row.patient_display_name,
    doctorName:row.doctor_name,centerName:row.center_name,
    centerAddress:row.center_address,startAt:row.start_at.toISOString(),
    endAt:row.end_at.toISOString(),timeZone:row.time_zone,
