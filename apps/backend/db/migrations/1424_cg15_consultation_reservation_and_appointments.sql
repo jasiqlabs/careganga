@@ -102,6 +102,7 @@ CREATE TABLE cg15_consultation_appointment (
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,booking_display_id),
+ UNIQUE(root_realm_id,id,center_id),
  UNIQUE(root_realm_id,hold_id),
  UNIQUE(root_realm_id,reservation_id),
  UNIQUE(root_realm_id,created_by_account,confirmation_key),
