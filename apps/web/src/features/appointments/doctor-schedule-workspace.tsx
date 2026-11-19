@@ -286,8 +286,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    const today=currentCenterDay(source.timeZone);
    const effectiveFrom=source.effectiveFrom&&source.effectiveFrom>=today?
     source.effectiveFrom:today;
-   const effectiveUntil=source.effectiveUntil&&
-    source.effectiveUntil>effectiveFrom?source.effectiveUntil:null;
+   if(source.effectiveUntil&&source.effectiveUntil<=effectiveFrom){
+    setError("The original source schedule has ended. Update and save the original doctor schedule before copying it to other centers.");
+    return;
+   }
+   const effectiveUntil=source.effectiveUntil??null;
    // Every target is read again, then guarded by its own original PUT/CAS.
    // This is an explicit sequence of independent saves, not one transaction.
    for(const target of eligible){
@@ -597,6 +600,65 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
        onClick={()=>setCopyReview(null)}>Keep original schedule</button>
      </div>}
     </div>}
+   {canManage&&channel==="foundation"&&selected.version>0&&
+    selected.windows.length>0&&<section className="form-section"
+     aria-label="Bulk apply doctor working hours to verified centers">
+     <h3>Apply this doctor's saved schedule to other centers</h3>
+     <p>Choose up to 8 verified centers from the current filtered doctor list.
+      This is a series of <strong>independent</strong> center saves—not a
+      single transaction. Every target is rechecked for the same doctor,
+      current center approval, timezone, operating hours, other bookings,
+      doctor-global overlap and expected version. A rejected center is not changed.</p>
+     <div role="group" aria-label="Select same-doctor target centers">
+      {roster.filter(row=>row.doctorRef===selected.doctorRef&&
+       row.associationRef!==selected.associationRef&&
+       row.centerRef!==selected.centerRef).map(row=>
+       <label key={row.associationRef} style={{display:"block",padding:"5px 0"}}>
+        <input type="checkbox" checked={bulkRefs.includes(row.associationRef)}
+         disabled={working||uncertain||
+          (bulkRefs.length>=8&&!bulkRefs.includes(row.associationRef))}
+         onChange={e=>toggleBulk(row.associationRef,e.target.checked)}/>
+        {" "}{row.centerName}
+       </label>)}
+     </div>
+     {roster.filter(row=>row.doctorRef===selected.doctorRef&&
+      row.associationRef!==selected.associationRef&&
+      row.centerRef!==selected.centerRef).length===0&&
+      <p>No other eligible association is in this filtered list.
+       Adjust the location/search filters to find that doctor's other centers.</p>}
+     <button type="button" disabled={!bulkRefs.length||working||uncertain}
+      onClick={()=>void previewBulk()}>Review selected centers</button>
+     {!!bulkPreview.length&&<div className="notice">
+      <h4>Current target review</h4>
+      <ul>{bulkPreview.map(item=><li key={item.associationRef}>
+       <strong>{item.centerName}:</strong> {item.eligible?
+        "Eligible for independent target Save; final conflicts are checked again.":
+        item.reason}
+      </li>)}</ul>
+      <label><input type="checkbox" checked={bulkAcknowledged}
+       disabled={working||uncertain||!bulkPreview.some(item=>item.eligible)||
+        !!bulkOutcomes.length}
+       onChange={e=>setBulkAcknowledged(e.target.checked)}/>
+       I understand each center may save or be rejected separately.
+       I will verify each saved result and any uncertain response.
+      </label>
+      <button type="button" disabled={working||uncertain||
+       !bulkAcknowledged||!bulkPreview.some(item=>item.eligible)||
+       !!bulkOutcomes.length}
+       onClick={()=>void applyBulk()}>
+       Apply to {bulkPreview.filter(item=>item.eligible).length} reviewed center(s)
+      </button>
+     </div>}
+     {!!bulkOutcomes.length&&<div className="notice" role="status">
+      <h4>Individual center results</h4>
+      <ul>{bulkOutcomes.map(item=><li key={item.associationRef}>
+       <strong>{item.centerName}:</strong> {item.status==="SAVED"?
+        "Saved":"Not confirmed"} — {item.detail}
+      </li>)}</ul>
+      <p>Any unlisted target was not attempted. Refresh and inspect each
+       target's current schedule before another change.</p>
+     </div>}
+    </section>}
    {canManage&&<div className="toolbar">
     <button type="button" className="primary" onClick={()=>void saveWeek()}
      disabled={working||uncertain||!from||windows.length===0}>
