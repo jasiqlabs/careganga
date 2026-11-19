@@ -392,16 +392,23 @@ export class DoctorScheduleService{
      stateRef,districtRef,blockRef,search]);
    const counts=await tx.query<{appointments:string;today_sessions:string;
     active_leave_doctors:string}>(
+    "WITH scoped_center AS ("+
+    "SELECT c.id FROM health_center c WHERE c.root_realm_id=$1 "+
+    "AND ($2::uuid IS NULL OR c.id=$2) "+
+    "AND ($3::uuid IS NULL OR c.state_ref=$3) "+
+    "AND ($4::uuid IS NULL OR c.district_ref=$4) "+
+    "AND ($5::uuid IS NULL OR c.block_ref=$5)) "+
     "SELECT "+
     "(SELECT COUNT(*)::text FROM cg15_consultation_appointment a "+
-    "WHERE a.root_realm_id=$1 AND ($2::uuid IS NULL OR a.center_id=$2)) "+
-    "AS appointments,"+
+    "JOIN scoped_center place ON place.id=a.center_id "+
+    "WHERE a.root_realm_id=$1) AS appointments,"+
     "(SELECT COUNT(*)::text FROM cg15_doctor_schedule s "+
+    "JOIN scoped_center place ON place.id=s.center_id "+
     "JOIN cg15_schedule_revision r ON r.root_realm_id=s.root_realm_id "+
     "AND r.schedule_id=s.id AND r.id=s.current_revision_id "+
     "JOIN cg15_schedule_weekly_window w ON w.root_realm_id=s.root_realm_id "+
     "AND w.schedule_id=s.id AND w.revision_id=r.id "+
-    "WHERE s.root_realm_id=$1 AND ($2::uuid IS NULL OR s.center_id=$2) "+
+    "WHERE s.root_realm_id=$1 "+
     "AND s.consultation_mode='IN_PERSON' AND s.status='ACTIVE' "+
     "AND r.effective_from<=(now() AT TIME ZONE s.time_zone)::date "+
     "AND (r.effective_until IS NULL OR "+
@@ -409,11 +416,13 @@ export class DoctorScheduleService{
     "AND w.weekday=EXTRACT(DOW FROM (now() AT TIME ZONE s.time_zone))::integer) "+
     "AS today_sessions,"+
     "(SELECT COUNT(DISTINCT e.doctor_id)::text "+
-    "FROM cg15_schedule_exception e WHERE e.root_realm_id=$1 "+
-    "AND ($2::uuid IS NULL OR e.center_id=$2) "+
+    "FROM cg15_schedule_exception e "+
+    "JOIN scoped_center place ON place.id=e.center_id "+
+    "WHERE e.root_realm_id=$1 "+
     "AND e.kind='LEAVE' AND e.state='ACTIVE' "+
     "AND e.start_at<=now() AND e.end_at>now()) AS active_leave_doctors",
-    [actor.realmId,channel==="center"?ownRef:centerRef??null]);
+    [actor.realmId,channel==="center"?ownRef:centerRef??null,
+     stateRef,districtRef,blockRef]);
    // Geographic choices come from original CG14 center and CG02 area
    // masters, never invented UI static options or patient bookings.
    const locations=channel==="foundation"?await tx.query<{
@@ -430,8 +439,11 @@ export class DoctorScheduleService{
     "LEFT JOIN geography_area bl ON bl.id=c.block_ref AND bl.root_realm_id=c.root_realm_id "+
     "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' "+
     "AND c.access_state='ENABLED' "+
+    "AND ($2::uuid IS NULL OR c.state_ref=$2) "+
+    "AND ($3::uuid IS NULL OR c.district_ref=$3) "+
+    "AND ($4::uuid IS NULL OR c.block_ref=$4) "+
     "ORDER BY st.display_name,di.display_name,bl.display_name,c.display_name,c.id LIMIT 1001",
-    [actor.realmId]):{rows:[] as {center_ref:string;center_name:string;
+    [actor.realmId,stateRef,districtRef,blockRef]):{rows:[] as {center_ref:string;center_name:string;
      state_ref:string;state_name:string;district_ref:string;district_name:string;
      block_ref:string|null;block_name:string|null}[]};
    const choices=locations.rows.slice(0,1000);
