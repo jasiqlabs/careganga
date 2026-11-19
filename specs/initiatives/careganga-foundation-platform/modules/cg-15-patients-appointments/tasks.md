@@ -650,3 +650,15 @@ H07's three placeholder-dash metrics were replaced by original CG15 PostgreSQL-s
 Actual source preflight evidence: the repository US002 preflight was evaluated against the current private GitHub branch contents in an isolated JavaScript execution. Two stale assertions from advisory-only screens failed first; corrected expectations now require genuine dynamic bookable slots and guarded original booking CTA. Re-execution returned 25/25 static SOURCE_PRESENT, zero static gaps. This is source literal/assertion evaluation using the exact script code; it is NOT the repository Node command in a local checkout, nor backend/Web compilation, SQL, provider, pixel or native QA. Original 128 runtime QA PASS remains zero.
 
 **Canonical source status unchanged: 87 SOURCE_VERIFIED, 32 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE. 0/8 formally SOURCE_COMPLETE.**
+
+### 19 November 2026 — latest security regression and frozen source closure ledger
+
+Created [V1_SOURCE_CLOSURE_LEDGER_2026-11-19.md](V1_SOURCE_CLOSURE_LEDGER_2026-11-19.md) from the original QA case rows, listing 32 SOURCE_GAP + 2 NOT_VERIFIABLE cases by real owner, policy conflict and mandatory closure evidence. This is a scope and evidence ledger, not a waiver or a claim that a case passed. The cross-owner/clinician/CG19/CG17 actions remain mandatory; no new module is started.
+
+Independent latest-source security readback found a stale selection-history isolation risk in Foundation H15: a prior patient's asynchronous event rows could briefly remain visible under a newly selected booking until the next effect. `FoundationPatientBookings` now derives `currentHistory` only when `history.bookingId===selectedBooking.bookingId`, and the same guard binds print and event display. This is source protection, not browser privacy validation. Additional CG15 `confirm` hardening now releases the original HELD doctor reservation and cancels the provisional hold when the verified patient or receptionist subject loses active patient-care consent/independent proof and `ForbiddenException` arises after doctor/hold lock. No false booking or notification is created.
+
+Executed targeted GitHub readback across the latest files: 7/7 source assertions true for invalid hold release, consent-aware public QR, genuine H07 metrics, selected-patient H15 history binding, separately assignable center clinical transition grant, Internal Android private issue and the original PostgreSQL global GIST overlap. The US004–US008 lexical preflight was adjusted to assert the new H15 `currentHistory` guard. **These 7 source assertions are not code compilation, actual SQL/device execution or original 128-case QA PASS.**
+
+**Latest canonical source classification: 87 SOURCE_VERIFIED, 32 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE. Executed QA PASS 0/128. Formally SOURCE_COMPLETE 0/8.**
+
+Actual independent specialist runtime test, original H07/H15 pixel/accessibility, Postgres migrations 1420–1432, 3-client concurrency and two Android variants, secure PDF/QR, notifications and clinical doctor-proof remain NOT_RUN. Main merge/production approval NOT_GRANTED.
