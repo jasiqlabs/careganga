@@ -32,7 +32,7 @@ const cases=[
    "SAME_PERSON_EVIDENCE_REVIEWED","preservedOriginalRecords:true"]],
  ["apps/web/src/features/appointments/foundation-patient-duplicate-reviews.tsx",
   ["Review original identity evidence","evidence?.reviewRef",
-   "Independently","current-password"]],
+   "independently reviewed","current-password"]],
  ["apps/web/src/app/api/appointments/admin/patients/duplicate-reviews/[reviewRef]/evidence/route.ts",
   ['get("cg_staff_session")','"Cache-Control":"private, no-store"']]]},
  {id:"US-003-QA15",checks:[
