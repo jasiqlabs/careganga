@@ -8,6 +8,11 @@ type Place={centerRef:string;centerName:string;stateRef:string;stateName:string;
 type Metrics={totalAppointments:string;workingSessionsToday:string;
  doctorsOnActiveLeave:string};
 type Window={weekday:number;startLocal:string;endLocal:string};
+type BulkCopyTarget={associationRef:string;centerName:string;doctorRef:string;
+ centerRef:string;timeZone:string;version:number;eligible:boolean;reason:string;
+ sourceRef:string;sourceVersion:number};
+type BulkCopyOutcome={associationRef:string;centerName:string;
+ status:"SAVED"|"REJECTED"|"UNCERTAIN";detail:string};
 type Except={exceptionRef:string;kind:string;state:string;startAt:string;
  endAt:string;reason:string;version:number};
 type Detail={associationRef:string;doctorRef:string;centerRef:string;
@@ -100,6 +105,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [reason,setReason]=useState("");
  const [copyTarget,setCopyTarget]=useState("");
  const [copyReview,setCopyReview]=useState<Row|null>(null);
+ const [bulkRefs,setBulkRefs]=useState<string[]>([]);
+ const [bulkPreview,setBulkPreview]=useState<BulkCopyTarget[]>([]);
+ const [bulkAcknowledged,setBulkAcknowledged]=useState(false);
+ const [bulkOutcomes,setBulkOutcomes]=useState<BulkCopyOutcome[]>([]);
+ const bulkKeys=useRef<Record<string,string>>({});
  const weekKey=useRef(""),exceptionKey=useRef(""),seq=useRef(0);
  const cancelKeys=useRef<Record<string,string>>({});
  const loadRoster=useCallback(async()=>{
@@ -129,7 +139,9 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  useEffect(()=>{
   setSelected(null);setRoster([]);setMetrics(null);setWindows([]);
   setCopyTarget("");
-  setCopyReview(null);weekKey.current="";
+  setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
+  setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
+  weekKey.current="";
   exceptionKey.current="";setLoading(true);
   void loadRoster();return()=>{seq.current++;};
  },[loadRoster]);
@@ -139,7 +151,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    const detail=await api<Detail>(base+"/"+encodeURIComponent(ref));
    if(n!==seq.current)return;
    setSelected(detail);setWindows(detail.windows);setSlot(String(detail.slotMinutes));
-   setCopyTarget("");setCopyReview(null);
+   setCopyTarget("");setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
+   setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
    setFrom(detail.effectiveFrom??"");setUntil(detail.effectiveUntil??"");
    weekKey.current="";exceptionKey.current="";setUncertain(false);
   }catch(e){if(n===seq.current)setError(e instanceof Error?e.message:
