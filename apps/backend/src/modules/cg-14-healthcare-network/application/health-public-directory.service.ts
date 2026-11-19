@@ -1,7 +1,7 @@
 import {
   BadRequestException,Inject,Injectable,NotFoundException
 } from "@nestjs/common";
-import type {Pool} from "pg";
+import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,6 +18,15 @@ type DoctorRow={doctor_ref:string;full_name:string;qualifications:string[];
   center_slug:string;center_name:string;address:string;pin_code:string;
   fee_kind:string|null;consultation_mode:string|null;amount_minor:string|null;
   effective_from:Date|null;effective_to:Date|null};
+/** Privileged SERVER-INTERNAL typed source: never return IDs, root, provider
+ * or CG19 evidence to anonymous clients. CG15 consumes only this original
+ * CG14 current approved publication/doctor/fee proof, never shadow masters. */
+export type HealthScheduleEligibleSource={
+ root_ref:string;association_ref:string;doctor_ref:string;doctor_name:string;
+ center_ref:string;center_slug:string;center_name:string;address:string;
+ pin_code:string;time_zone:string;amount_minor:string|null;
+ fee_effective_from:Date|null;fee_effective_to:Date|null;
+};
 const safe=(value:unknown,field:string,max=80)=>{
   if(value===undefined)return "";
   if(typeof value!=="string"||value.length>max||
@@ -263,6 +272,29 @@ export class HealthPublicDirectoryService{
       next:rows.rows.length>20?
         rows.rows[19].center_slug+"~"+rows.rows[19].doctor_ref:null,
       notice:"Fees are approved current amounts, not appointment availability."};
+  }
+  /** For CG-15 US002 ONLY. Same original verified-center + verified-doctor
+   * CG03/CG19/proof/fee query as public directory, in caller's read snapshot.
+   * No internal refs may be serialized directly to client responses.
+   */
+  async eligibleScheduleSource(tx:PoolClient,doctorRef:string,centerSlug?:string){
+    if(!UUID.test(doctorRef)||centerSlug!==undefined&&!SLUG.test(centerSlug))
+      throw new NotFoundException("Current verified doctor unavailable");
+    const result=await tx.query<HealthScheduleEligibleSource>(
+      "SELECT c.root_realm_id AS root_ref,assoc.id AS association_ref,"+
+      "doc.id AS doctor_ref,doc.full_name AS doctor_name,"+
+      "c.id AS center_ref,c.public_slug AS center_slug,"+
+      "c.display_name AS center_name,c.address_line AS address,"+
+      "c.pin_code,c.time_zone,fee.amount_minor,"+
+      "fee.effective_from AS fee_effective_from,"+
+      "fee.effective_to AS fee_effective_to "+
+      this.eligibleCenter+this.eligibleDoctor+this.feeJoin+this.predicates+
+      "AND doc.id=$1 AND ($2::text IS NULL OR c.public_slug=$2) "+
+      "ORDER BY c.public_slug ASC LIMIT 26",
+      [doctorRef,centerSlug??null]);
+    if(!result.rows.length)
+      throw new NotFoundException("This doctor has no currently verified public center");
+    return result.rows.slice(0,25);
   }
   async doctor(doctorRef:string){
     if(!UUID.test(doctorRef))throw new NotFoundException("Verified doctor unavailable");
