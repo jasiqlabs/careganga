@@ -99,16 +99,39 @@ export class CenterPatientIntakeService{
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const requestKey=uuid(v.requestKey),firstName=part(v.firstName,"firstName",2);
   const lastName=part(v.lastName,"lastName",1),dateOfBirth=date(v.dateOfBirth);
-  const version=configuredConsent();
-  if(v.assistedConsentAttested!==true||v.consentVersion!==version)
+  // A successful request-key replay must not depend on newer consent text.
+  // First validate the pinned caller version, then check the persisted source.
+  const requestedVersion=v.consentVersion;
+  if(v.assistedConsentAttested!==true||typeof requestedVersion!=="string"||
+   !/^[A-Za-z0-9._-]{1,32}$/.test(requestedVersion))
    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED"});
-  const digest=hash({firstName,lastName,dateOfBirth,version,assistedConsentAttested:true});
+  const digest=hash({firstName,lastName,dateOfBirth,
+   version:requestedVersion,assistedConsentAttested:true});
   const tx=await this.db.connect();let active=false;
   try{
    await tx.query("BEGIN");active=true;
    // Check current permission, active root, verified provider+center, and exact
    // current own-center affiliation INSIDE this write transaction.
    await this.scope(tx,actor,centerRef);
+   // Existing committed command: return its own result even if the approved
+   // consent version has since changed; never create a new patient on replay.
+   const prior=await tx.query<Intake>(
+    "SELECT request_digest,patient_id,consent_version "+
+    "FROM cg15_patient_center_intake WHERE root_realm_id=$1 AND center_id=$2 "+
+    "AND created_by_account=$3 AND request_key=$4 FOR UPDATE",
+    [actor.realmId,centerRef,actor.accountId,requestKey]);
+   if(prior.rows[0]){
+    if(prior.rows[0].request_digest!==digest)
+     throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+    if(prior.rows[0].patient_id){
+     const previous=await this.result(tx,actor,centerRef,requestKey);
+     await tx.query("COMMIT");active=false;
+     return previous;
+    }
+   }
+   const version=configuredConsent();
+   if(requestedVersion!==version)
+    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED"});
    await tx.query(
     "INSERT INTO cg15_patient_center_intake("+
     "root_realm_id,center_id,created_by_account,request_key,request_digest,"+
