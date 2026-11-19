@@ -135,7 +135,10 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
         startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
         feeMinor={selected.consultationFeeMinor}
         feeVersion={selected.consultationFeeVersion}/>:
-       <PatientBookingAction doctorRef={doctorRef} centerRef={centerRef}
+       <PatientBookingAction
+        key={[doctorRef,centerRef,slot.startAt,slot.endAt,
+         selected.consultationFeeMinor,selected.consultationFeeVersion].join("|")}
+        doctorRef={doctorRef} centerRef={centerRef}
         doctorName={selected.doctorName} centerName={selected.centerName}
         startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
         feeMinor={selected.consultationFeeMinor}
@@ -161,7 +164,10 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
         startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
         feeMinor={c.consultationFeeMinor}
         feeVersion={c.consultationFeeVersion}/>:
-       <PatientBookingAction doctorRef={doctorRef} centerRef={c.centerRef}
+       <PatientBookingAction
+        key={[doctorRef,c.centerRef,c.startAt,c.endAt,
+         c.consultationFeeMinor,c.consultationFeeVersion].join("|")}
+        doctorRef={doctorRef} centerRef={c.centerRef}
         doctorName={doctor.doctorName} centerName={c.centerName}
         startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
         feeMinor={c.consultationFeeMinor}
