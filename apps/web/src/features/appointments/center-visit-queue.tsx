@@ -4,7 +4,7 @@ type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
  patientName:string;startAt:string;bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
-type Queue={day:string;items:Item[]};
+type Queue={day:string;items:Item[];next:string|null};
 type VerifiedSlip={valid:boolean;bookingRef?:string;bookingId?:string;
  patientName?:string;doctorName?:string;bookingStatus?:string;
  startAt?:string;timeZone?:string;canCheckIn?:boolean};
@@ -34,6 +34,8 @@ export function CenterVisitQueue(){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[day,setDay]=useState(isoToday());
  const [items,setItems]=useState<Item[]>([]);
+ const [cursor,setCursor]=useState(""),[nextCursor,setNextCursor]=useState<string|null>(null);
+ const [previousCursors,setPreviousCursors]=useState<string[]>([]);
  const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
  const [queueLoading,setQueueLoading]=useState(false);
  const [qrToken,setQrToken]=useState("");
@@ -42,14 +44,15 @@ export function CenterVisitQueue(){
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const keys=useRef<Map<string,string>>(new Map());
  const requestSerial=useRef(0),selectedCenterRef=useRef("");
- const load=useCallback(async(c:string,d:string)=>{
+ const load=useCallback(async(c:string,d:string,after="")=>{
   const serial=++requestSerial.current;
   if(!c){setItems([]);setQueueLoading(false);return;}
   setQueueLoading(true);
   try{
-   const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d));
+   const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d)+
+    (after?"&after="+encodeURIComponent(after):""));
    if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
-   setItems(rows.items);setUncertain(false);
+   setItems(rows.items);setCursor(after);setNextCursor(rows.next);setUncertain(false);
   }finally{
    if(serial===requestSerial.current)setQueueLoading(false);
   }
@@ -70,8 +73,9 @@ export function CenterVisitQueue(){
   return()=>{alive=false;};
  },[]);
  useEffect(()=>{
-  if(!center){requestSerial.current++;setItems([]);setQueueLoading(false);return;}
+  if(!center){requestSerial.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setQueueLoading(false);return;}
   let active=true;
+  setPreviousCursors([]);setCursor("");setNextCursor(null);
   void load(center,day).catch(e=>{
    if(active&&center===selectedCenterRef.current){setItems([]);setMessage(e instanceof Error?e.message:"Queue unavailable.");}
   });
@@ -115,7 +119,7 @@ export function CenterVisitQueue(){
       requestKey:key,expectedVersion:item.visitVersion,nextState:next
      });
    }
-   keys.current.delete(reference);await load(center,day);
+   keys.current.delete(reference);await load(center,day,cursor);
    setMessage("The visit status was saved for this healthcare center.");
   }catch(e){
    setUncertain(true);
@@ -141,18 +145,18 @@ export function CenterVisitQueue(){
       if(next&&!today){setMessage("The selected center's local time zone is unavailable.");return;}
       if(today)setDay(today);
       selectedCenterRef.current=e.target.value;requestSerial.current++;
-      setItems([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+      setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
        {x.centerName}</option>)}
      </select></label>
     <label>Consultation date
-     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
        setDay(e.target.value);setUncertain(false);}}/>
     </label>
     <button type="button" disabled={busy||!center}
-     onClick={()=>void load(center,day).catch(e=>setMessage(e instanceof Error?e.message:"The queue cannot be refreshed."))}>
+     onClick={()=>void load(center,day,cursor).catch(e=>setMessage(e instanceof Error?e.message:"The queue cannot be refreshed."))}>
      Refresh current queue</button>
    </div>
    {center&&<section aria-label="Verify an appointment QR at my center"
@@ -212,6 +216,20 @@ export function CenterVisitQueue(){
        onClick={()=>void command(item,"NO_SHOW")}>Mark no-show</button>}
     </div>
    </article>)}
+   {center&&items.length>0&&<nav aria-label="Queue pages" className="toolbar">
+    <button type="button" disabled={busy||queueLoading||!previousCursors.length}
+     onClick={()=>{const older=previousCursors.at(-1)??"";
+      void load(center,day,older).then(()=>setPreviousCursors(p=>p.slice(0,-1)))
+       .catch(e=>setMessage(e instanceof Error?e.message:"Queue page unavailable."));}}>
+     Previous 100</button>
+    <span>Page {previousCursors.length+1} · {items.length} appointments on this page</span>
+    <button type="button" disabled={busy||queueLoading||!nextCursor}
+     onClick={()=>{if(!nextCursor)return;const prior=cursor;
+      void load(center,day,nextCursor).then(()=>setPreviousCursors(p=>[...p,prior]))
+       .catch(e=>setMessage(e instanceof Error?e.message:"Queue page unavailable."));}}>
+     Next 100</button>
+    <small>Filters apply to the current page.</small>
+   </nav>}
   </>}
  </section>;
 }
