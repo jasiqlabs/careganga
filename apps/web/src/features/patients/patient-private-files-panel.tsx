@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {PatientClinicalFileShares} from "./patient-clinical-file-shares";
 
 type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
 type PatientFile={fileRef:string;classification:Class;mime:string;
@@ -193,6 +194,8 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
    <p>{new Date(row.createdAt).toLocaleString("en-IN")} ·
     {row.revoked?" Revoked":" Privately verified"} ·
     {" "+(row.sizeBytes/1024).toFixed(0)} KB</p>
+   {!row.revoked&&<PatientClinicalFileShares fileRef={row.fileRef}
+    consentGranted={consentGranted}/>}
    {!row.revoked&&<div className="toolbar">
     <button type="button" disabled={busy} onClick={()=>void openFile(row)}>
      Download my private file</button>
