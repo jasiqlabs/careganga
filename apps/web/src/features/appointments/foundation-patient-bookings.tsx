@@ -13,6 +13,12 @@ type EventPart={status:string|null;startAt:string|null;endAt:string|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
  before:EventPart;after:EventPart};
 type OriginalHistory={bookingId:string|null;items:HistoricEvent[];next:number|null};
+const statusName=(s:string)=>({
+ CONFIRMED:"Confirmed",ARRIVED:"Checked in",WAITING:"Waiting",
+ IN_CONSULTATION:"In consultation",COMPLETED:"Completed",
+ NO_SHOW:"Not attended",CANCELLED:"Cancelled",
+ DUE_AT_CENTER:"Payment due at center",NOT_COLLECTIBLE:"No payment due"
+} as Record<string,string>)[s]??"Status unavailable";
 const money=(s:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(s)/100);
 const centerTime=(iso:string,zone:string)=>{
@@ -99,11 +105,9 @@ export function FoundationPatientBookings(){
  return <section className="role-workspace" aria-label="Patient and booking management">
   <header className="topbar"><div>
    <h1>Patient &amp; Booking Management</h1>
-   <p>Original H15 · protected Foundation source records; consultation only</p>
+   <p>Manage actual patient consultations across healthcare centers</p>
   </div></header>
-  <p>This protected view contains actual registered patients and accepted
-   consultations only. No example patient data, fake paid amounts or unsupported
-   pharmacy/diagnostic appointments appear here.</p>
+  <p>View current bookings and their recorded changes. Medical reports are kept private.</p>
   {!!message&&<p role="alert" className="notice error">{message}</p>}
   <p>Foundation-wide totals across all dates and centers. Filters below apply to consultation records only.</p>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
@@ -154,7 +158,7 @@ export function FoundationPatientBookings(){
      aria-pressed={selected===item.bookingRef} onClick={()=>setSelected(item.bookingRef)}
      style={{display:"block",width:"100%",textAlign:"left",padding:14,
       border:"1px solid #d7dfdb",borderRadius:12,marginBottom:8}}>
-     <strong>{item.bookingId}</strong><span> — {item.bookingStatus.replaceAll("_"," ")}</span>
+     <strong>{item.bookingId}</strong><span> — {statusName(item.bookingStatus)}</span>
      <p>{item.patientName} · {item.centerName}</p>
      <p>{centerTime(item.startAt,item.timeZone)}</p>
     </button>)}
@@ -172,9 +176,9 @@ export function FoundationPatientBookings(){
       <p><strong>Doctor:</strong> {selectedBooking.doctorName}</p>
       <p><strong>Center:</strong> {selectedBooking.centerName}</p>
       <p><strong>Appointment:</strong> {centerTime(selectedBooking.startAt,selectedBooking.timeZone)}</p>
-      <p><strong>Status:</strong> {selectedBooking.bookingStatus.replaceAll("_"," ")}</p>
+      <p><strong>Status:</strong> {statusName(selectedBooking.bookingStatus)}</p>
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
-       · {selectedBooking.collectionStatus.replaceAll("_"," ")}</p>
+       · {statusName(selectedBooking.collectionStatus)}</p>
       <h3>Booking History</h3>
       {historyBusy&&!history&&<p role="status">Checking original booking events…</p>}
       {!!historyError&&<p role="alert">{historyError}</p>}
@@ -184,9 +188,9 @@ export function FoundationPatientBookings(){
        <p><strong>{e.action.replaceAll("_"," ")}</strong> —
         {new Date(e.when).toLocaleString("en-IN")}</p>
        <p>Recorded by {e.by}</p>
-       {e.before?.status&&<p>Previously: {e.before.status.replaceAll("_"," ")}
+       {e.before?.status&&<p>Previously: {statusName(e.before.status)}
         {e.before.startAt?" · "+new Date(e.before.startAt).toLocaleString("en-IN"):""}</p>}
-       {e.after?.status&&<p>Updated: {e.after.status.replaceAll("_"," ")}
+       {e.after?.status&&<p>Updated: {statusName(e.after.status)}
         {e.after.startAt?" · "+new Date(e.after.startAt).toLocaleString("en-IN"):""}</p>}
        {e.before?.centerName&&<p>Previous center: {e.before.centerName}</p>}
        {e.after?.centerName&&<p>Current center: {e.after.centerName}</p>}
