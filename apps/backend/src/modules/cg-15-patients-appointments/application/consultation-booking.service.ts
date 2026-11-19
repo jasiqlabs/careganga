@@ -524,16 +524,20 @@ export class ConsultationBookingService{
    if(!hold)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    if(hold.status!=="HELD"||ms(hold.expires_at)<=Date.now())
     throw new ConflictException({code:"CG15_BOOKING_HOLD_EXPIRED"});
-   const staffPatient=assisted?
-    await this.currentAssistedPatient(tx,actor,hold.patient_id):undefined;
    let current:Accepted;
    try{
+    // Consent/independent patient proof can be withdrawn after the hold.
+    // Both self and verified receptionist paths must release invalid HELD
+    // occupancy, but not invent an appointment or a clinical document.
+    const staffPatient=assisted?
+     await this.currentAssistedPatient(tx,actor,hold.patient_id):undefined;
     current=await this.eligible(tx,actor,hold.doctor_id,hold.center_id,
      hold.start_at,hold.end_at,staffPatient);
    }catch(e){
     // A deterministic revoked doctor/center, blocked slot or withdrawn
     // consent invalidates this HELD reservation; transient SQL/5xx does not.
-    if(e instanceof NotFoundException||e instanceof ConflictException){
+    if(e instanceof NotFoundException||e instanceof ConflictException||
+     e instanceof ForbiddenException){
      await this.releaseInvalidHold(tx,actor.realmId,id);
      await tx.query("COMMIT");open=false;
     }
