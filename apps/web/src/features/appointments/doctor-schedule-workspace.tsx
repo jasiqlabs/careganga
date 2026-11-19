@@ -60,6 +60,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [blockFrom,setBlockFrom]=useState(""),[blockUntil,setBlockUntil]=useState("");
  const [reason,setReason]=useState("");
  const weekKey=useRef(""),exceptionKey=useRef(""),seq=useRef(0);
+ const cancelKeys=useRef<Record<string,string>>({});
  const loadRoster=useCallback(async()=>{
   const n=++seq.current;
   try{
@@ -146,6 +147,26 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     typeof e.status==="number"&&e.status<500))setUncertain(true);
   }finally{setWorking(false);}
  }
+ async function cancel(e:Except){
+  if(!selected||busyOrUncertain()||!canManage||
+    e.kind==="LEAVE"||e.state!=="ACTIVE")return;
+  if(!cancelKeys.current[e.exceptionRef])
+    cancelKeys.current[e.exceptionRef]=crypto.randomUUID();
+  setWorking(true);setError("");setNotice("");
+  try{
+   const r=await api<{message:string}>(base+"/"+
+    encodeURIComponent(selected.associationRef)+"/exceptions/"+
+    encodeURIComponent(e.exceptionRef)+"/cancel","POST",{
+     requestKey:cancelKeys.current[e.exceptionRef],expectedVersion:e.version
+    });
+   delete cancelKeys.current[e.exceptionRef];await refresh();setNotice(r.message);
+  }catch(err){
+   setError(err instanceof Error?err.message:"The blocked time could not be cancelled.");
+   if(!(err&&typeof err==="object"&&"status" in err&&
+    typeof err.status==="number"&&err.status<500))setUncertain(true);
+  }finally{setWorking(false);}
+ }
+ function busyOrUncertain(){return working||uncertain;}
  const result=roster.filter(x=>
   (x.doctorName+" "+x.centerName+" "+x.specialties.join(" "))
    .toLowerCase().includes(search.trim().toLowerCase()));
@@ -245,12 +266,16 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     cancellation. A center-specific block never modifies another center's
     confirmed patient record.</p>
    <div className="role-table-wrap"><table className="role-table">
-    <thead><tr><th>Type</th><th>Starts</th><th>Ends</th><th>State</th></tr></thead>
+    <thead><tr><th>Type</th><th>Starts</th><th>Ends</th><th>State</th>
+     <th>Action</th></tr></thead>
     <tbody>{selected.exceptions.map(e=><tr key={e.exceptionRef}>
      <td>{clean(e.kind)}</td>
      <td>{new Date(e.startAt).toLocaleString("en-IN")}</td>
      <td>{new Date(e.endAt).toLocaleString("en-IN")}</td>
      <td>{clean(e.state)}</td>
+     <td>{canManage&&e.kind!=="LEAVE"&&e.state==="ACTIVE"&&
+      <button type="button" disabled={working||uncertain}
+       onClick={()=>void cancel(e)}>Cancel block</button>}</td>
     </tr>)}</tbody>
    </table></div>
    {selected.exceptions.length===0&&
