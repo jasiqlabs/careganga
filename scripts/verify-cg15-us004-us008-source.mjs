@@ -72,9 +72,26 @@ const s={
  pkg:read("package.json"),
  signup:read("apps/backend/src/modules/cg-01-identity-access/application/public-patient-signup.service.ts"),
  signupModule:read("apps/backend/src/modules/cg-01-identity-access/identity-access.module.ts"),
+ clinicianSource:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-clinician-identity.service.ts"),
+ clinicalWeb:read("apps/web/src/features/appointments/clinician-visit-history.tsx"),
+ clinicalNative:read("apps/android-internal/src/features/appointments/native-clinician-visit-history.tsx"),
  tracker:read("specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md")
 };
 const checks=[
+ ["source: existing doctor clinician-only center appointment history, Web/internal Android parity",
+  s.clinicianSource.includes("assertCurrentAppointmentClinician(")&&
+  s.queue.includes("async clinicalHistory(")&&
+  s.queue.includes("JOIN cg15_visit_queue v ON")&&
+  s.queue.includes("AND a.patient_id=$3 AND a.doctor_id=$4")&&
+  s.queue.includes("AND c.purpose='PATIENT_CARE'")&&
+  s.queue.includes("ORDER BY a.start_at DESC,a.id DESC LIMIT 26")&&
+  s.queueCtrl.includes('clinical-history')&&
+  s.queueBff.includes('"clinical-history"')&&
+  s.webQueue.includes("<ClinicianVisitHistory")&&
+  s.nativeQueue.includes("<NativeClinicianVisitHistory")&&
+  s.clinicalWeb.includes('"/clinical-history"')&&
+  s.clinicalNative.includes('"/clinical-history"')],
+
  ["visit appointment root+center+event consistency enforced at database boundary",
   s.db4.includes("UNIQUE(root_realm_id,id,center_id)")&&
   s.db6.includes("FOREIGN KEY(root_realm_id,appointment_id,center_id)")&&
