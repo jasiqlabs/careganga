@@ -11,6 +11,7 @@ import {HealthPublicDirectoryService,type HealthScheduleEligibleSource}
  from "../../cg-14-healthcare-network/application/health-public-directory.service";
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
+import {DoctorAvailabilityService} from "./doctor-availability.service";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/;
@@ -108,7 +109,47 @@ export class ConsultationBookingService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly identity:SessionService,
   private readonly directory:HealthPublicDirectoryService,
-  private readonly centerScope:HealthCenterSupportScopeFacade){}
+  private readonly centerScope:HealthCenterSupportScopeFacade,
+  private readonly publicAvailability:DoctorAvailabilityService){}
+ async centerDoctors(bearer:string,centerRaw:string){
+  const actor=await this.identity.verifySession(bearer),center=uuid(centerRaw);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await this.centerScope.assertCurrent(tx,actor,center,"health.patients.intake");
+   // This is only a current center-scoped selector. The CG14 original
+   // professional approval, license, fee and schedule are rechecked before
+   // a hold or confirmation can succeed.
+   const doctors=await tx.query<{doctor_ref:string;doctor_name:string}>(
+    "SELECT DISTINCT d.id AS doctor_ref,d.full_name AS doctor_name "+
+    "FROM health_doctor_center a "+
+    "JOIN health_doctor d ON d.root_realm_id=a.root_realm_id AND d.id=a.doctor_id "+
+    "JOIN cg15_doctor_schedule s ON s.root_realm_id=a.root_realm_id "+
+    "AND s.association_id=a.id AND s.status='ACTIVE' "+
+    "AND s.consultation_mode='IN_PERSON' "+
+    "WHERE a.root_realm_id=$1 AND a.center_id=$2 "+
+    "AND d.status='VERIFIED' AND a.affiliation_state='APPROVED' "+
+    "AND a.approved_from<=now() AND (a.approved_to IS NULL OR a.approved_to>now()) "+
+    "ORDER BY d.full_name,d.id LIMIT 101",
+    [actor.realmId,center]);
+   await tx.query("COMMIT");open=false;
+   return {doctors:doctors.rows.slice(0,100).map(d=>({
+    doctorRef:d.doctor_ref,doctorName:d.doctor_name})),
+    complete:doctors.rows.length<=100};
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+ async centerSlots(bearer:string,centerRaw:string,doctorRaw:string,date:unknown){
+  const actor=await this.identity.verifySession(bearer),center=uuid(centerRaw),doctor=uuid(doctorRaw);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await this.centerScope.assertCurrent(tx,actor,center,"health.patients.intake");
+   await tx.query("COMMIT");open=false;
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+  return this.publicAvailability.dayForCenter(doctor,center,date);
+ }
  private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor,requireConsent=true){
   const r=await tx.query<Patient>(
    "SELECT p.id,p.profile_status,p.first_name,p.last_name,a.contact_phone_verified_at AS verified,"+
