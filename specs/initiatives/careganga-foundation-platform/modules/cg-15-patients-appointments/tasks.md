@@ -436,7 +436,7 @@ This does **not** close existing original QA source gaps. Current US-001 histori
 | US-005-QA05 | SOURCE_GAP | Web authenticated download and Android protected PDF preview exist, but native direct share/print equivalence, device and grant-revocation QA not complete. |
 | US-005-QA06 | SOURCE_VERIFIED | CG19 HMAC opaque token + local QR matrix; verifyPublic returns only valid boolean with rate bucket; no patient/doctor/fee data returned. |
 | US-005-QA07 | SOURCE_GAP | Current assigned-center CG01 health.visits.manage + CG14 current own-center scope authorize a limited original CG19 QR token lookup; Web/Internal Android manual code input returns same-center booking/check-in-eligibility only, foreign center gets valid:false; actual camera QR scanning and runtime negative scope QA remain SOURCE_GAP. |
-| US-005-QA08 | SOURCE_GAP | Terms-revision still invalidates original QR on cancellation/reschedule. The assigned-center QR verifier now also denies latest-withdrawn patient-care consent; patient identity is masked in queue. Authenticated camera scan/replay, bounded scanner audit and real provider/device negative tests remain missing. |
+| US-005-QA08 | SOURCE_VERIFIED | Existing CG19 QR source and protected assigned-center verifier reject forged/expired/revoked tokens, wrong center, cancelled/no-show appointments, stale source revision and withdrawn current patient-care consent. Migration 1434 now adds one atomic PostgreSQL staff/root/center budget of 24 QR lookups per 15 minutes, with immutable no-token/patient audit of each allowed lookup (actor, assigned center, VALID/DENIED, timestamp). The 25th lookup returns a safe 429 without resolving a patient. The original BFF preserves the safe error. Eight targeted source checks and migration lexical preflight 15/15 passed; real multi-instance, device/scanner, Postgres and penetration QA NOT_RUN. |
 | US-005-QA09 | SOURCE_VERIFIED | ConsultationBookingService.calendar returns private RFC5545 start/end/doctor/center location without symptom/mobile/private file; Web/native file source. |
 | US-005-QA10 | SOURCE_GAP | Android has authenticated native PDF/calendar preview, Web PDF/calendar; exact native share/print and device/back parity untested and not fully implemented. |
 | US-005-QA11 | SOURCE_VERIFIED | CG19 original source snapshots accepted CG15 patient/doctor/center/fee/time, versioned issue; no reprint mutation of cash due. |
@@ -680,3 +680,14 @@ The approved H07 Foundation editor now provides up to eight **currently verified
 The same H07 session source now scopes actual appointment counts, currently configured local-day working sessions, doctor active-leave counts and center choices to the geography the user selected, instead of combining a filtered doctor list with root-wide unfiltered metrics. Original client H07 pixel/tabs/calendar requirement remains US-001-QA13 SOURCE_GAP.
 
 **Current 128-case source classification: 91 SOURCE_VERIFIED / 28 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE. Runtime cases PASS: 0/128. 0/8 stories formally SOURCE_COMPLETE. No CI, release, main merge or physical provider/SQL/Android QA.**
+
+### 19 November 2026 — Original US-005-QA08 QR abuse guard and private audit
+
+The existing CG19 QR and assigned-center CG15 verifier already restricted original-issued, current-state, current-center, current-revision, in-window and current-consent queries. Source gap US-005-QA08 was the missing authenticated lookup throttle and auditable denied-result path, not a new QR business feature.
+
+Migration 1434_cg15_center_qr_verification_guard.sql adds one per-root/account/center 15-minute fixed window and immutable token-free, patient-free VALID/DENIED audit. Center receptionist authorization occurs before the atomic budget update. Attempt 25 and later receive safe 429 without a booking lookup; successful and failed syntactically valid lookups count equally. No additional use case or QA scenario was created.
+
+Source evidence: 15/15 lexical SQL migration preflight passed against current GitHub files; eight targeted QR security assertions passed. Real database races, authenticated physical scanner/QR replay, audit retention policy, Web/native run and penetration tests were NOT_RUN.
+
+Canonical source totals: 92 SOURCE_VERIFIED / 27 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128); 0/128 executed runtime PASS, 0/8 formal SOURCE_COMPLETE.
+
