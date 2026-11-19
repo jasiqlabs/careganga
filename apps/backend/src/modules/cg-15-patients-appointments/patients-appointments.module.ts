@@ -7,6 +7,7 @@ import {DoctorScheduleController} from "./http/doctor-schedule.controller";
 import {DoctorAvailabilityService} from "./application/doctor-availability.service";
 import {DoctorAvailabilityController} from "./http/doctor-availability.controller";
 import {PatientProfileService} from "./application/patient-profile.service";
+import {PatientPrivateDetailsService} from "./application/patient-private-details.service";
 import {PatientProfileController} from "./http/patient-profile.controller";
 import {CenterPatientIntakeService} from "./application/center-patient-intake.service";
 import {CenterPatientIntakeController} from "./http/center-patient-intake.controller";
@@ -19,7 +20,7 @@ import {PatientAdminOverviewController} from "./http/patient-admin-overview.cont
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
- providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService,PatientAdminOverviewService],
+ providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,PatientPrivateDetailsService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService,PatientAdminOverviewService],
  controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController,ConsultationQueueController,PatientAdminOverviewController],
  exports:[DoctorScheduleService]
 })
