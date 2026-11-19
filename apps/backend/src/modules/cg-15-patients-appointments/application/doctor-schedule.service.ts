@@ -556,10 +556,19 @@ export class DoctorScheduleService{
    await this.identity.assertCurrent(tx,actor,"health.schedules.manage");
    const rows=await tx.query<{case_ref:string;reference:string;doctor_name:string;
     center_name:string;exception_id:string;version:number;
-    start_at:Date;end_at:Date}>(
+    start_at:Date;end_at:Date;affected_count:number;affected_booking_ids:string[]}>(
     "SELECT review.id AS case_ref,review.case_number AS reference,"+
     "d.full_name AS doctor_name,c.display_name AS center_name,"+
-    "e.id AS exception_id,e.version,e.start_at,e.end_at "+
+    "e.id AS exception_id,e.version,e.start_at,e.end_at,"+
+    "(SELECT COUNT(*)::integer FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=e.root_realm_id AND a.doctor_id=e.doctor_id "+
+    "AND a.center_id=e.center_id AND a.booking_state='CONFIRMED' "+
+    "AND a.start_at<e.end_at AND a.end_at>e.start_at) AS affected_count,"+
+    "ARRAY(SELECT a.booking_display_id FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=e.root_realm_id AND a.doctor_id=e.doctor_id "+
+    "AND a.center_id=e.center_id AND a.booking_state='CONFIRMED' "+
+    "AND a.start_at<e.end_at AND a.end_at>e.start_at "+
+    "ORDER BY a.start_at,a.id LIMIT 25) AS affected_booking_ids "+
     "FROM cg03_case review "+
     "JOIN cg15_schedule_exception e ON e.original_case_ref=review.id "+
     "AND e.root_realm_id=review.realm_id AND e.state='PENDING' "+
@@ -572,7 +581,8 @@ export class DoctorScheduleService{
     [actor.realmId]);
    return {requests:rows.rows.map(r=>({caseRef:r.case_ref,reference:r.reference,
     doctorName:r.doctor_name,centerName:r.center_name,
-    exceptionVersion:r.version,startAt:r.start_at,endAt:r.end_at}))};
+    exceptionVersion:r.version,startAt:r.start_at,endAt:r.end_at,
+    affectedCount:r.affected_count,affectedBookingIds:r.affected_booking_ids}))};
   });
  }
  async applyLeave(token:string,caseRefRaw:string,body:unknown){
@@ -627,9 +637,10 @@ export class DoctorScheduleService{
    if(!schedule.rows[0]||schedule.rows[0].status!=="ACTIVE")
     throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
    const row=await tx.query<{id:string;version:number;kind:string;state:string;
-    doctor_id:string;center_id:string;source_digest:string;original_case_ref:string}>(
-    "SELECT id,version,kind,state,doctor_id,center_id,source_digest,"+
-    "original_case_ref FROM cg15_schedule_exception WHERE root_realm_id=$1 "+
+    doctor_id:string;center_id:string;start_at:Date;end_at:Date;
+    source_digest:string;original_case_ref:string}>(
+    "SELECT id,version,kind,state,doctor_id,center_id,start_at,end_at,"+
+    "source_digest,original_case_ref FROM cg15_schedule_exception WHERE root_realm_id=$1 "+
     "AND id=$2 FOR UPDATE",[actor.realmId,c.cg15_exception_id]);
    const e=row.rows[0];
    if(!e||e.kind!=="LEAVE"||e.state!=="PENDING"||
@@ -649,6 +660,14 @@ export class DoctorScheduleService{
    const proof=await this.leaveReview.approved(tx,actor,{...source,caseRef});
    if(!proof)throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
    await this.sessions.requireFreshFoundationRootProof(tx,actor,raw.currentPassword);
+   // Do not silently hide appointments that overlap this approved leave.
+   // Doctor lock from source() prevents a new confirmation while applying it.
+   const impacted=await tx.query<{booking_display_id:string}>(
+    "SELECT booking_display_id FROM cg15_consultation_appointment "+
+    "WHERE root_realm_id=$1 AND doctor_id=$2 AND center_id=$3 "+
+    "AND booking_state='CONFIRMED' AND start_at<$5 AND end_at>$4 "+
+    "ORDER BY start_at,id LIMIT 26",
+    [actor.realmId,e.doctor_id,e.center_id,e.start_at,e.end_at]);
    const changed=await tx.query<{version:number}>(
     "UPDATE cg15_schedule_exception SET state='ACTIVE',"+
     "approved_case_ref=$3,version=version+1,updated_at=now() "+
@@ -664,7 +683,11 @@ export class DoctorScheduleService{
     [actor.realmId,schedule.rows[0].id,e.id,actor.accountId,e.source_digest,key]);
    await this.done(tx,cmd.id,e.id,changed.rows[0].version);
    return {status:"ACTIVE",version:changed.rows[0].version,
-    message:"Independently approved doctor leave is now active. Existing confirmed visits are not automatically cancelled."};
+    impactedBookingIds:impacted.rows.slice(0,25).map(x=>x.booking_display_id),
+    moreImpactedBookings:impacted.rows.length>25,
+    message:impacted.rowCount?
+     "Approved leave activated. Confirmed appointments remain booked and require explicit patient contact and individual resolution. No cancellation was performed.":
+     "Approved doctor leave is active. No conflicting confirmed appointment was found at activation."};
   });
  }
  async cancelException(token:string,channel:Channel,associationRef:string,
