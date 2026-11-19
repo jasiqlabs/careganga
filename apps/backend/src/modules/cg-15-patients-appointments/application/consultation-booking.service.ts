@@ -466,6 +466,20 @@ export class ConsultationBookingService{
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
+ /** Under the original doctor/hold lock, free an unconfirmed slot when the
+  * real CG14 source or accepted schedule/fee was revoked. The separate hold
+  * row is retained for exact-key recovery and a rejected replay.
+  */
+ private async releaseInvalidHold(tx:PoolClient,realm:string,holdId:string){
+  await tx.query(
+   "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
+   "WHERE root_realm_id=$1 AND hold_id=$2 AND status='HELD'",
+   [realm,holdId]);
+  await tx.query(
+   "UPDATE cg15_consultation_hold SET status='CANCELLED',updated_at=now() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND status='HELD'",
+   [realm,holdId]);
+ }
  async confirm(bearer:string,input:unknown,assisted=false){
   const actor=await this.identity.verifySession(bearer);
   const v=body(input,["requestKey","holdRef","acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
@@ -512,15 +526,32 @@ export class ConsultationBookingService{
     throw new ConflictException({code:"CG15_BOOKING_HOLD_EXPIRED"});
    const staffPatient=assisted?
     await this.currentAssistedPatient(tx,actor,hold.patient_id):undefined;
-   const current=await this.eligible(tx,actor,hold.doctor_id,hold.center_id,
-    hold.start_at,hold.end_at,staffPatient);
+   let current:Accepted;
+   try{
+    current=await this.eligible(tx,actor,hold.doctor_id,hold.center_id,
+     hold.start_at,hold.end_at,staffPatient);
+   }catch(e){
+    // A deterministic revoked doctor/center, blocked slot or withdrawn
+    // consent invalidates this HELD reservation; transient SQL/5xx does not.
+    if(e instanceof NotFoundException||e instanceof ConflictException){
+     await this.releaseInvalidHold(tx,actor.realmId,id);
+     await tx.query("COMMIT");open=false;
+    }
+    throw e;
+   }
    if(current.patient.id!==hold.patient_id||current.source.association_ref!==hold.association_id||
     current.slot.scheduleId!==hold.schedule_id||
-    current.slot.revisionId!==hold.schedule_revision_id)
+    current.slot.revisionId!==hold.schedule_revision_id){
+    await this.releaseInvalidHold(tx,actor.realmId,id);
+    await tx.query("COMMIT");open=false;
     throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
+   }
    if(current.feeMinor!==fee||hold.fee_minor!==fee||
-    current.feeVersion!==v.acceptedFeeVersion||hold.fee_version!==v.acceptedFeeVersion)
+    current.feeVersion!==v.acceptedFeeVersion||hold.fee_version!==v.acceptedFeeVersion){
+    await this.releaseInvalidHold(tx,actor.realmId,id);
+    await tx.query("COMMIT");open=false;
     throw new ConflictException({code:"CG15_BOOKING_PRICE_CHANGED"});
+   }
    const reservation=await tx.query<{id:string}>(
     "SELECT id FROM cg15_doctor_reservation WHERE root_realm_id=$1 "+
     "AND hold_id=$2 AND status='HELD' FOR UPDATE",
