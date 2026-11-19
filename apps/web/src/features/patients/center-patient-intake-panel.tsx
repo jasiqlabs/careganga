@@ -128,8 +128,9 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
      <p style={{whiteSpace:"pre-wrap"}}>{policy.text}</p>
      <label><input type="checkbox" checked={attested} disabled={busy||uncertain}
       onChange={e=>setAttested(e.target.checked)}/>
-      {" "}I explained this consent to the patient and recorded their informed agreement
-      to this provisional registration.</label>
+      {" "}I explained the current patient-care notice, and the person agreed to
+      record minimum details for provisional registration only. This does not
+      authorize access to clinical records.</label>
     </div>
     <button type="button" className="primary" onClick={()=>void submit()}
      disabled={busy||uncertain||!attested||first.trim().length<2||!last.trim()}>
