@@ -11,6 +11,8 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:st
  bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
+type Summary={centerRef:string;day:string;total:number;confirmed:number;arrived:number;
+ waiting:number;inConsultation:number;completed:number;noShow:number;cancelled:number};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
  bookingStatus?:string;startAt?:string;timeZone?:string;canCheckIn?:boolean};
 const dateAt=(offset:number,zone:string)=>{
@@ -45,6 +47,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
+ const [summary,setSummary]=useState<Summary|null>(null);
  const [cursor,setCursor]=useState(""),[nextCursor,setNextCursor]=useState<string|null>(null);
  const [previousCursors,setPreviousCursors]=useState<string[]>([]);
  const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
@@ -62,8 +65,9 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
  },[onExpired]);
  const load=useCallback(async(c:string,day:string,after="")=>{
   const stamp=++seq.current;
-  if(!c){setItems([]);setSelectedSlip(null);return;}
-  if(!day){setItems([]);setMessage("The center local date is unavailable.");return;}
+  if(!c){setItems([]);setSummary(null);setSelectedSlip(null);return;}
+  if(!day){setItems([]);setSummary(null);setMessage("The center local date is unavailable.");return;}
+  if(!after)setSummary(null);
   try{
    const data=await request<{items:Item[];next:string|null}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
@@ -71,6 +75,12 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    if(stamp!==seq.current||selectedCenter.current!==c)return;
    setItems(data.items);setSelectedSlip(null);setCancelPending(null);
    setCursor(after);setNextCursor(data.next);setUncertain(false);
+   if(!after)void request<Summary>(token,
+    "my-centers/"+encodeURIComponent(c)+"/summary?date="+encodeURIComponent(day))
+    .then(report=>{
+     if(stamp===seq.current&&selectedCenter.current===c&&
+      report.centerRef===c&&report.day===day)setSummary(report);
+    }).catch(()=>{if(stamp===seq.current)setSummary(null);});
   }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
  },[token,fail]);
  useEffect(()=>{
@@ -217,7 +227,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      accessibilityState={{selected:center===c.centerRef,disabled:busy}}
       disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
-     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setSelectedSlip(null);setCursor("");setNextCursor(null);setPreviousCursors([]);
+     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setSummary(null);setSelectedSlip(null);setCursor("");setNextCursor(null);setPreviousCursors([]);
        setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setCancelPending(null);setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
@@ -237,10 +247,21 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      {verifiedSlip.bookingStatus}. Select the source row below to check in.</Text>}
    </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
+   {summary&&summary.centerRef===center&&summary.day===dateAt(offset,centerZone)&&
+    <View style={styles.card} accessibilityLabel="Original complete-day consultation summary">
+     <Text style={styles.title}>Daily consultations — {summary.day}</Text>
+     <Text style={styles.help}>Total: {summary.total} · Confirmed: {summary.confirmed}</Text>
+     <Text style={styles.help}>Checked in: {summary.arrived} · Waiting: {summary.waiting}
+      · With doctor: {summary.inConsultation}</Text>
+     <Text style={styles.help}>Completed: {summary.completed} · Missed: {summary.noShow}
+      · Cancelled: {summary.cancelled}</Text>
+     <Text style={styles.help}>These source totals include all same-day bookings,
+      not just the visible 100 appointments on one page.</Text>
+    </View>}
    <View style={styles.row}>
-    {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+    {button("Previous day",()=>{seq.current++;setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
      setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
-    {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+    {button("Next day",()=>{seq.current++;setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
      setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {center&&items.length>0&&<>
