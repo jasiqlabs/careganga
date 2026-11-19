@@ -7,8 +7,10 @@ const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Hold={holdRef:string;status:string;expiresAt:string;
  consultationFeeMinor:string;feeVersion:number};
-type Booking={bookingId:string;startAt:string;centerRef:string;version:number;bookingStatus:string;
+type Booking={bookingId:string;doctorRef:string;startAt:string;centerRef:string;version:number;bookingStatus:string;
  consultationFeeMinor:string;collectionStatus:string};
+type AppliedReschedule={applied:boolean;bookingId:string;doctorRef:string|null;
+ centerRef:string|null;startAt:string|null;currentBooking:Booking};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
  reschedule?:{bookingRef:string;expectedVersion:number}};
@@ -67,7 +69,7 @@ export function NativeConsultationAction(p:Props){
    const t=await token();
    const result=await post<Booking>("me/"+p.reschedule.bookingRef+"/reschedule",{
     requestKey:confirmKey.current,expectedVersion:p.reschedule.expectedVersion,
-    centerRef:p.centerRef,startAt:p.startAt,endAt:p.endAt,
+    doctorRef:p.doctorRef,centerRef:p.centerRef,startAt:p.startAt,endAt:p.endAt,
     acceptedFeeMinor:p.feeMinor,acceptedFeeVersion:p.feeVersion,
     paymentMode:"PAY_AT_CENTER"},t);
    setBooking(result);setMessage("Your original appointment was rescheduled, with payment due at the center.");
@@ -170,20 +172,22 @@ export function NativeConsultationAction(p:Props){
     setMessage("No committed hold was found. Retrying uses the same original request key.");return;
    }
    if(p.reschedule){
-    // Rescheduling is identified by the original booking ref; never infer
-    // its outcome from a different doctor's appointment or a cached list.
-    const current=await original<Booking>("me/"+p.reschedule.bookingRef,t);
-    if(current&&current.startAt===p.startAt&&current.centerRef===p.centerRef){
-     setBooking(current);setMessage("Your original booking reflects the selected new time.");
-     setUncertain(false);return;
+    if(!confirmKey.current)throw Error("No original reschedule request key is available.");
+    const applied=await original<AppliedReschedule>(
+     "me/"+p.reschedule.bookingRef+"/reschedule/by-request/"+confirmKey.current,t);
+    if(applied?.applied){
+     setBooking(applied.currentBooking);setUncertain(false);
+     setMessage("Your original reschedule was accepted. Current booking details are shown.");
+     return;
     }
+    const current=await original<Booking>("me/"+p.reschedule.bookingRef,t);
     if(current?.bookingStatus==="CONFIRMED"&&
      current.version===p.reschedule.expectedVersion){
      setUncertain(false);
-     setMessage("The original booking is unchanged. Retrying uses the same original request key.");
+     setMessage("No matching reschedule was recorded. Retrying uses the same original request key.");
      return;
     }
-    setMessage("The original booking has changed or cannot be checked. Refresh before taking another action.");
+    setMessage("This booking changed without a matching request result. Refresh before taking another action.");
     return;
    }
    setMessage("The original booking reference is unavailable. Refresh the selected time.");
