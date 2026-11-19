@@ -83,6 +83,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    if(stamp!==seq.current||selectedCenter.current!==c)return;
    setItems(data.items);setSelectedSlip(null);setCancelPending(null);
    auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");
+   setAuditBusy(false);
    setCursor(after);setNextCursor(data.next);setUncertain(false);
    void request<Summary>(token,
     "my-centers/"+encodeURIComponent(c)+"/summary?date="+encodeURIComponent(day))
