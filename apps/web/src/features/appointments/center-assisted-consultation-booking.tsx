@@ -6,10 +6,11 @@ type Day={status:string;bookingEnabled:boolean;doctorName:string;centerName:stri
  timeZone:string;consultationFeeMinor:string|null;consultationFeeVersion:number|null;
  slots:{startAt:string;endAt:string;startLocal:string;endLocal:string;bookable:boolean}[]};
 type Hold={holdRef:string;status:string;expiresAt:string;consultationFeeMinor:string;feeVersion:number};
-type Booking={bookingId:string;bookingStatus:string;collectionStatus:string;consultationFeeMinor:string};
+type Booking={bookingRef:string;bookingId:string;bookingStatus:string;collectionStatus:string;consultationFeeMinor:string};
 type Attempt={signature:string;key:string;body:Record<string,unknown>};
 const VIRTUAL=/^CGP-[A-F0-9]{16}$/;
 const CODE=/^CGB-[A-F0-9]{24}$/;
+const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const money=(minor:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(minor)/100);
 async function request<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,unknown>):
@@ -44,6 +45,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
  const [attemptKind,setAttemptKind]=useState<"HOLD"|"CONFIRM"|null>(null);
  const [selected,setSelected]=useState<{startAt:string;endAt:string}|null>(null);
  const holdAttempt=useRef<Attempt|null>(null),confirmAttempt=useRef<Attempt|null>(null);
+ const slipKey=useRef<string|null>(null);
  const requestEpoch=useRef(0);
  const root="centers/"+encodeURIComponent(centerRef);
  useEffect(()=>{
@@ -52,7 +54,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
   // A new center must never inherit the previous patient's code or identity.
   setPatientId("");setCode("");setHold(null);setBooking(null);
   setAvailability(null);setUncertain(false);setAttemptKind(null);
-  holdAttempt.current=null;confirmAttempt.current=null;
+  holdAttempt.current=null;confirmAttempt.current=null;slipKey.current=null;
   void fetch("/api/access/effective",{cache:"no-store",credentials:"same-origin"})
    .then(async r=>r.ok?r.json():null)
    .then(async (data:unknown)=>{
@@ -119,6 +121,36 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    }
   }finally{setBusy(false);}
  }
+ // Center-owned CG19 publication is attempted only after CG15 commits.
+ // The real center permission and consent are checked again by CG19.
+ // A document error does not undo or fake the original appointment.
+ async function issueCurrentSlip(bookingRef:string):Promise<boolean>{
+  if(!ID.test(bookingRef))return false;
+  const path="/api/appointments/staff-slips/"+encodeURIComponent(bookingRef);
+  try{
+   const response=await fetch(path+"/status",{
+    cache:"no-store",credentials:"same-origin",
+    signal:AbortSignal.timeout(12000)});
+   if(!response.ok)return false;
+   const status:unknown=await response.json();
+   if(status&&typeof status==="object"&&
+    "status" in status&&status.status==="ISSUED"&&
+    "canDownload" in status&&status.canDownload===true)return true;
+   if(!status||typeof status!=="object"||
+    !("status" in status)||status.status!=="NOT_ISSUED")return false;
+   if(!slipKey.current)slipKey.current=crypto.randomUUID();
+   const issued=await fetch(path+"/issue",{
+    method:"POST",cache:"no-store",credentials:"same-origin",
+    signal:AbortSignal.timeout(12000),
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:slipKey.current})});
+   if(!issued.ok)return false;
+   const value:unknown=await issued.json();
+   return !!value&&typeof value==="object"&&
+    "status" in value&&value.status==="ISSUED"&&
+    "confirmed" in value&&value.confirmed===true;
+  }catch{return false;}
+ }
  async function confirm(retry=false){
   if(busy||(!retry&&uncertain)||!hold||booking)return;
   if(Date.parse(hold.expiresAt)<=Date.now()){
@@ -135,7 +167,10 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    const result=await request<Booking>("confirm","POST",{
     ...attempt.body,requestKey:attempt.key});
    setBooking(result);setUncertain(false);
-   setMessage("Consultation confirmed. The consultation amount is DUE at the center.");
+   const slip=await issueCurrentSlip(result.bookingRef);
+   setMessage(slip?
+    "Consultation confirmed. The original private slip is issued. Payment remains DUE at the center.":
+    "Consultation confirmed. Payment remains DUE at the center. Check the center's private slip status or ask the patient to open their own slip.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?e.status:null;
    if(typeof status==="number"&&status>=400&&status<500){
@@ -155,7 +190,11 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    if(attemptKind==="CONFIRM"&&confirmAttempt.current){
     const value=await request<Booking>("confirmations/by-request/"+
      confirmAttempt.current.key);
-    setBooking(value);setUncertain(false);setMessage("Original appointment confirmed: "+value.bookingId);
+    setBooking(value);setUncertain(false);
+    const slip=await issueCurrentSlip(value.bookingRef);
+    setMessage("Original appointment confirmed: "+value.bookingId+
+     (slip?". The private consultation slip is issued.":
+      ". Check original private slip status before relying on a document."));
    }else if(attemptKind==="HOLD"&&holdAttempt.current){
     const value=await request<Hold>("holds/by-request/"+
      holdAttempt.current.key);
@@ -169,6 +208,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
  const clear=()=>{
   setHold(null);setBooking(null);setUncertain(false);setMessage("");setAttemptKind(null);
   setPatientId("");setCode("");setSelected(null);holdAttempt.current=null;confirmAttempt.current=null;
+  slipKey.current=null;
  };
  if(loading)return <p role="status">Checking current receptionist permission…</p>;
  if(!permission)return null;
