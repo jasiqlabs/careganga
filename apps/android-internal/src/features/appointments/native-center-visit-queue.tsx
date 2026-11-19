@@ -7,7 +7,8 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
- startAt:string;endAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
+ consentGranted:boolean;startAt:string;endAt:string;bookingStatus:string;
+ bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
@@ -274,6 +275,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
     <Text style={styles.help}>Doctor: {a.doctorName}</Text>
     <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
     <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
+    {!a.consentGranted&&<Text style={styles.help}>Care consent withdrawn. New check-in and private documents are unavailable.</Text>}
     {canCancel&&a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
      (cancelPending===a.appointmentRef?
       <View style={styles.card}>
@@ -283,7 +285,8 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
       </View>:
       button("Cancel center booking",()=>setCancelPending(a.appointmentRef),busy||uncertain))}
     <View style={styles.row}>
-     {a.bookingStatus==="CONFIRMED"&&button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
+     {a.consentGranted&&a.bookingStatus==="CONFIRMED"&&
+      button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
      {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
      {a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
      {a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
