@@ -301,6 +301,16 @@ const checks=[
   s.nativeQueue.includes('canCancel&&a.bookingStatus==="CONFIRMED"')&&
   s.nativeQueue.includes('reason:"CENTER_REQUEST"')&&
   s.internalApp.includes('canCancel={roleActions.includes("health.appointments.cancel")}')],
+ ["queue refuses to classify a future appointment as a no-show",
+  s.queue.includes('nextState==="NO_SHOW"&&ap.end_at.getTime()>Date.now()')],
+ ["patient Public Android uses explicit rejected-status handling and scoped receptionist codes",
+  s.nativeBooking.includes('status:r.status')&&
+  s.nativeBooking.includes('status>=400&&status<500')&&
+  s.nativeBooking.includes("staffCode.centerRef===p.centerRef")&&
+  s.nativeSlots.includes('detail.consultationFeeMinor,detail.consultationFeeVersion')&&
+  s.nativeSlots.includes('c.consultationFeeMinor,c.consultationFeeVersion')],
+ ["cross-doctor same-center same-time change is not mistaken for no change",
+  s.service.includes('old.doctor_id===newDoctorId))')],
  ["patient-only hold status blocks staff-created reservations of other patients",
   s.service.includes("if(patient.id!==row.rows[0].patient_id)")&&
   s.service.includes('await this.ownPatient(tx,actor,false)')&&
