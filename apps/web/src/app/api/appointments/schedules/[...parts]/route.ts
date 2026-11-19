@@ -65,6 +65,14 @@ async function route(req:NextRequest,parts:string[],method:string){
     url.searchParams.set(name,value);
    }
   }
+  const status=req.nextUrl.searchParams.get("status")??"";
+  if(!["","ACTIVE","SUSPENDED","NOT_SCHEDULED"].includes(status))
+   return response(400,"Choose a valid doctor scheduling status.");
+  if(status)url.searchParams.set("status",status);
+  const specialty=req.nextUrl.searchParams.get("specialty")??"";
+  if(specialty.length>80||/[\u0000-\u001f\u007f<>]/.test(specialty))
+   return response(400,"Check the doctor specialization.");
+  if(specialty.trim())url.searchParams.set("specialty",specialty.trim());
   const search=req.nextUrl.searchParams.get("search");
   if(search!==null){
    if(search.length>80||/[\u0000-\u001f\u007f<>]/.test(search))
