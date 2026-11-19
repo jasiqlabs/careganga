@@ -187,6 +187,14 @@ const checks=[
   s.webQueue.includes("deterministic")&&
   s.webQueue.includes("status>=400&&status<500")&&
   s.nativeQueue.includes("status>=400&&status<500")],
+ ["clinical queue state changes use a separate current CG01/CG14 center grant and hidden controls",
+  s.roles.includes('key:"health.visits.clinical.manage"')&&
+  s.centerScope.includes('"health.visits.clinical.manage"')&&
+  s.queue.includes('tx,actor,center,"health.visits.clinical.manage"')&&
+  s.queue.includes('nextState==="IN_CONSULTATION"||nextState==="COMPLETED"')&&
+  s.webQueue.includes('canClinicalManage&&item.visitStatus==="WAITING"')&&
+  s.nativeQueue.includes('canClinicalManage&&a.visitStatus==="IN_CONSULTATION"')&&
+  s.internalApp.includes('canClinicalManage={roleActions.includes("health.visits.clinical.manage")}')],
  ["visit status machine disallows completion jump",
   s.queue.includes('IN_CONSULTATION:["COMPLETED"]')&&
   s.queue.includes('WAITING:["IN_CONSULTATION"]')&&
