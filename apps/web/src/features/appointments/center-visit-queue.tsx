@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
 import {CenterQrCameraScanner} from "./center-qr-camera-scanner";
 import {ClinicianVisitHistory} from "./clinician-visit-history";
+import {ClinicianSharedPatientFiles} from "./clinician-shared-patient-files";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type ClinicianAssignment={doctorRef:string;centerRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
@@ -335,6 +336,10 @@ export function CenterVisitQueue(){
     {item.consentGranted&&item.visitRef&&canClinicalManage&&
      clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&
      <ClinicianVisitHistory key={center+":"+item.appointmentRef}
+      centerRef={center} bookingRef={item.appointmentRef}/>}
+    {item.consentGranted&&item.visitRef&&canClinicalManage&&
+     clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&
+     <ClinicianSharedPatientFiles key={"files:"+center+":"+item.appointmentRef}
       centerRef={center} bookingRef={item.appointmentRef}/>}
     <button type="button" disabled={historyBusy}
      aria-expanded={historyRef===item.appointmentRef}
