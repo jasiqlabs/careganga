@@ -19,6 +19,9 @@ const s={
  patientController:read("apps/backend/src/modules/cg-15-patients-appointments/http/patient-profile.controller.ts"),
  staffBff:read("apps/web/src/app/api/appointments/staff-consultations/[...parts]/route.ts"),
  staffWeb:read("apps/web/src/features/appointments/center-assisted-consultation-booking.tsx"),
+ staffSlipBff:read("apps/web/src/app/api/appointments/staff-slips/[...parts]/route.ts"),
+ staffSlipWeb:read("apps/web/src/features/appointments/center-consultation-slip.tsx"),
+ slipSourceModule:read("apps/backend/src/modules/cg-15-patients-appointments/consultation-slip-source.module.ts"),
  staffPortal:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
  staffIntake:read("apps/web/src/features/patients/center-patient-intake-workspace.tsx"),
  service:read("apps/backend/src/modules/cg-15-patients-appointments/application/consultation-booking.service.ts"),
@@ -313,6 +316,26 @@ const checks=[
   s.service.includes("afterRaw.split")&&
   s.webHistory.includes("Load older consultations")&&
   s.nativeHistory.includes("Load older consultations")],
+ ["center consultation slip uses original CG19 private PDF, current CG14 center scope and CG15 consent",
+  s.original.includes("async originalForCenter(")&&
+  s.original.includes('this.ownCenter.assertCurrent(')&&
+  s.original.includes('"health.visits.manage"')&&
+  s.original.includes("consent.granted")&&
+  s.cg19.includes("this.original.originalForCenter(")&&
+  s.cg19Ctrl.includes('Get("staff/:bookingRef/file")')&&
+  s.cg19Ctrl.includes('Post("staff/:bookingRef/issue")')&&
+  s.slipSourceModule.includes("HealthCenterSupportScopeFacade")],
+ ["staff slip proxy never uses public patient session or untrusted file route",
+  s.staffSlipBff.includes('get("cg_staff_session")')&&
+  !s.staffSlipBff.includes('get("cg_patient_session")')&&
+  s.staffSlipBff.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
+  s.staffSlipBff.includes('includes("application/pdf")')],
+ ["actual assigned-center queue lazily issues, verifies and reprints only a consented current slip",
+  s.staffSlipWeb.includes("CenterConsultationSlip")&&
+  s.staffSlipWeb.includes('record?.status==="NOT_ISSUED"')&&
+  s.staffSlipWeb.includes("Check original slip status")&&
+  s.webQueue.includes("<CenterConsultationSlip")&&
+  s.cg19.includes('!doc.revoked_at') ],
  ["all CG15 SQL migrations have explicit opt-in manual lexical checker",
   s.pkg.includes('verify:cg15-migrations-source') ],
  ["all 128 original QA identifiers preserved",
