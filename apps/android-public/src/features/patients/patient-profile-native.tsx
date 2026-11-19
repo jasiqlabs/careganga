@@ -7,6 +7,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationHistory} from "../appointments/native-consultation-history";
+import {NativePatientPrivateFiles} from "./native-patient-private-files";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 const KEY="cg_public_patient_only_session";
@@ -384,6 +385,9 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       profile?save:register,busy||!first.trim()||!last.trim()||
        (!profile&&(!policy.available||!agreed||!contact?.verified)))}
      {profile&&<NativeConsultationHistory/>}
+     {profile?.profileStatus==="VERIFIED"&&token&&
+      <NativePatientPrivateFiles token={token}
+       consentGranted={profile.consentGranted} onExpired={clear}/>}
      {profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Manage patient-care consent</Text>
       {!profile.consentGranted&&policy.available&&<Text>{policy.text}</Text>}
