@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {
  ActivityIndicator,AppState,BackHandler,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View
@@ -47,6 +47,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [agreed,setAgreed]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
+ const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
   const me=await invoke<{displayName:string}>("/api/identity/me","GET",undefined,auth);
   if(me.status===401)return false;
@@ -59,6 +60,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  },[]);
  const clear=useCallback(()=>{
   setToken(null);setProfile(null);setPassword("");setAgreed(false);
+  pendingRegistration.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
  useEffect(()=>{
@@ -110,7 +112,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    const valid=await load(issued);
    if(!valid)throw Error("Your password session could not be confirmed.");
    await SecureStore.setItemAsync(KEY,issued);
-   setToken(issued);setPassword("");setMessage("Signed in to your private patient profile.");
+   setToken(issued);setPassword("");pendingRegistration.current=null;
+   setMessage("Signed in to your private patient profile.");
   });
  }
  function signOut(){
@@ -124,12 +127,16 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  function register(){
   if(!token)return;
   void run(async()=>{
+   const payload={firstName:first,lastName:last,dateOfBirth:dob||null,
+    consentVersion:policy.version,consentAccepted:agreed};
+   const digest=JSON.stringify(payload);
+   if(pendingRegistration.current?.digest!==digest)
+    pendingRegistration.current={digest,key:Crypto.randomUUID()};
    const r=await invoke<Patient>("/api/v1/patients/registration","POST",{
-    requestKey:Crypto.randomUUID(),firstName:first,lastName:last,
-    dateOfBirth:dob||null,consentVersion:policy.version,consentAccepted:agreed
+    requestKey:pendingRegistration.current.key,...payload
    },token);
    if(!r.data)throw Error("Registration could not be confirmed.");
-   setProfile(r.data);setMessage("Your Virtual Patient ID was created.");
+   pendingRegistration.current=null;setProfile(r.data);setMessage("Your Virtual Patient ID was created.");
   });
  }
  function save(){
