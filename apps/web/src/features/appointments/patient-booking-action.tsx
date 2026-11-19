@@ -28,6 +28,8 @@ export function PatientBookingAction(p:Props){
  const [confirmed,setConfirmed]=useState<Confirmed|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const [uncertain,setUncertain]=useState(false);
+ const [staffBusy,setStaffBusy]=useState(false),[staffError,setStaffError]=useState("");
+ const [staffCode,setStaffCode]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const sameSlot=useRef(p.startAt+"|"+p.centerRef+"|"+p.feeVersion);
  async function makeHold(){
@@ -71,6 +73,24 @@ export function PatientBookingAction(p:Props){
    setUncertain(true);setMessage(e instanceof Error?e.message:
     "Confirmation outcome uncertain. Check your appointments before retrying.");
   }finally{setBusy(false);}
+ }
+ async function authorizeCenterStaff(){
+  if(staffBusy)return;
+  setStaffBusy(true);setStaffError("");setStaffCode(null);
+  try{
+   const r=await fetch("/api/patients/me/assisted-booking-code",{
+    method:"POST",cache:"no-store",credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({centerRef:p.centerRef})});
+   const data:unknown=await r.json().catch(()=>null);
+   if(!r.ok||!data||typeof data!=="object"||
+    !("authorizationCode" in data)||typeof data.authorizationCode!=="string"||
+    !("expiresAt" in data)||typeof data.expiresAt!=="string")
+    throw Error("Staff authorization is unavailable. Sign in to your verified patient profile and check your consent.");
+   setStaffCode({authorizationCode:data.authorizationCode,expiresAt:data.expiresAt});
+  }catch(e){setStaffError(e instanceof Error?e.message:
+   "Cannot verify your center authorization.");}
+  finally{setStaffBusy(false);}
  }
  async function recover<T>(path:string):Promise<T|null>{
   const response=await fetch("/api/consultations/"+path,{
@@ -141,5 +161,18 @@ export function PatientBookingAction(p:Props){
     onClick={()=>void confirm()}>Confirm appointment — payment due at center</button>:
    <button type="button" disabled={busy} onClick={()=>void makeHold()}>
     {busy?"Checking…":"Reserve this appointment time"}</button>}
+  <section aria-label="Authorize reception staff to book">
+   <p>If you are booking in person at this center, you can authorize the assigned
+    receptionist to make one reservation. Your account must already be identity-verified.</p>
+   <button type="button" disabled={staffBusy}
+    onClick={()=>void authorizeCenterStaff()}>
+    {staffBusy?"Checking…":"Get one-time receptionist booking code"}</button>
+   {!!staffError&&<p role="alert">{staffError}</p>}
+   {staffCode&&<p role="status">Give only this center's authorized receptionist your
+    Virtual Patient ID and code <strong style={{fontFamily:"monospace"}}>
+     {staffCode.authorizationCode}</strong>.
+    Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.
+    One appointment hold only.</p>}
+  </section>
  </div>;
 }
