@@ -14,11 +14,13 @@ import {ConsultationBookingService} from "./application/consultation-booking.ser
 import {ConsultationBookingController} from "./http/consultation-booking.controller";
 import {ConsultationQueueService} from "./application/consultation-queue.service";
 import {ConsultationQueueController} from "./http/consultation-queue.controller";
+import {PatientAdminOverviewService} from "./application/patient-admin-overview.service";
+import {PatientAdminOverviewController} from "./http/patient-admin-overview.controller";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
- providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService],
- controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController,ConsultationQueueController],
+ providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService,PatientAdminOverviewService],
+ controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController,ConsultationQueueController,PatientAdminOverviewController],
  exports:[DoctorScheduleService]
 })
 export class PatientsAppointmentsModule{}
