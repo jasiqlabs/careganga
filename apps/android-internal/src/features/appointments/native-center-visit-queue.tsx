@@ -233,9 +233,9 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
-    {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+    {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
      setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
-    {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+    {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
      setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {center&&items.length>0&&<>
