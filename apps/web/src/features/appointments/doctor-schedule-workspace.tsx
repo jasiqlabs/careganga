@@ -6,7 +6,8 @@ type Row={associationRef:string;doctorRef:string;centerRef:string;doctorName:str
 type Window={weekday:number;startLocal:string;endLocal:string};
 type Except={exceptionRef:string;kind:string;state:string;startAt:string;
  endAt:string;reason:string;version:number};
-type Detail={associationRef:string;doctorName:string;centerName:string;timeZone:string;
+type Detail={associationRef:string;doctorRef:string;centerRef:string;
+ doctorName:string;centerName:string;timeZone:string;
  status:string;version:number;slotMinutes:number;effectiveFrom:string|null;
  effectiveUntil:string|null;windows:Window[];exceptions:Except[]};
 const weekdays=[{day:1,label:"Monday"},{day:2,label:"Tuesday"},
@@ -85,6 +86,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [kind,setKind]=useState<"LEAVE"|"BLOCK"|"HOLIDAY">("LEAVE");
  const [blockFrom,setBlockFrom]=useState(""),[blockUntil,setBlockUntil]=useState("");
  const [reason,setReason]=useState("");
+ const [copyTarget,setCopyTarget]=useState("");
+ const [copyReview,setCopyReview]=useState<Row|null>(null);
  const weekKey=useRef(""),exceptionKey=useRef(""),seq=useRef(0);
  const cancelKeys=useRef<Record<string,string>>({});
  const loadRoster=useCallback(async()=>{
@@ -99,7 +102,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   }}
  },[base]);
  useEffect(()=>{
-  setSelected(null);setRoster([]);setWindows([]);weekKey.current="";
+  setSelected(null);setRoster([]);setWindows([]);setCopyTarget("");
+  setCopyReview(null);weekKey.current="";
   exceptionKey.current="";setLoading(true);
   void loadRoster();return()=>{seq.current++;};
  },[loadRoster]);
@@ -109,6 +113,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    const detail=await api<Detail>(base+"/"+encodeURIComponent(ref));
    if(n!==seq.current)return;
    setSelected(detail);setWindows(detail.windows);setSlot(String(detail.slotMinutes));
+   setCopyTarget("");setCopyReview(null);
    setFrom(detail.effectiveFrom??"");setUntil(detail.effectiveUntil??"");
    weekKey.current="";exceptionKey.current="";setUncertain(false);
   }catch(e){if(n===seq.current)setError(e instanceof Error?e.message:
@@ -135,6 +140,46 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    return found!==index;
   }));
   weekKey.current="";
+ }
+ function reviewCopy(){
+  if(channel!=="foundation"||!canManage||!selected||working||uncertain||
+   selected.version<1||selected.windows.length===0)return;
+  const target=roster.find(r=>r.associationRef===copyTarget&&
+   r.associationRef!==selected.associationRef&&r.doctorRef===selected.doctorRef);
+  if(!target){setError("Choose another approved center for this same doctor.");return;}
+  setError("");setCopyReview(target);
+ }
+ async function prepareCopy(){
+  if(!copyReview||!selected||channel!=="foundation"||!canManage||
+   working||uncertain||copyReview.doctorRef!==selected.doctorRef)return;
+  const source=selected,sourceWindows=source.windows.map(w=>({...w}));
+  const targetRef=copyReview.associationRef;
+  const n=++seq.current;setWorking(true);setError("");setNotice("");
+  try{
+   const destination=await api<Detail>(base+"/"+encodeURIComponent(targetRef));
+   if(n!==seq.current)return;
+   if(destination.doctorRef!==source.doctorRef||
+      destination.associationRef===source.associationRef||
+      destination.centerRef===source.centerRef)
+    throw Error("The selected doctor-center association is no longer eligible.");
+   if(destination.timeZone!==source.timeZone)
+    throw Error("Centers have different time zones. Configure the target schedule directly to avoid shifting consultation times.");
+   setSelected(destination);setWindows(sourceWindows);
+   setSlot(String(source.slotMinutes));
+   const today=new Date().toISOString().slice(0,10);
+   setFrom(source.effectiveFrom&&source.effectiveFrom>=today?
+    source.effectiveFrom:today);
+   setUntil(source.effectiveUntil&&source.effectiveUntil>=today?
+    source.effectiveUntil:"");
+   weekKey.current="";setCopyReview(null);setCopyTarget("");
+   setNotice("The original working hours are copied into an UNSAVED draft for "+
+    destination.centerName+". Review center-specific hours and doctor overlap, "+
+    "adjust sessions if needed, then choose Save verified working hours. "+
+    "Other centers and old confirmed bookings have not changed.");
+  }catch(e){
+   if(n===seq.current)setError(e instanceof Error?e.message:
+    "The destination's currently verified schedule could not be checked.");
+  }finally{if(n===seq.current)setWorking(false);}
  }
  async function saveWeek(){
   if(!selected||!canManage||working||uncertain||windows.length===0||
@@ -299,6 +344,35 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      </tr>)}</tbody>
     </table>
    </div>
+   {canManage&&channel==="foundation"&&selected.version>0&&
+    selected.windows.length>0&&<div className="form-section"
+     aria-label="Copy current doctor schedule to another center">
+     <h3>Copy this doctor's working hours to another verified center</h3>
+     <p>The copy is only a draft. Each target must be reviewed and saved separately.
+      The server rejects overlapping in-person doctor times, incompatible
+      center hours or changed revision. Existing appointments stay untouched.</p>
+     <label>Another approved center for {selected.doctorName}
+      <select value={copyTarget} disabled={working||uncertain}
+       onChange={e=>{setCopyTarget(e.target.value);setCopyReview(null);}}>
+       <option value="">Choose target center</option>
+       {roster.filter(r=>r.doctorRef===selected.doctorRef&&
+        r.associationRef!==selected.associationRef).map(row=>
+        <option key={row.associationRef} value={row.associationRef}>
+         {row.centerName}</option>)}
+      </select>
+     </label>
+     <button type="button" disabled={!copyTarget||working||uncertain}
+      onClick={reviewCopy}>Review target center</button>
+     {copyReview&&<div className="notice">
+      <p>Copy {selected.windows.length} saved weekly session(s) from
+       <strong> {selected.centerName}</strong> to
+       <strong> {copyReview.centerName}</strong> as an editable draft?</p>
+      <button type="button" disabled={working||uncertain}
+       onClick={()=>void prepareCopy()}>Prepare copy at selected center</button>
+      <button type="button" disabled={working}
+       onClick={()=>setCopyReview(null)}>Keep original schedule</button>
+     </div>}
+    </div>}
    {canManage&&<div className="toolbar">
     <button type="button" className="primary" onClick={()=>void saveWeek()}
      disabled={working||uncertain||!from||windows.length===0}>
