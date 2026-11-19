@@ -1,12 +1,24 @@
 import {Body,Controller,Get,Header,Headers,Patch,Post} from "@nestjs/common";
 import {PatientProfileService} from "../application/patient-profile.service";
+import {PatientPrivateDetailsService} from "../application/patient-private-details.service";
 
 /** A current CG-01 password session is mandatory on every own-patient action.
  * Public consent policy alone carries no personal record.
  */
 @Controller("api/v1/patients")
 export class PatientProfileController{
- constructor(private readonly patients:PatientProfileService){}
+ constructor(private readonly patients:PatientProfileService,
+  private readonly privateDetails:PatientPrivateDetailsService){}
+ @Get("me/private-details")
+ @Header("Cache-Control","private, no-store")
+ privateDetailsOfMe(@Headers("authorization")token:string){
+  return this.privateDetails.mine(token);
+ }
+ @Post("me/private-details")
+ @Header("Cache-Control","private, no-store")
+ savePrivateDetails(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.privateDetails.save(token,body);
+ }
  @Get("consent-policy")
  @Header("Cache-Control","no-store")
  policy(){return this.patients.consentPolicy();}
