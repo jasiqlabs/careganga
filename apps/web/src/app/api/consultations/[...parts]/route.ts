@@ -44,8 +44,18 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
  }
  try{
   const path="/api/v1/appointments/consultations/"+parts.join("/");
-  const response=await fetch(new URL(path+(method==="GET"&&parts[0]==="me"?
-   "?limit=20":""),backend),{
+  const params=new URLSearchParams();
+  if(method==="GET"&&parts.length===1&&parts[0]==="me"){
+   params.set("limit","20");
+   const after=req.nextUrl.searchParams.get("after");
+   if(after!==null){
+    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z\|[a-f0-9-]{36}$/i.test(after)||
+     after.length>80)return copy(400,"Choose a valid appointment history page.");
+    params.set("after",after);
+   }
+  }
+  const response=await fetch(new URL(path+
+   (params.size?"?"+params.toString():""),backend),{
    method,body,cache:"no-store",signal:AbortSignal.timeout(13000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}
   });
