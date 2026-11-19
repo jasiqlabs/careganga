@@ -70,7 +70,7 @@ export function CenterVisitQueue(){
   return()=>{alive=false;};
  },[]);
  useEffect(()=>{
-  if(!center){requestSerial.current++;setItems([]);return;}
+  if(!center){requestSerial.current++;setItems([]);setQueueLoading(false);return;}
   let active=true;
   void load(center,day).catch(e=>{
    if(active&&center===selectedCenterRef.current){setItems([]);setMessage(e instanceof Error?e.message:"Queue unavailable.");}
@@ -93,7 +93,7 @@ export function CenterVisitQueue(){
     setDay(parts.year+"-"+parts.month+"-"+parts.day);
    }
    setMessage("This slip matches a current appointment at your authorized center. Confirm the booking in today's queue before checking in.");
-  }catch(e){setMessage(e instanceof Error?e.message:"The QR lookup could not be confirmed.");}
+  }catch(e){if(center===selectedCenterRef.current)setMessage(e instanceof Error?e.message:"The QR lookup could not be confirmed.");}
   finally{setBusy(false);}
  }
  async function command(item:Item,next:"CHECK_IN"|"WAITING"|"IN_CONSULTATION"|"COMPLETED"|"NO_SHOW"){
@@ -152,7 +152,7 @@ export function CenterVisitQueue(){
        setDay(e.target.value);setUncertain(false);}}/>
     </label>
     <button type="button" disabled={busy||!center}
-     onClick={()=>void load(center,day).catch(e=>setMessage(String(e)))}>
+     onClick={()=>void load(center,day).catch(e=>setMessage(e instanceof Error?e.message:"The queue cannot be refreshed."))}>
      Refresh current queue</button>
    </div>
    {center&&<section aria-label="Verify an appointment QR at my center"
