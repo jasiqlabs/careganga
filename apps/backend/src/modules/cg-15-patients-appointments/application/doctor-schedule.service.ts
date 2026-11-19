@@ -334,6 +334,42 @@ export class DoctorScheduleService{
     "AND assoc.affiliation_state='APPROVED' "+
     "AND assoc.approved_from<=now() "+
     "AND (assoc.approved_to IS NULL OR assoc.approved_to>now()) "+
+    "AND EXISTS(SELECT 1 FROM health_doctor_revision dr "+
+    "JOIN cg03_case dc ON dc.id=dr.approval_case_ref "+
+    "AND dc.realm_id=dr.root_realm_id AND dc.status='OWNER_COMPLETED' "+
+    "AND dc.case_kind='HEALTH_DOCTOR_VERIFICATION' "+
+    "AND dc.health_source_digest=dr.source_digest "+
+    "JOIN cg03_case_decision dd ON dd.case_id=dc.id AND dd.realm_id=dc.realm_id "+
+    "AND dd.action='APPROVE' AND dd.fresh_password_verified_at IS NOT NULL "+
+    "AND dd.actor_id<>dc.proposer_id "+
+    "JOIN cg19_stored_file proof ON proof.id=dr.proof_file_ref "+
+    "AND proof.realm_id=dr.root_realm_id AND proof.health_doctor_id=d.id "+
+    "AND proof.owner_kind='CG14_DOCTOR' AND proof.revoked_at IS NULL "+
+    "AND proof.scan_status='CLEAN_VERIFIED' "+
+    "JOIN cg19_upload_intent i ON i.id=proof.upload_intent_id "+
+    "AND i.realm_id=proof.realm_id AND i.status='VALIDATED' "+
+    "AND i.classification='HEALTH_DOCTOR_LICENSE' "+
+    "WHERE dr.root_realm_id=assoc.root_realm_id AND dr.doctor_id=d.id "+
+    "AND dr.revision_no=(SELECT MAX(x.revision_no) FROM health_doctor_revision x "+
+    "WHERE x.root_realm_id=dr.root_realm_id AND x.doctor_id=dr.doctor_id)) "+
+    "AND EXISTS(SELECT 1 FROM health_center_revision cr "+
+    "JOIN cg03_case cc ON cc.id=cr.approval_case_ref "+
+    "AND cc.realm_id=cr.root_realm_id AND cc.status='OWNER_COMPLETED' "+
+    "AND cc.case_kind='HEALTH_CENTER_VERIFICATION' "+
+    "AND cc.health_source_digest=cr.source_digest "+
+    "JOIN cg03_case_decision cd ON cd.case_id=cc.id AND cd.realm_id=cc.realm_id "+
+    "AND cd.action='APPROVE' AND cd.fresh_password_verified_at IS NOT NULL "+
+    "AND cd.actor_id<>cc.proposer_id "+
+    "JOIN cg19_stored_file lic ON lic.id=cr.proof_file_ref "+
+    "AND lic.realm_id=cr.root_realm_id AND lic.health_center_id=c.id "+
+    "AND lic.owner_kind='CG14_DRAFT' AND lic.revoked_at IS NULL "+
+    "AND lic.scan_status='CLEAN_VERIFIED' "+
+    "JOIN cg19_upload_intent j ON j.id=lic.upload_intent_id "+
+    "AND j.realm_id=lic.realm_id AND j.status='VALIDATED' "+
+    "AND j.classification='HEALTH_CENTER_LICENSE' "+
+    "WHERE cr.root_realm_id=assoc.root_realm_id AND cr.center_id=c.id "+
+    "AND cr.revision_no=(SELECT MAX(y.revision_no) FROM health_center_revision y "+
+    "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
     [actor.realmId,channel==="center"?ownRef:centerRef??null]);
    return {doctors:rows.rows.map(r=>({associationRef:r.association_id,
