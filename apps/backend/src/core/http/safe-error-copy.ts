@@ -250,6 +250,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG15_QUEUE_CHANGED:"The consultation queue changed since it was opened. Refresh before saving.",
       CG15_QUEUE_REQUEST_CONFLICT:"This visit request was previously used for different details. Check its current status.",
       CG15_QUEUE_LIMIT:"There are too many recorded visits for this day to confirm a new token. Contact CareGanga support.",
+      CG15_QUEUE_RATE_LIMIT:"Too many QR verification attempts at this center. Try again after 15 minutes.",
       CG01_PUBLIC_SIGNUP_INVALID:"Check the patient name, mobile number, password and verification code.",
       CG01_PUBLIC_SIGNUP_CODE_INVALID:"That mobile verification code was not approved. Check the code or request a new one.",
       CG01_PUBLIC_SIGNUP_LIMIT:"Too many registration attempts. Please try again later.",
