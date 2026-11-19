@@ -308,9 +308,13 @@ export class DoctorScheduleService{
     minute(r.open_local)<minute(w.endLocal))))
    throw new ConflictException({code:"CG15_SCHEDULE_DOCTOR_CONFLICT"});
  }
- async roster(bearer:string,channel:Channel,centerRef?:string){
+ async roster(bearer:string,channel:Channel,centerRef?:string,
+  geo?:{stateRef?:string;districtRef?:string;blockRef?:string}){
   const ownRef=channel==="center"?uuid(centerRef):null;
   const actor=await this.actor(bearer,channel,false);
+  const stateRef=channel==="foundation"&&geo?.stateRef?uuid(geo.stateRef):null;
+  const districtRef=channel==="foundation"&&geo?.districtRef?uuid(geo.districtRef):null;
+  const blockRef=channel==="foundation"&&geo?.blockRef?uuid(geo.blockRef):null;
   if(channel==="foundation"&&centerRef)uuid(centerRef);
   return this.transaction(async tx=>{
    await this.identity.assertCurrent(tx,actor,
@@ -331,7 +335,10 @@ export class DoctorScheduleService{
     "LEFT JOIN cg15_doctor_schedule s ON s.root_realm_id=assoc.root_realm_id "+
     "AND s.association_id=assoc.id AND s.consultation_mode='IN_PERSON' "+
     "WHERE assoc.root_realm_id=$1 AND ($2::uuid IS NULL OR assoc.center_id=$2) "+
-    "AND p.status='VERIFIED' AND c.status='VERIFIED' "+
+    "AND ($3::uuid IS NULL OR c.state_ref=$3) "+
+    "AND ($4::uuid IS NULL OR c.district_ref=$4) "+
+    "AND ($5::uuid IS NULL OR c.block_ref=$5) "+
+    "AND p.status='VERIFIED' AND c.status='VERIFIED' "
     "AND c.access_state='ENABLED' AND d.status='VERIFIED' "+
     "AND assoc.affiliation_state='APPROVED' "+
     "AND assoc.approved_from<=now() "+
@@ -375,7 +382,8 @@ export class DoctorScheduleService{
     "AND cr.revision_no=(SELECT MAX(y.revision_no) FROM health_center_revision y "+
     "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
-    [actor.realmId,channel==="center"?ownRef:centerRef??null]);
+    [actor.realmId,channel==="center"?ownRef:centerRef??null,
+     stateRef,districtRef,blockRef]);
    const counts=await tx.query<{appointments:string;today_sessions:string;
     active_leave_doctors:string}>(
     "SELECT "+
@@ -400,8 +408,35 @@ export class DoctorScheduleService{
     "AND e.kind='LEAVE' AND e.state='ACTIVE' "+
     "AND e.start_at<=now() AND e.end_at>now()) AS active_leave_doctors",
     [actor.realmId,channel==="center"?ownRef:centerRef??null]);
+   // Geographic choices come from original CG14 center and CG02 area
+   // masters, never invented UI static options or patient bookings.
+   const locations=channel==="foundation"?await tx.query<{
+    center_ref:string;center_name:string;state_ref:string;state_name:string;
+    district_ref:string;district_name:string;block_ref:string|null;block_name:string|null
+   }>(
+    "SELECT c.id AS center_ref,c.display_name AS center_name,"+
+    "c.state_ref,st.display_name AS state_name,"+
+    "c.district_ref,di.display_name AS district_name,"+
+    "c.block_ref,bl.display_name AS block_name "+
+    "FROM health_center c "+
+    "JOIN geography_area st ON st.id=c.state_ref AND st.root_realm_id=c.root_realm_id "+
+    "JOIN geography_area di ON di.id=c.district_ref AND di.root_realm_id=c.root_realm_id "+
+    "LEFT JOIN geography_area bl ON bl.id=c.block_ref AND bl.root_realm_id=c.root_realm_id "+
+    "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' "+
+    "AND c.access_state='ENABLED' "+
+    "ORDER BY st.display_name,di.display_name,bl.display_name,c.display_name,c.id LIMIT 1001",
+    [actor.realmId]):{rows:[] as {center_ref:string;center_name:string;
+     state_ref:string;state_name:string;district_ref:string;district_name:string;
+     block_ref:string|null;block_name:string|null}[]};
+   const choices=locations.rows.slice(0,1000);
    const metric=counts.rows[0];
-   return {doctors:rows.rows.map(r=>({associationRef:r.association_id,
+   return {geographyComplete:locations.rows.length<=1000,
+    centerChoices:choices.map(c=>({
+     centerRef:c.center_ref,centerName:c.center_name,stateRef:c.state_ref,
+     stateName:c.state_name,districtRef:c.district_ref,districtName:c.district_name,
+     blockRef:c.block_ref,blockName:c.block_name
+    })),
+    doctors:rows.rows.map(r=>({associationRef:r.association_id,
     doctorRef:r.doctor_id,centerRef:r.center_id,doctorName:r.doctor_name,
     centerName:r.center_name,specialties:r.specialties,status:r.status,
     version:r.version??0,scheduleMode:r.schedule_mode})),
