@@ -214,7 +214,7 @@ BEGIN
   RAISE EXCEPTION 'Original doctor leave case may be linked only once';
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg15_exception_source_frozen
  BEFORE UPDATE OR DELETE ON cg15_schedule_exception FOR EACH ROW
  EXECUTE FUNCTION cg15_exception_source_guard();
@@ -222,7 +222,7 @@ CREATE TRIGGER cg15_exception_source_frozen
 CREATE FUNCTION cg15_schedule_source_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  RAISE EXCEPTION 'Historical healthcare schedule source cannot be changed';
-END $$;
+END; $;
 CREATE TRIGGER cg15_revision_frozen BEFORE UPDATE OR DELETE ON cg15_schedule_revision
  FOR EACH ROW EXECUTE FUNCTION cg15_schedule_source_immutable();
 CREATE TRIGGER cg15_window_frozen BEFORE UPDATE OR DELETE ON cg15_schedule_weekly_window
@@ -243,7 +243,7 @@ BEGIN
   RAISE EXCEPTION 'Healthcare schedule command cannot be rewritten';
  END IF;
  RETURN NEW;
-END $$;
+END; $;
 CREATE TRIGGER cg15_command_guard
  BEFORE UPDATE OR DELETE ON cg15_schedule_command
  FOR EACH ROW EXECUTE FUNCTION cg15_command_source_guard();
