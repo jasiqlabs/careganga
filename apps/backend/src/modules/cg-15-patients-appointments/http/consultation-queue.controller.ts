@@ -6,6 +6,10 @@ export class ConsultationQueueController{
  @Get("my-centers")
  @Header("Cache-Control","private, no-store")
  options(@Headers("authorization")bearer:string){return this.queue.options(bearer);}
+ @Get("my-centers/:centerRef/summary")
+ @Header("Cache-Control","private, no-store")
+ summary(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
+  @Query("date")day:string){return this.queue.summary(bearer,center,day);}
  @Get("my-centers/:centerRef")
  @Header("Cache-Control","private, no-store")
  list(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
