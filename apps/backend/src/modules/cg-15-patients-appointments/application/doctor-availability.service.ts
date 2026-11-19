@@ -50,9 +50,7 @@ function localParts(ms:number,format:Intl.DateTimeFormat){
  return {year:Number(f.year),month:Number(f.month),day:Number(f.day),
   hour:Number(f.hour),minute:Number(f.minute)};
 }
-function toUtc(localDay:string,clock:string,zone:string):number|null{
- const fmt=new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",
-  year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+function toUtc(localDay:string,clock:string,fmt:Intl.DateTimeFormat):number|null{
  const [y,m,d]=localDay.split("-").map(Number);
  const localClock=minute(clock);
  const localMs=Date.UTC(y,m-1,d,Math.floor(localClock/60),localClock%60);
@@ -215,6 +213,14 @@ export class DoctorAvailabilityService{
    slots:[],message:"No verified working schedule for this date."};
   if(current.time_zone!==center.time_zone)
    throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
+  let localFormat:Intl.DateTimeFormat;
+  try{
+   // One formatter per preview, never one per slot. Reject invalid
+   // original IANA zones rather than inventing a shifted local time.
+   localFormat=new Intl.DateTimeFormat("en-US",{
+    timeZone:center.time_zone,hourCycle:"h23",year:"numeric",month:"2-digit",
+    day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }catch{throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});}
   const weekday=rootDay(day);
   const windows=await this.db.query<Window>(
    "SELECT w.schedule_id,w.weekday,to_char(w.open_local,'HH24:MI') AS open_local,"+
@@ -229,8 +235,12 @@ export class DoctorAvailabilityService{
    "SELECT kind,center_id,start_at,end_at FROM cg15_schedule_exception "+
    "WHERE root_realm_id=$1 AND doctor_id=$2 AND state='ACTIVE' "+
    "AND (kind='LEAVE' OR center_id=$3) "+
-   "AND start_at<$5 AND end_at>$4 ORDER BY start_at LIMIT 200",
+   "AND start_at<$5 AND end_at>$4 ORDER BY start_at LIMIT 201",
    [center.root_realm_id,center.doctor_id,center.center_id,lo,hi]);
+  // Truncating a long block list could falsely present blocked time.
+  // Fail closed instead of silently ignoring the 201st active exception.
+  if(blocks.rows.length>200)
+   throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
   const slots:PreviewSlot[]=[];
   const now=Date.now();
   for(const w of windows.rows){
@@ -240,8 +250,8 @@ export class DoctorAvailabilityService{
      first>=last||(last-first)%duration!==0)continue;
    for(let m=first;m+duration<=last;m+=duration){
     if(slots.length>=MAX_SLOTS)break;
-    const start=toUtc(day,hhmm(m),center.time_zone);
-    const end=toUtc(day,hhmm(m+duration),center.time_zone);
+    const start=toUtc(day,hhmm(m),localFormat);
+    const end=toUtc(day,hhmm(m+duration),localFormat);
     if(start===null||end===null||start<now||end<=start||
        end-start!==duration*60000)continue;
     if(blocks.rows.some(b=>start<b.end_at.getTime()&&
