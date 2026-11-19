@@ -84,7 +84,7 @@ export class ConsultationQueueService{
   const actor=await this.identity.verifySession(bearer),
    center=param(centerRaw),bookingRef=param(bookingRaw);
   if(beforeRaw!==undefined&&
-   (!/^\\d{1,9}$/.test(beforeRaw)||Number(beforeRaw)<1))
+   (!/^\d{1,9}$/.test(beforeRaw)||Number(beforeRaw)<1))
    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
   const before=beforeRaw===undefined?null:Number(beforeRaw);
   const tx=await this.db.connect();let active=false;
