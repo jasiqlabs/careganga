@@ -342,6 +342,12 @@ export class ConsultationBookingService{
     const old=existing.rows[0];
     if(old.request_digest!==signature)
      throw new ConflictException({code:"CG15_BOOKING_REQUEST_CONFLICT"});
+    if(assisted)await this.currentAssistedPatient(tx,actor,old.patient_id);
+    else {
+     const current=await this.ownPatient(tx,actor,false);
+     if(current.id!==old.patient_id)
+      throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+    }
     await tx.query("COMMIT");open=false;
     return presentHold(old);
    }
@@ -483,6 +489,12 @@ export class ConsultationBookingService{
    if(old.rows[0]){
     if(old.rows[0].confirmation_digest!==signature)
      throw new ConflictException({code:"CG15_BOOKING_REQUEST_CONFLICT"});
+    if(assisted)await this.currentAssistedPatient(tx,actor,old.rows[0].patient_id);
+    else {
+     const current=await this.ownPatient(tx,actor,false);
+     if(current.id!==old.rows[0].patient_id)
+      throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+    }
     await tx.query("COMMIT");open=false;
     return presentBooking(old.rows[0]);
    }
