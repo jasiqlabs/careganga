@@ -212,7 +212,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
    {!!message&&<Text accessibilityRole="alert" style={styles.error}>{message}</Text>}
    <Text style={styles.note}>Assigned healthcare center</Text>
    <View style={styles.row}>{centers.map(c=><View key={c.centerRef}>
-    {button(c.centerName,()=>{setCenter(c.centerRef);setOffset(0);},
+    {button(c.centerName,()=>{clear();setDay(null);setCenter(c.centerRef);setOffset(0);},
      busy||uncertain)}</View>)}</View>
    {center&&<Text style={styles.note}>Select approved doctor</Text>}
    <View style={styles.row}>{doctors.map(d=><View key={d.doctorRef}>
