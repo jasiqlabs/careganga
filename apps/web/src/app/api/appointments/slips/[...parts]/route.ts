@@ -53,7 +53,8 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
    return new NextResponse(bytes,{headers:{
     "Content-Type":"application/pdf",
     "Content-Disposition":"attachment; filename=careganga-consultation.pdf",
-    "Cache-Control":"private, no-store"}});
+    "Cache-Control":"private, no-store",
+    "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"}});
   }
   const data:unknown=await result.json().catch(()=>null);
   if(!result.ok){
