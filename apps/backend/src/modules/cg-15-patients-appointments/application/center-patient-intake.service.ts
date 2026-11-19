@@ -58,6 +58,26 @@ export class CenterPatientIntakeService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly ownCenter:HealthCenterSupportScopeFacade){}
+ async options(bearer:string){
+  // A receptionist needs the intake permission, not center draft editing.
+  // Current association and verified+enabled provider are used for choices;
+  // the write still rechecks all CG14 source conditions under transaction.
+  const actor=await this.sessions.requireAction(bearer,"health.patients.intake");
+  const rows=await this.db.query<{
+   center_ref:string;center_name:string;provider_name:string
+  }>(
+   "SELECT DISTINCT c.id AS center_ref,c.display_name AS center_name,"+
+   "p.legal_name AS provider_name FROM health_center_account_affiliation a "+
+   "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
+   "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+   "WHERE a.root_realm_id=$1 AND a.account_ref=$2 AND a.status='ACTIVE' "+
+   "AND c.status='VERIFIED' AND c.access_state='ENABLED' AND p.status='VERIFIED' "+
+   "ORDER BY c.display_name,c.id,p.legal_name LIMIT 40",
+   [actor.realmId,actor.accountId]);
+  return {centers:rows.rows.map(x=>({
+   centerRef:x.center_ref,centerName:x.center_name,providerName:x.provider_name
+  }))};
+ }
  private async scope(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string){
   if(!ID.test(centerRef))throw new NotFoundException({code:"CG15_PATIENT_CENTER_UNAVAILABLE"});
   await this.ownCenter.assertCurrent(tx,actor,centerRef,"health.patients.intake");
