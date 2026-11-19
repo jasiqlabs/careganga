@@ -49,6 +49,9 @@ export function FoundationPatientBookings(){
  const [history,setHistory]=useState<OriginalHistory|null>(null);
  const [historyBusy,setHistoryBusy]=useState(false);
  const [historyError,setHistoryError]=useState("");
+ const [printBusy,setPrintBusy]=useState(false);
+ const [printMessage,setPrintMessage]=useState("");
+ const selectedForPrint=useRef("");
  const [overridePassword,setOverridePassword]=useState("");
  const [overrideAcknowledged,setOverrideAcknowledged]=useState(false);
  const [overrideBusy,setOverrideBusy]=useState(false);
@@ -129,6 +132,7 @@ export function FoundationPatientBookings(){
   }catch(e){setHistoryError(e instanceof Error?e.message:"Further history is unavailable.");}
   finally{setHistoryBusy(false);}
  }
+ selectedForPrint.current=selected;
  const selectedBooking=result?.items.find(x=>x.bookingRef===selected);
  // Never show an old patient's async audit history in another patient's card.
  const currentHistory=selectedBooking&&history?.bookingId===selectedBooking.bookingId?
@@ -140,6 +144,39 @@ export function FoundationPatientBookings(){
   (!query.stateRef||c.stateRef===query.stateRef)&&
   (!query.districtRef||c.districtRef===query.districtRef)&&
   (!query.centerType||c.centerType===query.centerType))??[];
+ async function printSelectedBooking(){
+  const booking=result?.items.find(x=>x.bookingRef===selected);
+  const events=history;
+  if(printBusy||historyBusy||!booking||!events||
+   events.bookingId!==booking.bookingId||events.next){
+   setPrintMessage("Load the complete original selected booking history before printing.");
+   return;
+  }
+  const ref=booking.bookingRef;
+  setPrintBusy(true);setPrintMessage("");
+  try{
+   const response=await fetch("/api/appointments/admin/patients/"+
+    encodeURIComponent(ref)+"/print-authorization",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({expectedVersion:booking.bookingVersion,
+      purpose:"BOOKING_HISTORY"})});
+   const data:unknown=await response.json().catch(()=>null);
+   if(!response.ok||!data||typeof data!=="object"||
+    !("authorized" in data)||data.authorized!==true||
+    !("bookingId" in data)||data.bookingId!==booking.bookingId||
+    !("bookingVersion" in data)||data.bookingVersion!==booking.bookingVersion)
+    throw Error(data&&typeof data==="object"&&"message" in data&&
+     typeof data.message==="string"?data.message:
+     "This report could not be authorized. Refresh the selected booking.");
+   if(selectedForPrint.current!==ref)
+    throw Error("The selected booking changed. Review its history before printing.");
+   window.print();
+   setPrintMessage("The report print dialog was opened for this audited booking. Saving or printing a copy is controlled by your browser.");
+  }catch(e){setPrintMessage(e instanceof Error?e.message:
+   "Report printing is unavailable. Review the original booking.");}
+  finally{setPrintBusy(false);}
+ }
  async function refreshOverrideSource(){
   setLoading(true);setOverrideMessage("");
   try{
@@ -400,8 +437,11 @@ export function FoundationPatientBookings(){
       </button>}
       <p>Original CareGanga appointment record — not a receipt, prescription,
        government Health ID or evidence of financial assistance.</p>
-      <button type="button" disabled={historyBusy||!currentHistory}
-       onClick={()=>window.print()}>Print selected booking report</button>
+      <button type="button" disabled={printBusy||historyBusy||
+       !currentHistory||!!currentHistory.next}
+       onClick={()=>void printSelectedBooking()}>
+       {printBusy?"Checking protected report…":"Print selected booking report"}</button>
+      {!!printMessage&&<p role="status">{printMessage}</p> 
       <h3>Booking History</h3>
       {historyBusy&&!currentHistory&&<p role="status">Checking original booking events…</p>}
       {!!historyError&&<p role="alert">{historyError}</p>}
@@ -421,8 +461,8 @@ export function FoundationPatientBookings(){
        {e.after?.consultationFeeMinor&&
         <p>Accepted consultation: {money(e.after.consultationFeeMinor)}</p>}
       </article>)}
-      {currentHistory?.next&&<p>Older booking events remain. Printing includes only
-       this selected booking and the event entries currently loaded below.</p>}
+      {currentHistory?.next&&<p>Older booking events remain. Load all original
+       history pages before printing the complete protected report.</p>}
       {currentHistory?.next&&<button type="button" disabled={historyBusy}
        onClick={()=>void moreHistory()}>Older booking events</button>}
       <p>This event history contains only this protected booking's operational changes.
