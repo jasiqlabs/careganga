@@ -30,10 +30,15 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
  const pending=useRef<Pending|null>(null);
+ const [claimChecked,setClaimChecked]=useState(false),[claimBusy,setClaimBusy]=useState(false);
+ const [claimCode,setClaimCode]=useState(""),[claimExpires,setClaimExpires]=useState("");
+ const [claimMessage,setClaimMessage]=useState("");
+ const claimRequestKey=useRef<string|null>(null);
  const path="/api/appointments/patients/my-centers/"+encodeURIComponent(centerRef)+"/intakes";
  const reset=useCallback(()=>{
   setFirst("");setLast("");setDob("");setAttested(false);
   setMessage("");setResult(null);setUncertain(false);pending.current=null;
+  setClaimChecked(false);setClaimCode("");setClaimExpires("");setClaimMessage("");claimRequestKey.current=null;
  },[]);
  useEffect(()=>{
   let alive=true;
@@ -96,6 +101,24 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
    setUncertain(true);setMessage("The saved result cannot be checked right now.");
   }finally{setBusy(false);}
  }
+ async function issueClaim(newCode=false){
+  if(!result||!claimChecked||claimBusy)return;
+  setClaimBusy(true);setClaimMessage("");
+  if(newCode)claimRequestKey.current=null;
+  if(!claimRequestKey.current)claimRequestKey.current=crypto.randomUUID();
+  try{
+   const r=await request<{status:string;claimCode?:string;expiresAt?:string;message:string}>(
+    "/api/appointments/patients/my-centers/"+encodeURIComponent(centerRef)+"/claims",
+    "POST",{requestKey:claimRequestKey.current,virtualPatientId:result.virtualPatientId,
+     identityCheckedInPerson:true});
+   if(!r.data)throw Error(r.message);
+   if(r.data.status==="ISSUED"&&r.data.claimCode){
+    setClaimCode(r.data.claimCode);setClaimExpires(r.data.expiresAt??"");
+    setClaimMessage("Show this claim code only to the patient whose identity you checked.");
+   }else setClaimMessage("The original code was already issued and cannot be redisplayed. Request a new code if it was lost.");
+  }catch(e){setClaimMessage(e instanceof Error?e.message:"The identity claim request is uncertain.");}
+  finally{setClaimBusy(false);}
+ }
  if(!ready)return <p role="status">Checking patient-intake permission…</p>;
  if(!allowed)return null;
  return <section className="form-section" aria-label="Center-assisted provisional patient intake">
@@ -108,6 +131,23 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
    <strong>CareGanga Virtual Patient ID: {result.virtualPatientId}</strong>
    <p>{result.firstName} {result.lastName} · {result.profileStatus}</p>
    <p>Identity and patient-account claim remain unverified. Keep the ID private.</p>
+   <section aria-label="Give verified patient their account claim code">
+    <h4>Link this provisional record to the patient's own account</h4>
+    <p>Check the person's identity document in person before issuing a code.
+     The patient must separately sign in using their own verified CareGanga account
+     and accept patient-care consent. A shared mobile number is not proof.</p>
+    <label><input type="checkbox" checked={claimChecked} disabled={claimBusy}
+     onChange={e=>setClaimChecked(e.target.checked)}/>
+     {" "}I checked the patient's identity document in person.</label>
+    <button type="button" disabled={claimBusy||!claimChecked}
+     onClick={()=>void issueClaim()}>Give patient a one-time claim code</button>
+    {!!claimCode&&<p>Claim code (expires in 15 minutes):
+     <strong style={{fontFamily:"monospace"}}>{claimCode}</strong>
+     {claimExpires&&" · "+new Date(claimExpires).toLocaleTimeString("en-IN")}</p>}
+    {!!claimMessage&&<p role="status">{claimMessage}</p>}
+    <button type="button" disabled={claimBusy||!claimChecked}
+     onClick={()=>void issueClaim(true)}>Replace lost/expired claim code</button>
+   </section>
    <button type="button" onClick={reset}>Register another person</button>
   </div>:
   <div style={{display:"grid",gap:12,maxWidth:650}}>
