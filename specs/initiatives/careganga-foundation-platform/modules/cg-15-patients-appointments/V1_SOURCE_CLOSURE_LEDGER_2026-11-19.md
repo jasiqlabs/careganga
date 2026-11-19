@@ -6,7 +6,7 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **93/128 SOURCE_VERIFIED, 26 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **94/128 SOURCE_VERIFIED, 25 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
@@ -14,7 +14,7 @@ Source-only current snapshot: **93/128 SOURCE_VERIFIED, 26 SOURCE_GAP, 2 NOT_VER
 |---|---|---|---|
 | US-001-QA11 | SOURCE_VERIFIED | CG15 original H07 multi-center schedule | Up to eight real same-doctor targets, individual current source/timezone/revision review, explicit partial-save acknowledgment, server-protected per-target operating-hours/global doctor overlap/CAS with independent request key; UNKNOWN stops batch. Actual browser/SQL and H07 pixel QA NOT_RUN. |
 | US-001-QA13 | SOURCE_GAP | CG15 direct source/code work | H07 roster now returns genuine scoped PostgreSQL booking count, today's center-local schedule window count and currently active approved doctor-leave count, replacing the three placeholder-dash KPI cards; existing doctor/center names, status, editable weekly grid, reviewed target copy, leave and summary are real. Original H07 State/District/Block/Center query filters, exact screenshot layout/tabs/calendar, complete bulk copy and physical responsive/pixel/accessibility QA still missing; remains SOURCE_GAP. |
-| US-001-QA16 | SOURCE_GAP | CG19 private document / communication owner | No per-root timer/poller created and source idle gate limited to on-demand APIs; original due-only CG19 notification/reconcile/worker proof not integrated |
+| US-001-QA16 | SOURCE_VERIFIED | CG03 leave review → existing CG19 notification owner | Original CG15 leave submits true CG03 case/decision; exact proposer receives deduplicated CG19 IN_APP/EMAIL/SMS decision notice through durable 25-row cursor and single process root-level LISTEN/periodic recovery. No CG15 per-root/doctor timer or idle provider sends. Not an automatic booked-patient notification. SQL/multi-instance/provider/perf QA NOT_RUN. |
 | US-002-QA02 | SOURCE_GAP | Policy/identity approval | doctor/time-first returns exact center/time choices with fee/address; US001 currently rejects overlapping in-person doctor schedules at two centers, so two simultaneous valid center choices require an explicitly consistent original location policy |
 | US-002-QA10 | NOT_VERIFIABLE | Runtime/visual/permissions QA and remaining source parity | genuine concurrent hold at Center A and instant withdrawal from Center B require US004 atomic doctor reservation/hold source and running two-client QA |
 | US-002-QA12 | NOT_VERIFIABLE | Runtime/visual/permissions QA and remaining source parity | dedicated healthcare H07/H15 references mapped and shared CareGanga design tokens used; original image bytes and real rendered website/Android pixel, accessibility/device QA NOT_RUN |
@@ -96,3 +96,11 @@ V1 already required authorized exceptional cancellation after the normal cutoff 
 11 targeted source checks passed; a dedicated original QA assertion is in the US004-US008 static checker. Physical PostgreSQL, Nest/Next, browser, signed-in root/password/role revocation, simultaneous patient/center cancellation and policy/CG17 cross-owner tests remain NOT_RUN.
 
 Current tracker: 93 SOURCE_VERIFIED / 26 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE = 128; 0/128 executed runtime PASS; 0/8 formally SOURCE_COMPLETE. No main merge.
+
+## 19 November 2026 — US-001-QA16 existing CG03 leave decision notice/recovery
+
+No new notification or business scenario was created. The already installed CG03 doctor-leave independent review commits original immutable decisions; CG03 CommittedDecisionSource streams at most 25 decisions from a durable root cursor to the original proposer, and existing CG19 NotificationService/CommunicationWorker handles opt-in IN_APP/EMAIL/SMS with source deduplication and global bounded wake/recovery. The CG15 schedule module has no per-center/doctor timer and does not send any provider notification when idle. Seven direct code-path checks passed. This does not notify booked patients automatically when approved leave overlaps a confirmed consultation.
+
+Full US001 source script now has a corresponding assertion but complete multi-file execution hit a GitHub connector tool-call limit; do NOT claim it ran. Local runtime SQL EXPLAIN, communication retry/idle activity, security and mobile/browser QA NOT_RUN.
+
+Latest canonical source snapshot: 94 SOURCE_VERIFIED / 25 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128); actual QA PASS 0/128; formal SOURCE_COMPLETE 0/8. Main merge not approved.
