@@ -14,7 +14,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 const KEY="cg_public_patient_only_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Patient={virtualPatientId:string;firstName:string;lastName:string;
- dateOfBirth:string|null;profileStatus:string;version:number;
+ dateOfBirth:string|null;profileStatus:string;version:number;canLinkAnotherAccount?:boolean;
  consentGranted:boolean;consentVersion:string|null};
 type Policy={available:boolean;version:string|null;text:string|null};
 type Contact={hasNumber:boolean;verified:boolean;providerConfigured:boolean;maskedContact:string|null};
@@ -63,6 +63,10 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
  const [claimDisplay,setClaimDisplay]=useState(""),[claimCode,setClaimCode]=useState("");
  const [claimAgree,setClaimAgree]=useState(false);
+ const [otherLogin,setOtherLogin]=useState("");
+ const [otherLink,setOtherLink]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
+ const [secondLinkCode,setSecondLinkCode]=useState("");
+ const [secondConfirmed,setSecondConfirmed]=useState(false);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
@@ -81,6 +85,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  },[]);
  const clear=useCallback(()=>{
   setToken(null);setProfile(null);setContact(null);setIdentityProof(null);setPassword("");setAgreed(false);
+  setOtherLink(null);setSecondLinkCode("");setSecondConfirmed(false);
   pendingRegistration.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
@@ -266,6 +271,32 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    setMessage("Show this one-time code and your identity document to authorized center staff. Expires in 15 minutes.");
   });
  }
+ function issueSecondLoginLink(){
+  if(!token||!profile?.canLinkAnotherAccount)return;
+  void run(async()=>{
+   const r=await invoke<{authorizationCode:string;expiresAt:string}>(
+    "/api/v1/patients/me/second-account-link-code","POST",{
+     recipientIdentifier:otherLogin.trim(),personallyConfirmed:true},token);
+   if(!r.data)throw Error("A private account link code could not be confirmed.");
+   setOtherLink(r.data);
+   setMessage("The code is only for your other named login. Share it privately; family members must use their own patient profiles.");
+  });
+ }
+ function acceptSecondLoginLink(){
+  if(!token)return;
+  void run(async()=>{
+   if(!secondConfirmed||!contact?.verified)
+    throw Error("Verify your account and confirm this is your own patient identity.");
+   const r=await invoke<Patient>("/api/v1/patients/me/accept-second-account",
+    "POST",{authorizationCode:secondLinkCode.trim().toUpperCase(),
+     personallyConfirmed:true},token);
+   if(!r.data)throw Error("The original patient link result could not be verified.");
+   setProfile(r.data);setFirst(r.data.firstName);setLast(r.data.lastName);
+   setDob(r.data.dateOfBirth??"");
+   setSecondLinkCode("");setSecondConfirmed(false);
+   setMessage("Your second personal login was linked to your original verified patient profile. No staff permissions were copied.");
+  });
+ }
  function checkIdentityStatus(){
   if(!token)return;
   void run(async()=>{
@@ -341,6 +372,20 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       {button("Check current identity status",checkIdentityStatus,busy)}
      </View>}
      {!profile&&<View style={styles.field}>
+      <Text style={styles.subtitle}>Link your other personal login</Text>
+      <Text>Use a private recipient-specific code issued while you were signed
+       in to your original verified patient account. A shared family phone
+       does not make two people the same patient.</Text>
+      {field("One-time link code",secondLinkCode,
+       v=>setSecondLinkCode(v.trim().toUpperCase()))}
+      {button(secondConfirmed?"Same person confirmed":
+       "I am the same individually verified patient",()=>setSecondConfirmed(!secondConfirmed),
+       busy)}
+      {button("Link this second personal account",acceptSecondLoginLink,
+       busy||!contact?.verified||!secondConfirmed||
+        !/^CGL-[A-F0-9]{32}$/.test(secondLinkCode))}
+     </View>}
+     {!profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Verify account mobile contact</Text>
       {contact?.verified?<Text>Your CareGanga contact is verified.</Text>:
        !contact?.hasNumber?<Text>Your existing account has no verification contact.
@@ -385,6 +430,21 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      {button(busy?"Saving…":profile?"Save details":"Create patient profile",
       profile?save:register,busy||!first.trim()||!last.trim()||
        (!profile&&(!policy.available||!agreed||!contact?.verified)))}
+     {profile?.profileStatus==="VERIFIED"&&profile.consentGranted&&
+      profile.canLinkAnotherAccount&&token&&<View style={styles.field}>
+       <Text style={styles.subtitle}>Use your patient profile from another account</Text>
+       <Text>Only authorize another account personally controlled by you,
+        the same verified person. Never grant your records to a different family
+        member. No staff or volunteer permissions are transferred.</Text>
+       {field("Second account's own email or mobile login",otherLogin,
+        v=>{setOtherLogin(v);setOtherLink(null);})}
+       {button("Issue recipient-specific 15-minute link code",issueSecondLoginLink,
+        busy||otherLogin.trim().length<6)}
+       {otherLink&&<Text selectable style={styles.subtitle}>
+        Private code: {otherLink.authorizationCode}</Text>}
+       {otherLink&&<Text>Expires {new Date(otherLink.expiresAt).toLocaleTimeString("en-IN")}.
+        Sign into that exact second account to accept.</Text>}
+      </View>}
      {profile?.profileStatus==="VERIFIED"&&token&&
       <NativePatientPrivateDetails token={token}
        consentGranted={profile.consentGranted} onExpired={clear}/>}
