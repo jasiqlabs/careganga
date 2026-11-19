@@ -1,4 +1,5 @@
-import {BadRequestException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {randomUUID} from "node:crypto";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -20,6 +21,45 @@ type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
 export class PatientAdminOverviewService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService){}
+
+ /** A request to print H15 data must be a fresh, exact selected-source
+  * authorization, not an unscoped report/export or public bearer URL.
+  * CG19 still exclusively owns private PDF/document releases.
+  */
+ async authorizePrint(bearer:string,rawRef:string,body:unknown){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  if(!ID.test(rawRef)||!body||typeof body!=="object"||Array.isArray(body))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const v=body as Record<string,unknown>;
+  if(Object.keys(v).some(k=>!["expectedVersion","purpose"].includes(k))||
+   v.purpose!=="BOOKING_HISTORY"||!Number.isSafeInteger(v.expectedVersion)||
+   Number(v.expectedVersion)<1||Number(v.expectedVersion)>2147483645)
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const c=await this.db.connect();let started=false;
+  try{
+   await c.query("BEGIN");started=true;
+   const row=await c.query<{booking_display_id:string;revision:number}>(
+    "SELECT booking_display_id,revision FROM cg15_consultation_appointment "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+    [actor.realmId,rawRef]);
+   if(!row.rows[0])throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
+   if(row.rows[0].revision!==v.expectedVersion)
+    throw new ConflictException({code:"CG15_PATIENT_CHANGED"});
+   // No personal health fields, phone, payment or clinical notes in audit.
+   await c.query(
+    "INSERT INTO access_audit(realm_id,actor_account_id,action_key,"+
+    "outcome,safe_context,correlation_ref) "+
+    "VALUES($1,$2,'health.patients.booking-report.print','SUCCESS',$3::jsonb,$4)",
+    [actor.realmId,actor.accountId,JSON.stringify({
+     source:"CG15",purpose:"BOOKING_HISTORY",
+     bookingRef:rawRef,version:row.rows[0].revision}),randomUUID()]);
+   await c.query("COMMIT");started=false;
+   return {authorized:true,bookingId:row.rows[0].booking_display_id,
+    bookingVersion:row.rows[0].revision,scope:"ONE_BOOKING",
+    message:"Protected source version verified. Only this booking and the loaded original history may be printed."};
+  }catch(e){if(started)await c.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{c.release();}
+ }
  async bookingHistory(bearer:string,rawRef:string,beforeRaw?:string){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   if(!ID.test(rawRef)||beforeRaw!==undefined&&
