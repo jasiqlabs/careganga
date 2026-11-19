@@ -12,7 +12,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export class HealthCenterSupportScopeFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
  async assertCurrent(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string,
-  action:"health.centers.draft.edit"|"health.patients.intake"|"health.visits.manage"="health.centers.draft.edit"){
+  action:"health.centers.draft.edit"|"health.patients.intake"|"health.visits.manage"|"health.appointments.cancel"="health.centers.draft.edit"){
   if(!UUID.test(centerRef))
    throw new NotFoundException("Your healthcare center is unavailable");
   await this.identity.assertCurrent(tx,actor,action);
