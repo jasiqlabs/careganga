@@ -2,6 +2,13 @@
 -- authorization evidence only for the original PROVISIONAL INTAKE.
 -- Does not create a CG01 family account link, verified patient identity,
 -- clinical file access, future appointment authority or general guardianship.
+-- CG15 intake's existing PK is (root_realm_id,id) and does not
+-- provide the four-column unique key required by the dependent evidence FK.
+-- Add the exact-source candidate key before creating the dependent table.
+ALTER TABLE cg15_patient_center_intake
+ ADD CONSTRAINT uq_cg15_center_intake_identity_for_dependents
+ UNIQUE(root_realm_id,id,patient_id,center_id);
+
 CREATE TABLE cg15_patient_dependent_intake_authorization (
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
