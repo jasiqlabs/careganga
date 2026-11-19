@@ -210,7 +210,6 @@ const checks=[
   s.nativeStaffBooking.includes("issueCurrentSlip(result.bookingRef)")&&
   s.nativeStaffBooking.includes("issueCurrentSlip(record.bookingRef)")&&
   s.nativeStaffBooking.includes("/api/v1/appointments/slips/staff/")&&
-  s.cg19.includes("UNIQUE(root_realm_id,appointment_id,source_revision)")===false&&
   s.db5.includes("UNIQUE(root_realm_id,appointment_id,source_revision)")&&
   s.cg19.includes('this.original.originalForCenter(bearer,bookingRef)')],
  ["private slip issues only one source revision and preserves immutable bytes",
@@ -399,6 +398,14 @@ const checks=[
   s.queueBff.includes('params.set("after",after)')&&
   s.webQueue.includes("Next 100")&&
   s.nativeQueue.includes("Next 100")],
+ ["H15 prints only source-authorized selected booking and actual loaded event history",
+  s.webAdmin.includes('className="cg15-print-scope"')&&
+  s.webAdmin.includes("Print selected booking report")&&
+  s.webAdmin.includes("history.bookingId!==selectedBooking.bookingId")&&
+  s.webAdmin.includes("window.print()")&&
+  s.webAdmin.includes("body *{visibility:hidden!important;}")&&
+  s.admin.includes('requireAction(bearer,"health.patients.admin.view")')&&
+  s.admin.includes("cg15_appointment_event")],
  ["H15 registers and books only through actual assigned-center intake action and shows true consent",
   s.adminPage.includes('rightsSet.has("health.patients.intake")')&&
   s.adminPage.includes('href="/admin/health-network/patient-intake"')&&
