@@ -491,6 +491,30 @@ export class ConsultationBookingService{
    throw e;
   }finally{tx.release();}
  }
+ async calendar(bearer:string,idRaw:string){
+  const value=await this.myOne(bearer,idRaw);
+  if(!["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(value.bookingStatus))
+   throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+  // RFC 5545 VCALENDAR holds only the real appointment source snapshot.
+  // Never include symptoms, DOB, contact, protected report URLs, or receipt.
+  const esc=(s:string)=>s.replace(/\\/g,"\\\\").replace(/\r|\n/g," ")
+   .replace(/;/g,"\\;").replace(/,/g,"\\,").slice(0,400);
+  const stamp=(v:string)=>new Date(v).toISOString().replace(/[-:]/g,"")
+   .replace(/\.\d{3}Z$/,"Z");
+  const lines=[
+   "BEGIN:VCALENDAR","VERSION:2.0",
+   "PRODID:-//CareGanga Foundation//Consultations//EN",
+   "CALSCALE:GREGORIAN","METHOD:PUBLISH",
+   "BEGIN:VEVENT","UID:"+value.bookingId+"@careganga.com",
+   "DTSTAMP:"+stamp(value.createdAt),
+   "DTSTART:"+stamp(value.startAt),"DTEND:"+stamp(value.endAt),
+   "SUMMARY:"+esc("Consultation with "+value.doctorName),
+   "LOCATION:"+esc(value.centerName+", "+value.centerAddress),
+   "DESCRIPTION:Pay at center. This calendar event is not a payment receipt.",
+   "STATUS:CONFIRMED","END:VEVENT","END:VCALENDAR"
+  ];
+  return lines.join("\r\n")+"\r\n";
+ }
  async mine(bearer:string,limitRaw:unknown=20){
   const actor=await this.identity.verifySession(bearer);
   const limit=Number(limitRaw);
