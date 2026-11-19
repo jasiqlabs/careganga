@@ -10,7 +10,8 @@ type Hold={holdRef:string;status:string;expiresAt:string;
 type Booking={bookingId:string;startAt:string;bookingStatus:string;
  consultationFeeMinor:string;collectionStatus:string};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
- startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string};
+ startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
+ reschedule?:{bookingRef:string;expectedVersion:number}};
 async function post<T>(path:string,data:Record<string,unknown>,token:string):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -42,6 +43,23 @@ export function NativeConsultationAction(p:Props){
   const t=await SecureStore.getItemAsync(KEY);
   if(!t)throw Error("Sign in using My Patient Profile on CareGanga before booking.");
   return t;
+ }
+ async function reschedule(){
+  if(!p.reschedule||busy||uncertain)return;
+  setBusy(true);setMessage("");
+  if(!confirmKey.current)confirmKey.current=Crypto.randomUUID();
+  try{
+   const t=await token();
+   const result=await post<Booking>("me/"+p.reschedule.bookingRef+"/reschedule",{
+    requestKey:confirmKey.current,expectedVersion:p.reschedule.expectedVersion,
+    centerRef:p.centerRef,startAt:p.startAt,endAt:p.endAt,
+    acceptedFeeMinor:p.feeMinor,acceptedFeeVersion:p.feeVersion,
+    paymentMode:"PAY_AT_CENTER"},t);
+   setBooking(result);setMessage("Your original appointment was rescheduled, with payment due at the center.");
+  }catch(e){
+   setUncertain(true);setMessage(e instanceof Error?e.message:
+    "The reschedule result is uncertain. Check original booking.");
+  }finally{setBusy(false);}
  }
  async function reserve(){
   if(busy||uncertain)return;
@@ -90,6 +108,7 @@ export function NativeConsultationAction(p:Props){
    uncertain?<Text style={style.text}>
     Check My Patient Profile → My Consultations before retrying the original action.
     A second request is disabled until status is verified.</Text>:
+   p.reschedule?label(busy?"Checking…":"Accept fee and reschedule",()=>void reschedule()):
    hold?label(busy?"Checking…":"Confirm pay-at-center appointment",()=>void confirm()):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
  </View>;
