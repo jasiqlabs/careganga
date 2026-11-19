@@ -20,6 +20,7 @@ const authorized=(parts:string[],method:string)=>{
  return route==="policy"&&method==="GET"||
   route==="login"&&method==="POST"||
   route==="signup"&&method==="POST"||
+  route==="signup/start"&&method==="POST"||
   route==="logout"&&method==="POST"||
   route==="mobile/status"&&method==="GET"||
   route==="mobile/start"&&method==="POST"||
@@ -46,13 +47,14 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }catch{return reject(400,"Check the patient form and try again.");}
  }
  const cookie=(await cookies()).get("cg_patient_session")?.value;
- if(route!=="policy"&&route!=="login"&&route!=="signup"&&!cookie)
+ if(route!=="policy"&&route!=="login"&&route!=="signup"&&route!=="signup/start"&&!cookie)
   return reject(401,"Sign in to access your own patient information.");
  const path=route==="mobile/status"?"/api/identity/mobile/status":
   route==="mobile/start"?"/api/identity/mobile/verify/start":
   route==="mobile/confirm"?"/api/identity/mobile/verify/confirm":
   route==="policy"?"/api/v1/patients/consent-policy":
   route==="signup"?"/api/identity/patients/register":
+  route==="signup/start"?"/api/identity/patients/start":
   route==="login"?"/api/identity/login":
   route==="logout"?"/api/identity/logout":
   "/api/v1/patients/"+route;
@@ -65,7 +67,7 @@ async function handler(request:NextRequest,parts:string[],method:string){
   }
   const r=await fetch(new URL(path,backend),{
    method,body:data,cache:"no-store",signal:AbortSignal.timeout(12000),
-   headers:{...(cookie&&route!=="login"&&route!=="signup"&&route!=="policy"?
+   headers:{...(cookie&&route!=="login"&&route!=="signup"&&route!=="signup/start"&&route!=="policy"?
     {Authorization:"Bearer "+cookie}:{}),
     ...(data?{"Content-Type":"application/json"}:{})}
   });
