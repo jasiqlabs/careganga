@@ -5,8 +5,8 @@ type Context={params:Promise<{parts:string[]}>};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function allowed(p:string[],method:string){
  return p.length===3&&p[0]==="me"&&ID.test(p[1])&&
-  (method==="GET"&&["status","file"].includes(p[2])||
-   method==="POST"&&p[2]==="issue")||
+  (method==="GET"&&["status","file","restricted-file"].includes(p[2])||
+   method==="POST"&&["issue","download-grant"].includes(p[2]))||
   p.length===1&&p[0]==="verify"&&method==="POST";
 }
 const reply=(status:number,message:string)=>NextResponse.json({message},{
@@ -15,6 +15,12 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
  if(!allowed(parts,method))return reply(404,"This slip action is unavailable.");
  if(method==="POST"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply(403,"Submit this request from CareGanga.");
+ const isGrantedRead=parts.length===3&&parts[2]==="restricted-file";
+ const grant=isGrantedRead?req.nextUrl.searchParams.get("grant"):null;
+ if(isGrantedRead&&(!grant||!/^[0-9]{10}\.[a-f0-9]{64}$/.test(grant)))
+  return reply(400,"This private document authorization is invalid or expired.");
+ if([...req.nextUrl.searchParams.keys()].some(k=>!isGrantedRead||k!=="grant"))
+  return reply(400,"Unexpected private document request parameters.");
  const publicCheck=parts[0]==="verify";
  const token=publicCheck?null:(await cookies()).get("cg_patient_session")?.value;
  if(!publicCheck&&!token)return reply(401,"Sign in to your patient profile to access your slip.");
@@ -30,12 +36,14 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
   }catch{return reply(400,"Check the verification token or request reference.");}
  }
  try{
-  const result=await fetch(new URL("/api/v1/appointments/slips/"+parts.join("/"),backend),{
+  const target=new URL("/api/v1/appointments/slips/"+parts.join("/"),backend);
+  if(isGrantedRead&&grant)target.searchParams.set("grant",grant);
+  const result=await fetch(target,{
    method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
    headers:{...(token?{Authorization:"Bearer "+token}:{}),
     ...(body?{"Content-Type":"application/json"}:{})}
   });
-  if(result.ok&&parts[2]==="file"){
+  if(result.ok&&["file","restricted-file"].includes(parts[2])){
    const type=result.headers.get("Content-Type");
    if(!type?.includes("application/pdf"))
     return reply(503,"The original PDF cannot be verified.");
