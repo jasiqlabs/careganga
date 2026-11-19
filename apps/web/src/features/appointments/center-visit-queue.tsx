@@ -21,7 +21,7 @@ async function get<T>(path:string,method="GET",body?:Record<string,unknown>):Pro
  if(!r.ok){
   const text=raw&&typeof raw==="object"&&"message" in raw&&
    typeof raw.message==="string"?raw.message:"The queue result is uncertain. Refresh first.";
-  throw Error(text);
+  throw Object.assign(new Error(text),{status:r.status});
  }
  return raw as T;
 }
@@ -133,7 +133,7 @@ export function CenterVisitQueue(){
  }
  async function command(item:Item,next:"CHECK_IN"|"WAITING"|"IN_CONSULTATION"|"COMPLETED"|"NO_SHOW"){
   if(busy||uncertain||!center)return;
-  const reference=item.appointmentRef+":"+next+":"+
+  const reference=center+":"+item.appointmentRef+":"+next+":"+
    (item.visitRef??"")+":"+(item.visitVersion??item.bookingVersion);
   let key=keys.current.get(reference);
   if(!key){key=crypto.randomUUID();keys.current.set(reference,key);}
@@ -157,9 +157,12 @@ export function CenterVisitQueue(){
    keys.current.delete(reference);await load(center,day,cursor);
    setMessage("The visit status was saved for this healthcare center.");
   }catch(e){
-   setUncertain(true);
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   const deterministic=typeof status==="number"&&status>=400&&status<500;
+   setUncertain(!deterministic);
    setMessage((e instanceof Error?e.message:"The result is uncertain.")+
-    " Refresh the current queue before doing another action.");
+    (deterministic?" Refresh the queue and choose a current action.":
+     " Check the original queue before another action."));
   }finally{setBusy(false);}
  }
  async function cancelAppointment(item:Item){
