@@ -369,6 +369,19 @@ const checks=[
   s.nativeSlots.includes('c.consultationFeeMinor,c.consultationFeeVersion')],
  ["cross-doctor same-center same-time change is not mistaken for no change",
   s.service.includes('old.doctor_id===newDoctorId))')],
+ ["revoked CG14 confirmation rolls back original hold availability without booking",
+  s.service.includes("private async releaseInvalidHold(")&&
+  s.service.includes("UPDATE cg15_doctor_reservation SET status='RELEASED'")&&
+  s.service.includes("UPDATE cg15_consultation_hold SET status='CANCELLED'")&&
+  s.service.includes("e instanceof NotFoundException||e instanceof ConflictException")&&
+  s.service.includes("await this.releaseInvalidHold(tx,actor.realmId,id)")&&
+  s.service.includes('CG15_BOOKING_PRICE_CHANGED')],
+ ["revoked patient care consent denies public QR even for old issued document",
+  s.original.includes("async activeForToken(")&&
+  s.original.includes("JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id")&&
+  s.original.includes("consent.purpose='PATIENT_CARE'")&&
+  s.original.includes("l.revoked_at IS NULL AND owner.status='ACTIVE'")&&
+  s.cg19.includes("this.original.activeForToken(")],
  ["patient-only hold status blocks staff-created reservations of other patients",
   s.service.includes("if(patient.id!==row.rows[0].patient_id)")&&
   s.service.includes('await this.ownPatient(tx,actor,false)')&&
