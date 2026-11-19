@@ -117,6 +117,9 @@ export function FoundationPatientBookings(){
   finally{setHistoryBusy(false);}
  }
  const selectedBooking=result?.items.find(x=>x.bookingRef===selected);
+ // Never show an old patient's async audit history in another patient's card.
+ const currentHistory=selectedBooking&&history?.bookingId===selectedBooking.bookingId?
+  history:null;
  const update=(change:Partial<Query>)=>setQuery(q=>({...q,...change,after:""}));
  const metrics=result?.metrics;
  const districts=result?.districts.filter(d=>!query.stateRef||d.stateRef===query.stateRef)??[];
@@ -276,14 +279,13 @@ export function FoundationPatientBookings(){
        · {statusName(selectedBooking.collectionStatus)}</p>
       <p>Original CareGanga appointment record — not a receipt, prescription,
        government Health ID or evidence of financial assistance.</p>
-      <button type="button" disabled={historyBusy||!history||
-       history.bookingId!==selectedBooking.bookingId}
+      <button type="button" disabled={historyBusy||!currentHistory}
        onClick={()=>window.print()}>Print selected booking report</button>
       <h3>Booking History</h3>
-      {historyBusy&&!history&&<p role="status">Checking original booking events…</p>}
+      {historyBusy&&!currentHistory&&<p role="status">Checking original booking events…</p>}
       {!!historyError&&<p role="alert">{historyError}</p>}
-      {history?.items.length===0&&<p>No recorded changes are available for this booking.</p>}
-      {history?.items.map(e=><article key={e.revision}
+      {currentHistory?.items.length===0&&<p>No recorded changes are available for this booking.</p>}
+      {currentHistory?.items.map(e=><article key={e.revision}
        style={{padding:10,borderBottom:"1px solid #d7dfdb"}}>
        <p><strong>{e.action.replaceAll("_"," ")}</strong> —
         {new Date(e.when).toLocaleString("en-IN")}</p>
@@ -298,9 +300,9 @@ export function FoundationPatientBookings(){
        {e.after?.consultationFeeMinor&&
         <p>Accepted consultation: {money(e.after.consultationFeeMinor)}</p>}
       </article>)}
-      {history?.next&&<p>Older booking events remain. Printing includes only
+      {currentHistory?.next&&<p>Older booking events remain. Printing includes only
        this selected booking and the event entries currently loaded below.</p>}
-      {history?.next&&<button type="button" disabled={historyBusy}
+      {currentHistory?.next&&<button type="button" disabled={historyBusy}
        onClick={()=>void moreHistory()}>Older booking events</button>}
       <p>This event history contains only this protected booking's operational changes.
        Medical reports and other patient records are not disclosed.</p>
