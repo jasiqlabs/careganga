@@ -7,6 +7,8 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
+import {HealthClinicianIdentityService}
+ from "../../cg-14-healthcare-network/application/health-clinician-identity.service";
 import type {VerifiedFoundationActor}
  from "../../cg-01-identity-access/public-api";
 
@@ -55,7 +57,8 @@ function result(visit:Visit){return {
 export class ConsultationQueueService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly identity:SessionService,
-  private readonly centers:HealthCenterSupportScopeFacade){}
+  private readonly centers:HealthCenterSupportScopeFacade,
+  private readonly clinicians:HealthClinicianIdentityService){}
  private async scope(tx:PoolClient,actor:VerifiedFoundationActor,center:string){
   await this.centers.assertCurrent(tx,actor,center,"health.visits.manage");
  }
@@ -494,6 +497,9 @@ export class ConsultationQueueService{
    const ap=ar.rows[0];
    if(!ap||ap.booking_state!==old.state)
     throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   if(nextState==="IN_CONSULTATION"||nextState==="COMPLETED")
+    await this.clinicians.assertCurrentAppointmentClinician(
+     tx,actor,center,ap.doctor_id);
    // No-show is an original booking action, never a transition of a
    // patient already checked in to ARRIVED/WAITING.
    const changed=await tx.query<Visit>(
