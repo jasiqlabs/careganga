@@ -194,6 +194,14 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   }finally{setWorking(false);}
  }
  function busyOrUncertain(){return working||uncertain;}
+ const summary=[
+  {label:"Verified doctors",value:String(new Set(roster.map(x=>x.doctorRef)).size)},
+  {label:"Active schedules",value:String(roster.filter(x=>x.status==="ACTIVE").length)},
+  {label:"Today available",value:"—"},
+  {label:"Total appointments",value:"—"},
+  {label:"Clinics mapped",value:String(new Set(roster.map(x=>x.centerRef)).size)},
+  {label:"On approved leave",value:"—"}
+ ];
  const result=roster.filter(x=>
   (x.doctorName+" "+x.centerName+" "+x.specialties.join(" "))
    .toLowerCase().includes(search.trim().toLowerCase()));
@@ -212,6 +220,16 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     Refresh verified schedules</button>
   </div>
   <div className="form-section">
+   <h2>Schedule overview</h2>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
+    {summary.map(item=><div className="form-section" key={item.label}>
+     <p style={{fontSize:13,marginBottom:4}}>{item.label}</p>
+     <strong style={{fontSize:22}}>{item.value}</strong>
+    </div>)}
+   </div>
+   <p>Counts reflect current verified doctor-center records only. Availability,
+    appointment totals and approved-leave aggregates are not displayed until
+    their source-backed integrations are available.</p>
    <h2>Doctor and center</h2>
    <label>Search approved doctors, clinics or specialties
     <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
