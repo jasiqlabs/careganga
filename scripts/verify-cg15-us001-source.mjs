@@ -108,6 +108,23 @@ const tests=[
  ["source: H07 Foundation Web and Center Portal",s.web.includes("Weekly working hours")&&
   s.web.includes("doctorName")&&s.webAdmin.includes("DoctorScheduleWorkspace")&&
   s.centerPortal.includes("DoctorScheduleWorkspace")],
+ ["source: H07 geography and server search only use current CG14 + CG02 master",
+  s.service.includes('geo?.stateRef?uuid(geo.stateRef)')&&
+  s.service.includes('geo?.districtRef?uuid(geo.districtRef)')&&
+  s.service.includes('geo?.blockRef?uuid(geo.blockRef)')&&
+  s.service.includes('AND ($3::uuid IS NULL OR c.state_ref=$3)')&&
+  s.service.includes('AND ($4::uuid IS NULL OR c.district_ref=$4)')&&
+  s.service.includes('AND ($5::uuid IS NULL OR c.block_ref=$5)')&&
+  s.service.includes('position(lower($6) in lower(d.full_name))>0')&&
+  s.service.includes('JOIN geography_area st')&&
+  s.service.includes('centerChoices:choices.map')&&
+  s.controller.includes('@Query("stateRef")state?:string')&&
+  s.controller.includes('@Query("search")search?:string')&&
+  s.webApi.includes('["centerRef","stateRef","districtRef","blockRef"]')&&
+  s.webApi.includes('url.searchParams.set("search",search.trim())')&&
+  s.web.includes('Filter approved schedules by current healthcare location')&&
+  s.web.includes('if(appliedSearch)params.set("search",appliedSearch)')&&
+  s.web.includes('const result=roster;')],
  ["source: H07 six KPI cards use genuine current approved booking and leave source",
   s.service.includes("AS appointments,")&&
   s.service.includes("AS today_sessions,")&&
