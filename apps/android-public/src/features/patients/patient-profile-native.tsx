@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
+import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 const KEY="cg_public_patient_only_session";
@@ -124,7 +125,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
   if(!token)return;
   void run(async()=>{
    const r=await invoke<Patient>("/api/v1/patients/registration","POST",{
-    requestKey:crypto.randomUUID(),firstName:first,lastName:last,
+    requestKey:Crypto.randomUUID(),firstName:first,lastName:last,
     dateOfBirth:dob||null,consentVersion:policy.version,consentAccepted:agreed
    },token);
    if(!r.data)throw Error("Registration could not be confirmed.");
