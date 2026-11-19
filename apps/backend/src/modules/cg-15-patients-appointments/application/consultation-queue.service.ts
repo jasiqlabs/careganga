@@ -89,7 +89,7 @@ export class ConsultationQueueService{
   const before=beforeRaw===undefined?null:Number(beforeRaw);
   const tx=await this.db.connect();let active=false;
   try{
-   await tx.query("BEGIN READ ONLY");active=true;
+   await tx.query("BEGIN");active=true;
    await this.scope(tx,actor,center);
    const original=await tx.query<{booking_display_id:string}>(
     "SELECT booking_display_id FROM cg15_consultation_appointment "+
@@ -133,7 +133,7 @@ export class ConsultationQueueService{
    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
   const tx=await this.db.connect();let active=false;
   try{
-   await tx.query("BEGIN READ ONLY");active=true;
+   await tx.query("BEGIN");active=true;
    await this.scope(tx,actor,center);
    const counts=await tx.query<{booking_state:string;n:number}>(
     "SELECT booking_state,COUNT(*)::integer AS n "+
