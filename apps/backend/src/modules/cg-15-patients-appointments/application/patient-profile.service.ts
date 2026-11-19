@@ -360,6 +360,62 @@ export class PatientProfileService{
   finally{c.release();}
  }
 
+ /** Signed-in, fully verified patient grants a single center one
+  * short-lived receptionist booking authorization. It is not identity or
+  * financial consent and cannot be used at any other center.
+  */
+ async beginAssistedBooking(bearer:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer),v=record(input);
+  only(v,["centerRef"]);
+  if(typeof v.centerRef!=="string"||!ID.test(v.centerRef))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const center=v.centerRef;
+  const c=await this.db.connect();let open=false;
+  try{
+   await c.query("BEGIN");open=true;
+   await this.activeAccount(c,actor,true);
+   const patient=await this.owned(c,actor,true);
+   if(!patient||patient.profile_status!=="VERIFIED"||!patient.consent_granted)
+    throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   const proof=await c.query(
+    "SELECT 1 FROM cg15_patient_identity_event WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 LIMIT 1",[actor.realmId,patient.id]);
+   if(!proof.rowCount)
+    throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   const current=await c.query(
+    "SELECT 1 FROM health_center hc JOIN health_provider hp "+
+    "ON hp.root_realm_id=hc.root_realm_id AND hp.id=hc.provider_id "+
+    "WHERE hc.root_realm_id=$1 AND hc.id=$2 AND "+
+    "hc.status='VERIFIED' AND hc.access_state='ENABLED' "+
+    "AND hp.status='VERIFIED' LIMIT 1",[actor.realmId,center]);
+   if(!current.rowCount)
+    throw new NotFoundException({code:"CG15_PATIENT_CENTER_UNAVAILABLE"});
+   const old=await c.query<{created_at:Date}>(
+    "SELECT created_at FROM cg15_patient_assisted_booking_code "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND "+
+    "consumed_at IS NULL AND revoked_at IS NULL "+
+    "ORDER BY created_at DESC LIMIT 1",[actor.realmId,patient.id]);
+   if(old.rows[0]&&Date.now()-old.rows[0].created_at.getTime()<60_000)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_TOO_SOON"});
+   await c.query(
+    "UPDATE cg15_patient_assisted_booking_code SET revoked_at=now() "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND consumed_at IS NULL AND revoked_at IS NULL",
+    [actor.realmId,patient.id]);
+   const code="CGB-"+randomBytes(12).toString("hex").toUpperCase();
+   const codeDigest=createHash("sha256").update(code).digest("hex");
+   const saved=await c.query<{expires_at:Date}>(
+    "INSERT INTO cg15_patient_assisted_booking_code("+
+    "root_realm_id,patient_id,account_id,center_id,code_digest,expires_at) "+
+    "VALUES($1,$2,$3,$4,$5,now()+interval '15 minutes') RETURNING expires_at",
+    [actor.realmId,patient.id,actor.accountId,center,codeDigest]);
+   await c.query("COMMIT");open=false;
+   return {virtualPatientId:patient.virtual_display_id,centerRef:center,
+    authorizationCode:code,expiresAt:saved.rows[0].expires_at.toISOString(),
+    message:"Give this code only to assigned staff at your chosen healthcare center. One hold may be made during the next 15 minutes."};
+  }catch(e){if(open)await c.query("ROLLBACK");throw e;}
+  finally{c.release();}
+ }
+
  async update(bearer:string,input:unknown){
   const actor=await this.identity.verifySession(bearer);
   const v=record(input);
