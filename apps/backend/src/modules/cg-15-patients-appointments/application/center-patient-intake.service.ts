@@ -300,7 +300,7 @@ export class CenterPatientIntakeService{
     d.identityCheckedInPerson!==true||d.authorityCheckedInPerson!==true||
     d.limitedConsentAttested!==true)
     throw new BadRequestException({code:"CG15_PATIENT_DEPENDENT_PROOF_REQUIRED"});
-   dependent={relationship:d.relationship as typeof dependent.relationship};
+   dependent={relationship:d.relationship as "PARENT"|"LEGAL_GUARDIAN"|"AUTHORIZED_REPRESENTATIVE"};
   }
   const digest=hash({firstName,lastName,dateOfBirth,
    version:requestedVersion,assistedConsentAttested:true,
