@@ -68,6 +68,7 @@ CREATE TABLE cg15_schedule_weekly_window(
  close_local time NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
  CHECK(open_local<close_local),
+ CHECK(EXTRACT(SECOND FROM open_local)=0 AND EXTRACT(SECOND FROM close_local)=0),
  UNIQUE(root_realm_id,revision_id,weekday,open_local),
  FOREIGN KEY(root_realm_id,schedule_id,revision_id)
   REFERENCES cg15_schedule_revision(root_realm_id,schedule_id,id) ON DELETE RESTRICT
