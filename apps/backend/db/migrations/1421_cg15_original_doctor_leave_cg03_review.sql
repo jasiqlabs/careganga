@@ -239,7 +239,65 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
  (case_kind='CG15_DOCTOR_LEAVE'
   AND health_doctor_id IS NOT NULL AND health_center_id IS NOT NULL
   AND cg15_exception_id IS NOT NULL AND cg15_exception_revision>0
-  AND cg15_exception_digest ~ '^[0-9a-f]{64}
+  AND cg15_exception_digest ~ '^[0-9a-f]{64}(health_provider_id,health_provider_revision_id,
+   health_center_revision_id,health_doctor_revision_id,health_content_revision_id,
+   health_erp_revision_id,health_revision_no,health_source_digest,
+   cms_page_id,cms_page_revision_id,cms_revision_no,cms_content_digest,
+   branch_source_ref,branch_source_revision,branch_source_digest,
+   finance_voucher_id,finance_voucher_revision,finance_voucher_digest,
+   finance_proof_file_id,finance_proof_revision,
+   finance_claim_id,finance_claim_revision,finance_claim_digest,
+   finance_claim_bill_id,finance_claim_bill_version,
+   finance_invoice_id,finance_invoice_revision,finance_invoice_digest,
+   finance_budget_id,finance_budget_revision,finance_budget_digest,
+   target_account_id,target_role_id,expected_access_version,expected_role_revision)=0)
+
+);
+
+ALTER TABLE cg03_case DROP CONSTRAINT cg03_case_health_only_source;
+ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_health_only_source CHECK(
+ case_kind IN('HEALTH_PROVIDER_VERIFICATION','HEALTH_CENTER_VERIFICATION',
+  'HEALTH_DOCTOR_VERIFICATION','HEALTH_CENTER_CONTENT_REVIEW','HEALTH_CENTER_ERP_GRANT','CG15_DOCTOR_LEAVE')
+ OR num_nonnulls(health_provider_id,health_center_id,
+   health_provider_revision_id,health_center_revision_id,
+   health_revision_no,health_source_digest)=0);
+
+ALTER TABLE cg03_case ADD CONSTRAINT cg03_leave_only_source CHECK(
+ (case_kind='CG15_DOCTOR_LEAVE'
+  AND cg15_exception_id IS NOT NULL AND cg15_exception_revision>0
+  AND cg15_exception_digest ~ '^[0-9a-f]{64}$')
+ OR (case_kind<>'CG15_DOCTOR_LEAVE'
+  AND cg15_exception_id IS NULL AND cg15_exception_revision IS NULL
+  AND cg15_exception_digest IS NULL));
+CREATE UNIQUE INDEX ux_cg03_leave_original_exception
+ ON cg03_case(realm_id,cg15_exception_id)
+ WHERE case_kind='CG15_DOCTOR_LEAVE';
+CREATE INDEX ix_cg03_leave_pending
+ ON cg03_case(realm_id,status,submitted_at DESC,id DESC)
+ WHERE case_kind='CG15_DOCTOR_LEAVE';
+CREATE OR REPLACE FUNCTION cg03_health_source_immutable()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.health_provider_id IS DISTINCT FROM OLD.health_provider_id OR
+    NEW.health_center_id IS DISTINCT FROM OLD.health_center_id OR
+    NEW.health_provider_revision_id IS DISTINCT FROM OLD.health_provider_revision_id OR
+    NEW.health_center_revision_id IS DISTINCT FROM OLD.health_center_revision_id OR
+    NEW.health_doctor_id IS DISTINCT FROM OLD.health_doctor_id OR
+    NEW.health_doctor_revision_id IS DISTINCT FROM OLD.health_doctor_revision_id OR
+    NEW.health_content_revision_id IS DISTINCT FROM OLD.health_content_revision_id OR
+    NEW.health_erp_revision_id IS DISTINCT FROM OLD.health_erp_revision_id OR
+    NEW.health_revision_no IS DISTINCT FROM OLD.health_revision_no OR
+    NEW.health_source_digest IS DISTINCT FROM OLD.health_source_digest OR
+    NEW.cg15_exception_id IS DISTINCT FROM OLD.cg15_exception_id OR
+    NEW.cg15_exception_revision IS DISTINCT FROM OLD.cg15_exception_revision OR
+    NEW.cg15_exception_digest IS DISTINCT FROM OLD.cg15_exception_digest THEN
+  RAISE EXCEPTION 'Original healthcare review source is immutable';
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+
   AND num_nonnulls(health_provider_id,health_provider_revision_id,
    health_center_revision_id,health_doctor_revision_id,health_content_revision_id,
    health_erp_revision_id,health_revision_no,health_source_digest,
