@@ -51,8 +51,9 @@ const label=(title:string,onPress:()=>void,active=false)=>(
   onPress={onPress} style={[styles.button,active&&styles.selected]}>
   <Text style={styles.buttonLabel}>{title}</Text>
  </Pressable>);
-export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
- const [mode,setMode]=useState<Mode>("centers"),[search,setSearch]=useState("");
+export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
+ reschedule?:{bookingRef:string;expectedVersion:number}}){
+ const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
  const [service,setService]=useState(""),[day,setDay]=useState("");
