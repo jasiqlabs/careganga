@@ -22,7 +22,8 @@
     "verify:cg14-source": "node scripts/verify-cg14-source.mjs",
     "verify:cg14-us004-us005-source": "node scripts/verify-cg14-us004-us005-source.mjs",
     "verify:cg15-us001-source": "node scripts/verify-cg15-us001-source.mjs",
-    "verify:cg15-us002-source": "node scripts/verify-cg15-us002-source.mjs"
+    "verify:cg15-us002-source": "node scripts/verify-cg15-us002-source.mjs",
+    "verify:cg15-us003-source": "node scripts/verify-cg15-us003-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
