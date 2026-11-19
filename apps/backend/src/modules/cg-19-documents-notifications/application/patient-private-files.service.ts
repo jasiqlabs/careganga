@@ -9,7 +9,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const MAX=10485760;
 type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
@@ -224,7 +224,17 @@ export class PatientPrivateFilesService{
    if(!locked||locked.patient_id!==own||
     locked.reserved_until.getTime()<=Date.now()||locked.status==="REJECTED")
     throw new ConflictException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
-   if(locked.status==="VALIDATED")return this.status(bearer,ref);
+   if(locked.status==="VALIDATED"){
+    const previously=await c.query<{id:string;revision:number}>(
+     "SELECT id,revision FROM cg19_patient_private_file "+
+     "WHERE realm_id=$1 AND intent_id=$2 AND patient_id=$3 "+
+     "AND revoked_at IS NULL",
+     [actor.realmId,row.id,own]);
+    return {uploadRef:row.id,status:"VALIDATED",
+     fileRef:previously.rows[0]?.id??null,
+     fileVersion:previously.rows[0]?.revision??null,
+     cleanVerified:!!previously.rows[0]};
+   }
    if(!clean){
     await c.query(
      "UPDATE cg19_patient_file_intent SET status='REJECTED',updated_at=now() "+
