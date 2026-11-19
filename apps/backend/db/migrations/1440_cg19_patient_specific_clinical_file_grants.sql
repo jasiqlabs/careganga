@@ -13,6 +13,11 @@ CREATE TABLE cg19_patient_clinical_file_grant(
  patient_id uuid NOT NULL,
  file_id uuid NOT NULL,
  appointment_id uuid NOT NULL,
+ doctor_id uuid NOT NULL,
+ center_id uuid NOT NULL,
+ appointment_revision integer NOT NULL CHECK(appointment_revision>0),
+ care_consent_revision integer NOT NULL CHECK(care_consent_revision>0),
+ care_purpose text NOT NULL DEFAULT 'PATIENT_CARE' CHECK(care_purpose='PATIENT_CARE'),
  granted_by_account uuid NOT NULL,
  status text NOT NULL DEFAULT 'ACTIVE'
   CHECK(status IN('ACTIVE','REVOKED')),
@@ -25,6 +30,9 @@ CREATE TABLE cg19_patient_clinical_file_grant(
   REFERENCES cg19_patient_private_file(realm_id,id,patient_id) ON DELETE RESTRICT,
  FOREIGN KEY(realm_id,appointment_id,patient_id)
   REFERENCES cg15_consultation_appointment(root_realm_id,id,patient_id)
+  ON DELETE RESTRICT,
+ FOREIGN KEY(realm_id,patient_id,care_purpose,care_consent_revision)
+  REFERENCES cg15_patient_consent(root_realm_id,patient_id,purpose,revision_no)
   ON DELETE RESTRICT,
  FOREIGN KEY(granted_by_account,realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
@@ -86,6 +94,11 @@ BEGIN
     NEW.patient_id IS DISTINCT FROM OLD.patient_id OR
     NEW.file_id IS DISTINCT FROM OLD.file_id OR
     NEW.appointment_id IS DISTINCT FROM OLD.appointment_id OR
+    NEW.doctor_id IS DISTINCT FROM OLD.doctor_id OR
+    NEW.center_id IS DISTINCT FROM OLD.center_id OR
+    NEW.appointment_revision IS DISTINCT FROM OLD.appointment_revision OR
+    NEW.care_consent_revision IS DISTINCT FROM OLD.care_consent_revision OR
+    NEW.care_purpose IS DISTINCT FROM OLD.care_purpose OR
     NEW.granted_by_account IS DISTINCT FROM OLD.granted_by_account OR
     NEW.granted_at IS DISTINCT FROM OLD.granted_at OR
     OLD.status<>'ACTIVE' OR NEW.status<>'REVOKED' OR
