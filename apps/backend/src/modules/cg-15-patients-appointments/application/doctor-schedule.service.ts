@@ -546,4 +546,157 @@ export class DoctorScheduleService{
      "Center-specific time block recorded. Existing bookings are not cancelled."};
   });
  }
+ /** Publisher-only queue. A Foundation schedule manager cannot read or issue
+  * original CG03 reviewer decisions without approvals.review.
+  */
+ async readyLeaves(token:string){
+  const actor=await this.sessions.requireAction(token,"health.schedules.manage");
+  return this.transaction(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.schedules.manage");
+   const rows=await tx.query<{case_ref:string;reference:string;doctor_name:string;
+    center_name:string;exception_id:string;version:number;
+    start_at:Date;end_at:Date}>(
+    "SELECT review.id AS case_ref,review.case_number AS reference,"+
+    "d.full_name AS doctor_name,c.display_name AS center_name,"+
+    "e.id AS exception_id,e.version,e.start_at,e.end_at "+
+    "FROM cg03_case review "+
+    "JOIN cg15_schedule_exception e ON e.original_case_ref=review.id "+
+    "AND e.root_realm_id=review.realm_id AND e.state='PENDING' "+
+    "AND e.kind='LEAVE' AND e.source_digest=review.cg15_exception_digest "+
+    "JOIN health_doctor d ON d.root_realm_id=e.root_realm_id AND d.id=e.doctor_id "+
+    "JOIN health_center c ON c.root_realm_id=e.root_realm_id AND c.id=e.center_id "+
+    "WHERE review.realm_id=$1 AND review.case_kind='CG15_DOCTOR_LEAVE' "+
+    "AND review.status='PENDING_OWNER' "+
+    "ORDER BY review.updated_at DESC,review.id DESC LIMIT 50",
+    [actor.realmId]);
+   return {requests:rows.rows.map(r=>({caseRef:r.case_ref,reference:r.reference,
+    doctorName:r.doctor_name,centerName:r.center_name,
+    exceptionVersion:r.version,startAt:r.start_at,endAt:r.end_at}))};
+  });
+ }
+ async applyLeave(token:string,caseRefRaw:string,body:unknown){
+  const caseRef=uuid(caseRefRaw),raw=field(body);
+  allowed(raw,["requestKey","expectedVersion","currentPassword"]);
+  const key=uuid(raw.requestKey),expected=vnum(raw.expectedVersion);
+  if(typeof raw.currentPassword!=="string"||raw.currentPassword.length<8||
+    Buffer.byteLength(raw.currentPassword,"utf8")>1024)
+   throw new BadRequestException({code:"CG15_LEAVE_INVALID"});
+  const actor=await this.sessions.requireAction(token,"health.schedules.manage");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.transaction(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"health.schedules.manage");
+   // Resolve immutable source WITHOUT taking a case lock before doctor/center.
+   const original=await tx.query<{health_doctor_id:string;health_center_id:string;
+    cg15_exception_id:string;cg15_exception_revision:number;
+    cg15_exception_digest:string;status:string;request_key:string}>(
+    "SELECT health_doctor_id,health_center_id,cg15_exception_id,"+
+    "cg15_exception_revision,cg15_exception_digest,status,request_key "+
+    "FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='CG15_DOCTOR_LEAVE'",
+    [actor.realmId,caseRef]);
+   const c=original.rows[0];
+   if(!c)throw new NotFoundException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   const peek=await tx.query<{association_id:string;version:number}>(
+    "SELECT association_id,version FROM cg15_schedule_exception "+
+    "WHERE root_realm_id=$1 AND id=$2 AND doctor_id=$3 AND center_id=$4",
+    [actor.realmId,c.cg15_exception_id,c.health_doctor_id,c.health_center_id]);
+   if(!peek.rows[0])throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   const src=await this.source(tx,actor,"foundation",
+    peek.rows[0].association_id,true);
+   const schedule=await tx.query<Schedule>(
+    "SELECT id,version,status,current_revision_id,time_zone,consultation_mode "+
+    "FROM cg15_doctor_schedule WHERE root_realm_id=$1 "+
+    "AND association_id=$2 AND consultation_mode='IN_PERSON' FOR UPDATE",
+    [actor.realmId,src.id]);
+   if(!schedule.rows[0]||schedule.rows[0].status!=="ACTIVE")
+    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   const row=await tx.query<{id:string;version:number;kind:string;state:string;
+    doctor_id:string;center_id:string;source_digest:string;original_case_ref:string}>(
+    "SELECT id,version,kind,state,doctor_id,center_id,source_digest,"+
+    "original_case_ref FROM cg15_schedule_exception WHERE root_realm_id=$1 "+
+    "AND id=$2 FOR UPDATE",[actor.realmId,c.cg15_exception_id]);
+   const e=row.rows[0];
+   if(!e||e.kind!=="LEAVE"||e.state!=="PENDING"||
+     e.version!==expected||e.doctor_id!==src.doctor_id||
+     e.center_id!==src.center_id||e.original_case_ref!==caseRef||
+     e.source_digest!==c.cg15_exception_digest||
+     c.status!=="PENDING_OWNER")
+    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   const cmd=await this.command(tx,actor,"APPLY_LEAVE",key,
+    [caseRef,expected,c.cg15_exception_id,c.cg15_exception_digest]);
+   if(cmd.replay)return {status:"PREVIOUSLY_CONFIRMED",
+    message:"This original leave approval was already applied."};
+   const source:DoctorLeaveSubmission={kind:"CG15_DOCTOR_LEAVE",
+    doctorRef:src.doctor_id,centerRef:src.center_id,
+    exceptionRef:e.id,revisionNo:c.cg15_exception_revision,
+    digest:e.source_digest,requestKey:c.request_key};
+   const proof=await this.leaveReview.approved(tx,actor,{...source,caseRef});
+   if(!proof)throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,raw.currentPassword);
+   const changed=await tx.query<{version:number}>(
+    "UPDATE cg15_schedule_exception SET state='ACTIVE',"+
+    "approved_case_ref=$3,version=version+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND version=$4 "+
+    "AND state='PENDING' RETURNING version",
+    [actor.realmId,e.id,caseRef,expected]);
+   if(!changed.rows[0])throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   await this.leaveReview.finish(tx,actor,caseRef);
+   await tx.query(
+    "INSERT INTO cg15_schedule_event(root_realm_id,schedule_id,"+
+    "exception_id,actor_ref,action_key,source_digest,request_key) "+
+    "VALUES($1,$2,$3,$4,'EXCEPTION_APPROVED',$5,$6)",
+    [actor.realmId,schedule.rows[0].id,e.id,actor.accountId,e.source_digest,key]);
+   await this.done(tx,cmd.id,e.id,changed.rows[0].version);
+   return {status:"ACTIVE",version:changed.rows[0].version,
+    message:"Independently approved doctor leave is now active. Existing confirmed visits are not automatically cancelled."};
+  });
+ }
+ async cancelException(token:string,channel:Channel,associationRef:string,
+  exceptionRef:string,body:unknown,centerRef?:string){
+  const assoc=uuid(associationRef),ref=uuid(exceptionRef),x=field(body);
+  allowed(x,["requestKey","expectedVersion"]);
+  const key=uuid(x.requestKey),expected=vnum(x.expectedVersion);
+  const own=channel==="center"?uuid(centerRef):undefined;
+  const actor=await this.actor(token,channel,true);
+  return this.transaction(async tx=>{
+   const src=await this.source(tx,actor,channel,assoc,true,own);
+   const schedule=await tx.query<{id:string}>(
+    "SELECT id FROM cg15_doctor_schedule WHERE root_realm_id=$1 "+
+    "AND association_id=$2 AND consultation_mode='IN_PERSON' FOR UPDATE",
+    [actor.realmId,assoc]);
+   const old=await tx.query<{id:string;kind:string;state:string;
+    version:number;source_digest:string;original_case_ref:string|null}>(
+    "SELECT id,kind,state,version,source_digest,original_case_ref "+
+    "FROM cg15_schedule_exception WHERE root_realm_id=$1 "+
+    "AND schedule_id=$2 AND id=$3 FOR UPDATE",
+    [actor.realmId,schedule.rows[0]?.id??null,ref]);
+   const e=old.rows[0];
+   if(!e||e.version!==expected||
+     (e.kind==="LEAVE"&&e.state!=="PENDING")||
+     (e.kind!=="LEAVE"&&e.state!=="ACTIVE"))
+    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   if(e.kind==="LEAVE"&&e.original_case_ref){
+    const caseRow=await tx.query<{status:string}>(
+     "SELECT status FROM cg03_case WHERE realm_id=$1 AND id=$2 FOR SHARE",
+     [actor.realmId,e.original_case_ref]);
+    if(!["RETURNED","REJECTED"].includes(caseRow.rows[0]?.status??""))
+     throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   }
+   const cmd=await this.command(tx,actor,"CANCEL_EXCEPTION",key,[assoc,ref,expected]);
+   if(cmd.replay)return {status:"PREVIOUSLY_CONFIRMED",
+    message:"This change was already saved. Refresh the original schedule."};
+   const update=await tx.query<{version:number}>(
+    "UPDATE cg15_schedule_exception SET state='CANCELLED',"+
+    "version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
+    "AND version=$3 RETURNING version",[actor.realmId,ref,expected]);
+   if(!update.rows[0])throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   await tx.query("INSERT INTO cg15_schedule_event(root_realm_id,schedule_id,"+
+    "exception_id,actor_ref,action_key,source_digest,request_key) "+
+    "VALUES($1,$2,$3,$4,'EXCEPTION_CANCELLED',$5,$6)",
+    [actor.realmId,schedule.rows[0].id,ref,actor.accountId,e.source_digest,key]);
+   await this.done(tx,cmd.id,ref,update.rows[0].version);
+   return {status:"CANCELLED",message:"Center-specific block or rejected leave was withdrawn."};
+  });
+ }
+
 }
