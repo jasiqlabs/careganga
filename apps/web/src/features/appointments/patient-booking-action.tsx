@@ -72,25 +72,56 @@ export function PatientBookingAction(p:Props){
     "Confirmation outcome uncertain. Check your appointments before retrying.");
   }finally{setBusy(false);}
  }
+ async function recover<T>(path:string):Promise<T|null>{
+  const response=await fetch("/api/consultations/"+path,{
+   cache:"no-store",credentials:"same-origin"});
+  if(response.status===404)return null;
+  if(!response.ok)throw Error("The original booking request status is unavailable. Try checking again.");
+  return response.json() as Promise<T>;
+ }
  async function checkOriginal(){
   if(busy)return;
   setBusy(true);setMessage("");
   try{
-   const res=await fetch("/api/consultations/me",{cache:"no-store",credentials:"same-origin"});
-   if(!res.ok)throw Error("Cannot verify your current appointments. Please try again.");
-   const data=await res.json() as {items?:Confirmed[]};
-   const exact=data.items?.find(x=>x.startAt===p.startAt&&
-    x.doctorRef===p.doctorRef&&x.centerRef===p.centerRef&&
-    ["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED"].includes(x.bookingStatus)&&
-    x.consultationFeeMinor===p.feeMinor);
-   if(exact){setConfirmed(exact);setUncertain(false);
-    setMessage("A matching appointment was found. Review it in your patient history.");
-   }else{
-    setUncertain(false);
-    setMessage("No matching booking was found among recent appointments. Recheck the temporary hold status before retrying.");
+   // The exact confirmation key is authoritative even when older than
+   // the first 20 history items or when a similar time was booked before.
+   if(confirmKey.current){
+    const booking=await recover<Confirmed>(
+     "confirmations/by-request/"+confirmKey.current);
+    if(booking){
+     setConfirmed(booking);setUncertain(false);setHold(null);
+     setMessage("Your original appointment is confirmed: "+booking.bookingId+".");
+     return;
+    }
    }
-  }catch(e){setMessage(e instanceof Error?e.message:"Unable to confirm the earlier result.");}
-  finally{setBusy(false);}
+   if(holdKey.current){
+    const original=await recover<Hold>("holds/by-request/"+holdKey.current);
+    if(original&&original.status==="HELD"&&Date.parse(original.expiresAt)>Date.now()){
+     setHold(original);setUncertain(false);
+     setMessage(confirmKey.current?
+      "The original hold still exists. You can safely retry confirmation using the same request.":
+      "The original time is reserved. Confirm before it expires.");
+     return;
+    }
+    if(original?.status==="CONSUMED"){
+     setMessage("This hold was used but its booking was not confirmed by the request lookup. Recheck the same request or contact the center.");
+     return;
+    }
+    if(original?.status==="EXPIRED"||original?.status==="CANCELLED"){
+     holdKey.current=null;confirmKey.current=null;setHold(null);setUncertain(false);
+     setMessage("The old hold expired. Select and reserve a currently available time.");
+     return;
+    }
+    // No committed original was found. Reuse the SAME request key on the
+    // next attempt so an in-flight hold cannot create a duplicate booking.
+    setHold(null);setUncertain(false);
+    setMessage("No committed hold was found yet. You can retry this reservation using its original request key.");
+    return;
+   }
+   setMessage("No original request key is available. Refresh your selected time.");
+  }catch(e){
+   setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
+  }finally{setBusy(false);}
  }
  return <div style={{border:"1px solid #d7dfdb",padding:12,borderRadius:12,marginTop:8}}>
   <p style={{margin:"0 0 8px"}}><strong>{p.doctorName}</strong> · {p.centerName}</p>
