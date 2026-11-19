@@ -92,6 +92,7 @@ CREATE TABLE cg15_consultation_appointment (
  collection_state text NOT NULL DEFAULT 'DUE_AT_CENTER' CHECK(collection_state='DUE_AT_CENTER'),
  payment_mode text NOT NULL DEFAULT 'PAY_AT_CENTER' CHECK(payment_mode='PAY_AT_CENTER'),
  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
+ terms_revision integer NOT NULL DEFAULT 1 CHECK(terms_revision>0),
  created_by_account uuid NOT NULL,
  confirmation_key uuid NOT NULL,
  confirmation_digest char(64) NOT NULL CHECK(confirmation_digest ~ '^[a-f0-9]{64}$'),
