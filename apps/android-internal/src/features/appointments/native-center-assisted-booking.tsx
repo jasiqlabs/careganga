@@ -221,9 +221,9 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
    {center&&doctor&&<>
     <Text style={styles.note}>Consultation day: {date}</Text>
     <View style={styles.row}>
-     {button("Previous day",()=>{setOffset(n=>Math.max(0,n-1));setDay(null);},
+     {button("Previous day",()=>{setOffset(n=>Math.max(0,n-1));setDay(null);clear();},
       busy||uncertain||offset===0||!!hold)}
-     {button("Next day",()=>{setOffset(n=>Math.min(30,n+1));setDay(null);},
+     {button("Next day",()=>{setOffset(n=>Math.min(30,n+1));setDay(null);clear();},
       busy||uncertain||offset>=30||!!hold)}
      {button("Check current doctor times",()=>void preview(doctor,offset),
       busy||uncertain||!!hold)}
