@@ -4,7 +4,7 @@ import {useRef,useState} from "react";
 type Props={bookingRef:string;expectedVersion:number;
  doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string};
-type Result={bookingId:string;bookingStatus:string;startAt:string;consultationFeeMinor:string};
+type Result={bookingId:string;bookingStatus:string;startAt:string;centerRef:string;version:number;consultationFeeMinor:string};
 export function PatientRescheduleAction(p:Props){
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [result,setResult]=useState<Result|null>(null),[message,setMessage]=useState("");
@@ -35,6 +35,26 @@ export function PatientRescheduleAction(p:Props){
    "The outcome is uncertain.")+" Check the original appointment before retrying.");}
   finally{setBusy(false);}
  }
+ async function checkOriginal(){
+  if(busy||!uncertain)return;
+  setBusy(true);setMessage("");
+  try{
+   const r=await fetch("/api/consultations/me/"+encodeURIComponent(p.bookingRef),{
+    cache:"no-store",credentials:"same-origin"});
+   if(!r.ok)throw Error("The original booking could not be checked. Please retry this status check.");
+   const current=await r.json() as Result;
+   if(current.startAt===p.startAt&&current.centerRef===p.centerRef){
+    setResult(current);setUncertain(false);
+    setMessage("The original booking already shows your selected new time.");
+   }else if(current.bookingStatus==="CONFIRMED"&&current.version===p.expectedVersion){
+    setUncertain(false);
+    setMessage("Your original booking is unchanged. A retry uses the same idempotent request key.");
+   }else{
+    setMessage("Your original booking has changed. Refresh the booking before any new request.");
+   }
+  }catch(e){setMessage(e instanceof Error?e.message:"Original booking status remains uncertain.");}
+  finally{setBusy(false);}
+ }
  return <div style={{border:"1px solid #d7dfdb",borderRadius:12,padding:12,marginTop:12}}>
   <p><strong>{p.doctorName}</strong> · {p.centerName}</p>
   <p>{new Date(p.startAt).toLocaleString("en-IN",{timeZone:p.timeZone,
@@ -44,7 +64,12 @@ export function PatientRescheduleAction(p:Props){
   {!!message&&<p role="status">{message}</p>}
   {result?<p><strong>Booking {result.bookingId} updated.</strong>
    <Link href="/patients/me"> View my consultations</Link></p>:
-   uncertain?<p><Link href="/patients/me">Check the original appointment in My Consultations</Link></p>:
+   uncertain?<div>
+    <p>Do not create a different booking until the original request is checked.</p>
+    <button type="button" disabled={busy} onClick={()=>void checkOriginal()}>
+     Check original reschedule outcome</button>
+    <Link href="/patients/me"> My Consultations</Link>
+   </div>:
    <button disabled={busy} onClick={()=>void submit()} type="button">
     {busy?"Checking…":"Accept fee and reschedule"}</button>}
  </div>;
