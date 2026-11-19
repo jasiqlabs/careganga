@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -9,6 +9,8 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;patientName:s
  startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
+ bookingStatus?:string;startAt?:string;timeZone?:string;canCheckIn?:boolean};
 const dateAt=(offset:number)=>{
  const d=new Date();const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+offset);
  return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+
@@ -37,6 +39,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
+ const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const commands=useRef<Map<string,string>>(new Map()),seq=useRef(0);
@@ -75,6 +78,21 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   });
   return()=>back.remove();
  },[onExit]);
+ async function verifySlip(){
+  if(busy||uncertain||!center||!/^CGV-[A-F0-9]{24}$/.test(qrToken))return;
+  setBusy(true);setMessage("");setVerifiedSlip(null);
+  try{
+   const result=await request<VerifiedSlip>(token,
+    "my-centers/"+encodeURIComponent(center)+"/verify-slip","POST",{token:qrToken});
+   if(!result.valid){
+    setMessage("This slip is not a current appointment at your assigned center.");
+   }else{
+    setVerifiedSlip(result);
+    setMessage("The slip matches a real consultation at your own center. Check in from the current date queue.");
+   }
+  }catch(e){fail(e);}
+  finally{setBusy(false);}
+ }
  async function change(item:Item,next:"CHECK_IN"|"WAITING"|"IN_CONSULTATION"|"COMPLETED"|"NO_SHOW"){
   if(busy||uncertain)return;
   const reference=item.appointmentRef+":"+next+":"+(item.visitVersion??item.bookingVersion);
@@ -127,6 +145,20 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      onPress={()=>{setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
     </Pressable>)}</View>
+   {center&&<View style={styles.card}>
+    <Text style={styles.title}>Verify my center's consultation QR</Text>
+    <Text style={styles.help}>Enter the status-only QR code from the patient's
+     actual slip. A different center's code cannot reveal their patient data.</Text>
+    <TextInput accessibilityLabel="Original appointment QR status code"
+     autoCapitalize="characters" maxLength={28} value={qrToken}
+     onChangeText={value=>{setQrToken(value.toUpperCase());setVerifiedSlip(null);}}
+     placeholder="CGV-XXXXXXXXXXXXXXXXXXXXXXXX" style={styles.input}/>
+    {button("Verify only at this center",()=>void verifySlip(),
+     busy||!/^CGV-[A-F0-9]{24}$/.test(qrToken))}
+    {verifiedSlip?.valid&&<Text style={styles.help}>
+     Booking {verifiedSlip.bookingId}, {verifiedSlip.patientName},
+     {verifiedSlip.bookingStatus}. Select the source row below to check in.</Text>}
+   </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset)}</Text>
    <View style={styles.row}>
     {button("Previous day",()=>setOffset(n=>Math.max(-14,n-1)),busy||offset<=-14)}
@@ -158,6 +190,8 @@ const styles=StyleSheet.create({
  row:{flexDirection:"row",flexWrap:"wrap",gap:8},
  card:{padding:12,borderColor:t.border,borderWidth:1,borderRadius:10,
   backgroundColor:t.surface,gap:8},
+ input:{borderColor:t.border,borderWidth:1,borderRadius:8,padding:12,
+  minHeight:46,color:t.text,backgroundColor:t.surface},
  button:{borderColor:t.border,borderWidth:1,borderRadius:8,minHeight:46,
   padding:12,justifyContent:"center"},
  selected:{borderColor:t.primary,backgroundColor:t.surface},
