@@ -38,6 +38,7 @@ export function PatientProfilePanel(){
  const [message,setMessage]=useState("");
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
+ const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
@@ -49,7 +50,8 @@ export function PatientProfilePanel(){
   if(response.status===404){setProfile(null);return;}
   if(!response.ok)throw Error("Your patient profile could not be checked. Try again.");
   const current=await response.json() as Profile;
-  setProfile(current);setFirst(current.firstName);setLast(current.lastName);
+  setProfile(current);if(current.profileStatus!=="PROVISIONAL")setIdentityProof(null);
+  setFirst(current.firstName);setLast(current.lastName);
   setDob(current.dateOfBirth??"");
  },[]);
  useEffect(()=>{
@@ -108,7 +110,7 @@ export function PatientProfilePanel(){
  async function logout(){
   await act(async()=>{
    await request<{signedOut:boolean}>("logout","POST");
-   setSignedIn(false);setProfile(null);setContact(null);setPassword("");setAgree(false);
+   setSignedIn(false);setProfile(null);setContact(null);setIdentityProof(null);setPassword("");setAgree(false);
    pendingRegistration.current=null;
    setMessage("Signed out of your patient profile.");
   });
@@ -170,6 +172,14 @@ export function PatientProfilePanel(){
    });
    setProfile(result);
    setMessage(granted?"Your consent is recorded.":"Your consent withdrawal is recorded.");
+  });
+ }
+ async function issueIdentityProof(){
+  await act(async()=>{
+   const result=await request<{verificationCode:string;expiresAt:string}>(
+    "me/identity-verification","POST",{});
+   setIdentityProof(result);
+   setMessage("Show this one-time code with a valid identity document to assigned healthcare-center staff. The code expires in 15 minutes.");
   });
  }
  return <section className="cg-public-section">
@@ -236,6 +246,25 @@ export function PatientProfilePanel(){
      <p>Profile: {profile.profileStatus==="PROVISIONAL"?"Contact-verified; identity verification pending":profile.profileStatus} · Patient-care consent:
       {profile.consentGranted?" Granted":" Withdrawn"}</p>
     </aside>}
+    {profile?.profileStatus==="PROVISIONAL"&&<section
+     aria-label="Verify your patient identity at a healthcare center"
+     style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
+     <h2>Verify patient identity</h2>
+     <p>Your mobile number verifies your account, not a patient's clinical identity.
+      Visit an approved CareGanga healthcare center with an identity document.
+      Show an authorized receptionist your Virtual Patient ID and one-time code.</p>
+     <button type="button" disabled={busy||!profile.consentGranted}
+      onClick={()=>void issueIdentityProof()}>
+      {busy?"Checking…":"Get in-person verification code"}</button>
+     {identityProof&&<p role="status">
+      Your code: <strong style={{fontFamily:"monospace",letterSpacing:1}}>
+       {identityProof.verificationCode}</strong>
+      <span> · Expires {new Date(identityProof.expiresAt).toLocaleTimeString("en-IN")}</span>
+     </p>}
+     <button type="button" disabled={busy}
+      onClick={()=>void act(async()=>{await refresh();setMessage("Current identity status refreshed.");})}>
+      Check current verification status</button>
+    </section>}
     {!profile&&<p>You do not yet have a CareGanga patient profile.
      Verified contact and approved patient-care consent are required to create one.</p>}
     {!profile&&<section aria-label="Verify registered account contact"
