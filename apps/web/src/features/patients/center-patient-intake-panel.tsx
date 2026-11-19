@@ -54,8 +54,8 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
   firstName:first.trim(),lastName:last.trim(),dateOfBirth:dob||null,
   consentVersion:policy.version,assistedConsentAttested:attested
  });
- async function submit(){
-  if(busy||uncertain||!allowed||!policy.available||!attested||!first.trim()||
+ async function submit(retrying=false){
+  if(busy||(uncertain&&!retrying)||!allowed||!policy.available||!attested||!first.trim()||
    !last.trim())return;
   const input=payload(),digest=JSON.stringify(input);
   if(pending.current?.digest!==digest)
@@ -85,8 +85,10 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
     setResult(r.data);setUncertain(false);pending.current=null;
     setMessage("This intake was previously recorded. It was not created twice.");
    }else if(r.status===404){
-    setUncertain(false);
-    setMessage("No saved intake was found for this request. You may retry unchanged details.");
+    // An in-flight original POST may commit after this GET. Never release
+    // the same source key or unlock form edits based on a temporary 404.
+    setUncertain(true);
+    setMessage("No completed intake was found yet. Retry the SAME request key, without changing the details.");
    }else{
     setMessage(r.message);setUncertain(true);
    }
@@ -137,6 +139,8 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
     <p>The original request may already be saved. Check it before doing anything else.</p>
     <button type="button" disabled={busy} onClick={()=>void check()}>
      Check original intake result</button>
+    <button type="button" disabled={busy||!pending.current}
+     onClick={()=>void submit(true)}>Retry original intake (same request)</button>
    </div>}
   </div>}
  </section>;
