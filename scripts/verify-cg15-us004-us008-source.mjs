@@ -21,6 +21,9 @@ const s={
  staffWeb:read("apps/web/src/features/appointments/center-assisted-consultation-booking.tsx"),
  staffSlipBff:read("apps/web/src/app/api/appointments/staff-slips/[...parts]/route.ts"),
  staffSlipWeb:read("apps/web/src/features/appointments/center-consultation-slip.tsx"),
+ nativeStaffBooking:read("apps/android-internal/src/features/appointments/native-center-assisted-booking.tsx"),
+ nativeStaffSlip:read("apps/android-internal/src/features/appointments/native-center-consultation-slip.tsx"),
+ intakeService:read("apps/backend/src/modules/cg-15-patients-appointments/application/center-patient-intake.service.ts"),
  slipSourceModule:read("apps/backend/src/modules/cg-15-patients-appointments/consultation-slip-source.module.ts"),
  staffPortal:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
  staffIntake:read("apps/web/src/features/patients/center-patient-intake-workspace.tsx"),
@@ -336,6 +339,24 @@ const checks=[
   s.staffSlipWeb.includes("Check original slip status")&&
   s.webQueue.includes("<CenterConsultationSlip")&&
   s.cg19.includes('!doc.revoked_at') ],
+ ["internal Android receptionist uses original CG15 staff hold and confirmation, not a shadow booking",
+  s.internalApp.includes("NativeCenterAssistedBooking")&&
+  s.internalApp.includes('roleActions.includes("health.patients.intake")')&&
+  s.nativeStaffBooking.includes('"/api/v1/appointments/consultations/staff/"')&&
+  s.nativeStaffBooking.includes('api<Hold>(token,"holds","POST"')&&
+  s.nativeStaffBooking.includes('api<Booking>(token,"confirm","POST"')&&
+  s.nativeStaffBooking.includes("confirmations/by-request/")],
+ ["internal native date uses assigned original center time zone without hardcoded city",
+  s.intakeService.includes("timeZone:x.time_zone")&&
+  s.nativeStaffBooking.includes("centerZone")&&
+  !s.nativeStaffBooking.includes("Asia/Kolkata")],
+ ["internal Android center queue previews one ephemeral, privately verified CG19 PDF",
+  s.nativeQueue.includes("<NativeCenterConsultationSlip")&&
+  s.nativeStaffSlip.includes('"/api/v1/appointments/slips/staff/"')&&
+  s.nativeStaffSlip.includes('File.preview(')&&
+  s.nativeStaffSlip.includes('Paths.cache')&&
+  s.nativeStaffSlip.includes('new URL(route,base)')&&
+  s.nativeStaffSlip.includes('process.env.NODE_ENV==="production"') ],
  ["all CG15 SQL migrations have explicit opt-in manual lexical checker",
   s.pkg.includes('verify:cg15-migrations-source') ],
  ["all 128 original QA identifiers preserved",
