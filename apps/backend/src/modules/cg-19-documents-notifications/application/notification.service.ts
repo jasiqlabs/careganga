@@ -275,6 +275,31 @@ export class NotificationService{
         AND (n.notice_id IS NULL OR
           (notice.state='ACTIVE' AND
            (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
+        AND (n.source_kind<>'CG15_APPOINTMENT' OR EXISTS(
+          SELECT 1 FROM cg15_appointment_event appointment_event
+          JOIN cg15_consultation_appointment appointment
+            ON appointment.root_realm_id=appointment_event.root_realm_id
+           AND appointment.id=appointment_event.appointment_id
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=appointment.root_realm_id
+           AND patient.id=appointment.patient_id
+          JOIN cg15_patient_account_link owned
+            ON owned.root_realm_id=patient.root_realm_id
+           AND owned.patient_id=patient.id
+           AND owned.account_id=n.recipient_id
+           AND owned.revoked_at IS NULL
+          WHERE appointment_event.root_realm_id=n.realm_id
+            AND appointment_event.id=n.cg15_appointment_event_id
+            AND patient.profile_status='VERIFIED'
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
     `,[actor.realmId,actor.accountId,limit]);
     return {items:rows.rows.map(row=>({
@@ -299,6 +324,31 @@ export class NotificationService{
           AND a.status='ACTIVE' AND (n.notice_id IS NULL OR
             (notice.state='ACTIVE' AND
              (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
+        AND (n.source_kind<>'CG15_APPOINTMENT' OR EXISTS(
+          SELECT 1 FROM cg15_appointment_event appointment_event
+          JOIN cg15_consultation_appointment appointment
+            ON appointment.root_realm_id=appointment_event.root_realm_id
+           AND appointment.id=appointment_event.appointment_id
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=appointment.root_realm_id
+           AND patient.id=appointment.patient_id
+          JOIN cg15_patient_account_link owned
+            ON owned.root_realm_id=patient.root_realm_id
+           AND owned.patient_id=patient.id
+           AND owned.account_id=n.recipient_id
+           AND owned.revoked_at IS NULL
+          WHERE appointment_event.root_realm_id=n.realm_id
+            AND appointment_event.id=n.cg15_appointment_event_id
+            AND patient.profile_status='VERIFIED'
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
         FOR SHARE OF n,a
       `,[ref,actor.realmId,actor.accountId]);
       if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
