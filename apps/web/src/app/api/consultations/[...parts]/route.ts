@@ -7,6 +7,7 @@ const allowed=(p:string[],method:string)=>
  method==="POST"&&p.length===1&&["holds","confirm"].includes(p[0])||
  method==="GET"&&p.length===1&&p[0]==="me"||
  method==="GET"&&p.length===2&&p[0]==="me"&&ID.test(p[1])||
+ method==="GET"&&p.length===3&&p[0]==="me"&&ID.test(p[1])&&p[2]==="calendar.ics"||
  method==="GET"&&p.length===2&&p[0]==="holds"&&ID.test(p[1])||
  method==="POST"&&p.length===3&&p[0]==="me"&&ID.test(p[1])&&
  ["cancel","reschedule"].includes(p[2]);
@@ -43,6 +44,14 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
    method,body,cache:"no-store",signal:AbortSignal.timeout(13000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}
   });
+  if(method==="GET"&&parts.length===3&&parts[2]==="calendar.ics"&&response.ok){
+   const data=await response.text();
+   if(data.length>10000)return copy(503,"Calendar file is temporarily unavailable.");
+   return new NextResponse(data,{status:200,headers:{
+    "Content-Type":"text/calendar; charset=utf-8",
+    "Content-Disposition":"attachment; filename=careganga-consultation.ics",
+    "Cache-Control":"private, no-store"}});
+  }
   const raw:unknown=await response.json().catch(()=>null);
   const data=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
   if(!response.ok){
