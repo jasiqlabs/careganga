@@ -46,6 +46,10 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [policy,setPolicy]=useState<Policy>({available:false,version:null,text:null});
  const [profile,setProfile]=useState<Patient|null>(null);
  const [identifier,setIdentifier]=useState(""),[password,setPassword]=useState("");
+ const [signupOpen,setSignupOpen]=useState(false);
+ const [signupFirst,setSignupFirst]=useState(""),[signupLast,setSignupLast]=useState("");
+ const [signupMobile,setSignupMobile]=useState(""),[signupEmail,setSignupEmail]=useState("");
+ const [signupPassword,setSignupPassword]=useState("");
  const [first,setFirst]=useState(""),[last,setLast]=useState(""),[dob,setDob]=useState("");
  const [agreed,setAgreed]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -53,6 +57,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
+ const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
   const me=await invoke<{displayName:string}>("/api/identity/me","GET",undefined,auth);
   if(me.status===401)return false;
@@ -109,6 +114,25 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
   catch(e){setMessage(e instanceof Error?e.message:
    "The result is uncertain. Refresh before retrying.");}
   finally{setBusy(false);}
+ }
+ function signup(){
+  void run(async()=>{
+   const payload={firstName:signupFirst.trim(),lastName:signupLast.trim(),
+    mobile:signupMobile.trim(),email:signupEmail.trim()||null,
+    password:signupPassword};
+   const signature=JSON.stringify(payload);
+   if(signupCommand.current?.digest!==signature)
+    signupCommand.current={digest:signature,key:Crypto.randomUUID()};
+   const r=await invoke<{status:string;nextStep:string}>(
+    "/api/identity/patients/register","POST",{
+     requestKey:signupCommand.current.key,...payload
+    });
+   if(r.data?.status!=="ACCOUNT_CREATED")
+    throw Error("Account registration could not be confirmed.");
+   signupCommand.current=null;setSignupPassword("");setPassword("");
+   setIdentifier(payload.mobile);setSignupOpen(false);
+   setMessage("Patient account created. Sign in, verify your saved mobile contact, then create your patient profile.");
+  });
  }
  function signIn(){
   void run(async()=>{
@@ -217,11 +241,26 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    {!!message&&<Text accessibilityRole="alert" style={styles.error}>{message}</Text>}
    {loading?<ActivityIndicator accessibilityLabel="Checking your current session"/>:
     !token?<View style={styles.card}>
-     {field("Registered mobile number or email",identifier,setIdentifier)}
-     {field("Password",password,setPassword,true)}
-     {button(busy?"Checking…":"Sign in",signIn,busy||!identifier.trim()||!password)}
-     <Text>Use an existing CareGanga password account. New account signup
-      is not available here.</Text>
+     {signupOpen?<>
+      <Text style={styles.subtitle}>Create a patient account</Text>
+      {field("First name",signupFirst,setSignupFirst)}
+      {field("Last name",signupLast,setSignupLast)}
+      {field("Registered mobile (10 digits)",signupMobile,setSignupMobile)}
+      {field("Email (optional)",signupEmail,setSignupEmail)}
+      {field("Choose a password (at least eight characters)",
+       signupPassword,setSignupPassword,true)}
+      <Text>This creates a password account with no staff permissions.
+       Sign in and verify your registered mobile before patient registration.</Text>
+      {button(busy?"Checking…":"Create patient account",signup,
+       busy||signupFirst.trim().length<2||!signupLast.trim()||
+       !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8)}
+      {button("Already registered? Sign in",()=>setSignupOpen(false),busy)}
+     </>:<>
+      {field("Registered mobile number or email",identifier,setIdentifier)}
+      {field("Password",password,setPassword,true)}
+      {button(busy?"Checking…":"Sign in",signIn,busy||!identifier.trim()||!password)}
+      {button("New patient? Create an account",()=>setSignupOpen(true),busy)}
+     </>}
     </View>:<View style={styles.card}>
      {button("Sign out",signOut,busy)}
      {profile?<View>
