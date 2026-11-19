@@ -9,7 +9,7 @@ export class ConsultationQueueController{
  @Get("my-centers/:centerRef")
  @Header("Cache-Control","private, no-store")
  list(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
-  @Query("date")day:string){return this.queue.list(bearer,center,day);}
+  @Query("date")day:string,@Query("after")after?:string){return this.queue.list(bearer,center,day,after);}
  @Post("my-centers/:centerRef/verify-slip")
  @Header("Cache-Control","private, no-store")
  verifySlip(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
