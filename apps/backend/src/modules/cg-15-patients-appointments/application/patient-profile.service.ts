@@ -1,6 +1,6 @@
 import {
  BadRequestException,ConflictException,Inject,Injectable,NotFoundException,
- ServiceUnavailableException,ForbiddenException
+ ServiceUnavailableException,ForbiddenException,HttpException
 } from "@nestjs/common";
 import {createHash,randomBytes,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
@@ -219,6 +219,23 @@ export class PatientProfileService{
    throw new BadRequestException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
   const display=v.virtualPatientId,claimDigest=createHash("sha256")
    .update(v.claimCode).digest("hex");
+  // Failed patient-claim lookups roll their business transaction back.
+  // Meter attempts in a separate committed statement BEFORE that lookup:
+  // this is atomic across app instances, with no guessed patient identity
+  // or raw proof stored and no idle background reconciliation.
+  const budget=await this.db.query<{attempts:number}>(
+   "INSERT INTO cg15_patient_claim_attempt_throttle("+
+   "root_realm_id,account_id,window_started_at,attempts) VALUES($1,$2,now(),1) "+
+   "ON CONFLICT(root_realm_id,account_id) DO UPDATE SET "+
+   "attempts=CASE WHEN cg15_patient_claim_attempt_throttle.window_started_at "+
+   "<=now()-interval '15 minutes' THEN 1 ELSE "+
+   "LEAST(cg15_patient_claim_attempt_throttle.attempts+1,2147483645) END,"+
+   "window_started_at=CASE WHEN cg15_patient_claim_attempt_throttle.window_started_at "+
+   "<=now()-interval '15 minutes' THEN now() ELSE "+
+   "cg15_patient_claim_attempt_throttle.window_started_at END "+
+   "RETURNING attempts",[actor.realmId,actor.accountId]);
+  if((budget.rows[0]?.attempts??21)>20)
+   throw new HttpException({code:"CG15_PATIENT_IDENTITY_RATE_LIMIT"},429);
   const c=await this.db.connect();let active=false;
   try{
    await c.query("BEGIN");active=true;
