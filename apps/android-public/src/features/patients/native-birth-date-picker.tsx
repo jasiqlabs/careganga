@@ -14,13 +14,14 @@ const iso=(year:number,month:number,day:number)=>
  String(year).padStart(4,"0")+"-"+String(month).padStart(2,"0")+"-"+
  String(day).padStart(2,"0");
 const valid=(s:string)=>/^\d{4}-\d\d-\d\d$/.test(s)&&s>=MIN&&
- s<=today()&&new Date(s+"T12:00:00Z").toISOString().slice(0,10)===s;
+ s<=today()&&Number.isFinite(Date.parse(s+"T12:00:00Z"))&&
+ new Date(s+"T12:00:00Z").toISOString().slice(0,10)===s;
 const today=()=>{const n=new Date();return iso(n.getFullYear(),n.getMonth()+1,n.getDate());};
 export function NativeBirthDatePicker({value,onChange,disabled=false}:{
  value:string;onChange:(value:string)=>void;disabled?:boolean
 }){
  const [open,setOpen]=useState(false);
- const [displayYear,setDisplayYear]=useState(2000);
+ const [displayYear,setDisplayYear]=useState(new Date().getFullYear());
  const [displayMonth,setDisplayMonth]=useState(1);
  const [draft,setDraft]=useState("");
  function show(){
@@ -65,8 +66,8 @@ export function NativeBirthDatePicker({value,onChange,disabled=false}:{
    <Text style={styles.link}>Clear date of birth</Text>
   </Pressable>}
   <Modal transparent visible={open} onRequestClose={()=>setOpen(false)}
-   animationType="slide" accessibilityViewIsModal>
-   <View style={styles.overlay}>
+   animationType="slide">
+   <View style={styles.overlay} accessibilityViewIsModal>
     <View style={styles.calendar}>
      <Text accessibilityRole="header" style={styles.heading}>Choose date of birth</Text>
      <Text style={styles.hint}>Select the correct year, month and day.
