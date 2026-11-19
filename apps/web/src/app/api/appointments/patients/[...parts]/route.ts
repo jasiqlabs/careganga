@@ -16,7 +16,7 @@ function allowed(parts:string[],method:string){
  return parts.length===2&&parts[0]==="my-centers"&&
    parts[1]==="intake-options"&&method==="GET"||
    parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
-   ["intakes","verify-identity"].includes(parts[2])&&method==="POST"||
+   ["intakes","verify-identity","claims"].includes(parts[2])&&method==="POST"||
    parts.length===4&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="intakes"&&ID.test(parts[3])&&method==="GET";
 }
