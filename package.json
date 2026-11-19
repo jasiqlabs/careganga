@@ -24,7 +24,8 @@
     "verify:cg15-us001-source": "node scripts/verify-cg15-us001-source.mjs",
     "verify:cg15-us002-source": "node scripts/verify-cg15-us002-source.mjs",
     "verify:cg15-us003-source": "node scripts/verify-cg15-us003-source.mjs",
-    "verify:cg15-us004-us008-source": "node scripts/verify-cg15-us004-us008-source.mjs"
+    "verify:cg15-us004-us008-source": "node scripts/verify-cg15-us004-us008-source.mjs",
+    "verify:cg15-migrations-source": "node scripts/verify-cg15-migrations-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
