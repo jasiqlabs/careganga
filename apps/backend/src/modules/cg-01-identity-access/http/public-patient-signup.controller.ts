@@ -7,6 +7,12 @@ import type {CareGangaRequest} from "../../../core/observability/request-correla
 @Controller("api/identity/patients")
 export class PublicPatientSignupController{
  constructor(private readonly signup:PublicPatientSignupService){}
+ @Post("start")
+ @HttpCode(200)
+ @Header("Cache-Control","no-store")
+ start(@Body()raw:unknown,@Req()request:CareGangaRequest){
+  return this.signup.requestCode(raw,request.ip??"unknown");
+ }
  @Post("register")
  @HttpCode(200)
  @Header("Cache-Control","no-store")
