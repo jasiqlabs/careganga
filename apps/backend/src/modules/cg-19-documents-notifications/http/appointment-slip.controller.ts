@@ -38,6 +38,8 @@ export class AppointmentSlipController{
   reply.setHeader("Content-Type","application/pdf");
   reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
   reply.setHeader("Cache-Control","private, no-store");
+  reply.setHeader("Referrer-Policy","no-referrer");
+  reply.setHeader("X-Content-Type-Options","nosniff");
   reply.status(200).end(pdf);
  }
  @Get("staff/:bookingRef/file")
@@ -48,6 +50,8 @@ export class AppointmentSlipController{
   reply.setHeader("Content-Type","application/pdf");
   reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
   reply.setHeader("Cache-Control","private, no-store");
+  reply.setHeader("Referrer-Policy","no-referrer");
+  reply.setHeader("X-Content-Type-Options","nosniff");
   reply.status(200).end(pdf);
  }
  @Get("me/:bookingRef/status")
@@ -79,6 +83,8 @@ export class AppointmentSlipController{
   reply.setHeader("Content-Type","application/pdf");
   reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
   reply.setHeader("Cache-Control","private, no-store");
+  reply.setHeader("Referrer-Policy","no-referrer");
+  reply.setHeader("X-Content-Type-Options","nosniff");
   reply.status(200).end(pdf);
  }
  @Get("me/:bookingRef/file")
@@ -89,6 +95,8 @@ export class AppointmentSlipController{
   reply.setHeader("Content-Type","application/pdf");
   reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
   reply.setHeader("Cache-Control","private, no-store");
+  reply.setHeader("Referrer-Policy","no-referrer");
+  reply.setHeader("X-Content-Type-Options","nosniff");
   reply.status(200).end(pdf);
  }
  @Post("verify")
