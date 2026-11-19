@@ -194,7 +194,9 @@ export class NotificationService{
         "JOIN cg15_patient p ON p.root_realm_id=l.root_realm_id "+
         "AND p.id=l.patient_id "+
         "WHERE l.root_realm_id=$1 AND l.patient_id=$2 "+
-        "AND l.revoked_at IS NULL AND a.status='ACTIVE' "+
+        "AND l.revoked_at IS NULL AND "+
+        "l.proof_type='CG01_VERIFIED_ACCOUNT_CONTACT' "+
+        "AND a.status='ACTIVE' "+
         "AND p.profile_status='VERIFIED' "+
         "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof "+
         "WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) "+
