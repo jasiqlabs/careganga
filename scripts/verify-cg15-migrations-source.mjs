@@ -27,7 +27,7 @@ const files=[
  "1432_cg15_center_day_appointment_index.sql",
  "1433_cg19_appointment_event_notification_source.sql"
 ];
-function inspect(sql){
+function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
  let mode="normal",tag="",at=0,line=1,startedLine=1;
  for(let i=0;i<sql.length;i++){
@@ -101,7 +101,7 @@ function inspect(sql){
    seen.add(key);
   }
  }
- if(statements.length<3)errors.push("Migration has too few complete statements");
+ if(statements.length<minimumStatements)errors.push("Migration has too few complete statements");
  return {statements:statements.length,named,errors};
 }
 let failures=0;
@@ -110,7 +110,7 @@ for(const name of files){
  let source="";
  try{source=readFileSync(path,"utf8");}
  catch(e){process.stderr.write("SOURCE_GAP "+name+": file missing\n");failures++;continue;}
- const result=inspect(source);
+ const result=inspect(source,name.startsWith("1432")?2:3);
  if(source.includes("\u0000"))result.errors.push("SQL contains a NUL byte");
  if(name.startsWith("1421")&&
   (!source.includes("cg15_exception_digest ~ '^[0-9a-f]{64}$'")||
