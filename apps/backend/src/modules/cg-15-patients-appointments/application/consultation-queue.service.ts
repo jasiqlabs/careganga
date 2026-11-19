@@ -82,13 +82,13 @@ export class ConsultationQueueService{
    await tx.query("BEGIN");active=true;
    await this.scope(tx,actor,center);
    const r=await tx.query<{
-    id:string;booking_display_id:string;doctor_id:string;booking_state:string;
+    id:string;booking_display_id:string;doctor_id:string;booking_state:string;revision:number;
     start_at:Date;time_zone:string;first_name:string;last_name:string;
-    visit_id:string|null;queue_token:string|null;queue_state:string|null
+    visit_id:string|null;queue_token:string|null;queue_state:string|null;visit_version:number|null
    }>(
-    "SELECT a.id,a.booking_display_id,a.doctor_id,a.booking_state,"+
+    "SELECT a.id,a.booking_display_id,a.doctor_id,a.booking_state,a.revision,"+
     "a.start_at,a.time_zone,p.first_name,p.last_name,"+
-    "q.id AS visit_id,q.queue_token,q.state AS queue_state "+
+    "q.id AS visit_id,q.queue_token,q.state AS queue_state,q.revision AS visit_version "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
     "LEFT JOIN cg15_visit_queue q ON q.root_realm_id=a.root_realm_id AND q.appointment_id=a.id "+
@@ -103,8 +103,8 @@ export class ConsultationQueueService{
    return {day:dayRaw,items:r.rows.filter(x=>localDay(x.start_at,x.time_zone)===dayRaw)
     .map(x=>({appointmentRef:x.id,bookingId:x.booking_display_id,
       doctorRef:x.doctor_id,patientName:x.first_name+" "+x.last_name,
-      startAt:x.start_at.toISOString(),bookingStatus:x.booking_state,
-      visitRef:x.visit_id,queueToken:x.queue_token,visitStatus:x.queue_state}))};
+      startAt:x.start_at.toISOString(),bookingStatus:x.booking_state,bookingVersion:x.revision,
+      visitRef:x.visit_id,queueToken:x.queue_token,visitStatus:x.queue_state,visitVersion:x.visit_version}))};
   }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
