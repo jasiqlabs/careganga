@@ -15,6 +15,7 @@ const s={
  db5:read("apps/backend/db/migrations/1426_cg19_private_consultation_slip.sql"),
  db6:read("apps/backend/db/migrations/1425_cg15_visit_queue_and_booking_changes.sql"),
  assistedDb:read("apps/backend/db/migrations/1430_cg15_patient_assisted_booking_authorization.sql"),
+ qrBudgetDb:read("apps/backend/db/migrations/1434_cg15_center_qr_verification_guard.sql"),
  patientOwn:read("apps/backend/src/modules/cg-15-patients-appointments/application/patient-profile.service.ts"),
  patientController:read("apps/backend/src/modules/cg-15-patients-appointments/http/patient-profile.controller.ts"),
  staffBff:read("apps/web/src/app/api/appointments/staff-consultations/[...parts]/route.ts"),
@@ -182,6 +183,21 @@ const checks=[
   s.nativeQueue.includes("Original booking history")&&
   s.webQueue.includes("auditSerial.current++")&&
   s.nativeQueue.includes("auditSerial.current++")],
+ ["source: assigned-center QR verifier has atomic bounded attempts and immutable no-token audit",
+  s.qrBudgetDb.includes("CREATE TABLE cg15_center_qr_verify_budget")&&
+  s.qrBudgetDb.includes("PRIMARY KEY(root_realm_id,actor_account_id,center_id)")&&
+  s.qrBudgetDb.includes("CREATE TABLE cg15_center_qr_verification_audit")&&
+  s.qrBudgetDb.includes("cg15_qr_verification_audit_immutable")&&
+  !s.qrBudgetDb.includes("token_digest")&&
+  s.queue.includes("async verifySlipAtMyCenter(")&&
+  s.queue.includes("await this.scope(tx,actor,center)")&&
+  s.queue.includes("ON CONFLICT(root_realm_id,actor_account_id,center_id) DO UPDATE SET")&&
+  s.queue.includes("if((meter.rows[0]?.attempts??25)>24)")&&
+  s.queue.includes("new HttpException({code:\"CG15_QUEUE_RATE_LIMIT\"},429)")&&
+  s.queue.includes("INSERT INTO cg15_center_qr_verification_audit(")&&
+  s.queue.includes('center,item?"VALID":"DENIED"')&&
+  s.catalog.includes("CG15_QUEUE_RATE_LIMIT")&&
+  s.queueBff.includes('"CG15_QUEUE_RATE_LIMIT"')],
  ["source: queue writes preserve exact original request only for unknown results",
   s.webQueue.includes("status:r.status")&&
   s.webQueue.includes("deterministic")&&
