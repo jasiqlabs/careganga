@@ -160,6 +160,33 @@ const checks=[
  ["visit queue every check-in serializes token and validates booking",
   s.queue.includes("pg_advisory_xact_lock")&&
   s.queue.includes('booking.booking_state!=="CONFIRMED"')],
+ ["source: full-day original own-center queue totals match Web and Internal Android",
+  s.queue.includes("async summary(bearer:string,centerRaw:string,dayRaw:unknown)")&&
+  s.queue.includes('GROUP BY booking_state')&&
+  s.queue.includes("await this.scope(tx,actor,center)")&&
+  s.queueCtrl.includes('Get("my-centers/:centerRef/summary")')&&
+  s.queueBff.includes('parts[2]==="summary"&&method==="GET"')&&
+  s.webQueue.includes("Original center daily attendance totals")&&
+  s.nativeQueue.includes("Original complete-day consultation summary")&&
+  s.webQueue.includes('setSummary(data)')&&
+  s.nativeQueue.includes('setSummary(report)')],
+ ["source: current-center operational booking history has immutable bounded status-only source",
+  s.queue.includes('async bookingHistory(bearer:string,centerRaw:string,bookingRaw:string,beforeRaw?:string)')&&
+  s.queue.includes("AND center_id=$2 AND id=$3")&&
+  s.queue.includes("ORDER BY e.new_revision DESC LIMIT 26")&&
+  s.queue.includes("beforeStatus:publicStatus(e.prior_snapshot)")&&
+  s.queue.includes("afterStatus:publicStatus(e.new_snapshot)")&&
+  s.queueCtrl.includes('Get("my-centers/:centerRef/bookings/:bookingRef/history")')&&
+  s.queueBff.includes('parts[4]==="history"&&method==="GET"')&&
+  s.webQueue.includes("View original booking history")&&
+  s.nativeQueue.includes("Original booking history")&&
+  s.webQueue.includes("auditSerial.current++")&&
+  s.nativeQueue.includes("auditSerial.current++")],
+ ["source: queue writes preserve exact original request only for unknown results",
+  s.webQueue.includes("status:r.status")&&
+  s.webQueue.includes("deterministic")&&
+  s.webQueue.includes("status>=400&&status<500")&&
+  s.nativeQueue.includes("status>=400&&status<500")],
  ["visit status machine disallows completion jump",
   s.queue.includes('IN_CONSULTATION:["COMPLETED"]')&&
   s.queue.includes('WAITING:["IN_CONSULTATION"]')&&
