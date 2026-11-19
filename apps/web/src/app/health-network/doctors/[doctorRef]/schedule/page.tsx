@@ -2,9 +2,10 @@ import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import {publicDoctor} from "../../../../../features/health-network/public-directory-source";
+import {PatientBookingAction} from "../../../../../features/appointments/patient-booking-action";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={title:"Doctor working hours | CareGanga",
- description:"Preview verified doctor's published working schedule. Online booking is not yet available.",
+ description:"Preview verified doctor's published working schedule. Pay-at-center consultations may be available.",
  robots:{index:false,follow:false}};
 type Props={params:Promise<{doctorRef:string}>,
  searchParams:Promise<Record<string,string|string[]|undefined>>};
@@ -13,13 +14,13 @@ type Option={centerRef:string;centerName:string;centerSlug:string;address:string
  consultationFeeMinor:string|null};
 type Options={day:string;doctorName:string;centers:Option[];message:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;
- bookable:false};
+ bookable:boolean};
 type Daily={status:string;day:string;doctorName:string;centerName:string;
  timeZone:string;centerSlug:string;slots:Slot[];message:string;
- consultationFeeMinor:string|null};
-type Choices={centerChoices:{centerName:string;centerSlug:string;
+ consultationFeeMinor:string|null;consultationFeeVersion:number|null};
+type Choices={centerChoices:{centerRef:string;centerName:string;centerSlug:string;
  address:string;pinCode:string;consultationFeeMinor:string|null;
- timeZone:string;startAt:string;endAt:string;bookable:false}[];
+ consultationFeeVersion:number|null;timeZone:string;startAt:string;endAt:string;bookable:boolean}[];
  message:string};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 async function source<T>(path:string):Promise<T|null>{
@@ -64,8 +65,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
    <p className="cg-eyebrow">Verified doctor — published working schedule</p>
    <h1>{doctor.doctorName}: Working hours</h1>
    <p>Choose a day and center, or look up a time across the doctor's verified centers.
-    This is a schedule preview, <strong>not live booking availability</strong>.
-    No appointment or payment is created here.</p>
+    Available times are advisory until a temporary reservation succeeds.
+    Appointments are confirmed only after final review; payment is due at the center.</p>
    <form method="get" style={{display:"grid",gap:16,maxWidth:680}}>
     <fieldset style={{border:"1px solid #d7dfdb",borderRadius:12,padding:14}}>
      <legend>How would you like to search?</legend>
@@ -78,7 +79,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
       Choose day and time
      </label>
     </fieldset>
-    <label>Appointment day to preview (next 30 days)
+    <label>Appointment day (next 30 days)
      <input type="date" name="date" required defaultValue={date}/>
     </label>
     <label>Doctor's center (optional for time-first search)
@@ -91,7 +92,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
     <label>Local starting time (only used for time-first search)
      <input type="time" name="time" defaultValue={time} step={300}/>
     </label>
-    <button type="submit" style={{maxWidth:260}}>View actual working hours</button>
+    <button type="submit" style={{maxWidth:260}}>View current consultation times</button>
    </form>
   </section>
   <section className="cg-public-section" aria-live="polite">
@@ -111,12 +112,19 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
    </>}
    {mode==="center"&&validCenter&&selected&&<>
     <h2>{selected.centerName} — {date}</h2>
-    <p>All times shown in {selected.timeZone}. These are working-time
-     previews, not guaranteed free appointment slots.</p>
+    <p>All times shown in {selected.timeZone}. A visible time is not reserved until you receive confirmation.</p>
     {selected.slots.length===0?<p>No scheduled consultation window is
      confirmed for this date.</p>:
      <ul>{selected.slots.map(slot=><li key={slot.startAt}>
-      {slot.startLocal}–{slot.endLocal} — preview only
+      {slot.startLocal}–{slot.endLocal}
+      {slot.bookable&&selected.consultationFeeMinor!==null&&
+       selected.consultationFeeVersion!==null?
+       <PatientBookingAction doctorRef={doctorRef} centerRef={centerRef}
+        doctorName={selected.doctorName} centerName={selected.centerName}
+        startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
+        feeMinor={selected.consultationFeeMinor}
+        feeVersion={selected.consultationFeeVersion}/>:
+       <span> — booking unavailable</span>}
      </li>)}</ul>}
    </>}
    {mode==="time"&&date&&time&&alternatives&&<>
@@ -127,12 +135,20 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
       <Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>
        {c.centerName}</Link> — {c.address}, {c.pinCode}.
       Current approved consultation: {displayFee(c.consultationFeeMinor)}.
-      Time zone: {c.timeZone}. Preview only
+      Time zone: {c.timeZone}.
+      {c.bookable&&c.consultationFeeMinor!==null&&
+       c.consultationFeeVersion!==null?
+       <PatientBookingAction doctorRef={doctorRef} centerRef={c.centerRef}
+        doctorName={doctor.doctorName} centerName={c.centerName}
+        startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
+        feeMinor={c.consultationFeeMinor}
+        feeVersion={c.consultationFeeVersion}/>:
+       <span> — booking unavailable</span>}
      </li>)}</ul>}
    </>}
-   <p>Online appointment booking, confirmation, cancellation and payment
-    will appear only when the actual booking service is available.
-    For now, contact the center to arrange a visit.</p>
+   <p><Link href="/patients/me">Sign in to my private patient profile</Link> before reserving.
+    Only pay-at-center consultations are offered; no online payment, lab or other ERP booking.
+    Availability may change until the reservation is accepted.</p>
   </section>
  </main>;
 }
