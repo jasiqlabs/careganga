@@ -49,6 +49,14 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
     return fail(400,"Invalid queue page.");
    params.set("after",after);}
  }
+ if(method==="GET"&&parts.length===5&&parts[4]==="history"){
+  const before=req.nextUrl.searchParams.get("before");
+  if(before!==null){
+   if(!/^[0-9]{1,9}$/.test(before)||Number(before)<1)
+    return fail(400,"Invalid booking history page.");
+   params.set("before",before);
+  }
+ }
  try{
   const path="/api/v1/appointments/queue/"+parts.join("/")+
    (params.size?"?"+params.toString():"");
