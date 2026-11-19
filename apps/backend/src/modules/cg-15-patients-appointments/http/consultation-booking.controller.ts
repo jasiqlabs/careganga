@@ -26,6 +26,12 @@ export class ConsultationBookingController{
  staffConfirm(@Headers("authorization")bearer:string,@Body()input:unknown){
   return this.bookings.confirmForCenter(bearer,input);
  }
+ @Post("admin/bookings/:bookingRef/cancel-override")
+ @Header("Cache-Control","private, no-store")
+ foundationCancelOverride(@Headers("authorization")bearer:string,
+  @Param("bookingRef")bookingRef:string,@Body()input:unknown){
+  return this.bookings.cancelWithFoundationOverride(bearer,bookingRef,input);
+ }
  @Post("staff/centers/:centerRef/bookings/:bookingRef/cancel")
  @Header("Cache-Control","private, no-store")
  staffCancel(@Headers("authorization")bearer:string,
