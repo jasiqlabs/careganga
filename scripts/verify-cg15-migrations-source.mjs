@@ -22,7 +22,8 @@ const files=[
  "1427_cg01_public_patient_password_identity.sql",
  "1428_cg15_in_person_patient_identity_verification.sql",
  "1429_cg15_patient_center_intake_claim.sql",
- "1430_cg15_patient_assisted_booking_authorization.sql"
+ "1430_cg15_patient_assisted_booking_authorization.sql",
+ "1431_cg15_patient_claim_attempt_throttle.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
