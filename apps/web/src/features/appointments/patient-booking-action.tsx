@@ -9,6 +9,7 @@ type Confirmed={bookingRef:string;bookingId:string;doctorRef:string;centerRef:st
  startAt:string;endAt:string;consultationFeeMinor:string;};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;};
+const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const currency=(minor:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(minor)/100);
 async function submit<T>(path:string,data:Record<string,unknown>):Promise<T>{
@@ -33,8 +34,39 @@ export function PatientBookingAction(p:Props){
  const [staffBusy,setStaffBusy]=useState(false),[staffError,setStaffError]=useState("");
  const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
+ const slipKey=useRef<string|null>(null);
  const sameSlot=useRef(JSON.stringify([p.doctorRef,p.centerRef,p.startAt,p.endAt,
   p.feeMinor,p.feeVersion]));
+ /** CG19 is an optional second durable operation after original CG15
+  * confirmation: status first, same issue key if retried, never an
+  * unverified local PDF and never a payment receipt.
+  */
+ async function issuePatientSlip(ref:string):Promise<"ISSUED"|"CHECK_STATUS">{
+  if(!ID.test(ref))return "CHECK_STATUS";
+  try{
+   const path="/api/appointments/slips/me/"+encodeURIComponent(ref);
+   const status=await fetch(path+"/status",{
+    cache:"no-store",credentials:"same-origin"});
+   if(!status.ok)return "CHECK_STATUS";
+   const current:unknown=await status.json();
+   if(current&&typeof current==="object"&&
+    "status" in current&&current.status==="ISSUED"&&
+    "canDownload" in current&&current.canDownload===true)return "ISSUED";
+   if(!current||typeof current!=="object"||
+    !("status" in current)||current.status!=="NOT_ISSUED")
+    return "CHECK_STATUS";
+   if(!slipKey.current)slipKey.current=crypto.randomUUID();
+   const answer=await fetch(path+"/issue",{
+    method:"POST",cache:"no-store",credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:slipKey.current})});
+   if(!answer.ok)return "CHECK_STATUS";
+   const issued:unknown=await answer.json();
+   return issued&&typeof issued==="object"&&
+    "status" in issued&&issued.status==="ISSUED"&&
+    "confirmed" in issued&&issued.confirmed===true?"ISSUED":"CHECK_STATUS";
+  }catch{return "CHECK_STATUS";}
+ }
  async function makeHold(){
   if(busy||uncertain)return;
   setBusy(true);setMessage("");
@@ -75,7 +107,10 @@ export function PatientBookingAction(p:Props){
     paymentMode:"PAY_AT_CENTER"
    });
    setConfirmed(value);setUncertain(false);
-   setMessage("Appointment confirmed. Payment is due at the healthcare center.");
+   const document=await issuePatientSlip(value.bookingRef);
+   setMessage(document==="ISSUED"?
+    "Appointment confirmed. Your private consultation slip is issued. Payment is due at the center.":
+    "Appointment confirmed. Payment is due at the center. Check your private patient profile to issue or verify the consultation slip.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?e.status:null;
    setUncertain(!(typeof status==="number"&&status>=400&&status<500));
@@ -120,7 +155,10 @@ export function PatientBookingAction(p:Props){
      "confirmations/by-request/"+confirmKey.current);
     if(booking){
      setConfirmed(booking);setUncertain(false);setHold(null);
-     setMessage("Your original appointment is confirmed: "+booking.bookingId+".");
+     const document=await issuePatientSlip(booking.bookingRef);
+     setMessage("Your original appointment is confirmed: "+booking.bookingId+
+      (document==="ISSUED"?". The private slip is issued.":
+       ". Check the private patient profile for slip status."));
      return;
     }
    }
