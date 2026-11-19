@@ -96,7 +96,7 @@ function sourceCalendarPreview(detail:Detail){
   const date=new Date(origin+i*86400000).toISOString().slice(0,10);
   const weekday=new Date(date+"T12:00:00Z").getUTCDay();
   const effective=(!detail.effectiveFrom||date>=detail.effectiveFrom)&&
-   (!detail.effectiveUntil||date<=detail.effectiveUntil);
+   (!detail.effectiveUntil||date<detail.effectiveUntil);
   return {date,windows:effective?
    detail.windows.filter(w=>w.weekday===weekday):[],
    exceptions:detail.exceptions.filter(e=>
