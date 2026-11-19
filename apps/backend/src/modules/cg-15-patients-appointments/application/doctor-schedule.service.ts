@@ -1,6 +1,5 @@
 import {
- BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
- NotFoundException
+ BadRequestException,ConflictException,Inject,Injectable,NotFoundException
 } from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
@@ -27,8 +26,6 @@ type Source={provider_id:string;doctor_id:string;center_id:string;id:string;
  approved_to:Date|null};
 type Schedule={id:string;version:number;status:string;
  current_revision_id:string;time_zone:string;consultation_mode:string};
-type Revision={revision_no:number;slot_minutes:number;effective_from:string;
- effective_until:string|null;source_digest:string};
 type Command={id:string;request_digest:string;result_ref:string|null;
  result_version:number|null};
 const digest=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
