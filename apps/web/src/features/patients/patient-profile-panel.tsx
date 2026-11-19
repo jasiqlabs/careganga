@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MyConsultationHistory} from "../appointments/my-consultation-history";
+import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
 
 type Profile={virtualPatientId:string;firstName:string;lastName:string;
  dateOfBirth:string|null;profileStatus:string;version:number;
@@ -354,6 +355,9 @@ export function PatientProfilePanel(){
      </button>
     </form>
     {profile&&<MyConsultationHistory/>}
+    {profile?.profileStatus==="VERIFIED"&&
+     <PatientPrivateFilesPanel key={profile.virtualPatientId}
+      consentGranted={profile.consentGranted}/>}
     {profile&&<section aria-label="Manage patient-care consent">
      <h2>My consent</h2>
      <p>You can withdraw your permission for new patient-care information sharing.
