@@ -423,6 +423,13 @@ export class ConsultationQueueService{
   try{
    await tx.query("BEGIN");active=true;
    await this.scope(tx,actor,center);
+   // Reception may check-in and move ARRIVED to WAITING, but may NOT
+   // independently claim the patient is with a clinician or completed.
+   // Sensitive clinical queue transitions require a separate explicit CG01
+   // grant and the actual currently assigned CG14 center inside this TX.
+   if(nextState==="IN_CONSULTATION"||nextState==="COMPLETED")
+    await this.centers.assertCurrent(
+     tx,actor,center,"health.visits.clinical.manage");
    // No medical content in this operational queue projection.
    const qr=await tx.query<Visit>(
     "SELECT * FROM cg15_visit_queue WHERE root_realm_id=$1 AND id=$2 "+
