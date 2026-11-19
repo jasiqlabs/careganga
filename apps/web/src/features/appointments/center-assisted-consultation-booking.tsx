@@ -49,6 +49,10 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
  useEffect(()=>{
   let active=true;
   setLoading(true);setDoctors([]);setPermission(false);
+  // A new center must never inherit the previous patient's code or identity.
+  setPatientId("");setCode("");setHold(null);setBooking(null);
+  setAvailability(null);setUncertain(false);setAttemptKind(null);
+  holdAttempt.current=null;confirmAttempt.current=null;
   void fetch("/api/access/effective",{cache:"no-store",credentials:"same-origin"})
    .then(async r=>r.ok?r.json():null)
    .then(async (data:unknown)=>{
@@ -184,7 +188,8 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
     <label>Doctor at this center
      <select value={doctor} disabled={busy||uncertain||!!hold} onChange={e=>{
       requestEpoch.current++;setDoctor(e.target.value);setAvailability(null);
-      setSelected(null);holdAttempt.current=null;confirmAttempt.current=null;}}>
+      setSelected(null);setPatientId("");setCode("");
+      holdAttempt.current=null;confirmAttempt.current=null;}}>
       <option value="">Choose a verified doctor</option>
       {doctors.map(d=><option key={d.doctorRef} value={d.doctorRef}>
        {d.doctorName}</option>)}
@@ -192,7 +197,8 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
     <label>Consultation date (next 30 days)
      <input type="date" value={date} disabled={busy||uncertain||!!hold}
       onChange={e=>{requestEpoch.current++;setDate(e.target.value);
-       setAvailability(null);setSelected(null);holdAttempt.current=null;}}/></label>
+       setAvailability(null);setSelected(null);setPatientId("");setCode("");
+       holdAttempt.current=null;confirmAttempt.current=null;}}/></label>
     <button type="button" disabled={busy||uncertain||!doctor||!date||!!hold}
      onClick={()=>void refreshSlots(doctor,date)}>
      {slotsLoading?"Checking…":"Check original available times"}</button>
