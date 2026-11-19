@@ -99,3 +99,30 @@ CREATE INDEX ix_cg15_center_intake_recent
 );
 CREATE INDEX ix_cg15_center_intake_recent
  ON cg15_patient_center_intake(root_realm_id,center_id,created_at DESC,id DESC);
+
+-- Attested provenance is immutable; only the first atomic source-link to
+-- the just-created patient may fill patient_id from NULL exactly once.
+-- This makes a stored receptionist attestation uneditable post-registration.
+CREATE FUNCTION cg15_center_intake_provenance_frozen() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  RAISE EXCEPTION 'Provisional patient intake provenance is immutable';
+ END IF;
+ IF OLD.patient_id IS NOT NULL OR NEW.patient_id IS NULL
+  OR NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id
+  OR NEW.id IS DISTINCT FROM OLD.id
+  OR NEW.center_id IS DISTINCT FROM OLD.center_id
+  OR NEW.created_by_account IS DISTINCT FROM OLD.created_by_account
+  OR NEW.request_key IS DISTINCT FROM OLD.request_key
+  OR NEW.request_digest IS DISTINCT FROM OLD.request_digest
+  OR NEW.assisted_consent_attested IS DISTINCT FROM OLD.assisted_consent_attested
+  OR NEW.consent_version IS DISTINCT FROM OLD.consent_version
+  OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+  RAISE EXCEPTION 'Provisional patient intake provenance cannot be rewritten';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg15_center_intake_provenance_immutable
+ BEFORE UPDATE OR DELETE ON cg15_patient_center_intake
+ FOR EACH ROW EXECUTE FUNCTION cg15_center_intake_provenance_frozen();
