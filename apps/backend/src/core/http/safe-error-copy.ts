@@ -259,6 +259,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG01_PUBLIC_SIGNUP_CONFLICT:"This registration request was already used with different details. Check the original registration before retrying.",
       CG15_BOOKING_CHANGE_CLOSED:"This appointment is too close to its start or no longer eligible for patient cancellation/rescheduling. Contact the healthcare center.",
       CG15_BOOKING_CHANGE_POLICY_UNAVAILABLE:"Appointment changes are temporarily unavailable. Contact the healthcare center.",
+      CG15_BOOKING_PRIVATE_REASON_UNAVAILABLE:"The optional private consultation reason cannot be stored securely right now. Leave it blank to book, or contact CareGanga support.",
       CG15_BOOKING_INVALID:"Check the selected doctor, center, time, price and payment choice.",
       CG15_BOOKING_HOLD_NOT_CONFIGURED:"Appointment reservations are temporarily unavailable. Contact CareGanga support.",
       CG15_BOOKING_PATIENT_NOT_READY:"Sign in to your CareGanga patient account, complete an in-person identity check at an approved center, and grant patient-care consent before booking.",
