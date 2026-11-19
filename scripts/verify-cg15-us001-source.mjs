@@ -108,6 +108,18 @@ const tests=[
  ["source: H07 Foundation Web and Center Portal",s.web.includes("Weekly working hours")&&
   s.web.includes("doctorName")&&s.webAdmin.includes("DoctorScheduleWorkspace")&&
   s.centerPortal.includes("DoctorScheduleWorkspace")],
+ ["source: H07 six KPI cards use genuine current approved booking and leave source",
+  s.service.includes("AS appointments,")&&
+  s.service.includes("AS today_sessions,")&&
+  s.service.includes("AS active_leave_doctors")&&
+  s.service.includes("cg15_consultation_appointment")&&
+  s.service.includes("cg15_schedule_weekly_window")&&
+  s.service.includes("cg15_schedule_exception")&&
+  s.web.includes('metrics?.workingSessionsToday')&&
+  s.web.includes('metrics?.totalAppointments')&&
+  s.web.includes('metrics?.doctorsOnActiveLeave')&&
+  !s.web.includes('label:"Today available",value:"—"')&&
+  !s.web.includes('label:"Total appointments",value:"—"')],
  ["source: H07 target-copy is a reviewed draft using existing guarded save only",
   s.web.includes("Copy this doctor's working hours to another verified center")&&
   s.web.includes("Prepare copy at selected center")&&
