@@ -14,6 +14,8 @@ type Patient={virtualPatientId:string;firstName:string;lastName:string;
  dateOfBirth:string|null;profileStatus:string;version:number;
  consentGranted:boolean;consentVersion:string|null};
 type Policy={available:boolean;version:string|null;text:string|null};
+type Contact={hasNumber:boolean;verified:boolean;providerConfigured:boolean;maskedContact:string|null};
+type Verification={status:string;message?:string};
 function endpoint(path:string){
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -47,6 +49,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [agreed,setAgreed]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
+ const [contact,setContact]=useState<Contact|null>(null);
+ const [verificationCode,setVerificationCode]=useState("");
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
   const me=await invoke<{displayName:string}>("/api/identity/me","GET",undefined,auth);
@@ -54,12 +58,15 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
   const result=await invoke<Patient>("/api/v1/patients/me","GET",undefined,auth);
   if(result.status===401)return false;
   const p=result.data;
+  const status=await invoke<Contact>("/api/identity/mobile/status","GET",undefined,auth);
+  if(status.status===401)return false;
+  setContact(status.data);
   setProfile(p);
   if(p){setFirst(p.firstName);setLast(p.lastName);setDob(p.dateOfBirth??"");}
   return true;
  },[]);
  const clear=useCallback(()=>{
-  setToken(null);setProfile(null);setPassword("");setAgreed(false);
+  setToken(null);setProfile(null);setContact(null);setPassword("");setAgreed(false);
   pendingRegistration.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
@@ -122,6 +129,33 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    const response=await invoke<{signedOut:boolean}>("/api/identity/logout","POST",{},token);
    if(!response.data?.signedOut)throw Error("Sign-out was not confirmed. Please retry.");
    clear();setMessage("Signed out of your patient profile.");
+  });
+ }
+ function startVerification(){
+  if(!token)return;
+  void run(async()=>{
+   const r=await invoke<Verification>("/api/identity/mobile/verify/start","POST",{},token);
+   setMessage(r.data?.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"?
+    "A code was requested. Receipt is not guaranteed. Check your phone.":
+    r.data?.status==="ALREADY_VERIFIED"?"Your account contact is verified.":
+    "Verification request status is uncertain. Check status before retrying.");
+   await load(token);
+  });
+ }
+ function confirmVerification(){
+  if(!token)return;
+  void run(async()=>{
+   if(!/^\d{4,10}$/.test(verificationCode))throw Error("Enter the verification code.");
+   const r=await invoke<Verification>("/api/identity/mobile/verify/confirm","POST",
+    {code:verificationCode},token);
+   if(r.data?.status!=="VERIFIED"){
+    setMessage(r.data?.status==="NOT_VERIFIED"?
+     "That code could not be verified. Check your entry.":
+     "Mobile verification result is uncertain. Check status before retrying.");
+    return;
+   }
+   setVerificationCode("");await load(token);
+   setMessage("Your account contact is verified.");
   });
  }
  function register(){
@@ -195,6 +229,23 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       <Text>Patient-care consent: {profile.consentGranted?"Granted":"Withdrawn"}</Text>
      </View>:<Text>No patient profile is linked yet. A verified account
        contact and approved patient-care consent are required.</Text>}
+     {!profile&&<View style={styles.field}>
+      <Text style={styles.subtitle}>Verify account mobile contact</Text>
+      {contact?.verified?<Text>Your CareGanga contact is verified.</Text>:
+       !contact?.hasNumber?<Text>Your existing account has no verification contact.
+        Ask CareGanga Foundation to record your contact first.</Text>:
+       !contact?.providerConfigured?<Text>Mobile verification is not configured.
+        Patient registration is unavailable for now.</Text>:
+       <View style={styles.field}>
+        <Text>The code is sent only to the saved contact
+         {contact.maskedContact?" ending "+contact.maskedContact:""}.
+         A shared family phone does not give access to other patients.</Text>
+        {button("Request verification code",startVerification,busy)}
+        {field("One-time code",verificationCode,setVerificationCode)}
+        {button("Verify code",confirmVerification,
+         busy||!/^\d{4,10}$/.test(verificationCode))}
+       </View>}
+     </View>}
      {field("First name",first,setFirst)}
      {field("Last name",last,setLast)}
      {field("Date of birth (YYYY-MM-DD, optional)",dob,setDob)}
@@ -207,7 +258,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      </View>}
      {button(busy?"Saving…":profile?"Save details":"Create patient profile",
       profile?save:register,busy||!first.trim()||!last.trim()||
-       (!profile&&(!policy.available||!agreed)))}
+       (!profile&&(!policy.available||!agreed||!contact?.verified)))}
      {profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Manage patient-care consent</Text>
       {!profile.consentGranted&&policy.available&&<Text>{policy.text}</Text>}
