@@ -1,5 +1,5 @@
-import {useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {useEffect,useRef,useState} from "react";
+import {BackHandler,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -54,6 +54,17 @@ export function NativeConsultationAction(p:Props){
  const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const slipKey=useRef<string|null>(null);
+ // Hardware Back follows the same review-to-edit path as Public Web.
+ // While a remote write is pending or uncertain, never silently leave and
+ // invite a second reservation with a different idempotency key.
+ useEffect(()=>{
+  const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(busy||uncertain)return true;
+   if(review){setReview(false);return true;}
+   return false;
+  });
+  return()=>sub.remove();
+ },[busy,uncertain,review]);
  const label=(s:string,run:()=>void)=>(
   <Pressable accessibilityRole="button" disabled={busy||uncertain}
    accessibilityState={{disabled:busy||uncertain}}
