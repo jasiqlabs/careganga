@@ -13,17 +13,27 @@ const response=(status:number,message:string)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"no-store"}
 });
 function allowed(p:string[],method:string){
+ if(p[0]==="leave"){
+  if(p.length===2&&p[1]==="ready")return method==="GET";
+  if(p.length===3&&ID.test(p[1])&&p[2]==="apply")
+   return method==="POST";
+  return false;
+ }
  if(p[0]==="admin"){
   if(p.length===1)return method==="GET";
   if(p.length===2&&ID.test(p[1]))return method==="GET"||method==="PUT";
   if(p.length===3&&ID.test(p[1])&&p[2]==="exceptions")
    return method==="POST";
+  if(p.length===5&&ID.test(p[1])&&p[2]==="exceptions"&&
+    ID.test(p[3])&&p[4]==="cancel")return method==="POST";
  }
  if(p[0]==="my-centers"&&p.length>=2&&ID.test(p[1])){
   if(p.length===2)return method==="GET";
   if(p.length===3&&ID.test(p[2]))return method==="GET"||method==="PUT";
   if(p.length===4&&ID.test(p[2])&&p[3]==="exceptions")
    return method==="POST";
+  if(p.length===6&&ID.test(p[2])&&p[3]==="exceptions"&&
+     ID.test(p[4])&&p[5]==="cancel")return method==="POST";
  }
  return false;
 }
