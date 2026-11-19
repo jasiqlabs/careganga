@@ -94,11 +94,11 @@ export class ConsultationQueueService{
    await this.scope(tx,actor,center);
    const r=await tx.query<{
     id:string;booking_display_id:string;doctor_id:string;doctor_name:string;booking_state:string;revision:number;
-    start_at:Date;time_zone:string;first_name:string;last_name:string;
+    start_at:Date;end_at:Date;time_zone:string;first_name:string;last_name:string;
     visit_id:string|null;queue_token:string|null;queue_state:string|null;visit_version:number|null
    }>(
     "SELECT a.id,a.booking_display_id,a.doctor_id,a.doctor_name,a.booking_state,a.revision,"+
-    "a.start_at,a.time_zone,p.first_name,p.last_name,"+
+    "a.start_at,a.end_at,a.time_zone,p.first_name,p.last_name,"+
     "q.id AS visit_id,q.queue_token,q.state AS queue_state,q.revision AS visit_version "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
@@ -115,7 +115,8 @@ export class ConsultationQueueService{
     last.start_at.toISOString()+"|"+last.id:null,items:page
     .map(x=>({appointmentRef:x.id,bookingId:x.booking_display_id,
       doctorRef:x.doctor_id,doctorName:x.doctor_name,patientName:x.first_name+" "+x.last_name,
-      startAt:x.start_at.toISOString(),bookingStatus:x.booking_state,bookingVersion:x.revision,
+      startAt:x.start_at.toISOString(),endAt:x.end_at.toISOString(),
+      timeZone:x.time_zone,bookingStatus:x.booking_state,bookingVersion:x.revision,
       visitRef:x.visit_id,queueToken:x.queue_token,visitStatus:x.queue_state,visitVersion:x.visit_version}))};
   }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
@@ -229,12 +230,86 @@ export class ConsultationQueueService{
    await tx.query("COMMIT");active=false;return result(q.rows[0]);
   }catch(e){if(active)await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
+ /** A missed consultation is NOT a visit. Preserve the absence of a check-in
+  * or queue number; make the original appointment NO_SHOW only after its
+  * scheduled end. Booking writers and this action share the doctor-row lock.
+  */
+ async markNoShow(bearer:string,centerRaw:string,raw:unknown){
+  const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
+  const v=input(raw,["appointmentRef","requestKey","expectedVersion"]);
+  const appointmentId=param(v.appointmentRef),key=param(v.requestKey),
+   expected=number(v.expectedVersion);
+  const signature=digest({appointmentId,expected,action:"NO_SHOW"});
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN");active=true;
+   await this.scope(tx,actor,center);
+   const peek=await tx.query<{doctor_id:string}>(
+    "SELECT doctor_id FROM cg15_consultation_appointment WHERE "+
+    "root_realm_id=$1 AND id=$2 AND center_id=$3",
+    [actor.realmId,appointmentId,center]);
+   if(!peek.rows[0])throw new NotFoundException({code:"CG15_QUEUE_NOT_FOUND"});
+   const lockedDoctor=await tx.query(
+    "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [actor.realmId,peek.rows[0].doctor_id]);
+   if(!lockedDoctor.rowCount)throw new NotFoundException({code:"CG15_QUEUE_NOT_FOUND"});
+   const source=await tx.query<Appointment>(
+    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND id=$2 AND center_id=$3 FOR UPDATE",
+    [actor.realmId,appointmentId,center]);
+   const booking=source.rows[0];
+   if(!booking||booking.doctor_id!==peek.rows[0].doctor_id)
+    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   const previous=await tx.query<{new_snapshot:{requestDigest?:string}}>(
+    "SELECT new_snapshot FROM cg15_appointment_event WHERE root_realm_id=$1 "+
+    "AND appointment_id=$2 AND action='NO_SHOW' AND request_key=$3",
+    [actor.realmId,appointmentId,key]);
+   if(previous.rows[0]){
+    if(previous.rows[0].new_snapshot?.requestDigest!==signature)
+     throw new ConflictException({code:"CG15_QUEUE_REQUEST_CONFLICT"});
+    await tx.query("COMMIT");active=false;
+    return {appointmentRef:appointmentId,bookingStatus:booking.booking_state,
+     version:booking.revision,alreadyRecorded:true};
+   }
+   if(booking.revision!==expected||booking.booking_state!=="CONFIRMED"||
+    booking.end_at.getTime()>Date.now())
+    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   const hasCheckIn=await tx.query(
+    "SELECT 1 FROM cg15_visit_queue WHERE root_realm_id=$1 AND appointment_id=$2",
+    [actor.realmId,appointmentId]);
+   if(hasCheckIn.rowCount)
+    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   await tx.query(
+    "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
+    "WHERE root_realm_id=$1 AND id=(SELECT reservation_id FROM "+
+    "cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2) "+
+    "AND status='CONFIRMED'",[actor.realmId,appointmentId]);
+   await tx.query(
+    "UPDATE cg15_consultation_appointment SET booking_state='NO_SHOW',"+
+    "revision=revision+1,terms_revision=terms_revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,appointmentId]);
+   await tx.query(
+    "INSERT INTO cg15_appointment_event(root_realm_id,appointment_id,"+
+    "prior_revision,new_revision,action,prior_snapshot,new_snapshot,"+
+    "actor_account_id,request_key) VALUES($1,$2,$3,$4,'NO_SHOW',$5,$6,$7,$8)",
+    [actor.realmId,appointmentId,booking.revision,booking.revision+1,
+     JSON.stringify({status:"CONFIRMED",centerRef:center,
+      startAt:booking.start_at.toISOString(),endAt:booking.end_at.toISOString()}),
+     JSON.stringify({status:"NO_SHOW",requestDigest:signature,
+      reason:"PATIENT_DID_NOT_CHECK_IN"}),actor.accountId,key]);
+   await tx.query("COMMIT");active=false;
+   return {appointmentRef:appointmentId,bookingStatus:"NO_SHOW",
+    version:booking.revision+1,alreadyRecorded:false};
+  }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async transition(bearer:string,centerRaw:string,visitRaw:string,raw:unknown){
   const actor=await this.identity.verifySession(bearer),
    center=param(centerRaw),visitId=param(visitRaw);
   const v=input(raw,["requestKey","expectedVersion","nextState"]);
   const key=param(v.requestKey),expected=number(v.expectedVersion);
-  if(!["WAITING","IN_CONSULTATION","COMPLETED","NO_SHOW"].includes(String(v.nextState)))
+  if(!["WAITING","IN_CONSULTATION","COMPLETED"].includes(String(v.nextState)))
    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
   const nextState=String(v.nextState);
   const signature=digest({visitId,expected,nextState});
@@ -258,8 +333,8 @@ export class ConsultationQueueService{
     await tx.query("COMMIT");active=false;return result(old);
    }
    const allowed:Record<string,string[]>={
-    ARRIVED:["WAITING","NO_SHOW"],
-    WAITING:["IN_CONSULTATION","NO_SHOW"],
+    ARRIVED:["WAITING"],
+    WAITING:["IN_CONSULTATION"],
     IN_CONSULTATION:["COMPLETED"],
     COMPLETED:[],NO_SHOW:[]
    };
@@ -272,10 +347,8 @@ export class ConsultationQueueService{
    const ap=ar.rows[0];
    if(!ap||ap.booking_state!==old.state)
     throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
-   // A receptionist must never mark a future/ongoing consultation NO_SHOW
-   // while its original scheduled interval has not even finished.
-   if(nextState==="NO_SHOW"&&ap.end_at.getTime()>Date.now())
-    throw new ConflictException({code:"CG15_QUEUE_CHANGED"});
+   // No-show is an original booking action, never a transition of a
+   // patient already checked in to ARRIVED/WAITING.
    const changed=await tx.query<Visit>(
     "UPDATE cg15_visit_queue SET state=$3,revision=revision+1,"+
     "updated_at=now(),actor_account_id=$4 WHERE root_realm_id=$1 AND id=$2 RETURNING *",
