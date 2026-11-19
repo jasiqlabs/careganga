@@ -1,5 +1,4 @@
 import {Body,Controller,Header,HttpCode,Post,Req} from "@nestjs/common";
-import {randomUUID} from "node:crypto";
 import {PublicPatientSignupService} from "../application/public-patient-signup.service";
 import type {CareGangaRequest} from "../../../core/observability/request-correlation";
 /** Public creation is an unprivileged CG01 account ONLY.
@@ -13,7 +12,6 @@ export class PublicPatientSignupController{
  @Header("Cache-Control","no-store")
  register(@Body()raw:unknown,@Req()request:CareGangaRequest){
   const remote=request.ip??"unknown";
-  void (request.cgRequestId??randomUUID());
   return this.signup.register(raw,remote);
  }
 }
