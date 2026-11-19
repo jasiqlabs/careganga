@@ -73,3 +73,14 @@ For each actual **US-NNN-QA##** case, log tested commit SHA, command/device, rea
 - **`main` synchronization**: feature currently behind four upstream commits; verify real change conflicts in auth, migration runner, DB and Web before requesting merge.
 
 **Disposition:** Local developer can start the build and QA with these steps. The module is **not** independently SOURCE_COMPLETE, QA_PASS, production-ready or merge-approved.
+
+
+## Same-branch follow-up: patient booking isolation and sensitive-state recovery (19 Nov)
+
+After the Android receptionist implementation, a further independent static read found a cross-audience access edge: an account that is both a patient and receptionist could request the patient-only hold-status route for **another patient's** staff-created hold. The current `ConsultationBookingService.holdStatus` now checks the **actual linked patient's ID equals the hold patient** and otherwise returns not found. Staff original request recovery remains explicitly current-center and permission scoped. **This is a source fix, not a proven penetration-test pass.**
+
+Public Web now distinguishes explicit rejected HTTP 4xx booking requests from genuinely unknown server/network outcomes, uses exact original key checks (not truncated recent history), scopes one-time patient receptionist code visibility to its originating center, and remounts booking action whenever doctor, center, time or accepted fee changes. Staff Web and Internal Android clear prior patient ID and one-time code when switching the center, doctor or booking day. Five additional source-preflight assertions were added in the existing CG15 verifier; **not executed remotely**.
+
+**Add to actual original US-003-QA16 and US-004-QA04/11/12/14 local QA:** test one same-account dual-role receptionist/patient holding for a different patient and reading the patient-only hold endpoint (must deny), own hold (must permit), cross-center read (must deny), 400/403/409 rejection vs network-lost response with same-key exact recovery, and code/old-held appointment not visible under a newly selected doctor, center, date or price in Web and Android. Also run `npm run verify:cg15-us004-us008-source` on the exact checkout and independently review all output. Neither source assertions nor their eventual passing replace real device, DB, multi-session, rendered UI or qualified security/clinical QA.
+
+Original 128-case source classifications remain **historical conservative counts** pending full current-commit retracing; no runtime-case PASS or source-complete signoff is asserted. No `main` merge, PR, CI or deployment is authorized by this handoff.
