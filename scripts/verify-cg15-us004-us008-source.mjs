@@ -361,6 +361,17 @@ const checks=[
   s.queueBff.includes('params.set("after",after)')&&
   s.webQueue.includes("Next 100")&&
   s.nativeQueue.includes("Next 100")],
+ ["H15 registers and books only through actual assigned-center intake action and shows true consent",
+  s.adminPage.includes('rightsSet.has("health.patients.intake")')&&
+  s.adminPage.includes('href="/admin/health-network/patient-intake"')&&
+  s.staffIntake.includes("<CenterPatientIntakePanel")&&
+  s.staffIntake.includes("<CenterAssistedConsultationBooking")&&
+  s.staffWeb.includes('request<Hold>("holds","POST"')&&
+  s.staffWeb.includes('request<Booking>("confirm","POST"')&&
+  s.admin.includes("consent.granted AS consent_granted")&&
+  s.admin.includes("patientProfileStatus:x.profile_status")&&
+  s.webAdmin.includes("patientConsentGranted")&&
+  s.webAdmin.includes("patientProfileStatus")],
  ["H15 real geography and server-center filters survive >200 centers",
   s.admin.includes("centerChoicesComplete")&&
   s.admin.includes("centerSearch.trim()")&&
