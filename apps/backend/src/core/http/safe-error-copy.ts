@@ -240,6 +240,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_CENTER_MEDIA_RIGHTS_INVALID:"Record a real photo owner or written publication consent and a useful image description.",
       HEALTH_CENTER_MEDIA_RIGHTS_CHANGED:"Photo publication rights changed. Refresh the original image before retrying.",
       HEALTH_CENTER_MEDIA_NOT_VERIFIED:"Only a securely scanned, unrevoked center photo can be selected for publication.",
+      CG15_PATIENT_CENTER_UNAVAILABLE:"Your current assigned healthcare center is unavailable or not authorized for patient intake.",
+      CG15_PATIENT_INTAKE_NOT_FOUND:"This intake request is not available to your account at this center.",
       CG15_PATIENT_INVALID:"Review the patient name, date of birth and form details before continuing.",
       CG15_PATIENT_FORBIDDEN:"Your account is not authorized to manage this patient profile.",
       CG15_PATIENT_CONTACT_UNVERIFIED:"Verify the mobile contact on your existing CareGanga account before creating a patient profile.",
