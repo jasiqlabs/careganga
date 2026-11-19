@@ -11,6 +11,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [slip,setSlip]=useState<{status:string;canDownload:boolean}|null>(null);
  const [busy,setBusy]=useState(false),[unknown,setUnknown]=useState(false);
+ const [downloadBusy,setDownloadBusy]=useState(false);
  const issueKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   if(!ID.test(bookingRef))throw Error("This appointment link is invalid.");
@@ -52,6 +53,38 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   }catch(e){setUnknown(true);setError(e instanceof Error?e.message:"Slip issue status is uncertain.");}
   finally{setBusy(false);}
  }
+ async function downloadPrivateSlip(){
+  if(downloadBusy||busy||unknown||!slip?.canDownload||!ID.test(bookingRef))return;
+  setDownloadBusy(true);setError("");
+  try{
+   const issued=await fetch("/api/appointments/slips/me/"+
+    encodeURIComponent(bookingRef)+"/download-grant",{
+     method:"POST",cache:"no-store",credentials:"same-origin",
+     headers:{"Content-Type":"application/json"},body:"{}"});
+   const raw:unknown=await issued.json().catch(()=>null);
+   if(!issued.ok||!raw||typeof raw!=="object"||!("grant" in raw)||
+    typeof raw.grant!=="string"||
+    !/^[0-9]{10}\.[a-f0-9]{64}$/.test(raw.grant))
+    throw Error("The private slip download could not be authorized. Check its current status.");
+   const url="/api/appointments/slips/me/"+encodeURIComponent(bookingRef)+
+    "/restricted-file?grant="+encodeURIComponent(raw.grant);
+   const response=await fetch(url,{cache:"no-store",credentials:"same-origin"});
+   if(!response.ok||!response.headers.get("Content-Type")?.includes("application/pdf"))
+    throw Error("The current secure slip is no longer available. Refresh its status.");
+   const bytes=await response.arrayBuffer();
+   const view=new Uint8Array(bytes);
+   if(view.length<100||view.length>10485760||
+    view[0]!==37||view[1]!==80||view[2]!==68||view[3]!==70)
+    throw Error("The verified appointment PDF could not be read.");
+   const privateUrl=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+   const a=document.createElement("a");
+   a.href=privateUrl;a.download="careganga-consultation.pdf";
+   a.rel="noopener noreferrer";a.click();
+   setTimeout(()=>URL.revokeObjectURL(privateUrl),60000);
+  }catch(e){setError(e instanceof Error?e.message:
+   "The private PDF download could not be confirmed.");}
+  finally{setDownloadBusy(false);}
+ }
  const money=(s:string)=>new Intl.NumberFormat("en-IN",{
   style:"currency",currency:"INR"}).format(Number(s)/100);
  return <section className="cg-public-section">
@@ -79,8 +112,10 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
     <p>Original CG-19 private PDF · one patient copy for pay-at-center
      · status-only QR, no clinical record access.</p>
     {slip?.status==="ISSUED"&&slip.canDownload?
-     <p><a href={"/api/appointments/slips/me/"+encodeURIComponent(bookingRef)+"/file"}>
-      Download my private PDF &amp; QR slip</a></p>:
+     <p><button type="button" disabled={busy||unknown||downloadBusy}
+       onClick={()=>void downloadPrivateSlip()}>
+       {downloadBusy?"Verifying private download…":"Download my private PDF & QR slip"}
+      </button></p>:
      booking.bookingStatus==="CANCELLED"?<p>A cancelled appointment has no current slip.</p>:
      <button type="button" disabled={busy||unknown} onClick={()=>void issue()}>
       {busy?"Issuing…":"Issue my secure appointment slip"}</button>}
