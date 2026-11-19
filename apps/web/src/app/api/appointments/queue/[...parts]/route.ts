@@ -4,7 +4,7 @@ export const dynamic="force-dynamic";
 type Context={params:Promise<{parts:string[]}>};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const safeCodes=new Set(["CG15_QUEUE_INVALID","CG15_QUEUE_NOT_FOUND","CG15_QUEUE_CHANGED",
- "CG15_QUEUE_REQUEST_CONFLICT","CG15_QUEUE_LIMIT"]);
+ "CG15_QUEUE_REQUEST_CONFLICT","CG15_QUEUE_LIMIT","CG15_QUEUE_RATE_LIMIT"]);
 function fail(status:number,message:string,code?:string){
  return NextResponse.json({message,...(code?{code}:{})},
   {status,headers:{"Cache-Control":"private, no-store"}});
