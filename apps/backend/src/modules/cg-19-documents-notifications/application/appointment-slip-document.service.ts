@@ -217,6 +217,17 @@ export class AppointmentSlipDocumentService{
    "AND status='ISSUED' AND revoked_at IS NULL AND object_version=$3",
    [source.rootRef,d.id,d.object_version]);
   if(!live.rowCount)throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  // Auditable purpose-bound private read. Never log PDF bytes, clinic notes,
+  // patient phone, diagnosis, bearer token or short-lived download grant.
+  const actor=await this.original.actorForSlip(bearer);
+  await this.db.query(
+   "INSERT INTO access_audit(realm_id,actor_account_id,action_key,"+
+   "outcome,safe_context,correlation_ref) "+
+   "VALUES($1,$2,'health.patients.slip.download','SUCCESS',$3::jsonb,$4)",
+   [source.rootRef,actor.accountId,JSON.stringify({
+    owner:"CG19_APPOINTMENT_SLIP",purpose:"PATIENT_CONSULTATION_SLIP",
+    documentVersion:source.sourceVersion,
+    bookingRef:source.bookingRef,staffAccess:staff}),randomUUID()]);
   return bytes;
  }
  async verifyPublic(raw:unknown){
