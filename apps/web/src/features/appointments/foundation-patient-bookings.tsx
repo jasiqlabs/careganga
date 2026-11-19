@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {FoundationPatientDuplicateReviews} from "./foundation-patient-duplicate-reviews";
 type Row={bookingRef:string;bookingId:string;virtualPatientId:string;
  patientName:string;patientProfileStatus:string;patientConsentGranted:boolean|null;
  doctorName:string;centerName:string;bookingStatus:string;bookingVersion:number;
@@ -472,5 +473,9 @@ export function FoundationPatientBookings(){
      </>}
    </section>
   </div>}
+  <details className="form-section" aria-label="Restricted patient duplicate reviews">
+   <summary>Review possible duplicate patient identities</summary>
+   <FoundationPatientDuplicateReviews/>
+  </details>
  </section>;
 }
