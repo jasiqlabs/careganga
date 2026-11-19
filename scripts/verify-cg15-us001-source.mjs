@@ -137,6 +137,25 @@ const tests=[
   s.web.includes('metrics?.doctorsOnActiveLeave')&&
   !s.web.includes('label:"Today available",value:"—"')&&
   !s.web.includes('label:"Total appointments",value:"—"')],
+ ["source: H07 bounded multi-center bulk copy independently verifies and CAS saves each target",
+  s.web.includes("async function previewBulk()")&&
+  s.web.includes("async function applyBulk()")&&
+  s.web.includes("bulkRefs.slice(0,8)")&&
+  s.web.includes("const dest=await api<Detail>(base+")&&
+  s.web.includes("dest.doctorRef!==source.doctorRef")&&
+  s.web.includes("dest.timeZone!==source.timeZone")&&
+  s.web.includes("dest.version!==target.version")&&
+  s.web.includes("expectedVersion:dest.version")&&
+  s.web.includes('status:isRejected?"REJECTED":"UNCERTAIN"')&&
+  s.web.includes("I understand each center may save or be rejected separately.")&&
+  s.service.includes("noOtherCenterOverlap(tx,actor,src")&&
+  s.service.includes("CG15_SCHEDULE_OUTSIDE_CENTER_HOURS")],
+ ["source: geographic H07 KPI query follows the same real selected center scope",
+  s.service.includes("WITH scoped_center AS (")&&
+  s.service.includes("JOIN scoped_center place ON place.id=a.center_id")&&
+  s.service.includes("JOIN scoped_center place ON place.id=s.center_id")&&
+  s.service.includes("JOIN scoped_center place ON place.id=e.center_id")&&
+  s.web.includes("metrics?.totalAppointments")],
  ["source: H07 target-copy is a reviewed draft using existing guarded save only",
   s.web.includes("Copy this doctor's working hours to another verified center")&&
   s.web.includes("Prepare copy at selected center")&&
