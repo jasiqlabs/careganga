@@ -11,9 +11,9 @@ export class DoctorScheduleController{
  @Header("Cache-Control","private, no-store")
  admin(@Headers("authorization")token:string,@Query("centerRef")center?:string,
   @Query("stateRef")state?:string,@Query("districtRef")district?:string,
-  @Query("blockRef")block?:string){
+  @Query("blockRef")block?:string,@Query("search")search?:string){
   return this.schedule.roster(token,"foundation",center,
-   {stateRef:state,districtRef:district,blockRef:block});
+   {stateRef:state,districtRef:district,blockRef:block,search});
  }
  @Get("admin/:associationRef")
  @Header("Cache-Control","private, no-store")
