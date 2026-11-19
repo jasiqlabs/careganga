@@ -11,7 +11,7 @@ type Summary={patients:string;active_patients:string;bookings:string;
 type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
  first_name:string;last_name:string;profile_status:string;
  consent_granted:boolean|null;doctor_name:string;center_name:string;
- center_id:string;booking_state:string;start_at:Date;time_zone:string;created_at:Date;
+ center_id:string;booking_state:string;revision:number;start_at:Date;time_zone:string;created_at:Date;
  collection_state:string;fee_minor:string};
 @Injectable()
 export class PatientAdminOverviewService{
@@ -110,7 +110,7 @@ export class PatientAdminOverviewService{
    const rows=await tx.query<BookingRow>(
     "SELECT a.id,a.booking_display_id,p.virtual_display_id,p.first_name,p.last_name,"+
     "p.profile_status,consent.granted AS consent_granted,"+
-    "a.doctor_name,a.center_name,a.center_id,a.booking_state,a.start_at,a.time_zone,"+
+    "a.doctor_name,a.center_name,a.center_id,a.booking_state,a.revision,a.start_at,a.time_zone,"+
     "a.created_at,a.collection_state,a.fee_minor::text "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
@@ -191,7 +191,7 @@ export class PatientAdminOverviewService{
     patientName:x.first_name+" "+x.last_name,
     patientProfileStatus:x.profile_status,patientConsentGranted:x.consent_granted,
     doctorName:x.doctor_name,centerName:x.center_name,
-    bookingStatus:x.booking_state,
+    bookingStatus:x.booking_state,bookingVersion:x.revision,
     startAt:x.start_at.toISOString(),timeZone:x.time_zone,createdAt:x.created_at.toISOString(),
     collectionStatus:x.collection_state,consultationFeeMinor:x.fee_minor
    })),next:rows.rows.length>limit?item.at(-1)!.id:null};
