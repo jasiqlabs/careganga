@@ -276,9 +276,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      <strong style={{fontSize:22}}>{item.value}</strong>
     </div>)}
    </div>
-   <p>Counts cover up to the first 100 current verified doctor-center records. Availability,
-    appointment totals and approved-leave aggregates are not displayed until
-    their source-backed integrations are available.</p>
+   <p>The doctor-center list is limited to 100 current associations. Appointment,
+    working-session and approved-leave totals are calculated separately from
+    the live source, not from this limited list. Use location filters to narrow
+    a large list.</p>
    <h2>Doctor and center</h2>
    <label>Search approved doctors, clinics or specialties
     <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
