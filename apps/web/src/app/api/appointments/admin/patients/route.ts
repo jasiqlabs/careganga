@@ -11,7 +11,12 @@ export async function GET(request:NextRequest){
  const allowed=new URLSearchParams();
  for(const key of ["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search"]){
   const value=request.nextUrl.searchParams.get(key);
-  if(value!==null)allowed.set(key,value.slice(0,50));
+  if(value!==null){
+   if(value.length>(key==="search"?80:50))
+    return NextResponse.json({message:"Check the patient search or filter length."},
+     {status:400,headers:{"Cache-Control":"private, no-store"}});
+   allowed.set(key,value);
+  }
  }
  if([...request.nextUrl.searchParams.keys()].some(key=>
   !["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search"].includes(key)))
