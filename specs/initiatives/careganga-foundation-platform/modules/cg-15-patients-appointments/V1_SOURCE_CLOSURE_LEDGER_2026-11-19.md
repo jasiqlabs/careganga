@@ -6,7 +6,7 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **95/128 SOURCE_VERIFIED, 24 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **96/128 SOURCE_VERIFIED, 23 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
@@ -29,7 +29,7 @@ Source-only current snapshot: **95/128 SOURCE_VERIFIED, 24 SOURCE_GAP, 2 NOT_VER
 | US-004-QA11 | SOURCE_GAP | CG15 direct source/code work | Anonymous preview never returns patient data; private owner routes root/actor checked, but symptom/purpose encrypted original consent snapshot is not authored. |
 | US-004-QA14 | SOURCE_GAP | Runtime/visual/permissions QA and remaining source parity | Web/Android both hold/confirm and show conflicts/unknown; no complete reason/review/Back/visual/accessibility/emulator QA. |
 | US-005-QA05 | SOURCE_GAP | CG19 private document / communication owner | Web authenticated download and Android protected PDF preview exist, but native direct share/print equivalence, device and grant-revocation QA not complete. |
-| US-005-QA07 | SOURCE_GAP | CG15 direct source/code work | Current assigned-center CG01 health.visits.manage + CG14 current own-center scope authorize a limited original CG19 QR token lookup; Web/Internal Android manual code input returns same-center booking/check-in-eligibility only, foreign center gets valid:false; actual camera QR scanning and runtime negative scope QA remain SOURCE_GAP. |
+| US-005-QA07 | SOURCE_VERIFIED | CG15 original Center Portal source | New explicit staff-button Web camera reader checks browser secure context, qr_code detection, original opaque CGV token shape and stops camera tracks on success/change/unmount. Scan invokes unchanged own-center CG15 verify-slip guarded by CG01 health.visits.manage, CG14 assigned center, 1434 QR attempt quota and latest patient consent. Manual code fallback remains. Internal Android native camera scanner is not claimed. Browser/device/permissions/cross-center SQL QA NOT_RUN. |
 | US-005-QA08 | SOURCE_VERIFIED | CG15 / CG19 original status-only QR source | PostgreSQL migration 1434 per-staff/account/root 24-attempt/15-minute QR lookup budget, immutable no-token/patient audit, safe 429; expired/foreign/revoked/consent-invalid original QR denied. Real device/DB/abuse QA NOT_RUN. |
 | US-005-QA10 | SOURCE_GAP | CG19 private document / communication owner | Android has authenticated native PDF/calendar preview, Web PDF/calendar; exact native share/print and device/back parity untested and not fully implemented. |
 | US-005-QA12 | SOURCE_GAP | CG19 private document / communication owner | Optional CG19 true delivery after commit not connected; booking never shows false delivery status. |
@@ -113,3 +113,12 @@ Source defect fixed on the existing feature branch: CG19's periodic missed-event
 Original **US-006-QA15 is SOURCE_VERIFIED, not runtime PASS**. The committed communications verifier now includes a targeted all-root assertion and lexical migration checker includes 1435. The current source code was fetched independently after writing; **Node source preflight execution, Nest/Next builds, Android type checks, PostgreSQL clean/upgrade migration and EXPLAIN, 64+ event backlog, two hosts/lost NOTIFY, idle SQL/provider egress, cross-root privacy and real devices are still NOT_RUN**. Original US-001 leave decision recovery still uses its own CG03 cursor; the change does not falsely assert it now has a new cross-root decision outbox.
 
 **New current canonical source total: 95 SOURCE_VERIFIED / 24 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE = 128; runtime PASS 0/128; formal SOURCE_COMPLETE 0/8.** Remaining 24 true gaps and 2 unverified cases remain open in the unchanged original QA tracker; no merge or deploy approval.
+
+
+## 19 November 2026 — US-005-QA07 Web Center Portal original QR scanning
+
+The original QR document never contains patient identity, only the opaque CGV status code, and staff verification has always required CG01 health.visits.manage, CG14 current own-center scope, CG19 signed status verification, latest consent and migration 1434 quota/audit. Previously Center Portal could only type this code. New local Web `CenterQrCameraScanner` explicitly requests permission on click, uses built-in browser QR decoder only when available on a secure context, matches the original token shape, releases every active stream on stop/success/center or date change/unmount and calls exactly the same assigned-center verification request. Unsupported devices retain manual entry and no nonconsented third-party scanner service was added. The existing Internal Android manual code verification remains, without claiming native camera implementation.
+
+**Original US-005-QA07 is source-level verified, not a camera/device pass.** Local QA still must scan an actual CG19 private PDF on physical staff devices, verify wrong-root/Center B denial, 24 attempts/15-minute 429, replay/expired/revoked/withdrawn-consent, browser camera denial/unsupported decoder fallback, camera track release, Android existing manual flow and role removal while camera is open. No Node/Next compile or browser runtime was executed in this remote GitHub source review.
+
+**Current source totals: 96 verified / 23 gaps / 2 not verifiable / 7 not applicable = 128. Runtime PASS 0; formally source complete 0/8.**
