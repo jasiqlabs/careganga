@@ -14,9 +14,10 @@ import type {VerifiedFoundationActor}
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
-type Intake={request_digest:string;patient_id:string|null;consent_version:string};
+type Intake={id?:string;request_digest:string;patient_id:string|null;consent_version:string};
 type IntakeResult={virtual_display_id:string;first_name:string;last_name:string;
- date_of_birth:string|null;profile_status:string;created_at:Date};
+ date_of_birth:string|null;profile_status:string;created_at:Date;
+ dependent_relationship:string|null};
 function body(x:unknown):Record<string,unknown>{
  if(!x||typeof x!=="object"||Array.isArray(x))
   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
@@ -85,8 +86,11 @@ export class CenterPatientIntakeService{
  private async result(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string,key:string){
   const r=await tx.query<IntakeResult>(
    "SELECT p.virtual_display_id,p.first_name,p.last_name,p.date_of_birth::text,"+
-   "p.profile_status,i.created_at FROM cg15_patient_center_intake i "+
+   "p.profile_status,i.created_at,"+
+   "da.relationship AS dependent_relationship FROM cg15_patient_center_intake i "+
    "JOIN cg15_patient p ON p.root_realm_id=i.root_realm_id AND p.id=i.patient_id "+
+   "LEFT JOIN cg15_patient_dependent_intake_authorization da "+
+   "ON da.root_realm_id=i.root_realm_id AND da.intake_id=i.id "+
    "WHERE i.root_realm_id=$1 AND i.center_id=$2 "+
    "AND i.created_by_account=$3 AND i.request_key=$4",
    [actor.realmId,centerRef,actor.accountId,key]);
@@ -95,6 +99,9 @@ export class CenterPatientIntakeService{
   return {virtualPatientId:found.virtual_display_id,firstName:found.first_name,
    lastName:found.last_name,dateOfBirth:found.date_of_birth,
    profileStatus:found.profile_status,createdAt:found.created_at.toISOString(),
+   dependentCareAuthorization:found.dependent_relationship?{
+    relationship:found.dependent_relationship,scope:"PROVISIONAL_INTAKE",
+    status:"STAFF_ATTESTED_LIMITED_REGISTRATION_ONLY"}:null,
    message:"Provisional patient intake recorded. Independent identity verification is still required."};
  }
  /** Clinic staff may attest an in-person document check ONLY with a
@@ -267,7 +274,7 @@ export class CenterPatientIntakeService{
   const actor=await this.sessions.verifySession(bearer);
   const centerRef=uuid(centerRaw,"centerRef"),v=body(input);
   const allowed=["requestKey","firstName","lastName","dateOfBirth",
-   "consentVersion","assistedConsentAttested"];
+   "consentVersion","assistedConsentAttested","dependentCare"];
   if(Object.keys(v).some(k=>!allowed.includes(k)))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const requestKey=uuid(v.requestKey),firstName=part(v.firstName,"firstName",2);
@@ -278,8 +285,26 @@ export class CenterPatientIntakeService{
   if(v.assistedConsentAttested!==true||typeof requestedVersion!=="string"||
    !/^[A-Za-z0-9._-]{1,32}$/.test(requestedVersion))
    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED"});
+  // A dependent's representative can authorize only this limited intake,
+  // not clinical disclosure, a CG01 login, or later bookings.
+  const dependentValue=v.dependentCare;
+  let dependent:{relationship:"PARENT"|"LEGAL_GUARDIAN"|"AUTHORIZED_REPRESENTATIVE"}|null=null;
+  if(dependentValue!==undefined){
+   if(!dependentValue||typeof dependentValue!=="object"||
+    Array.isArray(dependentValue))
+    throw new BadRequestException({code:"CG15_PATIENT_DEPENDENT_PROOF_REQUIRED"});
+   const d=dependentValue as Record<string,unknown>;
+   if(Object.keys(d).some(k=>!["relationship","identityCheckedInPerson",
+    "authorityCheckedInPerson","limitedConsentAttested"].includes(k))||
+    !["PARENT","LEGAL_GUARDIAN","AUTHORIZED_REPRESENTATIVE"].includes(String(d.relationship))||
+    d.identityCheckedInPerson!==true||d.authorityCheckedInPerson!==true||
+    d.limitedConsentAttested!==true)
+    throw new BadRequestException({code:"CG15_PATIENT_DEPENDENT_PROOF_REQUIRED"});
+   dependent={relationship:d.relationship as typeof dependent.relationship};
+  }
   const digest=hash({firstName,lastName,dateOfBirth,
-   version:requestedVersion,assistedConsentAttested:true});
+   version:requestedVersion,assistedConsentAttested:true,
+   ...(dependent?{dependentCare:dependent}: {})});
   const tx=await this.db.connect();let active=false;
   try{
    await tx.query("BEGIN");active=true;
@@ -313,7 +338,7 @@ export class CenterPatientIntakeService{
     "ON CONFLICT(root_realm_id,center_id,created_by_account,request_key) DO NOTHING",
     [actor.realmId,centerRef,actor.accountId,requestKey,digest,version]);
    const exists=await tx.query<Intake>(
-    "SELECT request_digest,patient_id,consent_version "+
+    "SELECT id,request_digest,patient_id,consent_version "+
     "FROM cg15_patient_center_intake WHERE root_realm_id=$1 AND center_id=$2 "+
     "AND created_by_account=$3 AND request_key=$4 FOR UPDATE",
     [actor.realmId,centerRef,actor.accountId,requestKey]);
@@ -346,6 +371,17 @@ export class CenterPatientIntakeService{
     "UPDATE cg15_patient_center_intake SET patient_id=$5 "+
     "WHERE root_realm_id=$1 AND center_id=$2 AND created_by_account=$3 AND request_key=$4",
     [actor.realmId,centerRef,actor.accountId,requestKey,patientId]);
+   if(dependent){
+    if(!command.id)throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+    await tx.query(
+     "INSERT INTO cg15_patient_dependent_intake_authorization("+
+     "root_realm_id,intake_id,patient_id,center_id,recorded_by_account,"+
+     "relationship,identity_checked_in_person,authority_checked_in_person,"+
+     "limited_consent_attested,consent_version) "+
+     "VALUES($1,$2,$3,$4,$5,$6,true,true,true,$7)",
+     [actor.realmId,command.id,patientId,centerRef,actor.accountId,
+      dependent.relationship,version]);
+   }
    const created=await this.result(tx,actor,centerRef,requestKey);
    await tx.query("COMMIT");active=false;
    return created;
