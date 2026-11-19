@@ -280,6 +280,12 @@ const checks=[
  ["patient receptionist code is never displayed under a different center",
   s.webBooking.includes("staffCode.centerRef===p.centerRef")&&
   s.webBooking.includes("centerRef:p.centerRef")],
+ ["patient Web booking component resets on genuine doctor center slot fee change",
+  s.webPublic.includes("key={[doctorRef,centerRef,slot.startAt,slot.endAt,")&&
+  s.webPublic.includes("key={[doctorRef,c.centerRef,c.startAt,c.endAt,")],
+ ["internal receptionist booking day change clears patient authorization",
+  s.nativeStaffBooking.includes("setOffset(n=>Math.max(0,n-1));setDay(null);clear()")&&
+  s.nativeStaffBooking.includes("setOffset(n=>Math.min(30,n+1));setDay(null);clear()")],
  ["center queue pages in Web and Internal Android use validated cursor",
   s.queue.includes("afterRaw.split")&&
   s.queue.includes("LIMIT 101")&&
