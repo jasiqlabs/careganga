@@ -19,7 +19,7 @@ type Schedule={
  has_window:boolean;
 };
 type PreviewSlot={startAt:string;endAt:string;startLocal:string;
- endLocal:string;bookable:false};
+ endLocal:string;bookable:boolean};
 type DayPreview={status:string;bookingEnabled:false;day:string;
  centerRef:string;centerName:string;doctorName:string;timeZone:string;
  slots:PreviewSlot[];message:string;centerSlug?:string;
@@ -75,7 +75,7 @@ function bounds(x:string){
  return [new Date(middle-48*3600000),new Date(middle+72*3600000)];
 }
 const GENERAL_MESSAGE=
- "Working hours are a preview, not a confirmed appointment. Booking is not enabled yet.";
+ "These times are advisory, not a reservation. A time is confirmed only after booking is accepted.";
 /** Public CG-15 US002 advisory projection ONLY. CG-14 original source remains
  * the only doctor/center/fees eligibility master. No patient, hold, booking,
  * saved history or fake slot count can be created by this service.
@@ -190,10 +190,13 @@ export class DoctorAvailabilityService{
     consultationCurrency:"INR",
     hasWorkingSchedule:!!schedule?.has_window,
     doctorName:center.doctor_name,
-    bookingEnabled:false};
+    bookingEnabled:Number.isInteger(Number(process.env.CG15_HOLD_MINUTES))&&
+     Number(process.env.CG15_HOLD_MINUTES)>=5&&
+     Number(process.env.CG15_HOLD_MINUTES)<=10&&center.amount_minor!==null};
   }));
-  return {day,doctorName:centers[0].doctor_name,bookingEnabled:false,
-   status:"SCHEDULE_PREVIEW",message:GENERAL_MESSAGE,centers:result};
+  return {day,doctorName:centers[0].doctor_name,
+   bookingEnabled:result.some(x=>x.bookingEnabled),
+   status:"LIVE_SLOT_PREVIEW",message:GENERAL_MESSAGE,centers:result};
  }
  async dayForCenter(doctorRaw:string,centerRaw:string,dayRaw:unknown):
   Promise<DayPreview>{
@@ -243,6 +246,19 @@ export class DoctorAvailabilityService{
    throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
   const slots:PreviewSlot[]=[];
   const now=Date.now();
+  const bookingEnabled=Number.isInteger(Number(process.env.CG15_HOLD_MINUTES))&&
+   Number(process.env.CG15_HOLD_MINUTES)>=5&&
+   Number(process.env.CG15_HOLD_MINUTES)<=10&&center.amount_minor!==null;
+  const busy=await this.db.query<{start_at:Date;end_at:Date}>(
+   "SELECT r.start_at,r.end_at FROM cg15_doctor_reservation r "+
+   "LEFT JOIN cg15_consultation_hold h ON h.root_realm_id=r.root_realm_id "+
+   "AND h.id=r.hold_id WHERE r.root_realm_id=$1 AND r.doctor_id=$2 "+
+   "AND r.start_at<$4 AND r.end_at>$3 AND "+
+   "(r.status='CONFIRMED' OR (r.status='HELD' AND h.expires_at>now())) "+
+   "ORDER BY r.start_at LIMIT 1001",
+   [center.root_realm_id,center.doctor_id,lo,hi]);
+  if(busy.rows.length>1000)
+   throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
   for(const w of windows.rows){
    const duration=Number(current.slot_minutes);
    const first=minute(w.open_local),last=minute(w.close_local);
@@ -256,12 +272,13 @@ export class DoctorAvailabilityService{
        end-start!==duration*60000)continue;
     if(blocks.rows.some(b=>start<b.end_at.getTime()&&
        end>b.start_at.getTime()))continue;
+    if(busy.rows.some(r=>start<r.end_at.getTime()&&end>r.start_at.getTime()))continue;
     slots.push({startAt:new Date(start).toISOString(),
      endAt:new Date(end).toISOString(),startLocal:hhmm(m),
-     endLocal:hhmm(m+duration),bookable:false});
+     endLocal:hhmm(m+duration),bookable:bookingEnabled});
    }
   }
-  return {status:"SCHEDULE_PREVIEW",bookingEnabled:false,
+  return {status:"LIVE_SLOT_PREVIEW",bookingEnabled,
    day,doctorName:center.doctor_name,centerName:center.center_name,
    centerRef:center.center_id,centerSlug:center.center_slug,
    timeZone:center.time_zone,
@@ -289,11 +306,11 @@ export class DoctorAvailabilityService{
     address:center.address_line,pinCode:center.pin_code,
     consultationFeeMinor:center.amount_minor,consultationFeeVersion:center.fee_version,
     consultationCurrency:"INR",
-    startAt:chosen.startAt,endAt:chosen.endAt,bookable:false});
+    startAt:chosen.startAt,endAt:chosen.endAt,bookable:chosen.bookable});
    }
   }
   return {day,time:clockRaw,doctorName:centers[0].doctor_name,
-   centerChoices:matched,status:"SCHEDULE_PREVIEW",
-   bookingEnabled:false,message:GENERAL_MESSAGE};
+   centerChoices:matched,status:"LIVE_SLOT_PREVIEW",
+   bookingEnabled:matched.some(x=>x.bookable),message:GENERAL_MESSAGE};
  }
 }
