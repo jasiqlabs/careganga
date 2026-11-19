@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
 import {HealthClinicianIdentityService} from "../application/health-clinician-identity.service";
 
 /** Existing CG14 physician verification authority; never public.
@@ -7,6 +7,14 @@ import {HealthClinicianIdentityService} from "../application/health-clinician-id
 @Controller("api/v1/health-network/clinician-accounts")
 export class HealthClinicianIdentityController{
  constructor(private readonly clinicians:HealthClinicianIdentityService){}
+ @Get("account-options")
+ accountOptions(@Headers("authorization")bearer:string,@Query("search")search?:string){
+  return this.clinicians.accountOptions(bearer,search??"");
+ }
+ @Get("doctors/:doctorRef")
+ doctorLink(@Headers("authorization")bearer:string,@Param("doctorRef")doctor:string){
+  return this.clinicians.doctorLink(bearer,doctor);
+ }
  @Post("doctors/:doctorRef/propose")
  propose(@Headers("authorization")bearer:string,
   @Param("doctorRef")doctor:string,@Body()body:unknown){
