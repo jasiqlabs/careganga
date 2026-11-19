@@ -90,7 +90,8 @@ CREATE TABLE cg15_consultation_appointment (
  currency char(3) NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  booking_state text NOT NULL DEFAULT 'CONFIRMED'
   CHECK(booking_state IN('CONFIRMED','ARRIVED','WAITING','IN_CONSULTATION','COMPLETED','NO_SHOW','CANCELLED')),
- collection_state text NOT NULL DEFAULT 'DUE_AT_CENTER' CHECK(collection_state='DUE_AT_CENTER'),
+ collection_state text NOT NULL DEFAULT 'DUE_AT_CENTER'
+  CHECK(collection_state IN('DUE_AT_CENTER','NOT_COLLECTIBLE')),
  payment_mode text NOT NULL DEFAULT 'PAY_AT_CENTER' CHECK(payment_mode='PAY_AT_CENTER'),
  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
  terms_revision integer NOT NULL DEFAULT 1 CHECK(terms_revision>0),
@@ -105,6 +106,8 @@ CREATE TABLE cg15_consultation_appointment (
  UNIQUE(root_realm_id,reservation_id),
  UNIQUE(root_realm_id,created_by_account,confirmation_key),
  CHECK(end_at>start_at),
+ CHECK((booking_state='CANCELLED' AND collection_state='NOT_COLLECTIBLE') OR
+  (booking_state<>'CANCELLED' AND collection_state='DUE_AT_CENTER')),
  FOREIGN KEY(root_realm_id,patient_id) REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,doctor_id,center_id,association_id)
    REFERENCES health_doctor_center(root_realm_id,doctor_id,center_id,id) ON DELETE RESTRICT,
