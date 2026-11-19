@@ -9,6 +9,9 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:st
 type Queue={day:string;items:Item[];next:string|null};
 type Summary={centerRef:string;day:string;total:number;confirmed:number;arrived:number;
  waiting:number;inConsultation:number;completed:number;noShow:number;cancelled:number};
+type AuditEvent={revision:number;action:string;when:string;by:string;
+ beforeStatus:string|null;afterStatus:string|null};
+type AuditHistory={bookingId:string;events:AuditEvent[];next:number|null};
 type VerifiedSlip={valid:boolean;bookingRef?:string;bookingId?:string;
  patientName?:string;doctorName?:string;bookingStatus?:string;
  startAt?:string;timeZone?:string;canCheckIn?:boolean};
@@ -49,6 +52,11 @@ export function CenterVisitQueue(){
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [canCancel,setCanCancel]=useState(false);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
+ const [historyRef,setHistoryRef]=useState("");
+ const [history,setHistory]=useState<AuditHistory|null>(null);
+ const [historyBusy,setHistoryBusy]=useState(false);
+ const [historyError,setHistoryError]=useState("");
+ const auditSerial=useRef(0);
  const keys=useRef<Map<string,string>>(new Map());
  const cancellationKeys=useRef<Map<string,string>>(new Map());
  const requestSerial=useRef(0),selectedCenterRef=useRef("");
@@ -62,6 +70,7 @@ export function CenterVisitQueue(){
     (after?"&after="+encodeURIComponent(after):""));
    if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
    setItems(rows.items);setCursor(after);setNextCursor(rows.next);setUncertain(false);
+   auditSerial.current++;setHistoryRef("");setHistory(null);setHistoryError("");
    void get<Summary>("my-centers/"+encodeURIComponent(c)+
     "/summary?date="+encodeURIComponent(d)).then(data=>{
      if(serial===requestSerial.current&&c===selectedCenterRef.current&&
@@ -199,6 +208,25 @@ export function CenterVisitQueue(){
    setMessage(e instanceof Error?e.message:"Cancellation may have succeeded. Refresh original queue.");
   }finally{setBusy(false);}
  }
+ async function bookingHistory(item:Item,before?:number){
+  if(!center||historyBusy)return;
+  if(historyRef!==item.appointmentRef){setHistory(null);setHistoryRef(item.appointmentRef);}
+  const serial=++auditSerial.current;
+  const atCenter=center;
+  setHistoryBusy(true);setHistoryError("");
+  try{
+   const from=before===undefined?"":"?before="+encodeURIComponent(String(before));
+   const response=await get<AuditHistory>(
+    "my-centers/"+encodeURIComponent(atCenter)+"/bookings/"+
+    encodeURIComponent(item.appointmentRef)+"/history"+from);
+   if(serial!==auditSerial.current||selectedCenterRef.current!==atCenter)return;
+   setHistory(old=>before!==undefined&&old&&historyRef===item.appointmentRef?
+    {...response,events:[...old.events,...response.events]}:response);
+  }catch(e){
+   if(serial===auditSerial.current)setHistoryError(e instanceof Error?e.message:
+    "Original center booking history could not be verified.");
+  }finally{if(serial===auditSerial.current)setHistoryBusy(false);}
+ }
  const doctorChoices=Array.from(new Map(items.map(x=>
   [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
   .sort((a,b)=>a.name.localeCompare(b.name));
@@ -288,6 +316,26 @@ export function CenterVisitQueue(){
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN",{
      timeZone:item.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
+    <button type="button" disabled={historyBusy}
+     aria-expanded={historyRef===item.appointmentRef}
+     onClick={()=>{if(historyRef===item.appointmentRef){
+      auditSerial.current++;setHistoryRef("");setHistory(null);setHistoryError("");
+     }else void bookingHistory(item);}}>
+     {historyRef===item.appointmentRef?"Hide booking history":"View original booking history"}
+    </button>
+    {historyRef===item.appointmentRef&&<section aria-label="Current center operational history">
+     {historyBusy&&!history&&<p role="status">Checking original booking events…</p>}
+     {historyError&&<p role="alert">{historyError}</p>}
+     {history?.events.length===0&&<p>No original events are available.</p>}
+     {history?.events.map(entry=><div key={entry.revision} className="notice">
+      <strong>{entry.action.replaceAll("_"," ")}</strong>
+      <p>{new Date(entry.when).toLocaleString("en-IN")} · Recorded by {entry.by}</p>
+      <p>{entry.beforeStatus??"New"} → {entry.afterStatus??"Current state unavailable"}</p>
+     </div>)}
+     {history?.next&&<button type="button" disabled={historyBusy}
+      onClick={()=>void bookingHistory(item,history.next??undefined)}>Older events</button>}
+     <p>Operational status history only; no clinical notes or documents are disclosed.</p>
+    </section>}
     {item.consentGranted?
      <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>:
      <p role="status">Patient care consent was withdrawn. Private documents and new check-in are unavailable.</p>}
