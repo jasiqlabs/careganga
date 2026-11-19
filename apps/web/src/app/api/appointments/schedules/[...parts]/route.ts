@@ -65,6 +65,12 @@ async function route(req:NextRequest,parts:string[],method:string){
     url.searchParams.set(name,value);
    }
   }
+  const search=req.nextUrl.searchParams.get("search");
+  if(search!==null){
+   if(search.length>80||/[\u0000-\u001f\u007f<>]/.test(search))
+    return response(400,"Check the doctor or center search.");
+   if(search.trim())url.searchParams.set("search",search.trim());
+  }
  }
  try{
   const r=await fetch(url,{method,body,cache:"no-store",
