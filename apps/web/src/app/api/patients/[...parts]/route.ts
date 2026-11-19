@@ -29,7 +29,8 @@ const authorized=(parts:string[],method:string)=>{
   route==="me"&&["GET","PATCH"].includes(method)||
   route==="me/consent"&&method==="POST"||
   route==="registration"&&method==="POST"||
-  route==="me/identity-verification"&&method==="POST";
+  route==="me/identity-verification"&&method==="POST"||
+  route==="me/claim-intake"&&method==="POST";
 };
 async function handler(request:NextRequest,parts:string[],method:string){
  if(!authorized(parts,method))return reject(404,"This patient action is unavailable.");
