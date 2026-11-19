@@ -11,7 +11,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 type PersonRow={
  id:string;virtual_display_id:string;first_name:string;last_name:string;
  date_of_birth:string|null;profile_status:string;revision:number;
- consent_granted:boolean|null;consent_version:string|null;
+ consent_granted:boolean|null;consent_version:string|null;link_proof_type?:string;
 };
 type AccountRow={status:string;contact_phone_verified_at:Date|null};
 type CommandRow={request_digest:string;patient_id:string|null};
@@ -83,7 +83,7 @@ export class PatientProfileService{
  }
  private async owned(c:PoolClient,actor:VerifiedFoundationActor,lock=false){
   const r=await c.query<PersonRow>(
-   "SELECT p.id,p.virtual_display_id,p.first_name,p.last_name,"+
+   "SELECT p.id,p.virtual_display_id,p.first_name,p.last_name,l.proof_type AS link_proof_type,"+
    "p.date_of_birth::text,p.profile_status,p.revision,"+
    "(SELECT pc.granted FROM cg15_patient_consent pc "+
    "WHERE pc.root_realm_id=p.root_realm_id AND pc.patient_id=p.id "+
@@ -102,7 +102,7 @@ export class PatientProfileService{
   return {virtualPatientId:row.virtual_display_id,
    firstName:row.first_name,lastName:row.last_name,
    dateOfBirth:row.date_of_birth,profileStatus:row.profile_status,
-   version:row.revision,consentGranted:row.consent_granted===true,
+   version:row.revision,canLinkAnotherAccount:row.link_proof_type==="CG01_VERIFIED_ACCOUNT_CONTACT",consentGranted:row.consent_granted===true,
    consentVersion:row.consent_version};
  }
  async me(bearer:string){
