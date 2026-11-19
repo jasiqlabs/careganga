@@ -40,19 +40,31 @@ ALTER TABLE cg19_notification
    AND decision_id IS NULL AND case_id IS NULL AND notice_id IS NULL)
  );
 
-CREATE TABLE cg19_appointment_event_cursor(
- realm_id uuid PRIMARY KEY REFERENCES access_realm(id) ON DELETE RESTRICT,
- last_occurred_at timestamptz NOT NULL DEFAULT '1970-01-01T00:00:00Z',
- last_event_id uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
- updated_at timestamptz NOT NULL DEFAULT now()
+-- The outbox is written in the SAME transaction as the immutable CG15
+-- event, so a later-committing earlier-timestamp event is never skipped.
+CREATE TABLE cg19_appointment_event_outbox(
+ realm_id uuid NOT NULL,
+ event_id uuid NOT NULL,
+ state text NOT NULL DEFAULT 'PENDING' CHECK(state IN ('PENDING','CAPTURED')),
+ recorded_at timestamptz NOT NULL DEFAULT now(),
+ captured_at timestamptz,
+ PRIMARY KEY(realm_id,event_id),
+ FOREIGN KEY(realm_id,event_id)
+  REFERENCES cg15_appointment_event(root_realm_id,id) ON DELETE RESTRICT,
+ CHECK((state='PENDING' AND captured_at IS NULL)
+   OR (state='CAPTURED' AND captured_at IS NOT NULL))
 );
-CREATE INDEX ix_cg15_appointment_event_delivery_cursor
- ON cg15_appointment_event(root_realm_id,occurred_at,id);
-COMMENT ON TABLE cg19_appointment_event_cursor IS
- 'One root-scoped durable cursor for original committed CG15 event capture; no per-patient polling';
+CREATE INDEX ix_cg19_appointment_event_outbox_pending
+ ON cg19_appointment_event_outbox(realm_id,recorded_at,event_id)
+ WHERE state='PENDING';
+COMMENT ON TABLE cg19_appointment_event_outbox IS
+ 'Due-only original committed CG15 events; provider transport is owned by existing CG19';
+
 
 CREATE FUNCTION cg19_appointment_event_wakeup() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ INSERT INTO cg19_appointment_event_outbox(realm_id,event_id)
+ VALUES(NEW.root_realm_id,NEW.id) ON CONFLICT DO NOTHING;
  PERFORM pg_notify('cg19_appointment_committed',NEW.root_realm_id::text);
  RETURN NEW;
 END; $$;
