@@ -410,7 +410,7 @@ export class ConsultationBookingService{
   const expected=Number(v.expectedVersion),start=epoch(v.startAt),end=epoch(v.endAt);
   const fee=String(v.acceptedFeeMinor??"");
   if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
-   !Number.isSafeInteger(v.acceptedFeeVersion)||!/^\\d{1,11}$/.test(fee)||
+   !Number.isSafeInteger(v.acceptedFeeVersion)||!/^\d{1,11}$/.test(fee)||
    v.paymentMode!=="PAY_AT_CENTER")
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   const requestDigest=SHA({id,expected,center,start:start.toISOString(),
