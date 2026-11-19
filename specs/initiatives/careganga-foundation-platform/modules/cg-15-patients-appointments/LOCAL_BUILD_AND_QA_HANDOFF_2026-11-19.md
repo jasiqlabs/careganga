@@ -172,3 +172,11 @@ V1 already required authorized exceptional cancellation after the normal cutoff 
 11 targeted source checks passed; a dedicated original QA assertion is in the US004-US008 static checker. Physical PostgreSQL, Nest/Next, browser, signed-in root/password/role revocation, simultaneous patient/center cancellation and policy/CG17 cross-owner tests remain NOT_RUN.
 
 Current tracker: 93 SOURCE_VERIFIED / 26 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE = 128; 0/128 executed runtime PASS; 0/8 formally SOURCE_COMPLETE. No main merge.
+
+## 19 November 2026 — US-001-QA16 existing CG03 leave decision notice/recovery
+
+No new notification or business scenario was created. The already installed CG03 doctor-leave independent review commits original immutable decisions; CG03 CommittedDecisionSource streams at most 25 decisions from a durable root cursor to the original proposer, and existing CG19 NotificationService/CommunicationWorker handles opt-in IN_APP/EMAIL/SMS with source deduplication and global bounded wake/recovery. The CG15 schedule module has no per-center/doctor timer and does not send any provider notification when idle. Seven direct code-path checks passed. This does not notify booked patients automatically when approved leave overlaps a confirmed consultation.
+
+Full US001 source script now has a corresponding assertion but complete multi-file execution hit a GitHub connector tool-call limit; do NOT claim it ran. Local runtime SQL EXPLAIN, communication retry/idle activity, security and mobile/browser QA NOT_RUN.
+
+Latest canonical source snapshot: 94 SOURCE_VERIFIED / 25 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128); actual QA PASS 0/128; formal SOURCE_COMPLETE 0/8. Main merge not approved.
