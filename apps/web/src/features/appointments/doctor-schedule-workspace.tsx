@@ -81,6 +81,12 @@ function centerTime(v:string,zone:string){
   throw Object.assign(new Error("That center-local time is missing or ambiguous due to a daylight-saving change. Choose another time."),{status:400});
  return new Date(matches[0]).toISOString();
 }
+function currentCenterDay(zone:string):string{
+ const fields=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
+  timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
+ }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+ return fields.year+"-"+fields.month+"-"+fields.day;
+}
 export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  channel:Channel;centerRef?:string;canManage?:boolean
 }){
@@ -219,6 +225,118 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    if(n===seq.current)setError(e instanceof Error?e.message:
     "The destination's currently verified schedule could not be checked.");
   }finally{if(n===seq.current)setWorking(false);}
+ }
+ function toggleBulk(ref:string,checked:boolean){
+  setBulkPreview([]);setBulkAcknowledged(false);setBulkOutcomes([]);
+  bulkKeys.current={};
+  setBulkRefs(old=>checked?[...old.filter(x=>x!==ref),ref].slice(0,8):
+   old.filter(x=>x!==ref));
+ }
+ async function previewBulk(){
+  if(channel!=="foundation"||!canManage||!selected||
+    selected.version<1||!selected.windows.length||!bulkRefs.length||
+    working||uncertain)return;
+  const n=++seq.current,source=selected;
+  setWorking(true);setError("");setNotice("");
+  setBulkPreview([]);setBulkOutcomes([]);setBulkAcknowledged(false);
+  bulkKeys.current={};
+  const results:BulkCopyTarget[]=[];
+  try{
+   for(const ref of bulkRefs.slice(0,8)){
+    const row=roster.find(x=>x.associationRef===ref);
+    if(!row||row.doctorRef!==source.doctorRef||
+     ref===source.associationRef||row.centerRef===source.centerRef)continue;
+    try{
+     const dest=await api<Detail>(base+"/"+encodeURIComponent(ref));
+     if(n!==seq.current)return;
+     const eligible=dest.doctorRef===source.doctorRef&&
+      dest.associationRef!==source.associationRef&&
+      dest.centerRef!==source.centerRef&&dest.timeZone===source.timeZone;
+     results.push({associationRef:ref,centerName:dest.centerName,
+      doctorRef:dest.doctorRef,centerRef:dest.centerRef,timeZone:dest.timeZone,
+      version:dest.version,eligible,
+      reason:eligible?"Source identity and timezone match. Final operating hours, global doctor overlap and revisions are checked only by target Save.":
+       "Different doctor, same original center or incompatible time zone.",
+      sourceRef:source.associationRef,sourceVersion:source.version});
+    }catch(e){
+     results.push({associationRef:ref,centerName:row.centerName,
+      doctorRef:row.doctorRef,centerRef:row.centerRef,timeZone:"",
+      version:-1,eligible:false,
+      reason:e instanceof Error?e.message:"Current target eligibility is unavailable.",
+      sourceRef:source.associationRef,sourceVersion:source.version});
+    }
+   }
+   if(n!==seq.current)return;
+   setBulkPreview(results);
+   if(!results.some(x=>x.eligible))
+    setError("No matching target can be prepared. Review the current doctor and center source.");
+  }finally{if(n===seq.current)setWorking(false);}
+ }
+ async function applyBulk(){
+  if(channel!=="foundation"||!canManage||!selected||working||uncertain||
+    !bulkAcknowledged||bulkOutcomes.length||
+    !bulkPreview.some(x=>x.eligible)||
+    bulkPreview.some(x=>x.sourceRef!==selected.associationRef||
+     x.sourceVersion!==selected.version))return;
+  const source=selected;
+  const eligible=bulkPreview.filter(x=>x.eligible).slice(0,8);
+  const outcomes:BulkCopyOutcome[]=[];
+  setWorking(true);setError("");setNotice("");
+  try{
+   const today=currentCenterDay(source.timeZone);
+   const effectiveFrom=source.effectiveFrom&&source.effectiveFrom>=today?
+    source.effectiveFrom:today;
+   const effectiveUntil=source.effectiveUntil&&
+    source.effectiveUntil>effectiveFrom?source.effectiveUntil:null;
+   // Every target is read again, then guarded by its own original PUT/CAS.
+   // This is an explicit sequence of independent saves, not one transaction.
+   for(const target of eligible){
+    const requestKey=bulkKeys.current[target.associationRef]??
+     crypto.randomUUID();
+    bulkKeys.current[target.associationRef]=requestKey;
+    try{
+     const dest=await api<Detail>(base+"/"+encodeURIComponent(target.associationRef));
+     if(dest.associationRef!==target.associationRef||
+      dest.doctorRef!==source.doctorRef||
+      dest.centerRef===source.centerRef||
+      dest.timeZone!==source.timeZone||dest.version!==target.version)
+      throw Object.assign(new Error(
+       "Doctor, center, timezone or target revision changed. Review again."),{status:409});
+     const saved=await api<{message:string}>(
+      base+"/"+encodeURIComponent(dest.associationRef),"PUT",{
+       requestKey,expectedVersion:dest.version,slotMinutes:source.slotMinutes,
+       consultationMode:"IN_PERSON",effectiveFrom,effectiveUntil,
+       windows:source.windows.map(w=>({...w}))
+      });
+     delete bulkKeys.current[target.associationRef];
+     outcomes.push({associationRef:target.associationRef,
+      centerName:target.centerName,status:"SAVED",
+      detail:saved.message??"The original target Save confirmed this center."});
+    }catch(e){
+     const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+     const isRejected=typeof status==="number"&&status>=400&&status<500;
+     outcomes.push({associationRef:target.associationRef,
+      centerName:target.centerName,status:isRejected?"REJECTED":"UNCERTAIN",
+      detail:e instanceof Error?e.message:"The target result is uncertain."});
+     if(!isRejected){
+      setUncertain(true);
+      setError("The last center result may have been saved. Stop and verify each original target before retrying.");
+      break;
+     }
+     delete bulkKeys.current[target.associationRef];
+    }
+    setBulkOutcomes([...outcomes]);
+   }
+   setBulkOutcomes([...outcomes]);
+   if(outcomes.every(x=>x.status==="SAVED"))
+    setNotice("Each selected target was independently saved with the original source validation. Check center schedules before booking.");
+   else if(!outcomes.some(x=>x.status==="UNCERTAIN"))
+    setNotice("Some centers were rejected without being changed. Review the individual results below.");
+  }catch(e){
+   setUncertain(true);
+   setError(e instanceof Error?e.message:
+    "Bulk copy stopped; confirm original schedules before any retry.");
+  }finally{setWorking(false);}
  }
  async function saveWeek(){
   if(!selected||!canManage||working||uncertain||windows.length===0||
