@@ -27,12 +27,17 @@ export function PatientProfilePanel(){
  const [profile,setProfile]=useState<Profile|null>(null);
  const [policy,setPolicy]=useState<Consent>({available:false,version:null,text:null});
  const [identifier,setIdentifier]=useState(""),[password,setPassword]=useState("");
+ const [signupMode,setSignupMode]=useState(false);
+ const [signupFirst,setSignupFirst]=useState(""),[signupLast,setSignupLast]=useState("");
+ const [signupMobile,setSignupMobile]=useState(""),[signupEmail,setSignupEmail]=useState("");
+ const [signupPassword,setSignupPassword]=useState("");
  const [first,setFirst]=useState(""),[last,setLast]=useState("");
  const [dob,setDob]=useState(""),[agree,setAgree]=useState(false);
  const [message,setMessage]=useState("");
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
+ const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
   const response=await fetch("/api/patients/me",{cache:"no-store"});
   if(response.status===401){setSignedIn(false);setProfile(null);setContact(null);return;}
@@ -60,6 +65,24 @@ export function PatientProfilePanel(){
   try{await work();}
   catch(e){setMessage(e instanceof Error?e.message:"The result could not be confirmed.");}
   finally{setBusy(false);}
+ }
+ async function createAccount(){
+  await act(async()=>{
+   const payload={firstName:signupFirst.trim(),lastName:signupLast.trim(),
+    mobile:signupMobile.trim(),email:signupEmail.trim()||null,
+    password:signupPassword};
+   const signature=JSON.stringify(payload);
+   if(signupCommand.current?.digest!==signature)
+    signupCommand.current={digest:signature,key:crypto.randomUUID()};
+   const result=await request<{status:string;nextStep:string}>("signup","POST",{
+    requestKey:signupCommand.current.key,...payload
+   });
+   if(result.status!=="ACCOUNT_CREATED")
+    throw Error("Your account could not be confirmed. Please check the original request.");
+   signupCommand.current=null;setSignupPassword("");setPassword("");
+   setIdentifier(payload.mobile);setSignupMode(false);
+   setMessage("Your CareGanga patient account was created. Sign in and verify your registered mobile before creating a patient profile.");
+  });
  }
  async function login(){
   await act(async()=>{
@@ -138,10 +161,36 @@ export function PatientProfilePanel(){
  return <section className="cg-public-section">
   <p className="cg-eyebrow">CareGanga · Private patient information</p>
   <h1>My patient profile</h1>
-  <p>Use your existing CareGanga password account. Your Virtual Patient ID is
+  <p>Create a patient account or use your registered CareGanga password account. Your Virtual Patient ID is
    a CareGanga reference, not an ABHA or government health ID.</p>
   {!!message&&<p role="alert" aria-live="polite">{message}</p>}
   {loading?<p>Checking your current account…</p>:!signedIn?
+   signupMode?<form onSubmit={e=>{e.preventDefault();void createAccount();}}
+    style={{display:"grid",gap:12,maxWidth:500}}>
+    <h2>Create a patient account</h2>
+    <label>First name <input required value={signupFirst} maxLength={100}
+     autoComplete="given-name" onChange={e=>setSignupFirst(e.target.value)}/></label>
+    <label>Last name <input required value={signupLast} maxLength={100}
+     autoComplete="family-name" onChange={e=>setSignupLast(e.target.value)}/></label>
+    <label>Registered mobile number (10 digits)
+     <input required inputMode="numeric" pattern="[6-9][0-9]{9}" value={signupMobile}
+      maxLength={10} autoComplete="tel" onChange={e=>setSignupMobile(e.target.value)}/></label>
+    <label>Email (optional)
+     <input type="email" value={signupEmail} maxLength={254}
+      autoComplete="email" onChange={e=>setSignupEmail(e.target.value)}/></label>
+    <label>Choose a password (at least eight characters)
+     <input type="password" required minLength={8} maxLength={1024}
+      autoComplete="new-password" value={signupPassword}
+      onChange={e=>setSignupPassword(e.target.value)}/></label>
+    <p>This creates a password account only. After signing in, you must
+     verify the mobile contact using the original CareGanga verification service.
+     It does not create a verified clinical identity or appointment.</p>
+    <button type="submit" disabled={busy||!signupFirst.trim()||!signupLast.trim()||
+     !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8}>
+     {busy?"Checking…":"Create patient account"}</button>
+    <button type="button" disabled={busy} onClick={()=>setSignupMode(false)}>
+     Already registered? Sign in</button>
+   </form>:
    <form onSubmit={e=>{e.preventDefault();void login();}}
     style={{display:"grid",gap:12,maxWidth:500}}>
     <label>Registered mobile number or email
@@ -152,8 +201,8 @@ export function PatientProfilePanel(){
       value={password} onChange={e=>setPassword(e.target.value)}/></label>
     <button disabled={busy||!identifier.trim()||!password} type="submit">
      {busy?"Checking…":"Sign in"}</button>
-    <p>New password-account signup is not available on this page.
-     A previously registered CareGanga account is required.</p>
+    <button type="button" disabled={busy} onClick={()=>setSignupMode(true)}>
+     New patient? Create a CareGanga account</button>
    </form>:
    <div style={{display:"grid",gap:16,maxWidth:700}}>
     <div style={{display:"flex",justifyContent:"flex-end"}}>
