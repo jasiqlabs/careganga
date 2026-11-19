@@ -13,6 +13,12 @@ export class PatientAdminOverviewController{
  proposeDuplicate(@Headers("authorization")bearer:string,@Body()body:unknown){
   return this.admin.proposeDuplicate(bearer,body);
  }
+ @Get("duplicate-reviews/:reviewRef/evidence")
+ @Header("Cache-Control","private, no-store")
+ duplicateEvidence(@Headers("authorization")bearer:string,
+  @Param("reviewRef")ref:string){
+  return this.admin.duplicateReviewEvidence(bearer,ref);
+ }
  @Post("duplicate-reviews/:reviewRef/decision")
  @Header("Cache-Control","private, no-store")
  decideDuplicate(@Headers("authorization")bearer:string,
