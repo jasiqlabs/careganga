@@ -25,7 +25,8 @@ const files=[
  "1430_cg15_patient_assisted_booking_authorization.sql",
  "1431_cg15_patient_claim_attempt_throttle.sql",
  "1432_cg15_center_day_appointment_index.sql",
- "1433_cg19_appointment_event_notification_source.sql"
+ "1433_cg19_appointment_event_notification_source.sql",
+ "1434_cg15_center_qr_verification_guard.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
