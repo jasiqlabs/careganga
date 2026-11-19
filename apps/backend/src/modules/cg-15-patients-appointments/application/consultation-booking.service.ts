@@ -256,6 +256,45 @@ export class ConsultationBookingService{
    throw e;
   }finally{tx.release();}
  }
+ /** Exact own-patient recovery after a lost response; never infer absence
+  * from a truncated or approximate consultation history.
+  */
+ async holdByRequest(bearer:string,ref:string){
+  const actor=await this.identity.verifySession(bearer),key=uuid(ref);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const patient=await this.ownPatient(tx,actor,false);
+   const result=await tx.query<Hold>(
+    "SELECT * FROM cg15_consultation_hold WHERE root_realm_id=$1 "+
+    "AND created_by_account=$2 AND patient_id=$3 AND request_key=$4",
+    [actor.realmId,actor.accountId,patient.id,key]);
+   const hold=result.rows[0];
+   if(!hold)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   await tx.query("COMMIT");open=false;
+   return presentHold({...hold,status:hold.status==="HELD"&&
+    hold.expires_at.getTime()<=Date.now()?"EXPIRED":hold.status});
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+ async confirmationByRequest(bearer:string,ref:string){
+  const actor=await this.identity.verifySession(bearer),key=uuid(ref);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const patient=await this.ownPatient(tx,actor,false);
+   const result=await tx.query<Booking>(
+    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND created_by_account=$2 AND patient_id=$3 AND confirmation_key=$4",
+    [actor.realmId,actor.accountId,patient.id,key]);
+   if(!result.rows[0])
+    throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   await tx.query("COMMIT");open=false;
+   return presentBooking(result.rows[0]);
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+
  async holdStatus(bearer:string,ref:string){
   const actor=await this.identity.verifySession(bearer),id=uuid(ref);
   const tx=await this.db.connect();let open=false;
