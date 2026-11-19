@@ -92,6 +92,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [loading,setLoading]=useState(true),[working,setWorking]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false),[search,setSearch]=useState("");
+ const [appliedSearch,setAppliedSearch]=useState("");
  const [windows,setWindows]=useState<Window[]>([]);
  const [slot,setSlot]=useState("30"),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [kind,setKind]=useState<"LEAVE"|"BLOCK"|"HOLIDAY">("LEAVE");
@@ -110,6 +111,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     if(districtRef)params.set("districtRef",districtRef);
     if(blockRef)params.set("blockRef",blockRef);
     if(chosenCenter)params.set("centerRef",chosenCenter);
+    if(appliedSearch)params.set("search",appliedSearch);
    }
    const url=base+(params.size?"?"+params.toString():"");
    const response=await api<{doctors:Row[];metrics:Metrics;
@@ -123,7 +125,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
     "The approved doctor list is currently unavailable.");
   }}
- },[base,channel,stateRef,districtRef,blockRef,chosenCenter]);
+ },[base,channel,stateRef,districtRef,blockRef,chosenCenter,appliedSearch]);
  useEffect(()=>{
   setSelected(null);setRoster([]);setMetrics(null);setWindows([]);
   setCopyTarget("");
@@ -287,9 +289,9 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   (!districtRef||p.districtRef===districtRef)&&p.blockRef).map(p=>[
    p.blockRef!,{ref:p.blockRef!,name:p.blockName??"Unnamed block"}
  ])).values());
- const result=roster.filter(x=>
-  (x.doctorName+" "+x.centerName+" "+x.specialties.join(" "))
-   .toLowerCase().includes(search.trim().toLowerCase()));
+ // The API searches all real approved associations BEFORE applying its
+ // bounded 100-row limit. Never silently search only the first Web page.
+ const result=roster;
  return <section className="role-workspace" aria-label="Doctor schedules and availability">
   <header className="topbar"><div>
    <h1>Doctor Schedule & Availability</h1>
@@ -354,10 +356,21 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     {!placesComplete&&<p role="status">More verified centers exist than can
      be shown in this filter. Narrow your location to choose a center.</p>}
    </div>}
-   <label>Search approved doctors, clinics or specialties
-    <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
+   <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search.trim());}}
+    aria-label="Search all approved doctors">
+    <label>Search approved doctors, clinics or specialties
+     <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
       maxLength={80} placeholder="Doctor or healthcare center"/>
-   </label>
+    </label>
+    <div className="toolbar">
+     <button type="submit" disabled={working||loading}>Search verified doctors</button>
+     <button type="button" disabled={working||loading||
+      (!search&&!appliedSearch)}
+      onClick={()=>{setSearch("");setAppliedSearch("");}}>Clear search</button>
+    </div>
+   </form>
+   {appliedSearch&&<p role="status">Showing current server results for
+    “{appliedSearch}”. Searches use the original verified doctor and center records.</p>}
    {loading&&<p role="status">Checking current doctor associations…</p>}
    {!loading&&result.length===0&&
     <p role="status">No matching, currently approved doctor-center associations.</p>}
