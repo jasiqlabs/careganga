@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
 import {CenterDraftPortal} from "../../../features/health-network/center-draft-portal";
-import {SignOutButton} from "../../../features/identity-access/signout-button";
+import {HealthcareAdminShell} from "../../../shared/healthcare-admin-shell";
 export const dynamic="force-dynamic";
 
 export default async function CenterHome(){
@@ -24,24 +24,21 @@ export default async function CenterHome(){
     const person:unknown=await me.json(),rights:unknown=await access.json();
     if(!person||typeof person!=="object"||!("displayName" in person)||
       typeof person.displayName!=="string"||
+      !("roleName" in person)||typeof person.roleName!=="string"||
       !rights||typeof rights!=="object"||!("actions" in rights)||
       !Array.isArray(rights.actions))throw Error("Invalid access response");
-    const allowed=rights.actions.some((x:unknown)=>
-      x&&typeof x==="object"&&"key" in x&&
-      x.key==="health.centers.draft.edit");
-    if(!allowed)return <main className="page main"><h1>Center access restricted</h1>
-      <p>Only a currently authorized representative may open their assigned pending center.</p>
-      <Link href="/admin">My account</Link></main>;
-    return <div className="page main">
-      <header className="topbar"><div><h1>CareGanga Center Portal</h1>
-        <p>Signed in as {person.displayName}</p></div>
-        <div className="toolbar">
-          <Link href="/admin/password">Change password</Link>
-          <Link href="/admin">My account</Link><SignOutButton/>
-        </div>
-      </header>
+    const allowed=new Set<string>(rights.actions.flatMap((x:unknown)=>
+      x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?
+      [x.key]:[]));
+    if(!allowed.has("health.centers.draft.edit"))
+      return <main className="page main"><h1>Center access restricted</h1>
+       <p>Only a currently authorized representative may open their assigned center.</p>
+       <Link href="/admin">My account</Link></main>;
+    return <HealthcareAdminShell active="healthCenter"
+      actor={{displayName:person.displayName,roleName:person.roleName}}
+      actions={allowed}>
       <CenterDraftPortal/>
-    </div>;
+    </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
@@ -61,7 +62,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const alternatives=mode==="time"&&date&&time?
   await source<Choices>("slot-first?doctorRef="+encodeURIComponent(doctorRef)+
    "&date="+encodeURIComponent(date)+"&time="+encodeURIComponent(time)):null;
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header"><nav aria-label="Breadcrumb">
    <Link href="/health-network">Healthcare</Link>{" / "}
    <Link href={"/health-network/doctors/"+encodeURIComponent(doctorRef)}>
@@ -183,5 +184,5 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
     Only pay-at-center consultations are offered; no online payment, lab or other ERP booking.
     Availability may change until the reservation is accepted.</p>
   </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

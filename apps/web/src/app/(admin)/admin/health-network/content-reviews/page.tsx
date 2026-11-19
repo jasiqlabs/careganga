@@ -1,6 +1,7 @@
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterContentReviewInbox} from "../../../../../features/health-network/center-content-review-inbox";
 import {CenterContentPublisherQueue} from "../../../../../features/health-network/center-content-publisher-queue";
 export const dynamic="force-dynamic";
@@ -20,10 +21,14 @@ export default async function CenterContentReviewPage(){
   ]);
   if(me.status===401||access.status===401)redirect("/admin/login");
   if(!me.ok||!access.ok)throw Error("Permission unavailable");
+  const person:unknown=await me.json();
   const rights:unknown=await access.json();
   if(!rights||typeof rights!=="object"||!("actions" in rights)||
     !Array.isArray(rights.actions))throw Error("Invalid permissions");
-  const allowed=new Set(rights.actions.flatMap((v:unknown)=>
+  if(!person||typeof person!=="object"||!("displayName" in person)||
+    !("roleName" in person)||typeof person.displayName!=="string"||
+    typeof person.roleName!=="string")throw Error("Current account unavailable");
+  const allowed=new Set<string>(rights.actions.flatMap((v:unknown)=>
    v&&typeof v==="object"&&"key" in v&&typeof v.key==="string"?[v.key]:[]));
   const canReview=allowed.has("approvals.review")&&allowed.has("health.providers.verify");
   const canPublish=allowed.has("health.centers.publish");
@@ -31,11 +36,18 @@ export default async function CenterContentReviewPage(){
    return <main className="page main"><h1>Review access restricted</h1>
     <p>Your current role cannot independently review center content.</p>
     <Link href="/admin/health-network">Return to healthcare</Link></main>;
-  return <main className="page main"><p><Link href="/admin/health-network">
-    Back to healthcare management</Link></p>
-    {canReview&&<CenterContentReviewInbox canPublish={canPublish}/>}
-    {canPublish&&<CenterContentPublisherQueue/>}
-   </main>;
+  return <HealthcareAdminShell active="healthNetwork"
+    actor={{displayName:person.displayName,roleName:person.roleName}}
+    actions={allowed}>
+     <div className="cg-health-review-layout">
+      <div className="cg-health-route-intro">
+       <h1>Healthcare Content Reviews</h1>
+       <p>Review and publish verified center content within your current permissions.</p>
+      </div>
+      {canReview&&<CenterContentReviewInbox canPublish={canPublish}/>}
+      {canPublish&&<CenterContentPublisherQueue/>}
+     </div>
+   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;

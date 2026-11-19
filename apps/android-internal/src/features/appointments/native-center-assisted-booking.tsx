@@ -239,7 +239,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content}>
    {button("Back to Foundation home",onExit,busy)}
-   <Text accessibilityRole="header" style={styles.title}>Authorized Patient Booking</Text>
+   <Text accessibilityRole="header" style={styles.pageTitle}>Authorized Patient Booking</Text>
    <Text style={styles.note}>Use only your assigned center. A signed-in, independently
     verified patient must issue a fresh 15-minute one-time code to authorize
     one hold. Full consultation fees are due at the center.</Text>
@@ -317,16 +317,17 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
 }
 const styles=StyleSheet.create({
  page:{flex:1,backgroundColor:t.background},
- content:{padding:16,paddingBottom:50,gap:12},
+ content:{padding:18,paddingBottom:56,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
+ pageTitle:{fontSize:23,fontWeight:"800",color:t.sidebar,marginBottom:4},
  title:{fontSize:18,fontWeight:"700",color:t.text},
- note:{fontSize:13,color:t.mutedText},
+ note:{fontSize:13,lineHeight:19,color:t.mutedText},
  error:{fontSize:13,color:t.error},
  row:{flexDirection:"row",flexWrap:"wrap",gap:8},
- card:{padding:12,borderWidth:1,borderColor:t.border,borderRadius:10,
-  backgroundColor:t.surface,gap:10},
- input:{borderWidth:1,borderColor:t.border,borderRadius:8,
-  minHeight:46,padding:12,color:t.text,backgroundColor:t.surface},
- button:{minHeight:44,borderRadius:8,padding:10,
+ card:{padding:16,borderWidth:1,borderColor:t.border,borderRadius:14,
+  backgroundColor:t.surface,gap:12},
+ input:{borderWidth:1,borderColor:t.border,borderRadius:10,
+  minHeight:48,padding:12,color:t.text,backgroundColor:t.surface},
+ button:{minHeight:48,borderRadius:10,padding:12,
   backgroundColor:t.primary,justifyContent:"center"},
  buttonText:{color:t.primaryText,fontWeight:"700",fontSize:13},
  disabled:{opacity:0.45}

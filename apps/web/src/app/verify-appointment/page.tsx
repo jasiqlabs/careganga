@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {AppointmentStatusVerifier} from "../../features/appointments/appointment-status-verifier";
@@ -7,7 +8,7 @@ export const metadata:Metadata={
  robots:{index:false,follow:false}
 };
 export default function VerifyAppointment(){
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header">
    <Link href="/">CareGanga</Link>
   </header>
@@ -18,5 +19,5 @@ export default function VerifyAppointment(){
     never reveal patient identity, doctor, center, date, fee or medical records.</p>
    <AppointmentStatusVerifier/>
   </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

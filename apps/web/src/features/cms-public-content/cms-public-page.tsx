@@ -106,7 +106,7 @@ function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
   })}</div>
  </section>;
 }
-function SiteFooter({data,navigation}:{data:Record<string,unknown>;
+export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
  navigation?:PublicCmsNavigation|null}){
  const isPublished=(path:string)=>navigation?.publishedRoutes?.some(v=>v.path===path)===true;
  const phone=text(data.phone),email=text(data.email);

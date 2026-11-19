@@ -250,7 +250,7 @@ export function FoundationPatientBookings(){
    setOverridePassword("");setOverrideAcknowledged(false);setOverrideBusy(false);
   }
  }
- return <section className="role-workspace" aria-label="Patient and booking management">
+ return <section className="role-workspace cg-health-workspace" aria-label="Patient and booking management">
   <style>{`@media print{
    body *{visibility:hidden!important;}
    body.cg15-h15-report-print .cg15-print-scope,
@@ -267,13 +267,14 @@ export function FoundationPatientBookings(){
    .cg15-print-scope article{break-inside:avoid;}
   }`}</style>
   <header className="topbar"><div>
+   <p className="cg-health-eyebrow">Healthcare / Patient records</p>
    <h1>Patient &amp; Booking Management</h1>
    <p>Manage actual patient consultations across healthcare centers</p>
   </div></header>
   <p>View current bookings and their recorded changes. Medical reports are kept private.</p>
   {!!message&&<p role="alert" className="notice error">{message}</p>}
   <p>Foundation-wide totals across all dates and centers. Filters below apply to consultation records only.</p>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
+  <div className="cg-health-kpi-grid" aria-label="Six Foundation patient and booking indicators">
    {([
     ["Total Patients",metrics?.totalPatients],
     ["Active Patients",metrics?.activePatients],
@@ -281,8 +282,7 @@ export function FoundationPatientBookings(){
     ["Today's Bookings",metrics?.todayBookings],
     ["Completed",metrics?.completed],
     ["Pending",metrics?.pending]
-   ] as const).map(([label,n])=><article className="card"
-    style={{padding:14,border:"1px solid #d7dfdb",borderRadius:12}} key={label}>
+   ] as const).map(([label,n])=><article className="cg-health-kpi-card" key={label}>
     <p>{label}</p><strong>{n===undefined?"—":n.toLocaleString("en-IN")}</strong>
    </article>)}
   </div>
@@ -371,16 +371,13 @@ export function FoundationPatientBookings(){
    </div>
   </section>
   {loading&&<p role="status">Checking current protected source records…</p>}
-  {!loading&&result&&<div style={{display:"grid",
-   gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:18}}>
-   <section aria-label="Protected consultations">
+  {!loading&&result&&<div className="cg-health-record-layout">
+   <section className="cg-health-records" aria-label="Protected consultations">
     <h2>Consultation records</h2>
     {result.items.length===0&&<p>No consultations match these filters.</p>}
-    {result.items.map(item=><button key={item.bookingRef} type="button"
+    {result.items.map(item=><button key={item.bookingRef} type="button" className="cg-health-record"
      aria-pressed={selected===item.bookingRef} disabled={overrideBusy}
-     onClick={()=>setSelected(item.bookingRef)}
-     style={{display:"block",width:"100%",textAlign:"left",padding:14,
-      border:"1px solid #d7dfdb",borderRadius:12,marginBottom:8}}>
+     onClick={()=>setSelected(item.bookingRef)}>
      <strong>{item.bookingId}</strong><span> — {statusName(item.bookingStatus)}</span>
      <p>{item.patientName} · {item.centerName}</p>
      <p>{centerTime(item.startAt,item.timeZone)}</p>

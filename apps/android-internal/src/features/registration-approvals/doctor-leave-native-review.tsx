@@ -172,20 +172,20 @@ export function DoctorLeaveNativeReview({token,onExit,onExpired}:Props){
 }
 const styles=StyleSheet.create({
  page:{flex:1,backgroundColor:t.background},
- content:{padding:14,paddingBottom:60,gap:12},
+ content:{padding:18,paddingBottom:60,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
  row:{flexDirection:"row",alignItems:"center",gap:10,flexWrap:"wrap"},
- title:{fontSize:18,fontWeight:"700",color:t.text,flexShrink:1},
+ title:{fontSize:23,fontWeight:"800",color:t.sidebar,flexShrink:1},
  card:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1,
-  borderRadius:10,padding:13,gap:10},
+  borderRadius:14,padding:16,gap:12},
  bold:{fontSize:15,fontWeight:"700",color:t.text},
  label:{fontSize:14,lineHeight:20,color:t.text},
  hint:{fontSize:13,lineHeight:19,color:t.mutedText},
  error:{fontSize:14,color:t.error},
- button:{borderWidth:1,borderColor:t.border,minHeight:48,borderRadius:8,
+ button:{borderWidth:1,borderColor:t.border,minHeight:48,borderRadius:10,
   paddingHorizontal:12,paddingVertical:8,justifyContent:"center"},
  primary:{backgroundColor:t.primary,borderColor:t.primary},
  primaryText:{fontSize:14,fontWeight:"700",color:t.primaryText},
  link:{fontSize:14,fontWeight:"600",color:t.primary},
- input:{borderWidth:1,borderColor:t.border,borderRadius:7,
+ input:{borderWidth:1,borderColor:t.border,borderRadius:10,
   backgroundColor:t.surface,color:t.text,minHeight:48,padding:11}
 });

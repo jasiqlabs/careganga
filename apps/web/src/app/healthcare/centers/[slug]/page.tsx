@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
@@ -52,7 +53,7 @@ export default async function VerifiedCenterPage({params}:Params){
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
  const doctors=await directory<PublicDoctor>("doctors",new URLSearchParams({center:slug}));
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
        <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
@@ -129,5 +130,5 @@ export default async function VerifiedCenterPage({params}:Params){
      <Link href="/health-network">Browse verified centers and doctors</Link>
      <p><Link href="/contact">Contact CareGanga</Link></p>
    </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

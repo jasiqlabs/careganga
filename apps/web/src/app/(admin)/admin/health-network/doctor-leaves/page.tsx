@@ -1,6 +1,7 @@
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {DoctorLeaveReviewWorkspace}
  from "../../../../../features/appointments/doctor-leave-review-workspace";
 export const dynamic="force-dynamic";
@@ -11,14 +12,22 @@ export default async function DoctorLeaveAdminPage(){
  if(!backend)return <main className="page main"><h1>Review unavailable</h1>
   <p>Current Foundation access could not be verified.</p></main>;
  try{
-  const response=await fetch(new URL("/api/access/effective",backend),{
-   cache:"no-store",signal:AbortSignal.timeout(7000),
-   headers:{Authorization:"Bearer "+token}});
-  if(response.status===401)redirect("/admin/login");
-  if(!response.ok)throw Error("Access unavailable");
-  const result:unknown=await response.json();
-  if(!result||typeof result!=="object"||!("actions" in result)||
-    !Array.isArray(result.actions))throw Error("Invalid current access");
+  const headers={Authorization:"Bearer "+token};
+  const [me,access]=await Promise.all([
+   fetch(new URL("/api/identity/me",backend),{
+    cache:"no-store",signal:AbortSignal.timeout(7000),headers}),
+   fetch(new URL("/api/access/effective",backend),{
+    cache:"no-store",signal:AbortSignal.timeout(7000),headers})
+  ]);
+  if(me.status===401||access.status===401)redirect("/admin/login");
+  if(!me.ok||!access.ok)throw Error("Access unavailable");
+  const person:unknown=await me.json();
+  const result:unknown=await access.json();
+  if(!person||typeof person!=="object"||!("displayName" in person)||
+   !("roleName" in person)||typeof person.displayName!=="string"||
+   typeof person.roleName!=="string"||!result||typeof result!=="object"||
+   !("actions" in result)||!Array.isArray(result.actions))
+   throw Error("Invalid current account or access");
   const a=new Set<string>(result.actions.flatMap((item:unknown)=>
    item&&typeof item==="object"&&"key" in item&&typeof item.key==="string"?
      [item.key]:[]));
@@ -29,10 +38,11 @@ export default async function DoctorLeaveAdminPage(){
    <p>Your role does not include the current reviewer or schedule management permission.</p>
    <Link href="/admin/health-network">Back to healthcare management</Link>
   </main>;
-  return <main className="page main">
-   <p><Link href="/admin/health-network">Back to healthcare management</Link></p>
+  return <HealthcareAdminShell active="healthSchedules"
+   actor={{displayName:person.displayName,roleName:person.roleName}}
+   actions={a}>
    <DoctorLeaveReviewWorkspace canReview={canReview} canManage={canManage}/>
-  </main>;
+  </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

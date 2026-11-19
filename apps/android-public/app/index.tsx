@@ -299,7 +299,7 @@ export default function PublicHome(){
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
             onLoginVisibility={setPublicLoginVisible}/>
-          <View style={styles.card}>
+          <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Healthcare Network</Text>
             <Text>Search current verified CareGanga healthcare centers and doctors.</Text>
             <Pressable accessibilityRole="button" style={styles.primary}
@@ -307,7 +307,7 @@ export default function PublicHome(){
               <Text style={styles.primaryText}>Find healthcare centers & doctors</Text>
             </Pressable>
           </View>
-          <View style={styles.card}>
+          <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>My Patient Profile</Text>
             <Text>View your own Virtual Patient ID and manage patient-care consent.</Text>
             <Pressable accessibilityRole="button" style={styles.primary}
@@ -371,8 +371,9 @@ const styles=StyleSheet.create({
  brandImage:{width:52,height:52,borderRadius:26},
  title:{fontSize:25,fontWeight:"700",color:theme.sidebar,flexShrink:1},
  heading:{fontSize:18,fontWeight:"700",color:theme.text},
- card:{borderRadius:12,backgroundColor:theme.surface,padding:16,gap:12,
+ card:{borderRadius:14,backgroundColor:theme.surface,padding:18,gap:12,
    borderWidth:1,borderColor:theme.border},
+ healthFeatureCard:{borderLeftWidth:3,borderLeftColor:theme.primary},
  label:{fontSize:13,color:theme.mutedText},
  muted:{fontSize:13,color:theme.mutedText},
  input:{borderWidth:1,borderColor:theme.border,borderRadius:8,

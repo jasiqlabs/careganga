@@ -42,18 +42,22 @@ export default async function ProtectedH15PatientManagement(){
     canViewAccounts={rightsSet.has("accounts.view")}
     canViewPatientIntake={rightsSet.has("health.patients.intake")}
     canViewVisitQueue={rightsSet.has("health.visits.manage")}
+    canViewSchedules={rightsSet.has("health.schedules.view")}
     canViewHealthNetwork={rightsSet.has("health.providers.view")}/>
-   <main className="workspace">
+   <main className="workspace cg-health-admin-workspace">
     <p><Link href="/admin">Back to account</Link></p>
     {rightsSet.has("health.patients.intake")&&
-     <section className="form-section" aria-label="Authorized patient registration and new booking">
-      <h2>Register patient or book a consultation</h2>
-      <p>Use your real assigned healthcare center for in-person intake or a
-       patient-authorized consultation. A CareGanga Virtual Patient ID is not
-       a government-issued health identifier. No online payment is created.</p>
-      <Link href="/admin/health-network/patient-intake">
-       Open Patient & Booking Management</Link>
-     </section>}
+     <section className="form-section cg-health-action-panel" aria-label="Authorized patient registration and new booking">
+       <div>
+        <h2>Register patient or create a booking</h2>
+        <p>Complete a verified center intake or patient-authorized booking.
+         The Virtual Patient ID is not a government-issued health identifier.</p>
+       </div>
+       <Link className="cg-health-link-action"
+        href="/admin/health-network/patient-intake">
+        Open patient intake
+       </Link>
+      </section>}
     <FoundationPatientBookings/>
    </main>
   </div>;

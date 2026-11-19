@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {
@@ -46,7 +47,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
  if(result.next)next.set("after",result.next);
  if(canReschedule){next.set("reschedule",rescheduleRef);
   next.set("version",String(rescheduleVersion));}
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb">
     <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
@@ -209,5 +210,5 @@ export default async function HealthcareDirectory({searchParams}:Props){
   <section className="cg-public-section">
    <p>Listings do not imply availability, a booking, a benefit amount, or a medical recommendation.</p>
   </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

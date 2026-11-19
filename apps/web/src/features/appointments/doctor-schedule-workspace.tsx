@@ -475,7 +475,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    setKind("LEAVE");exceptionKey.current="";
   }
  }
- return <section className="role-workspace" aria-label="Doctor schedules and availability">
+ return <section className="role-workspace cg-health-workspace" aria-label="Doctor schedules and availability">
   <style>{`
    .cg15-h07-body{display:grid;grid-template-columns:minmax(270px,32%) minmax(0,1fr);gap:16px;align-items:start}
    .cg15-h07-roster-list{display:grid;gap:8px}
@@ -505,6 +505,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    @media(max-width:860px){.cg15-h07-body{grid-template-columns:minmax(0,1fr)}}
   `}</style>
   <header className="topbar"><div>
+   <p className="cg-health-eyebrow">Healthcare / Doctor scheduling</p>
    <h1>Doctor Schedule & Availability</h1>
    <p>Choose a currently verified doctor and center, then set real working hours.
     These are scheduling rules, not bookable slots or confirmed appointments.</p>

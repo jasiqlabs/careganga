@@ -7559,3 +7559,600 @@ button:disabled {
     display: none !important;
   }
 }
+
+/* Healthcare visual alignment — adopt the new Foundation admin shell visual
+   language, without changing main's sidebar, dashboard, login, or global tokens.
+   This is presentation-only: server authorization stays in each CG14/CG15 owner. */
+.cg-health-admin-workspace {
+  min-width: 0;
+  background: #F8FAFC;
+}
+
+.cg-health-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0 0 1.15rem;
+  font-size: .79rem;
+  font-weight: 650;
+  color: var(--cg-muted);
+}
+
+.cg-health-breadcrumb a {
+  color: #1E53DC;
+  text-decoration: none;
+}
+
+.cg-health-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.cg-health-workspace,
+.cg-health-review-layout {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  display: grid;
+  gap: 1.2rem;
+  align-content: start;
+}
+
+.cg-health-workspace > .topbar,
+.cg-health-route-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .35rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.cg-health-workspace > .topbar h1,
+.cg-health-route-intro h1 {
+  margin: 0;
+  color: #0A142F;
+  font-size: clamp(1.35rem, 1.15rem + 1vw, 1.9rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+.cg-health-workspace > .topbar p,
+.cg-health-route-intro p {
+  margin: .35rem 0 0;
+  max-width: 70ch;
+  color: var(--cg-muted);
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
+.cg-health-eyebrow {
+  margin: 0 0 .35rem !important;
+  color: #1E53DC !important;
+  font-size: .71rem !important;
+  font-weight: 800;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+}
+
+.cg-health-admin-workspace .form-section,
+.cg-health-workspace .form-section,
+.cg-health-panel {
+  min-width: 0;
+  padding: clamp(1rem, 1.65vw, 1.45rem);
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: .9rem;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, .045);
+}
+
+.cg-health-admin-workspace .form-section .form-section,
+.cg-health-workspace .form-section .form-section {
+  box-shadow: none;
+  background: #F8FAFC;
+  border-radius: .7rem;
+}
+
+.cg-health-admin-workspace .form-section h2,
+.cg-health-workspace .form-section h2,
+.cg-health-workspace .form-section h3,
+.cg-health-admin-workspace .form-section h3 {
+  color: #0A142F;
+  font-weight: 750;
+  line-height: 1.3;
+  margin-block-start: 0;
+}
+
+.cg-health-admin-workspace .form-section p,
+.cg-health-workspace .form-section p {
+  line-height: 1.5;
+}
+
+.cg-health-admin-workspace :is(.form-grid, .cg-health-form-grid),
+.cg-health-workspace :is(.form-grid, .cg-health-form-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  align-items: end;
+  gap: .85rem;
+}
+
+.cg-health-admin-workspace :is(.form-grid, .toolbar) > label,
+.cg-health-workspace :is(.form-grid, .toolbar) > label,
+.cg-health-workspace form > label,
+.cg-health-workspace .form-section > label {
+  display: grid;
+  gap: .4rem;
+  min-width: 0;
+  color: #334155;
+  font-size: .8rem;
+  font-weight: 650;
+}
+
+.cg-health-admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+.cg-health-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: .65rem .75rem;
+  border: 1px solid #CBD5E1;
+  border-radius: .65rem;
+  background: #FFFFFF;
+  color: #0F172A;
+  font: inherit;
+  font-size: .88rem;
+}
+
+.cg-health-admin-workspace :is(input, select, textarea):disabled,
+.cg-health-workspace :is(input, select, textarea):disabled {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+.cg-health-admin-workspace :is(input, select, textarea):focus-visible,
+.cg-health-workspace :is(input, select, textarea):focus-visible {
+  outline: 2px solid #1E53DC;
+  outline-offset: 2px;
+  border-color: #1E53DC;
+}
+
+.cg-health-admin-workspace .toolbar,
+.cg-health-workspace .toolbar {
+  gap: .65rem;
+  align-items: end;
+}
+
+.cg-health-admin-workspace :is(button, .cg-health-link-action),
+.cg-health-workspace :is(button, .cg-health-link-action) {
+  min-height: 2.75rem;
+  border-radius: .65rem;
+  font-family: inherit;
+  font-weight: 650;
+}
+
+.cg-health-workspace button:not(.primary),
+.cg-health-admin-workspace button:not(.primary) {
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #26354F;
+  padding: .6rem .85rem;
+}
+
+.cg-health-workspace button.primary,
+.cg-health-admin-workspace button.primary,
+.cg-health-link-action {
+  border: 1px solid #1E53DC;
+  background: #1E53DC;
+  color: #FFFFFF;
+  padding: .65rem 1rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+}
+
+.cg-health-workspace button:not(:disabled):hover,
+.cg-health-admin-workspace button:not(:disabled):hover {
+  border-color: #1E53DC;
+}
+
+.cg-health-workspace button.primary:not(:disabled):hover,
+.cg-health-admin-workspace button.primary:not(:disabled):hover,
+.cg-health-link-action:hover {
+  background: #1748BE;
+  color: #FFFFFF;
+}
+
+.cg-health-admin-workspace button:disabled,
+.cg-health-workspace button:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.cg-health-admin-workspace :is(.notice, [role="alert"]),
+.cg-health-workspace :is(.notice, [role="alert"]) {
+  border-radius: .6rem;
+  padding: .75rem 1rem;
+}
+
+.cg-health-workspace .notice.error,
+.cg-health-admin-workspace .notice.error {
+  border-inline-start: 3px solid var(--cg-error, #C43740);
+  color: #9B2226;
+  background: #FFF4F4;
+}
+
+.cg-health-workspace .role-table-wrap,
+.cg-health-admin-workspace .role-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  border-radius: .85rem;
+  border: 1px solid #E2E8F0;
+}
+
+.cg-health-workspace .role-table th,
+.cg-health-admin-workspace .role-table th {
+  background: #F8FAFC;
+  color: #334155;
+  font-size: .78rem;
+  font-weight: 750;
+  letter-spacing: .015em;
+}
+
+.cg-health-workspace .role-table td,
+.cg-health-admin-workspace .role-table td {
+  color: #334155;
+  font-size: .88rem;
+}
+
+.cg-health-kpi-grid,
+.cg-health-workspace .cg15-h07-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .85rem;
+}
+
+.cg-health-kpi-card,
+.cg-health-workspace .cg15-h07-kpi {
+  min-width: 0;
+  min-height: 6.5rem;
+  border: 1px solid #E2E8F0;
+  border-radius: .9rem;
+  padding: 1.05rem 1.15rem;
+  background: #FFFFFF;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .04);
+  border-top: 3px solid #1E53DC;
+}
+
+.cg-health-kpi-card p,
+.cg-health-workspace .cg15-h07-kpi p {
+  margin: 0 0 .5rem;
+  font-size: .79rem;
+  color: #64748B;
+  font-weight: 650;
+}
+
+.cg-health-kpi-card strong,
+.cg-health-workspace .cg15-h07-kpi strong {
+  display: block;
+  font-size: clamp(1.35rem, 1rem + 1vw, 1.85rem);
+  line-height: 1.2;
+  color: #0A142F;
+  font-variant-numeric: tabular-nums;
+}
+
+.cg-health-records {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: .6rem;
+}
+
+.cg-health-workspace button.cg-health-record {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+  border: 1px solid #E2E8F0;
+  border-radius: .75rem;
+  padding: .85rem 1rem;
+  background: #FFFFFF;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.cg-health-workspace button.cg-health-record[aria-pressed="true"] {
+  background: #EFF5FF;
+  border-color: #1E53DC;
+  box-shadow: inset 3px 0 0 #1E53DC;
+}
+
+.cg-health-workspace button.cg-health-record p {
+  margin: .35rem 0 0;
+  font-size: .83rem;
+  color: #64748B;
+}
+
+.cg-health-record-detail {
+  min-width: 0;
+}
+
+.cg-health-action-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cg-health-action-panel p {
+  margin: .35rem 0 0;
+  color: #64748B;
+  font-size: .86rem;
+}
+
+.cg-health-review-layout {
+  gap: 1rem;
+}
+
+.cg-health-workspace .cg15-h07-roster-list button[aria-pressed="true"] {
+  color: #0A142F;
+  background: #EFF5FF;
+  border-color: #1E53DC;
+  box-shadow: inset 3px 0 0 #1E53DC;
+}
+
+.cg-health-workspace .cg15-h07-tabs [role="tab"] {
+  border-radius: .6rem .6rem 0 0;
+}
+
+.cg-health-workspace .cg15-h07-tabs [role="tab"][aria-selected="true"] {
+  background: #1E53DC;
+  border-color: #1E53DC;
+  color: #FFFFFF;
+}
+
+.cg-health-workspace .cg15-h07-save-bar {
+  z-index: 5;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-top: 2px solid #1E53DC;
+  border-radius: .8rem;
+}
+
+@media (min-width: 74rem) {
+  .cg-health-kpi-grid,
+  .cg-health-workspace .cg15-h07-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 55rem) {
+  .cg-health-kpi-grid,
+  .cg-health-workspace .cg15-h07-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 48rem) {
+  .cg-health-admin-workspace {
+    padding: 1rem;
+  }
+
+  .cg-health-workspace,
+  .cg-health-review-layout {
+    gap: .9rem;
+  }
+
+  .cg-health-admin-workspace .form-section,
+  .cg-health-workspace .form-section,
+  .cg-health-panel {
+    padding: .9rem;
+    border-radius: .8rem;
+  }
+
+  .cg-health-workspace .role-table-wrap,
+  .cg-health-admin-workspace .role-table-wrap {
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cg-health-workspace *,
+  .cg-health-admin-workspace * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
+.cg-health-record-layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, .9fr) minmax(0, 1.6fr);
+  align-items: start;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+@media (max-width: 64rem) {
+  .cg-health-record-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* CG14/CG15 public journeys: reuse the current public website gold/green
+   identity through the shared published-CMS header, not the blue admin shell. */
+.cg-site.cg-health-public-chrome {
+  min-height: 100vh;
+  background: #FFFCF5;
+  color: #14233A;
+}
+
+.cg-health-public-chrome .cg-public-shell {
+  display: grid;
+  gap: 1.15rem;
+  width: min(100% - 2rem, 1280px);
+  margin: 0 auto;
+  padding: clamp(1rem, 2.5vw, 2.5rem) 0 3rem;
+  min-width: 0;
+}
+
+.cg-health-public-chrome .cg-public-header {
+  min-height: 0;
+  display: flex;
+  gap: .65rem;
+  padding: .3rem 0 .7rem;
+  background: transparent;
+  border: 0;
+  color: #1A5845;
+  font-size: .85rem;
+}
+
+.cg-health-public-chrome .cg-public-header nav {
+  gap: .55rem;
+}
+
+.cg-health-public-chrome .cg-public-header a {
+  color: #175542;
+  font-weight: 750;
+}
+
+.cg-health-public-chrome .cg-public-section,
+.cg-health-public-chrome .role-workspace,
+.cg-health-public-chrome .form-section {
+  min-width: 0;
+}
+
+.cg-health-public-chrome .cg-public-section {
+  background: #FFFFFF;
+  border: 1px solid #E7E5DC;
+  border-radius: 1rem;
+  padding: clamp(1.1rem, 2.5vw, 2rem);
+  box-shadow: 0 4px 20px rgba(24, 55, 39, .045);
+  margin: 0;
+}
+
+.cg-health-public-chrome .cg-public-section h1 {
+  margin: .25rem 0 .85rem;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #112F2A;
+  font-size: clamp(1.7rem, 2.5vw, 2.8rem);
+  line-height: 1.17;
+  overflow-wrap: anywhere;
+}
+
+.cg-health-public-chrome .cg-public-section h2,
+.cg-health-public-chrome .cg-public-section h3 {
+  color: #112F2A;
+  line-height: 1.25;
+}
+
+.cg-health-public-chrome .cg-public-section .cg-eyebrow {
+  color: #167763;
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: .75rem;
+  letter-spacing: .08em;
+}
+
+.cg-health-public-chrome .cg-public-section .cg-lead {
+  max-width: 73ch;
+  color: #4D6072;
+  line-height: 1.65;
+  font-size: 1rem;
+}
+
+.cg-health-public-chrome .cg-public-section p,
+.cg-health-public-chrome .role-workspace p {
+  line-height: 1.6;
+}
+
+.cg-health-public-chrome .role-workspace,
+.cg-health-public-chrome .form-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.cg-health-public-chrome .form-section {
+  border: 1px solid #E7E5DC;
+  border-radius: .9rem;
+  padding: clamp(1rem, 2vw, 1.4rem);
+  background: #FFFFFF;
+}
+
+.cg-health-public-chrome :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 2.8rem;
+  max-width: 100%;
+  padding: .65rem .75rem;
+  border-radius: .7rem;
+  border: 1px solid #BCCFC6;
+  background: #FFFFFF;
+  color: #14362A;
+  font: inherit;
+  font-size: .9rem;
+}
+
+.cg-health-public-chrome :is(input, select, textarea):focus-visible {
+  outline: 2px solid #167763;
+  border-color: #167763;
+  outline-offset: 2px;
+}
+
+.cg-health-public-chrome :is(button, .cg-health-link-action) {
+  min-height: 2.8rem;
+  border-radius: .7rem;
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.cg-health-public-chrome button {
+  border: 1px solid #B8CFC5;
+  background: #F9FDF9;
+  color: #184A3A;
+  padding: .65rem 1rem;
+}
+
+.cg-health-public-chrome button.primary,
+.cg-health-public-chrome .primary {
+  background: #194A3A;
+  color: #FFFFFF;
+  border-color: #194A3A;
+}
+
+.cg-health-public-chrome :is(button, a):focus-visible {
+  outline: 2px solid #167763;
+  outline-offset: 3px;
+}
+
+.cg-health-public-chrome button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.cg-health-public-chrome .role-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cg-health-public-chrome .cg-public-section article {
+  min-width: 0;
+}
+
+.cg-health-public-chrome .cg-public-section article[style] {
+  background: #FFFDF8;
+}
+
+@media (max-width: 48rem) {
+  .cg-health-public-chrome .cg-public-shell {
+    width: calc(100% - 1.25rem);
+    padding-top: .75rem;
+    gap: .8rem;
+  }
+
+  .cg-health-public-chrome .cg-public-section,
+  .cg-health-public-chrome .form-section {
+    padding: .9rem;
+  }
+}

@@ -251,7 +251,7 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content}>
    {button("Back to my Foundation account",onExit,busy)}
-   <Text accessibilityRole="header" style={styles.title}>My Consultation Queue</Text>
+   <Text accessibilityRole="header" style={styles.pageTitle}>My Consultation Queue</Text>
    <Text style={styles.help}>Only current, assigned verified healthcare centers are shown.
     Use real booked appointments; no private clinical reports.</Text>
    {loading&&<ActivityIndicator accessibilityLabel="Checking assigned queue centers"/>}
@@ -409,16 +409,17 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
 }
 const styles=StyleSheet.create({
  page:{flex:1,backgroundColor:t.background},
- content:{padding:16,paddingBottom:55,gap:12},
+ content:{padding:18,paddingBottom:56,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
+ pageTitle:{fontSize:23,fontWeight:"800",color:t.sidebar,marginBottom:4},
  title:{fontSize:17,fontWeight:"700",color:t.text},
- help:{fontSize:13,color:t.mutedText},
+ help:{fontSize:13,lineHeight:19,color:t.mutedText},
  error:{fontSize:13,color:t.error},
  row:{flexDirection:"row",flexWrap:"wrap",gap:8},
- card:{padding:12,borderColor:t.border,borderWidth:1,borderRadius:10,
-  backgroundColor:t.surface,gap:8},
- input:{borderColor:t.border,borderWidth:1,borderRadius:8,padding:12,
-  minHeight:46,color:t.text,backgroundColor:t.surface},
- button:{borderColor:t.border,borderWidth:1,borderRadius:8,minHeight:46,
+ card:{padding:16,borderColor:t.border,borderWidth:1,borderRadius:14,
+  backgroundColor:t.surface,gap:10},
+ input:{borderColor:t.border,borderWidth:1,borderRadius:10,padding:12,
+  minHeight:48,color:t.text,backgroundColor:t.surface},
+ button:{borderColor:t.border,borderWidth:1,borderRadius:10,minHeight:48,
   padding:12,justifyContent:"center"},
  selected:{borderColor:t.primary,backgroundColor:t.surface},
  buttonLabel:{color:t.text,fontSize:13,fontWeight:"600"},

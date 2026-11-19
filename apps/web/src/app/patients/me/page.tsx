@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {PatientProfilePanel} from "../../../features/patients/patient-profile-panel";
@@ -8,12 +9,12 @@ export const metadata:Metadata={
  robots:{index:false,follow:false}
 };
 export default function MyPatient(){
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb"><Link href="/">CareGanga</Link>{" / "}
     <Link href="/health-network">Healthcare Network</Link>{" / "} My patient profile
    </nav>
   </header>
   <PatientProfilePanel/>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

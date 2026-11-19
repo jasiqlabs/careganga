@@ -47,6 +47,7 @@ export default async function ReceptionPatientIntake(){
     displayName={actor.displayName} roleName={actor.roleName}
     canViewRoles={actions.has("roles.view")}
     canViewAccounts={actions.has("accounts.view")}
+    canViewSchedules={actions.has("health.schedules.view")}
     canViewHealthNetwork={actions.has("health.providers.view")}
     canViewPatientIntake
     canViewFoundation={actions.has("foundation.profile.view")}
@@ -54,7 +55,7 @@ export default async function ReceptionPatientIntake(){
     canViewFinance={actions.has("finance.accounts.view")}
     canViewApprovals={actions.has("approvals.view")}
     canViewSupport={actions.has("support.cases.view")}/>
-   <main className="workspace">
+   <main className="workspace cg-health-admin-workspace">
     <p><Link href="/admin">Back to my account</Link></p>
     <CenterPatientIntakeWorkspace/>
    </main>

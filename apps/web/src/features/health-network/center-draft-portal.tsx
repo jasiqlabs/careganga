@@ -105,7 +105,7 @@ export function CenterDraftPortal(){
       "Review submission outcome uncertain. Check the original center.");}
     finally{setSaving(false);}
   }
-  return <div className="role-workspace">
+  return <div className="role-workspace cg-health-workspace">
     <header className="topbar"><div><h1>My healthcare center</h1>
       <p>Maintain your assigned center. Foundation approval controls verification, doctor associations and public listing.</p>
     </div></header>

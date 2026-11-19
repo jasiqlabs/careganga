@@ -37,6 +37,7 @@ export default async function HealthcareDoctorsPage(){
     return <div className="shell">
       <FoundationAdminNav active="healthDoctors" displayName={person.displayName}
         roleName={person.roleName} canViewDoctors
+    canViewSchedules={keys.has("health.schedules.view")}
         canViewHealthNetwork={keys.has("health.providers.view")}
         canViewRoles={keys.has("roles.view")}
         canViewAccounts={keys.has("accounts.view")}
@@ -46,7 +47,7 @@ export default async function HealthcareDoctorsPage(){
         canViewApprovals={keys.has("approvals.view")}
         canViewDocuments={keys.has("documents.files.view")}
         canViewFinance={keys.has("finance.accounts.view")}/>
-      <main className="workspace">
+      <main className="workspace cg-health-admin-workspace">
         <DoctorOnboarding canManage={keys.has("health.doctors.manage")}
           canVerify={keys.has("health.doctors.verify")}/>
       </main>

@@ -41,6 +41,7 @@ export default async function HealthNetworkPage(){
         displayName={person.displayName} roleName={person.roleName}
         canViewRoles={actions.has("roles.view")}
         canViewAccounts={actions.has("accounts.view")}
+    canViewSchedules={actions.has("health.schedules.view")}
         canViewHealthNetwork
         canViewFinance={actions.has("finance.accounts.view")}
         canViewFoundation={actions.has("foundation.profile.view")}
@@ -49,7 +50,7 @@ export default async function HealthNetworkPage(){
         canViewApprovals={actions.has("approvals.view")}
         canViewDocuments={actions.has("documents.files.view")}
         canViewSupport={actions.has("support.cases.view")}/>
-      <main className="workspace">
+      <main className="workspace cg-health-admin-workspace">
       {actions.has("health.schedules.view")&&
         <p><Link href="/admin/health-network/schedules">
          Doctor Schedule & Availability</Link></p>}

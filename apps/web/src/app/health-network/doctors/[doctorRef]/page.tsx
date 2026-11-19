@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
@@ -18,7 +19,7 @@ export async function generateMetadata({params}:Props):Promise<Metadata>{
 export default async function VerifiedDoctor({params}:Props){
  const {doctorRef}=await params,doctor=await publicDoctor(doctorRef);
  if(!doctor)notFound();
- return <main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb"><Link href="/">CareGanga</Link>{" / "}
     <Link href="/health-network?tab=doctors">Doctors</Link></nav>
@@ -56,5 +57,5 @@ export default async function VerifiedDoctor({params}:Props){
     and approved fees are available. Payment is due at the center;
     no online payment or financial assistance approval is implied.</p>
   </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }

@@ -34,7 +34,9 @@ export type FoundationAdminNavProps = {
     | "financeReports"
     | "cms"
     | "healthNetwork"
+    | "healthCenter"
     | "healthDoctors"
+    | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
     | "healthPatientAdmin";
@@ -64,7 +66,9 @@ export type FoundationAdminNavProps = {
   canViewFinanceReports?: boolean;
   canViewCms?: boolean;
   canViewHealthNetwork?: boolean;
+  canViewCenterPortal?: boolean;
   canViewDoctors?: boolean;
+  canViewSchedules?: boolean;
   canViewPatientIntake?: boolean;
   canViewVisitQueue?: boolean;
   canViewPatientAdmin?: boolean;
@@ -92,7 +96,9 @@ function getNavIcon(key: string) {
         </svg>
       );
     case "healthNetwork":
+    case "healthCenter":
     case "healthDoctors":
+    case "healthSchedules":
     case "healthPatientIntake":
     case "healthVisitQueue":
     case "healthPatientAdmin":
@@ -313,7 +319,9 @@ export function FoundationAdminNav({
   canViewFinanceReports = false,
   canViewCms = false,
   canViewHealthNetwork = false,
+  canViewCenterPortal = false,
   canViewDoctors = false,
+  canViewSchedules = false,
   canViewPatientIntake = false,
   canViewVisitQueue = false,
   canViewPatientAdmin = false
@@ -641,7 +649,9 @@ export function FoundationAdminNav({
   const reportAccess = currentActions ? currentActions.has("finance.reports.view") : canViewFinanceReports;
   const cmsAccess = allowed("cms.content.view", canViewCms);
   const healthNetworkAccess = allowed("health.providers.view", canViewHealthNetwork);
+  const healthCenterAccess = allowed("health.centers.draft.edit", canViewCenterPortal);
   const doctorAccess = allowed("health.doctors.view", canViewDoctors);
+  const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
   const patientAdminAccess = allowed("health.patients.admin.view", canViewPatientAdmin);
@@ -666,7 +676,9 @@ export function FoundationAdminNav({
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
     ...(healthNetworkAccess ? [{ key: "healthNetwork" as const, label: "Healthcare Providers", href: "/admin/health-network" }] : []),
+    ...(healthCenterAccess ? [{ key: "healthCenter" as const, label: "My Healthcare Center", href: "/center" }] : []),
     ...(doctorAccess ? [{ key: "healthDoctors" as const, label: "Doctor Registrations", href: "/admin/health-network/doctors" }] : []),
+    ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
     ...(patientAdminAccess ? [{ key: "healthPatientAdmin" as const, label: "Patient & Booking Management", href: "/admin/health-network/patients" }] : []),
@@ -707,7 +719,9 @@ export function FoundationAdminNav({
     branches: "Branches / Locations",
     cms: "Website CMS",
     healthNetwork: "Healthcare Providers",
+    healthCenter: "My Healthcare Center",
     healthDoctors: "Doctor Registrations",
+    healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
     healthPatientAdmin: "Patient & Booking Management",
@@ -866,7 +880,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
             { name: "HEALTHCARE", keys: [
-              "healthNetwork", "healthDoctors", "healthPatientIntake",
+              "healthNetwork", "healthCenter", "healthDoctors", "healthSchedules", "healthPatientIntake",
               "healthVisitQueue", "healthPatientAdmin"
             ] },
             {

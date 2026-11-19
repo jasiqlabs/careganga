@@ -38,10 +38,11 @@ export default async function CenterQueuePage(){
     displayName={person.displayName} roleName={person.roleName}
     canViewRoles={allowed.has("roles.view")}
     canViewAccounts={allowed.has("accounts.view")}
+    canViewSchedules={allowed.has("health.schedules.view")}
     canViewHealthNetwork={allowed.has("health.providers.view")}
     canViewPatientIntake={allowed.has("health.patients.intake")}
     canViewVisitQueue/>
-   <main className="workspace"><p><Link href="/admin">Back to my account</Link></p>
+   <main className="workspace cg-health-admin-workspace"><p><Link href="/admin">Back to my account</Link></p>
     <CenterVisitQueue/></main>
   </div>;
  }catch(e){
