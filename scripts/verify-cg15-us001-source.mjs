@@ -140,6 +140,8 @@ const tests=[
  ["source: H07 bounded multi-center bulk copy independently verifies and CAS saves each target",
   s.web.includes("async function previewBulk()")&&
   s.web.includes("async function applyBulk()")&&
+  s.web.includes("const today=currentCenterDay(source.timeZone)")&&
+  s.web.includes("source.effectiveUntil&&source.effectiveUntil<=today")&&
   s.web.includes("bulkRefs.slice(0,8)")&&
   s.web.includes("const dest=await api<Detail>(base+")&&
   s.web.includes("dest.doctorRef!==source.doctorRef")&&
