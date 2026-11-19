@@ -138,6 +138,13 @@ for(const name of files){
    !source.includes("cg15_assisted_booking_code_immutable")||
    !source.includes("WHERE consumed_at IS NULL AND revoked_at IS NULL")))
   result.errors.push("Patient-authorized clinic booking proof source is incomplete");
+ if(name.startsWith("1434")&&
+  (!source.includes("CREATE TABLE cg15_center_qr_verify_budget")||
+   !source.includes("PRIMARY KEY(root_realm_id,actor_account_id,center_id)")||
+   !source.includes("CREATE TABLE cg15_center_qr_verification_audit")||
+   !source.includes("cg15_qr_verification_audit_immutable")||
+   !source.includes("REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT")))
+  result.errors.push("Original center QR verification abuse guard/audit source is incomplete");
  if(name.startsWith("1433")&&
   (!source.includes("CREATE TABLE cg19_appointment_event_outbox")||
    !source.includes("PRIMARY KEY(realm_id,event_id)")||
