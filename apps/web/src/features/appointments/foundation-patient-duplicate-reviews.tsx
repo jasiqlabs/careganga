@@ -4,6 +4,11 @@ type Review={reviewRef:string;status:"PENDING"|"APPROVED"|"REJECTED";version:num
  sourceVirtualPatientId:string;canonicalVirtualPatientId:string;
  proposedByCurrentAccount:boolean;proposedAt:string;decidedAt:string|null};
 type List={items:Review[];limit:number;message:string};
+type IdentitySource={virtualPatientId:string;firstName:string;lastName:string;
+ dateOfBirth:string|null;profileStatus:string;identityCheckedInPerson:boolean;
+ verificationRecordedAt:string|null;originalVerificationCenter:string|null};
+type Evidence={reviewRef:string;source:IdentitySource;proposedCanonical:IdentitySource;
+ purpose:string;message:string};
 const VIRTUAL=/^CGP-[A-F0-9]{16}$/;
 const endpoint="/api/appointments/admin/patients/duplicate-reviews";
 async function source<T>(path:string,method:"GET"|"POST"="GET",payload?:object):Promise<T>{
@@ -22,6 +27,9 @@ export function FoundationPatientDuplicateReviews(){
  const [canonicalDisplay,setCanonicalDisplay]=useState("");
  const [confirmed,setConfirmed]=useState(false);
  const [selected,setSelected]=useState("");
+ const [evidence,setEvidence]=useState<Evidence|null>(null);
+ const [evidenceBusy,setEvidenceBusy]=useState(false);
+ const [evidenceError,setEvidenceError]=useState("");
  const [password,setPassword]=useState("");
  const [evidenceReviewed,setEvidenceReviewed]=useState(false);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -63,10 +71,23 @@ export function FoundationPatientDuplicateReviews(){
     "The review proposal is uncertain. Check the inbox before retrying.");
   }finally{setBusy(false);}
  }
+ async function openReview(ref:string){
+  if(busy||uncertain||evidenceBusy)return;
+  setSelected(ref);setEvidence(null);setEvidenceError("");setEvidenceReviewed(false);
+  setPassword("");setEvidenceBusy(true);
+  try{
+   const data=await source<Omit<Evidence,"reviewRef">>(
+    endpoint+"/"+encodeURIComponent(ref)+"/evidence");
+   setEvidence({...data,reviewRef:ref});
+  }catch(e){setEvidenceError(e instanceof Error?e.message:
+   "Original patient identity evidence cannot be verified.");}
+  finally{setEvidenceBusy(false);}
+ }
  async function decide(decision:"APPROVE"|"REJECT"){
   const current=rows.find(x=>x.reviewRef===selected);
   if(busy||uncertain||!current||current.status!=="PENDING"||
-   current.proposedByCurrentAccount||password.length<8||
+   current.proposedByCurrentAccount||evidence?.reviewRef!==selected||
+   password.length<8||
    (decision==="APPROVE"&&!evidenceReviewed))return;
   setBusy(true);setError("");setNotice("");
   try{
@@ -75,6 +96,7 @@ export function FoundationPatientDuplicateReviews(){
     decision,expectedVersion:current.version,currentPassword:password,
     samePersonEvidenceReviewed:decision==="APPROVE"&&evidenceReviewed});
    setPassword("");setEvidenceReviewed(false);setSelected("");
+   setEvidence(null);setEvidenceError("");
    await refresh();setNotice(result.message);
   }catch(e){
    setPassword("");setEvidenceReviewed(false);setUncertain(true);
@@ -131,9 +153,9 @@ export function FoundationPatientDuplicateReviews(){
     <td>{review.status}</td>
     <td>{new Date(review.proposedAt).toLocaleString("en-IN")}</td>
     <td>{review.status==="PENDING"&&!review.proposedByCurrentAccount?
-     <button type="button" disabled={busy||uncertain} onClick={()=>{
-      setSelected(review.reviewRef);setPassword("");setEvidenceReviewed(false);
-     }}>Review identity evidence</button>:
+     <button type="button" disabled={busy||uncertain||evidenceBusy}
+      onClick={()=>void openReview(review.reviewRef)}>
+      Review original identity evidence</button>:
      review.status==="PENDING"?"Independent reviewer required":"Decision recorded"}</td>
    </tr>)}</tbody>
   </table></div>
@@ -146,6 +168,31 @@ export function FoundationPatientDuplicateReviews(){
      original patient records, booked appointments, document permissions,
      consent histories and account ownership remain unchanged.
      No patient account can read another record through this alias.</p>
+    {evidenceBusy&&<p role="status">Checking both original verification records…</p>}
+    {!!evidenceError&&<p role="alert">{evidenceError}</p>}
+    {evidence?.reviewRef===item.reviewRef&&<>
+     <p>{evidence.message}</p>
+     <div style={{display:"grid",gridTemplateColumns:
+      "repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
+      {([["Original proposed duplicate",evidence.source],
+       ["Original proposed canonical",evidence.proposedCanonical]] as const)
+       .map(([label,person])=><article className="form-section" key={label}>
+        <h4>{label}</h4>
+        <p><strong>Patient ID:</strong> {person.virtualPatientId}</p>
+        <p><strong>Name:</strong> {person.firstName} {person.lastName}</p>
+        <p><strong>Date of birth:</strong> {person.dateOfBirth??"Not recorded"}</p>
+        <p><strong>Profile:</strong> {person.profileStatus}</p>
+        <p><strong>Original in-person verification:</strong>
+         {" "}{person.identityCheckedInPerson?"Recorded":"Not verified"}</p>
+        {person.verificationRecordedAt&&<p>
+         Recorded: {new Date(person.verificationRecordedAt).toLocaleString("en-IN")}
+         {" · "}{person.originalVerificationCenter??"Center unavailable"}</p>}
+       </article>)}
+     </div>
+     <p>Matching name/date alone does not establish identity. Review
+      independently verified person-specific evidence outside this screen
+      before approving. This page never retrieves clinical records.</p>
+    </>
     <label><input type="checkbox" checked={evidenceReviewed}
      disabled={busy||uncertain}
      onChange={e=>setEvidenceReviewed(e.target.checked)}/>
@@ -157,12 +204,15 @@ export function FoundationPatientDuplicateReviews(){
       onChange={e=>setPassword(e.target.value)}/></label>
     <div className="toolbar">
      <button type="button" disabled={busy||uncertain||!evidenceReviewed||
-      password.length<8} onClick={()=>void decide("APPROVE")}>
+      password.length<8||evidence?.reviewRef!==item.reviewRef}
+      onClick={()=>void decide("APPROVE")}>
       Approve reviewed administrative alias</button>
-     <button type="button" disabled={busy||uncertain||password.length<8}
+     <button type="button" disabled={busy||uncertain||password.length<8||
+     evidence?.reviewRef!==item.reviewRef}
       onClick={()=>void decide("REJECT")}>Reject possible duplicate</button>
      <button type="button" disabled={busy}
-      onClick={()=>{setSelected("");setPassword("");setEvidenceReviewed(false);}}>
+      onClick={()=>{setSelected("");setPassword("");setEvidenceReviewed(false);
+       setEvidence(null);setEvidenceError("");}}>
       Cancel review</button>
     </div>
    </div>}
