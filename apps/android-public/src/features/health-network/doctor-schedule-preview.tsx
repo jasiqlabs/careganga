@@ -39,7 +39,8 @@ async function get<T>(path:string):Promise<T>{
 const money=(minor:string|null)=>minor!==null&&/^\d+$/.test(minor)?
  "₹"+(Number(minor)/100).toLocaleString("en-IN",{maximumFractionDigits:2}):
  "Fee not confirmed";
-export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
+export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
+ reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [week,setWeek]=useState(0),[day,setDay]=useState(dateAt(0));
  const [options,setOptions]=useState<Options|null>(null);
  const [center,setCenter]=useState<Center|null>(null);
@@ -107,6 +108,7 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
  );
  return <View style={style.panel} accessibilityLabel="Verified doctor working hours">
   <Text style={style.heading} accessibilityRole="header">Doctor Schedule &amp; Availability</Text>
+  {reschedule&&<Text style={style.help}>Select a new time. Your original booking remains intact until the change succeeds.</Text>}
   <Text style={style.help}>Times are advisory until a genuine reservation succeeds.
    Consultation payment is due directly at the healthcare center.</Text>
   <View style={style.actions}>
@@ -153,7 +155,7 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
         doctorName={detail.doctorName} centerName={center.centerName}
         startAt={slot.startAt} endAt={slot.endAt} timeZone={detail.timeZone}
         feeMinor={detail.consultationFeeMinor}
-        feeVersion={detail.consultationFeeVersion}/>}
+        feeVersion={detail.consultationFeeVersion} reschedule={reschedule}/>}
      </View>)}</View>}
   </View>}
   {choices&&<View>
@@ -167,7 +169,7 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
       <NativeConsultationAction doctorRef={doctorRef} centerRef={c.centerRef}
        doctorName={options?.doctorName??"Doctor"} centerName={c.centerName}
        startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
-       feeMinor={c.consultationFeeMinor} feeVersion={c.consultationFeeVersion}/>}
+       feeMinor={c.consultationFeeMinor} feeVersion={c.consultationFeeVersion} reschedule={reschedule}/>}
     </View>)}
   </View>}
   <Text style={style.help}>Use My Patient Profile to sign in before booking.
