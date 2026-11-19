@@ -26,6 +26,7 @@ export class CenterPatientIntakeController{
   return this.intake.verifyIdentity(bearer,centerRef,body);
  }
 
+ @Post("my-centers/:centerRef/intakes")
  @Header("Cache-Control","private, no-store")
  create(@Headers("authorization")bearer:string,
   @Param("centerRef")centerRef:string,@Body()body:unknown){
