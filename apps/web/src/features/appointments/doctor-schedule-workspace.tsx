@@ -195,11 +195,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  }
  function busyOrUncertain(){return working||uncertain;}
  const summary=[
-  {label:"Verified doctors",value:String(new Set(roster.map(x=>x.doctorRef)).size)},
-  {label:"Active schedules",value:String(roster.filter(x=>x.status==="ACTIVE").length)},
+  {label:"Doctors in current list",value:String(new Set(roster.map(x=>x.doctorRef)).size)},
+  {label:"Active schedules in list",value:String(roster.filter(x=>x.status==="ACTIVE").length)},
   {label:"Today available",value:"—"},
   {label:"Total appointments",value:"—"},
-  {label:"Clinics mapped",value:String(new Set(roster.map(x=>x.centerRef)).size)},
+  {label:"Centers in current list",value:String(new Set(roster.map(x=>x.centerRef)).size)},
   {label:"On approved leave",value:"—"}
  ];
  const result=roster.filter(x=>
@@ -227,7 +227,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      <strong style={{fontSize:22}}>{item.value}</strong>
     </div>)}
    </div>
-   <p>Counts reflect current verified doctor-center records only. Availability,
+   <p>Counts cover up to the first 100 current verified doctor-center records. Availability,
     appointment totals and approved-leave aggregates are not displayed until
     their source-backed integrations are available.</p>
    <h2>Doctor and center</h2>
