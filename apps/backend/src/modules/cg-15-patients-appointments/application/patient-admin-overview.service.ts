@@ -61,6 +61,10 @@ export class PatientAdminOverviewService{
     "AND ($4::uuid IS NULL OR a.id<$4) "+
     "ORDER BY a.id DESC LIMIT $5",
     [actor.realmId,center||null,status,after||null,limit+1]);
+   const choices=await tx.query<{center_id:string;center_name:string}>(
+    "SELECT DISTINCT center_id,center_name FROM cg15_consultation_appointment "+
+    "WHERE root_realm_id=$1 ORDER BY center_name,center_id LIMIT 51",
+    [actor.realmId]);
    await tx.query("COMMIT");
    const item=rows.rows.slice(0,limit);
    const c=totals.rows[0];
@@ -68,7 +72,9 @@ export class PatientAdminOverviewService{
     totalPatients:Number(c.patients),activePatients:Number(c.active_patients),
     totalBookings:Number(c.bookings),todayBookings:Number(c.today_bookings),
     completed:Number(c.completed),pending:Number(c.pending)
-   },items:item.map(x=>({
+   },centerChoices:choices.rows.length<=50?choices.rows.map(x=>({
+    centerRef:x.center_id,centerName:x.center_name
+   })):[],items:item.map(x=>({
     bookingRef:x.id,bookingId:x.booking_display_id,
     virtualPatientId:x.virtual_display_id,
     patientName:x.first_name+" "+x.last_name,
