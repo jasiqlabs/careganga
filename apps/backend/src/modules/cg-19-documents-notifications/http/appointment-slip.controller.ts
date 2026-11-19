@@ -1,5 +1,5 @@
 import {
- BadRequestException,Body,Controller,Get,Header,Headers,Param,Post,Res,Req
+ BadRequestException,Body,Controller,Get,Header,Headers,Param,Post,Res,Req,Query
 } from "@nestjs/common";
 import type {Response} from "express";
 import {AppointmentSlipDocumentService} from "../application/appointment-slip-document.service";
@@ -23,6 +23,22 @@ export class AppointmentSlipController{
    typeof raw.requestKey!=="string")
    throw new BadRequestException({code:"CG19_SLIP_UNAVAILABLE"});
   return this.slips.issue(bearer,ref,raw.requestKey,true);
+ }
+ @Post("staff/:bookingRef/download-grant")
+ @Header("Cache-Control","private, no-store")
+ staffDownloadGrant(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string){
+  return this.slips.issueDownloadGrant(bearer,ref,true);
+ }
+ @Get("staff/:bookingRef/restricted-file")
+ @Header("Cache-Control","private, no-store")
+ async staffRestrictedFile(@Headers("authorization")bearer:string,
+  @Param("bookingRef")ref:string,@Query("grant")grant:string,
+  @Res()reply:Response){
+  const pdf=await this.slips.downloadGranted(bearer,ref,grant,true);
+  reply.setHeader("Content-Type","application/pdf");
+  reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
+  reply.setHeader("Cache-Control","private, no-store");
+  reply.status(200).end(pdf);
  }
  @Get("staff/:bookingRef/file")
  @Header("Cache-Control","private, no-store")
@@ -48,6 +64,22 @@ export class AppointmentSlipController{
    typeof raw.requestKey!=="string")
    throw new BadRequestException({code:"CG19_SLIP_UNAVAILABLE"});
   return this.slips.issue(bearer,ref,raw.requestKey);
+ }
+ @Post("me/:bookingRef/download-grant")
+ @Header("Cache-Control","private, no-store")
+ downloadGrant(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string){
+  return this.slips.issueDownloadGrant(bearer,ref);
+ }
+ @Get("me/:bookingRef/restricted-file")
+ @Header("Cache-Control","private, no-store")
+ async restrictedFile(@Headers("authorization")bearer:string,
+  @Param("bookingRef")ref:string,@Query("grant")grant:string,
+  @Res()reply:Response){
+  const pdf=await this.slips.downloadGranted(bearer,ref,grant);
+  reply.setHeader("Content-Type","application/pdf");
+  reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
+  reply.setHeader("Cache-Control","private, no-store");
+  reply.status(200).end(pdf);
  }
  @Get("me/:bookingRef/file")
  @Header("Cache-Control","private, no-store")
