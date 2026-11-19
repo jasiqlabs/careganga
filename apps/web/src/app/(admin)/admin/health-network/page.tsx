@@ -53,6 +53,10 @@ export default async function HealthNetworkPage(){
       {actions.has("health.schedules.view")&&
         <p><Link href="/admin/health-network/schedules">
          Doctor Schedule & Availability</Link></p>}
+      {(actions.has("health.schedules.manage")||
+        actions.has("approvals.review")&&actions.has("health.schedules.view"))&&
+        <p><Link href="/admin/health-network/doctor-leaves">
+         Doctor Leave & Schedule Approvals</Link></p>}
       {(actions.has("health.centers.publish")||
         actions.has("approvals.review")&&actions.has("health.providers.verify"))&&
         <p><Link href="/admin/health-network/content-reviews">
