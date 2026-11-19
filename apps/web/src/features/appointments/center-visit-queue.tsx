@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
+import {CenterQrCameraScanner} from "./center-qr-camera-scanner";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
  patientName:string;consentGranted:boolean;startAt:string;endAt:string;timeZone:string;
@@ -123,12 +124,13 @@ export function CenterVisitQueue(){
   });
   return()=>{active=false;requestSerial.current++;};
  },[center,day,load]);
- async function verifySlip(){
-  if(busy||uncertain||!center||!/^CGV-[A-F0-9]{24}$/.test(qrToken))return;
+ async function verifySlip(scanned?:string){
+  const code=(scanned??qrToken).trim().toUpperCase();
+  if(busy||uncertain||!center||!/^CGV-[A-F0-9]{24}$/.test(code))return;
   setBusy(true);setMessage("");setVerifiedSlip(null);
   try{
    const result=await get<VerifiedSlip>("my-centers/"+
-    encodeURIComponent(center)+"/verify-slip","POST",{token:qrToken});
+    encodeURIComponent(center)+"/verify-slip","POST",{token:code});
    if(center!==selectedCenterRef.current)return;
    if(!result.valid){setMessage("The slip does not belong to an active appointment at this center.");return;}
    setVerifiedSlip(result);
@@ -286,8 +288,12 @@ export function CenterVisitQueue(){
       onChange={e=>{setQrToken(e.target.value.toUpperCase());setVerifiedSlip(null);}}
       placeholder="CGV-XXXXXXXXXXXXXXXXXXXXXXXX"/>
     </label>
-    <button type="button" disabled={busy||!/^CGV-[A-F0-9]{24}$/.test(qrToken)}
+    <button type="button" disabled={busy||uncertain||!/^CGV-[A-F0-9]{24}$/.test(qrToken)}
      onClick={()=>void verifySlip()}>Verify for my center</button>
+    <CenterQrCameraScanner disabled={busy||uncertain||!center}
+     resetKey={center+":"+day} onCode={code=>{
+      setQrToken(code);setVerifiedSlip(null);void verifySlip(code);
+     }}/>
     {verifiedSlip?.valid&&<p role="status">
      Original booking: {verifiedSlip.bookingId}, {verifiedSlip.patientName},
      status {verifiedSlip.bookingStatus}. Use the current source row below to check in.
