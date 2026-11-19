@@ -497,7 +497,7 @@ export class DoctorScheduleService{
    return {doctorName:source.full_name,centerName:source.display_name,
     associationRef:assoc,doctorRef:source.doctor_id,centerRef:source.center_id,
     timeZone:source.time_zone,status:schedule?.status??"NOT_SCHEDULED",
-    version:schedule?.version??0,slotMinutes:schedule?.slot_minutes??30,
+    version:schedule?.version??0,slotMinutes:schedule?.slot_minutes??0,
     effectiveFrom:schedule?.effective_from??null,
     effectiveUntil:schedule?.effective_until??null,
     windows:windows.rows.map(w=>({weekday:w.weekday,
