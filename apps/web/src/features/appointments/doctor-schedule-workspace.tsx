@@ -82,6 +82,28 @@ function centerTime(v:string,zone:string){
   throw Object.assign(new Error("That center-local time is missing or ambiguous due to a daylight-saving change. Choose another time."),{status:400});
  return new Date(matches[0]).toISOString();
 }
+/** Preview saved original doctor/center working sessions, not live booking inventory. */
+function sourceCalendarPreview(detail:Detail){
+ const today=currentCenterDay(detail.timeZone);
+ const origin=Date.parse(today+"T12:00:00Z");
+ const civil=(value:string)=>{
+  const p=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
+   timeZone:detail.timeZone,year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date(value)).map(x=>[x.type,x.value]));
+  return p.year+"-"+p.month+"-"+p.day;
+ };
+ return Array.from({length:28},(_,i)=>{
+  const date=new Date(origin+i*86400000).toISOString().slice(0,10);
+  const weekday=new Date(date+"T12:00:00Z").getUTCDay();
+  const effective=(!detail.effectiveFrom||date>=detail.effectiveFrom)&&
+   (!detail.effectiveUntil||date<=detail.effectiveUntil);
+  return {date,windows:effective?
+   detail.windows.filter(w=>w.weekday===weekday):[],
+   exceptions:detail.exceptions.filter(e=>
+    ["ACTIVE","APPROVED"].includes(e.state)&&civil(e.startAt)<=date&&
+    civil(e.endAt)>=date)};
+ });
+}
 function currentCenterDay(zone:string):string{
  const fields=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
   timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
@@ -544,6 +566,78 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     Staff edits do not reserve an appointment. Public slot availability is
     calculated separately from the current verified doctor/center, accepted
     fees, approved leave and existing confirmed reservations.</p>
+   <div role="tablist" className="toolbar" aria-label="Doctor schedule sections">
+    {tabs.map(item=><button type="button" role="tab" key={item.id}
+     aria-selected={tab===item.id}
+     aria-controls={"cg15-h07-panel-"+item.id}
+     id={"cg15-h07-tab-"+item.id} disabled={working}
+     className={tab===item.id?"primary":""}
+     onClick={()=>changeTab(item.id)}>{item.label}</button>)}
+   </div>
+   {tab==="CALENDAR"&&<section role="tabpanel" className="form-section"
+    id="cg15-h07-panel-CALENDAR" aria-labelledby="cg15-h07-tab-CALENDAR">
+    <h3>Saved schedule calendar — next 28 days</h3>
+    <p>Actual saved weekly sessions and currently recorded leave or blocks
+     at {selected.centerName}. This is a schedule preview, NOT bookable
+     availability: real reservations, full center eligibility, leave and
+     current fees are checked when an appointment is selected.</p>
+    <div style={{display:"grid",gridTemplateColumns:
+     "repeat(auto-fit,minmax(175px,1fr))",gap:10}}>
+     {sourceCalendarPreview(selected).map(d=><article className="notice"
+      key={d.date} aria-label={"Saved schedule "+d.date}>
+      <h4>{new Date(d.date+"T12:00:00Z").toLocaleDateString("en-IN",{
+       day:"numeric",month:"short",weekday:"short",timeZone:"UTC"})}</h4>
+      <p>{d.windows.length?d.windows.map(w=>
+       w.startLocal+"–"+w.endLocal).join(", "):"No saved working session"}</p>
+      {d.exceptions.map(e=><p key={e.exceptionRef}>
+       {clean(e.kind)} — {clean(e.state)} (check blocked interval)</p>)}
+     </article>)}
+    </div>
+    <button type="button" onClick={()=>changeTab("WEEKLY")}>
+     Edit saved weekly sessions</button>
+   </section>}
+   {tab==="RULES"&&<section role="tabpanel" className="form-section"
+    id="cg15-h07-panel-RULES" aria-labelledby="cg15-h07-tab-RULES">
+    <h3>Current appointment scheduling rules</h3>
+    <p>Mode: in-person. Saved slot length:
+     {" "}{selected.slotMinutes>0?selected.slotMinutes+" minutes":"Not configured"}.
+     Current effective dates: {selected.effectiveFrom??"Not configured"} to
+     {" "}{selected.effectiveUntil??"Open-ended"}.</p>
+    <p>A booking always rechecks verified center and doctor, approved
+     exceptions, global doctor reservations and current accepted fee.
+     Editing the schedule never silently cancels an existing appointment.
+     Unsupported treatment or payment rules are not editable here.</p>
+    <button type="button" onClick={()=>changeTab("SLOTS")}>
+     Open actual slot settings</button>
+   </section>}
+   {tab==="SLOTS"&&<section role="tabpanel" className="form-section"
+    id="cg15-h07-panel-SLOTS" aria-labelledby="cg15-h07-tab-SLOTS">
+    <h3>Time slot settings</h3>
+    <p>These update the same original weekly schedule and use the original
+     expected revision; there is no invented capacity or second slot master.</p>
+    <div className="form-grid">
+     <label>Consultation duration
+      <select value={slot} disabled={!canManage||working||uncertain}
+       onChange={e=>{setSlot(e.target.value);weekKey.current="";}}>
+       <option value="">Choose duration</option>
+       {[5,10,15,20,30,40,45,60,90,120,180].map(n=>
+        <option value={n} key={n}>{n} minutes</option>)}
+      </select>
+     </label>
+     <label>Effective from
+      <input type="date" value={from} disabled={!canManage||working||uncertain}
+       onChange={e=>{setFrom(e.target.value);weekKey.current="";}}/>
+     </label>
+     <label>Effective until (optional)
+      <input type="date" value={until} disabled={!canManage||working||uncertain}
+       onChange={e=>{setUntil(e.target.value);weekKey.current="";}}/>
+     </label>
+    </div>
+    {canManage&&<button type="button" className="primary"
+     disabled={working||uncertain||!from||!slot||!windows.length||
+      windows.some(w=>!w.startLocal||!w.endLocal)}
+     onClick={()=>void saveWeek()}>Save original slot settings</button>}
+   </section>}
    <h3>Weekly working hours</h3>
    <p>Add morning and afternoon sessions separately, as on the original
     CareGanga Doctor Schedule screen. Each session must fit inside verified
