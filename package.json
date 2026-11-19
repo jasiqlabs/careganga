@@ -30,7 +30,8 @@
     "verify:cg15-clinician-source": "node scripts/verify-cg15-clinician-source.mjs",
     "verify:cg15-private-purpose-source": "node scripts/verify-cg15-private-purpose-source.mjs",
     "verify:cg15-native-documents-source": "node scripts/verify-cg15-native-documents-source.mjs",
-    "verify:cg15-patient-files-source": "node scripts/verify-cg15-patient-files-source.mjs"
+    "verify:cg15-patient-files-source": "node scripts/verify-cg15-patient-files-source.mjs",
+    "verify:cg15-patient-private-details-source": "node scripts/verify-cg15-patient-private-details-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
