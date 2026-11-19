@@ -27,9 +27,28 @@ const errors=new Set([
   "HEALTH_CONTENT_VERSION_CHANGED","HEALTH_CONTENT_SOURCE_CHANGED",
   "HEALTH_CONTENT_REVIEW_CONFLICT","HEALTH_CONTENT_REQUIRED","HEALTH_CONTENT_ALREADY_WITHDRAWN",
   "HEALTH_CONTENT_PUBLICATION_CHANGED",
-  "HEALTH_ERP_GRANT_INVALID","HEALTH_ERP_GRANT_CHANGED","HEALTH_ERP_GRANT_SOURCE_CHANGED"
+  "HEALTH_ERP_GRANT_INVALID","HEALTH_ERP_GRANT_CHANGED","HEALTH_ERP_GRANT_SOURCE_CHANGED",
+  "HEALTH_CLINICIAN_INVALID","HEALTH_CLINICIAN_LINK_CONFLICT",
+  "HEALTH_CLINICIAN_LINK_REVOKED","HEALTH_CLINICIAN_FRESH_LOGIN_REQUIRED",
+  "HEALTH_CLINICIAN_INDEPENDENT_REVIEW","HEALTH_CLINICIAN_LINK_UNAVAILABLE",
+  "HEALTH_CLINICIAN_NOT_VERIFIED","HEALTH_CLINICIAN_ACCOUNT_UNAVAILABLE"
 ]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="clinician-accounts"){
+    if(parts.length===2&&parts[1]==="account-options")
+      return method==="GET";
+    if(parts.length===3&&parts[1]==="doctors"&&UUID.test(parts[2]))
+      return method==="GET";
+    if(parts.length===4&&parts[1]==="doctors"&&UUID.test(parts[2])&&
+      parts[3]==="propose")return method==="POST";
+    if(parts.length===3&&parts[1]==="me"&&parts[2]==="pending")
+      return method==="GET";
+    if(parts.length===4&&parts[1]==="me"&&UUID.test(parts[2])&&
+      parts[3]==="accept")return method==="POST";
+    if(parts.length===3&&UUID.test(parts[1])&&parts[2]==="revoke")
+      return method==="POST";
+    return false;
+  }
   if(parts.length===3&&parts[0]==="my-centers"&&parts[1]==="content"&&
     parts[2]==="publishing")return method==="GET";
   if(parts[0]==="erp-grants"){
