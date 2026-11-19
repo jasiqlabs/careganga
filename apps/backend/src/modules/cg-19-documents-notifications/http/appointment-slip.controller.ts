@@ -1,11 +1,14 @@
 import {
- BadRequestException,Body,Controller,Get,Header,Headers,Param,Post,Res
+ BadRequestException,Body,Controller,Get,Header,Headers,Param,Post,Res,Req
 } from "@nestjs/common";
 import type {Response} from "express";
 import {AppointmentSlipDocumentService} from "../application/appointment-slip-document.service";
+import {HealthPublicRequestThrottleService}
+ from "../../cg-14-healthcare-network/application/health-public-request-throttle.service";
 @Controller("api/v1/appointments/slips")
 export class AppointmentSlipController{
- constructor(private readonly slips:AppointmentSlipDocumentService){}
+ constructor(private readonly slips:AppointmentSlipDocumentService,
+  private readonly throttle:HealthPublicRequestThrottleService){}
  @Get("me/:bookingRef/status")
  @Header("Cache-Control","private, no-store")
  status(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string){
@@ -33,7 +36,8 @@ export class AppointmentSlipController{
  }
  @Post("verify")
  @Header("Cache-Control","no-store")
- verify(@Body()raw:unknown){
+ async verify(@Req()request:object,@Body()raw:unknown){
+  await this.throttle.hit(request,"slip");
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
    Object.keys(raw).length!==1||!("token" in raw))
    throw new BadRequestException({code:"CG19_SLIP_VERIFY_INVALID"});
