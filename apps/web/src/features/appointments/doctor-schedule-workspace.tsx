@@ -481,6 +481,26 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    .cg15-h07-roster-list{display:grid;gap:8px}
    .cg15-h07-roster-list button{text-align:left;white-space:normal;min-height:44px}
    .cg15-h07-roster-list button[aria-pressed="true"]{border-color:currentColor;font-weight:700}
+   .cg15-h07-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}
+   .cg15-h07-kpi{background:var(--cg-surface);border:1px solid var(--cg-border);
+    border-radius:12px;padding:14px;min-height:100px;box-shadow:0 3px 12px rgba(10,31,68,.04)}
+   .cg15-h07-kpi strong{display:block;color:var(--cg-sidebar);font-size:1.7rem;font-variant-numeric:tabular-nums}
+   .cg15-h07-kpi p{font-size:.84rem;margin:0 0 6px;color:var(--cg-muted)}
+   .cg15-h07-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:5px;padding:5px;
+    border-bottom:1px solid var(--cg-border);scroll-snap-type:x proximity}
+   .cg15-h07-tabs [role=tab]{flex-shrink:0;min-height:44px;padding:.65rem 1rem;
+    border:1px solid transparent;border-radius:7px;
+    color:var(--cg-text);background:transparent;scroll-snap-align:start}
+   .cg15-h07-tabs [aria-selected=true]{background:var(--cg-accent);
+    color:var(--cg-accent-text);font-weight:700}
+   .cg15-h07-save-bar{position:sticky;bottom:0;background:var(--cg-surface);
+    z-index:2;border-top:1px solid var(--cg-border);padding:12px;
+    box-shadow:0 -4px 14px rgba(10,31,68,.045);border-radius:0 0 10px 10px}
+   .cg15-h07-roster-list button{background:var(--cg-surface);
+    border:1px solid var(--cg-border);border-radius:8px;padding:12px}
+   .cg15-h07-roster-list button[aria-pressed=true]{background:#EEF3FF;
+    color:var(--cg-sidebar);border-color:var(--cg-accent)}
+   @media(max-width:860px){.cg15-h07-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
    .cg15-h07-body .role-table-wrap{overflow-x:auto;max-width:100%}
    @media(max-width:860px){.cg15-h07-body{grid-template-columns:minmax(0,1fr)}}
   `}</style>
@@ -499,10 +519,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   </div>
   <div className="form-section">
    <h2>Schedule overview</h2>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
-    {summary.map(item=><div className="form-section" key={item.label}>
-     <p style={{fontSize:13,marginBottom:4}}>{item.label}</p>
-     <strong style={{fontSize:22}}>{item.value}</strong>
+   <div className="cg15-h07-kpis" aria-label="Six doctor scheduling indicators">
+    {summary.map(item=><div className="cg15-h07-kpi" key={item.label}
+     aria-label={item.label+": "+item.value}>
+     <p>{item.label}</p><strong>{item.value}</strong>
     </div>)}
    </div>
    <p>Doctors, active schedules and mapped clinics use all currently approved
@@ -605,13 +625,17 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    </div>
   </div>
   {selected&&<div className="form-section" key={selected.associationRef}>
-   <h2>{selected.doctorName} — {selected.centerName}</h2>
+   <h2>{selected.doctorName} — {selected.centerName}</h2><p style={{color:"var(--cg-accent)",fontWeight:700}}>
+    Verified doctor at an approved healthcare center
+    {roster.find(r=>r.associationRef===selected.associationRef)?.specialties
+     ?.length?" · "+roster.find(r=>r.associationRef===selected.associationRef)!
+      .specialties.join(" · "):""}</p>
    <p><strong>{clean(selected.status)}</strong>. Time zone: {selected.timeZone}.
     Schedule revision: {selected.version===0?"Not saved":selected.version}.
     Staff edits do not reserve an appointment. Public slot availability is
     calculated separately from the current verified doctor/center, accepted
     fees, approved leave and existing confirmed reservations.</p>
-   <div role="tablist" className="toolbar" aria-label="Doctor schedule sections">
+   <div role="tablist" className="cg15-h07-tabs" aria-label="Doctor schedule sections">
     {tabs.map(item=><button type="button" role="tab" key={item.id}
      aria-selected={tab===item.id}
      aria-controls={"cg15-h07-panel-"+item.id}
