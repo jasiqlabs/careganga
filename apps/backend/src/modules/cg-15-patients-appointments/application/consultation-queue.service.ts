@@ -72,12 +72,22 @@ export class ConsultationQueueService{
    [actor.realmId,actor.accountId]);
   return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name,timeZone:row.time_zone}))};
  }
- async list(bearer:string,centerRaw:string,dayRaw:unknown){
+ async list(bearer:string,centerRaw:string,dayRaw:unknown,afterRaw?:string){
   const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
   if(typeof dayRaw!=="string"||!DAY.test(dayRaw)||
    !Number.isFinite(Date.parse(dayRaw+"T00:00:00Z"))||
    new Date(dayRaw+"T00:00:00Z").toISOString().slice(0,10)!==dayRaw)
    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+  let afterAt:string|null=null,afterId:string|null=null;
+  if(afterRaw!==undefined&&afterRaw!==""){
+   const parts=afterRaw.split("|");
+   if(parts.length!==2||!ID.test(parts[1])||
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(parts[0])||
+    !Number.isFinite(Date.parse(parts[0]))||
+    new Date(parts[0]).toISOString()!==parts[0])
+    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+   afterAt=parts[0];afterId=parts[1];
+  }
   const tx=await this.db.connect();let active=false;
   try{
    await tx.query("BEGIN");active=true;
@@ -95,12 +105,14 @@ export class ConsultationQueueService{
     "LEFT JOIN cg15_visit_queue q ON q.root_realm_id=a.root_realm_id AND q.appointment_id=a.id "+
     "WHERE a.root_realm_id=$1 AND a.center_id=$2 AND "+
     "(a.start_at AT TIME ZONE a.time_zone)::date=$3::date "+
-    "ORDER BY a.start_at,a.id LIMIT 201",
-    [actor.realmId,center,dayRaw]);
-   if(r.rows.length>200)
-    throw new ConflictException({code:"CG15_QUEUE_LIMIT"});
+    "AND ($4::timestamptz IS NULL OR "+
+    "(a.start_at,a.id)>($4::timestamptz,$5::uuid)) "+
+    "ORDER BY a.start_at,a.id LIMIT 101",
+    [actor.realmId,center,dayRaw,afterAt,afterId]);
    await tx.query("COMMIT");active=false;
-   return {day:dayRaw,items:r.rows
+   const page=r.rows.slice(0,100),last=page.at(-1);
+   return {day:dayRaw,next:r.rows.length>100&&last?
+    last.start_at.toISOString()+"|"+last.id:null,items:page
     .map(x=>({appointmentRef:x.id,bookingId:x.booking_display_id,
       doctorRef:x.doctor_id,doctorName:x.doctor_name,patientName:x.first_name+" "+x.last_name,
       startAt:x.start_at.toISOString(),bookingStatus:x.booking_state,bookingVersion:x.revision,
