@@ -81,6 +81,7 @@ CREATE TABLE cg15_consultation_appointment (
  start_at timestamptz NOT NULL,
  end_at timestamptz NOT NULL,
  time_zone text NOT NULL,
+ patient_display_name text NOT NULL CHECK(length(patient_display_name) BETWEEN 3 AND 205),
  doctor_name text NOT NULL CHECK(length(doctor_name) BETWEEN 2 AND 160),
  center_name text NOT NULL CHECK(length(center_name) BETWEEN 2 AND 160),
  center_address text NOT NULL CHECK(length(center_address) BETWEEN 5 AND 500),
