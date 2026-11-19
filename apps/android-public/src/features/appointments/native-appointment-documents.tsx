@@ -4,6 +4,8 @@ import {fetch as expoFetch} from "expo/fetch";
 import {File,Paths} from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -141,6 +143,51 @@ export function NativeAppointmentDocuments({
   }catch(e){setMessage(e instanceof Error?e.message:"Slip status cannot be verified.");}
   finally{setBusy(false);}
  }
+ /** Each external share/print fetches fresh patient-authorized CG19 bytes.
+  * Never reuse a cached preview after consent or center status changes.
+  * OS recipients can keep an explicitly shared copy; the app cannot revoke it.
+  */
+ async function nativePrivatePdf(mode:"SHARE"|"PRINT"){
+  if(busy||unknown||!ID.test(bookingRef))return;
+  setBusy(true);setMessage("");
+  let transient:File|null=null;
+  try{
+   const statusReply=await authorized("/api/v1/appointments/slips/me/"+
+    bookingRef+"/status");
+   const original=await statusReply.json() as SlipState;
+   if(original.status!=="ISSUED"||!original.canDownload)
+    throw Error("Issue or verify your current private consultation slip first.");
+   // A new protected read rechecks the actual patient relationship/consent.
+   const reply=await authorized("/api/v1/appointments/slips/me/"+bookingRef+"/file");
+   if(!reply.headers.get("Content-Type")?.includes("application/pdf"))
+    throw Error("The private consultation file type is not valid.");
+   const bytes=await reply.bytes();
+   if(bytes.length<100||bytes.length>10485760||
+    bytes[0]!==37||bytes[1]!==80||bytes[2]!==68||bytes[3]!==70)
+    throw Error("The original private consultation PDF could not be verified.");
+   transient=new File(Paths.cache,
+    "careganga-patient-action-"+Crypto.randomUUID()+".pdf");
+   transient.create();await transient.write(bytes);
+   if(mode==="SHARE"){
+    if(!await Sharing.isAvailableAsync())
+     throw Error("Native file sharing is unavailable on this device.");
+    await Sharing.shareAsync(transient.uri,{
+     mimeType:"application/pdf",
+     dialogTitle:"Share your private CareGanga consultation PDF"
+    });
+    setMessage("Private PDF share sheet closed. CareGanga cannot confirm where a copy was sent.");
+   }else{
+    await Print.printAsync({uri:transient.uri});
+    setMessage("Private PDF print dialog closed. A printed copy cannot be revoked.");
+   }
+  }catch(e){
+   setMessage(e instanceof Error?e.message:
+    "Private sharing or printing is unavailable; no document delivery was confirmed.");
+  }finally{
+   try{transient?.delete();}catch{/* OS may still own a dispatched copy. */}
+   setBusy(false);
+  }
+ }
  async function calendar(){
   if(busy)return;
   setBusy(true);setMessage("");
@@ -163,6 +210,12 @@ export function NativeAppointmentDocuments({
   {unknown?action("Check original slip status",()=>void recover()):
    action("Open / issue my private PDF & QR",()=>void viewSlip(),
     bookingStatus==="CANCELLED"||bookingStatus==="NO_SHOW")}
+  {!["CANCELLED","NO_SHOW"].includes(bookingStatus)&&!unknown&&<>
+   {action("Share private PDF to another app",()=>void nativePrivatePdf("SHARE"))}
+   {action("Print private consultation PDF",()=>void nativePrivatePdf("PRINT"))}
+   <Text style={styles.note}>A shared or printed copy leaves CareGanga and
+    cannot be withdrawn afterward. Choose the recipient or printer carefully.</Text>
+  </>}
   {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(bookingStatus)&&
    action("Open original calendar file",()=>void calendar())}
  </View>;
