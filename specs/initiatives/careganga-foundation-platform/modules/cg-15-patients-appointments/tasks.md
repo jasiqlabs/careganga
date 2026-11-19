@@ -419,7 +419,7 @@ This does **not** close existing original QA source gaps. Current US-001 histori
 | US-004-QA04 | SOURCE_VERIFIED | Public center-first/time-first actions use same hold/confirm source; root+account+request key/digest preserved and replay conflicts fail closed. |
 | US-004-QA05 | SOURCE_VERIFIED | ConsultationBookingService.doctorLock expires due holds and releases reservation; confirm rejects expired hold under parent lock. |
 | US-004-QA06 | SOURCE_VERIFIED | ConsultationBookingService.eligible re-reads current CG14 approved fee/version; hold and confirm compare exact accepted fee and fail on changes. |
-| US-004-QA07 | SOURCE_GAP | Current CG14 source eligibility rechecked at confirmation, but invalidated prior holds are not actively marked released at provider revocation, and no real suspension SQL race. |
+| US-004-QA07 | SOURCE_VERIFIED | Confirm reads the original hold under doctor and hold row lock, rechecks live CG14 verified provider/doctor/center association, approved schedule and accepted fee. When eligible source becomes a deterministic NOT_FOUND/CONFLICT, or its association/schedule revision/fee differs, same transaction explicitly marks the HELD reservation RELEASED and its original hold CANCELLED, commits this source state and denies confirmation; no new appointment or ghost global occupancy. The original hold remains for request-key status/replay. Transient SQL/5xx cannot silently invalidate a hold. Authorized staff center access revocation can deny earlier; remaining hold times out within its configured 5–10 minute TTL. Real two-session source suspension/commit race, PostgreSQL exclusion and crash recovery NOT_RUN. |
 | US-004-QA08 | SOURCE_VERIFIED | 1424 enforces PAY_AT_CENTER + DUE_AT_CENTER; accepted amount/fee version from CG14, no invented CG17 payment/discount. |
 | US-004-QA09 | SOURCE_VERIFIED | Only PAY_AT_CENTER accepted and exposed; no Foundation collector/online checkout. Future CG17-approved center merchant is not implemented here. |
 | US-004-QA10 | NOT_APPLICABLE | No CG17 online payment callback is installed; CG15 cannot revive an expired paid hold. Future conditional payment integration is not source-complete. |
@@ -623,3 +623,13 @@ US-005-QA01 and US-005-QA15 were reclassified narrowly for traced source impleme
 
 **Canonical source statuses: 84 SOURCE_VERIFIED / 35 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE; 0/128 executed QA PASS; 0/8 formally SOURCE_COMPLETE.**
 
+
+### 19 November 2026 — deterministic invalid hold release and consent-revoked QR
+
+Source review identified that rejecting a held confirmation upon changed CG14 eligibility left the reserved doctor slot HELD until TTL expiry. `ConsultationBookingService.confirm` now releases the real cg15_doctor_reservation and cancels the original hold in the SAME doctor-lock transaction on deterministic source NotFound/Conflict, changed schedule/association, or changed fee. It commits the invalidation even though it returns the original rejected confirmation. Transient database/service exceptions still roll back without inventing cancellation; no appointment or confirmation event is created on invalidated hold. A suspended staff-center action may be denied earlier, with the hold expiring normally within the 5–10 minute configured TTL.
+
+`ConsultationSlipSourceFacade.activeForToken` now checks current CG15 verified patient, original independent patient proof, active linked account and latest PATIENT_CARE consent before returning any public status-only QR validation. A revoked consent therefore cannot leave an old public QR verified. The real CG19 QR source remains unchanged; there is no public patient name or file. Existing center QR checks also enforce consent; no camera reader was fabricated.
+
+**Source-only case classification: 85 SOURCE_VERIFIED / 34 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128). 0/128 runtime PASS; 0/8 formal SOURCE_COMPLETE.**
+
+Original QA US-004-QA07 marked source-verified for denial/release on attempted confirmation, not for actual suspension race or a new background revocation fanout. All real DB, compilation, UI and client screenshots/device tests remain NOT_RUN.
