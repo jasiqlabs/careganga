@@ -25,10 +25,11 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     const sub=await this.db.connect();
     try{
       await sub.query("LISTEN cg19_decision_committed");
+      await sub.query("LISTEN cg19_appointment_committed");
       this.subscription=sub;
       sub.on("notification",(event:Notification)=>{
-        if(event.channel==="cg19_decision_committed"&&
-          event.payload&&UUID.test(event.payload))
+        if(["cg19_decision_committed","cg19_appointment_committed"]
+          .includes(event.channel)&&event.payload&&UUID.test(event.payload))
           void this.wake(event.payload);
       });
       const roots=await this.db.query<{id:string}>(`
@@ -48,8 +49,9 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     // DB cursor FOR UPDATE synchronizes parallel instances safely.
     try{
       for(let i=0;i<40&&!this.stopped;i++){
-        const result=await this.source.captureCommittedDecisions(realm);
-        if(!result.more)break;
+        const decisions=await this.source.captureCommittedDecisions(realm);
+        const appointments=await this.source.captureCommittedAppointments(realm);
+        if(!decisions.more&&!appointments.more)break;
       }
       await this.periodic();
     }catch{/* Durable replay cursor and due rows retain recovery state. */}
@@ -62,8 +64,9 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       // hint or more than 1000 events after a long outage.
       if(this.rootRef){
         for(let batch=0;batch<4&&!this.stopped;batch++){
-          const progress=await this.source.captureCommittedDecisions(this.rootRef);
-          if(!progress.more)break;
+          const decisions=await this.source.captureCommittedDecisions(this.rootRef);
+          const appointments=await this.source.captureCommittedAppointments(this.rootRef);
+          if(!decisions.more&&!appointments.more)break;
         }
       }
       await this.delivery.tick();
@@ -77,6 +80,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     const sub=this.subscription;this.subscription=null;
     if(sub){
       try{await sub.query("UNLISTEN cg19_decision_committed");}catch{}
+      try{await sub.query("UNLISTEN cg19_appointment_committed");}catch{}
       sub.release();
     }
   }
