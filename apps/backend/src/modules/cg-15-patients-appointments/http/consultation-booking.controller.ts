@@ -9,6 +9,16 @@ export class ConsultationBookingController{
  hold(@Headers("authorization")bearer:string,@Body()input:unknown){
   return this.bookings.hold(bearer,input);
  }
+ @Get("holds/by-request/:requestKey")
+ @Header("Cache-Control","private, no-store")
+ holdByRequest(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.bookings.holdByRequest(bearer,key);
+ }
+ @Get("confirmations/by-request/:requestKey")
+ @Header("Cache-Control","private, no-store")
+ confirmationByRequest(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.bookings.confirmationByRequest(bearer,key);
+ }
  @Get("holds/:holdRef")
  @Header("Cache-Control","private, no-store")
  holdStatus(@Headers("authorization")bearer:string,@Param("holdRef")ref:string){
