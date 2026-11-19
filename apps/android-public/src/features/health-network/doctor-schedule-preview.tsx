@@ -88,6 +88,13 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
    setLoading(false);
   }}
  },[doctorRef,day]);
+ const changeWeek=(delta:number)=>{
+  const target=Math.max(0,Math.min(4,week+delta));
+  setWeek(target);
+  // Changing the displayed week also changes the queried day; never
+  // show stale old-week sessions under a new date heading.
+  setDay(dateAt(target*7));
+ };
  const button=(text:string,action:()=>void,active=false,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected:active,disabled}}
    style={[style.button,active&&style.selected,disabled&&style.disabled]}
@@ -100,8 +107,8 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
   <Text style={style.help}>These are verified working-time previews,
    not free appointments. Online booking and payment are not enabled.</Text>
   <View style={style.actions}>
-   {button("‹ Previous week",()=>setWeek(v=>Math.max(0,v-1)),false,week===0)}
-   {button("Next week ›",()=>setWeek(v=>Math.min(4,v+1)),false,week===4)}
+   {button("‹ Previous week",()=>changeWeek(-1),false,week===0)}
+   {button("Next week ›",()=>changeWeek(1),false,week===4)}
   </View>
   <View style={style.actions}>
    {days.map(item=>button(
