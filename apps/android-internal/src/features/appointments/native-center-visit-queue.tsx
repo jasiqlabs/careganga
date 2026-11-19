@@ -43,6 +43,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
+ const [cursor,setCursor]=useState(""),[nextCursor,setNextCursor]=useState<string|null>(null);
+ const [previousCursors,setPreviousCursors]=useState<string[]>([]);
  const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
  const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
@@ -53,15 +55,16 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Protected queue is unavailable.");
  },[onExpired]);
- const load=useCallback(async(c:string,day:string)=>{
+ const load=useCallback(async(c:string,day:string,after="")=>{
   const stamp=++seq.current;
   if(!c){setItems([]);return;}
   if(!day){setItems([]);setMessage("The center local date is unavailable.");return;}
   try{
-   const data=await request<{items:Item[]}>(token,
-    "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day));
+   const data=await request<{items:Item[];next:string|null}>(token,
+    "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
+     (after?"&after="+encodeURIComponent(after):""));
    if(stamp!==seq.current||selectedCenter.current!==c)return;
-   setItems(data.items);setUncertain(false);
+   setItems(data.items);setCursor(after);setNextCursor(data.next);setUncertain(false);
   }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
  },[token,fail]);
  useEffect(()=>{
@@ -76,6 +79,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   return()=>{live=false;};
  },[token,fail]);
  useEffect(()=>{
+  setCursor("");setNextCursor(null);setPreviousCursors([]);
   void load(center,dateAt(offset,centerZone));
   return()=>{seq.current++;};
  },[center,centerZone,offset,load]);
@@ -121,7 +125,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      });
    }
    commands.current.delete(reference);
-   await load(center,dateAt(offset,centerZone));
+   await load(center,dateAt(offset,centerZone),cursor);
    setMessage("Original visit status saved.");
   }catch(e){fail(e);setUncertain(true);}
   finally{setBusy(false);}
@@ -164,7 +168,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      accessibilityState={{selected:center===c.centerRef,disabled:busy}}
       disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
-     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);
+     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);
        setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
@@ -185,9 +189,9 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
-    {button("Previous day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+    {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
      setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
-    {button("Next day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+    {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
      setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {center&&items.length>0&&<>
@@ -224,6 +228,22 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
       button("No show",()=>void change(a,"NO_SHOW"),busy||uncertain)}
     </View>
    </View>)}
+   {center&&items.length>0&&<View style={styles.card}>
+    <Text style={styles.help}>Page {previousCursors.length+1}. Showing {items.length} consultations.</Text>
+    <Text style={styles.help}>Filters apply to this page.</Text>
+    <View style={styles.row}>
+     {button("Previous 100",()=>{
+      const prior=previousCursors.at(-1)??"";
+      setPreviousCursors(p=>p.slice(0,-1));setDoctorFilter("");setStatusFilter("");
+      void load(center,dateAt(offset,centerZone),prior);
+     },busy||!previousCursors.length)}
+     {button("Next 100",()=>{
+      if(!nextCursor)return;
+      setPreviousCursors(p=>[...p,cursor]);setDoctorFilter("");setStatusFilter("");
+      void load(center,dateAt(offset,centerZone),nextCursor);
+     },busy||!nextCursor)}
+    </View>
+   </View>}
   </ScrollView>
  </SafeAreaView>;
 }
