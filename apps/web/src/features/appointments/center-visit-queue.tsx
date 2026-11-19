@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
 import {CenterQrCameraScanner} from "./center-qr-camera-scanner";
 type Center={centerRef:string;centerName:string;timeZone:string};
+type ClinicianAssignment={doctorRef:string;centerRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
  patientName:string;consentGranted:boolean;startAt:string;endAt:string;timeZone:string;
  bookingStatus:string;bookingVersion:number;
@@ -53,6 +54,7 @@ export function CenterVisitQueue(){
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [canCancel,setCanCancel]=useState(false);
  const [canClinicalManage,setCanClinicalManage]=useState(false);
+ const [clinicianAssignments,setClinicianAssignments]=useState<ClinicianAssignment[]>([]);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
  const [historyRef,setHistoryRef]=useState("");
  const [history,setHistory]=useState<AuditHistory|null>(null);
@@ -101,11 +103,14 @@ export function CenterVisitQueue(){
  },[]);
  useEffect(()=>{
   let alive=true;
-  void get<{centers:Center[]}>("my-centers").then(data=>{
+  void get<{centers:Center[];clinicianAssignments:ClinicianAssignment[]}>("my-centers").then(data=>{
    if(!alive)return;
    const valid=data.centers.filter(x=>x&&typeof x.centerRef==="string"&&
     typeof x.centerName==="string"&&typeof x.timeZone==="string");
-    setCenters(valid);if(valid.length===1){
+    setCenters(valid);
+    setClinicianAssignments((data.clinicianAssignments??[]).filter(x=>
+     typeof x?.doctorRef==="string"&&typeof x?.centerRef==="string"));
+    if(valid.length===1){
     const today=centerToday(valid[0].timeZone);
     if(!today){setMessage("The center's current local date is unavailable.");return;}
     selectedCenterRef.current=valid[0].centerRef;setDay(today);setCenter(valid[0].centerRef);
@@ -364,9 +369,9 @@ export function CenterVisitQueue(){
        onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
      {item.visitStatus==="ARRIVED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"WAITING")}>Move to waiting</button>}
-     {canClinicalManage&&item.visitStatus==="WAITING"&&<button type="button" disabled={busy||uncertain}
+     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="WAITING"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"IN_CONSULTATION")}>In consultation</button>}
-     {canClinicalManage&&item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
+     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"COMPLETED")}>Complete visit</button>}
      {item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
       Number.isFinite(Date.parse(item.endAt))&&Date.parse(item.endAt)<=Date.now()&&
