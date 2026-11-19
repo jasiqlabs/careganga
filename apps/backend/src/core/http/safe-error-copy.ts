@@ -256,6 +256,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG01_PUBLIC_SIGNUP_EXISTS:"This mobile number or email already belongs to an account. Sign in or recover the existing account.",
       CG01_PUBLIC_SIGNUP_UNAVAILABLE:"Mobile verification for new accounts is temporarily unavailable. Please try again later.",
       CG01_PUBLIC_SIGNUP_CONFLICT:"This registration request was already used with different details. Check the original registration before retrying.",
+      CG15_BOOKING_CHANGE_CLOSED:"This appointment is too close to its start or no longer eligible for patient cancellation/rescheduling. Contact the healthcare center.",
+      CG15_BOOKING_CHANGE_POLICY_UNAVAILABLE:"Appointment changes are temporarily unavailable. Contact the healthcare center.",
       CG15_BOOKING_INVALID:"Check the selected doctor, center, time, price and payment choice.",
       CG15_BOOKING_HOLD_NOT_CONFIGURED:"Appointment reservations are temporarily unavailable. Contact CareGanga support.",
       CG15_BOOKING_PATIENT_NOT_READY:"Sign in with a contact-verified patient account and grant current patient-care consent to book.",
