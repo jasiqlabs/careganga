@@ -288,8 +288,6 @@ const checks=[
   s.nativeStaffBooking.includes("setOffset(n=>Math.min(30,n+1));setDay(null);clear()")],
  ["center receptionist Web clears sensitive patient code when center doctor or day changes",
   s.staffWeb.includes('setPatientId("");setCode("");setHold(null);setBooking(null)')&&
-  (s.staffWeb.match(/setSelected\(null\);setPatientId\(" "\);/g)||[]).length===0&&
-  (s.staffWeb.match(/setSelected\(null\);setPatientId\(" "\);/g)||[]).length===0&&
   s.staffWeb.split('setSelected(null);setPatientId("");setCode("");').length>=3],
  ["center queue pages in Web and Internal Android use validated cursor",
   s.queue.includes("afterRaw.split")&&
