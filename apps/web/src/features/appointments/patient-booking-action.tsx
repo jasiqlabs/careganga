@@ -31,6 +31,8 @@ export function PatientBookingAction(p:Props){
  const [confirmed,setConfirmed]=useState<Confirmed|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const [uncertain,setUncertain]=useState(false);
+  const [reasonForVisit,setReasonForVisit]=useState("");
+  const confirmedReason=useRef<string|null>(null);
  const [staffBusy,setStaffBusy]=useState(false),[staffError,setStaffError]=useState("");
  const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
@@ -74,7 +76,7 @@ export function PatientBookingAction(p:Props){
    const signature=JSON.stringify([p.doctorRef,p.centerRef,p.startAt,p.endAt,
     p.feeMinor,p.feeVersion]);
    if(signature!==sameSlot.current){
-    holdKey.current=null;confirmKey.current=null;sameSlot.current=signature;
+    holdKey.current=null;confirmKey.current=null;confirmedReason.current=null;sameSlot.current=signature;
    }
    if(!holdKey.current)holdKey.current=crypto.randomUUID();
    const value=await submit<Hold>("holds",{
@@ -99,12 +101,16 @@ export function PatientBookingAction(p:Props){
    setMessage("Your temporary reservation expired. Refresh and select a current time.");return;
   }
   setBusy(true);setMessage("");
-  if(!confirmKey.current)confirmKey.current=crypto.randomUUID();
+   if(!confirmKey.current){
+    confirmKey.current=crypto.randomUUID();
+    confirmedReason.current=reasonForVisit.trim();
+   }
   try{
    const value=await submit<Confirmed>("confirm",{
     requestKey:confirmKey.current,holdRef:hold.holdRef,
     acceptedFeeMinor:hold.consultationFeeMinor,acceptedFeeVersion:hold.feeVersion,
-    paymentMode:"PAY_AT_CENTER"
+    paymentMode:"PAY_AT_CENTER",
+     ...(confirmedReason.current?{reasonForVisit:confirmedReason.current}:{})
    });
    setConfirmed(value);setUncertain(false);
    const document=await issuePatientSlip(value.bookingRef);
@@ -198,6 +204,15 @@ export function PatientBookingAction(p:Props){
   <p style={{margin:"0 0 8px"}}>Consultation: {currency(p.feeMinor)} ·
    <strong> Pay at center</strong>. No online charge or Foundation benefit is claimed.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
+   {!confirmed&&!uncertain&&<label style={{display:"grid",gap:4,marginBlock:8}}>
+    Reason for consultation (optional, private)
+    <textarea value={reasonForVisit} rows={2} maxLength={300}
+     disabled={busy||!!confirmKey.current}
+     onChange={e=>setReasonForVisit(e.target.value)}
+     placeholder="Briefly describe your reason, only if you wish"/>
+    <small>Your current patient-care consent is recorded with this encrypted
+     reason. It is not printed on the appointment slip or sent in notifications.</small>
+   </label>}
   {confirmed?<p><strong>Booking confirmed: {confirmed.bookingId}</strong>.
    <Link href="/patients/me"> View my patient profile</Link></p>:
    uncertain?<div>
