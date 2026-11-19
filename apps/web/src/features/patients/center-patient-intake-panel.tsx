@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 type Consent={available:boolean;version:string|null;text:string|null};
 type Result={virtualPatientId:string;firstName:string;lastName:string;
- dateOfBirth:string|null;profileStatus:"PROVISIONAL";createdAt:string;message:string};
+ dateOfBirth:string|null;profileStatus:"PROVISIONAL";createdAt:string;message:string;
+ dependentCareAuthorization:{relationship:string;scope:"PROVISIONAL_INTAKE";status:string}|null};
 type Permission={actions?:{key:string}[]};
 type Pending={requestKey:string;digest:string};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -26,6 +27,11 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
  const [policy,setPolicy]=useState<Consent>({available:false,version:null,text:null});
  const [first,setFirst]=useState(""),[last,setLast]=useState("");
  const [dob,setDob]=useState(""),[attested,setAttested]=useState(false);
+ const [dependentCare,setDependentCare]=useState(false);
+ const [guardianRelation,setGuardianRelation]=useState("PARENT");
+ const [guardianIdentity,setGuardianIdentity]=useState(false);
+ const [guardianAuthority,setGuardianAuthority]=useState(false);
+ const [guardianConsent,setGuardianConsent]=useState(false);
  const [result,setResult]=useState<Result|null>(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
@@ -37,6 +43,8 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
  const path="/api/appointments/patients/my-centers/"+encodeURIComponent(centerRef)+"/intakes";
  const reset=useCallback(()=>{
   setFirst("");setLast("");setDob("");setAttested(false);
+  setDependentCare(false);setGuardianRelation("PARENT");
+  setGuardianIdentity(false);setGuardianAuthority(false);setGuardianConsent(false);
   setMessage("");setResult(null);setUncertain(false);pending.current=null;
   setClaimChecked(false);setClaimCode("");setClaimExpires("");setClaimMessage("");claimRequestKey.current=null;
  },[]);
@@ -57,11 +65,15 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
  },[centerRef,reset]);
  const payload=()=>({
   firstName:first.trim(),lastName:last.trim(),dateOfBirth:dob||null,
-  consentVersion:policy.version,assistedConsentAttested:attested
+  consentVersion:policy.version,assistedConsentAttested:attested,
+  ...(dependentCare?{dependentCare:{relationship:guardianRelation,
+   identityCheckedInPerson:guardianIdentity,
+   authorityCheckedInPerson:guardianAuthority,
+   limitedConsentAttested:guardianConsent}}:{})
  });
  async function submit(retrying=false){
   if(busy||(uncertain&&!retrying)||!allowed||!policy.available||!attested||!first.trim()||
-   !last.trim())return;
+   !last.trim()||(dependentCare&&(!guardianIdentity||!guardianAuthority||!guardianConsent)))return;
   const input=payload(),digest=JSON.stringify(input);
   if(pending.current?.digest!==digest)
    pending.current={digest,requestKey:crypto.randomUUID()};
@@ -131,6 +143,11 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
    <strong>CareGanga Virtual Patient ID: {result.virtualPatientId}</strong>
    <p>{result.firstName} {result.lastName} · {result.profileStatus}</p>
    <p>Identity and patient-account claim remain unverified. Keep the ID private.</p>
+   {result.dependentCareAuthorization&&
+    <p><strong>Dependent-care authorization recorded:</strong> representative
+     relationship {result.dependentCareAuthorization.relationship.replaceAll("_"," ").toLowerCase()}.
+     This staff-attested consent covers only this provisional intake.
+     It does not authorize clinical document access, future care, login or bookings.</p>}
    <section aria-label="Give verified patient their account claim code">
     <h4>Link this provisional record to the patient's own account</h4>
     <p>Check the person's identity document in person before issuing a code.
@@ -163,6 +180,33 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
      <input type="date" value={dob} disabled={busy||uncertain}
       max={new Date().toISOString().slice(0,10)}
       onChange={e=>setDob(e.target.value)}/></label>
+    <section className="form-section" aria-label="Dependent care authorization for this intake">
+     <h4>Patient represented by a parent, guardian or authorized caregiver?</h4>
+     <label><input type="checkbox" checked={dependentCare} disabled={busy||uncertain}
+      onChange={e=>setDependentCare(e.target.checked)}/>
+      {" "}A representative is consenting to this limited provisional patient registration.</label>
+     {dependentCare&&<>
+      <label>Representative's verified relationship
+       <select value={guardianRelation} disabled={busy||uncertain}
+        onChange={e=>setGuardianRelation(e.target.value)}>
+        <option value="PARENT">Parent</option>
+        <option value="LEGAL_GUARDIAN">Legal guardian</option>
+        <option value="AUTHORIZED_REPRESENTATIVE">Authorized representative</option>
+       </select></label>
+      <label><input type="checkbox" checked={guardianIdentity} disabled={busy||uncertain}
+       onChange={e=>setGuardianIdentity(e.target.checked)}/>
+       {" "}I checked this representative's identity in person.</label>
+      <label><input type="checkbox" checked={guardianAuthority} disabled={busy||uncertain}
+       onChange={e=>setGuardianAuthority(e.target.checked)}/>
+       {" "}I checked the representative's authority to assist this patient.</label>
+      <label><input type="checkbox" checked={guardianConsent} disabled={busy||uncertain}
+       onChange={e=>setGuardianConsent(e.target.checked)}/>
+       {" "}The representative agreed to record only the patient's minimal provisional
+       registration details after the current consent notice was explained.</label>
+      <p>This does not verify legal guardianship, create a family account link,
+       or allow access to another patient's reports or future bookings.</p>
+     </>}
+    </section>
     <div style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
      <h4>Explain the current patient-care consent</h4>
      <p style={{whiteSpace:"pre-wrap"}}>{policy.text}</p>
@@ -173,7 +217,8 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
       authorize access to clinical records.</label>
     </div>
     <button type="button" className="primary" onClick={()=>void submit()}
-     disabled={busy||uncertain||!attested||first.trim().length<2||!last.trim()}>
+     disabled={busy||uncertain||!attested||first.trim().length<2||!last.trim()||
+      (dependentCare&&(!guardianIdentity||!guardianAuthority||!guardianConsent))}>
      {busy?"Checking…":"Register provisional patient"}</button>
    </>}
    {uncertain&&<div role="alert">
