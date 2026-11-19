@@ -21,7 +21,8 @@ const files=[
  "1426_cg19_private_consultation_slip.sql",
  "1427_cg01_public_patient_password_identity.sql",
  "1428_cg15_in_person_patient_identity_verification.sql",
- "1429_cg15_patient_center_intake_claim.sql"
+ "1429_cg15_patient_center_intake_claim.sql",
+ "1430_cg15_patient_assisted_booking_authorization.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
@@ -127,6 +128,12 @@ for(const name of files){
    !source.includes("cg15_patient_center_claim_immutable")||
    !source.includes("identity_checked_in_person boolean NOT NULL")))
   result.errors.push("Clinic patient identity claim source or provenance guard missing");
+ if(name.startsWith("1430")&&
+  (!source.includes("CREATE TABLE cg15_patient_assisted_booking_code")||
+   !source.includes("FOREIGN KEY(root_realm_id,hold_id,patient_id,center_id)")||
+   !source.includes("cg15_assisted_booking_code_immutable")||
+   !source.includes("WHERE consumed_at IS NULL AND revoked_at IS NULL")))
+  result.errors.push("Patient-authorized clinic booking proof source is incomplete");
  if(name.startsWith("1425")&&
   ((source.match(/CREATE TABLE cg15_visit_event/g)||[]).length!==1||
    (source.match(/CREATE TRIGGER cg15_visit_event_immutable/g)||[]).length!==1||
