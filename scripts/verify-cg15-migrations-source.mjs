@@ -19,7 +19,8 @@ const files=[
  "1424_cg15_consultation_reservation_and_appointments.sql",
  "1425_cg15_visit_queue_and_booking_changes.sql",
  "1426_cg19_private_consultation_slip.sql",
- "1427_cg01_public_patient_password_identity.sql"
+ "1427_cg01_public_patient_password_identity.sql",
+ "1428_cg15_in_person_patient_identity_verification.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
@@ -114,6 +115,12 @@ for(const name of files){
   ((source.match(/CREATE TABLE cg15_patient_center_intake/g)||[]).length!==1||
    (source.match(/CREATE TRIGGER cg15_center_intake_provenance_immutable/g)||[]).length!==1))
   result.errors.push("Provisional center intake has duplicated/missing protected schema");
+ if(name.startsWith("1428")&&
+  (!source.includes("CREATE TABLE cg15_patient_identity_challenge")||
+   !source.includes("CREATE TABLE cg15_patient_identity_event")||
+   !source.includes("'IDENTITY_VERIFIED'")||
+   !source.includes("cg15_patient_identity_event_immutable")))
+  result.errors.push("Patient-specific clinician identity verification or audit source missing");
  if(name.startsWith("1425")&&
   ((source.match(/CREATE TABLE cg15_visit_event/g)||[]).length!==1||
    (source.match(/CREATE TRIGGER cg15_visit_event_immutable/g)||[]).length!==1||
