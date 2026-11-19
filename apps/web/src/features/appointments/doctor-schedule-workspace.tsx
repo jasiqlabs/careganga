@@ -211,11 +211,14 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     throw Error("Centers have different time zones. Configure the target schedule directly to avoid shifting consultation times.");
    setSelected(destination);setWindows(sourceWindows);
    setSlot(String(source.slotMinutes));
-   const today=new Date().toISOString().slice(0,10);
+   const today=currentCenterDay(source.timeZone);
+   if(source.effectiveUntil&&source.effectiveUntil<=today)
+    throw Object.assign(new Error(
+     "The original doctor schedule has ended. Update the source schedule before copying it."),
+     {status:409});
    setFrom(source.effectiveFrom&&source.effectiveFrom>=today?
     source.effectiveFrom:today);
-   setUntil(source.effectiveUntil&&source.effectiveUntil>=today?
-    source.effectiveUntil:"");
+   setUntil(source.effectiveUntil??"");
    weekKey.current="";setCopyReview(null);setCopyTarget("");
    setNotice("The original working hours are copied into an UNSAVED draft for "+
     destination.centerName+". Review center-specific hours and doctor overlap, "+
