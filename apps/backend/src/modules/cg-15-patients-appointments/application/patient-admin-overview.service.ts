@@ -15,6 +15,44 @@ type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
 export class PatientAdminOverviewService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService){}
+ async bookingHistory(bearer:string,rawRef:string,beforeRaw?:string){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  if(!ID.test(rawRef)||beforeRaw!==undefined&&
+    (!/^\d{1,9}$/.test(beforeRaw)||Number(beforeRaw)<1))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const before=beforeRaw===undefined?null:Number(beforeRaw);
+  const appointment=await this.db.query<{booking_display_id:string}>(
+   "SELECT booking_display_id FROM cg15_consultation_appointment "+
+   "WHERE root_realm_id=$1 AND id=$2",
+   [actor.realmId,rawRef]);
+  if(!appointment.rows[0])
+   return {bookingId:null,items:[],next:null};
+  type EventRow={new_revision:number;action:string;occurred_at:Date;
+   actor_name:string;prior_snapshot:Record<string,unknown>|null;
+   new_snapshot:Record<string,unknown>};
+  const events=await this.db.query<EventRow>(
+   "SELECT e.new_revision,e.action,e.occurred_at,a.display_name AS actor_name,"+
+   "e.prior_snapshot,e.new_snapshot FROM cg15_appointment_event e "+
+   "JOIN account a ON a.id=e.actor_account_id AND a.realm_id=e.root_realm_id "+
+   "WHERE e.root_realm_id=$1 AND e.appointment_id=$2 "+
+   "AND ($3::integer IS NULL OR e.new_revision<$3) "+
+   "ORDER BY e.new_revision DESC LIMIT 31",
+   [actor.realmId,rawRef,before]);
+  const items=events.rows.slice(0,30);
+  const pick=(raw:Record<string,unknown>|null)=>{
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
+   const field=(name:string)=>typeof raw[name]==="string"&&
+    (raw[name] as string).length<=220?raw[name] as string:null;
+   const amount=field("feeMinor");
+   return {status:field("status"),startAt:field("startAt"),endAt:field("endAt"),
+    consultationFeeMinor:amount&&/^\d{1,11}$/.test(amount)?amount:null};
+  };
+  return {bookingId:appointment.rows[0].booking_display_id,
+   items:items.map(e=>({action:e.action,revision:e.new_revision,
+    when:e.occurred_at.toISOString(),by:e.actor_name,
+    before:pick(e.prior_snapshot),after:pick(e.new_snapshot)})),
+   next:events.rows.length>30?items.at(-1)!.new_revision:null};
+ }
  /** Minimal original H15 admin-only view. Never expose CG15 internal IDs as
   * visible labels, medical content, patient files, or center B staff records.
   * This nonassignable capability is reserved to protected Foundation root.
