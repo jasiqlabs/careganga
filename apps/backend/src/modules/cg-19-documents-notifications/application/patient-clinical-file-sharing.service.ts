@@ -144,14 +144,24 @@ export class PatientClinicalFileSharingService{
      actor.accountId]);
    let ref=inserted.rows[0]?.id;
    if(!ref){
-    const current=await c.query<{id:string;revision:number}>(
-     "SELECT id,revision FROM cg19_patient_clinical_file_grant "+
+    const current=await c.query<{id:string;revision:number;
+     doctor_id:string;center_id:string;appointment_revision:number;
+     care_consent_revision:number}>(
+     "SELECT id,revision,doctor_id,center_id,appointment_revision,"+
+     "care_consent_revision FROM cg19_patient_clinical_file_grant "+
      "WHERE realm_id=$1 AND patient_id=$2 AND file_id=$3 "+
      "AND appointment_id=$4 AND status='ACTIVE' FOR SHARE",
      [actor.realmId,patient,file,booking]);
-    if(!current.rows[0])
+    const existing=current.rows[0];
+    if(!existing||existing.doctor_id!==appointment.doctor_id||
+      existing.center_id!==appointment.center_id||
+      existing.appointment_revision!==appointment.revision||
+      existing.care_consent_revision!==care.rows[0].revision_no)
+     // An earlier still-present grant NEVER silently follows a changed
+     // appointment doctor, center or withdrawn/re-granted consent. Patient
+     // must explicitly revoke the stale grant before authorizing the new care.
      throw new ConflictException({code:"CG19_PATIENT_FILE_CHANGED"});
-    ref=current.rows[0].id;
+    ref=existing.id;
    }else{
     await c.query(
      "INSERT INTO cg19_patient_clinical_file_grant_event("+
