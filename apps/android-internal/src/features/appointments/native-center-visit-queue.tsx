@@ -59,7 +59,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  },[onExpired]);
  const load=useCallback(async(c:string,day:string,after="")=>{
   const stamp=++seq.current;
-  if(!c){setItems([]);return;}
+  if(!c){setItems([]);setSelectedSlip(null);return;}
   if(!day){setItems([]);setMessage("The center local date is unavailable.");return;}
   try{
    const data=await request<{items:Item[];next:string|null}>(token,
@@ -170,7 +170,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      accessibilityState={{selected:center===c.centerRef,disabled:busy}}
       disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
-     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);
+     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setSelectedSlip(null);setCursor("");setNextCursor(null);setPreviousCursors([]);
        setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
@@ -192,9 +192,9 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
     {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
-     setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
+     setSelectedSlip(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
     {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
-     setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
+     setSelectedSlip(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {center&&items.length>0&&<>
     <Text style={styles.help}>Filter by doctor</Text>
@@ -216,10 +216,10 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
     <Text style={styles.help}>No consultations were returned for this date.</Text>}
    {center&&items.length>0&&visible.length===0&&
     <Text style={styles.help}>No consultations match these filters.</Text>}
-   {selectedSlip&&<View style={styles.card}>
+   {selectedSlip&&items.some(row=>row.appointmentRef===selectedSlip.appointmentRef)&&<View style={styles.card}>
     {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
     <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
-    <NativeCenterConsultationSlip token={token}
+    <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}
      bookingRef={selectedSlip.appointmentRef}
      bookingStatus={selectedSlip.bookingStatus} onExpired={onExpired}/>
    </View>}
