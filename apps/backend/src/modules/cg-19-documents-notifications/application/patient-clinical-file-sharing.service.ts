@@ -73,13 +73,14 @@ export class PatientClinicalFileSharingService{
   return own.id;
  }
  private async ownFile(c:PoolClient,actor:VerifiedFoundationActor,
-  file:string,patient:string){
+  file:string,patient:string,activeOnly=true){
   const result=await c.query<FileRow>(
    "SELECT id,patient_id,classification,mime,size_bytes,sha256,object_key,"+
    "object_version,revision,revoked_at,created_at "+
    "FROM cg19_patient_private_file WHERE realm_id=$1 AND patient_id=$2 "+
-   "AND id=$3 AND revoked_at IS NULL AND scan_status='CLEAN_VERIFIED' FOR SHARE",
-   [actor.realmId,patient,file]);
+   "AND id=$3 AND ($4::boolean=false OR revoked_at IS NULL) "+
+   "AND scan_status='CLEAN_VERIFIED' FOR SHARE",
+   [actor.realmId,patient,file,activeOnly]);
   if(!result.rows[0])
    throw new NotFoundException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
   return result.rows[0];
@@ -171,7 +172,7 @@ export class PatientClinicalFileSharingService{
   const actor=await this.sessions.verifySession(bearer),file=id(fileRaw);
   return this.tx(async c=>{
    const patient=await this.own(c,actor,false);
-   await this.ownFile(c,actor,file,patient);
+   await this.ownFile(c,actor,file,patient,false);
    const rows=await c.query<{id:string;status:string;revision:number;
     booking_display_id:string;doctor_name:string;center_name:string;
     granted_at:Date;revoked_at:Date|null}>(
@@ -269,6 +270,11 @@ export class PatientClinicalFileSharingService{
     "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
     "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1) "+
     "AND g.status='ACTIVE' AND g.revoked_at IS NULL "+
+    "AND EXISTS(SELECT 1 FROM cg15_patient_account_link live_owner "+
+    "WHERE live_owner.root_realm_id=g.realm_id "+
+    "AND live_owner.patient_id=g.patient_id "+
+    "AND live_owner.account_id=g.granted_by_account "+
+    "AND live_owner.revoked_at IS NULL) "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
     "ORDER BY f.created_at DESC,f.id DESC LIMIT 25",
     [actor.realmId,booking,source.patient_id,source.doctor_id,source.center_id,source.revision]);
@@ -295,6 +301,11 @@ export class PatientClinicalFileSharingService{
     "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
     "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1) "+
     "AND g.status='ACTIVE' AND g.revoked_at IS NULL "+
+    "AND EXISTS(SELECT 1 FROM cg15_patient_account_link live_owner "+
+    "WHERE live_owner.root_realm_id=g.realm_id "+
+    "AND live_owner.patient_id=g.patient_id "+
+    "AND live_owner.account_id=g.granted_by_account "+
+    "AND live_owner.revoked_at IS NULL) "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
     "FOR SHARE OF f,g",
     [actor.realmId,source.patient_id,booking,file,source.doctor_id,source.center_id,source.revision]);
