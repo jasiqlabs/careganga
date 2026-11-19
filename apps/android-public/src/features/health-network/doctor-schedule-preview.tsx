@@ -150,20 +150,20 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
  </View>;
 }
 const style=StyleSheet.create({
- panel:{padding:16,borderWidth:1,borderColor:"#d7dfdb",borderRadius:14,gap:12,
+ panel:{padding:16,borderWidth:1,borderColor:theme.border,borderRadius:14,gap:12,
   backgroundColor:theme.background},
- heading:{fontSize:18,fontWeight:"700",color:theme.textPrimary},
- subheading:{fontSize:16,fontWeight:"700",color:theme.textPrimary,marginTop:8},
- help:{fontSize:13,lineHeight:19,color:theme.textSecondary,flexShrink:1},
+ heading:{fontSize:18,fontWeight:"700",color:theme.text},
+ subheading:{fontSize:16,fontWeight:"700",color:theme.text,marginTop:8},
+ help:{fontSize:13,lineHeight:19,color:theme.mutedText,flexShrink:1},
  actions:{flexDirection:"row",gap:8,flexWrap:"wrap"},
- button:{borderWidth:1,borderColor:"#cad9d2",paddingHorizontal:10,
+ button:{borderWidth:1,borderColor:theme.border,paddingHorizontal:10,
   paddingVertical:10,borderRadius:10,minHeight:42,justifyContent:"center"},
- selected:{borderColor:"#1d6a48",backgroundColor:"#e6f3ec"},
+ selected:{borderColor:theme.primary,backgroundColor:theme.surface},
  disabled:{opacity:0.45},
- buttonText:{fontSize:13,fontWeight:"600",color:theme.textPrimary},
- center:{borderWidth:1,borderColor:"#e0e6e2",borderRadius:10,padding:12,gap:5,
+ buttonText:{fontSize:13,fontWeight:"600",color:theme.text},
+ center:{borderWidth:1,borderColor:theme.border,borderRadius:10,padding:12,gap:5,
   minWidth:180,maxWidth:330,flexGrow:1},
- centerName:{fontSize:15,fontWeight:"700",color:theme.textPrimary},
+ centerName:{fontSize:15,fontWeight:"700",color:theme.text},
  window:{minWidth:140},
- error:{color:"#a32222",fontSize:13}
+ error:{color:theme.error,fontSize:13}
 });
