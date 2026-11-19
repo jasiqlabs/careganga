@@ -86,8 +86,8 @@ export class PatientAdminOverviewService{
     "(SELECT count(*) FROM cg15_patient WHERE root_realm_id=$1 "+
     "AND profile_status IN('PROVISIONAL','VERIFIED')) AS active_patients,"+
     "count(*) AS bookings,"+
-    "count(*) FILTER (WHERE start_at>=current_date "+
-    "AND start_at<current_date+interval '1 day') AS today_bookings,"+
+    "count(*) FILTER (WHERE (start_at AT TIME ZONE time_zone)::date="+
+    "(now() AT TIME ZONE time_zone)::date) AS today_bookings,"+
     "count(*) FILTER (WHERE booking_state='COMPLETED') AS completed,"+
     "count(*) FILTER (WHERE booking_state IN('CONFIRMED','ARRIVED','WAITING',"+
     "'IN_CONSULTATION')) AS pending "+
