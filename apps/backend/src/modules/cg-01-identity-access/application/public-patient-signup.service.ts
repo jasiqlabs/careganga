@@ -30,12 +30,57 @@ function providerConfigured(){
 @Injectable()
 export class PublicPatientSignupService{
  constructor(@Inject(DATABASE)private readonly db:Pool){}
- private async attempt(remote:string,mobile:string,key:Buffer){
+ private async provider(path:"Verifications"|"VerificationCheck",form:URLSearchParams){
+  if(!providerConfigured())
+   throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+  const sid=process.env.CG01_VERIFY_TWILIO_ACCOUNT_SID!;
+  const token=process.env.CG01_VERIFY_TWILIO_AUTH_TOKEN!;
+  const service=process.env.CG01_VERIFY_TWILIO_SERVICE_SID!;
+  let response:Response;
+  try{
+   response=await fetch(
+    "https://verify.twilio.com/v2/Services/"+service+"/"+path,{
+     method:"POST",signal:AbortSignal.timeout(12000),
+     headers:{"Authorization":"Basic "+Buffer.from(sid+":"+token).toString("base64"),
+      "Content-Type":"application/x-www-form-urlencoded"},
+     body:form.toString()
+    });
+  }catch{throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});}
+  if(response.status===429)
+   throw new HttpException({code:"CG01_PUBLIC_SIGNUP_LIMIT"},HttpStatus.TOO_MANY_REQUESTS);
+  if(!response.ok){
+   if(path==="VerificationCheck"&&[400,404].includes(response.status))
+    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_CODE_INVALID"});
+   throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+  }
+  const data:unknown=await response.json().catch(()=>null);
+  if(!data||typeof data!=="object"||!("status" in data)||
+   typeof data.status!=="string")
+   throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+  return data.status;
+ }
+ async requestCode(raw:unknown,remote:string){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   Object.keys(raw).length!==1||!("mobile" in raw)||
+   typeof raw.mobile!=="string"||!MOBILE.test(raw.mobile.trim()))
+   throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_INVALID"});
+  const mobile=raw.mobile.trim(),key=secret();
+  await this.attempt(remote,mobile,key,"start");
+  const form=new URLSearchParams({To:"+91"+mobile,Channel:"sms"});
+  const status=await this.provider("Verifications",form);
+  if(status!=="pending"&&status!=="approved")
+   throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+  return {status:"CODE_REQUESTED_UNCONFIRMED_DELIVERY" as const,
+   message:"A code was requested for the provided mobile. Delivery may be delayed."};
+ }
+ private async attempt(remote:string,mobile:string,key:Buffer,mode:"start"|"finish"){
   // Do not trust a body/header-supplied address. The controller supplies the
   // same transport-derived request.ip used in the original CG01 login.
   const buckets=[
-   {label:"public-patient-network",value:remote,limit:8,window:900},
-   {label:"public-patient-mobile",value:mobile,limit:3,window:86400}
+   {label:"public-patient-"+mode+"-network",value:remote,
+    limit:mode==="start"?12:24,window:900},
+   {label:"public-patient-"+mode+"-mobile",value:mobile,
+    limit:mode==="start"?5:10,window:86400}
   ];
   for(const b of buckets){
    const result=await this.db.query<{attempt_count:number}>(
@@ -57,10 +102,10 @@ export class PublicPatientSignupService{
    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_INVALID"});
   const v=raw as Record<string,unknown>;
   if(Object.keys(v).some(k=>![
-   "requestKey","firstName","lastName","mobile","email","password"].includes(k)))
+   "requestKey","firstName","lastName","mobile","email","password","code"].includes(k)))
    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_INVALID"});
   const requestKey=v.requestKey,firstName=v.firstName,lastName=v.lastName,
-   mobile=v.mobile,email=v.email,password=v.password;
+   mobile=v.mobile,email=v.email,password=v.password,code=v.code;
   if(typeof requestKey!=="string"||!ID.test(requestKey)||
    typeof firstName!=="string"||firstName.trim().length<2||
    firstName.trim().length>100||/[\u0000-\u001f\u007f<>]/.test(firstName)||
@@ -69,6 +114,7 @@ export class PublicPatientSignupService{
    typeof mobile!=="string"||!MOBILE.test(mobile.trim())||
    email!==undefined&&email!==null&&email!==""&&
     (typeof email!=="string"||!EMAIL.test(email.trim())||email.length>254)||
+   typeof code!=="string"||!/^[0-9]{4,10}$/.test(code)||
    typeof password!=="string"||password.length<8||
    Buffer.byteLength(password,"utf8")>1024)
    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_INVALID"});
@@ -79,10 +125,9 @@ export class PublicPatientSignupService{
   const digits=mobile.trim(),key=secret();
   if(!providerConfigured())
    throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
-  await this.attempt(remote,digits,key);
+  await this.attempt(remote,digits,key,"finish");
   const signature=hash(key,JSON.stringify({safeFirst,safeLast,digits,
-   normalizedEmail,password}));
-  const passwordHash=await hashPassword(password);
+   normalizedEmail,password,code}));
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
@@ -114,12 +159,20 @@ export class PublicPatientSignupService{
     "FOR SHARE OF r",[root]);
    if(!role.rows[0])throw new ServiceUnavailableException({
     code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
+   // Possession of the number is proven BEFORE inserting a login identity.
+   // Replays of a committed same-key source return above without reusing a
+   // consumed Twilio code, while a new command must pass provider proof.
+   const check=await this.provider("VerificationCheck",
+    new URLSearchParams({To:"+91"+digits,Code:code}));
+   if(check!=="approved")
+    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_CODE_INVALID"});
    const newAccount=await tx.query<{id:string}>(
     "INSERT INTO account(realm_id,display_name,normalized_mobile,"+
     "normalized_email,contact_phone,status) "+
     "VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id",
     [root,safeFirst+" "+safeLast,digits,normalizedEmail,"+91"+digits]);
    const id=newAccount.rows[0].id;
+   const passwordHash=await hashPassword(password);
    await tx.query(
     "INSERT INTO identity_credential(account_id,password_hash) VALUES($1,$2)",
     [id,passwordHash]);
