@@ -158,6 +158,8 @@ export class DoctorLeaveApprovalService{
    if(!first)throw new NotFoundException("Original doctor leave review unavailable");
    const proof=["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(first.status)?
     await this.source.original(tx,actor,this.sourceFrom(first)):null;
+   if(proof&&proof.originalCaseRef!==caseRef)
+    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
    const current=await tx.query<Case>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='CG15_DOCTOR_LEAVE' FOR SHARE",[actor.realmId,caseRef]);
@@ -199,7 +201,9 @@ export class DoctorLeaveApprovalService{
       revision:replay.rows[0].accepted_case_revision,replayed:true};
     throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
    }
-   await this.source.original(tx,actor,this.sourceFrom(snap));
+   const pinned=await this.source.original(tx,actor,this.sourceFrom(snap));
+   if(pinned.originalCaseRef!==caseRef)
+    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
    const locked=await tx.query<Case>(
     "SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
     "AND case_kind='CG15_DOCTOR_LEAVE' FOR UPDATE",[actor.realmId,caseRef]);
