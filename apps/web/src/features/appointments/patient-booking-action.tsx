@@ -4,7 +4,7 @@ import {useRef,useState} from "react";
 
 type Hold={holdRef:string;expiresAt:string;status:string;
  consultationFeeMinor:string;feeVersion:number;};
-type Confirmed={bookingRef:string;bookingId:string;
+type Confirmed={bookingRef:string;bookingId:string;doctorRef:string;centerRef:string;
  bookingStatus:string;paymentMode:string;collectionStatus:string;
  startAt:string;endAt:string;consultationFeeMinor:string;};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
@@ -80,6 +80,7 @@ export function PatientBookingAction(p:Props){
    if(!res.ok)throw Error("Cannot verify your current appointments. Please try again.");
    const data=await res.json() as {items?:Confirmed[]};
    const exact=data.items?.find(x=>x.startAt===p.startAt&&
+    x.doctorRef===p.doctorRef&&x.centerRef===p.centerRef&&
     ["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED"].includes(x.bookingStatus)&&
     x.consultationFeeMinor===p.feeMinor);
    if(exact){setConfirmed(exact);setUncertain(false);
