@@ -12,7 +12,7 @@ export async function GET(request:NextRequest){
  for(const key of ["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search","centerSearch"]){
   const value=request.nextUrl.searchParams.get(key);
   if(value!==null){
-   if(value.length>(key==="search"?80:50))
+   if(value.length>(key==="search"?80:key==="centerSearch"?60:50))
     return NextResponse.json({message:"Check the patient search or filter length."},
      {status:400,headers:{"Cache-Control":"private, no-store"}});
    allowed.set(key,value);
