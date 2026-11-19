@@ -10,7 +10,7 @@ const CODES=new Set([
  "CG15_PATIENT_CONSENT_UNAVAILABLE","CG15_PATIENT_CHANGED",
  "CG15_PATIENT_REQUEST_CONFLICT","CG15_PATIENT_ALREADY_REGISTERED",
  "CG15_PATIENT_IDENTITY_NOT_READY","CG15_PATIENT_IDENTITY_PROOF_REQUIRED","CG15_PATIENT_IDENTITY_TOO_SOON",
- "CG15_PATIENT_IDENTITY_RATE_LIMIT",
+ "CG15_PATIENT_IDENTITY_RATE_LIMIT","CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE",
  "IDENTITY_LOGIN_INVALID","IDENTITY_IDENTIFIER_INVALID","IDENTITY_PASSWORD_REQUIRED",
  "CG01_PUBLIC_SIGNUP_INVALID","CG01_PUBLIC_SIGNUP_LIMIT","CG01_PUBLIC_SIGNUP_EXISTS",
  "CG01_PUBLIC_SIGNUP_UNAVAILABLE","CG01_PUBLIC_SIGNUP_CONFLICT",
@@ -36,6 +36,8 @@ const authorized=(parts:string[],method:string)=>{
   route==="registration"&&method==="POST"||
   route==="me/identity-verification"&&method==="POST"||
   route==="me/claim-intake"&&method==="POST"||
+  route==="me/second-account-link-code"&&method==="POST"||
+  route==="me/accept-second-account"&&method==="POST"||
   route==="me/assisted-booking-code"&&method==="POST";
 };
 async function handler(request:NextRequest,parts:string[],method:string){
