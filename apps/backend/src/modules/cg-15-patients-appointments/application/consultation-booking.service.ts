@@ -643,9 +643,10 @@ export class ConsultationBookingService{
  }
  async reschedule(bearer:string,idRaw:string,input:unknown){
   const actor=await this.identity.verifySession(bearer),id=uuid(idRaw);
-  const v=body(input,["requestKey","expectedVersion","centerRef",
+  const v=body(input,["requestKey","expectedVersion","doctorRef","centerRef",
    "startAt","endAt","acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
   const key=uuid(v.requestKey),center=uuid(v.centerRef);
+  const requestedDoctor=v.doctorRef===undefined?null:uuid(v.doctorRef);
   const expected=Number(v.expectedVersion),start=epoch(v.startAt),end=epoch(v.endAt);
   const fee=String(v.acceptedFeeMinor??"");
   if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
@@ -653,7 +654,8 @@ export class ConsultationBookingService{
    v.paymentMode!=="PAY_AT_CENTER")
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   const requestDigest=SHA({id,expected,center,start:start.toISOString(),
-   end:end.toISOString(),fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER"});
+   end:end.toISOString(),fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER",
+   ...(requestedDoctor?{doctorRef:requestedDoctor}:{})});
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
@@ -661,13 +663,19 @@ export class ConsultationBookingService{
     "SELECT doctor_id FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,id]);
    if(!doctor.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
-   await this.doctorLock(tx,actor,doctor.rows[0].doctor_id);
+   const newDoctorId=requestedDoctor??doctor.rows[0].doctor_id;
+   // Lock both old and selected new doctor in deterministic UUID order.
+   // Cancel/hold/reschedule across centers use the same parent-row locks.
+   for(const doctorId of [...new Set([doctor.rows[0].doctor_id,newDoctorId])].sort())
+    await this.doctorLock(tx,actor,doctorId);
    const patient=await this.ownPatient(tx,actor,false);
    const booking=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
     "AND id=$2 AND patient_id=$3 FOR UPDATE",[actor.realmId,id,patient.id]);
    const old=booking.rows[0];
    if(!old)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   if(old.doctor_id!==doctor.rows[0].doctor_id)
+    throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
    const prev=await tx.query<{new_snapshot:{requestDigest?:string}}>(
     "SELECT new_snapshot FROM cg15_appointment_event WHERE root_realm_id=$1 "+
     "AND appointment_id=$2 AND action='RESCHEDULED' AND request_key=$3",
@@ -683,7 +691,7 @@ export class ConsultationBookingService{
     throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
    // Original old slot is released and new slot is acquired in ONE transaction.
    // A failure of exclusion/fee/consent rolls back both changes.
-   const current=await this.eligible(tx,actor,old.doctor_id,center,start,end);
+   const current=await this.eligible(tx,actor,newDoctorId,center,start,end);
    if(current.patient.id!==old.patient_id||current.feeMinor!==fee||
     current.feeVersion!==v.acceptedFeeVersion)
     throw new ConflictException({code:"CG15_BOOKING_PRICE_CHANGED"});
@@ -695,15 +703,15 @@ export class ConsultationBookingService{
     "INSERT INTO cg15_doctor_reservation(root_realm_id,doctor_id,center_id,"+
     "association_id,start_at,end_at,status) "+
     "VALUES($1,$2,$3,$4,$5,$6,'CONFIRMED') RETURNING id",
-    [actor.realmId,old.doctor_id,center,current.source.association_ref,start,end]);
+    [actor.realmId,newDoctorId,center,current.source.association_ref,start,end]);
    const changed=await tx.query<Booking>(
-    "UPDATE cg15_consultation_appointment SET center_id=$3,association_id=$4,"+
-    "reservation_id=$5,start_at=$6,end_at=$7,time_zone=$8,"+
-    "doctor_name=$9,center_name=$10,center_address=$11,"+
-    "fee_minor=$12,fee_version=$13,revision=revision+1,"+
+    "UPDATE cg15_consultation_appointment SET doctor_id=$3,center_id=$4,"+
+    "association_id=$5,reservation_id=$6,start_at=$7,end_at=$8,time_zone=$9,"+
+    "doctor_name=$10,center_name=$11,center_address=$12,"+
+    "fee_minor=$13,fee_version=$14,revision=revision+1,"+
     "terms_revision=terms_revision+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
-    [actor.realmId,id,center,current.source.association_ref,nr.rows[0].id,
+    [actor.realmId,id,newDoctorId,center,current.source.association_ref,nr.rows[0].id,
      start,end,current.source.time_zone,current.source.doctor_name,
      current.source.center_name,current.source.address,fee,current.feeVersion]);
    await tx.query(
@@ -712,12 +720,14 @@ export class ConsultationBookingService{
     "VALUES($1,$2,$3,$4,'RESCHEDULED',$5,$6,$7,$8)",
     [actor.realmId,id,old.revision,old.revision+1,
      JSON.stringify({status:old.booking_state,reservationRef:old.reservation_id,
+      doctorRef:old.doctor_id,doctorName:old.doctor_name,
       centerRef:old.center_id,centerName:old.center_name,
       associationRef:old.association_id,
       startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
       feeMinor:old.fee_minor,feeVersion:old.fee_version}),
      JSON.stringify({status:"CONFIRMED",requestDigest,
-      reservationRef:nr.rows[0].id,centerRef:center,
+      reservationRef:nr.rows[0].id,doctorRef:newDoctorId,
+      doctorName:current.source.doctor_name,centerRef:center,
       centerName:current.source.center_name,
       startAt:start.toISOString(),endAt:end.toISOString(),
       feeMinor:fee,feeVersion:current.feeVersion,
