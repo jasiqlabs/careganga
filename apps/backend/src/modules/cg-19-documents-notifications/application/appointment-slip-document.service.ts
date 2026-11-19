@@ -46,7 +46,7 @@ export class AppointmentSlipDocumentService{
    [source.rootRef,source.bookingRef,source.sourceVersion]);
   const doc=docs.rows[0];
   return doc?{status:doc.status,documentRef:doc.id,
-   canDownload:doc.status==="ISSUED"&&doc.source_digest===source.sourceDigest,
+   canDownload:doc.status==="ISSUED"&&!doc.revoked_at&&doc.source_digest===source.sourceDigest,
    issuedAt:doc.issued_at?.toISOString()??null}:{
    status:"NOT_ISSUED",canDownload:false,documentRef:null,issuedAt:null};
  }
