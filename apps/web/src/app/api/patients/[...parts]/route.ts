@@ -18,6 +18,9 @@ const authorized=(parts:string[],method:string)=>{
  return route==="policy"&&method==="GET"||
   route==="login"&&method==="POST"||
   route==="logout"&&method==="POST"||
+  route==="mobile/status"&&method==="GET"||
+  route==="mobile/start"&&method==="POST"||
+  route==="mobile/confirm"&&method==="POST"||
   route==="me"&&["GET","PATCH"].includes(method)||
   route==="me/consent"&&method==="POST"||
   route==="registration"&&method==="POST";
@@ -42,7 +45,10 @@ async function handler(request:NextRequest,parts:string[],method:string){
  const cookie=(await cookies()).get("cg_patient_session")?.value;
  if(route!=="policy"&&route!=="login"&&!cookie)
   return reject(401,"Sign in to access your own patient information.");
- const path=route==="policy"?"/api/v1/patients/consent-policy":
+ const path=route==="mobile/status"?"/api/identity/mobile/status":
+  route==="mobile/start"?"/api/identity/mobile/verify/start":
+  route==="mobile/confirm"?"/api/identity/mobile/verify/confirm":
+  route==="policy"?"/api/v1/patients/consent-policy":
   route==="login"?"/api/identity/login":
   route==="logout"?"/api/identity/logout":
   "/api/v1/patients/"+route;
