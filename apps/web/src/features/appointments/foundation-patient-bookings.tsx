@@ -2,12 +2,12 @@
 import {useCallback,useEffect,useState} from "react";
 type Row={bookingRef:string;bookingId:string;virtualPatientId:string;
  patientName:string;doctorName:string;centerName:string;bookingStatus:string;
- startAt:string;createdAt:string;collectionStatus:string;consultationFeeMinor:string};
+ startAt:string;timeZone:string;createdAt:string;collectionStatus:string;consultationFeeMinor:string};
 type Center={centerRef:string;centerName:string};
 type Stats={totalPatients:number;activePatients:number;totalBookings:number;
  todayBookings:number;completed:number;pending:number};
 type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[]};
-type Query={status:string;centerRef:string;after:string};
+type Query={status:string;centerRef:string;after:string;day:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
  consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
@@ -15,8 +15,17 @@ type HistoricEvent={action:string;revision:number;when:string;by:string;
 type OriginalHistory={bookingId:string|null;items:HistoricEvent[];next:number|null};
 const money=(s:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(s)/100);
+const centerTime=(iso:string,zone:string)=>{
+ try{
+  const when=new Date(iso);
+  if(!Number.isFinite(when.getTime()))return "Appointment time unavailable";
+  return new Intl.DateTimeFormat("en-IN",{
+   timeZone:zone,dateStyle:"medium",timeStyle:"short"
+  }).format(when)+" ("+zone+")";
+ }catch{return "Original center local time unavailable";}
+};
 export function FoundationPatientBookings(){
- const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:""});
+ const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:""});
  const [result,setResult]=useState<Result|null>(null);
  const [selected,setSelected]=useState("");
  const [history,setHistory]=useState<OriginalHistory|null>(null);
@@ -27,6 +36,7 @@ export function FoundationPatientBookings(){
   const params=new URLSearchParams();
   if(q.status)params.set("status",q.status);
   if(q.centerRef)params.set("centerRef",q.centerRef);
+  if(q.day)params.set("day",q.day);
   if(q.after)params.set("after",q.after);
   params.set("limit","20");
   const r=await fetch("/api/appointments/admin/patients?"+params.toString(),{
@@ -95,6 +105,7 @@ export function FoundationPatientBookings(){
    consultations only. No example patient data, fake paid amounts or unsupported
    pharmacy/diagnostic appointments appear here.</p>
   {!!message&&<p role="alert" className="notice error">{message}</p>}
+  <p>Foundation-wide totals across all dates and centers. Filters below apply to consultation records only.</p>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
    {([
     ["Total Patients",metrics?.totalPatients],
@@ -125,7 +136,11 @@ export function FoundationPatientBookings(){
        {status.replaceAll("_"," ")}</option>)}
      </select>
     </label>
-    <button type="button" onClick={()=>setQuery({status:"",centerRef:"",after:""})}>
+    <label>Consultation date (center local date)
+     <input type="date" value={query.day}
+      onChange={e=>update({day:e.target.value})}/>
+    </label>
+    <button type="button" onClick={()=>setQuery({status:"",centerRef:"",after:"",day:""})}>
      Reset filters</button>
    </div>
   </section>
@@ -141,7 +156,7 @@ export function FoundationPatientBookings(){
       border:"1px solid #d7dfdb",borderRadius:12,marginBottom:8}}>
      <strong>{item.bookingId}</strong><span> — {item.bookingStatus.replaceAll("_"," ")}</span>
      <p>{item.patientName} · {item.centerName}</p>
-     <p>{new Date(item.startAt).toLocaleString("en-IN")}</p>
+     <p>{centerTime(item.startAt,item.timeZone)}</p>
     </button>)}
     {result.next&&<button type="button" onClick={()=>
      setQuery(q=>({...q,after:result.next!}))}>Next results</button>}
@@ -156,8 +171,7 @@ export function FoundationPatientBookings(){
       <p><strong>Booking ID:</strong> {selectedBooking.bookingId}</p>
       <p><strong>Doctor:</strong> {selectedBooking.doctorName}</p>
       <p><strong>Center:</strong> {selectedBooking.centerName}</p>
-      <p><strong>Appointment:</strong> {new Date(selectedBooking.startAt)
-       .toLocaleString("en-IN")}</p>
+      <p><strong>Appointment:</strong> {centerTime(selectedBooking.startAt,selectedBooking.timeZone)}</p>
       <p><strong>Status:</strong> {selectedBooking.bookingStatus.replaceAll("_"," ")}</p>
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
        · {selectedBooking.collectionStatus.replaceAll("_"," ")}</p>
