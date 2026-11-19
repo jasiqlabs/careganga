@@ -331,9 +331,9 @@ export class ConsultationBookingService{
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
-   await this.doctorLock(tx,actor,doctorId);
    if(assisted)await this.centerScope.assertCurrent(
     tx,actor,centerId,"health.patients.intake");
+   await this.doctorLock(tx,actor,doctorId);
    const existing=await tx.query<Hold>(
     "SELECT * FROM cg15_consultation_hold WHERE root_realm_id=$1 "+
     "AND created_by_account=$2 AND request_key=$3 FOR UPDATE",
@@ -473,9 +473,9 @@ export class ConsultationBookingService{
     "WHERE root_realm_id=$1 AND id=$2 AND created_by_account=$3",
     [actor.realmId,id,actor.accountId]);
    if(!holdSource.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
-   await this.doctorLock(tx,actor,holdSource.rows[0].doctor_id);
    if(assisted)await this.centerScope.assertCurrent(
     tx,actor,holdSource.rows[0].center_id,"health.patients.intake");
+   await this.doctorLock(tx,actor,holdSource.rows[0].doctor_id);
    const old=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
     "AND created_by_account=$2 AND confirmation_key=$3 FOR UPDATE",
