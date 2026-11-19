@@ -45,15 +45,15 @@ function pathFor(channel:Channel,centerRef?:string){
  * DST hours rather than moving a doctor leave interval silently. */
 function centerTime(v:string,zone:string){
  if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(v))
-  throw Error("Choose a valid date and time for this center.");
+  throw Object.assign(new Error("Choose a valid date and time for this center."),{status:400});
  const nominal=Date.parse(v+":00Z");
  if(!Number.isFinite(nominal))
-  throw Error("Choose a valid date and time for this center.");
+  throw Object.assign(new Error("Choose a valid date and time for this center."),{status:400});
  let formatter:Intl.DateTimeFormat;
  try{formatter=new Intl.DateTimeFormat("en-GB",{
   timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit",
   hour:"2-digit",minute:"2-digit",hourCycle:"h23"
- });}catch{throw Error("This healthcare center has an unsupported time zone.");}
+ });}catch{throw Object.assign(new Error("This healthcare center has an unsupported time zone."),{status:400});}
  const local=(millis:number)=>{
   const p=Object.fromEntries(formatter.formatToParts(new Date(millis))
    .map(t=>[t.type,t.value]));
@@ -68,7 +68,7 @@ function centerTime(v:string,zone:string){
  const matches=[...offsets].map(offset=>nominal-offset)
   .filter(ms=>Number.isFinite(ms)&&local(ms)===v);
  if(matches.length!==1)
-  throw Error("That center-local time is missing or ambiguous due to a daylight-saving change. Choose another time.");
+  throw Object.assign(new Error("That center-local time is missing or ambiguous due to a daylight-saving change. Choose another time."),{status:400});
  return new Date(matches[0]).toISOString();
 }
 export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
