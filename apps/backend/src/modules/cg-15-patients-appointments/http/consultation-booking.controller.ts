@@ -18,6 +18,18 @@ export class ConsultationBookingController{
  confirm(@Headers("authorization")bearer:string,@Body()input:unknown){
   return this.bookings.confirm(bearer,input);
  }
+ @Post("me/:bookingRef/cancel")
+ @Header("Cache-Control","private, no-store")
+ cancel(@Headers("authorization")bearer:string,
+  @Param("bookingRef")ref:string,@Body()body:unknown){
+  return this.bookings.cancel(bearer,ref,body);
+ }
+ @Post("me/:bookingRef/reschedule")
+ @Header("Cache-Control","private, no-store")
+ reschedule(@Headers("authorization")bearer:string,
+  @Param("bookingRef")ref:string,@Body()body:unknown){
+  return this.bookings.reschedule(bearer,ref,body);
+ }
  @Get("me")
  @Header("Cache-Control","private, no-store")
  mine(@Headers("authorization")bearer:string,@Query("limit")limit?:string){
