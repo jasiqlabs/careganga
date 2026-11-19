@@ -14,7 +14,8 @@
     ],
     "android": {
       "package": "org.careganga.foundation.internal",
-      "permissions": []
+      "permissions": [],
+      "softwareKeyboardLayoutMode": "resize"
     },
     "experiments": {
       "typedRoutes": true

@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -33,9 +34,7 @@ export default async function HealthNetworkPage(){
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
     if(!actions.has("health.providers.view")&&
       !(actions.has("approvals.review")&&actions.has("health.providers.verify")))
-      return <main className="page main"><h1>Healthcare access restricted</h1>
-        <p>Your current role cannot read healthcare provider registrations.</p>
-        <Link href="/admin">Return to account</Link></main>;
+      return <AccessDeniedView reason="Your current role cannot read healthcare provider registrations." accountHref="/admin"/>;
     return <div className="shell">
       <FoundationAdminNav active="healthNetwork"
         displayName={person.displayName} roleName={person.roleName}

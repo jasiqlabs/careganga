@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -37,11 +38,7 @@ export default async function ReceptionPatientIntake(){
   const actions=new Set<string>(effective.actions.flatMap((item:unknown)=>
    item&&typeof item==="object"&&"key" in item&&
    typeof item.key==="string"?[item.key]:[]));
-  if(!actions.has("health.patients.intake"))return <main className="page main">
-   <h1>Patient intake restricted</h1>
-   <p>Your current role is not assigned to register patients at a healthcare center.</p>
-   <Link href="/admin">Back to my account</Link>
-  </main>;
+  if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>;
   return <div className="shell">
    <FoundationAdminNav active="healthPatientIntake"
     displayName={actor.displayName} roleName={actor.roleName}

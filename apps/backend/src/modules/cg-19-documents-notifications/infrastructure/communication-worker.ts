@@ -21,15 +21,34 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
   async onModuleInit(){
     this.stopped=false;
     // One LISTEN connection and one bounded due-index sweep per process.
-    // No per-account timers or outbound requests when the queue is empty.
-    const sub=await this.db.connect();
+    // Bounded retry allows cloud compute cold-start / transient DNS blips to resolve without crashing startup.
+    let sub: PoolClient | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3 && !this.stopped; attempt++) {
+      try {
+        sub = await this.db.connect();
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1) + Math.random() * 500));
+        }
+      }
+    }
+    if (!sub) throw lastErr;
     try{
+      sub.on("error", () => {
+        // Prevent idle client drops from causing unhandled process errors.
+        try { sub?.release(); } catch {}
+        if (this.subscription === sub) this.subscription = null;
+      });
       await sub.query("LISTEN cg19_decision_committed");
       await sub.query("LISTEN cg19_appointment_committed");
       this.subscription=sub;
       sub.on("notification",(event:Notification)=>{
-        if(["cg19_decision_committed","cg19_appointment_committed"]
-          .includes(event.channel)&&event.payload&&UUID.test(event.payload))
+        if((event.channel==="cg19_decision_committed"||
+            event.channel==="cg19_appointment_committed")&&
+          event.payload&&UUID.test(event.payload))
           void this.wake(event.payload);
       });
       const roots=await this.db.query<{id:string}>(`
@@ -57,11 +76,9 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     }catch{/* Durable replay cursor and due rows retain recovery state. */}
   }
   /**
-   * Recover original committed appointment/queue events for ALL Foundation
-   * roots, including those missed while LISTEN was disconnected. The global
-   * pending-only index makes idle work one bounded lookup rather than a
-   * center/doctor/root poll. Each root still uses the original CG19
-   * transaction, SKIP LOCKED source claim and source-key deduplication.
+   * Recover original committed appointments for every Foundation root, not
+   * only the first root connected to this worker. Bounded due-only sweeps
+   * preserve the existing CG-19 durable cursor and source-key deduplication.
    */
   private async reconcilePendingAppointments(){
     const due=await this.db.query<{realm_id:string}>(`
@@ -81,21 +98,18 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     if(this.busy||this.stopped)return;
     this.busy=true;
     try{
-      // Preserve the original CG03 decision cursor and bounded recovery.
-      // Appointment/visit reconciliation is global; rootRef is NOT sufficient
-      // because one process can serve multiple Foundation roots.
+      // One bounded durable source check per minute recovers a lost LISTEN
+      // hint or more than 1000 events after a long outage.
       if(this.rootRef){
         for(let batch=0;batch<4&&!this.stopped;batch++){
-          const decisions=await this.source.captureCommittedDecisions(this.rootRef);
-          if(!decisions.more)break;
+          const progress=await this.source.captureCommittedDecisions(this.rootRef);
+          if(!progress.more)break;
         }
       }
       await this.reconcilePendingAppointments();
-      // CG19's existing global due-only delivery/notice processing is separate
-      // from appointment source capture; no provider send without a due claim.
       await this.delivery.tick();
     }
-    catch{/* Durable source rows remain PENDING after an unsuccessful attempt. */}
+    catch{/* Fail closed: no fabricated delivered state or hidden queue success. */}
     finally{this.busy=false;}
   }
   async onModuleDestroy(){

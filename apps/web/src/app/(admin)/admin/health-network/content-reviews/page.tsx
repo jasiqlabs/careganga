@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -33,9 +34,7 @@ export default async function CenterContentReviewPage(){
   const canReview=allowed.has("approvals.review")&&allowed.has("health.providers.verify");
   const canPublish=allowed.has("health.centers.publish");
   if(!canReview&&!canPublish)
-   return <main className="page main"><h1>Review access restricted</h1>
-    <p>Your current role cannot independently review center content.</p>
-    <Link href="/admin/health-network">Return to healthcare</Link></main>;
+   return <AccessDeniedView reason="Your current role cannot independently review center content." accountHref="/admin/health-network"/>;
   return <HealthcareAdminShell active="healthNetwork"
     actor={{displayName:person.displayName,roleName:person.roleName}}
     actions={allowed}>

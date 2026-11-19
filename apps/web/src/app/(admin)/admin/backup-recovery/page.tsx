@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {RecoveryPanel} from "../../../../features/platform-configuration/recovery-panel";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function ProtectedPlatformPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -21,9 +22,7 @@ export default async function ProtectedPlatformPage(){
     if(identity.status===401||effective.status===401||resource.status===401)
       redirect("/admin/login");
     if(effective.status===403||resource.status===403)
-      return <main className="page main"><h1>Access denied</h1>
-        <p>Only authorized Foundation administrators may view Backup & Restore.</p>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Only authorized Foundation administrators may view Backup & Restore." />;
     if(!identity.ok||!effective.ok||!resource.ok)throw Error("Unverified access");
     const person:unknown=await identity.json(),permissions:unknown=await effective.json();
     if(!person||typeof person!=="object"||!("displayName" in person)||
@@ -34,8 +33,8 @@ export default async function ProtectedPlatformPage(){
     const keys=(permissions.actions as unknown[]).filter((entry):entry is {key:string}=>
       !!entry&&typeof entry==="object"&&"key" in entry&&
       typeof entry.key==="string").map(entry=>entry.key);
-    if(!keys.includes("platform.recovery.view"))return <main className="page main">
-      <h1>Access denied</h1><Link href="/admin">My account</Link></main>;
+    if(!keys.includes("platform.recovery.view"))
+      return <AccessDeniedView reason="Only authorized Foundation administrators may view Backup & Restore." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="recovery" displayName={person.displayName}
         roleName={person.roleName} canViewRoles={keys.includes("roles.view")}

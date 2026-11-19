@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -33,11 +34,7 @@ export default async function DoctorLeaveAdminPage(){
      [item.key]:[]));
   const canReview=a.has("approvals.review")&&a.has("health.schedules.view"),
     canManage=a.has("health.schedules.manage");
-  if(!canReview&&!canManage)return <main className="page main">
-   <h1>Doctor leave review restricted</h1>
-   <p>Your role does not include the current reviewer or schedule management permission.</p>
-   <Link href="/admin/health-network">Back to healthcare management</Link>
-  </main>;
+  if(!canReview&&!canManage)return <AccessDeniedView reason="Your role does not include the current reviewer or schedule management permission." accountHref="/admin/health-network"/>;
   return <HealthcareAdminShell active="healthSchedules"
    actor={{displayName:person.displayName,roleName:person.roleName}}
    actions={a}>

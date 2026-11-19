@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -31,9 +32,7 @@ export default async function CenterHome(){
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?
       [x.key]:[]));
     if(!allowed.has("health.centers.draft.edit"))
-      return <main className="page main"><h1>Center access restricted</h1>
-       <p>Only a currently authorized representative may open their assigned center.</p>
-       <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Only a currently authorized representative may open their assigned center." accountHref="/admin"/>;
     return <HealthcareAdminShell active="healthCenter"
       actor={{displayName:person.displayName,roleName:person.roleName}}
       actions={allowed}>

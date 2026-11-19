@@ -4,6 +4,7 @@ import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {CmsAdminWorkspace} from "../../../../features/cms-public-content/cms-admin-workspace";
 import {CmsExtendedWorkspace} from "../../../../features/cms-public-content/cms-extended-workspace";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 /** Same original CareGanga Admin navigation and CG01 effective capabilities;
  * no independent CMS login or an alternative role configuration page.
@@ -30,9 +31,7 @@ export default async function WebsiteCmsAdmin(){
   const actions=new Set<string>(rights.actions.flatMap((x:unknown)=>
    x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
   if(!actions.has("cms.content.view"))
-   return <main className="page main"><h1>Website content access restricted</h1>
-    <p>Your Foundation role cannot view or edit website content.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+   return <AccessDeniedView reason="Your Foundation role cannot view or edit website content." />;
   return <div className="shell">
    <FoundationAdminNav active="cms" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.has("roles.view")}

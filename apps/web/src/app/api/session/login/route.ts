@@ -29,9 +29,13 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(10000)
     });
     if (!result.ok) {
+      const data: unknown = await result.json().catch(() => null);
+      const obj =
+        data && typeof data === "object" && !Array.isArray(data)
+          ? (data as Record<string, unknown>)
+          : {};
+
       if (result.status === 400) {
-        const data: unknown = await result.json().catch(() => null);
-        const obj = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
         const codes = new Set([
           "IDENTITY_IDENTIFIER_REQUIRED",
           "IDENTITY_IDENTIFIER_INVALID",
@@ -50,35 +54,148 @@ export async function POST(request: NextRequest) {
           { status: 400, headers: { "Cache-Control": "no-store" } }
         );
       }
-      if (result.status === 401) {
-        // Identity failures share one generic server-owned, Admin-editable message.
-        // Never reveal whether the identifier exists or the account is inactive.
-        const raw: unknown = await result.json().catch(() => null);
-        const payload = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-        const isSafe =
-          payload.code === "IDENTITY_LOGIN_INVALID" &&
-          typeof payload.message === "string" &&
-          payload.message.length >= 16 &&
-          payload.message.length <= 220;
+
+      if (result.status === 403) {
+        const allowed403Codes = new Set([
+          "ACCOUNT_SUSPENDED",
+          "IDENTITY_ACCOUNT_SUSPENDED",
+          "SUSPENDED",
+          "ACCOUNT_IN_STATUS_SUSPENDED",
+          "ACCOUNT_DISABLED",
+          "IDENTITY_ACCOUNT_DISABLED",
+          "DEACTIVATED",
+          "ACCOUNT_DEACTIVATED",
+          "DISABLED",
+          "ACCOUNT_LOCKED",
+          "IDENTITY_ACCOUNT_LOCKED",
+          "LOCKED",
+          "FORBIDDEN"
+        ]);
+        const rawCode = typeof obj.code === "string" ? obj.code.trim().toUpperCase() : "";
+        const code = allowed403Codes.has(rawCode) ? rawCode : "ACCOUNT_SUSPENDED";
+
+        const rawReason =
+          typeof obj.reason === "string"
+            ? obj.reason
+            : typeof obj.suspensionReason === "string"
+            ? obj.suspensionReason
+            : obj.details && typeof (obj.details as Record<string, unknown>).reason === "string"
+            ? (obj.details as { reason: string }).reason
+            : null;
+
+        const reason =
+          rawReason &&
+          rawReason.trim().length > 0 &&
+          !/error:|exception|at\s+[a-z0-9_.]+|select\s+|insert\s+|update\s+|delete\s+|nullpointer|[<>{}]|p0\d{3}/i.test(
+            rawReason
+          )
+            ? rawReason.replace(/<[^>]*>/g, "").trim().slice(0, 180)
+            : null;
+
+        const rawMsg =
+          typeof obj.message === "string" && obj.message.length >= 10 && obj.message.length <= 220
+            ? obj.message
+            : null;
+
         return NextResponse.json(
           {
-            message: isSafe ? payload.message : "Mobile number/email or password could not be confirmed.",
-            ...(isSafe ? { code: "IDENTITY_LOGIN_INVALID" } : {})
+            code,
+            ...(reason ? { reason } : {}),
+            ...(rawMsg ? { message: rawMsg } : {})
+          },
+          { status: 403, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+
+      if (result.status === 401) {
+        const allowed401Codes = new Set([
+          "IDENTITY_LOGIN_INVALID",
+          "INVALID_CREDENTIALS",
+          "INVALID_PASSWORD",
+          "IDENTITY_INVALID_PASSWORD",
+          "ACCOUNT_NOT_FOUND",
+          "IDENTITY_ACCOUNT_NOT_FOUND",
+          "ACCOUNT_SUSPENDED",
+          "IDENTITY_ACCOUNT_SUSPENDED",
+          "SUSPENDED",
+          "ACCOUNT_DISABLED",
+          "IDENTITY_ACCOUNT_DISABLED",
+          "ACCOUNT_LOCKED",
+          "IDENTITY_ACCOUNT_LOCKED"
+        ]);
+        const rawCode = typeof obj.code === "string" ? obj.code.trim().toUpperCase() : "";
+        const code = allowed401Codes.has(rawCode) ? rawCode : "IDENTITY_LOGIN_INVALID";
+
+        const rawReason =
+          typeof obj.reason === "string"
+            ? obj.reason
+            : typeof obj.suspensionReason === "string"
+            ? obj.suspensionReason
+            : null;
+
+        const reason =
+          rawReason &&
+          rawReason.trim().length > 0 &&
+          !/error:|exception|at\s+[a-z0-9_.]+|select\s+|insert\s+|update\s+|delete\s+|nullpointer|[<>{}]|p0\d{3}/i.test(
+            rawReason
+          )
+            ? rawReason.replace(/<[^>]*>/g, "").trim().slice(0, 180)
+            : null;
+
+        const isSafeMsg =
+          typeof obj.message === "string" &&
+          obj.message.length >= 16 &&
+          obj.message.length <= 220 &&
+          !/[<>]/.test(obj.message);
+
+        return NextResponse.json(
+          {
+            code,
+            ...(reason ? { reason } : {}),
+            message: isSafeMsg
+              ? obj.message
+              : "Mobile number, email or password could not be confirmed. Check your details and try again."
           },
           { status: 401, headers: { "Cache-Control": "no-store" } }
         );
       }
+
+      if (result.status === 423) {
+        return NextResponse.json(
+          {
+            code: "ACCOUNT_LOCKED",
+            message: "Your account is temporarily locked. Please contact your administrator for assistance."
+          },
+          { status: 423, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+
+      if (result.status === 429) {
+        return NextResponse.json(
+          {
+            code: "TOO_MANY_ATTEMPTS",
+            message: "Too many sign-in attempts. Please wait a while before trying again."
+          },
+          { status: 429, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+
+      if (result.status >= 500) {
+        return NextResponse.json(
+          {
+            code: "SERVER_UNAVAILABLE",
+            message: "We're having trouble signing you in right now. Please try again shortly."
+          },
+          { status: 503, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+
       return NextResponse.json(
         {
-          message:
-            result.status === 429
-              ? "Too many login attempts. Please try again later."
-              : "Sign-in cannot be confirmed right now. Check the connection and retry."
+          code: "UNKNOWN_ERROR",
+          message: "We couldn't sign you in right now. Please try again. If the problem continues, contact your administrator."
         },
-        {
-          status: result.status === 429 ? 429 : result.status === 401 ? 401 : 503,
-          headers: { "Cache-Control": "no-store" }
-        }
+        { status: result.status, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -112,7 +229,25 @@ export async function POST(request: NextRequest) {
     });
     response.headers.set("Cache-Control", "no-store");
     return response;
-  } catch {
-    return NextResponse.json({ message: "Sign-in unavailable" }, { status: 503 });
+  } catch (error: unknown) {
+    const isTimeout =
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+    if (isTimeout) {
+      return NextResponse.json(
+        {
+          code: "REQUEST_TIMEOUT",
+          message: "The request took too long. Please try again."
+        },
+        { status: 504, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+    return NextResponse.json(
+      {
+        code: "SERVER_UNAVAILABLE",
+        message: "We're having trouble signing you in right now. Please try again shortly."
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

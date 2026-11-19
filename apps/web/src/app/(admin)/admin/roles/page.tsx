@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { RolesPanel } from "../../../../features/identity-access/roles-panel";
+import { AccessDeniedView } from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function AdminRoles(){
@@ -21,9 +22,8 @@ export default async function AdminRoles(){
       })
     ]);
     if(profile.status===401||access.status===401)redirect("/admin/login");
-    if(profile.status===403||access.status===403)return <main className="page main">
-      <h1>Access denied</h1><p>Your current account does not have permission to view roles.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    if(profile.status===403||access.status===403)
+      return <AccessDeniedView reason="Your current account does not have permission to view roles." />;
     if(!profile.ok||!access.ok)throw new Error("ACCESS_UNAVAILABLE");
     const actor:unknown=await profile.json();
     const effective:unknown=await access.json();
@@ -35,9 +35,8 @@ export default async function AdminRoles(){
     const keys=(effective.actions as unknown[]).filter((a):a is {key:string}=>
       a!==null&&typeof a==="object"&&"key" in a&&typeof (a as {key:unknown}).key==="string").map(a=>a.key);
     const allowed=keys.includes("roles.view");
-    if(!allowed)return <main className="page main"><h1>Access denied</h1>
-      <p>Your current account does not have permission to view roles.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    if(!allowed)
+      return <AccessDeniedView reason="Your current account does not have permission to view roles." />;
     const canViewAccounts=keys.includes("accounts.view")||
       (keys.includes("accounts.create")&&keys.includes("roles.assign"));
     return <div className="shell">

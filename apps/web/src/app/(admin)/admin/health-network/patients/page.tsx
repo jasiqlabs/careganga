@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -32,9 +33,7 @@ export default async function ProtectedH15PatientManagement(){
   const rightsSet=new Set<string>(scope.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!rightsSet.has("health.patients.admin.view"))
-   return <main className="page main"><h1>Patient management restricted</h1>
-    <p>Your current Foundation role cannot view protected patient records.</p>
-    <Link href="/admin">Back to account</Link></main>;
+   return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>;
   return <div className="shell">
    <FoundationAdminNav active="healthPatientAdmin"
     displayName={actor.displayName} roleName={actor.roleName}

@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -35,10 +36,7 @@ export default async function DoctorScheduleAdminPage(){
    item&&typeof item==="object"&&"key" in item&&
     typeof item.key==="string"?[item.key]:[]));
   if(!allowed.has("health.schedules.view"))
-   return <main className="page main"><h1>Schedules restricted</h1>
-    <p>Your current Foundation role cannot view private doctor schedules.</p>
-    <Link href="/admin/health-network">Back to healthcare management</Link>
-   </main>;
+   return <AccessDeniedView reason="Your current Foundation role cannot view private doctor schedules." accountHref="/admin/health-network"/>;
   return <HealthcareAdminShell active="healthSchedules"
    actor={{displayName:person.displayName,roleName:person.roleName}}
    actions={allowed}>

@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
@@ -31,9 +32,7 @@ export default async function HealthcareDoctorsPage(){
     const keys=new Set<string>(rights.actions.flatMap((x:unknown)=>
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
     if(!keys.has("health.doctors.view"))
-      return <main className="page main"><h1>Doctor registration access restricted</h1>
-        <p>Your current role cannot access protected professional registrations.</p>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Your current role cannot access protected professional registrations." accountHref="/admin"/>;
     return <div className="shell">
       <FoundationAdminNav active="healthDoctors" displayName={person.displayName}
         roleName={person.roleName} canViewDoctors

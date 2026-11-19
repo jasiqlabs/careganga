@@ -1,3 +1,4 @@
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import Link from "next/link";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
@@ -29,9 +30,7 @@ export default async function HealthcareReviewsPage(){
   const keys=new Set<string>(rights.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!(keys.has("health.providers.verify")||keys.has("health.doctors.verify"))||!keys.has("approvals.review"))
-   return <main className="page main"><h1>Independent review access restricted</h1>
-    <p>Your current role cannot review healthcare registrations.</p>
-    <Link href="/admin">My account</Link></main>;
+   return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>;
   return <div className="shell">
    <FoundationAdminNav active="healthNetwork" displayName={person.displayName}
     roleName={person.roleName}

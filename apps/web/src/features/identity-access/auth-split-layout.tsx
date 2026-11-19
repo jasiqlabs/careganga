@@ -31,7 +31,7 @@ export function AuthSplitLayout({
       y: 0,
       transition: {
         duration: shouldReduceMotion ? 0 : 0.6,
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
       }
     }
   };
@@ -68,7 +68,7 @@ export function AuthSplitLayout({
       transition: {
         duration: shouldReduceMotion ? 0 : 0.65,
         delay: shouldReduceMotion ? 0 : 0.16,
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
       }
     }
   };
@@ -103,7 +103,7 @@ export function AuthSplitLayout({
       y: 0,
       transition: {
         duration: shouldReduceMotion ? 0 : 0.4,
-        ease: "easeOut"
+        ease: "easeOut" as const
       }
     }
   };
@@ -116,7 +116,7 @@ export function AuthSplitLayout({
       transition: {
         duration: shouldReduceMotion ? 0 : 0.65,
         delay: shouldReduceMotion ? 0 : 0.12,
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
       }
     }
   };
@@ -129,7 +129,7 @@ export function AuthSplitLayout({
       transition: {
         duration: shouldReduceMotion ? 0 : 0.45,
         delay: shouldReduceMotion ? 0 : 0.24,
-        type: "spring",
+        type: "spring" as const,
         stiffness: 260,
         damping: 20
       }

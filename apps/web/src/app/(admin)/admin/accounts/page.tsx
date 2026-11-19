@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { AccountsPanel } from "../../../../features/identity-access/accounts-panel";
+import { AccessDeniedView } from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function FoundationAccounts(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -33,9 +34,8 @@ export default async function FoundationAccounts(){
       x!==null&&typeof x==="object"&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     const canViewAccounts=keys.includes("accounts.view");
     const canCreateOnly=!canViewAccounts&&keys.includes("accounts.create")&&keys.includes("roles.assign");
-    if(!canViewAccounts&&!canCreateOnly)return <main className="page main">
-      <h1>Access denied</h1><p>You cannot view staff accounts.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    if(!canViewAccounts&&!canCreateOnly)
+      return <AccessDeniedView reason="You cannot view staff accounts." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}

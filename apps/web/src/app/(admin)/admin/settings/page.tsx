@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {PlatformSettingsPanel} from "../../../../features/platform-configuration/platform-settings-panel";
 import {SafeErrorMessagesEditor} from "../../../../features/platform-configuration/safe-error-messages-editor";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function FoundationSettings(){
@@ -25,9 +26,7 @@ export default async function FoundationSettings(){
     ]);
     if(me.status===401||rights.status===401||settings.status===401)redirect("/admin/login");
     if(rights.status===403||settings.status===403)
-      return <main className="page main"><h1>Access denied</h1>
-        <p>Foundation platform configuration requires privileged access.</p>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Foundation platform configuration requires privileged access." />;
     if(!me.ok||!rights.ok||!settings.ok)throw Error("Cannot verify platform settings");
     const actor:unknown=await me.json();
     const access:unknown=await rights.json();
@@ -40,8 +39,7 @@ export default async function FoundationSettings(){
       x!==null&&typeof x==="object"&&"key" in x&&typeof (x as {key:unknown}).key==="string").map(x=>x.key);
     if(!keys.includes("platform.settings.view")||
       !keys.includes("platform.integrations.view"))
-      return <main className="page main"><h1>Access denied</h1>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Foundation platform configuration requires privileged access." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="settings" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
