@@ -42,7 +42,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
- const commands=useRef<Map<string,string>>(new Map()),seq=useRef(0);
+ const commands=useRef<Map<string,string>>(new Map()),seq=useRef(0),selectedCenter=useRef("");
  const fail=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Protected queue is unavailable.");
@@ -53,9 +53,9 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   try{
    const data=await request<{items:Item[]}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day));
-   if(stamp!==seq.current)return;
+   if(stamp!==seq.current||selectedCenter.current!==c)return;
    setItems(data.items);setUncertain(false);
-  }catch(e){if(stamp===seq.current){setItems([]);fail(e);}}
+  }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
  },[token,fail]);
  useEffect(()=>{
   let live=true;
@@ -63,7 +63,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    .then(data=>{
     if(!live)return;
     setCenters(data.centers);
-    if(data.centers.length===1)setCenter(data.centers[0].centerRef);
+    if(data.centers.length===1){selectedCenter.current=data.centers[0].centerRef;setCenter(data.centers[0].centerRef);}
    }).catch(e=>{if(live)fail(e);})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
@@ -84,13 +84,14 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   try{
    const result=await request<VerifiedSlip>(token,
     "my-centers/"+encodeURIComponent(center)+"/verify-slip","POST",{token:qrToken});
+   if(selectedCenter.current!==center)return;
    if(!result.valid){
     setMessage("This slip is not a current appointment at your assigned center.");
    }else{
     setVerifiedSlip(result);
     setMessage("The slip matches a real consultation at your own center. Check in from the current date queue.");
    }
-  }catch(e){fail(e);}
+  }catch(e){if(selectedCenter.current===center)fail(e);}
   finally{setBusy(false);}
  }
  async function change(item:Item,next:"CHECK_IN"|"WAITING"|"IN_CONSULTATION"|"COMPLETED"|"NO_SHOW"){
@@ -140,9 +141,11 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    <Text style={styles.help}>Assigned healthcare center</Text>
    <View style={styles.row}>{centers.map(c=>
     <Pressable key={c.centerRef} accessibilityRole="button"
-     accessibilityState={{selected:center===c.centerRef}}
+     accessibilityState={{selected:center===c.centerRef,disabled:busy}}
+      disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
-     onPress={()=>{setCenter(c.centerRef);setUncertain(false);}}>
+     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setItems([]);
+       setVerifiedSlip(null);setQrToken("");setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
     </Pressable>)}</View>
    {center&&<View style={styles.card}>
@@ -161,8 +164,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset)}</Text>
    <View style={styles.row}>
-    {button("Previous day",()=>setOffset(n=>Math.max(-14,n-1)),busy||offset<=-14)}
-    {button("Next day",()=>setOffset(n=>Math.min(30,n+1)),busy||offset>=30)}
+    {button("Previous day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
+    {button("Next day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {!items.length&&!loading&&<Text style={styles.help}>No consultations are currently shown for this date.</Text>}
    {items.map(a=><View key={a.appointmentRef} style={styles.card}>
