@@ -456,7 +456,11 @@ export class ConsultationBookingService{
     "AND id=$2 AND created_by_account=$3",
     [actor.realmId,id,actor.accountId]);
    if(!row.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
-   await this.ownPatient(tx,actor,false);
+   // A receptionist can also be a patient. Never let the patient-only
+   // hold reader expose a different patient's staff-created reservation.
+   const patient=await this.ownPatient(tx,actor,false);
+   if(patient.id!==row.rows[0].patient_id)
+    throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    await tx.query("COMMIT");open=false;
    return presentHold(row.rows[0]);
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
