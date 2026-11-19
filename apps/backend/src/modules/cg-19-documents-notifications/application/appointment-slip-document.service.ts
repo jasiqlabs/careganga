@@ -2,7 +2,7 @@ import {
  BadRequestException,ConflictException,Inject,Injectable,NotFoundException,
  ServiceUnavailableException
 } from "@nestjs/common";
-import {createHash,createHmac,randomUUID} from "node:crypto";
+import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import {PDFDocument} from "pdf-lib";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -139,6 +139,61 @@ export class AppointmentSlipDocumentService{
     [source.rootRef,document.id]).catch(()=>undefined);
    return {status:"UNKNOWN",documentRef:document.id,confirmed:false};
   }
+ }
+ /** CG19-owned two-minute purpose-bound, recipient-bound private download grant.
+  * This is NOT a public presigned storage URL: each use still requires the
+  * ORIGINAL current CG01 patient/staff session, CG15 consent and file ACL.
+  */
+ private downloadSignature(source:OriginalConsultationSlip,actorId:string,
+  documentRef:string,staff:boolean,expiry:number){
+  const key=Buffer.from(process.env.CG19_APPOINTMENT_QR_KEY??"","base64");
+  if(key.length!==32)
+   throw new ServiceUnavailableException({code:"CG19_SLIP_UNAVAILABLE"});
+  const digest=createHmac("sha256",key)
+   .update(["CG19_PRIVATE_APPOINTMENT_SLIP_V1",source.rootRef,
+    source.bookingRef,String(source.sourceVersion),source.sourceDigest,
+    documentRef,actorId,staff?"STAFF":"PATIENT",String(expiry)].join("|"))
+   .digest("hex");
+  return digest;
+ }
+ async issueDownloadGrant(bearer:string,bookingRaw:string,staff=false){
+  const source=await this.source(bearer,uuid(bookingRaw),staff);
+  const actor=await this.original.actorForSlip(bearer);
+  const d=await this.db.query<{id:string}>(
+   "SELECT id FROM cg19_consultation_slip "+
+   "WHERE root_realm_id=$1 AND appointment_id=$2 AND source_revision=$3 "+
+   "AND source_digest=$4 AND status='ISSUED' AND revoked_at IS NULL "+
+   "AND object_version IS NOT NULL AND content_sha256 IS NOT NULL",
+   [source.rootRef,source.bookingRef,source.sourceVersion,source.sourceDigest]);
+  if(!d.rows[0])throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  const expires=Math.floor(Date.now()/1000)+120;
+  const signature=this.downloadSignature(source,actor.accountId,
+   d.rows[0].id,staff,expires);
+  return {status:"GRANTED",purpose:"APPOINTMENT_SLIP",expiresAt:
+    new Date(expires*1000).toISOString(),grant:String(expires)+"."+signature};
+ }
+ async downloadGranted(bearer:string,bookingRaw:string,grant:unknown,staff=false){
+  if(typeof grant!=="string"||!/^[0-9]{10}\.[a-f0-9]{64}$/.test(grant))
+   throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  const source=await this.source(bearer,uuid(bookingRaw),staff);
+  const actor=await this.original.actorForSlip(bearer);
+  const d=await this.db.query<{id:string}>(
+   "SELECT id FROM cg19_consultation_slip "+
+   "WHERE root_realm_id=$1 AND appointment_id=$2 AND source_revision=$3 "+
+   "AND source_digest=$4 AND status='ISSUED' AND revoked_at IS NULL "+
+   "AND object_version IS NOT NULL AND content_sha256 IS NOT NULL",
+   [source.rootRef,source.bookingRef,source.sourceVersion,source.sourceDigest]);
+  if(!d.rows[0])throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  const [seconds,presented]=grant.split(".");
+  const expires=Number(seconds),now=Math.floor(Date.now()/1000);
+  if(!Number.isSafeInteger(expires)||expires<=now||expires>now+120)
+   throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  const expected=this.downloadSignature(source,actor.accountId,
+   d.rows[0].id,staff,expires);
+  if(!timingSafeEqual(Buffer.from(presented,"hex"),Buffer.from(expected,"hex")))
+   throw new NotFoundException({code:"CG19_SLIP_UNAVAILABLE"});
+  // Recheck current source ACL/consent and verified bytes after grant validation.
+  return this.download(bearer,source.bookingRef,staff);
  }
  async download(bearer:string,bookingRaw:string,staff=false){
   const source=await this.source(bearer,uuid(bookingRaw),staff);
