@@ -13,7 +13,7 @@ function allowed(parts:string[],method:string){
  return parts.length===1&&parts[0]==="my-centers"&&method==="GET"||
   parts.length===2&&parts[0]==="my-centers"&&ID.test(parts[1])&&method==="GET"||
   parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
-   parts[2]==="check-in"&&method==="POST"||
+   ["check-in","verify-slip"].includes(parts[2])&&method==="POST"||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="visits"&&ID.test(parts[3])&&parts[4]==="transition"&&method==="POST";
 }
