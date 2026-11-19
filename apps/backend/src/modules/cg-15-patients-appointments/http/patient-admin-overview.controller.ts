@@ -14,7 +14,9 @@ export class PatientAdminOverviewController{
  overview(@Headers("authorization")bearer:string,
   @Query("centerRef")centerRef?:string,@Query("status")status?:string,
   @Query("after")after?:string,@Query("limit")limit?:string,
-  @Query("day")day?:string){
-  return this.admin.overview(bearer,{centerRef,status,after,limit,day});
+  @Query("day")day?:string,@Query("stateRef")stateRef?:string,
+  @Query("districtRef")districtRef?:string,@Query("centerType")centerType?:string){
+  return this.admin.overview(bearer,{centerRef,status,after,limit,day,
+   stateRef,districtRef,centerType});
  }
 }
