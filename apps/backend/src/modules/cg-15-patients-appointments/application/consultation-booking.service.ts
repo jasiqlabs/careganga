@@ -739,6 +739,40 @@ export class ConsultationBookingService{
    throw e;
   }finally{tx.release();}
  }
+ /** Exact owned-patient reschedule recovery after a lost response.
+  * The immutable original event, not a coincidentally matching current time,
+  * proves which request was committed. A later change does not erase it.
+  */
+ async rescheduleByRequest(bearer:string,idRaw:string,keyRaw:string){
+  const actor=await this.identity.verifySession(bearer),
+   id=uuid(idRaw),key=uuid(keyRaw);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const patient=await this.ownPatient(tx,actor,false);
+   const current=await tx.query<Booking>(
+    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND id=$2 AND patient_id=$3",
+    [actor.realmId,id,patient.id]);
+   if(!current.rows[0])
+    throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   const applied=await tx.query<{new_snapshot:Record<string,unknown>}>(
+    "SELECT new_snapshot FROM cg15_appointment_event WHERE root_realm_id=$1 "+
+    "AND appointment_id=$2 AND action='RESCHEDULED' AND request_key=$3 LIMIT 1",
+    [actor.realmId,id,key]);
+   if(!applied.rows[0])
+    throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   const snap=applied.rows[0].new_snapshot;
+   await tx.query("COMMIT");open=false;
+   return {applied:true,bookingId:current.rows[0].booking_display_id,
+    doctorRef:typeof snap.doctorRef==="string"?snap.doctorRef:null,
+    centerRef:typeof snap.centerRef==="string"?snap.centerRef:null,
+    startAt:typeof snap.startAt==="string"?snap.startAt:null,
+    endAt:typeof snap.endAt==="string"?snap.endAt:null,
+    currentBooking:presentBooking(current.rows[0])};
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async calendar(bearer:string,idRaw:string){
   const value=await this.myOne(bearer,idRaw);
   if(!["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(value.bookingStatus))
