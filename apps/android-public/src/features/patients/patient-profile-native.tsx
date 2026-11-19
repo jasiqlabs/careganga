@@ -191,6 +191,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      {button("Sign out",signOut,busy)}
      {profile?<View>
       <Text style={styles.subtitle}>Virtual Patient ID: {profile.virtualPatientId}</Text>
+      <Text>{profile.profileStatus==="PROVISIONAL"?"Contact-verified profile; identity verification pending":profile.profileStatus}</Text>
       <Text>Patient-care consent: {profile.consentGranted?"Granted":"Withdrawn"}</Text>
      </View>:<Text>No patient profile is linked yet. A verified account
        contact and approved patient-care consent are required.</Text>}
