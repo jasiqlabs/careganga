@@ -147,6 +147,6 @@ CREATE INDEX ix_cg15_appointment_event_recent ON cg15_appointment_event
 CREATE FUNCTION cg15_appointment_event_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  RAISE EXCEPTION 'Appointment audit is append only';
-END; $;
+END; $$;
 CREATE TRIGGER cg15_appointment_event_immutable BEFORE UPDATE OR DELETE
  ON cg15_appointment_event FOR EACH ROW EXECUTE FUNCTION cg15_appointment_event_frozen();
