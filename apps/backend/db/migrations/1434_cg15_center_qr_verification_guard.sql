@@ -40,6 +40,6 @@ CREATE FUNCTION cg15_qr_verification_audit_immutable() RETURNS trigger
 BEGIN
  RAISE EXCEPTION 'CG15 QR verification audit is immutable';
 END; $$;
-CREATE TRIGGER cg15_qr_verification_audit_immutable
+CREATE TRIGGER cg15_qr_verification_audit_prevent_change
  BEFORE UPDATE OR DELETE ON cg15_center_qr_verification_audit
  FOR EACH ROW EXECUTE FUNCTION cg15_qr_verification_audit_immutable();
