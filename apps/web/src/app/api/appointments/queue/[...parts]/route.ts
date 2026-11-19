@@ -37,7 +37,7 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
   }catch{return fail(400,"Check the visit details and try again.");}
  }
  const params=new URLSearchParams();
- if(method==="GET"&&parts.length===2){
+ if(method==="GET"&&(parts.length===2||parts.length===3&&parts[2]==="summary")){
   const day=req.nextUrl.searchParams.get("date");
   if(!day||!/^\d{4}-\d\d-\d\d$/.test(day))
    return fail(400,"Select a valid consultation date.");
