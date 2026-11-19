@@ -72,6 +72,38 @@ export class ConsultationQueueService{
    [actor.realmId,actor.accountId]);
   return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name,timeZone:row.time_zone}))};
  }
+ /** Aggregate-only daily attendance for the staff member's ACTUAL center.
+  * Unlike page-level UI counts, this covers every recorded booking on the
+  * original center-local day, without sending patient details.
+  */
+ async summary(bearer:string,centerRaw:string,dayRaw:unknown){
+  const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
+  if(typeof dayRaw!=="string"||!DAY.test(dayRaw)||
+   !Number.isFinite(Date.parse(dayRaw+"T00:00:00Z"))||
+   new Date(dayRaw+"T00:00:00Z").toISOString().slice(0,10)!==dayRaw)
+   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN READ ONLY");active=true;
+   await this.scope(tx,actor,center);
+   const counts=await tx.query<{booking_state:string;n:number}>(
+    "SELECT booking_state,COUNT(*)::integer AS n "+
+    "FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND center_id=$2 AND (start_at AT TIME ZONE time_zone)::date=$3::date "+
+    "GROUP BY booking_state",
+    [actor.realmId,center,dayRaw]);
+   await tx.query("COMMIT");active=false;
+   const states:Record<string,number>={CONFIRMED:0,ARRIVED:0,WAITING:0,
+    IN_CONSULTATION:0,COMPLETED:0,NO_SHOW:0,CANCELLED:0};
+   for(const r of counts.rows)if(Object.prototype.hasOwnProperty.call(states,r.booking_state))
+    states[r.booking_state]=r.n;
+   return {day:dayRaw,centerRef:center,total:Object.values(states).reduce((a,b)=>a+b,0),
+    confirmed:states.CONFIRMED,arrived:states.ARRIVED,waiting:states.WAITING,
+    inConsultation:states.IN_CONSULTATION,completed:states.COMPLETED,
+    noShow:states.NO_SHOW,cancelled:states.CANCELLED};
+  }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async list(bearer:string,centerRaw:string,dayRaw:unknown,afterRaw?:string){
   const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
   if(typeof dayRaw!=="string"||!DAY.test(dayRaw)||
