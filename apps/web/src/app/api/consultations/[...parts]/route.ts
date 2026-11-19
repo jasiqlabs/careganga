@@ -7,6 +7,8 @@ const allowed=(p:string[],method:string)=>
  method==="POST"&&p.length===1&&["holds","confirm"].includes(p[0])||
  method==="GET"&&p.length===1&&p[0]==="me"||
  method==="GET"&&p.length===2&&p[0]==="me"&&ID.test(p[1])||
+ method==="GET"&&p.length===5&&p[0]==="me"&&ID.test(p[1])&&
+ p[2]==="reschedule"&&p[3]==="by-request"&&ID.test(p[4])||
  method==="GET"&&p.length===3&&p[0]==="me"&&ID.test(p[1])&&p[2]==="calendar.ics"||
  method==="GET"&&p.length===3&&p[0]==="holds"&&
   p[1]==="by-request"&&ID.test(p[2])||
