@@ -1,7 +1,8 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 type Row={bookingRef:string;bookingId:string;virtualPatientId:string;
- patientName:string;doctorName:string;centerName:string;bookingStatus:string;
+ patientName:string;patientProfileStatus:string;patientConsentGranted:boolean|null;
+ doctorName:string;centerName:string;bookingStatus:string;
  startAt:string;timeZone:string;createdAt:string;collectionStatus:string;consultationFeeMinor:string};
 type Center={centerRef:string;centerName:string;stateRef:string;
  districtRef:string;centerType:string};
@@ -248,6 +249,13 @@ export function FoundationPatientBookings(){
      <>
       <p><strong>Patient:</strong> {selectedBooking.patientName}</p>
       <p><strong>Virtual Patient ID:</strong> {selectedBooking.virtualPatientId}</p>
+      <p><strong>Patient profile:</strong> {selectedBooking.patientProfileStatus==="VERIFIED"?
+       "Identity verified":selectedBooking.patientProfileStatus==="PROVISIONAL"?
+       "Provisional — identity verification pending":"Current status unavailable"}</p>
+      <p><strong>Patient-care consent:</strong> {selectedBooking.patientConsentGranted===true?
+       "Currently granted":selectedBooking.patientConsentGranted===false?
+       "Withdrawn":"Not recorded"}</p>
+      <p>This is a CareGanga patient record, not a government-issued Health ID.</p>
       <p><strong>Booking ID:</strong> {selectedBooking.bookingId}</p>
       <p><strong>Doctor:</strong> {selectedBooking.doctorName}</p>
       <p><strong>Center:</strong> {selectedBooking.centerName}</p>
