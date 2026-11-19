@@ -15,6 +15,7 @@ CREATE TABLE cg15_patient_assisted_booking_code(
  created_at timestamptz NOT NULL DEFAULT now(),
  expires_at timestamptz NOT NULL,
  consumed_at timestamptz,
+ revoked_at timestamptz,
  consumed_by_account uuid,
  hold_id uuid,
  PRIMARY KEY(root_realm_id,id),
@@ -23,6 +24,8 @@ CREATE TABLE cg15_patient_assisted_booking_code(
  CHECK((consumed_at IS NULL AND consumed_by_account IS NULL AND hold_id IS NULL)
    OR (consumed_at IS NOT NULL AND consumed_by_account IS NOT NULL AND hold_id IS NOT NULL)),
  CHECK(consumed_at IS NULL OR consumed_at>=created_at),
+ CHECK(revoked_at IS NULL OR revoked_at>=created_at),
+ CHECK(consumed_at IS NULL OR revoked_at IS NULL),
  FOREIGN KEY(root_realm_id,patient_id)
   REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(account_id,root_realm_id)
@@ -37,13 +40,13 @@ CREATE TABLE cg15_patient_assisted_booking_code(
 );
 CREATE UNIQUE INDEX ux_cg15_patient_one_active_staff_booking_code
  ON cg15_patient_assisted_booking_code(root_realm_id,patient_id)
- WHERE consumed_at IS NULL;
+ WHERE consumed_at IS NULL AND revoked_at IS NULL;
 CREATE UNIQUE INDEX ux_cg15_one_hold_one_assisted_booking_code
  ON cg15_patient_assisted_booking_code(root_realm_id,hold_id)
  WHERE hold_id IS NOT NULL;
 CREATE INDEX ix_cg15_assisted_booking_code_due
  ON cg15_patient_assisted_booking_code(root_realm_id,expires_at)
- WHERE consumed_at IS NULL;
+ WHERE consumed_at IS NULL AND revoked_at IS NULL;
 
 -- Prohibit mutation of consumed source authorization; only first atomic
 -- transition from unconsumed to consumed with exact hold and staff is allowed.
@@ -61,6 +64,8 @@ BEGIN
   NEW.created_at IS DISTINCT FROM OLD.created_at OR
   NEW.expires_at IS DISTINCT FROM OLD.expires_at OR
   OLD.consumed_at IS NOT NULL OR
+  (OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS DISTINCT FROM OLD.revoked_at) OR
+  (OLD.revoked_at IS NOT NULL AND NEW.consumed_at IS NOT NULL) OR
   (NEW.consumed_at IS NOT NULL AND
    (NEW.consumed_by_account IS NULL OR NEW.hold_id IS NULL)) THEN
   RAISE EXCEPTION 'Original patient booking authorization cannot be rewritten';
