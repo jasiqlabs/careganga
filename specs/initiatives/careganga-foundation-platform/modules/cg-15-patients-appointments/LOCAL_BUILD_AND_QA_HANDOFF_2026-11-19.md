@@ -164,3 +164,11 @@ Original center QR lookup now uses one durable CG15 root/account/assigned-center
 Migration 1434 is in the 1420-1434 lexical preflight (15/15 source-valid); eight targeted current-source checks passed. These are not PostgreSQL execution or physical QR replay/abuse, browser, scanner or device QA. Actual upgrade from 1433, 25th attempt, 15-minute reset, multi-instance race, different staff/center/root isolation, immutable audit UPDATE/DELETE denial and retention must be checked locally.
 
 Latest canonical source counts: 92 verified / 27 source gaps / 2 not verifiable / 7 not applicable = 128. Runtime pass 0/128. Formal source completion 0/8. No main merge.
+
+## 19 November 2026 — original US-007-QA11 Foundation exception (not a new use case)
+
+V1 already required authorized exceptional cancellation after the normal cutoff or while a center is suspended, while prohibiting rewriting a consultation in progress/completed. The source now implements a protected nonassignable CG01 Foundation-only action and existing fresh-password proof with rate limit. Original booking row CAS, future consultation start, CONFIRMED status, doctor lock, original reservation release, one immutable CANCELLED actor/reason event and CG19 postcommit source remain unchanged. The ordinary patient and assigned-center cancellation routes keep their original cutoff, identity and scope. H15 Web uses current genuine booking revision, explicit acknowledgment, CSRF-safe staff cookie proxy, and original-status recovery after an unknown result. Its print CSS excludes protected password/override controls.
+
+11 targeted source checks passed; a dedicated original QA assertion is in the US004-US008 static checker. Physical PostgreSQL, Nest/Next, browser, signed-in root/password/role revocation, simultaneous patient/center cancellation and policy/CG17 cross-owner tests remain NOT_RUN.
+
+Current tracker: 93 SOURCE_VERIFIED / 26 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE = 128; 0/128 executed runtime PASS; 0/8 formally SOURCE_COMPLETE. No main merge.
