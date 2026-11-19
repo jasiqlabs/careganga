@@ -165,7 +165,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
   * Recover original slip status before reusing the same issue key.
   */
  async function issueCurrentSlip(ref:string):Promise<boolean>{
-  if(!/^[a-f0-9-]{36}$/i.test(ref))return false;
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(ref))return false;
   const uri="/api/v1/appointments/slips/staff/"+encodeURIComponent(ref);
   try{
    const statusReply=await identityRequest(uri+"/status",{
