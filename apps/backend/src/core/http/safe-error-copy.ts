@@ -284,6 +284,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG15_PATIENT_IDENTITY_NOT_READY:"Verify your registered contact and accept the patient-care consent before requesting in-person identity proof.",
       CG15_PATIENT_IDENTITY_PROOF_REQUIRED:"The patient verification proof could not be confirmed. Check the original one-time code with authorized center staff.",
       CG15_PATIENT_IDENTITY_TOO_SOON:"A verification code was requested recently. Check the current code before requesting another.",
+      CG15_PATIENT_IDENTITY_RATE_LIMIT:"Too many patient record claim attempts. Try again after 15 minutes.",
 
       CG15_AVAILABILITY_INVALID:"Choose an existing verified doctor, center and valid date or time within the next 30 days.",
       CG15_AVAILABILITY_UNAVAILABLE:"Current verified doctor working hours are unavailable. Please contact the center directly.",
