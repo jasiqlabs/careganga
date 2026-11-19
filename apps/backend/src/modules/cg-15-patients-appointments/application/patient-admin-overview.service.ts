@@ -92,6 +92,52 @@ export class PatientAdminOverviewService{
   })),limit:30,
    message:"Only a protected independent reviewer may approve same-person identity evidence. No private appointments or files are merged into another account."};
  }
+ /** Narrow source evidence for an independent restricted reviewer.
+  * No documents, raw identity proof, mobile, medical history or CG19 files.
+  */
+ async duplicateReviewEvidence(bearer:string,rawReview:string){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  if(!ID.test(rawReview))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const rows=await this.db.query<{
+   source_patient_id:string;canonical_patient_id:string;status:string;
+   proposed_by_account:string;patient_id:string;virtual_display_id:string;
+   first_name:string;last_name:string;birth_date:string|null;
+   profile_status:string;verified_at:Date|null;verified_center:string|null
+  }>(
+   "SELECT r.source_patient_id,r.canonical_patient_id,r.status,"+
+   "r.proposed_by_account,p.id AS patient_id,p.virtual_display_id,"+
+   "p.first_name,p.last_name,p.date_of_birth::text AS birth_date,"+
+   "p.profile_status,v.created_at AS verified_at,"+
+   "c.display_name AS verified_center "+
+   "FROM cg15_patient_duplicate_review r "+
+   "JOIN cg15_patient p ON p.root_realm_id=r.root_realm_id "+
+   "AND p.id IN(r.source_patient_id,r.canonical_patient_id) "+
+   "LEFT JOIN cg15_patient_identity_event v "+
+   "ON v.root_realm_id=p.root_realm_id AND v.patient_id=p.id "+
+   "LEFT JOIN health_center c "+
+   "ON c.root_realm_id=v.root_realm_id AND c.id=v.center_id "+
+   "WHERE r.root_realm_id=$1 AND r.id=$2 ORDER BY p.id",
+   [actor.realmId,rawReview]);
+  if(rows.rows.length!==2)
+   throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
+  const primary=rows.rows[0];
+  if(primary.proposed_by_account===actor.accountId||
+   primary.status!=="PENDING")
+   throw new ConflictException({code:"CG15_PATIENT_REVIEW_REQUIRES_INDEPENDENT_ACTOR"});
+  const snapshot=(id:string)=>{
+   const p=rows.rows.find(x=>x.patient_id===id)!;
+   return {virtualPatientId:p.virtual_display_id,
+    firstName:p.first_name,lastName:p.last_name,dateOfBirth:p.birth_date,
+    profileStatus:p.profile_status,identityCheckedInPerson:!!p.verified_at,
+    verificationRecordedAt:p.verified_at?.toISOString()??null,
+    originalVerificationCenter:p.verified_center};
+  };
+  return {source:snapshot(primary.source_patient_id),
+   proposedCanonical:snapshot(primary.canonical_patient_id),
+   purpose:"INDEPENDENT_SAME_PERSON_IDENTITY_REVIEW_ONLY",
+   message:"Compare both originals against independently verified identity evidence before deciding. Names, dates and contact numbers alone never prove a duplicate. No clinical record access is granted."};
+ }
  async proposeDuplicate(bearer:string,input:unknown){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   if(!input||typeof input!=="object"||Array.isArray(input))
