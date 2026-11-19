@@ -10,8 +10,6 @@ import {PatientProfileService} from "./application/patient-profile.service";
 import {PatientProfileController} from "./http/patient-profile.controller";
 import {CenterPatientIntakeService} from "./application/center-patient-intake.service";
 import {CenterPatientIntakeController} from "./http/center-patient-intake.controller";
-import {CenterPatientIntakeService} from "./application/center-patient-intake.service";
-import {CenterPatientIntakeController} from "./http/center-patient-intake.controller";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
