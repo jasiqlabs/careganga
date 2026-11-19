@@ -263,7 +263,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
     <Text style={styles.help}>No consultations were returned for this date.</Text>}
    {center&&items.length>0&&visible.length===0&&
     <Text style={styles.help}>No consultations match these filters.</Text>}
-   {selectedSlip&&items.some(row=>row.appointmentRef===selectedSlip.appointmentRef)&&<View style={styles.card}>
+   {selectedSlip&&items.some(row=>row.appointmentRef===selectedSlip.appointmentRef&&row.consentGranted)&&<View style={styles.card}>
     {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
     <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
     <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}
@@ -293,7 +293,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
       Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
       button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
-     {!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
+     {a.consentGranted&&!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
       button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
     </View>
    </View>)}
