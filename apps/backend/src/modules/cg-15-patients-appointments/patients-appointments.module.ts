@@ -12,11 +12,13 @@ import {CenterPatientIntakeService} from "./application/center-patient-intake.se
 import {CenterPatientIntakeController} from "./http/center-patient-intake.controller";
 import {ConsultationBookingService} from "./application/consultation-booking.service";
 import {ConsultationBookingController} from "./http/consultation-booking.controller";
+import {ConsultationQueueService} from "./application/consultation-queue.service";
+import {ConsultationQueueController} from "./http/consultation-queue.controller";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
- providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,CenterPatientIntakeService,ConsultationBookingService],
- controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController],
+ providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService],
+ controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController,ConsultationQueueController],
  exports:[DoctorScheduleService]
 })
 export class PatientsAppointmentsModule{}
