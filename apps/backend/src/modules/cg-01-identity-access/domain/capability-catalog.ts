@@ -80,6 +80,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"cms.content.manage",businessLabel:"Write website pages and draft public content",group:"Website & content",assignable:true,sensitive:true},
   {key:"cms.content.publish",businessLabel:"Publish or withdraw approved website content",group:"Website & content",assignable:true,sensitive:true},
   // CG-14 US-001: permission alone never grants Center A/B access; affiliation is mandatory.
+  {key:"health.patients.intake",businessLabel:"Register provisional patients at my assigned healthcare center",group:"Healthcare patient intake",assignable:true,sensitive:true},
   {key:"health.schedules.view",businessLabel:"View verified doctor-center schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
   {key:"health.schedules.manage",businessLabel:"Manage approved doctor-center weekly schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
   {key:"health.providers.view",businessLabel:"View healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
