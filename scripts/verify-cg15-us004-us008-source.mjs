@@ -9,6 +9,7 @@ const root=resolve(import.meta.dirname,"..");
 const read=(p)=>readFileSync(resolve(root,p),"utf8");
 const s={
  db1:read("apps/backend/db/migrations/1420_cg15_doctor_schedule_original_source.sql"),
+ leave:read("apps/backend/db/migrations/1421_cg15_original_doctor_leave_cg03_review.sql"),
  db3:read("apps/backend/db/migrations/1423_cg15_center_provisional_patient_intake.sql"),
  db4:read("apps/backend/db/migrations/1424_cg15_consultation_reservation_and_appointments.sql"),
  db5:read("apps/backend/db/migrations/1426_cg19_private_consultation_slip.sql"),
@@ -203,6 +204,13 @@ const checks=[
  ["cancelled consultation releases liability not paid",
   s.service.includes("collection_state='NOT_COLLECTIBLE'")&&
   s.service.includes("changeCutoffMs()")],
+ ["doctor leave 1421 preserves all prior CG03 case kinds without corrupt source or duplicate function",
+  s.leave.includes("case_kind='CG15_DOCTOR_LEAVE'")&&
+  s.leave.includes("cg15_exception_digest ~ '^[0-9a-f]{64}$'")&&
+  (s.leave.match(/CREATE OR REPLACE FUNCTION cg03_health_source_immutable/g)||[]).length===1&&
+  (s.leave.match(/ADD CONSTRAINT cg03_leave_only_source/g)||[]).length===1&&
+  (s.leave.match(/ux_cg03_leave_original_exception/g)||[]).length===1&&
+  s.leave.includes("END; $$;")],
  ["center intake migration has exactly one intact original table and provenance trigger",
   (s.db3.match(/CREATE TABLE cg15_patient_center_intake/g)||[]).length===1&&
   (s.db3.match(/CREATE INDEX ix_cg15_center_intake_recent/g)||[]).length===1&&
@@ -215,7 +223,7 @@ const checks=[
   (s.db6.match(/CREATE TRIGGER cg15_visit_event_immutable/g)||[]).length===1&&
   s.db6.includes("CHECK(request_digest ~ '^[a-f0-9]{64}$')")],
  ["CG15 all PL/pgSQL function terminators remain valid original dollar-quoted source",
-  [s.db1,s.db3,s.db4,s.db5,s.db6].every(sql=>
+  [s.db1,s.leave,s.db3,s.db4,s.db5,s.db6].every(sql=>
    sql.includes("END; $$;")&&!sql.includes("END; $;"))],
  ["patient public signup controller and service are both imported and registered",
   s.signupModule.includes('import { PublicPatientSignupController }')&&
