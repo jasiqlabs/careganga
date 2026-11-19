@@ -22,9 +22,9 @@ function body(x:unknown):Record<string,unknown>{
   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
  return x as Record<string,unknown>;
 }
-function uuid(v:unknown){
+function uuid(v:unknown,field="requestKey"){
  if(typeof v!=="string"||!ID.test(v))
-  throw new BadRequestException({code:"CG15_PATIENT_INVALID",field:"requestKey"});
+  throw new BadRequestException({code:"CG15_PATIENT_INVALID",field});
  return v;
 }
 function part(v:unknown,key:string,min:number){
@@ -79,7 +79,7 @@ export class CenterPatientIntakeService{
  }
  async get(bearer:string,centerRaw:string,keyRaw:string){
   const actor=await this.sessions.verifySession(bearer);
-  const centerRef=uuid(centerRaw),key=uuid(keyRaw);
+  const centerRef=uuid(centerRaw,"centerRef"),key=uuid(keyRaw);
   const tx=await this.db.connect();let active=false;
   try{
    await tx.query("BEGIN");active=true;
@@ -92,7 +92,7 @@ export class CenterPatientIntakeService{
  }
  async create(bearer:string,centerRaw:string,input:unknown){
   const actor=await this.sessions.verifySession(bearer);
-  const centerRef=uuid(centerRaw),v=body(input);
+  const centerRef=uuid(centerRaw,"centerRef"),v=body(input);
   const allowed=["requestKey","firstName","lastName","dateOfBirth",
    "consentVersion","assistedConsentAttested"];
   if(Object.keys(v).some(k=>!allowed.includes(k)))
