@@ -19,7 +19,9 @@ async function submit<T>(path:string,data:Record<string,unknown>):Promise<T>{
  if(!response.ok){
   const item=raw&&typeof raw==="object"&&"message" in raw?
    (raw as {message?:unknown}).message:null;
-  throw Error(typeof item==="string"?item:"The booking result is uncertain. Check your appointments.");
+  throw Object.assign(new Error(typeof item==="string"?item:
+   "The booking request could not be completed. Check its original status."),
+   {status:response.status});
  }
  return raw as T;
 }
@@ -29,14 +31,16 @@ export function PatientBookingAction(p:Props){
  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const [uncertain,setUncertain]=useState(false);
  const [staffBusy,setStaffBusy]=useState(false),[staffError,setStaffError]=useState("");
- const [staffCode,setStaffCode]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
+ const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
- const sameSlot=useRef(p.startAt+"|"+p.centerRef+"|"+p.feeVersion);
+ const sameSlot=useRef(JSON.stringify([p.doctorRef,p.centerRef,p.startAt,p.endAt,
+  p.feeMinor,p.feeVersion]));
  async function makeHold(){
   if(busy||uncertain)return;
   setBusy(true);setMessage("");
   try{
-   const signature=p.startAt+"|"+p.centerRef+"|"+p.feeVersion;
+   const signature=JSON.stringify([p.doctorRef,p.centerRef,p.startAt,p.endAt,
+    p.feeMinor,p.feeVersion]);
    if(signature!==sameSlot.current){
     holdKey.current=null;confirmKey.current=null;sameSlot.current=signature;
    }
@@ -50,7 +54,10 @@ export function PatientBookingAction(p:Props){
     throw Error("This reservation expired. Refresh the availability before retrying.");
    setHold(value);setUncertain(false);setMessage("Time reserved temporarily. Confirm before it expires.");
   }catch(e){
-   setUncertain(true);
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   // An explicit HTTP 4xx is a rejected write, not a lost response.
+   // Preserve the original key so retry/recovery never creates a duplicate.
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
    setMessage(e instanceof Error?e.message:"Reservation cannot be confirmed.");
   }finally{setBusy(false);}
  }
@@ -70,8 +77,10 @@ export function PatientBookingAction(p:Props){
    setConfirmed(value);setUncertain(false);
    setMessage("Appointment confirmed. Payment is due at the healthcare center.");
   }catch(e){
-   setUncertain(true);setMessage(e instanceof Error?e.message:
-    "Confirmation outcome uncertain. Check your appointments before retrying.");
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage(e instanceof Error?e.message:
+    "Confirmation outcome uncertain. Check your original request before retrying.");
   }finally{setBusy(false);}
  }
  async function authorizeCenterStaff(){
@@ -87,7 +96,8 @@ export function PatientBookingAction(p:Props){
     !("authorizationCode" in data)||typeof data.authorizationCode!=="string"||
     !("expiresAt" in data)||typeof data.expiresAt!=="string")
     throw Error("Staff authorization is unavailable. Sign in to your verified patient profile and check your consent.");
-   setStaffCode({authorizationCode:data.authorizationCode,expiresAt:data.expiresAt});
+   setStaffCode({centerRef:p.centerRef,
+    authorizationCode:data.authorizationCode,expiresAt:data.expiresAt});
   }catch(e){setStaffError(e instanceof Error?e.message:
    "Cannot verify your center authorization.");}
   finally{setStaffBusy(false);}
@@ -155,7 +165,7 @@ export function PatientBookingAction(p:Props){
    uncertain?<div>
     <p role="alert">The previous action may have succeeded. Do not make a second payment or new booking.</p>
     <button disabled={busy} type="button" onClick={()=>void checkOriginal()}>
-     Check my recent appointments</button>
+     Check original booking request</button>
     <Link href="/patients/me">My patient profile</Link>
    </div>:hold?<button type="button" disabled={busy}
     onClick={()=>void confirm()}>Confirm appointment — payment due at center</button>:
@@ -168,7 +178,8 @@ export function PatientBookingAction(p:Props){
     onClick={()=>void authorizeCenterStaff()}>
     {staffBusy?"Checking…":"Get one-time receptionist booking code"}</button>
    {!!staffError&&<p role="alert">{staffError}</p>}
-   {staffCode&&<p role="status">Give only this center's authorized receptionist your
+   {staffCode&&staffCode.centerRef===p.centerRef&&
+    <p role="status">Give only this center's authorized receptionist your
     Virtual Patient ID and code <strong style={{fontFamily:"monospace"}}>
      {staffCode.authorizationCode}</strong>.
     Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.
