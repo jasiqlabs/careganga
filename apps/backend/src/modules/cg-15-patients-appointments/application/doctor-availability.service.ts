@@ -15,9 +15,15 @@ type DoctorCenter={
 };
 type Schedule={
  schedule_id:string;center_id:string;association_id:string;time_zone:string;
- slot_minutes:number;weekly_start:string;weekly_end:string;
- effective_from:string;effective_until:string|null;
+ slot_minutes:number;effective_from:string;effective_until:string|null;
+ has_window:boolean;
 };
+type PreviewSlot={startAt:string;endAt:string;startLocal:string;
+ endLocal:string;bookable:false};
+type DayPreview={status:string;bookingEnabled:false;day:string;
+ centerRef:string;centerName:string;doctorName:string;timeZone:string;
+ slots:PreviewSlot[];message:string;centerSlug?:string;
+ consultationFeeMinor?:string|null;consultationCurrency?:string};
 type Window={schedule_id:string;weekday:number;open_local:string;close_local:string};
 type Block={kind:string;center_id:string;start_at:Date;end_at:Date};
 const validId=(v:unknown)=>{
@@ -158,7 +164,10 @@ export class DoctorAvailabilityService{
  private async scheduleFor(source:DoctorCenter,day:string){
   const schedules=await this.db.query<Schedule>(
    "SELECT s.id AS schedule_id,s.center_id,s.association_id,s.time_zone,"+
-   "r.slot_minutes,r.effective_from::text,r.effective_until::text "+
+   "r.slot_minutes,r.effective_from::text,r.effective_until::text,"+
+   "EXISTS(SELECT 1 FROM cg15_schedule_weekly_window w "+
+   "WHERE w.root_realm_id=s.root_realm_id AND w.schedule_id=s.id "+
+   "AND w.revision_id=r.id AND w.weekday=$4) AS has_window "+
    "FROM cg15_doctor_schedule s "+
    "JOIN cg15_schedule_revision r ON r.root_realm_id=s.root_realm_id "+
    "AND r.schedule_id=s.id AND r.id=s.current_revision_id "+
@@ -166,7 +175,7 @@ export class DoctorAvailabilityService{
    "AND s.consultation_mode='IN_PERSON' AND s.status='ACTIVE' "+
    "AND r.effective_from<=$3::date "+
    "AND (r.effective_until IS NULL OR r.effective_until>$3::date)",
-   [source.root_realm_id,source.association_id,day]);
+   [source.root_realm_id,source.association_id,day,rootDay(day)]);
   return schedules.rows[0]??null;
  }
  async centerOptions(doctorRaw:string,dayRaw:unknown){
@@ -179,24 +188,29 @@ export class DoctorAvailabilityService{
     centerSlug:center.center_slug,timeZone:center.time_zone,
     address: center.address_line,pinCode:center.pin_code,
     consultationFeeMinor:center.amount_minor,consultationCurrency:"INR",
-    hasWorkingSchedule:!!schedule,
+    hasWorkingSchedule:!!schedule?.has_window,
     doctorName:center.doctor_name,
     bookingEnabled:false};
   }));
   return {day,doctorName:centers[0].doctor_name,bookingEnabled:false,
    status:"SCHEDULE_PREVIEW",message:GENERAL_MESSAGE,centers:result};
  }
- async dayForCenter(doctorRaw:string,centerRaw:string,dayRaw:unknown){
+ async dayForCenter(doctorRaw:string,centerRaw:string,dayRaw:unknown):
+  Promise<DayPreview>{
   const doctorRef=validId(doctorRaw),centerRef=validId(centerRaw),
    day=validDate(dayRaw);
   const centers=await this.centers(doctorRef,centerRef);
   const center=centers[0];
   if(!center)throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
+  return this.dayForSource(center,day);
+ }
+ private async dayForSource(center:DoctorCenter,day:string):
+  Promise<DayPreview>{
   const current=await this.scheduleFor(center,day);
   if(!current)return {status:"NO_VERIFIED_SCHEDULE",bookingEnabled:false,
    day,centerRef:center.center_id,centerName:center.center_name,
    doctorName:center.doctor_name,timeZone:center.time_zone,
-   slots:[] as unknown[],message:"No verified working schedule for this date."};
+   slots:[],message:"No verified working schedule for this date."};
   if(current.time_zone!==center.time_zone)
    throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
   const weekday=rootDay(day);
@@ -215,8 +229,7 @@ export class DoctorAvailabilityService{
    "AND (kind='LEAVE' OR center_id=$3) "+
    "AND start_at<$5 AND end_at>$4 ORDER BY start_at LIMIT 200",
    [center.root_realm_id,center.doctor_id,center.center_id,lo,hi]);
-  const slots:{startAt:string;endAt:string;startLocal:string;endLocal:string;
-   bookable:false}[]=[];
+  const slots:PreviewSlot[]=[];
   const now=Date.now();
   for(const w of windows.rows){
    const duration=Number(current.slot_minutes);
@@ -250,13 +263,19 @@ export class DoctorAvailabilityService{
   const centers=await this.centers(doctorRef);
   if(!centers.length)throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
   const matched=[];
+  let sharedInstant:string|null=null;
   for(const center of centers){
-   const calendar=await this.dayForCenter(doctorRef,center.center_id,day);
+   const calendar=await this.dayForSource(center,day);
    const chosen=calendar.slots.find(s=>s.startLocal===clockRaw);
-   if(chosen)matched.push({centerRef:center.center_id,centerName:center.center_name,
+   // A time-first option must mean the same actual UTC instant, not
+   // an unrelated local clock time in another center/time zone.
+   if(chosen&&(!sharedInstant||sharedInstant===chosen.startAt)){
+    sharedInstant=chosen.startAt;
+    matched.push({centerRef:center.center_id,centerName:center.center_name,
     centerSlug:center.center_slug,timeZone:center.time_zone,
     consultationFeeMinor:center.amount_minor,consultationCurrency:"INR",
     startAt:chosen.startAt,endAt:chosen.endAt,bookable:false});
+   }
   }
   return {day,time:clockRaw,doctorName:centers[0].doctor_name,
    centerChoices:matched,status:"SCHEDULE_PREVIEW",
