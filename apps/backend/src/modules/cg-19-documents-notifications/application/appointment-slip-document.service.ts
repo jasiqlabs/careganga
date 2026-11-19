@@ -33,8 +33,13 @@ export class AppointmentSlipDocumentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly original:ConsultationSlipSourceFacade,
   private readonly storage:PrivateObjectStorage){}
- async status(bearer:string,bookingRaw:string){
-  const source=await this.original.original(bearer,uuid(bookingRaw));
+ private source(bearer:string,bookingRef:string,staff:boolean){
+  return staff?this.original.originalForCenter(bearer,bookingRef):
+   this.original.original(bearer,bookingRef);
+ }
+
+ async status(bearer:string,bookingRaw:string,staff=false){
+  const source=await this.source(bearer,uuid(bookingRaw),staff);
   const docs=await this.db.query<Document>(
    "SELECT * FROM cg19_consultation_slip "+
    "WHERE root_realm_id=$1 AND appointment_id=$2 AND source_revision=$3",
@@ -45,9 +50,9 @@ export class AppointmentSlipDocumentService{
    issuedAt:doc.issued_at?.toISOString()??null}:{
    status:"NOT_ISSUED",canDownload:false,documentRef:null,issuedAt:null};
  }
- async issue(bearer:string,bookingRaw:string,requestRaw:string){
+ async issue(bearer:string,bookingRaw:string,requestRaw:string,staff=false){
   const bookingRef=uuid(bookingRaw),requestKey=uuid(requestRaw);
-  const source=await this.original.original(bearer,bookingRef);
+  const source=await this.source(bearer,bookingRef,staff);
   const verifiedActor=await this.original.actorForSlip(bearer);
   if(source.bookingStatus==="CANCELLED"||source.bookingStatus==="NO_SHOW")
    throw new ConflictException({code:"CG19_SLIP_UNAVAILABLE"});
@@ -98,7 +103,7 @@ export class AppointmentSlipDocumentService{
     const checked=await PDFDocument.load(actual,{updateMetadata:false});
     if(checked.getSubject()!=="CG15-APPOINTMENT:"+source.sourceDigest)
      throw Error("Original source mismatch");
-    await this.original.original(bearer,bookingRef);
+    await this.source(bearer,bookingRef,staff);
     const fixed=await this.db.query(
      "UPDATE cg19_consultation_slip SET status='ISSUED',object_version=$3,"+
      "content_sha256=$4,content_length=$5,issued_at=created_at,updated_at=now() "+
@@ -116,7 +121,7 @@ export class AppointmentSlipDocumentService{
     objectKey:document.object_key,bytes:pdf,sha256:checksum});
    if(!stored.objectVersion||stored.sha256!==checksum)
     throw Error("Slip private storage not independently verified");
-   const current=await this.original.original(bearer,bookingRef);
+   const current=await this.source(bearer,bookingRef,staff);
    if(current.sourceDigest!==source.sourceDigest)
     throw Error("Appointment changed before slip issued");
    const confirmed=await this.db.query(
@@ -135,8 +140,8 @@ export class AppointmentSlipDocumentService{
    return {status:"UNKNOWN",documentRef:document.id,confirmed:false};
   }
  }
- async download(bearer:string,bookingRaw:string){
-  const source=await this.original.original(bearer,uuid(bookingRaw));
+ async download(bearer:string,bookingRaw:string,staff=false){
+  const source=await this.source(bearer,uuid(bookingRaw),staff);
   const row=await this.db.query<Document>(
    "SELECT * FROM cg19_consultation_slip WHERE root_realm_id=$1 AND "+
    "appointment_id=$2 AND source_revision=$3 AND source_digest=$4 "+
@@ -149,7 +154,7 @@ export class AppointmentSlipDocumentService{
    objectKey:d.object_key,objectVersion:d.object_version,maxBytes:d.content_length});
   if(bytes.length!==d.content_length||hash(bytes)!==d.content_sha256)
    throw new ConflictException({code:"CG19_SLIP_UNAVAILABLE"});
-  const current=await this.original.original(bearer,source.bookingRef);
+  const current=await this.source(bearer,source.bookingRef,staff);
   if(current.sourceDigest!==source.sourceDigest)
    throw new ConflictException({code:"CG19_SLIP_UNAVAILABLE"});
   const live=await this.db.query(
