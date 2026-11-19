@@ -51,6 +51,7 @@ export function CenterVisitQueue(){
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [canCancel,setCanCancel]=useState(false);
+ const [canClinicalManage,setCanClinicalManage]=useState(false);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
  const [historyRef,setHistoryRef]=useState("");
  const [history,setHistory]=useState<AuditHistory|null>(null);
@@ -92,7 +93,9 @@ export function CenterVisitQueue(){
      Array.isArray(data.actions)?data.actions:[];
     setCanCancel(actions.some((action:unknown)=>action&&typeof action==="object"&&
      "key" in action&&action.key==="health.appointments.cancel"));
-   }).catch(()=>{if(alive)setCanCancel(false);});
+    setCanClinicalManage(actions.some((action:unknown)=>action&&typeof action==="object"&&
+     "key" in action&&action.key==="health.visits.clinical.manage"));
+   }).catch(()=>{if(alive){setCanCancel(false);setCanClinicalManage(false);}});
   return()=>{alive=false;};
  },[]);
  useEffect(()=>{
@@ -355,9 +358,9 @@ export function CenterVisitQueue(){
        onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
      {item.visitStatus==="ARRIVED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"WAITING")}>Move to waiting</button>}
-     {item.visitStatus==="WAITING"&&<button type="button" disabled={busy||uncertain}
+     {canClinicalManage&&item.visitStatus==="WAITING"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"IN_CONSULTATION")}>In consultation</button>}
-     {item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
+     {canClinicalManage&&item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"COMPLETED")}>Complete visit</button>}
      {item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
       Number.isFinite(Date.parse(item.endAt))&&Date.parse(item.endAt)<=Date.now()&&
