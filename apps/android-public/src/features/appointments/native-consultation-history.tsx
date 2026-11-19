@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {DoctorSchedulePreview} from "../health-network/doctor-schedule-preview";
+import {NativeAppointmentDocuments} from "./native-appointment-documents";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;doctorName:string;
@@ -103,6 +104,7 @@ export function NativeConsultationHistory(){
    <Text>Status: {x.bookingStatus.replaceAll("_"," ")}</Text>
    <Text>Consultation: ₹{(Number(x.consultationFeeMinor)/100).toFixed(2)}</Text>
    <Text>Payment: {x.collectionStatus.replaceAll("_"," ")}</Text>
+   <NativeAppointmentDocuments bookingRef={x.bookingRef} bookingStatus={x.bookingStatus}/>
    {x.bookingStatus==="CONFIRMED"&&new Date(x.startAt).getTime()>Date.now()&&
     <View style={styles.actions}>
      {button("Reschedule",()=>setReschedule(x),busy||uncertain)}
