@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {DoctorProofUploader} from "./doctor-proof-uploader";
 import {DoctorCenterManagement} from "./doctor-center-management";
+import {ClinicianAccountLinkReviewer} from "./clinician-account-link";
 
 type DoctorForm={fullName:string;registrationJurisdiction:string;
   registrationNumber:string;qualifications:string[];specialties:string[];
@@ -310,6 +311,8 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
       </div>}
       <DoctorCenterManagement doctorRef={selected.doctorRef}
         verified={selected.status==="VERIFIED"} canManage={canManage} canVerify={canVerify}/>
+      {canVerify&&selected.status==="VERIFIED"&&
+       <ClinicianAccountLinkReviewer key={selected.doctorRef} doctorRef={selected.doctorRef}/>}
       <p className="muted">No appointment availability, patient payment or benefit is implied by a verified registration.</p>
     </section>}
   </div>;
