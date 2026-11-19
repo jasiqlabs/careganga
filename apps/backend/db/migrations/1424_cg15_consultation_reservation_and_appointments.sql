@@ -55,6 +55,7 @@ CREATE TABLE cg15_doctor_reservation (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,hold_id),
+ UNIQUE(root_realm_id,id,doctor_id,center_id,association_id),
  CHECK(end_at>start_at),
  FOREIGN KEY(root_realm_id,hold_id) REFERENCES cg15_consultation_hold(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,doctor_id,center_id,association_id)
@@ -102,9 +103,11 @@ CREATE TABLE cg15_consultation_appointment (
  FOREIGN KEY(root_realm_id,patient_id) REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,doctor_id,center_id,association_id)
    REFERENCES health_doctor_center(root_realm_id,doctor_id,center_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,hold_id,patient_id,doctor_id,center_id,association_id)
-   REFERENCES cg15_consultation_hold(root_realm_id,id,patient_id,doctor_id,center_id,association_id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,reservation_id) REFERENCES cg15_doctor_reservation(root_realm_id,id) ON DELETE RESTRICT,
+ -- Original hold proves the patient only; current doctor/center may change
+ -- atomically with a new globally nonoverlapping reservation on reschedule.
+ FOREIGN KEY(root_realm_id,hold_id) REFERENCES cg15_consultation_hold(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,reservation_id,doctor_id,center_id,association_id)
+  REFERENCES cg15_doctor_reservation(root_realm_id,id,doctor_id,center_id,association_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by_account,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg15_appointment_my ON cg15_consultation_appointment
