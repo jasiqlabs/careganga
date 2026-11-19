@@ -180,3 +180,18 @@ No new notification or business scenario was created. The already installed CG03
 Full US001 source script now has a corresponding assertion but complete multi-file execution hit a GitHub connector tool-call limit; do NOT claim it ran. Local runtime SQL EXPLAIN, communication retry/idle activity, security and mobile/browser QA NOT_RUN.
 
 Latest canonical source snapshot: 94 SOURCE_VERIFIED / 25 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128); actual QA PASS 0/128; formal SOURCE_COMPLETE 0/8. Main merge not approved.
+
+
+## Latest same-branch source fix — all-root CG19 missed queue event recovery (19 Nov)
+
+Use the **current feature branch HEAD**, not the original handoff's older migration list. **US-006-QA15** original committed queue notification recovery was fixed without inventing a new notification source or per-tenant worker. The original CG15 queue transition creates cg15_appointment_event and the 1433 transaction trigger creates a PENDING CG19 outbox row. The CG19 CommunicationWorker formerly recovered appointments only for the first Foundation root (rootRef); it now recovers due events from **all** roots via one global LIMIT 64 PENDING query, a forward-only migration `1435_cg19_appointment_pending_recovery_global.sql` on (recorded_at, realm_id, event_id), up to eight roots per sweep and four LIMIT 25 SKIP LOCKED source claim batches each. CG19 receipt/provider/consent constraints are preserved.
+
+Required additional local test work (original US-006-QA15, US-001-QA16, US-006-QA14, US-007-QA12):
+
+1. Run `npm ci`; then `npm run verify:cg15-migrations-source` (**16 migrations, 1420–1435**) and `npm run verify:cg15-communications-source` (**13 source assertions**). These scripts **have not been run here**.
+2. Migrate a clean isolated PostgreSQL DB and an upgrade DB from 1434 to 1435. Verify actual FK/trigger, partial-index plan with `EXPLAIN (ANALYZE, BUFFERS)`, no index corruption on replay, no production database alterations.
+3. With at least two approved synthetic Foundation roots A and B, generate a genuine queue visit event in B while A has no pending event. Disconnect/reconnect LISTEN and restart the worker: B must be captured by the one bounded global recovery and original source event key, not by a fabricated notification. Test concurrent 2-worker SKIP LOCKED, 64+ backlog, consent withdrawal, root separation and delivered/unknown receipts. No private names or clinical data in notification body.
+4. Observe an idle 10-minute run and its DB query plan/provider egress, confirm one indexed global pending lookup per interval (not a per-root/center polling loop) and no external provider call without a due CG19 notification. Confirm unrelated original CG03 leave decision recovery and CG19 notices still work after this change.
+5. Retest Nest, Next, Public/Internal Android builds, original appointment flows and the original 128-case tracker. Only attach measured runtime PASS evidence (SHA, commands, test database/device, redacted expected/observed results) after execution.
+
+**Reconciled source-only QA totals:** 95 SOURCE_VERIFIED / 24 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE (128). **0/128 runtime PASS; 0/8 US formally SOURCE_COMPLETE**. In particular, remaining clinician-role proof, CG19 patient files/camera/native-share, CG01 family/dependent identity, CG17 real refund owner and client H07/H15 visual/device qualification are **not** treated as complete. Keep same feature branch, no CI/GitHub Actions, no merge or deployment. The earlier 68-gap source audit is a historical baseline, not the current tracker.
