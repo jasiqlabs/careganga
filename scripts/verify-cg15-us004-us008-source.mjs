@@ -373,7 +373,9 @@ const checks=[
   s.admin.includes("a.booking_display_id")&&
   s.adminCtrl.includes('@Query("search")search?:string')&&
   s.webAdmin.includes("Find a patient or booking")&&
-  s.adminBff.includes('key==="search"?80:50')],
+  s.adminBff.includes('key==="search"?80:key==="centerSearch"?60:50')&&
+  s.adminCtrl.includes('@Query("centerSearch")centerSearch?:string')&&
+  s.admin.includes("centerSearch.trim()")],
  ["patient-owned short-lived center booking code and original hold are bound by composite FK",
   s.assistedDb.includes("cg15_patient_assisted_booking_code")&&
   s.assistedDb.includes("FOREIGN KEY(root_realm_id,hold_id,patient_id,center_id)")&&
