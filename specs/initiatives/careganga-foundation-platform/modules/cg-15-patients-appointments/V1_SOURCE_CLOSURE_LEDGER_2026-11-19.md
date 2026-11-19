@@ -6,7 +6,7 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **92/128 SOURCE_VERIFIED, 27 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **93/128 SOURCE_VERIFIED, 26 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
@@ -37,7 +37,7 @@ Source-only current snapshot: **92/128 SOURCE_VERIFIED, 27 SOURCE_GAP, 2 NOT_VER
 | US-006-QA14 | SOURCE_VERIFIED | CG19 original appointment notifications | Source integration now uses committed CG15 immutable appointment event→1433 outbox→consented CG19 IN_APP/EMAIL/SMS→real provider receipts. Actual delivery/permissions/device QA NOT_RUN. |
 | US-006-QA15 | SOURCE_GAP | CG15 direct source/code work | No original bounded missed-queue-event reconciliation job/idle-source trace; no bogus workers created. |
 | US-007-QA01 | SOURCE_VERIFIED | CG15/CG19 cancellation owner | Original patient cancellation and source event now enter real postcommit CG19 notification outbox, current account and consent checked. Provider/device/SQL QA NOT_RUN. |
-| US-007-QA11 | SOURCE_GAP | Policy/identity approval | Source disallows after cutoff, non-CONFIRMED and in-progress changes; suspended-center override workflow and qualified policy review not yet implemented. |
+| US-007-QA11 | SOURCE_VERIFIED | CG15 protected Foundation cancellation | Nonassignable Foundation root override, current password proof and original booking CAS; only still-confirmed before-start cancellations, including suspended-center/after normal cutoff. Immutable actor/reason event and proper reservation release; public/center unchanged. Actual DB/browser/auth tests NOT_RUN. |
 | US-007-QA12 | SOURCE_VERIFIED | CG19 original appointment notifications | Original cancellation/reschedule events, bounded source outbox, current consent/owner checks and provider-status handling are wired. Provider receipts and patient UX QA NOT_RUN. |
 | US-007-QA16 | SOURCE_GAP | CG17/CG19 cross-owner financial and notice integration | Doctor-global source keys and CAS are present; original CG17 refund, CG19 cancellation notice, cross-owner queue effect and runtime races unverified. |
 | US-008-QA04 | SOURCE_GAP | CG14 clinician identity + CG01 purpose authority | Own-center queue gives minimum permitted check-in row; no clinician-only scoped clinical longitudinal read and Center B record exclusion proof. |
@@ -88,3 +88,11 @@ Original center QR lookup now uses one durable CG15 root/account/assigned-center
 Migration 1434 is in the 1420-1434 lexical preflight (15/15 source-valid); eight targeted current-source checks passed. These are not PostgreSQL execution or physical QR replay/abuse, browser, scanner or device QA. Actual upgrade from 1433, 25th attempt, 15-minute reset, multi-instance race, different staff/center/root isolation, immutable audit UPDATE/DELETE denial and retention must be checked locally.
 
 Latest canonical source counts: 92 verified / 27 source gaps / 2 not verifiable / 7 not applicable = 128. Runtime pass 0/128. Formal source completion 0/8. No main merge.
+
+## 19 November 2026 — original US-007-QA11 Foundation exception (not a new use case)
+
+V1 already required authorized exceptional cancellation after the normal cutoff or while a center is suspended, while prohibiting rewriting a consultation in progress/completed. The source now implements a protected nonassignable CG01 Foundation-only action and existing fresh-password proof with rate limit. Original booking row CAS, future consultation start, CONFIRMED status, doctor lock, original reservation release, one immutable CANCELLED actor/reason event and CG19 postcommit source remain unchanged. The ordinary patient and assigned-center cancellation routes keep their original cutoff, identity and scope. H15 Web uses current genuine booking revision, explicit acknowledgment, CSRF-safe staff cookie proxy, and original-status recovery after an unknown result. Its print CSS excludes protected password/override controls.
+
+11 targeted source checks passed; a dedicated original QA assertion is in the US004-US008 static checker. Physical PostgreSQL, Nest/Next, browser, signed-in root/password/role revocation, simultaneous patient/center cancellation and policy/CG17 cross-owner tests remain NOT_RUN.
+
+Current tracker: 93 SOURCE_VERIFIED / 26 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE = 128; 0/128 executed runtime PASS; 0/8 formally SOURCE_COMPLETE. No main merge.
