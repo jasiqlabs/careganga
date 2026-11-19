@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 
 type Profile={virtualPatientId:string;firstName:string;lastName:string;
  dateOfBirth:string|null;profileStatus:string;version:number;
@@ -27,6 +27,7 @@ export function PatientProfilePanel(){
  const [first,setFirst]=useState(""),[last,setLast]=useState("");
  const [dob,setDob]=useState(""),[agree,setAgree]=useState(false);
  const [message,setMessage]=useState("");
+ const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
   const response=await fetch("/api/patients/me",{cache:"no-store"});
   if(response.status===401){setSignedIn(false);setProfile(null);return;}
@@ -56,7 +57,7 @@ export function PatientProfilePanel(){
  async function login(){
   await act(async()=>{
    await request<{signedIn:boolean}>("login","POST",{identifier,password});
-   setPassword("");await refresh();
+   setPassword("");pendingRegistration.current=null;await refresh();
    setMessage("Signed in. Your private patient information is available.");
   });
  }
@@ -64,16 +65,21 @@ export function PatientProfilePanel(){
   await act(async()=>{
    await request<{signedOut:boolean}>("logout","POST");
    setSignedIn(false);setProfile(null);setPassword("");setAgree(false);
+   pendingRegistration.current=null;
    setMessage("Signed out of your patient profile.");
   });
  }
  async function register(){
   await act(async()=>{
+   const payload={firstName:first,lastName:last,
+    dateOfBirth:dob||null,consentVersion:policy.version,consentAccepted:agree};
+   const digest=JSON.stringify(payload);
+   if(pendingRegistration.current?.digest!==digest)
+    pendingRegistration.current={digest,key:crypto.randomUUID()};
    const result=await request<Profile>("registration","POST",{
-    requestKey:crypto.randomUUID(),firstName:first,lastName:last,
-    dateOfBirth:dob||null,consentVersion:policy.version,consentAccepted:agree
+    requestKey:pendingRegistration.current.key,...payload
    });
-   setProfile(result);setMessage("Your CareGanga patient profile has been created.");
+   pendingRegistration.current=null;setProfile(result);setMessage("Your CareGanga patient profile has been created.");
   });
  }
  async function save(){
