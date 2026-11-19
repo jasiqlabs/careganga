@@ -15,7 +15,7 @@ export function NativePatientDatePicker({value,onChange,disabled=false}:Props){
  const current=new Date().toISOString().slice(0,10);
  const original=YYYY_MM_DD.test(value)&&!Number.isNaN(Date.parse(value+"T00:00:00Z"))?
   value:"";
- const initial=original||"2000-01-01";
+ const initial=original||current;
  const [open,setOpen]=useState(false);
  const [yearText,setYearText]=useState(initial.slice(0,4));
  const [month,setMonth]=useState(Number(initial.slice(5,7))-1);
@@ -36,7 +36,7 @@ export function NativePatientDatePicker({value,onChange,disabled=false}:Props){
   <Text style={styles.label}>Date of birth (optional)</Text>
   {action(original?"Date of birth: "+original+". Change date":
    "Choose date of birth",()=>{
-    const date=original||"2000-01-01";
+    const date=original||current;
     setYearText(date.slice(0,4));setMonth(Number(date.slice(5,7))-1);
     setOpen(true);
    },disabled)}
