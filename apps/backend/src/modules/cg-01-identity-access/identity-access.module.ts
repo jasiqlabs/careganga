@@ -21,8 +21,8 @@ import { MobileVerificationService } from "./application/mobile-verification.ser
 import { MobileVerificationController } from "./http/mobile-verification.controller";
 
 @Module({
-  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
-  providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
+  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
+  providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
   exports:[HealthNetworkIdentityFacade,SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
