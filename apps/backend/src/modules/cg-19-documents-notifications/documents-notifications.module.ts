@@ -2,6 +2,8 @@ import {Module} from "@nestjs/common";
 import {ConsultationSlipSourceModule} from "../cg-15-patients-appointments/consultation-slip-source.module";
 import {AppointmentSlipDocumentService} from "./application/appointment-slip-document.service";
 import {AppointmentSlipController} from "./http/appointment-slip.controller";
+import {HealthPublicRequestThrottleService}
+ from "../cg-14-healthcare-network/application/health-public-request-throttle.service";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {BranchPrivateEvidenceService} from "./application/branch-private-evidence.service";
@@ -60,7 +62,7 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
   imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule,FinanceSourceModule,ConsultationSlipSourceModule],
   controllers:[AppointmentSlipController,SupportAgentAttachmentController,CenterSupportAttachmentController,HealthCenterContentMediaController,HealthDraftEvidenceController,HealthDoctorPrivateEvidenceController,PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,CmsPublicNoticeSourceController,
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
-  providers:[AppointmentSlipDocumentService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
+  providers:[HealthPublicRequestThrottleService,AppointmentSlipDocumentService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
     NotificationService,NoticeService,DeliveryService,
     CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
     HealthCenterContentMediaService,CenterSupportAttachmentService,
