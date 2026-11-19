@@ -135,6 +135,11 @@ for(const name of files){
    !source.includes("cg15_assisted_booking_code_immutable")||
    !source.includes("WHERE consumed_at IS NULL AND revoked_at IS NULL")))
   result.errors.push("Patient-authorized clinic booking proof source is incomplete");
+ if(name.startsWith("1431")&&
+  (!source.includes("CREATE TABLE cg15_patient_claim_attempt_throttle")||
+   !source.includes("PRIMARY KEY(root_realm_id,account_id)")||
+   !source.includes("REFERENCES account(id,realm_id) ON DELETE RESTRICT")))
+  result.errors.push("The authenticated patient claim throttle source is incomplete");
  if(name.startsWith("1425")&&
   ((source.match(/CREATE TABLE cg15_visit_event/g)||[]).length!==1||
    (source.match(/CREATE TRIGGER cg15_visit_event_immutable/g)||[]).length!==1||
