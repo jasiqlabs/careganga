@@ -43,6 +43,9 @@ export function NativeConsultationAction(p:Props){
  const [booking,setBooking]=useState<Booking|null>(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
+ const [staffBusy,setStaffBusy]=useState(false);
+ const [staffCode,setStaffCode]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
+ const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const label=(s:string,run:()=>void)=>(
   <Pressable accessibilityRole="button" disabled={busy||uncertain}
@@ -106,6 +109,28 @@ export function NativeConsultationAction(p:Props){
   }catch(e){
    setUncertain(true);setMessage(e instanceof Error?e.message:"Confirmation is uncertain.");
   }finally{setBusy(false);}
+ }
+ async function authorizeCenterStaff(){
+  if(staffBusy)return;
+  setStaffBusy(true);setStaffMessage("");setStaffCode(null);
+  try{
+   const t=await token();
+   if(!t)throw Error("Sign in to your patient account.");
+    if(!base)throw Error("The patient API is not configured.");
+    const response=await fetch(new URL("/api/v1/patients/me/assisted-booking-code",base),{
+     method:"POST",cache:"no-store",signal:AbortSignal.timeout(12000),
+     headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
+     body:JSON.stringify({centerRef:p.centerRef})});
+    const data:unknown=await response.json().catch(()=>null);
+    if(!response.ok||!data||typeof data!=="object"||
+     !("authorizationCode" in data)||typeof data.authorizationCode!=="string"||
+     !("expiresAt" in data)||typeof data.expiresAt!=="string")
+     throw Error("The receptionist code cannot be confirmed.");
+    setStaffCode({authorizationCode:data.authorizationCode,expiresAt:data.expiresAt});
+    setStaffMessage("One-time booking consent was issued for this exact center.");
+  }catch(e){setStaffMessage(e instanceof Error?e.message:
+   "Patient verification or center authorization is unavailable.");}
+  finally{setStaffBusy(false);}
  }
  async function recover(){
   if(busy)return;
@@ -177,6 +202,18 @@ export function NativeConsultationAction(p:Props){
    p.reschedule?label(busy?"Checking…":"Accept fee and reschedule",()=>void reschedule()):
    hold?label(busy?"Checking…":"Confirm pay-at-center appointment",()=>void confirm()):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
+  <Text style={style.text}>At this healthcare center, you can choose to have
+   assigned reception staff book one consultation using a patient-issued code.</Text>
+  <Pressable accessibilityRole="button" disabled={staffBusy}
+   style={[style.button,staffBusy&&{opacity:0.5}]}
+   onPress={()=>void authorizeCenterStaff()}>
+   <Text style={style.buttonText}>
+    {staffBusy?"Checking…":"Give center one-time booking permission"}</Text>
+  </Pressable>
+  {!!staffMessage&&<Text accessibilityRole="alert" style={style.text}>{staffMessage}</Text>}
+  {staffCode&&<Text selectable style={style.text}>Show your Virtual Patient ID
+   and code {staffCode.authorizationCode} only to assigned staff at this center.
+   Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.</Text>}
  </View>;
 }
 const style=StyleSheet.create({
