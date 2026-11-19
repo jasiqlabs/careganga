@@ -13,7 +13,8 @@ export class PatientAdminOverviewController{
  @Header("Cache-Control","private, no-store")
  overview(@Headers("authorization")bearer:string,
   @Query("centerRef")centerRef?:string,@Query("status")status?:string,
-  @Query("after")after?:string,@Query("limit")limit?:string){
-  return this.admin.overview(bearer,{centerRef,status,after,limit});
+  @Query("after")after?:string,@Query("limit")limit?:string,
+  @Query("day")day?:string){
+  return this.admin.overview(bearer,{centerRef,status,after,limit,day});
  }
 }
