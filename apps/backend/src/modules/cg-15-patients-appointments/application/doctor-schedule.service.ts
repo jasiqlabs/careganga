@@ -596,6 +596,21 @@ export class DoctorScheduleService{
     [actor.realmId,caseRef]);
    const c=original.rows[0];
    if(!c)throw new NotFoundException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+   // Replay a completed protected action BEFORE demanding PENDING_OWNER.
+   // Otherwise a successful first application would falsely report conflict.
+   const signature=digest([caseRef,expected,c.cg15_exception_id,c.cg15_exception_digest]);
+   const previous=await tx.query<{request_digest:string;result_ref:string|null;
+    result_version:number|null}>(
+    "SELECT request_digest,result_ref,result_version FROM cg15_schedule_command "+
+    "WHERE root_realm_id=$1 AND actor_ref=$2 AND action_key='APPLY_LEAVE' "+
+    "AND request_key=$3 FOR SHARE",
+    [actor.realmId,actor.accountId,key]);
+   if(previous.rows[0]){
+    if(previous.rows[0].request_digest!==signature||!previous.rows[0].result_ref)
+     throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
+    return {status:"PREVIOUSLY_CONFIRMED",version:previous.rows[0].result_version,
+     message:"This original doctor leave approval was already applied."};
+   }
    const peek=await tx.query<{association_id:string;version:number}>(
     "SELECT association_id,version FROM cg15_schedule_exception "+
     "WHERE root_realm_id=$1 AND id=$2 AND doctor_id=$3 AND center_id=$4",
