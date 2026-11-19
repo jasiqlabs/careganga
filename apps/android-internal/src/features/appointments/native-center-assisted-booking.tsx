@@ -6,7 +6,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
-type Center={centerRef:string;centerName:string;providerName:string};
+type Center={centerRef:string;centerName:string;providerName:string;timeZone:string};
 type Doctor={doctorRef:string;doctorName:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;bookable:boolean};
 type Daily={status:string;doctorName:string;centerName:string;consultationFeeMinor:string|null;
@@ -92,7 +92,8 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
   }).then(data=>{
    if(!active)return;
    const valid=Array.isArray(data.centers)?data.centers.filter(x=>
-    typeof x.centerRef==="string"&&typeof x.centerName==="string"):[];
+    typeof x.centerRef==="string"&&typeof x.centerName==="string"&&
+    typeof x.timeZone==="string"&&x.timeZone.length>2):[];
    setCenters(valid);if(valid.length===1)setCenter(valid[0].centerRef);
   }).catch(e=>{if(active)expired(e);})
    .finally(()=>{if(active)setLoading(false);});
@@ -108,27 +109,24 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
     if(!data.complete)setMessage("This center's roster is too large. Use the Web center portal.");
   }).catch(e=>{if(serial.current===stamp)expired(e);});
  },[token,center,expired]);
- const centerZone="Asia/Kolkata"; // corrected dynamically by source below, no fixed center conversion
- const [timeZone,setTimeZone]=useState("");
- useEffect(()=>{
-  if(!center){setTimeZone("");return;}
-  // Derive center-local time from the original returned daily availability.
-  setTimeZone("");
- },[center]);
+ const centerZone=centers.find(c=>c.centerRef===center)?.timeZone??"";
  const preview=useCallback(async(d:string,step:number)=>{
   if(!d||!center||busy||uncertain)return;
   const stamp=++serial.current;setDay(null);
   setBusy(true);setMessage("");
   try{
-   const date=TODAY(step,timeZone||"UTC");
+   if(!centerZone)throw Error("Current center time zone could not be confirmed.");
+   const date=TODAY(step,centerZone);
    if(!date)throw Error("The current center date cannot be calculated.");
    const result=await api<Daily>(token,"centers/"+encodeURIComponent(center)+
     "/doctor/"+encodeURIComponent(d)+"/slots?date="+encodeURIComponent(date));
    if(serial.current!==stamp)return;
-   setDay(result);setTimeZone(result.timeZone);
+   if(result.timeZone!==centerZone)
+    throw Error("The center time zone changed. Refresh your center assignment.");
+   setDay(result);
   }catch(e){if(serial.current===stamp)expired(e);}
   finally{if(serial.current===stamp)setBusy(false);}
- },[token,center,busy,uncertain,timeZone,expired]);
+ },[token,center,centerZone,busy,uncertain,expired]);
  const attemptFor=(slot:Slot)=>{
   if(!day?.consultationFeeMinor||!day.consultationFeeVersion)return null;
   const body={doctorRef:doctor,centerRef:center,startAt:slot.startAt,endAt:slot.endAt,
@@ -202,7 +200,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
   }catch(e){expired(e);setUncertain(true);}
   finally{setBusy(false);}
  }
- const date=TODAY(offset,timeZone||"UTC");
+ const date=centerZone?TODAY(offset,centerZone):"";
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content}>
    {button("Back to Foundation home",onExit,busy)}
