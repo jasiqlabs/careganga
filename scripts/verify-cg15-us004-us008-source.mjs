@@ -238,6 +238,20 @@ const checks=[
  ["live doctor slots type permits actual booking and current fee revision",
   s.publicSlots.includes("bookingEnabled:boolean;day:string")&&
   s.publicSlots.includes("consultationFeeVersion?:number|null")],
+ ["center queue limit applies after exact original center-local date predicate",
+  s.queue.includes("(a.start_at AT TIME ZONE a.time_zone)::date=$3::date")&&
+  !s.queue.includes("interval '48 hours'")&&
+  s.queue.includes("LIMIT 201")],
+ ["original H15 patient and booking search is root-protected and strictly bounded",
+  s.admin.includes('requireAction(bearer,"health.patients.admin.view")')&&
+  s.admin.includes("position(lower($10::text)")&&
+  s.admin.includes("p.virtual_display_id")&&
+  s.admin.includes("a.booking_display_id")&&
+  s.adminCtrl.includes('@Query("search")search?:string')&&
+  s.webAdmin.includes("Find a patient or booking")&&
+  s.adminBff.includes('key==="search"?80:50')],
+ ["all CG15 SQL migrations have explicit opt-in manual lexical checker",
+  s.pkg.includes('verify:cg15-migrations-source') ],
  ["all 128 original QA identifiers preserved",
   Array.from({length:8},(_,i)=>i+1).every(n=>
    Array.from({length:16},(_,k)=>
