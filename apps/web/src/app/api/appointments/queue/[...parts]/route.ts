@@ -40,6 +40,9 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
   if(!day||!/^\d{4}-\d\d-\d\d$/.test(day))
    return fail(400,"Select a valid consultation date.");
   params.set("date",day);
+  const after=req.nextUrl.searchParams.get("after");
+  if(after!==null){if(after.length>70)return fail(400,"Invalid queue page.");
+   params.set("after",after);}
  }
  try{
   const path="/api/v1/appointments/queue/"+parts.join("/")+
