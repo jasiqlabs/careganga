@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MyConsultationHistory} from "../appointments/my-consultation-history";
 import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
+import {PatientPrivateDetailsPanel} from "./patient-private-details-panel";
 
 type Profile={virtualPatientId:string;firstName:string;lastName:string;
  dateOfBirth:string|null;profileStatus:string;version:number;
@@ -355,6 +356,9 @@ export function PatientProfilePanel(){
      </button>
     </form>
     {profile&&<MyConsultationHistory/>}
+    {profile?.profileStatus==="VERIFIED"&&
+     <PatientPrivateDetailsPanel key={profile.virtualPatientId+":details"}
+      consentGranted={profile.consentGranted}/>}
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPrivateFilesPanel key={profile.virtualPatientId}
       consentGranted={profile.consentGranted}/>}
