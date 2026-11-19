@@ -55,7 +55,8 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
    const allowed=new Set(["CG15_BOOKING_INVALID","CG15_BOOKING_SLOT_CHANGED",
     "CG15_BOOKING_SLOT_TAKEN","CG15_BOOKING_HOLD_EXPIRED",
     "CG15_BOOKING_PATIENT_NOT_READY","CG15_BOOKING_PRICE_CHANGED",
-    "CG15_BOOKING_REQUEST_CONFLICT","CG15_BOOKING_NOT_FOUND"]);
+    "CG15_BOOKING_REQUEST_CONFLICT","CG15_BOOKING_NOT_FOUND",
+    "CG15_BOOKING_CHANGE_CLOSED"]);
    return fail([400,401,403,404,409,429].includes(res.status)?res.status:503,
     typeof code==="string"&&allowed.has(code)&&typeof message==="string"&&
     message.length<=220?message:
