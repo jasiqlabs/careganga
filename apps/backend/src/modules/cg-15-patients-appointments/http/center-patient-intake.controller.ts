@@ -7,6 +7,11 @@ import {CenterPatientIntakeService} from "../application/center-patient-intake.s
 @Controller("api/v1/appointments/patients")
 export class CenterPatientIntakeController{
  constructor(private readonly intake:CenterPatientIntakeService){}
+ @Get("my-centers/intake-options")
+ @Header("Cache-Control","private, no-store")
+ options(@Headers("authorization")bearer:string){
+  return this.intake.options(bearer);
+ }
  @Post("my-centers/:centerRef/intakes")
  @Header("Cache-Control","private, no-store")
  create(@Headers("authorization")bearer:string,
