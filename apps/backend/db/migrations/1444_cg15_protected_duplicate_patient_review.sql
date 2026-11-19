@@ -100,3 +100,26 @@ CREATE TRIGGER cg15_patient_duplicate_review_guard
 
 COMMENT ON TABLE cg15_patient_reviewed_alias IS
  'Restricted administrative same-person alias only. All clinical, appointment and original file ACLs remain tied to their original patient identity and consent; no implicit cross-account grant.';
+
+-- A separate SQL writer cannot fabricate a merge alias for a pending/rejected
+-- case or swap the independent reviewer of the true approved decision.
+CREATE FUNCTION cg15_reviewed_alias_approval_guard() RETURNS trigger
+ LANGUAGE plpgsql AS $$
+DECLARE status_now text;
+DECLARE approver uuid;
+BEGIN
+ SELECT status,decided_by_account INTO status_now,approver
+ FROM cg15_patient_duplicate_review
+ WHERE root_realm_id=NEW.root_realm_id AND id=NEW.review_id
+ AND source_patient_id=NEW.source_patient_id
+ AND canonical_patient_id=NEW.canonical_patient_id
+ FOR SHARE;
+ IF status_now IS DISTINCT FROM 'APPROVED'
+  OR approver IS DISTINCT FROM NEW.approved_by_account THEN
+  RAISE EXCEPTION 'Original same-person review approval is required';
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg15_reviewed_alias_approval_guard
+ BEFORE INSERT ON cg15_patient_reviewed_alias
+ FOR EACH ROW EXECUTE FUNCTION cg15_reviewed_alias_approval_guard();
