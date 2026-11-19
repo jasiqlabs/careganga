@@ -55,6 +55,48 @@ export class DoctorLeaveReviewSourceFacade{
    "AND association_id=$5 FOR SHARE",
    [actor.realmId,found.schedule_id,input.doctorRef,input.centerRef,
     found.association_id]);
+  // Original CG03 review must see the same CURRENT approved CG14/CG19
+  // evidence as scheduling. Revoked center/doctor proof cannot be approved.
+  const evidence=await tx.query<{doctor_ok:boolean;center_ok:boolean}>(
+   "SELECT EXISTS(SELECT 1 FROM health_doctor_revision dr "+
+   "JOIN cg03_case dc ON dc.id=dr.approval_case_ref AND dc.realm_id=dr.root_realm_id "+
+   "AND dc.case_kind='HEALTH_DOCTOR_VERIFICATION' AND dc.status='OWNER_COMPLETED' "+
+   "AND dc.health_doctor_id=dr.doctor_id AND dc.health_doctor_revision_id=dr.id "+
+   "AND dc.health_source_digest=dr.source_digest "+
+   "JOIN cg03_case_decision dd ON dd.case_id=dc.id AND dd.realm_id=dc.realm_id "+
+   "AND dd.action='APPROVE' AND dd.fresh_password_verified_at IS NOT NULL "+
+   "AND dd.actor_id<>dc.proposer_id "+
+   "JOIN cg19_stored_file proof ON proof.id=dr.proof_file_ref "+
+   "AND proof.realm_id=dr.root_realm_id AND proof.owner_kind='CG14_DOCTOR' "+
+   "AND proof.health_doctor_id=dr.doctor_id AND proof.revoked_at IS NULL "+
+   "AND proof.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent i ON i.id=proof.upload_intent_id "+
+   "AND i.realm_id=proof.realm_id AND i.status='VALIDATED' "+
+   "AND i.classification='HEALTH_DOCTOR_LICENSE' "+
+   "WHERE dr.root_realm_id=$1 AND dr.doctor_id=$2 "+
+   "AND dr.revision_no=(SELECT MAX(x.revision_no) FROM health_doctor_revision x "+
+   "WHERE x.root_realm_id=dr.root_realm_id AND x.doctor_id=dr.doctor_id)) doctor_ok,"+
+   " EXISTS(SELECT 1 FROM health_center_revision cr "+
+   "JOIN cg03_case cc ON cc.id=cr.approval_case_ref "+
+   "AND cc.realm_id=cr.root_realm_id AND cc.case_kind='HEALTH_CENTER_VERIFICATION' "+
+   "AND cc.status='OWNER_COMPLETED' AND cc.health_center_id=cr.center_id "+
+   "AND cc.health_center_revision_id=cr.id AND cc.health_source_digest=cr.source_digest "+
+   "JOIN cg03_case_decision cd ON cd.case_id=cc.id AND cd.realm_id=cc.realm_id "+
+   "AND cd.action='APPROVE' AND cd.fresh_password_verified_at IS NOT NULL "+
+   "AND cd.actor_id<>cc.proposer_id "+
+   "JOIN cg19_stored_file proof ON proof.id=cr.proof_file_ref "+
+   "AND proof.realm_id=cr.root_realm_id AND proof.owner_kind='CG14_DRAFT' "+
+   "AND proof.health_provider_id=cr.provider_id AND proof.health_center_id=cr.center_id "+
+   "AND proof.revoked_at IS NULL AND proof.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent i ON i.id=proof.upload_intent_id "+
+   "AND i.realm_id=proof.realm_id AND i.status='VALIDATED' "+
+   "AND i.classification='HEALTH_CENTER_LICENSE' "+
+   "WHERE cr.root_realm_id=$1 AND cr.center_id=$3 "+
+   "AND cr.revision_no=(SELECT MAX(x.revision_no) FROM health_center_revision x "+
+   "WHERE x.root_realm_id=cr.root_realm_id AND x.center_id=cr.center_id)) center_ok",
+   [actor.realmId,input.doctorRef,input.centerRef]);
+  if(!evidence.rows[0]?.doctor_ok||!evidence.rows[0]?.center_ok)
+   throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
   const original=await tx.query<ExceptionSource>(
    "SELECT * FROM cg15_schedule_exception WHERE root_realm_id=$1 "+
    "AND id=$2 AND kind='LEAVE' AND source_digest=$3 FOR SHARE",
