@@ -43,7 +43,10 @@ export function CenterVisitQueue(){
  const [verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
+ const [canCancel,setCanCancel]=useState(false);
+ const [cancelPending,setCancelPending]=useState<string|null>(null);
  const keys=useRef<Map<string,string>>(new Map());
+ const cancellationKeys=useRef<Map<string,string>>(new Map());
  const requestSerial=useRef(0),selectedCenterRef=useRef("");
  const load=useCallback(async(c:string,d:string,after="")=>{
   const serial=++requestSerial.current;
@@ -57,6 +60,20 @@ export function CenterVisitQueue(){
   }finally{
    if(serial===requestSerial.current)setQueueLoading(false);
   }
+ },[]);
+ useEffect(()=>{
+  let alive=true;
+  // Show the sensitive cancellation action only after the real CG01 grant
+  // is confirmed; backend also enforces current center affiliation per write.
+  void fetch("/api/access/effective",{cache:"no-store",credentials:"same-origin"})
+   .then(async r=>r.ok?r.json():null).then((data:unknown)=>{
+    if(!alive)return;
+    const actions=data&&typeof data==="object"&&"actions" in data&&
+     Array.isArray(data.actions)?data.actions:[];
+    setCanCancel(actions.some((action:unknown)=>action&&typeof action==="object"&&
+     "key" in action&&action.key==="health.appointments.cancel"));
+   }).catch(()=>{if(alive)setCanCancel(false);});
+  return()=>{alive=false;};
  },[]);
  useEffect(()=>{
   let alive=true;
@@ -128,6 +145,42 @@ export function CenterVisitQueue(){
     " Refresh the current queue before doing another action.");
   }finally{setBusy(false);}
  }
+ async function cancelAppointment(item:Item){
+  if(!canCancel||busy||uncertain||!center||cancelPending!==item.appointmentRef||
+   item.bookingStatus!=="CONFIRMED"||item.visitRef)return;
+  const activeCenter=center;
+  const signature=activeCenter+":"+item.appointmentRef+":"+item.bookingVersion;
+  let key=cancellationKeys.current.get(signature);
+  if(!key){key=crypto.randomUUID();cancellationKeys.current.set(signature,key);}
+  setBusy(true);setMessage("");
+  try{
+   const response=await fetch("/api/appointments/staff-consultations/centers/"+
+    encodeURIComponent(activeCenter)+"/bookings/"+
+    encodeURIComponent(item.appointmentRef)+"/cancel",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({requestKey:key,expectedVersion:item.bookingVersion,
+      reason:"CENTER_REQUEST"})
+    });
+   const raw:unknown=await response.json().catch(()=>null);
+   if(!response.ok){
+    const details=raw&&typeof raw==="object"&&"message" in raw&&
+     typeof raw.message==="string"?raw.message:"Center cancellation could not be confirmed.";
+    throw Object.assign(new Error(details),{status:response.status});
+   }
+   if(!raw||typeof raw!=="object"||!("bookingStatus" in raw)||
+    raw.bookingStatus!=="CANCELLED")
+    throw Error("Cancellation response is uncertain. Check the original booking.");
+   cancellationKeys.current.delete(signature);
+   setCancelPending(null);
+   await load(activeCenter,day,cursor);
+   setMessage("This center booking has been cancelled. Its previous audit history remains preserved.");
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage(e instanceof Error?e.message:"Cancellation may have succeeded. Refresh original queue.");
+  }finally{setBusy(false);}
+ }
  const doctorChoices=Array.from(new Map(items.map(x=>
   [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
   .sort((a,b)=>a.name.localeCompare(b.name));
@@ -146,7 +199,7 @@ export function CenterVisitQueue(){
       if(next&&!today){setMessage("The selected center's local time zone is unavailable.");return;}
       if(today)setDay(today);
       selectedCenterRef.current=e.target.value;requestSerial.current++;
-      setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+      setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");setCancelPending(null);
        setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
@@ -154,7 +207,7 @@ export function CenterVisitQueue(){
      </select></label>
     <label>Consultation date
      <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
-       setDay(e.target.value);setUncertain(false);}}/>
+       setDay(e.target.value);setUncertain(false);setCancelPending(null);}}/>
     </label>
     <button type="button" disabled={busy||!center}
      onClick={()=>void load(center,day,cursor).catch(e=>setMessage(e instanceof Error?e.message:"The queue cannot be refreshed."))}>
@@ -204,6 +257,16 @@ export function CenterVisitQueue(){
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN")}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
     <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>
+    {canCancel&&item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
+     (cancelPending===item.appointmentRef?
+      <div className="notice">
+       <p>Cancel this confirmed center appointment? The existing booking will remain in its audit history.</p>
+       <button type="button" disabled={busy||uncertain}
+        onClick={()=>void cancelAppointment(item)}>Confirm center cancellation</button>
+       <button type="button" disabled={busy} onClick={()=>setCancelPending(null)}>Keep appointment</button>
+      </div>:
+      <button type="button" disabled={busy||uncertain}
+       onClick={()=>setCancelPending(item.appointmentRef)}>Cancel center booking</button>)}
     <div className="toolbar">
      {item.bookingStatus==="CONFIRMED"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
