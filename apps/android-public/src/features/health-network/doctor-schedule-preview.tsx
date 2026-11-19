@@ -1,19 +1,22 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {NativeConsultationAction} from "../appointments/native-consultation-action";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Center={centerRef:string;centerName:string;centerSlug:string;timeZone:string;
- hasWorkingSchedule:boolean;consultationFeeMinor:string|null};
-type Options={day:string;doctorName:string;centers:Center[];bookingEnabled:false;
+ hasWorkingSchedule:boolean;consultationFeeMinor:string|null;consultationFeeVersion:number|null};
+type Options={day:string;doctorName:string;centers:Center[];bookingEnabled:boolean;
  status:string;message:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;
- bookable:false};
+ bookable:boolean};
 type Detail={status:string;centerName:string;timeZone:string;slots:Slot[];
- bookingEnabled:false;message:string};
-type Match={centerName:string;centerSlug:string;timeZone:string;bookable:false;
+ bookingEnabled:boolean;message:string;consultationFeeMinor:string|null;
+ consultationFeeVersion:number|null;doctorName:string;centerRef:string};
+type Match={centerRef:string;centerName:string;centerSlug:string;timeZone:string;
+ startAt:string;endAt:string;bookable:boolean;consultationFeeVersion:number|null;
  address:string;pinCode:string;consultationFeeMinor:string|null};
-type Choices={centerChoices:Match[];message:string;bookingEnabled:false};
+type Choices={centerChoices:Match[];message:string;bookingEnabled:boolean};
 const dateAt=(offset:number)=>{
  const now=new Date();
  const value=new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset);
@@ -104,8 +107,8 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
  );
  return <View style={style.panel} accessibilityLabel="Verified doctor working hours">
   <Text style={style.heading} accessibilityRole="header">Doctor Schedule &amp; Availability</Text>
-  <Text style={style.help}>These are verified working-time previews,
-   not free appointments. Online booking and payment are not enabled.</Text>
+  <Text style={style.help}>Times are advisory until a genuine reservation succeeds.
+   Consultation payment is due directly at the healthcare center.</Text>
   <View style={style.actions}>
    {button("‹ Previous week",()=>changeWeek(-1),false,week===0)}
    {button("Next week ›",()=>changeWeek(1),false,week===4)}
@@ -135,7 +138,7 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
   {detail&&center&&<View>
    <Text accessibilityRole="header" style={style.subheading}>
     {center.centerName} · {day}</Text>
-   <Text style={style.help}>Times in {detail.timeZone}. Schedule preview only.</Text>
+   <Text style={style.help}>Times in {detail.timeZone}. A time is confirmed only after final review.</Text>
    {detail.slots.length===0?
     <Text style={style.help}>No current working-time window is shown for this day.</Text>:
     <View style={style.actions}>{detail.slots.map(slot=>
@@ -143,19 +146,32 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
       {button(slot.startLocal+"–"+slot.endLocal+
        " · compare centers",()=>void compare(slot.startLocal),
        searchTime===slot.startLocal)}
+      {slot.bookable&&detail.consultationFeeMinor!==null&&
+       detail.consultationFeeVersion!==null&&
+       <NativeConsultationAction key={slot.startAt+center.centerRef}
+        doctorRef={doctorRef} centerRef={center.centerRef}
+        doctorName={detail.doctorName} centerName={center.centerName}
+        startAt={slot.startAt} endAt={slot.endAt} timeZone={detail.timeZone}
+        feeMinor={detail.consultationFeeMinor}
+        feeVersion={detail.consultationFeeVersion}/>}
      </View>)}</View>}
   </View>}
   {choices&&<View>
    <Text style={style.subheading}>Other verified centers at {searchTime}</Text>
    {choices.centerChoices.length===0?
     <Text style={style.help}>No matching working time in another center.</Text>:
-    choices.centerChoices.map(c=><Text key={c.centerSlug} style={style.help}>
-     {c.centerName}, {c.address}, {c.pinCode}.
-     {money(c.consultationFeeMinor)}. {c.timeZone}. Preview only
-    </Text>)}
+    choices.centerChoices.map(c=><View key={c.centerRef} style={style.center}>
+     <Text style={style.help}>{c.centerName}, {c.address}, {c.pinCode}.
+      {money(c.consultationFeeMinor)}. {c.timeZone}.</Text>
+     {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&
+      <NativeConsultationAction doctorRef={doctorRef} centerRef={c.centerRef}
+       doctorName={options?.doctorName??"Doctor"} centerName={c.centerName}
+       startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
+       feeMinor={c.consultationFeeMinor} feeVersion={c.consultationFeeVersion}/>}
+    </View>)}
   </View>}
-  <Text style={style.help}>For actual appointment availability or
-   booking, contact the center directly.</Text>
+  <Text style={style.help}>Use My Patient Profile to sign in before booking.
+   Only doctor consultations are offered; no ERP booking or online payment.</Text>
  </View>;
 }
 const style=StyleSheet.create({
