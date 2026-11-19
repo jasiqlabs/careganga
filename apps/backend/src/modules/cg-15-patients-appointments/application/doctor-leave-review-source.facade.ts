@@ -25,7 +25,7 @@ export class DoctorLeaveReviewSourceFacade{
    "AND id=$2 AND center_id=$3 AND doctor_id=$4 AND kind='LEAVE'",
    [actor.realmId,input.exceptionRef,input.centerRef,input.doctorRef]);
   const found=peek.rows[0];
-  if(!found||found.version!==input.revisionNo||
+  if(!found||found.version<input.revisionNo||
     found.source_digest!==input.digest||found.state!=="PENDING")
    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
   const provider=await tx.query<{provider_id:string}>(
@@ -67,7 +67,7 @@ export class DoctorLeaveReviewSourceFacade{
      !a.rows[0].approved_from||a.rows[0].approved_from>new Date()||
      a.rows[0].approved_to&&a.rows[0].approved_to<=new Date()||
      schedule.rows[0]?.status!=="ACTIVE"||!row||
-     row.state!=="PENDING"||row.version!==input.revisionNo||
+     row.state!=="PENDING"||row.version<input.revisionNo||
      row.center_id!==input.centerRef||row.doctor_id!==input.doctorRef||
      row.source_digest!==input.digest)
    throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
