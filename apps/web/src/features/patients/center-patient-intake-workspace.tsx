@@ -77,7 +77,9 @@ export function CenterPatientIntakeWorkspace(){
    <p>Center reception · provisional patient registration</p>
   </div></header>
   <p>Only your assigned, currently approved healthcare centers are available.
-   This form does not create a consultation booking or verify clinical identity.</p>
+   Register a provisional patient, record a separately verified in-person identity
+   check, or book a consultation when the patient supplies their own one-time
+   center authorization code. These are distinct actions.</p>
   {loading&&<p role="status">Checking authorized healthcare centers…</p>}
   {!!error&&<p role="alert" className="notice error">{error}</p>}
   {!loading&&!error&&centers.length===0&&
