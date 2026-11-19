@@ -87,6 +87,36 @@ CREATE TRIGGER cg19_patient_clinical_file_grant_event_guard
  BEFORE UPDATE OR DELETE ON cg19_patient_clinical_file_grant_event
  FOR EACH ROW EXECUTE FUNCTION cg19_patient_clinical_file_grant_event_immutable();
 
+-- Minimal nonclinical source-of-access audit. No diagnosis, contact,
+-- original file payload, device identifier, external link or private URL.
+CREATE TABLE cg19_patient_clinical_file_read_event(
+ realm_id uuid NOT NULL,
+ id uuid NOT NULL DEFAULT gen_random_uuid(),
+ patient_id uuid NOT NULL,
+ appointment_id uuid NOT NULL,
+ file_id uuid NOT NULL,
+ doctor_id uuid NOT NULL,
+ center_id uuid NOT NULL,
+ actor_account_id uuid NOT NULL,
+ action text NOT NULL CHECK(action='AUTHORIZED_READ'),
+ occurred_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(realm_id,id),
+ FOREIGN KEY(realm_id,appointment_id,patient_id)
+  REFERENCES cg15_consultation_appointment(root_realm_id,id,patient_id)
+  ON DELETE RESTRICT,
+ FOREIGN KEY(realm_id,file_id,patient_id)
+  REFERENCES cg19_patient_private_file(realm_id,id,patient_id)
+  ON DELETE RESTRICT,
+ FOREIGN KEY(actor_account_id,realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg19_clinical_file_read_audit
+ ON cg19_patient_clinical_file_read_event
+ (realm_id,patient_id,occurred_at DESC,id DESC);
+CREATE TRIGGER cg19_patient_clinical_read_event_guard
+ BEFORE UPDATE OR DELETE ON cg19_patient_clinical_file_read_event
+ FOR EACH ROW EXECUTE FUNCTION cg19_patient_clinical_file_grant_event_immutable();
+
 CREATE FUNCTION cg19_patient_clinical_file_grant_frozen() RETURNS trigger
  LANGUAGE plpgsql AS $$
 BEGIN
