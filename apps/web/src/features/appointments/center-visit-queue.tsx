@@ -31,9 +31,12 @@ export function CenterVisitQueue(){
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const keys=useRef<Map<string,string>>(new Map());
+ const requestSerial=useRef(0),selectedCenterRef=useRef("");
  const load=useCallback(async(c:string,d:string)=>{
-  if(!c)return;
+  const serial=++requestSerial.current;
+  if(!c){setItems([]);return;}
   const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d));
+  if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
   setItems(rows.items);setUncertain(false);
  },[]);
  useEffect(()=>{
@@ -42,18 +45,18 @@ export function CenterVisitQueue(){
    if(!alive)return;
    const valid=data.centers.filter(x=>x&&typeof x.centerRef==="string"&&
     typeof x.centerName==="string");
-   setCenters(valid);if(valid.length===1)setCenter(valid[0].centerRef);
+    setCenters(valid);if(valid.length===1){selectedCenterRef.current=valid[0].centerRef;setCenter(valid[0].centerRef);}
   }).catch(e=>{if(alive)setMessage(e instanceof Error?e.message:"Access cannot be confirmed.");})
   .finally(()=>{if(alive)setLoading(false);});
   return()=>{alive=false;};
  },[]);
  useEffect(()=>{
-  if(!center){setItems([]);return;}
+  if(!center){requestSerial.current++;setItems([]);return;}
   let active=true;
   void load(center,day).catch(e=>{
-   if(active){setItems([]);setMessage(e instanceof Error?e.message:"Queue unavailable.");}
+   if(active&&center===selectedCenterRef.current){setItems([]);setMessage(e instanceof Error?e.message:"Queue unavailable.");}
   });
-  return()=>{active=false;};
+  return()=>{active=false;requestSerial.current++;};
  },[center,day,load]);
  async function verifySlip(){
   if(busy||uncertain||!center||!/^CGV-[A-F0-9]{24}$/.test(qrToken))return;
@@ -61,6 +64,7 @@ export function CenterVisitQueue(){
   try{
    const result=await get<VerifiedSlip>("my-centers/"+
     encodeURIComponent(center)+"/verify-slip","POST",{token:qrToken});
+   if(center!==selectedCenterRef.current)return;
    if(!result.valid){setMessage("The slip does not belong to an active appointment at this center.");return;}
    setVerifiedSlip(result);
    if(result.startAt&&result.timeZone){
@@ -108,13 +112,14 @@ export function CenterVisitQueue(){
   {loading?<p>Checking current center permissions…</p>:<>
    <div className="toolbar">
     <label>Assigned healthcare center
-     <select value={center} onChange={e=>{setCenter(e.target.value);setUncertain(false);}}>
+     <select value={center} onChange={e=>{selectedCenterRef.current=e.target.value;requestSerial.current++;
+      setItems([]);setVerifiedSlip(null);setQrToken("");setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
        {x.centerName}</option>)}
      </select></label>
     <label>Consultation date
-     <input type="date" value={day} onChange={e=>{setDay(e.target.value);setUncertain(false);}}/>
+     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setVerifiedSlip(null);setDay(e.target.value);setUncertain(false);}}/>
     </label>
     <button type="button" disabled={busy||!center}
      onClick={()=>void load(center,day).catch(e=>setMessage(String(e)))}>
