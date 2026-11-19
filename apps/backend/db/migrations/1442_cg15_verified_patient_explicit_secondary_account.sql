@@ -80,3 +80,14 @@ ALTER TABLE cg15_patient_change_event
  ADD CONSTRAINT cg15_patient_change_event_action_check
  CHECK(action IN('REGISTERED','PROFILE_UPDATED','CONSENT_GRANTED',
   'CONSENT_WITHDRAWN','IDENTITY_VERIFIED','SECOND_ACCOUNT_LINKED'));
+
+-- Bounded recipient proof attempts; isolated from existing center claims.
+CREATE TABLE cg15_patient_second_link_attempt(
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ account_id uuid NOT NULL,
+ window_started_at timestamptz NOT NULL DEFAULT now(),
+ attempts integer NOT NULL DEFAULT 1 CHECK(attempts BETWEEN 1 AND 2147483645),
+ PRIMARY KEY(root_realm_id,account_id),
+ FOREIGN KEY(account_id,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
