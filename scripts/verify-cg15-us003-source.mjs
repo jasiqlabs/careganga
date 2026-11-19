@@ -9,6 +9,14 @@ const dir=resolve(import.meta.dirname,"..");
 const read=p=>readFileSync(resolve(dir,p),"utf8");
 const s={
  db:read("apps/backend/db/migrations/1422_cg15_patient_self_consent.sql"),
+ intakeDb:read("apps/backend/db/migrations/1423_cg15_center_provisional_patient_intake.sql"),
+ intakeService:read("apps/backend/src/modules/cg-15-patients-appointments/application/center-patient-intake.service.ts"),
+ intakeController:read("apps/backend/src/modules/cg-15-patients-appointments/http/center-patient-intake.controller.ts"),
+ intakeProxy:read("apps/web/src/app/api/appointments/patients/[...parts]/route.ts"),
+ intakeWeb:read("apps/web/src/features/patients/center-patient-intake-panel.tsx"),
+ centerPortal:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
+ centerScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
+ capability:read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts"),
  service:read("apps/backend/src/modules/cg-15-patients-appointments/application/patient-profile.service.ts"),
  ctrl:read("apps/backend/src/modules/cg-15-patients-appointments/http/patient-profile.controller.ts"),
  module:read("apps/backend/src/modules/cg-15-patients-appointments/patients-appointments.module.ts"),
@@ -108,6 +116,47 @@ const checks=[
   s.errors.includes("CG15_PATIENT_INVALID")&&
   s.errors.includes("CG15_PATIENT_CONTACT_UNVERIFIED")&&
   s.errors.includes("CG15_PATIENT_CHANGED")],
+ ["assisted patient intake table is root+center qualified, consent attested only",
+  s.intakeDb.includes("CREATE TABLE cg15_patient_center_intake")&&
+  s.intakeDb.includes("REFERENCES health_center(root_realm_id,id)")&&
+  s.intakeDb.includes("consent_version text NOT NULL")&&
+  s.intakeDb.includes("assisted_consent_attested=true")],
+ ["assisted patient source reuses current CG01 and CG14 exact own center",
+  s.intakeService.includes("this.sessions.verifySession(bearer)")&&
+  s.intakeService.includes('this.ownCenter.assertCurrent(tx,actor,centerRef,"health.patients.intake")')&&
+  s.centerScope.includes("health.centers.draft.edit")],
+ ["CG01 has independent assignable center intake capability",
+  s.capability.includes('key:"health.patients.intake"')&&
+  s.capability.includes('assignable:true,sensitive:true')],
+ ["intake never auto-claims any phone, account or clinical history",
+  !s.intakeService.includes("INSERT INTO cg15_patient_account_link")&&
+  !s.intakeService.includes("normalized_mobile=")&&
+  s.intakeService.includes("'PROVISIONAL'")&&
+  s.intakeService.includes("'PATIENT_CARE',$3,false")],
+ ["center intake uses transactional request-key replay and original source",
+  s.intakeService.includes("ON CONFLICT(root_realm_id,center_id,created_by_account,request_key) DO NOTHING")&&
+  s.intakeService.includes("CG15_PATIENT_REQUEST_CONFLICT")&&
+  s.intakeService.includes('await tx.query("ROLLBACK")')],
+ ["own-center endpoints are real Nest registrations",
+  s.intakeController.includes('Controller("api/v1/appointments/patients")')&&
+  s.intakeController.includes('Get("my-centers/:centerRef/intakes/:requestKey")')&&
+  s.module.includes("CenterPatientIntakeService")&&
+  s.module.includes("CenterPatientIntakeController")],
+ ["center intake Web BFF staff cookie, scoped verbs and CSRF",
+  s.intakeProxy.includes('get("cg_staff_session")')&&
+  s.intakeProxy.includes('request.headers.get("origin")!==request.nextUrl.origin')&&
+  s.intakeProxy.includes('parts[2]==="intakes"')],
+ ["verified enabled Center Portal mounts hidden current-role intake UI",
+  s.centerPortal.includes('CenterPatientIntakePanel')&&
+  s.intakeWeb.includes('action.key==="health.patients.intake"')&&
+  s.intakeWeb.includes("policy.available")],
+ ["unknown intake result retries SAME command reference",
+  s.intakeWeb.includes("pending.current.requestKey")&&
+  s.intakeWeb.includes("submit(true)")&&
+  s.intakeWeb.includes("setUncertain(true)")],
+ ["original error catalogue includes center and intake not found outcomes",
+  s.errors.includes("CG15_PATIENT_CENTER_UNAVAILABLE")&&
+  s.errors.includes("CG15_PATIENT_INTAKE_NOT_FOUND")],
  ["source preflight exposed as explicit local npm command",
   s.rootPackage.includes("verify:cg15-us003-source")],
  ["16 original US003 case definitions preserved with separate progress",
