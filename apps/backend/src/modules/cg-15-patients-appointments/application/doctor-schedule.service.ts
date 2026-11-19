@@ -288,9 +288,9 @@ export class DoctorScheduleService{
  private async noOtherCenterOverlap(tx:PoolClient,actor:Actor,src:Source,
   mode:string,windows:Window[]){
   const rows=await tx.query<{time_zone:string;weekday:number;
-   open_local:string;close_local:string}>(
+   open_local:string;close_local:string;consultation_mode:string}>(
    "SELECT other.time_zone,w.weekday,w.open_local::text,"+
-   "w.close_local::text FROM cg15_doctor_schedule other "+
+   "w.close_local::text,other.consultation_mode FROM cg15_doctor_schedule other "+
    "JOIN cg15_schedule_weekly_window w "+
    "ON w.root_realm_id=other.root_realm_id AND w.schedule_id=other.id "+
    "AND w.revision_id=other.current_revision_id "+
@@ -298,14 +298,20 @@ export class DoctorScheduleService{
    "AND NOT(other.association_id=$3 AND other.consultation_mode=$4) "+
    "AND other.status='ACTIVE' FOR SHARE OF other",
    [actor.realmId,src.doctor_id,src.id,mode]);
-  // Safe V1: cross-timezone weekly recurrence is ambiguous at DST edges.
-  // One doctor cannot have overlapping VIDEO and IN_PERSON schedules either.
-  // Conservatively require a common zone across active mode/center schedules.
+  // Two independently approved IN_PERSON center schedules may offer a
+  // patient an explicit choice of center at the same instant (US-002-QA02).
+  // These are alternative *unreserved* appointment locations, not two
+  // concurrent visits. The doctor-global reservation exclusion and doctor-row
+  // lock in CG15 booking make the first held/confirmed center unavailable
+  // at every other center. Never grant overlapping VIDEO capacity by analogy.
+  // Different-zone weekly recurrences remain unsafe at DST boundaries.
   if(rows.rows.some(r=>r.time_zone!==src.time_zone))
    throw new ConflictException({code:"CG15_SCHEDULE_TIMEZONE_CONFLICT"});
-  if(rows.rows.some(r=>windows.some(w=>w.weekday===r.weekday&&
-    minute(w.startLocal)<minute(r.close_local)&&
-    minute(r.open_local)<minute(w.endLocal))))
+  if(rows.rows.some(r=>!(mode==="IN_PERSON"&&
+    r.consultation_mode==="IN_PERSON")&&
+    windows.some(w=>w.weekday===r.weekday&&
+     minute(w.startLocal)<minute(r.close_local)&&
+     minute(r.open_local)<minute(w.endLocal))))
    throw new ConflictException({code:"CG15_SCHEDULE_DOCTOR_CONFLICT"});
  }
  async roster(bearer:string,channel:Channel,centerRef?:string,
