@@ -37,6 +37,15 @@ function number(v:unknown){
   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
  return Number(v);
 }
+/** Original center timezone for serialized daily queue token; list filtering is done in SQL. */
+function localDay(utc:Date,zone:string){
+ let format:Intl.DateTimeFormat;
+ try{format=new Intl.DateTimeFormat("en-CA",{timeZone:zone,
+  day:"2-digit",month:"2-digit",year:"numeric"});}
+ catch{throw new ConflictException({code:"CG15_QUEUE_INVALID"});}
+ const obj=Object.fromEntries(format.formatToParts(utc).map(x=>[x.type,x.value]));
+ return obj.year+"-"+obj.month+"-"+obj.day;
+}
 function result(visit:Visit){return {
  visitRef:visit.id,queueToken:visit.queue_token,
  queueDate:visit.queue_local_date,visitStatus:visit.state,
