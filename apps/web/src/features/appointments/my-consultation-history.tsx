@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;centerRef:string;
  startAt:string;endAt:string;timeZone:string;consultationFeeMinor:string;
- bookingStatus:string;paymentMode:string;collectionStatus:string;version:number};
+ bookingStatus:string;canPatientChange:boolean;paymentMode:string;collectionStatus:string;version:number};
 type Result={items:Booking[];next:null};
 const money=(minor:string)=>new Intl.NumberFormat("en-IN",{style:"currency",
  currency:"INR"}).format(Number(minor)/100);
@@ -72,7 +72,7 @@ export function MyConsultationHistory(){
      · {a.paymentMode.replaceAll("_"," ")}</p>
     <p>Payment is collected at the healthcare center, not by CareGanga.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
-     {a.bookingStatus==="CONFIRMED"&&new Date(a.startAt).getTime()>Date.now()&&<>
+     {a.canPatientChange===true&&<>
       <button type="button" disabled={busy||uncertain}
        onClick={()=>void cancel(a)}>Cancel appointment</button>
       <Link href={"/health-network/doctors/"+encodeURIComponent(a.doctorRef)+
