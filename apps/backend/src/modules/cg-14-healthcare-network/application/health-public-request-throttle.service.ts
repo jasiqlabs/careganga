@@ -11,10 +11,10 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
  */
 type PeerRequest={socket?:{remoteAddress?:string};
  headers?:Record<string,string|string[]|undefined>};
-type Kind="centers"|"doctors"|"doctor"|"center"|"facets"|"sitemap"|"availability";
+type Kind="centers"|"doctors"|"doctor"|"center"|"facets"|"sitemap"|"availability"|"slip";
 const LIMITS:Readonly<Record<Kind,number>>=Object.freeze({
  centers:1200,doctors:1200,doctor:1200,center:1200,
- facets:1200,sitemap:120,availability:400
+ facets:1200,sitemap:120,availability:400,slip:60
 });
 const secret=()=>{
  const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
