@@ -24,7 +24,7 @@ type Booking={id:string;booking_display_id:string;patient_id:string;doctor_id:st
  center_address:string;fee_minor:string;fee_version:number;
  booking_state:string;collection_state:string;payment_mode:string;revision:number;terms_revision:number;
  confirmation_digest:string;created_at:Date;updated_at:Date};
-type Patient={id:string;profile_status:string;consent_granted:boolean|null;verified:Date|null;first_name:string;last_name:string};
+type Patient={id:string;profile_status:string;consent_granted:boolean|null;identity_verified:boolean;verified:Date|null;first_name:string;last_name:string};
 type Slot={scheduleId:string;revisionId:string;minutes:number};
 type Accepted={actor:VerifiedFoundationActor;patient:Patient;source:HealthScheduleEligibleSource;
  feeMinor:string;feeVersion:number;slot:Slot};
@@ -108,6 +108,8 @@ export class ConsultationBookingService{
  private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor,requireConsent=true){
   const r=await tx.query<Patient>(
    "SELECT p.id,p.profile_status,p.first_name,p.last_name,a.contact_phone_verified_at AS verified,"+
+   "EXISTS(SELECT 1 FROM cg15_patient_identity_event proof "+
+   "WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) AS identity_verified,"+
    "(SELECT c.granted FROM cg15_patient_consent c "+
    "WHERE c.root_realm_id=p.root_realm_id AND c.patient_id=p.id "+
    "AND c.purpose='PATIENT_CARE' ORDER BY c.revision_no DESC LIMIT 1) AS consent_granted "+
@@ -120,7 +122,7 @@ export class ConsultationBookingService{
    [actor.realmId,actor.accountId]);
   const patient=r.rows[0];
   if(!patient||!patient.verified||
-    !["PROVISIONAL","VERIFIED"].includes(patient.profile_status)||
+    patient.profile_status!=="VERIFIED"||!patient.identity_verified||
     (requireConsent&&patient.consent_granted!==true))
    throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
   return patient;
