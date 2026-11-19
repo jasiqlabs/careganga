@@ -32,7 +32,7 @@ type FileRow={id:string;patient_id:string;classification:string;mime:string;
  revision:number;revoked_at:Date|null;created_at:Date};
 type GrantRow={id:string;patient_id:string;file_id:string;appointment_id:string;
  status:string;revision:number;revoked_at:Date|null};
-type ClinicalSource={patient_id:string;doctor_id:string};
+type ClinicalSource={patient_id:string;doctor_id:string;center_id:string;revision:number};
 /** Exact CG19 private file + existing CG15 appointment. A patient gives
  * active explicit permission for one file and one booking. The actual doctor
  * is NOT selected by phone or an unverified staff role; CG14 matches the
@@ -87,8 +87,8 @@ export class PatientClinicalFileSharingService{
  private async ownAppointment(c:PoolClient,actor:VerifiedFoundationActor,
   booking:string,patient:string){
   const result=await c.query<{id:string;booking_display_id:string;
-   doctor_name:string;center_name:string}>(
-   "SELECT id,booking_display_id,doctor_name,center_name "+
+   doctor_name:string;center_name:string;doctor_id:string;center_id:string;revision:number}>(
+   "SELECT id,booking_display_id,doctor_name,center_name,doctor_id,center_id,revision "+
    "FROM cg15_consultation_appointment "+
    "WHERE root_realm_id=$1 AND id=$2 AND patient_id=$3 "+
    "AND booking_state IN('CONFIRMED','ARRIVED','WAITING','IN_CONSULTATION','COMPLETED') "+
@@ -106,7 +106,15 @@ export class PatientClinicalFileSharingService{
   return this.tx(async c=>{
    const patient=await this.own(c,actor,true);
    await this.ownFile(c,actor,file,patient);
-   await this.ownAppointment(c,actor,booking,patient);
+   const appointment=await this.ownAppointment(c,actor,booking,patient);
+   // A later patient-care withdrawal and re-grant must NOT resurrect an
+   // old report share. Pin the exact currently granted consent revision.
+   const care=await c.query<{revision_no:number;granted:boolean}>(
+    "SELECT revision_no,granted FROM cg15_patient_consent "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND purpose='PATIENT_CARE' "+
+    "ORDER BY revision_no DESC LIMIT 1",[actor.realmId,patient]);
+   if(!care.rows[0]?.granted)
+    throw new ForbiddenException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
    const previous=await c.query<{request_digest:string;grant_id:string}>(
     "SELECT request_digest,grant_id FROM cg19_patient_clinical_file_grant_command "+
     "WHERE realm_id=$1 AND actor_account_id=$2 AND request_key=$3 FOR UPDATE",
@@ -126,9 +134,13 @@ export class PatientClinicalFileSharingService{
    const proposed=randomUUID();
    const inserted=await c.query<{id:string;revision:number}>(
     "INSERT INTO cg19_patient_clinical_file_grant("+
-    "realm_id,id,patient_id,file_id,appointment_id,granted_by_account) "+
-    "VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING id,revision",
-    [actor.realmId,proposed,patient,file,booking,actor.accountId]);
+    "realm_id,id,patient_id,file_id,appointment_id,doctor_id,center_id,"+
+    "appointment_revision,care_consent_revision,granted_by_account) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) "+
+    "ON CONFLICT DO NOTHING RETURNING id,revision",
+    [actor.realmId,proposed,patient,file,booking,appointment.doctor_id,
+     appointment.center_id,appointment.revision,care.rows[0].revision_no,
+     actor.accountId]);
    let ref=inserted.rows[0]?.id;
    if(!ref){
     const current=await c.query<{id:string;revision:number}>(
@@ -215,7 +227,7 @@ export class PatientClinicalFileSharingService{
   await this.centers.assertCurrent(c,actor,center,"health.visits.manage");
   await this.centers.assertCurrent(c,actor,center,"health.visits.clinical.manage");
   const source=await c.query<ClinicalSource>(
-   "SELECT a.patient_id,a.doctor_id FROM cg15_consultation_appointment a "+
+   "SELECT a.patient_id,a.doctor_id,a.center_id,a.revision FROM cg15_consultation_appointment a "+
    "JOIN cg15_visit_queue v ON v.root_realm_id=a.root_realm_id "+
    "AND v.appointment_id=a.id AND v.center_id=a.center_id "+
    "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id "+
@@ -252,10 +264,14 @@ export class PatientClinicalFileSharingService{
     "JOIN cg19_patient_private_file f ON f.realm_id=g.realm_id "+
     "AND f.patient_id=g.patient_id AND f.id=g.file_id "+
     "WHERE g.realm_id=$1 AND g.appointment_id=$2 AND g.patient_id=$3 "+
+    "AND g.doctor_id=$4 AND g.center_id=$5 AND g.appointment_revision=$6 "+
+    "AND g.care_consent_revision=(SELECT x.revision_no FROM cg15_patient_consent x "+
+    "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
+    "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1) "+
     "AND g.status='ACTIVE' AND g.revoked_at IS NULL "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
     "ORDER BY f.created_at DESC,f.id DESC LIMIT 25",
-    [actor.realmId,booking,source.patient_id]);
+    [actor.realmId,booking,source.patient_id,source.doctor_id,source.center_id,source.revision]);
    return {bookingRef:booking,files:docs.rows.map(x=>({
     fileRef:x.id,classification:x.classification,
     mime:x.mime,sizeBytes:Number(x.size_bytes),createdAt:x.created_at.toISOString()
@@ -273,10 +289,15 @@ export class PatientClinicalFileSharingService{
     "JOIN cg19_patient_private_file f ON f.realm_id=g.realm_id "+
     "AND f.patient_id=g.patient_id AND f.id=g.file_id "+
     "WHERE g.realm_id=$1 AND g.patient_id=$2 AND g.appointment_id=$3 "+
-    "AND g.file_id=$4 AND g.status='ACTIVE' AND g.revoked_at IS NULL "+
+    "AND g.file_id=$4 AND g.doctor_id=$5 AND g.center_id=$6 "+
+    "AND g.appointment_revision=$7 "+
+    "AND g.care_consent_revision=(SELECT x.revision_no FROM cg15_patient_consent x "+
+    "WHERE x.root_realm_id=g.realm_id AND x.patient_id=g.patient_id "+
+    "AND x.purpose='PATIENT_CARE' ORDER BY x.revision_no DESC LIMIT 1) "+
+    "AND g.status='ACTIVE' AND g.revoked_at IS NULL "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
     "FOR SHARE OF f,g",
-    [actor.realmId,source.patient_id,booking,file]);
+    [actor.realmId,source.patient_id,booking,file,source.doctor_id,source.center_id,source.revision]);
    if(!rows.rows[0])
     throw new NotFoundException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
    return rows.rows[0];
