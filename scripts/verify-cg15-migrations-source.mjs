@@ -26,7 +26,8 @@ const files=[
  "1431_cg15_patient_claim_attempt_throttle.sql",
  "1432_cg15_center_day_appointment_index.sql",
  "1433_cg19_appointment_event_notification_source.sql",
- "1434_cg15_center_qr_verification_guard.sql"
+ "1434_cg15_center_qr_verification_guard.sql",
+ "1435_cg19_appointment_pending_recovery_global.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
@@ -111,7 +112,7 @@ for(const name of files){
  let source="";
  try{source=readFileSync(path,"utf8");}
  catch(e){process.stderr.write("SOURCE_GAP "+name+": file missing\n");failures++;continue;}
- const result=inspect(source,name.startsWith("1432")?2:3);
+ const result=inspect(source,/^143[25]_/.test(name)?2:3);
  if(source.includes("\u0000"))result.errors.push("SQL contains a NUL byte");
  if(name.startsWith("1421")&&
   (!source.includes("cg15_exception_digest ~ '^[0-9a-f]{64}$'")||
@@ -145,6 +146,11 @@ for(const name of files){
    !source.includes("cg15_qr_verification_audit_immutable")||
    !source.includes("REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT")))
   result.errors.push("Original center QR verification abuse guard/audit source is incomplete");
+ if(name.startsWith("1435")&&
+  (!source.includes("CREATE INDEX ix_cg19_appointment_pending_recovery_global")||
+   !source.includes("ON cg19_appointment_event_outbox(recorded_at,realm_id,event_id)")||
+   !source.includes("WHERE state='PENDING'")))
+  result.errors.push("Global bounded original appointment/queue recovery index missing");
  if(name.startsWith("1433")&&
   (!source.includes("CREATE TABLE cg19_appointment_event_outbox")||
    !source.includes("PRIMARY KEY(realm_id,event_id)")||
