@@ -8,6 +8,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationHistory} from "../appointments/native-consultation-history";
 import {NativePatientPrivateDetails} from "./native-patient-private-details";
+import {NativePatientDatePicker} from "./native-patient-date-picker";
 import {NativePatientPrivateFiles} from "./native-patient-private-files";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
@@ -419,7 +420,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      </View>}
      {field("First name",first,setFirst)}
      {field("Last name",last,setLast)}
-     {field("Date of birth (YYYY-MM-DD, optional)",dob,setDob)}
+     <NativePatientDatePicker value={dob} onChange={setDob}
+      disabled={busy||uncertain}/>
      {!profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Patient-care consent</Text>
       <Text>{policy.available?policy.text:
