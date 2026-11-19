@@ -4,6 +4,9 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY=/^\d{4}-\d{2}-\d{2}$/;
+const validDay=(v:unknown)=>typeof v==="string"&&(v===""||
+ DAY.test(v)&&Number.isFinite(Date.parse(v+"T00:00:00Z"))&&
+ new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v);
 const STATE=new Set(["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION",
  "COMPLETED","NO_SHOW","CANCELLED"]);
 type Summary={patients:string;active_patients:string;bookings:string;
@@ -63,13 +66,15 @@ export class PatientAdminOverviewService{
  async overview(bearer:string,query:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   if(!query||typeof query!=="object"||Array.isArray(query)||
-   Object.keys(query).some(k=>!["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search","centerSearch"].includes(k)))
+   Object.keys(query).some(k=>!["centerRef","status","after","limit","day","stateRef","districtRef","centerType","search","centerSearch","fromDay","untilDay"].includes(k)))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const center=query.centerRef===undefined?"":query.centerRef;
   const status=query.status===undefined?"":query.status;
   const after=query.after===undefined?"":query.after;
   const limit=query.limit===undefined?20:Number(query.limit);
   const day=query.day===undefined?"":query.day;
+  const fromDay=query.fromDay===undefined?"":query.fromDay;
+  const untilDay=query.untilDay===undefined?"":query.untilDay;
   const state=query.stateRef===undefined?"":query.stateRef;
   const district=query.districtRef===undefined?"":query.districtRef;
   const centerType=query.centerType===undefined?"":query.centerType;
@@ -87,9 +92,9 @@ export class PatientAdminOverviewService{
    typeof centerType!=="string"||centerType.length>40||
    centerType!==""&&!/^[A-Z_]+$/.test(centerType)||
    !Number.isSafeInteger(limit)||limit<1||limit>50||
-   typeof day!=="string"||day!==""&&
-    (!DAY.test(day)||!Number.isFinite(Date.parse(day+"T00:00:00Z"))||
-     new Date(day+"T00:00:00Z").toISOString().slice(0,10)!==day))
+   !validDay(day)||!validDay(fromDay)||!validDay(untilDay)||
+   (typeof fromDay==="string"&&typeof untilDay==="string"&&
+    fromDay!==""&&untilDay!==""&&fromDay>untilDay))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const tx=await this.db.connect();
   try{
@@ -131,8 +136,12 @@ export class PatientAdminOverviewService{
     "lower(p.first_name||' '||p.last_name))>0 "+
     "OR position(lower($10::text) in lower(p.virtual_display_id))>0 "+
     "OR position(lower($10::text) in lower(a.booking_display_id))>0) "+
+    "AND ($11::date IS NULL OR "+
+    "(a.start_at AT TIME ZONE a.time_zone)::date >= $11::date) "+
+    "AND ($12::date IS NULL OR "+
+    "(a.start_at AT TIME ZONE a.time_zone)::date <= $12::date) "+
     "ORDER BY a.id DESC LIMIT $5",
-    [actor.realmId,center||null,status,after||null,limit+1,day||null,state||null,district||null,centerType,search.trim()]);
+    [actor.realmId,center||null,status,after||null,limit+1,day||null,state||null,district||null,centerType,search.trim(),fromDay||null,untilDay||null]);
    // Geography is a bounded set of current source categories, independent
    // of the first N centers. Filter large center pickers on the server.
    const regions=await tx.query<{
