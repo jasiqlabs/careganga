@@ -37,14 +37,6 @@ function number(v:unknown){
   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
  return Number(v);
 }
-function localDay(utc:Date,zone:string){
- let format:Intl.DateTimeFormat;
- try{format=new Intl.DateTimeFormat("en-CA",{timeZone:zone,
-  day:"2-digit",month:"2-digit",year:"numeric"});}
- catch{throw new ConflictException({code:"CG15_QUEUE_INVALID"});}
- const obj=Object.fromEntries(format.formatToParts(utc).map(x=>[x.type,x.value]));
- return obj.year+"-"+obj.month+"-"+obj.day;
-}
 function result(visit:Visit){return {
  visitRef:visit.id,queueToken:visit.queue_token,
  queueDate:visit.queue_local_date,visitStatus:visit.state,
@@ -93,14 +85,13 @@ export class ConsultationQueueService{
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
     "LEFT JOIN cg15_visit_queue q ON q.root_realm_id=a.root_realm_id AND q.appointment_id=a.id "+
     "WHERE a.root_realm_id=$1 AND a.center_id=$2 AND "+
-    "a.start_at >= $3::date::timestamptz-interval '48 hours' "+
-    "AND a.start_at < $3::date::timestamptz+interval '72 hours' "+
+    "(a.start_at AT TIME ZONE a.time_zone)::date=$3::date "+
     "ORDER BY a.start_at,a.id LIMIT 201",
     [actor.realmId,center,dayRaw]);
    if(r.rows.length>200)
     throw new ConflictException({code:"CG15_QUEUE_LIMIT"});
    await tx.query("COMMIT");active=false;
-   return {day:dayRaw,items:r.rows.filter(x=>localDay(x.start_at,x.time_zone)===dayRaw)
+   return {day:dayRaw,items:r.rows
     .map(x=>({appointmentRef:x.id,bookingId:x.booking_display_id,
       doctorRef:x.doctor_id,doctorName:x.doctor_name,patientName:x.first_name+" "+x.last_name,
       startAt:x.start_at.toISOString(),bookingStatus:x.booking_state,bookingVersion:x.revision,
