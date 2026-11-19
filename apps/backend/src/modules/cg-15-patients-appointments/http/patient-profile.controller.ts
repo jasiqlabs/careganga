@@ -13,6 +13,11 @@ export class PatientProfileController{
  @Get("me")
  @Header("Cache-Control","private, no-store")
  me(@Headers("authorization")token:string){return this.patients.me(token);}
+ @Post("me/identity-verification")
+ @Header("Cache-Control","private, no-store")
+ beginIdentityVerification(@Headers("authorization")token:string){
+  return this.patients.beginIdentityVerification(token);
+ }
  @Post("registration")
  @Header("Cache-Control","private, no-store")
  register(@Headers("authorization")token:string,@Body()body:unknown){
