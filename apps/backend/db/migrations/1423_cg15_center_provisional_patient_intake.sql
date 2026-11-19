@@ -8,7 +8,68 @@ CREATE TABLE cg15_patient_center_intake (
  patient_id uuid,
  created_by_account uuid NOT NULL,
  request_key uuid NOT NULL,
- request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+ request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}
+ assisted_consent_attested boolean NOT NULL CHECK(assisted_consent_attested=true),
+ consent_version text NOT NULL CHECK(consent_version ~ '^[A-Za-z0-9._-]{1,32}
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,center_id,created_by_account,request_key),
+ UNIQUE(root_realm_id,patient_id),
+ FOREIGN KEY(root_realm_id,center_id)
+  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,patient_id)
+  REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by_account,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg15_center_intake_recent
+ ON cg15_patient_center_intake(root_realm_id,center_id,created_at DESC,id DESC);
+),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,center_id,created_by_account,request_key),
+ UNIQUE(root_realm_id,patient_id),
+ FOREIGN KEY(root_realm_id,center_id)
+  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,patient_id)
+  REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by_account,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg15_center_intake_recent
+ ON cg15_patient_center_intake(root_realm_id,center_id,created_at DESC,id DESC);
+),
+ consent_version text NOT NULL CHECK(consent_version ~ '^[A-Za-z0-9._-]{1,32}
+ assisted_consent_attested boolean NOT NULL CHECK(assisted_consent_attested=true),
+ consent_version text NOT NULL CHECK(consent_version ~ '^[A-Za-z0-9._-]{1,32}
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,center_id,created_by_account,request_key),
+ UNIQUE(root_realm_id,patient_id),
+ FOREIGN KEY(root_realm_id,center_id)
+  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,patient_id)
+  REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by_account,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg15_center_intake_recent
+ ON cg15_patient_center_intake(root_realm_id,center_id,created_at DESC,id DESC);
+),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,center_id,created_by_account,request_key),
+ UNIQUE(root_realm_id,patient_id),
+ FOREIGN KEY(root_realm_id,center_id)
+  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,patient_id)
+  REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by_account,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg15_center_intake_recent
+ ON cg15_patient_center_intake(root_realm_id,center_id,created_at DESC,id DESC);
+),
  assisted_consent_attested boolean NOT NULL CHECK(assisted_consent_attested=true),
  consent_version text NOT NULL CHECK(consent_version ~ '^[A-Za-z0-9._-]{1,32}
  created_at timestamptz NOT NULL DEFAULT now(),
