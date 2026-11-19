@@ -7,7 +7,7 @@ const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Hold={holdRef:string;status:string;expiresAt:string;
  consultationFeeMinor:string;feeVersion:number};
-type Booking={bookingId:string;doctorRef:string;startAt:string;centerRef:string;version:number;bookingStatus:string;
+type Booking={bookingRef:string;bookingId:string;doctorRef:string;startAt:string;centerRef:string;version:number;bookingStatus:string;
  consultationFeeMinor:string;collectionStatus:string};
 type AppliedReschedule={applied:boolean;bookingId:string;doctorRef:string|null;
  centerRef:string|null;startAt:string|null;currentBooking:Booking};
@@ -50,6 +50,7 @@ export function NativeConsultationAction(p:Props){
  const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
+ const slipKey=useRef<string|null>(null);
  const label=(s:string,run:()=>void)=>(
   <Pressable accessibilityRole="button" disabled={busy||uncertain}
    accessibilityState={{disabled:busy||uncertain}}
@@ -60,6 +61,41 @@ export function NativeConsultationAction(p:Props){
   const t=await SecureStore.getItemAsync(KEY);
   if(!t)throw Object.assign(new Error("Sign in using My Patient Profile on CareGanga before booking."),{status:401});
   return t;
+ }
+ /** Best-effort CG19 issue after true CG15 booking commit only.
+  * Never expose document bytes or call a patient PDF a payment receipt.
+  * Unknown CG19 status does not invalidate or duplicate a confirmed booking.
+  */
+ async function issuePatientSlip(ref:string,patientToken:string):
+  Promise<"ISSUED"|"CHECK_STATUS">{
+  if(!base||!/^https?:\/\//.test(base)||!/^[-a-f0-9]{36}$/i.test(ref))
+   return "CHECK_STATUS";
+  if(process.env.NODE_ENV==="production"&&!base.startsWith("https://"))
+   return "CHECK_STATUS";
+  const endpoint="/api/v1/appointments/slips/me/"+ref;
+  try{
+   const current=await fetch(new URL(endpoint+"/status",base),{
+    cache:"no-store",signal:AbortSignal.timeout(12000),
+    headers:{Authorization:"Bearer "+patientToken}});
+   if(!current.ok)return "CHECK_STATUS";
+   const status:unknown=await current.json();
+   if(status&&typeof status==="object"&&"status" in status&&
+    status.status==="ISSUED"&&"canDownload" in status&&
+    status.canDownload===true)return "ISSUED";
+   if(!status||typeof status!=="object"||!("status" in status)||
+    status.status!=="NOT_ISSUED")return "CHECK_STATUS";
+   if(!slipKey.current)slipKey.current=Crypto.randomUUID();
+   const issued=await fetch(new URL(endpoint+"/issue",base),{
+    method:"POST",cache:"no-store",signal:AbortSignal.timeout(12000),
+    headers:{Authorization:"Bearer "+patientToken,
+     "Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:slipKey.current})});
+   if(!issued.ok)return "CHECK_STATUS";
+   const result:unknown=await issued.json();
+   return result&&typeof result==="object"&&"status" in result&&
+    result.status==="ISSUED"&&"confirmed" in result&&
+    result.confirmed===true?"ISSUED":"CHECK_STATUS";
+  }catch{return "CHECK_STATUS";}
  }
  async function reschedule(){
   if(!p.reschedule||busy||uncertain)return;
@@ -112,7 +148,11 @@ export function NativeConsultationAction(p:Props){
     requestKey:confirmKey.current,holdRef:hold.holdRef,
     acceptedFeeMinor:hold.consultationFeeMinor,acceptedFeeVersion:hold.feeVersion,
     paymentMode:"PAY_AT_CENTER"},t);
-   setBooking(result);setMessage("Appointment confirmed. Pay at your healthcare center.");
+   setBooking(result);setUncertain(false);
+   const slip=await issuePatientSlip(result.bookingRef,t);
+   setMessage(slip==="ISSUED"?
+    "Appointment confirmed. Your private consultation slip is issued. Pay at your center.":
+    "Appointment confirmed. Payment is due at the center. Check My Consultations for private slip status.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?e.status:null;
    setUncertain(!(typeof status==="number"&&status>=400&&status<500));
@@ -153,7 +193,10 @@ export function NativeConsultationAction(p:Props){
     const found=await original<Booking>(
      "confirmations/by-request/"+confirmKey.current,t);
     if(found){setBooking(found);setUncertain(false);setHold(null);
-     setMessage("The original appointment was confirmed: "+found.bookingId+".");return;}
+     const slip=await issuePatientSlip(found.bookingRef,t);
+     setMessage("The original appointment was confirmed: "+found.bookingId+
+      (slip==="ISSUED"?". Private slip issued.":
+       ". Check My Consultations for private slip status."));return;}
    }
    if(holdKey.current&&!p.reschedule){
     const found=await original<Hold>("holds/by-request/"+holdKey.current,t);
