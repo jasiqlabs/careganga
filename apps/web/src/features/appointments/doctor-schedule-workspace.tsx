@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Channel="foundation"|"center";
+type ScheduleTab="WEEKLY"|"CALENDAR"|"SLOTS"|"LEAVE"|"HOLIDAY"|"RULES";
 type Row={associationRef:string;doctorRef:string;centerRef:string;doctorName:string;
  centerName:string;specialties:string[];status:string;version:number};
 type Place={centerRef:string;centerName:string;stateRef:string;stateName:string;
@@ -100,6 +101,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [chosenCenter,setChosenCenter]=useState("");
  const [metrics,setMetrics]=useState<Metrics|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
+ const [tab,setTab]=useState<ScheduleTab>("WEEKLY");
  const [loading,setLoading]=useState(true),[working,setWorking]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false),[search,setSearch]=useState("");
@@ -143,7 +145,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   }}
  },[base,channel,stateRef,districtRef,blockRef,chosenCenter,appliedSearch]);
  useEffect(()=>{
-  setSelected(null);setRoster([]);setMetrics(null);setWindows([]);
+  setSelected(null);setTab("WEEKLY");setRoster([]);setMetrics(null);setWindows([]);
   setCopyTarget("");
   setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
   setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
@@ -156,7 +158,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   try{
    const detail=await api<Detail>(base+"/"+encodeURIComponent(ref));
    if(n!==seq.current)return;
-   setSelected(detail);setWindows(detail.windows);
+   setSelected(detail);setTab("WEEKLY");setWindows(detail.windows);
    setSlot(detail.slotMinutes>0?String(detail.slotMinutes):"");
    setCopyTarget("");setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
    setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
@@ -210,7 +212,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     throw Error("The selected doctor-center association is no longer eligible.");
    if(destination.timeZone!==source.timeZone)
     throw Error("Centers have different time zones. Configure the target schedule directly to avoid shifting consultation times.");
-   setSelected(destination);setWindows(sourceWindows);
+   setSelected(destination);setTab("WEEKLY");setWindows(sourceWindows);
    setSlot(String(source.slotMinutes));
    const today=currentCenterDay(source.timeZone);
    if(source.effectiveUntil&&source.effectiveUntil<=today)
@@ -430,6 +432,21 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  // The API searches all real approved associations BEFORE applying its
  // bounded 100-row limit. Never silently search only the first Web page.
  const result=roster;
+ const tabs:ReadonlyArray<{id:ScheduleTab;label:string}>=[
+  {id:"WEEKLY",label:"Weekly Schedule"},
+  {id:"CALENDAR",label:"Availability Calendar"},
+  {id:"SLOTS",label:"Time Slot Settings"},
+  {id:"LEAVE",label:"Leave or Block Time"},
+  {id:"HOLIDAY",label:"Holiday"},
+  {id:"RULES",label:"Appointment Rule"}
+ ];
+ function changeTab(next:ScheduleTab){
+  setTab(next);setError("");setNotice("");
+  if(next==="HOLIDAY"){setKind("HOLIDAY");exceptionKey.current="";}
+  else if(next==="LEAVE"&&kind==="HOLIDAY"){
+   setKind("LEAVE");exceptionKey.current="";
+  }
+ }
  return <section className="role-workspace" aria-label="Doctor schedules and availability">
   <header className="topbar"><div>
    <h1>Doctor Schedule & Availability</h1>
