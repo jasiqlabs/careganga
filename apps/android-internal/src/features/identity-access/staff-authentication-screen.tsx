@@ -246,8 +246,9 @@ export function StaffAuthenticationScreen(){
       canReview={roleActions.includes("approvals.review")}
       onExit={()=>setApprovalsOpen(false)} onExpired={expireSession}/>;
   if(patientQueueOpen&&token&&actor&&roleActions.includes("health.visits.manage"))
-    return <NativeCenterVisitQueue token={token} onExit={closePatientQueue}
-      onExpired={expireSession}/>;
+    return <NativeCenterVisitQueue token={token}
+      canCancel={roleActions.includes("health.appointments.cancel")}
+      onExit={closePatientQueue} onExpired={expireSession}/>;
   if(patientBookingOpen&&token&&actor&&roleActions.includes("health.patients.intake"))
     return <NativeCenterAssistedBooking token={token} onExit={closePatientBooking}
       onExpired={expireSession}/>;
