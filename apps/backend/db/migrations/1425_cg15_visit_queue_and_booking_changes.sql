@@ -16,10 +16,11 @@ CREATE TABLE cg15_visit_queue(
  actor_account_id uuid NOT NULL,
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,appointment_id),
+ UNIQUE(root_realm_id,id,appointment_id),
  UNIQUE(root_realm_id,center_id,queue_local_date,queue_sequence),
  UNIQUE(root_realm_id,center_id,queue_local_date,queue_token),
- FOREIGN KEY(root_realm_id,appointment_id)
-   REFERENCES cg15_consultation_appointment(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,appointment_id,center_id)
+   REFERENCES cg15_consultation_appointment(root_realm_id,id,center_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,center_id)
    REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_account_id,root_realm_id)
@@ -45,8 +46,8 @@ CREATE TABLE cg15_visit_event (
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,visit_id,next_revision),
  UNIQUE(root_realm_id,appointment_id,request_key),
- FOREIGN KEY(root_realm_id,visit_id)
-  REFERENCES cg15_visit_queue(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,visit_id,appointment_id)
+  REFERENCES cg15_visit_queue(root_realm_id,id,appointment_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,appointment_id)
   REFERENCES cg15_consultation_appointment(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_account_id,root_realm_id)
