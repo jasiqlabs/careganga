@@ -275,6 +275,13 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG01_PUBLIC_SIGNUP_LIMIT:"Too many patient registration attempts. Please try again later.",
       CG01_PUBLIC_SIGNUP_UNAVAILABLE:"New patient accounts are temporarily unavailable until registered-mobile verification is configured.",
       CG15_PATIENT_INVALID:"Review the patient name, date of birth and form details before continuing.",
+      CG15_PATIENT_PRIVATE_INVALID:"Review the optional blood group, emergency contact and private medical information fields.",
+      CG15_PATIENT_PRIVATE_UNAVAILABLE:"Your private patient details are unavailable until your current verified account and secure storage can be confirmed.",
+      CG15_PATIENT_PRIVATE_CHANGED:"Your private patient information was updated elsewhere. Refresh before saving again.",
+      CG19_PATIENT_FILE_INVALID:"Choose a supported private image or PDF up to 10 MB with an original upload request.",
+      CG19_PATIENT_FILE_UNAVAILABLE:"This private file is unavailable to your currently verified patient account.",
+      CG19_PATIENT_FILE_CHANGED:"The private document was changed or revoked. Refresh its current status.",
+      CG19_PATIENT_FILE_REQUEST_CONFLICT:"This upload reference was used for different file information. Check its original status."
       CG15_PATIENT_FORBIDDEN:"Your account is not authorized to manage this patient profile.",
       CG15_PATIENT_CONTACT_UNVERIFIED:"Verify the mobile contact on your existing CareGanga account before creating a patient profile.",
       CG15_PATIENT_NOT_REGISTERED:"No patient profile is linked to this CareGanga account yet.",
