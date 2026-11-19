@@ -3,6 +3,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Channel="foundation"|"center";
 type Row={associationRef:string;doctorRef:string;centerRef:string;doctorName:string;
  centerName:string;specialties:string[];status:string;version:number};
+type Metrics={totalAppointments:string;workingSessionsToday:string;
+ doctorsOnActiveLeave:string};
 type Window={weekday:number;startLocal:string;endLocal:string};
 type Except={exceptionRef:string;kind:string;state:string;startAt:string;
  endAt:string;reason:string;version:number};
@@ -77,6 +79,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
 }){
  const base=pathFor(channel,centerRef);
  const [roster,setRoster]=useState<Row[]>([]);
+ const [metrics,setMetrics]=useState<Metrics|null>(null);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [loading,setLoading]=useState(true),[working,setWorking]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -93,16 +96,17 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const loadRoster=useCallback(async()=>{
   const n=++seq.current;
   try{
-   const response=await api<{doctors:Row[]}>(base);
+   const response=await api<{doctors:Row[];metrics:Metrics}>(base);
    if(n!==seq.current)return;
-   setRoster(response.doctors);setLoading(false);setError("");setUncertain(false);
+   setRoster(response.doctors);setMetrics(response.metrics??null);
+   setLoading(false);setError("");setUncertain(false);
   }catch(e){if(n===seq.current){
-   setLoading(false);setError(e instanceof Error?e.message:
+   setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
     "The approved doctor list is currently unavailable.");
   }}
  },[base]);
  useEffect(()=>{
-  setSelected(null);setRoster([]);setWindows([]);setCopyTarget("");
+  setSelected(null);setRoster([]);setMetrics(null);setWindows([]);setCopyTarget("");
   setCopyReview(null);weekKey.current="";
   exceptionKey.current="";setLoading(true);
   void loadRoster();return()=>{seq.current++;};
@@ -242,10 +246,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const summary=[
   {label:"Doctors in current list",value:String(new Set(roster.map(x=>x.doctorRef)).size)},
   {label:"Active schedules in list",value:String(roster.filter(x=>x.status==="ACTIVE").length)},
-  {label:"Today available",value:"—"},
-  {label:"Total appointments",value:"—"},
+  {label:"Today's working sessions",value:metrics?.workingSessionsToday??"Loading…"},
+  {label:"Total consultation bookings",value:metrics?.totalAppointments??"Loading…"},
   {label:"Centers in current list",value:String(new Set(roster.map(x=>x.centerRef)).size)},
-  {label:"On approved leave",value:"—"}
+  {label:"Doctors on active leave",value:metrics?.doctorsOnActiveLeave??"Loading…"}
  ];
  const result=roster.filter(x=>
   (x.doctorName+" "+x.centerName+" "+x.specialties.join(" "))
