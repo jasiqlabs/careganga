@@ -123,7 +123,8 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
  }
  async function change(item:Item,next:"CHECK_IN"|"WAITING"|"IN_CONSULTATION"|"COMPLETED"|"NO_SHOW"){
   if(busy||uncertain)return;
-  const reference=item.appointmentRef+":"+next+":"+(item.visitVersion??item.bookingVersion);
+  const reference=center+":"+item.appointmentRef+":"+next+":"+
+   (item.visitVersion??item.bookingVersion);
   if(!commands.current.has(reference))commands.current.set(reference,Crypto.randomUUID());
   setBusy(true);setMessage("");
   try{
@@ -147,7 +148,11 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    commands.current.delete(reference);
    await load(center,dateAt(offset,centerZone),cursor);
    setMessage("Original visit status saved.");
-  }catch(e){fail(e);setUncertain(true);}
+  }catch(e){
+   fail(e);
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+  }
   finally{setBusy(false);}
  }
  async function cancelBooking(item:Item){
