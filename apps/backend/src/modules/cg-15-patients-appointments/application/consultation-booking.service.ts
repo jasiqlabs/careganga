@@ -20,7 +20,8 @@ type Hold={id:string;patient_id:string;doctor_id:string;center_id:string;associa
  expires_at:Date;created_by_account:string;request_digest:string};
 type Booking={id:string;booking_display_id:string;patient_id:string;doctor_id:string;
  center_id:string;association_id:string;hold_id:string;reservation_id:string;
- start_at:Date;end_at:Date;time_zone:string;fee_minor:string;fee_version:number;
+ start_at:Date;end_at:Date;time_zone:string;doctor_name:string;center_name:string;
+ center_address:string;fee_minor:string;fee_version:number;
  booking_state:string;collection_state:string;payment_mode:string;revision:number;
  confirmation_digest:string;created_at:Date;updated_at:Date};
 type Patient={id:string;profile_status:string;consent_granted:boolean|null;verified:Date|null};
@@ -83,7 +84,8 @@ function presentBooking(v:Booking){return {
  bookingRef:v.id,bookingId:v.booking_display_id,
  doctorRef:v.doctor_id,centerRef:v.center_id,
  startAt:v.start_at.toISOString(),endAt:v.end_at.toISOString(),
- timeZone:v.time_zone,consultationFeeMinor:v.fee_minor,
+ timeZone:v.time_zone,doctorName:v.doctor_name,centerName:v.center_name,
+ centerAddress:v.center_address,consultationFeeMinor:v.fee_minor,
  feeVersion:v.fee_version,consultationCurrency:"INR" as const,
  bookingStatus:v.booking_state,paymentMode:v.payment_mode,
  collectionStatus:v.collection_state,version:v.revision,
@@ -315,12 +317,14 @@ export class ConsultationBookingService{
    const booking=await tx.query<Booking>(
     "INSERT INTO cg15_consultation_appointment("+
     "root_realm_id,booking_display_id,patient_id,doctor_id,center_id,association_id,"+
-    "hold_id,reservation_id,start_at,end_at,time_zone,fee_minor,fee_version,"+
-    "created_by_account,confirmation_key,confirmation_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *",
+    "hold_id,reservation_id,start_at,end_at,time_zone,doctor_name,center_name,"+
+    "center_address,fee_minor,fee_version,created_by_account,confirmation_key,"+
+    "confirmation_digest) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",
     [actor.realmId,"CGA-"+randomBytes(8).toString("hex").toUpperCase(),
      hold.patient_id,hold.doctor_id,hold.center_id,hold.association_id,hold.id,
      reservation.rows[0].id,hold.start_at,hold.end_at,hold.time_zone,
+     current.source.doctor_name,current.source.center_name,current.source.address,
      fee,hold.fee_version,actor.accountId,key,signature]);
    await tx.query(
     "UPDATE cg15_doctor_reservation SET status='CONFIRMED' WHERE root_realm_id=$1 AND id=$2",
@@ -460,10 +464,12 @@ export class ConsultationBookingService{
    const changed=await tx.query<Booking>(
     "UPDATE cg15_consultation_appointment SET center_id=$3,association_id=$4,"+
     "reservation_id=$5,start_at=$6,end_at=$7,time_zone=$8,"+
-    "fee_minor=$9,fee_version=$10,revision=revision+1,updated_at=now() "+
+    "doctor_name=$9,center_name=$10,center_address=$11,"+
+    "fee_minor=$12,fee_version=$13,revision=revision+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
     [actor.realmId,id,center,current.source.association_ref,nr.rows[0].id,
-     start,end,current.source.time_zone,fee,current.feeVersion]);
+     start,end,current.source.time_zone,current.source.doctor_name,
+     current.source.center_name,current.source.address,fee,current.feeVersion]);
    await tx.query(
     "INSERT INTO cg15_appointment_event(root_realm_id,appointment_id,prior_revision,"+
     "new_revision,action,prior_snapshot,new_snapshot,actor_account_id,request_key) "+
