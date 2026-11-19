@@ -71,6 +71,7 @@ export function CenterVisitQueue(){
    if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
    setItems(rows.items);setCursor(after);setNextCursor(rows.next);setUncertain(false);
    auditSerial.current++;setHistoryRef("");setHistory(null);setHistoryError("");
+   setHistoryBusy(false);
    void get<Summary>("my-centers/"+encodeURIComponent(c)+
     "/summary?date="+encodeURIComponent(d)).then(data=>{
      if(serial===requestSerial.current&&c===selectedCenterRef.current&&
