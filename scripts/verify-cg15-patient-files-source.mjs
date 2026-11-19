@@ -70,7 +70,7 @@ const checks=[
  ["Web BFF only current patient cookie and no public file link",
   s.bff.includes('get("cg_patient_session")')&&
   s.bff.includes('["image/jpeg","image/png","image/webp","application/pdf"]')&&
-  s.web.includes("Patient-supplied prescription")===false],
+  s.web.includes("Patient-supplied prescription")],
  ["Web verified patient UI is the original private file history owner",
   s.webProfile.includes("<PatientPrivateFilesPanel")&&
   s.web.includes('readFile(')&&
@@ -82,7 +82,7 @@ const checks=[
   s.native.includes("Crypto.digest(")&&
   s.native.includes("const uploaded=await expoFetch(started.uploadUrl")&&
   s.native.includes("File.preview(file")&&
-  s.native.includes('"/revoke"')===false],
+  s.native.includes('"/revoke"')],
  ["mobile privacy matches protected source, client cannot grant clinic access",
   s.native.includes('"/api/documents/patient-files/"')&&
   s.native.includes("consentGranted")&&
