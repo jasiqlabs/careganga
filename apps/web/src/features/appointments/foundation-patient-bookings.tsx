@@ -252,7 +252,7 @@ export function FoundationPatientBookings(){
  }
  return <section className="role-workspace" aria-label="Patient and booking management">
   <style>{`@media print{
-   body.cg15-h15-report-print *{visibility:hidden!important;}
+   body *{visibility:hidden!important;}
    body.cg15-h15-report-print .cg15-print-scope,
    body.cg15-h15-report-print .cg15-print-scope *{visibility:visible!important;}
    body.cg15-h15-report-print .cg15-print-scope{position:absolute!important;inset:0 auto auto 0!important;
