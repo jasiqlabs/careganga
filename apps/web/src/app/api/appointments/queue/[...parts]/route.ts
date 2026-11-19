@@ -17,7 +17,7 @@ function allowed(parts:string[],method:string){
   parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    ["check-in","verify-slip","no-show"].includes(parts[2])&&method==="POST"||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
-   parts[2]==="bookings"&&ID.test(parts[3])&&parts[4]==="history"&&method==="GET"||
+   parts[2]==="bookings"&&ID.test(parts[3])&&["history","clinical-history"].includes(parts[4])&&method==="GET"||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="visits"&&ID.test(parts[3])&&parts[4]==="transition"&&method==="POST";
 }
@@ -49,10 +49,12 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
     return fail(400,"Invalid queue page.");
    params.set("after",after);}
  }
- if(method==="GET"&&parts.length===5&&parts[4]==="history"){
+ if(method==="GET"&&parts.length===5&&["history","clinical-history"].includes(parts[4])){
   const before=req.nextUrl.searchParams.get("before");
   if(before!==null){
-   if(!/^[0-9]{1,9}$/.test(before)||Number(before)<1)
+   if(parts[4]==="history"&&(!/^[0-9]{1,9}$/.test(before)||Number(before)<1) ||
+     parts[4]==="clinical-history"&&(before.length>80||
+      !/^[0-9A-Za-z:._-]+$/.test(before)))
     return fail(400,"Invalid booking history page.");
    params.set("before",before);
   }
