@@ -83,6 +83,9 @@ export function NativeAppointmentDocuments({
   await file.write(bytes);
   cached.current=file;
   try{
+   if(!await File.canPreview(file,{mimeType:kind==="pdf"?
+    "application/pdf":"text/calendar"}))
+    throw Error("No compatible private file viewer is installed.");
    await File.preview(file,{title:kind==="pdf"?
     "Private CareGanga Appointment":"CareGanga Calendar",
     mimeType:kind==="pdf"?"application/pdf":"text/calendar"});
