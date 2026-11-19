@@ -122,16 +122,38 @@ export class PatientProfileService{
   const requestKey=reqKey(v.requestKey),firstName=name(v.firstName,"firstName",2);
   const lastName=name(v.lastName,"lastName",1);
   const dateOfBirth=birthDate(v.dateOfBirth);
-  const terms=policy();
-  if(!terms.available)
-   throw new ServiceUnavailableException({code:"CG15_PATIENT_CONSENT_UNAVAILABLE"});
-  if(v.consentVersion!==terms.version||v.consentAccepted!==true)
+  const submittedVersion=v.consentVersion;
+  if(v.consentAccepted!==true||typeof submittedVersion!=="string"||
+    !VERSION.test(submittedVersion))
    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED",field:"consentAccepted"});
-  const signature=digest({firstName,lastName,dateOfBirth,consentVersion:terms.version,
+  const signature=digest({firstName,lastName,dateOfBirth,consentVersion:submittedVersion,
    consentAccepted:true});
   const c=await this.db.connect();let tx=false;
   try{
    await c.query("BEGIN");tx=true;
+   await this.activeAccount(c,actor,false);
+   // Replay of an already committed request must remain safe when the consent
+   // version/contact proof changes after the first response was lost.
+   const oldCommand=await c.query<CommandRow>(
+    "SELECT request_digest,patient_id FROM cg15_patient_registration_command "+
+    "WHERE root_realm_id=$1 AND account_id=$2 AND request_key=$3 FOR UPDATE",
+    [actor.realmId,actor.accountId,requestKey]);
+   if(oldCommand.rows[0]){
+    if(oldCommand.rows[0].request_digest!==signature)
+     throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+    if(oldCommand.rows[0].patient_id){
+     const existing=await this.owned(c,actor,true);
+     if(!existing||existing.id!==oldCommand.rows[0].patient_id)
+      throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+     await c.query("COMMIT");tx=false;
+     return this.present(existing);
+    }
+   }
+   const terms=policy();
+   if(!terms.available)
+    throw new ServiceUnavailableException({code:"CG15_PATIENT_CONSENT_UNAVAILABLE"});
+   if(submittedVersion!==terms.version)
+    throw new BadRequestException({code:"CG15_PATIENT_CONSENT_REQUIRED",field:"consentAccepted"});
    await this.activeAccount(c,actor,true);
    await c.query(
     "INSERT INTO cg15_patient_registration_command(root_realm_id,account_id,request_key,request_digest) "+
