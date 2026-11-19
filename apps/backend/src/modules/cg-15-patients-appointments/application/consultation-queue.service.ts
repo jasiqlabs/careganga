@@ -111,7 +111,7 @@ export class ConsultationQueueService{
  async clinicalHistory(bearer:string,centerRaw:string,bookingRaw:string,beforeRaw?:string){
   const actor=await this.identity.verifySession(bearer);
   const center=param(centerRaw),booking=param(bookingRaw);
-  const cursor=/^(\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{3}Z)_([a-f0-9-]{36})$/i;
+  const cursor=/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z)_([a-f0-9-]{36})$/i;
   let at:string|null=null,prior:string|null=null;
   if(beforeRaw!==undefined){
    const m=cursor.exec(beforeRaw);
