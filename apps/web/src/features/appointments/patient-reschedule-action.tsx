@@ -4,7 +4,9 @@ import {useRef,useState} from "react";
 type Props={bookingRef:string;expectedVersion:number;
  doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string};
-type Result={bookingId:string;bookingStatus:string;startAt:string;centerRef:string;version:number;consultationFeeMinor:string};
+type Result={bookingId:string;bookingStatus:string;doctorRef:string;startAt:string;centerRef:string;version:number;consultationFeeMinor:string};
+type Applied={applied:boolean;bookingId:string;doctorRef:string|null;centerRef:string|null;
+ startAt:string|null;currentBooking:Result};
 export function PatientRescheduleAction(p:Props){
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [result,setResult]=useState<Result|null>(null),[message,setMessage]=useState("");
@@ -20,37 +22,55 @@ export function PatientRescheduleAction(p:Props){
     method:"POST",cache:"no-store",credentials:"same-origin",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({requestKey:key.current,expectedVersion:p.expectedVersion,
-     centerRef:p.centerRef,startAt:p.startAt,endAt:p.endAt,
+     doctorRef:p.doctorRef,centerRef:p.centerRef,startAt:p.startAt,endAt:p.endAt,
      acceptedFeeMinor:p.feeMinor,acceptedFeeVersion:p.feeVersion,
      paymentMode:"PAY_AT_CENTER"})});
    const data:unknown=await r.json().catch(()=>null);
    if(!r.ok){
     const item=data&&typeof data==="object"&&"message" in data?
      (data as {message?:unknown}).message:null;
-    throw Error(typeof item==="string"?item:"Reschedule status cannot be verified.");
+    throw Object.assign(new Error(typeof item==="string"?item:
+     "Reschedule status cannot be verified."),{status:r.status});
    }
    setResult(data as Result);
    setMessage("Appointment moved successfully. Your previous time was released.");
-  }catch(e){setUncertain(true);setMessage((e instanceof Error?e.message:
-   "The outcome is uncertain.")+" Check the original appointment before retrying.");}
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+   setMessage((e instanceof Error?e.message:
+    "The outcome is uncertain.")+
+    (typeof status==="number"&&status>=400&&status<500?
+     " Choose a current approved time.":" Check the original appointment before retrying."));
+  }
   finally{setBusy(false);}
  }
  async function checkOriginal(){
   if(busy||!uncertain)return;
   setBusy(true);setMessage("");
   try{
-   const r=await fetch("/api/consultations/me/"+encodeURIComponent(p.bookingRef),{
+   if(!key.current)throw Error("No original reschedule request key exists.");
+   const r=await fetch("/api/consultations/me/"+encodeURIComponent(p.bookingRef)+
+    "/reschedule/by-request/"+key.current,{
     cache:"no-store",credentials:"same-origin"});
-   if(!r.ok)throw Error("The original booking could not be checked. Please retry this status check.");
-   const current=await r.json() as Result;
-   if(current.startAt===p.startAt&&current.centerRef===p.centerRef){
-    setResult(current);setUncertain(false);
-    setMessage("The original booking already shows your selected new time.");
-   }else if(current.bookingStatus==="CONFIRMED"&&current.version===p.expectedVersion){
+   if(r.ok){
+    const applied=await r.json() as Applied;
+    if(applied.applied){
+     setResult(applied.currentBooking);setUncertain(false);
+     setMessage("Your original reschedule request was accepted. The latest booking details are shown.");
+     return;
+    }
+    throw Error("The recorded reschedule response is unavailable.");
+   }
+   if(r.status!==404)throw Error("The original request status could not be confirmed. Check again.");
+   const existing=await fetch("/api/consultations/me/"+encodeURIComponent(p.bookingRef),{
+    cache:"no-store",credentials:"same-origin"});
+   if(!existing.ok)throw Error("The current booking could not be checked. Retry this status check.");
+   const current=await existing.json() as Result;
+   if(current.bookingStatus==="CONFIRMED"&&current.version===p.expectedVersion){
     setUncertain(false);
-    setMessage("Your original booking is unchanged. A retry uses the same idempotent request key.");
+    setMessage("No matching original request is recorded. The booking is unchanged; retry uses the same request key.");
    }else{
-    setMessage("Your original booking has changed. Refresh the booking before any new request.");
+    setMessage("The booking changed without a matching original request. Refresh it before taking any action.");
    }
   }catch(e){setMessage(e instanceof Error?e.message:"Original booking status remains uncertain.");}
   finally{setBusy(false);}
