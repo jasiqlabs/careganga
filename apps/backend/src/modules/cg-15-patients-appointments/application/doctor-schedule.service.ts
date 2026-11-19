@@ -309,13 +309,18 @@ export class DoctorScheduleService{
    throw new ConflictException({code:"CG15_SCHEDULE_DOCTOR_CONFLICT"});
  }
  async roster(bearer:string,channel:Channel,centerRef?:string,
-  geo?:{stateRef?:string;districtRef?:string;blockRef?:string;search?:string}){
+  geo?:{stateRef?:string;districtRef?:string;blockRef?:string;search?:string;status?:string;specialty?:string}){
   const ownRef=channel==="center"?uuid(centerRef):null;
   const actor=await this.actor(bearer,channel,false);
   const stateRef=channel==="foundation"&&geo?.stateRef?uuid(geo.stateRef):null;
   const districtRef=channel==="foundation"&&geo?.districtRef?uuid(geo.districtRef):null;
   const blockRef=channel==="foundation"&&geo?.blockRef?uuid(geo.blockRef):null;
   const search=channel==="foundation"?(geo?.search??"").trim():"";
+  const status=channel==="foundation"?(geo?.status??"").trim():"";
+  const specialty=channel==="foundation"?(geo?.specialty??"").trim():"";
+  if(!["","ACTIVE","SUSPENDED","NOT_SCHEDULED"].includes(status)||
+    specialty.length>80||specialty.includes("<")||specialty.includes(">"))
+   throw new BadRequestException({code:"CG15_SCHEDULE_INVALID"});
   if(search.length>80||/[\u0000-\u001f\u007f<>]/.test(search))
    throw new BadRequestException({code:"CG15_SCHEDULE_INVALID"});
   if(channel==="foundation"&&centerRef)uuid(centerRef);
@@ -344,7 +349,10 @@ export class DoctorScheduleService{
     "AND ($6::text='' OR position(lower($6) in lower(d.full_name))>0 "+
     "OR position(lower($6) in lower(c.display_name))>0 "+
     "OR position(lower($6) in lower(array_to_string(d.specialties,' ')))>0) "+
-    "AND p.status='VERIFIED' AND c.status='VERIFIED' "
+    "AND ($7::text='' OR COALESCE(s.status,'NOT_SCHEDULED')=$7) "+
+     "AND ($8::text='' OR EXISTS(SELECT 1 FROM unnest(d.specialties) specialization "+
+     "WHERE position(lower($8) in lower(specialization))>0)) "+
+     "AND p.status='VERIFIED' AND c.status='VERIFIED' "
     "AND c.access_state='ENABLED' AND d.status='VERIFIED' "+
     "AND assoc.affiliation_state='APPROVED' "+
     "AND assoc.approved_from<=now() "+
@@ -389,7 +397,7 @@ export class DoctorScheduleService{
     "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
     [actor.realmId,channel==="center"?ownRef:centerRef??null,
-     stateRef,districtRef,blockRef,search]);
+     stateRef,districtRef,blockRef,search,status,specialty]);
    const counts=await tx.query<{appointments:string;today_sessions:string;
     active_leave_doctors:string}>(
     "WITH scoped_center AS ("+
