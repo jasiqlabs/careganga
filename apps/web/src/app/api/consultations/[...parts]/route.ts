@@ -18,7 +18,8 @@ const safeCodes=new Set([
  "CG15_BOOKING_PATIENT_NOT_READY","CG15_BOOKING_SLOT_CHANGED",
  "CG15_BOOKING_PRICE_CHANGED","CG15_BOOKING_SLOT_TAKEN",
  "CG15_BOOKING_REQUEST_CONFLICT","CG15_BOOKING_NOT_FOUND",
- "CG15_BOOKING_HOLD_EXPIRED"
+ "CG15_BOOKING_HOLD_EXPIRED","CG15_BOOKING_CHANGE_CLOSED",
+ "CG15_BOOKING_CHANGE_POLICY_UNAVAILABLE"
 ]);
 async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
  if(!allowed(parts,method))return copy(404,"This booking action is unavailable.");
