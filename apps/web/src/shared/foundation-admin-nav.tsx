@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
 
 type FoundationAdminNavProps={
-  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims"|"financeClaimReviews"|"financeInvoices"|"financeInvoiceReviews"|"financeBudgets"|"financeBudgetReviews"|"financeReports"|"cms"|"healthNetwork"|"healthDoctors";
+  active:"account"|"roles"|"accounts"|"policy"|"settings"|"audit"|"recovery"|"approvals"|"documents"|"communications"|"support"|"foundation"|"branches"|"finance"|"financeVouchers"|"financeReviews"|"financeClaims"|"financeClaimReviews"|"financeInvoices"|"financeInvoiceReviews"|"financeBudgets"|"financeBudgetReviews"|"financeReports"|"cms"|"healthNetwork"|"healthDoctors"|"healthPatientIntake";
   displayName:string;
   roleName:string;
   canViewRoles:boolean;
@@ -31,11 +31,12 @@ type FoundationAdminNavProps={
   canViewCms?:boolean;
   canViewHealthNetwork?:boolean;
   canViewDoctors?:boolean;
+  canViewPatientIntake?:boolean;
 };
 /** Only delivered CG-01 destinations. Never show unfinished future-module menus. */
 export function FoundationAdminNav({active,displayName,roleName,canViewRoles,canViewAccounts,canManageSecurityPolicy=false,canViewSettings=false,
   canViewAudit=false,canViewRecovery=false,canViewApprovals=false,
-  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false,canReviewClaims=false,canViewInvoices=false,canReviewInvoices=false,canViewBudgets=false,canReviewBudgets=false,canViewFinanceReports=false,canViewCms=false,canViewHealthNetwork=false,canViewDoctors=false}:FoundationAdminNavProps){
+  canViewDocuments=false,canViewCommunications=false,canViewSupport=false,canViewFoundation=false,canViewBranches=false,canViewFinance=false,canViewVouchers=false,canReviewFinance=false,canViewClaims=false,canReviewClaims=false,canViewInvoices=false,canReviewInvoices=false,canViewBudgets=false,canReviewBudgets=false,canViewFinanceReports=false,canViewCms=false,canViewHealthNetwork=false,canViewDoctors=false,canViewPatientIntake=false}:FoundationAdminNavProps){
   const [query,setQuery]=useState("");
   const searchRef=useRef<HTMLInputElement>(null);
   // Unlike the old admin screenshot's unverified people search, this
@@ -107,6 +108,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
   const cmsAccess=allowed("cms.content.view",canViewCms);
   const healthNetworkAccess=allowed("health.providers.view",canViewHealthNetwork);
   const doctorAccess=allowed("health.doctors.view",canViewDoctors);
+  const patientIntakeAccess=allowed("health.patients.intake",canViewPatientIntake);
   const budgetAccess=currentActions?currentActions.has("finance.budgets.view"):canViewBudgets;
   const budgetReviewAccess=currentActions?["finance.budgets.review","approvals.review"].every(k=>currentActions.has(k)):canReviewBudgets;
   const invoiceReviewAccess=currentActions?["finance.invoices.review","approvals.review"].every(k=>currentActions.has(k)):canReviewInvoices;
@@ -122,6 +124,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     ...(cmsAccess?[{key:"cms" as const,label:"Website CMS",href:"/admin/website"}]:[]),
     ...(healthNetworkAccess?[{key:"healthNetwork" as const,label:"Healthcare providers",href:"/admin/health-network"}]:[]),
     ...(doctorAccess?[{key:"healthDoctors" as const,label:"Doctor registrations",href:"/admin/health-network/doctors"}]:[]),
+    ...(patientIntakeAccess?[{key:"healthPatientIntake" as const,label:"Patient & Booking Management",href:"/admin/health-network/patient-intake"}]:[]),
     ...(financeAccess?[{key:"finance" as const,label:"Accounts",href:"/admin/finance"}]:[]),
     ...(voucherAccess?[{key:"financeVouchers" as const,label:"Voucher Drafts",href:"/admin/finance/vouchers"}]:[]),
     ...(claimsAccess?[{key:"financeClaims" as const,label:"Expense Claims",href:"/admin/finance/claims"}]:[]),
@@ -147,7 +150,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
     audit:"Audit Logs",recovery:"Backup & Restore",
     approvals:"Registration & Approval",documents:"Private Case Documents",
     communications:"Notices & Notifications",support:"Help & Support",
-    foundation:"Departments / Committees",branches:"Branches / Locations",cms:"Website CMS",healthNetwork:"Healthcare Providers",healthDoctors:"Doctor Registrations",finance:"Finance & Accounting",financeReports:"Ledger & Reports",financeBudgets:"Budgets",financeBudgetReviews:"Budget Reviews",financeInvoices:"Invoices & Receipts",financeInvoiceReviews:"Invoice Reviews",financeClaims:"Expense Claims",financeClaimReviews:"Expense Claim Reviews",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
+    foundation:"Departments / Committees",branches:"Branches / Locations",cms:"Website CMS",healthNetwork:"Healthcare Providers",healthDoctors:"Doctor Registrations",healthPatientIntake:"Patient & Booking Management",finance:"Finance & Accounting",financeReports:"Ledger & Reports",financeBudgets:"Budgets",financeBudgetReviews:"Budget Reviews",financeInvoices:"Invoices & Receipts",financeInvoiceReviews:"Invoice Reviews",financeClaims:"Expense Claims",financeClaimReviews:"Expense Claim Reviews",financeVouchers:"Finance Voucher Drafts",financeReviews:"Finance Voucher Reviews"
   };
   return <><nav className="sidebar" aria-label="Foundation navigation">
     <div className="sidebar-brand"><img alt="" src="/careganga-mark.png" width="48" height="48"/><div className="sidebar-brand-name"><strong>CAREGANGA</strong><span>FOUNDATION</span></div></div>
@@ -162,6 +165,7 @@ export function FoundationAdminNav({active,displayName,roleName,canViewRoles,can
         {name:"DASHBOARD",keys:["account"]},
         {name:"USER & ACCESS MANAGEMENT",keys:["accounts","roles","approvals","policy"]},
         {name:"ORGANIZATION MANAGEMENT",keys:["branches","foundation","cms"]},
+        {name:"HEALTHCARE",keys:["healthNetwork","healthDoctors","healthPatientIntake"]},
         {name:"FINANCE & ACCOUNTING",keys:["finance","financeVouchers","financeReviews","financeClaims","financeClaimReviews","financeInvoices","financeInvoiceReviews","financeBudgets","financeBudgetReviews","financeReports"]},
         {name:"PLATFORM & COMMUNICATIONS",
           keys:["documents","communications","support","settings","audit","recovery"]}
