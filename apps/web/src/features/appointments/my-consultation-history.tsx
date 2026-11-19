@@ -4,12 +4,13 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;centerRef:string;
  startAt:string;endAt:string;timeZone:string;consultationFeeMinor:string;
  bookingStatus:string;canPatientChange:boolean;paymentMode:string;collectionStatus:string;version:number};
-type Result={items:Booking[];next:null};
+type Result={items:Booking[];next:string|null};
 const money=(minor:string)=>new Intl.NumberFormat("en-IN",{style:"currency",
  currency:"INR"}).format(Number(minor)/100);
 export function MyConsultationHistory(){
  const [items,setItems]=useState<Booking[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
+ const [nextCursor,setNextCursor]=useState<string|null>(null),[moreBusy,setMoreBusy]=useState(false);
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const keys=useRef<Map<string,string>>(new Map());
  const refresh=useCallback(async()=>{
@@ -19,7 +20,7 @@ export function MyConsultationHistory(){
    typeof data.message==="string"?data.message:"Your appointment history cannot be confirmed.");
   if(!data||typeof data!=="object"||!("items" in data)||!Array.isArray(data.items))
    throw Error("Your appointments could not be verified.");
-  setItems((data as Result).items);
+  setItems((data as Result).items);setNextCursor((data as Result).next);
   setUncertain(false);
  },[]);
  useEffect(()=>{
@@ -29,6 +30,25 @@ export function MyConsultationHistory(){
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[refresh]);
+ async function more(){
+  if(moreBusy||busy||!nextCursor)return;
+  setMoreBusy(true);setNotice("");
+  try{
+   const r=await fetch("/api/consultations/me?after="+
+    encodeURIComponent(nextCursor),{cache:"no-store",credentials:"same-origin"});
+   const raw:unknown=await r.json().catch(()=>null);
+   if(!r.ok||!raw||typeof raw!=="object"||!("items" in raw)||
+    !Array.isArray(raw.items))
+    throw Error("Older consultations cannot be confirmed. Try again.");
+   const page=raw as Result;
+   setItems(current=>{
+    const known=new Set(current.map(x=>x.bookingRef));
+    return [...current,...page.items.filter(x=>!known.has(x.bookingRef))];
+   });
+   setNextCursor(page.next);
+  }catch(e){setNotice(e instanceof Error?e.message:"Older consultations are unavailable.");}
+  finally{setMoreBusy(false);}
+ }
  async function cancel(a:Booking){
   if(busy||uncertain)return;
   const reason=window.confirm("Cancel this appointment? Your time will be released. No payment has been recorded by CareGanga.");
@@ -84,5 +104,8 @@ export function MyConsultationHistory(){
     </div>
    </article>)}
   </div>
+  {nextCursor&&<button type="button" disabled={busy||moreBusy}
+   onClick={()=>void more()}>
+   {moreBusy?"Loading…":"Load older consultations"}</button>}
  </section>;
 }
