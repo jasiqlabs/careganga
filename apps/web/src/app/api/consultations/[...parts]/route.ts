@@ -7,7 +7,9 @@ const allowed=(p:string[],method:string)=>
  method==="POST"&&p.length===1&&["holds","confirm"].includes(p[0])||
  method==="GET"&&p.length===1&&p[0]==="me"||
  method==="GET"&&p.length===2&&p[0]==="me"&&ID.test(p[1])||
- method==="GET"&&p.length===2&&p[0]==="holds"&&ID.test(p[1]);
+ method==="GET"&&p.length===2&&p[0]==="holds"&&ID.test(p[1])||
+ method==="POST"&&p.length===3&&p[0]==="me"&&ID.test(p[1])&&
+ ["cancel","reschedule"].includes(p[2]);
 const copy=(status:number,message:string,code?:string)=>NextResponse.json(
  {message,...(code?{code}:{})},{status,headers:{"Cache-Control":"no-store"}});
 const safeCodes=new Set([
