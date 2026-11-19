@@ -20,7 +20,8 @@ const files=[
  "1425_cg15_visit_queue_and_booking_changes.sql",
  "1426_cg19_private_consultation_slip.sql",
  "1427_cg01_public_patient_password_identity.sql",
- "1428_cg15_in_person_patient_identity_verification.sql"
+ "1428_cg15_in_person_patient_identity_verification.sql",
+ "1429_cg15_patient_center_intake_claim.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
@@ -121,6 +122,11 @@ for(const name of files){
    !source.includes("'IDENTITY_VERIFIED'")||
    !source.includes("cg15_patient_identity_event_immutable")))
   result.errors.push("Patient-specific clinician identity verification or audit source missing");
+ if(name.startsWith("1429")&&
+  (!source.includes("CREATE TABLE cg15_patient_center_claim")||
+   !source.includes("cg15_patient_center_claim_immutable")||
+   !source.includes("identity_checked_in_person boolean NOT NULL")))
+  result.errors.push("Clinic patient identity claim source or provenance guard missing");
  if(name.startsWith("1425")&&
   ((source.match(/CREATE TABLE cg15_visit_event/g)||[]).length!==1||
    (source.match(/CREATE TRIGGER cg15_visit_event_immutable/g)||[]).length!==1||
