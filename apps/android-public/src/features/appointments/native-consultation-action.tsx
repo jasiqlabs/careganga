@@ -27,6 +27,17 @@ async function post<T>(path:string,data:Record<string,unknown>,token:string):Pro
   "The reservation outcome is uncertain. Check your appointments.");
  return result as T;
 }
+async function original<T>(path:string,token:string):Promise<T|null>{
+ if(!base||!/^https?:\/\//.test(base)||
+  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+  throw Error("CareGanga consultations are not configured.");
+ const response=await fetch(new URL("/api/v1/appointments/consultations/"+path,base),{
+  method:"GET",cache:"no-store",signal:AbortSignal.timeout(12000),
+  headers:{Authorization:"Bearer "+token}});
+ if(response.status===404)return null;
+ if(!response.ok)throw Error("The original appointment outcome is not confirmed. Check again.");
+ return response.json() as Promise<T>;
+}
 export function NativeConsultationAction(p:Props){
  const [hold,setHold]=useState<Hold|null>(null);
  const [booking,setBooking]=useState<Booking|null>(null);
@@ -96,6 +107,48 @@ export function NativeConsultationAction(p:Props){
    setUncertain(true);setMessage(e instanceof Error?e.message:"Confirmation is uncertain.");
   }finally{setBusy(false);}
  }
+ async function recover(){
+  if(busy)return;
+  setBusy(true);setMessage("");
+  try{
+   const t=await token();
+   if(confirmKey.current&&!p.reschedule){
+    const found=await original<Booking>(
+     "confirmations/by-request/"+confirmKey.current,t);
+    if(found){setBooking(found);setUncertain(false);setHold(null);
+     setMessage("The original appointment was confirmed: "+found.bookingId+".");return;}
+   }
+   if(holdKey.current&&!p.reschedule){
+    const found=await original<Hold>("holds/by-request/"+holdKey.current,t);
+    if(found?.status==="HELD"&&Date.parse(found.expiresAt)>Date.now()){
+     setHold(found);setUncertain(false);
+     setMessage("The original time is still reserved. Confirm using the same request.");return;
+    }
+    if(found?.status==="CONSUMED"){
+     setMessage("The original hold was used. Check the same booking again before any action.");return;
+    }
+    if(found?.status==="EXPIRED"||found?.status==="CANCELLED"){
+     holdKey.current=null;confirmKey.current=null;setHold(null);setUncertain(false);
+     setMessage("Previous hold expired. Select a current time.");return;
+    }
+    setHold(null);setUncertain(false);
+    setMessage("No committed hold was found. Retrying uses the same original request key.");return;
+   }
+   if(p.reschedule){
+    // Rescheduling is identified by the original booking ref; never infer
+    // its outcome from a different doctor's appointment or a cached list.
+    const current=await original<Booking>("me/"+p.reschedule.bookingRef,t);
+    if(current&&current.startAt===p.startAt){
+     setBooking(current);setMessage("Your original booking reflects the selected new time.");
+     setUncertain(false);return;
+    }
+    setMessage("The original booking does not yet show the new time. Check again before retrying.");
+    return;
+   }
+   setMessage("The original booking reference is unavailable. Refresh the selected time.");
+  }catch(e){setMessage(e instanceof Error?e.message:"Original appointment status is uncertain.");}
+  finally{setBusy(false);}
+ }
  return <View style={style.box}>
   <Text style={style.text}>{p.doctorName} · {p.centerName}</Text>
   <Text style={style.text}>{new Date(p.startAt).toLocaleString("en-IN",{
@@ -105,9 +158,16 @@ export function NativeConsultationAction(p:Props){
   {!!message&&<Text accessibilityRole="alert" style={style.text}>{message}</Text>}
   {booking?<Text accessibilityRole="header" style={style.heading}>
    Confirmed booking: {booking.bookingId}. Payment due at center.</Text>:
-   uncertain?<Text style={style.text}>
-    Check My Patient Profile → My Consultations before retrying the original action.
-    A second request is disabled until status is verified.</Text>:
+   uncertain?<View style={{gap:8}}>
+    <Text style={style.text}>
+     The original action may have succeeded. Check it before making another request.
+    </Text>
+    <Pressable accessibilityRole="button" disabled={busy}
+     style={[style.button,busy&&{opacity:0.5}]}
+     onPress={()=>void recover()}>
+     <Text style={style.buttonText}>Check original request status</Text>
+    </Pressable>
+   </View>:
    p.reschedule?label(busy?"Checking…":"Accept fee and reschedule",()=>void reschedule()):
    hold?label(busy?"Checking…":"Confirm pay-at-center appointment",()=>void confirm()):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
