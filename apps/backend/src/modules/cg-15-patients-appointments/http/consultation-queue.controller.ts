@@ -10,6 +10,10 @@ export class ConsultationQueueController{
  @Header("Cache-Control","private, no-store")
  list(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
   @Query("date")day:string){return this.queue.list(bearer,center,day);}
+ @Post("my-centers/:centerRef/verify-slip")
+ @Header("Cache-Control","private, no-store")
+ verifySlip(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
+  @Body()value:unknown){return this.queue.verifySlipAtMyCenter(bearer,center,value);}
  @Post("my-centers/:centerRef/check-in")
  @Header("Cache-Control","private, no-store")
  checkIn(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
