@@ -120,7 +120,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      });
    }
    commands.current.delete(reference);
-   await load(center,dateAt(offset));
+   await load(center,dateAt(offset,centerZone));
    setMessage("Original visit status saved.");
   }catch(e){fail(e);setUncertain(true);}
   finally{setBusy(false);}
@@ -142,7 +142,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    {uncertain&&<View style={styles.card}>
     <Text style={styles.error}>The last action may have been recorded. Refresh its
      original state before taking any further action.</Text>
-    {button("Refresh original queue",()=>void load(center,dateAt(offset)),busy)}
+    {button("Refresh original queue",()=>void load(center,dateAt(offset,centerZone)),busy)}
    </View>}
    <Text style={styles.help}>Assigned healthcare center</Text>
    <View style={styles.row}>{centers.map(c=>
@@ -168,7 +168,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      Booking {verifiedSlip.bookingId}, {verifiedSlip.patientName},
      {verifiedSlip.bookingStatus}. Select the source row below to check in.</Text>}
    </View>}
-   <Text style={styles.help}>Consultation date: {dateAt(offset)}</Text>
+   <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
     {button("Previous day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
     {button("Next day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
