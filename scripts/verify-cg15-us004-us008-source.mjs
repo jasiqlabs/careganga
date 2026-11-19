@@ -162,7 +162,8 @@ const checks=[
   s.queue.includes('booking.booking_state!=="CONFIRMED"')],
  ["visit status machine disallows completion jump",
   s.queue.includes('IN_CONSULTATION:["COMPLETED"]')&&
-  s.queue.includes('WAITING:["IN_CONSULTATION","NO_SHOW"]')],
+  s.queue.includes('WAITING:["IN_CONSULTATION"]')&&
+  !s.queue.includes('ARRIVED:["WAITING","NO_SHOW"]')],
  ["visit Web/Internal Android use same guarded endpoints",
   s.webQueue.includes("/check-in")&&
   s.nativeQueue.includes("/check-in")&&
@@ -301,8 +302,19 @@ const checks=[
   s.nativeQueue.includes('canCancel&&a.bookingStatus==="CONFIRMED"')&&
   s.nativeQueue.includes('reason:"CENTER_REQUEST"')&&
   s.internalApp.includes('canCancel={roleActions.includes("health.appointments.cancel")}')],
- ["queue refuses to classify a future appointment as a no-show",
-  s.queue.includes('nextState==="NO_SHOW"&&ap.end_at.getTime()>Date.now()')],
+ ["no-show marks only original NEVER-arrived booking after its scheduled end",
+  s.queue.includes("async markNoShow(")&&
+  s.queue.includes('booking.booking_state!=="CONFIRMED"')&&
+  s.queue.includes('booking.end_at.getTime()>Date.now()')&&
+  s.queue.includes("SELECT 1 FROM cg15_visit_queue WHERE root_realm_id=$1 AND appointment_id=$2")&&
+  s.queue.includes("action='NO_SHOW' AND request_key=$3")&&
+  s.queue.includes("VALUES($1,$2,$3,$4,'NO_SHOW'")&&
+  s.queueCtrl.includes('Post("my-centers/:centerRef/no-show")')&&
+  s.queueBff.includes('"no-show"')&&
+  s.webQueue.includes('next==="CHECK_IN"?"check-in":"no-show"')&&
+  s.nativeQueue.includes('next==="CHECK_IN"?"check-in":"no-show"')&&
+  s.webQueue.includes('!item.visitRef&&')&&
+  s.nativeQueue.includes('!a.visitRef&&')],
  ["patient Public Android uses explicit rejected-status handling and scoped receptionist codes",
   s.nativeBooking.includes('status:r.status')&&
   s.nativeBooking.includes('status>=400&&status<500')&&
