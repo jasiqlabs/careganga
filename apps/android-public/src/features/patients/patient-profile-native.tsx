@@ -50,6 +50,8 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [signupFirst,setSignupFirst]=useState(""),[signupLast,setSignupLast]=useState("");
  const [signupMobile,setSignupMobile]=useState(""),[signupEmail,setSignupEmail]=useState("");
  const [signupPassword,setSignupPassword]=useState("");
+ const [signupCode,setSignupCode]=useState("");
+ const [signupRequestedMobile,setSignupRequestedMobile]=useState("");
  const [first,setFirst]=useState(""),[last,setLast]=useState(""),[dob,setDob]=useState("");
  const [agreed,setAgreed]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -115,11 +117,24 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    "The result is uncertain. Refresh before retrying.");}
   finally{setBusy(false);}
  }
+ function requestSignupCode(){
+  void run(async()=>{
+   const mobile=signupMobile.trim();
+   if(!/^[6-9][0-9]{9}$/.test(mobile))
+    throw Error("Enter a valid 10-digit Indian mobile number.");
+   const response=await invoke<{status:string}>("/api/identity/patients/start",
+    "POST",{mobile});
+   if(response.data?.status!=="CODE_REQUESTED_UNCONFIRMED_DELIVERY")
+    throw Error("The SMS code request could not be verified.");
+   setSignupRequestedMobile(mobile);
+   setMessage("A code was requested. Delivery is not guaranteed; enter the received SMS code.");
+  });
+ }
  function signup(){
   void run(async()=>{
    const payload={firstName:signupFirst.trim(),lastName:signupLast.trim(),
     mobile:signupMobile.trim(),email:signupEmail.trim()||null,
-    password:signupPassword};
+    password:signupPassword,code:signupCode.trim()};
    const signature=JSON.stringify(payload);
    if(signupCommand.current?.digest!==signature)
     signupCommand.current={digest:signature,key:Crypto.randomUUID()};
@@ -129,7 +144,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
     });
    if(r.data?.status!=="ACCOUNT_CREATED")
     throw Error("Account registration could not be confirmed.");
-   signupCommand.current=null;setSignupPassword("");setPassword("");
+   signupCommand.current=null;setSignupPassword("");setSignupCode("");setPassword("");
    setIdentifier(payload.mobile);setSignupOpen(false);
    setMessage("Patient account created. Sign in, verify your saved mobile contact, then create your patient profile.");
   });
@@ -245,15 +260,21 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       <Text style={styles.subtitle}>Create a patient account</Text>
       {field("First name",signupFirst,setSignupFirst)}
       {field("Last name",signupLast,setSignupLast)}
-      {field("Registered mobile (10 digits)",signupMobile,setSignupMobile)}
+      {field("Registered mobile (10 digits)",signupMobile,v=>{setSignupMobile(v);setSignupRequestedMobile("");setSignupCode("");})}
       {field("Email (optional)",signupEmail,setSignupEmail)}
       {field("Choose a password (at least eight characters)",
        signupPassword,setSignupPassword,true)}
-      <Text>This creates a password account with no staff permissions.
-       Sign in and verify your registered mobile before patient registration.</Text>
+       <Text>Prove you own this mobile before creating an account.
+        This does not verify clinical identity.</Text>
+       {button("Send SMS verification code",requestSignupCode,
+        busy||!/^[6-9][0-9]{9}$/.test(signupMobile))}
+       {signupRequestedMobile===signupMobile.trim()&&
+        field("Received SMS code (4–10 digits)",signupCode,setSignupCode)}
+       <Text>Ordinary sign-in still uses your mobile and password only.</Text>
       {button(busy?"Checking…":"Create patient account",signup,
        busy||signupFirst.trim().length<2||!signupLast.trim()||
-       !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8)}
+       !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8||
+        signupRequestedMobile!==signupMobile.trim()||!/^[0-9]{4,10}$/.test(signupCode))}
       {button("Already registered? Sign in",()=>setSignupOpen(false),busy)}
      </>:<>
       {field("Registered mobile number or email",identifier,setIdentifier)}
