@@ -97,6 +97,88 @@ export class CenterPatientIntakeService{
    profileStatus:found.profile_status,createdAt:found.created_at.toISOString(),
    message:"Provisional patient intake recorded. Independent identity verification is still required."};
  }
+ /** Clinic staff may attest an in-person document check ONLY with a
+  * current code issued by this authenticated patient's own CG01 account.
+  * Phone numbers and display IDs alone never authorize an identity claim.
+  */
+ async verifyIdentity(bearer:string,centerRaw:string,input:unknown){
+  const actor=await this.sessions.verifySession(bearer);
+  const centerRef=uuid(centerRaw,"centerRef"),v=body(input);
+  if(Object.keys(v).some(k=>!["requestKey","virtualPatientId",
+    "verificationCode","identityCheckedInPerson"].includes(k)))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const key=uuid(v.requestKey);
+  if(typeof v.virtualPatientId!=="string"||
+    !/^CGP-[A-F0-9]{16}$/.test(v.virtualPatientId)||
+    typeof v.verificationCode!=="string"||
+    !/^CGI-[A-F0-9]{24}$/.test(v.verificationCode)||
+    v.identityCheckedInPerson!==true)
+   throw new BadRequestException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+  const display=v.virtualPatientId,tokenDigest=createHash("sha256")
+   .update(v.verificationCode).digest("hex");
+  const signature=hash({centerRef,display,tokenDigest,identityCheckedInPerson:true});
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN");active=true;
+   await this.scope(tx,actor,centerRef);
+   const prior=await tx.query<{request_digest:string;virtual_display_id:string}>(
+    "SELECT e.request_digest,p.virtual_display_id "+
+    "FROM cg15_patient_identity_event e JOIN cg15_patient p "+
+    "ON p.root_realm_id=e.root_realm_id AND p.id=e.patient_id "+
+    "WHERE e.root_realm_id=$1 AND e.center_id=$2 "+
+    "AND e.verified_by_account=$3 AND e.request_key=$4",
+    [actor.realmId,centerRef,actor.accountId,key]);
+   if(prior.rows[0]){
+    if(prior.rows[0].request_digest!==signature)
+     throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+    await tx.query("COMMIT");active=false;
+    return {virtualPatientId:prior.rows[0].virtual_display_id,
+     profileStatus:"VERIFIED",message:"Original identity verification already recorded."};
+   }
+   const source=await tx.query<{
+    id:string;revision:number;profile_status:string;challenge_id:string
+   }>(
+    "SELECT p.id,p.revision,p.profile_status,c.id AS challenge_id "+
+    "FROM cg15_patient_identity_challenge c "+
+    "JOIN cg15_patient p ON p.root_realm_id=c.root_realm_id AND p.id=c.patient_id "+
+    "JOIN cg15_patient_account_link l ON l.root_realm_id=p.root_realm_id "+
+    "AND l.patient_id=p.id AND l.account_id=c.issued_by_account AND l.revoked_at IS NULL "+
+    "JOIN account a ON a.id=l.account_id AND a.realm_id=l.root_realm_id "+
+    "JOIN LATERAL (SELECT pc.granted FROM cg15_patient_consent pc "+
+    "WHERE pc.root_realm_id=p.root_realm_id AND pc.patient_id=p.id "+
+    "AND pc.purpose='PATIENT_CARE' ORDER BY pc.revision_no DESC LIMIT 1) consent ON true "+
+    "WHERE p.root_realm_id=$1 AND p.virtual_display_id=$2 "+
+    "AND c.token_digest=$3 AND c.used_at IS NULL AND c.expires_at>now() "+
+    "AND a.status='ACTIVE' AND a.contact_phone_verified_at IS NOT NULL "+
+    "AND consent.granted=true FOR UPDATE OF p,c",
+    [actor.realmId,display,tokenDigest]);
+   const patient=source.rows[0];
+   if(!patient||patient.profile_status!=="PROVISIONAL")
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+   await tx.query(
+    "UPDATE cg15_patient_identity_challenge SET used_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND used_at IS NULL",
+    [actor.realmId,patient.challenge_id]);
+   await tx.query(
+    "UPDATE cg15_patient SET profile_status='VERIFIED',revision=revision+1,"+
+    "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,patient.id]);
+   await tx.query(
+    "INSERT INTO cg15_patient_identity_event(root_realm_id,patient_id,center_id,"+
+    "challenge_id,verified_by_account,request_key,request_digest,identity_checked_in_person) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,true)",
+    [actor.realmId,patient.id,centerRef,patient.challenge_id,actor.accountId,key,signature]);
+   await tx.query(
+    "INSERT INTO cg15_patient_change_event(root_realm_id,patient_id,"+
+    "revision_no,action,actor_account_id) VALUES($1,$2,$3,'IDENTITY_VERIFIED',$4)",
+    [actor.realmId,patient.id,patient.revision+1,actor.accountId]);
+   await tx.query("COMMIT");active=false;
+   return {virtualPatientId:display,profileStatus:"VERIFIED",
+    message:"In-person identity check recorded for the authenticated patient."};
+  }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+
  async get(bearer:string,centerRaw:string,keyRaw:string){
   const actor=await this.sessions.verifySession(bearer);
   const centerRef=uuid(centerRaw,"centerRef"),key=uuid(keyRaw);
