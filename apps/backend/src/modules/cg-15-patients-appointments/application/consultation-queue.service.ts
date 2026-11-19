@@ -76,6 +76,55 @@ export class ConsultationQueueService{
   * Unlike page-level UI counts, this covers every recorded booking on the
   * original center-local day, without sending patient details.
   */
+ /** Current assigned-center operational audit only: one real original booking,
+  * bounded by immutable revision. No clinical notes, consent proof, phone,
+  * medical file URLs, diagnostic source, or other-center patient exposure.
+  */
+ async bookingHistory(bearer:string,centerRaw:string,bookingRaw:string,beforeRaw?:string){
+  const actor=await this.identity.verifySession(bearer),
+   center=param(centerRaw),bookingRef=param(bookingRaw);
+  if(beforeRaw!==undefined&&
+   (!/^\\d{1,9}$/.test(beforeRaw)||Number(beforeRaw)<1))
+   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+  const before=beforeRaw===undefined?null:Number(beforeRaw);
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN READ ONLY");active=true;
+   await this.scope(tx,actor,center);
+   const original=await tx.query<{booking_display_id:string}>(
+    "SELECT booking_display_id FROM cg15_consultation_appointment "+
+    "WHERE root_realm_id=$1 AND center_id=$2 AND id=$3",
+    [actor.realmId,center,bookingRef]);
+   if(!original.rows[0])
+    throw new NotFoundException({code:"CG15_QUEUE_NOT_FOUND"});
+   const events=await tx.query<{new_revision:number;action:string;
+    occurred_at:Date;display_name:string;prior_snapshot:unknown;new_snapshot:unknown}>(
+    "SELECT e.new_revision,e.action,e.occurred_at,a.display_name,"+
+    "e.prior_snapshot,e.new_snapshot FROM cg15_appointment_event e "+
+    "JOIN account a ON a.id=e.actor_account_id AND a.realm_id=e.root_realm_id "+
+    "WHERE e.root_realm_id=$1 AND e.appointment_id=$2 "+
+    "AND ($3::integer IS NULL OR e.new_revision<$3) "+
+    "ORDER BY e.new_revision DESC LIMIT 26",
+    [actor.realmId,bookingRef,before]);
+   await tx.query("COMMIT");active=false;
+   const page=events.rows.slice(0,25);
+   // Never return arbitrary original JSON (which may later contain clinical PII).
+   const publicStatus=(value:unknown):string|null=>{
+    if(!value||typeof value!=="object"||Array.isArray(value))return null;
+    const status=(value as {status?:unknown}).status;
+    return typeof status==="string"&&
+     ["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION",
+      "COMPLETED","NO_SHOW","CANCELLED"].includes(status)?status:null;
+   };
+   return {bookingId:original.rows[0].booking_display_id,
+    events:page.map(e=>({revision:e.new_revision,action:e.action,
+     when:e.occurred_at.toISOString(),by:e.display_name,
+     beforeStatus:publicStatus(e.prior_snapshot),
+     afterStatus:publicStatus(e.new_snapshot)})),
+    next:events.rows.length>25?page.at(-1)!.new_revision:null};
+  }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async summary(bearer:string,centerRaw:string,dayRaw:unknown){
   const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
   if(typeof dayRaw!=="string"||!DAY.test(dayRaw)||
