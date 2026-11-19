@@ -6,7 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
-const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-[a-f0-9]{12}$/i;
+const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Status={status:string;canDownload:boolean};
 type Issue={status:string;confirmed:boolean};
 /** Original CG-19 status and PDF bytes for authorized CG15 center staff only.
