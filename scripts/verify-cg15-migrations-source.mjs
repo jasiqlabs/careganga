@@ -27,7 +27,8 @@ const files=[
  "1432_cg15_center_day_appointment_index.sql",
  "1433_cg19_appointment_event_notification_source.sql",
  "1434_cg15_center_qr_verification_guard.sql",
- "1435_cg19_appointment_pending_recovery_global.sql"
+ "1435_cg19_appointment_pending_recovery_global.sql",
+ "1436_cg14_verified_clinician_account_link.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
@@ -146,6 +147,14 @@ for(const name of files){
    !source.includes("cg15_qr_verification_audit_immutable")||
    !source.includes("REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT")))
   result.errors.push("Original center QR verification abuse guard/audit source is incomplete");
+ if(name.startsWith("1436")&&
+  (!source.includes("CREATE TABLE health_doctor_account_link(")||
+   !source.includes("CREATE TABLE health_doctor_account_link_event(")||
+   !source.includes("ux_health_doctor_current_account")||
+   !source.includes("ux_health_account_current_doctor")||
+   !source.includes("proposed_by<>account_id")||
+   !source.includes("health_doctor_account_event_immutable_guard")))
+  result.errors.push("Original CG14 doctor-to-current-account two-party identity source missing");
  if(name.startsWith("1435")&&
   (!source.includes("CREATE INDEX ix_cg19_appointment_pending_recovery_global")||
    !source.includes("ON cg19_appointment_event_outbox(recorded_at,realm_id,event_id)")||
