@@ -20,7 +20,7 @@ const allowed=(p:string[],method:string)=>
 const copy=(status:number,message:string,code?:string)=>NextResponse.json(
  {message,...(code?{code}:{})},{status,headers:{"Cache-Control":"no-store"}});
 const safeCodes=new Set([
- "CG15_BOOKING_INVALID","CG15_BOOKING_HOLD_NOT_CONFIGURED",
+ "CG15_BOOKING_PRIVATE_REASON_UNAVAILABLE", "CG15_BOOKING_INVALID","CG15_BOOKING_HOLD_NOT_CONFIGURED",
  "CG15_BOOKING_PATIENT_NOT_READY","CG15_BOOKING_SLOT_CHANGED",
  "CG15_BOOKING_PRICE_CHANGED","CG15_BOOKING_SLOT_TAKEN",
  "CG15_BOOKING_REQUEST_CONFLICT","CG15_BOOKING_NOT_FOUND",
