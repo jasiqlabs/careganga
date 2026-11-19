@@ -9,7 +9,8 @@ const STATE=new Set(["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION",
 type Summary={patients:string;active_patients:string;bookings:string;
  today_bookings:string;completed:string;pending:string};
 type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
- first_name:string;last_name:string;doctor_name:string;center_name:string;
+ first_name:string;last_name:string;profile_status:string;
+ consent_granted:boolean|null;doctor_name:string;center_name:string;
  center_id:string;booking_state:string;start_at:Date;time_zone:string;created_at:Date;
  collection_state:string;fee_minor:string};
 @Injectable()
@@ -108,12 +109,16 @@ export class PatientAdminOverviewService{
     [actor.realmId]);
    const rows=await tx.query<BookingRow>(
     "SELECT a.id,a.booking_display_id,p.virtual_display_id,p.first_name,p.last_name,"+
+    "p.profile_status,consent.granted AS consent_granted,"+
     "a.doctor_name,a.center_name,a.center_id,a.booking_state,a.start_at,a.time_zone,"+
     "a.created_at,a.collection_state,a.fee_minor::text "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
     "JOIN health_center location ON location.root_realm_id=a.root_realm_id "+
     "AND location.id=a.center_id "+
+    "LEFT JOIN LATERAL (SELECT pc.granted FROM cg15_patient_consent pc "+
+    "WHERE pc.root_realm_id=p.root_realm_id AND pc.patient_id=p.id "+
+    "AND pc.purpose='PATIENT_CARE' ORDER BY pc.revision_no DESC LIMIT 1) consent ON true "+
     "WHERE a.root_realm_id=$1 "+
     "AND ($2::uuid IS NULL OR a.center_id=$2) "+
     "AND ($3::text='' OR a.booking_state=$3) "+
@@ -184,6 +189,7 @@ export class PatientAdminOverviewService{
     bookingRef:x.id,bookingId:x.booking_display_id,
     virtualPatientId:x.virtual_display_id,
     patientName:x.first_name+" "+x.last_name,
+    patientProfileStatus:x.profile_status,patientConsentGranted:x.consent_granted,
     doctorName:x.doctor_name,centerName:x.center_name,
     bookingStatus:x.booking_state,
     startAt:x.start_at.toISOString(),timeZone:x.time_zone,createdAt:x.created_at.toISOString(),
