@@ -422,7 +422,7 @@ const checks=[
  ["H15 prints only source-authorized selected booking and actual loaded event history",
   s.webAdmin.includes('className="cg15-print-scope"')&&
   s.webAdmin.includes("Print selected booking report")&&
-  s.webAdmin.includes("history.bookingId!==selectedBooking.bookingId")&&
+  s.webAdmin.includes("const currentHistory=selectedBooking&&history?.bookingId===selectedBooking.bookingId")&&
   s.webAdmin.includes("window.print()")&&
   s.webAdmin.includes("body *{visibility:hidden!important;}")&&
   s.admin.includes('requireAction(bearer,"health.patients.admin.view")')&&
