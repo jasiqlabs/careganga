@@ -267,6 +267,19 @@ const checks=[
   s.bookingCtrl.includes('Get("confirmations/by-request/:requestKey")')&&
   s.webBooking.includes("confirmations/by-request/")&&
   s.nativeBooking.includes("holds/by-request/")],
+ ["patient-only hold status blocks staff-created reservations of other patients",
+  s.service.includes("if(patient.id!==row.rows[0].patient_id)")&&
+  s.service.includes('await this.ownPatient(tx,actor,false)')&&
+  s.bookingCtrl.includes('Get("holds/:holdRef")')],
+ ["patient Web unknown-outcome recovery uses original keys and rejects deterministic errors",
+  s.webBooking.includes("status:response.status")&&
+  s.webBooking.includes("confirmations/by-request/")&&
+  s.webBooking.includes("holds/by-request/")&&
+  s.webBooking.includes('status>=400&&status<500')&&
+  !s.webBooking.includes("Check my recent appointments")],
+ ["patient receptionist code is never displayed under a different center",
+  s.webBooking.includes("staffCode.centerRef===p.centerRef")&&
+  s.webBooking.includes("centerRef:p.centerRef")],
  ["center queue pages in Web and Internal Android use validated cursor",
   s.queue.includes("afterRaw.split")&&
   s.queue.includes("LIMIT 101")&&
