@@ -285,7 +285,7 @@ export class PatientClinicalFileSharingService{
   });
  }
  private async clinicalFile(actor:VerifiedFoundationActor,
-  center:string,booking:string,file:string){
+  center:string,booking:string,file:string,audit=false){
   return this.tx(async c=>{
    const source=await this.currentClinicalSource(c,actor,center,booking);
    const rows=await c.query<FileRow>(
@@ -311,6 +311,16 @@ export class PatientClinicalFileSharingService{
     [actor.realmId,source.patient_id,booking,file,source.doctor_id,source.center_id,source.revision]);
    if(!rows.rows[0])
     throw new NotFoundException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
+   if(audit){
+    // Source-verified successful read: only safe root/doctor/file reference
+    // metadata is retained, NEVER bytes or patient medical text.
+    await c.query(
+     "INSERT INTO cg19_patient_clinical_file_read_event("+
+     "realm_id,patient_id,appointment_id,file_id,doctor_id,center_id,"+
+     "actor_account_id,action) VALUES($1,$2,$3,$4,$5,$6,$7,'AUTHORIZED_READ')",
+     [actor.realmId,source.patient_id,booking,file,
+      source.doctor_id,center,actor.accountId]);
+   }
    return rows.rows[0];
   });
  }
@@ -327,7 +337,7 @@ export class PatientClinicalFileSharingService{
    throw new ServiceUnavailableException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
   // Disallowed ownership/role/care-consent/explicit share after async object
   // fetch means no bytes are sent to the clinician.
-  const current=await this.clinicalFile(actor,center,booking,file);
+  const current=await this.clinicalFile(actor,center,booking,file,true);
   if(current.revision!==original.revision||
     current.object_version!==original.object_version)
    throw new NotFoundException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
