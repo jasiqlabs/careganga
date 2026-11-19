@@ -9,8 +9,11 @@ export class DoctorScheduleController{
  constructor(private readonly schedule:DoctorScheduleService){}
  @Get("admin")
  @Header("Cache-Control","private, no-store")
- admin(@Headers("authorization")token:string,@Query("centerRef")center?:string){
-  return this.schedule.roster(token,"foundation",center);
+ admin(@Headers("authorization")token:string,@Query("centerRef")center?:string,
+  @Query("stateRef")state?:string,@Query("districtRef")district?:string,
+  @Query("blockRef")block?:string){
+  return this.schedule.roster(token,"foundation",center,
+   {stateRef:state,districtRef:district,blockRef:block});
  }
  @Get("admin/:associationRef")
  @Header("Cache-Control","private, no-store")
