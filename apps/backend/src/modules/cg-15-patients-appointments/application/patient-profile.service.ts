@@ -202,6 +202,37 @@ export class PatientProfileService{
   }catch(e){if(tx)await c.query("ROLLBACK");throw e;}
   finally{c.release();}
  }
+ async beginIdentityVerification(bearer:string){
+  const actor=await this.identity.verifySession(bearer);
+  const c=await this.db.connect();let tx=false;
+  try{
+   await c.query("BEGIN");tx=true;
+   await this.activeAccount(c,actor,true);
+   const patient=await this.owned(c,actor,true);
+   if(!patient||patient.profile_status!=="PROVISIONAL"||
+     patient.consent_granted!==true)
+    throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   // One currently issued code per patient. A new code invalidates all
+   // older challenges; the raw code is never persisted or logged.
+   await c.query(
+    "UPDATE cg15_patient_identity_challenge SET used_at=now() "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND used_at IS NULL",
+    [actor.realmId,patient.id]);
+   const token="CGI-"+randomBytes(12).toString("hex").toUpperCase();
+   const tokenDigest=createHash("sha256").update(token).digest("hex");
+   const created=await c.query<{expires_at:Date}>(
+    "INSERT INTO cg15_patient_identity_challenge("+
+    "root_realm_id,patient_id,issued_by_account,token_digest,expires_at) "+
+    "VALUES($1,$2,$3,$4,now()+interval '15 minutes') RETURNING expires_at",
+    [actor.realmId,patient.id,actor.accountId,tokenDigest]);
+   await c.query("COMMIT");tx=false;
+   return {virtualPatientId:patient.virtual_display_id,verificationCode:token,
+    expiresAt:created.rows[0].expires_at.toISOString(),
+    message:"Show this code and a valid identity document to authorized center staff in person. The code expires in 15 minutes."};
+  }catch(e){if(tx)await c.query("ROLLBACK");throw e;}
+  finally{c.release();}
+ }
+
  async update(bearer:string,input:unknown){
   const actor=await this.identity.verifySession(bearer);
   const v=record(input);
