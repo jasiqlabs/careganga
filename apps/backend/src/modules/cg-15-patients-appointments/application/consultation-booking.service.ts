@@ -9,6 +9,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthPublicDirectoryService,type HealthScheduleEligibleSource}
  from "../../cg-14-healthcare-network/application/health-public-directory.service";
+import {HealthCenterSupportScopeFacade}
+ from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/;
@@ -26,6 +28,7 @@ type Booking={id:string;booking_display_id:string;patient_id:string;doctor_id:st
  confirmation_digest:string;created_at:Date;updated_at:Date};
 type Patient={id:string;profile_status:string;consent_granted:boolean|null;identity_verified:boolean;verified:Date|null;first_name:string;last_name:string};
 type Slot={scheduleId:string;revisionId:string;minutes:number};
+type AssistedPatient=Patient&{authorization_id:string};
 type Accepted={actor:VerifiedFoundationActor;patient:Patient;source:HealthScheduleEligibleSource;
  feeMinor:string;feeVersion:number;slot:Slot};
 
@@ -104,7 +107,8 @@ function presentBooking(v:Booking){return {
 export class ConsultationBookingService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly identity:SessionService,
-  private readonly directory:HealthPublicDirectoryService){}
+  private readonly directory:HealthPublicDirectoryService,
+  private readonly centerScope:HealthCenterSupportScopeFacade){}
  private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor,requireConsent=true){
   const r=await tx.query<Patient>(
    "SELECT p.id,p.profile_status,p.first_name,p.last_name,a.contact_phone_verified_at AS verified,"+
@@ -127,6 +131,54 @@ export class ConsultationBookingService{
    throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
   return patient;
  }
+ private async currentAssistedPatient(tx:PoolClient,actor:VerifiedFoundationActor,
+  patientId:string):Promise<Patient>{
+  const row=await tx.query<Patient>(
+   "SELECT p.id,p.profile_status,p.first_name,p.last_name,"+
+   "a.contact_phone_verified_at AS verified,"+
+   "EXISTS(SELECT 1 FROM cg15_patient_identity_event e "+
+   "WHERE e.root_realm_id=p.root_realm_id AND e.patient_id=p.id) AS identity_verified,"+
+   "(SELECT c.granted FROM cg15_patient_consent c "+
+   "WHERE c.root_realm_id=p.root_realm_id AND c.patient_id=p.id "+
+   "AND c.purpose='PATIENT_CARE' ORDER BY c.revision_no DESC LIMIT 1) AS consent_granted "+
+   "FROM cg15_patient p "+
+   "JOIN cg15_patient_account_link l ON l.root_realm_id=p.root_realm_id "+
+   "AND l.patient_id=p.id AND l.revoked_at IS NULL "+
+   "JOIN account a ON a.realm_id=l.root_realm_id AND a.id=l.account_id "+
+   "WHERE p.root_realm_id=$1 AND p.id=$2 AND a.status='ACTIVE' "+
+   "FOR SHARE OF p,l,a",
+   [actor.realmId,patientId]);
+  const patient=row.rows[0];
+  if(!patient||!patient.verified||patient.profile_status!=="VERIFIED"||
+   !patient.identity_verified||patient.consent_granted!==true)
+   throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
+  return patient;
+ }
+ private async assistedPatientForHold(tx:PoolClient,actor:VerifiedFoundationActor,
+  centerId:string,displayId:string,codeDigest:string):Promise<AssistedPatient>{
+  const row=await tx.query<AssistedPatient>(
+   "SELECT p.id,p.profile_status,p.first_name,p.last_name,"+
+   "a.contact_phone_verified_at AS verified,b.id AS authorization_id,"+
+   "EXISTS(SELECT 1 FROM cg15_patient_identity_event e "+
+   "WHERE e.root_realm_id=p.root_realm_id AND e.patient_id=p.id) AS identity_verified,"+
+   "(SELECT c.granted FROM cg15_patient_consent c "+
+   "WHERE c.root_realm_id=p.root_realm_id AND c.patient_id=p.id "+
+   "AND c.purpose='PATIENT_CARE' ORDER BY c.revision_no DESC LIMIT 1) AS consent_granted "+
+   "FROM cg15_patient_assisted_booking_code b "+
+   "JOIN cg15_patient p ON p.root_realm_id=b.root_realm_id AND p.id=b.patient_id "+
+   "JOIN cg15_patient_account_link l ON l.root_realm_id=b.root_realm_id "+
+   "AND l.patient_id=p.id AND l.account_id=b.account_id AND l.revoked_at IS NULL "+
+   "JOIN account a ON a.realm_id=l.root_realm_id AND a.id=l.account_id "+
+   "WHERE b.root_realm_id=$1 AND b.center_id=$2 AND p.virtual_display_id=$3 "+
+   "AND b.code_digest=$4 AND b.consumed_at IS NULL AND b.revoked_at IS NULL "+
+   "AND b.expires_at>now() AND a.status='ACTIVE' FOR UPDATE OF b,p",
+   [actor.realmId,centerId,displayId,codeDigest]);
+  const patient=row.rows[0];
+  if(!patient||!patient.verified||patient.profile_status!=="VERIFIED"||
+   !patient.identity_verified||patient.consent_granted!==true)
+   throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
+  return patient;
+ }
  private async doctorLock(tx:PoolClient,actor:VerifiedFoundationActor,doctorId:string){
   const row=await tx.query(
    "SELECT id FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
@@ -145,13 +197,14 @@ export class ConsultationBookingService{
    [actor.realmId,doctorId]);
  }
  private async eligible(tx:PoolClient,actor:VerifiedFoundationActor,
-  doctorId:string,centerId:string,start:Date,end:Date):Promise<Accepted>{
+  doctorId:string,centerId:string,start:Date,end:Date,
+  patientOverride?:Patient):Promise<Accepted>{
   checkWindow(start,end);
   const source=(await this.directory.eligibleScheduleSource(tx,doctorId))
    .find(v=>v.center_ref===centerId&&v.root_ref===actor.realmId);
   if(!source||source.amount_minor===null)
    throw new NotFoundException({code:"CG15_BOOKING_SLOT_CHANGED"});
-  const patient=await this.ownPatient(tx,actor);
+  const patient=patientOverride??await this.ownPatient(tx,actor);
   const from=local(start,source.time_zone),to=local(end,source.time_zone);
   if(from.day!==to.day||to.clock<=from.clock)
    throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
