@@ -7,7 +7,7 @@ CREATE TABLE cg15_patient (
   first_name text NOT NULL CHECK(length(trim(first_name)) BETWEEN 2 AND 100),
   last_name text NOT NULL CHECK(length(trim(last_name)) BETWEEN 1 AND 100),
   date_of_birth date,
-  profile_status text NOT NULL DEFAULT 'VERIFIED'
+  profile_status text NOT NULL DEFAULT 'PROVISIONAL'
     CHECK(profile_status IN ('PROVISIONAL','VERIFIED','RESTRICTED','ARCHIVED')),
   revision integer NOT NULL DEFAULT 1 CHECK(revision > 0),
   created_by_account uuid NOT NULL,
