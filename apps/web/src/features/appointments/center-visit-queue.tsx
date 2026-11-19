@@ -3,7 +3,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
- patientName:string;startAt:string;bookingStatus:string;bookingVersion:number;
+ patientName:string;startAt:string;endAt:string;timeZone:string;
+ bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
 type Queue={day:string;items:Item[];next:string|null};
 type VerifiedSlip={valid:boolean;bookingRef?:string;bookingId?:string;
@@ -126,10 +127,14 @@ export function CenterVisitQueue(){
   if(!key){key=crypto.randomUUID();keys.current.set(reference,key);}
   setBusy(true);setMessage("");
   try{
-   if(next==="CHECK_IN"){
-    await get("my-centers/"+encodeURIComponent(center)+"/check-in","POST",{
+   if(next==="CHECK_IN"||next==="NO_SHOW"){
+    const path=next==="CHECK_IN"?"check-in":"no-show";
+    const response=await get<Record<string,unknown>>(
+     "my-centers/"+encodeURIComponent(center)+"/"+path,"POST",{
      appointmentRef:item.appointmentRef,requestKey:key,expectedVersion:item.bookingVersion
     });
+    if(next==="NO_SHOW"&&response.bookingStatus!=="NO_SHOW")
+     throw Error("The original missed-booking status could not be confirmed.");
    }else{
     if(!item.visitRef||!item.visitVersion)throw Error("Visit status unavailable. Refresh.");
     await get("my-centers/"+encodeURIComponent(center)+"/visits/"+
@@ -254,7 +259,8 @@ export function CenterVisitQueue(){
     style={{border:"1px solid #d7dfdb",padding:14,marginBlock:8,borderRadius:12}}>
     <h3>{item.patientName}</h3>
     <p>Doctor: {item.doctorName}</p>
-    <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN")}</p>
+    <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN",{
+     timeZone:item.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
     <CenterConsultationSlip bookingRef={item.appointmentRef} bookingStatus={item.bookingStatus}/>
     {canCancel&&item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
@@ -276,9 +282,10 @@ export function CenterVisitQueue(){
        onClick={()=>void command(item,"IN_CONSULTATION")}>In consultation</button>}
      {item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
        onClick={()=>void command(item,"COMPLETED")}>Complete visit</button>}
-     {["ARRIVED","WAITING"].includes(item.visitStatus??"")&&
+     {item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
+      Number.isFinite(Date.parse(item.endAt))&&Date.parse(item.endAt)<=Date.now()&&
       <button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"NO_SHOW")}>Mark no-show</button>}
+       onClick={()=>void command(item,"NO_SHOW")}>Mark missed appointment</button>}
     </div>
    </article>)}
    {center&&items.length>0&&<nav aria-label="Queue pages" className="toolbar">
