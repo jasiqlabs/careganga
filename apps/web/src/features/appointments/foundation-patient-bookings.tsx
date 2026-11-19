@@ -3,11 +3,17 @@ import {useCallback,useEffect,useState} from "react";
 type Row={bookingRef:string;bookingId:string;virtualPatientId:string;
  patientName:string;doctorName:string;centerName:string;bookingStatus:string;
  startAt:string;timeZone:string;createdAt:string;collectionStatus:string;consultationFeeMinor:string};
-type Center={centerRef:string;centerName:string};
+type Center={centerRef:string;centerName:string;stateRef:string;
+ districtRef:string;centerType:string};
+type StateChoice={stateRef:string;stateName:string};
+type DistrictChoice={districtRef:string;districtName:string;stateRef:string};
 type Stats={totalPatients:number;activePatients:number;totalBookings:number;
  todayBookings:number;completed:number;pending:number};
-type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[]};
-type Query={status:string;centerRef:string;after:string;day:string};
+type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[];
+ states:StateChoice[];districts:DistrictChoice[];centerTypes:string[];
+ geographyComplete:boolean};
+type Query={status:string;centerRef:string;after:string;day:string;
+ stateRef:string;districtRef:string;centerType:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
  consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
@@ -21,6 +27,8 @@ const statusName=(s:string)=>({
 } as Record<string,string>)[s]??"Status unavailable";
 const money=(s:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(s)/100);
+const centerKind=(v:string)=>v.replaceAll("_"," ").toLowerCase()
+ .replace(/\b\w/g,c=>c.toUpperCase());
 const centerTime=(iso:string,zone:string)=>{
  try{
   const when=new Date(iso);
@@ -31,7 +39,8 @@ const centerTime=(iso:string,zone:string)=>{
  }catch{return "Original center local time unavailable";}
 };
 export function FoundationPatientBookings(){
- const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:""});
+ const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",
+ stateRef:"",districtRef:"",centerType:""});
  const [result,setResult]=useState<Result|null>(null);
  const [selected,setSelected]=useState("");
  const [history,setHistory]=useState<OriginalHistory|null>(null);
@@ -43,6 +52,9 @@ export function FoundationPatientBookings(){
   if(q.status)params.set("status",q.status);
   if(q.centerRef)params.set("centerRef",q.centerRef);
   if(q.day)params.set("day",q.day);
+  if(q.stateRef)params.set("stateRef",q.stateRef);
+  if(q.districtRef)params.set("districtRef",q.districtRef);
+  if(q.centerType)params.set("centerType",q.centerType);
   if(q.after)params.set("after",q.after);
   params.set("limit","20");
   const r=await fetch("/api/appointments/admin/patients?"+params.toString(),{
@@ -102,6 +114,11 @@ export function FoundationPatientBookings(){
  const selectedBooking=result?.items.find(x=>x.bookingRef===selected);
  const update=(change:Partial<Query>)=>setQuery(q=>({...q,...change,after:""}));
  const metrics=result?.metrics;
+ const districts=result?.districts.filter(d=>!query.stateRef||d.stateRef===query.stateRef)??[];
+ const centerChoices=result?.centerChoices.filter(c=>
+  (!query.stateRef||c.stateRef===query.stateRef)&&
+  (!query.districtRef||c.districtRef===query.districtRef)&&
+  (!query.centerType||c.centerType===query.centerType))??[];
  return <section className="role-workspace" aria-label="Patient and booking management">
   <header className="topbar"><div>
    <h1>Patient &amp; Booking Management</h1>
@@ -124,12 +141,39 @@ export function FoundationPatientBookings(){
    </article>)}
   </div>
   <section className="form-section" aria-label="Source-backed booking filters">
+   {!result?.geographyComplete&&result&&
+    <p role="status">Location choices are too numerous to list safely.
+     Use the current booking list while a narrower, verified location search is configured.</p>}
    <div className="toolbar">
+    <label>State
+     <select value={query.stateRef} onChange={e=>update({
+      stateRef:e.target.value,districtRef:"",centerRef:""})}>
+      <option value="">All states</option>
+      {result?.states.map(x=><option key={x.stateRef} value={x.stateRef}>
+       {x.stateName}</option>)}
+     </select>
+    </label>
+    <label>District
+     <select value={query.districtRef} onChange={e=>update({
+      districtRef:e.target.value,centerRef:""})}>
+      <option value="">All districts</option>
+      {districts.map(x=><option key={x.districtRef} value={x.districtRef}>
+       {x.districtName}</option>)}
+     </select>
+    </label>
     <label>Healthcare center
      <select value={query.centerRef} onChange={e=>update({centerRef:e.target.value})}>
       <option value="">All centers</option>
-      {result?.centerChoices.map(c=><option key={c.centerRef} value={c.centerRef}>
+      {centerChoices.map(c=><option key={c.centerRef} value={c.centerRef}>
        {c.centerName}</option>)}
+     </select>
+    </label>
+    <label>Facility type
+     <select value={query.centerType}
+      onChange={e=>update({centerType:e.target.value,centerRef:""})}>
+      <option value="">All facility types</option>
+      {result?.centerTypes.map(type=><option key={type} value={type}>
+       {centerKind(type)}</option>)}
      </select>
     </label>
     <label>Consultation status
@@ -144,7 +188,8 @@ export function FoundationPatientBookings(){
      <input type="date" value={query.day}
       onChange={e=>update({day:e.target.value})}/>
     </label>
-    <button type="button" onClick={()=>setQuery({status:"",centerRef:"",after:"",day:""})}>
+    <button type="button" onClick={()=>setQuery({status:"",centerRef:"",after:"",day:"",
+      stateRef:"",districtRef:"",centerType:""})}>
      Reset filters</button>
    </div>
   </section>
