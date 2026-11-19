@@ -18,6 +18,9 @@ type SourceRow={root_realm_id:string;id:string;booking_display_id:string;
 export class ConsultationSlipSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService){}
+ async actorForSlip(bearer:string){
+  return this.sessions.verifySession(bearer);
+ }
  /** Genuine self-linked patient-only original. Never trust a display ID as auth.
   * Rendering and downloading pass this check every time, not just at issue.
   */
