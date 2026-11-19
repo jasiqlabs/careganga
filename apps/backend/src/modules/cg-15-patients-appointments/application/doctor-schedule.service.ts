@@ -334,13 +334,11 @@ export class DoctorScheduleService{
    await this.identity.assertCurrent(tx,actor,
     channel==="foundation"?"health.schedules.view":"health.centers.draft.edit");
    if(channel==="center")await this.ownCenter.assertCurrent(tx,actor,ownRef!);
-   const rows=await tx.query<{association_id:string;doctor_id:string;center_id:string;
-    doctor_name:string;center_name:string;specialties:string[];status:string;
-    version:number|null;schedule_mode:string|null}>(
-    "SELECT assoc.id AS association_id,assoc.doctor_id,assoc.center_id,"+
-    "d.full_name AS doctor_name,c.display_name AS center_name,d.specialties,"+
-    "COALESCE(s.status,'NOT_SCHEDULED') AS status,s.version,"+
-    "s.consultation_mode AS schedule_mode FROM health_doctor_center assoc "+
+   // Reuse EXACT current CG14/CG03/CG19 approval predicates for bounded
+   // roster display and true filtered doctor/center/schedule KPI counts.
+   // Never compute "Total Doctors" from the first 100 rows.
+   const eligibleDoctorSql=
+    "FROM health_doctor_center assoc "+
     "JOIN health_doctor d ON d.root_realm_id=assoc.root_realm_id "+
     "AND d.id=assoc.doctor_id "+
     "JOIN health_center c ON c.root_realm_id=assoc.root_realm_id "+
@@ -400,8 +398,24 @@ export class DoctorScheduleService{
     "AND j.classification='HEALTH_CENTER_LICENSE' "+
     "WHERE cr.root_realm_id=assoc.root_realm_id AND cr.center_id=c.id "+
     "AND cr.revision_no=(SELECT MAX(y.revision_no) FROM health_center_revision y "+
-    "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) "+
+    "WHERE y.root_realm_id=cr.root_realm_id AND y.center_id=cr.center_id)) ";
+   const rows=await tx.query<{association_id:string;doctor_id:string;center_id:string;
+    doctor_name:string;center_name:string;specialties:string[];status:string;
+    version:number|null;schedule_mode:string|null}>(
+    "SELECT assoc.id AS association_id,assoc.doctor_id,assoc.center_id,"+
+    "d.full_name AS doctor_name,c.display_name AS center_name,d.specialties,"+
+    "COALESCE(s.status,'NOT_SCHEDULED') AS status,s.version,"+
+    "s.consultation_mode AS schedule_mode "+eligibleDoctorSql+
     "ORDER BY d.full_name,c.display_name,assoc.id LIMIT 100",
+    [actor.realmId,channel==="center"?ownRef:centerRef??null,
+     stateRef,districtRef,blockRef,search,status,specialty]);
+   const filteredTotals=await tx.query<{
+    total_doctors:string;active_schedules:string;mapped_centers:string
+   }>(
+    "SELECT COUNT(DISTINCT assoc.doctor_id)::text AS total_doctors,"+
+    "COUNT(*) FILTER (WHERE s.status='ACTIVE')::text AS active_schedules,"+
+    "COUNT(DISTINCT assoc.center_id)::text AS mapped_centers "+
+    eligibleDoctorSql,
     [actor.realmId,channel==="center"?ownRef:centerRef??null,
      stateRef,districtRef,blockRef,search,status,specialty]);
    const counts=await tx.query<{appointments:string;today_sessions:string;
@@ -472,7 +486,10 @@ export class DoctorScheduleService{
     doctorRef:r.doctor_id,centerRef:r.center_id,doctorName:r.doctor_name,
     centerName:r.center_name,specialties:r.specialties,status:r.status,
     version:r.version??0,scheduleMode:r.schedule_mode})),
-    metrics:{totalAppointments:metric?.appointments??"0",
+    metrics:{totalDoctors:filteredTotals.rows[0]?.total_doctors??"0",
+     activeSchedules:filteredTotals.rows[0]?.active_schedules??"0",
+     mappedCenters:filteredTotals.rows[0]?.mapped_centers??"0",
+     totalAppointments:metric?.appointments??"0",
      workingSessionsToday:metric?.today_sessions??"0",
      doctorsOnActiveLeave:metric?.active_leave_doctors??"0"}};
   });
