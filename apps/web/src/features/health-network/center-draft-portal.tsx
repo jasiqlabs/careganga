@@ -8,6 +8,8 @@ import {CenterContentEditor} from "./center-content-editor";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
 import {DoctorScheduleWorkspace} from "../appointments/doctor-schedule-workspace";
 import {CenterPatientIntakePanel} from "../patients/center-patient-intake-panel";
+import {CenterAssistedConsultationBooking}
+ from "../appointments/center-assisted-consultation-booking";
 
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;status:string;
@@ -139,6 +141,8 @@ export function CenterDraftPortal(){
          channel="center" centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterPatientIntakePanel key={"intake:"+active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+        <CenterAssistedConsultationBooking key={"booking:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterContentEditor key={"content:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
