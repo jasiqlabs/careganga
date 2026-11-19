@@ -4,7 +4,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 type Booking={bookingRef:string;bookingId:string;bookingStatus:string};
-type Share={grantRef:string;status:string;version:number;bookingId:string;
+type Share={grantRef:string;status:string;version:number;currentlyAuthorized:boolean;bookingId:string;
  doctorName:string;centerName:string};
 const base=process.env.EXPO_PUBLIC_API_URL;
 function endpoint(p:string){
@@ -120,7 +120,8 @@ export function NativePatientClinicalFileShares({token,fileRef,consentGranted,on
    {grants.map(g=><View style={styles.item} key={g.grantRef}>
     <Text style={styles.help}>{g.bookingId} · {g.doctorName} ·
      {" "+g.centerName}</Text>
-    <Text style={styles.help}>{g.status}</Text>
+    <Text style={styles.help}>{g.status!=="ACTIVE"?"Revoked":
+     g.currentlyAuthorized?"Active for this appointment":"Inactive: booking or consent changed"}</Text>
     {g.status==="ACTIVE"&&button("Revoke this doctor's file access",
      ()=>void revoke(g))}
    </View>)}
