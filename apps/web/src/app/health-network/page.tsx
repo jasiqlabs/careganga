@@ -15,6 +15,13 @@ const rupee=(amount:number)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR",maximumFractionDigits:2}).format(amount/100);
 export default async function HealthcareDirectory({searchParams}:Props){
  const raw=await searchParams,tab=raw.tab==="doctors"?"doctors":"centers";
+ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+ const rescheduleRef=typeof raw.reschedule==="string"&&ID.test(raw.reschedule)?
+  raw.reschedule:"";
+ const rescheduleVersion=typeof raw.version==="string"?
+  Number(raw.version):NaN;
+ const canReschedule=!!rescheduleRef&&Number.isSafeInteger(rescheduleVersion)&&
+  rescheduleVersion>0;
  const areas=await publicAreas();
  const states=areas.filter(x=>x.level==="STATE"),districts=areas.filter(x=>x.level==="DISTRICT"),
   blocks=areas.filter(x=>x.level==="BLOCK");
@@ -37,6 +44,8 @@ export default async function HealthcareDirectory({searchParams}:Props){
   await directory<PublicCenter>("centers",query);
  const next=new URLSearchParams(query);
  if(result.next)next.set("after",result.next);
+ if(canReschedule){next.set("reschedule",rescheduleRef);
+  next.set("version",String(rescheduleVersion));}
  return <main className="cg-public-shell">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb">
@@ -48,17 +57,26 @@ export default async function HealthcareDirectory({searchParams}:Props){
    <p className="cg-eyebrow">CareGanga · Healthcare Assistance</p>
    <h1>Find verified healthcare centers and doctors</h1>
    <p className="cg-lead">Only currently approved, published partners appear here.
-    Contact the center to confirm timings and care. Online appointments and
-    financial assistance estimates are not offered in this directory.</p>
+    Consult current doctor schedules to request a pay-at-center appointment.
+    No appointment, payment or financial assistance is guaranteed by a directory listing.</p>
+   {canReschedule&&<p role="status">Choose another verified doctor and an available time.
+    Your existing appointment remains confirmed until the change succeeds.</p>}
    <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
-    <Link href="/health-network?tab=centers" aria-current={tab==="centers"?"page":undefined}>Centers</Link>
-    <Link href="/health-network?tab=doctors" aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
+    {!canReschedule&&<Link href="/health-network?tab=centers"
+     aria-current={tab==="centers"?"page":undefined}>Centers</Link>}
+    <Link href={"/health-network?tab=doctors"+
+     (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
+      "&version="+rescheduleVersion:"")} aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
    </nav>
    <p><Link href="/patients/me">My private patient profile and consent</Link></p>
   </section>
   <section className="cg-public-section" aria-label="Search the directory"
    <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
     <input type="hidden" name="tab" value={tab}/>
+    {canReschedule&&<>
+     <input type="hidden" name="reschedule" value={rescheduleRef}/>
+     <input type="hidden" name="version" value={rescheduleVersion}/>
+    </>}
     <label>Search name or {tab==="doctors"?"qualification":"provider"}
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
@@ -146,7 +164,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
     </details>
     <div style={{display:"flex",flexWrap:"wrap",gap:16,alignItems:"center"}}>
      <button type="submit">Apply filters</button>
-     <Link href={"/health-network?tab="+tab}>Reset filters</Link>
+     <Link href={"/health-network?tab="+tab+
+      (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
+       "&version="+rescheduleVersion:"")}>Reset filters</Link>
     </div>
    </form>
   </section>
@@ -176,6 +196,10 @@ export default async function HealthcareDirectory({searchParams}:Props){
          "Consultation fee not currently published"}</p>
        <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
         View verified doctor</Link>
+       {canReschedule&&<p><Link href={"/health-network/doctors/"+
+        encodeURIComponent(d.doctorRef)+"/schedule?reschedule="+
+        encodeURIComponent(rescheduleRef)+"&version="+rescheduleVersion}>
+        Choose a time with this doctor</Link></p>}
       </article>)}
     </div>}
    {result.state==="READY"&&result.next&&<p style={{marginTop:20}}>
