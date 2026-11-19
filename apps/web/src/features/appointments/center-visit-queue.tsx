@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Center={centerRef:string;centerName:string};
+type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;
  patientName:string;startAt:string;bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
@@ -21,6 +21,14 @@ async function get<T>(path:string,method="GET",body?:Record<string,unknown>):Pro
  }
  return raw as T;
 }
+const centerToday=(zone:string)=>{
+ try{
+  const parts=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
+   timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return parts.year+"-"+parts.month+"-"+parts.day;
+ }catch{return null;}
+};
 const isoToday=()=>new Date().toISOString().slice(0,10);
 export function CenterVisitQueue(){
  const [centers,setCenters]=useState<Center[]>([]);
@@ -44,8 +52,12 @@ export function CenterVisitQueue(){
   void get<{centers:Center[]}>("my-centers").then(data=>{
    if(!alive)return;
    const valid=data.centers.filter(x=>x&&typeof x.centerRef==="string"&&
-    typeof x.centerName==="string");
-    setCenters(valid);if(valid.length===1){selectedCenterRef.current=valid[0].centerRef;setCenter(valid[0].centerRef);}
+    typeof x.centerName==="string"&&typeof x.timeZone==="string");
+    setCenters(valid);if(valid.length===1){
+    const today=centerToday(valid[0].timeZone);
+    if(!today){setMessage("The center's current local date is unavailable.");return;}
+    selectedCenterRef.current=valid[0].centerRef;setDay(today);setCenter(valid[0].centerRef);
+   }
   }).catch(e=>{if(alive)setMessage(e instanceof Error?e.message:"Access cannot be confirmed.");})
   .finally(()=>{if(alive)setLoading(false);});
   return()=>{alive=false;};
@@ -112,7 +124,11 @@ export function CenterVisitQueue(){
   {loading?<p>Checking current center permissions…</p>:<>
    <div className="toolbar">
     <label>Assigned healthcare center
-     <select value={center} onChange={e=>{selectedCenterRef.current=e.target.value;requestSerial.current++;
+     <select value={center} disabled={busy} onChange={e=>{const next=centers.find(x=>x.centerRef===e.target.value);
+      const today=next?centerToday(next.timeZone):null;
+      if(next&&!today){setMessage("The selected center's local time zone is unavailable.");return;}
+      if(today)setDay(today);
+      selectedCenterRef.current=e.target.value;requestSerial.current++;
       setItems([]);setVerifiedSlip(null);setQrToken("");setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
