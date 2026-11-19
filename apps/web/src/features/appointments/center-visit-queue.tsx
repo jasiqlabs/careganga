@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Center={centerRef:string;centerName:string;timeZone:string};
-type Item={appointmentRef:string;bookingId:string;doctorRef:string;
+type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
  patientName:string;startAt:string;bookingStatus:string;bookingVersion:number;
  visitRef:string|null;queueToken:string|null;visitStatus:string|null;visitVersion:number|null};
 type Queue={day:string;items:Item[]};
@@ -34,6 +34,8 @@ export function CenterVisitQueue(){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[day,setDay]=useState(isoToday());
  const [items,setItems]=useState<Item[]>([]);
+ const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
+ const [queueLoading,setQueueLoading]=useState(false);
  const [qrToken,setQrToken]=useState("");
  const [verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -42,10 +44,15 @@ export function CenterVisitQueue(){
  const requestSerial=useRef(0),selectedCenterRef=useRef("");
  const load=useCallback(async(c:string,d:string)=>{
   const serial=++requestSerial.current;
-  if(!c){setItems([]);return;}
-  const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d));
-  if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
-  setItems(rows.items);setUncertain(false);
+  if(!c){setItems([]);setQueueLoading(false);return;}
+  setQueueLoading(true);
+  try{
+   const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d));
+   if(serial!==requestSerial.current||c!==selectedCenterRef.current)return;
+   setItems(rows.items);setUncertain(false);
+  }finally{
+   if(serial===requestSerial.current)setQueueLoading(false);
+  }
  },[]);
  useEffect(()=>{
   let alive=true;
@@ -116,6 +123,11 @@ export function CenterVisitQueue(){
     " Refresh the current queue before doing another action.");
   }finally{setBusy(false);}
  }
+ const doctorChoices=Array.from(new Map(items.map(x=>
+  [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
+  .sort((a,b)=>a.name.localeCompare(b.name));
+ const visible=items.filter(x=>(!doctorFilter||x.doctorRef===doctorFilter)&&
+  (!statusFilter||x.bookingStatus===statusFilter));
  return <section className="form-section" aria-label="My healthcare center consultation queue">
   <h2>Consultation check-in & queue</h2>
   <p>Only bookings at the selected assigned center appear here. Queue tokens are
@@ -129,13 +141,15 @@ export function CenterVisitQueue(){
       if(next&&!today){setMessage("The selected center's local time zone is unavailable.");return;}
       if(today)setDay(today);
       selectedCenterRef.current=e.target.value;requestSerial.current++;
-      setItems([]);setVerifiedSlip(null);setQrToken("");setCenter(e.target.value);setUncertain(false);}}>
+      setItems([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+       setCenter(e.target.value);setUncertain(false);}}>
       <option value="">Select center</option>
       {centers.map(x=><option key={x.centerRef} value={x.centerRef}>
        {x.centerName}</option>)}
      </select></label>
     <label>Consultation date
-     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setVerifiedSlip(null);setDay(e.target.value);setUncertain(false);}}/>
+     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+       setDay(e.target.value);setUncertain(false);}}/>
     </label>
     <button type="button" disabled={busy||!center}
      onClick={()=>void load(center,day).catch(e=>setMessage(String(e)))}>
@@ -159,10 +173,29 @@ export function CenterVisitQueue(){
     </p>}
    </section>}
    {!centers.length&&<p>No current assigned, enabled healthcare center is available.</p>}
-   {center&&items.length===0&&<p>No booked consultation for this center and date.</p>}
-   {items.map(item=><article className="card" key={item.appointmentRef}
+   {center&&items.length>0&&<div className="toolbar" aria-label="Consultation queue filters">
+    <label>Doctor
+     <select value={doctorFilter} onChange={e=>setDoctorFilter(e.target.value)}>
+      <option value="">All doctors</option>
+      {doctorChoices.map(d=><option key={d.ref} value={d.ref}>{d.name}</option>)}
+     </select></label>
+    <label>Visit status
+     <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+      <option value="">All statuses</option>
+      {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED","NO_SHOW",
+        "CANCELLED"].map(state=><option key={state} value={state}>
+       {state.replaceAll("_"," ")}</option>)}
+     </select></label>
+   </div>}
+   {queueLoading&&<p role="status">Checking current center appointments…</p>}
+   {center&&!queueLoading&&items.length===0&&
+    <p>No booked consultations for this center and date.</p>}
+   {center&&!queueLoading&&items.length>0&&visible.length===0&&
+    <p>No consultations match these filters.</p>}
+   {visible.map(item=><article className="card" key={item.appointmentRef}
     style={{border:"1px solid #d7dfdb",padding:14,marginBlock:8,borderRadius:12}}>
     <h3>{item.patientName}</h3>
+    <p>Doctor: {item.doctorName}</p>
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN")}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
     <div className="toolbar">
