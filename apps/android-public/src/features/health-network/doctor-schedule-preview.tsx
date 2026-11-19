@@ -150,7 +150,8 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
        searchTime===slot.startLocal)}
       {slot.bookable&&detail.consultationFeeMinor!==null&&
        detail.consultationFeeVersion!==null&&
-       <NativeConsultationAction key={slot.startAt+center.centerRef}
+       <NativeConsultationAction key={[doctorRef,center.centerRef,slot.startAt,slot.endAt,
+                detail.consultationFeeMinor,detail.consultationFeeVersion].join("|")}
         doctorRef={doctorRef} centerRef={center.centerRef}
         doctorName={detail.doctorName} centerName={center.centerName}
         startAt={slot.startAt} endAt={slot.endAt} timeZone={detail.timeZone}
