@@ -6,7 +6,7 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **91/128 SOURCE_VERIFIED, 28 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **92/128 SOURCE_VERIFIED, 27 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
@@ -30,7 +30,7 @@ Source-only current snapshot: **91/128 SOURCE_VERIFIED, 28 SOURCE_GAP, 2 NOT_VER
 | US-004-QA14 | SOURCE_GAP | Runtime/visual/permissions QA and remaining source parity | Web/Android both hold/confirm and show conflicts/unknown; no complete reason/review/Back/visual/accessibility/emulator QA. |
 | US-005-QA05 | SOURCE_GAP | CG19 private document / communication owner | Web authenticated download and Android protected PDF preview exist, but native direct share/print equivalence, device and grant-revocation QA not complete. |
 | US-005-QA07 | SOURCE_GAP | CG15 direct source/code work | Current assigned-center CG01 health.visits.manage + CG14 current own-center scope authorize a limited original CG19 QR token lookup; Web/Internal Android manual code input returns same-center booking/check-in-eligibility only, foreign center gets valid:false; actual camera QR scanning and runtime negative scope QA remain SOURCE_GAP. |
-| US-005-QA08 | SOURCE_GAP | CG15 direct source/code work | Terms-revision still invalidates original QR on cancellation/reschedule. The assigned-center QR verifier now also denies latest-withdrawn patient-care consent; patient identity is masked in queue. Authenticated camera scan/replay, bounded scanner audit and real provider/device negative tests remain missing. |
+| US-005-QA08 | SOURCE_VERIFIED | CG15 / CG19 original status-only QR source | PostgreSQL migration 1434 per-staff/account/root 24-attempt/15-minute QR lookup budget, immutable no-token/patient audit, safe 429; expired/foreign/revoked/consent-invalid original QR denied. Real device/DB/abuse QA NOT_RUN. |
 | US-005-QA10 | SOURCE_GAP | CG19 private document / communication owner | Android has authenticated native PDF/calendar preview, Web PDF/calendar; exact native share/print and device/back parity untested and not fully implemented. |
 | US-005-QA12 | SOURCE_GAP | CG19 private document / communication owner | Optional CG19 true delivery after commit not connected; booking never shows false delivery status. |
 | US-006-QA05 | SOURCE_GAP | CG14 clinician identity + CG01 purpose authority | CG01 now has a separate assignable sensitive `health.visits.clinical.manage` action. `ConsultationQueueService.transition` checks both `health.visits.manage` and this additional action inside the same current CG14 center authorization transaction before any WAITING→IN_CONSULTATION or IN_CONSULTATION→COMPLETED write, while basic reception cannot mark clinical state. Web and Internal Android hide clinical actions without the independent grant. Actual verified doctor-account→CG14 doctor→current appointment-center relationship is not yet established, so an inappropriate staff grant could still act; therefore doctor-specific scenario remains SOURCE_GAP pending CG14 clinician identity link and real authorization tests. |
@@ -80,3 +80,11 @@ The protected H07 screen now offers reviewed multi-target copies of at most 8 ac
 H07 State/District/Block/Center-specific appointment, working-session and approved-leave KPI counts now match the selected actual region, not the whole Foundation. Full original H07 visual/tabs/calendar scenario US-001-QA13 remains SOURCE_GAP.
 
 **Current 128-case counts: 91 SOURCE_VERIFIED / 28 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE. Runtime QA PASS 0/128; formal SOURCE_COMPLETE 0/8. No merge.**
+
+## 19 November 2026 — US-005-QA08 existing QR verification abuse/audit source
+
+Original center QR lookup now uses one durable CG15 root/account/assigned-center 24-attempt/15-minute atomic budget and immutable result audit with actor, center, VALID/DENIED, timestamp only. It never retains the code, digest or patient identifier. Unauthorized centers cannot look up tokens; actual CG19 QR and current booking/consent/revocation proof remain authoritative. Safe 429 on attempt 25. No new use case or QA scenario introduced.
+
+Migration 1434 is in the 1420-1434 lexical preflight (15/15 source-valid); eight targeted current-source checks passed. These are not PostgreSQL execution or physical QR replay/abuse, browser, scanner or device QA. Actual upgrade from 1433, 25th attempt, 15-minute reset, multi-instance race, different staff/center/root isolation, immutable audit UPDATE/DELETE denial and retention must be checked locally.
+
+Latest canonical source counts: 92 verified / 27 source gaps / 2 not verifiable / 7 not applicable = 128. Runtime pass 0/128. Formal source completion 0/8. No main merge.
