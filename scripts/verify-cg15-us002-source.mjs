@@ -39,6 +39,18 @@ const checks=[
   s.source.includes("state='ACTIVE'")],
  ["source: date and slot count bounded",s.source.includes("maxAdvanceDays=30")&&
   s.source.includes("MAX_CENTERS=40")&&s.source.includes("MAX_SLOTS=144")],
+ ["source: date window is based on each verified healthcare center local calendar",
+  s.source.includes("function withinCenterBookingWindow(day:string,zone:string)")&&
+  s.source.includes('local.year+"-"+local.month+"-"+local.day')&&
+  s.source.includes("Number(local.day)+maxAdvanceDays")&&
+  s.source.includes("const localCenters=centers.filter(x=>withinCenterBookingWindow(day,x.time_zone))")&&
+  s.source.includes("if(!withinCenterBookingWindow(day,center.time_zone))")],
+ ["source: doctor public profile links to current booking, no misleading disabled copy",
+  s.doctors.includes("View available times & book an in-person appointment")&&
+  s.doctors.includes("Payment is due at the center")&&
+  !s.doctors.includes("Online booking and payments are not enabled")&&
+  s.publicWeb.includes("<PatientBookingAction")&&
+  s.publicAndroid.includes("<NativeConsultationAction")],
  ["source: local IANA ambiguity DST fail closed",s.source.includes("Intl.DateTimeFormat")&&
   s.source.includes("exact.length===1?exact[0]:null")],
  ["source: same real instant in doctor-time-first",s.source.includes("sharedInstant")&&
