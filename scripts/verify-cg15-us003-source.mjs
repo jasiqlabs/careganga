@@ -12,6 +12,7 @@ const s={
  intakeDb:read("apps/backend/db/migrations/1423_cg15_center_provisional_patient_intake.sql"),
  identityDb:read("apps/backend/db/migrations/1428_cg15_in_person_patient_identity_verification.sql"),
  claimDb:read("apps/backend/db/migrations/1429_cg15_patient_center_intake_claim.sql"),
+ throttleDb:read("apps/backend/db/migrations/1431_cg15_patient_claim_attempt_throttle.sql"),
  intakeService:read("apps/backend/src/modules/cg-15-patients-appointments/application/center-patient-intake.service.ts"),
  intakeController:read("apps/backend/src/modules/cg-15-patients-appointments/http/center-patient-intake.controller.ts"),
  intakeProxy:read("apps/web/src/app/api/appointments/patients/[...parts]/route.ts"),
@@ -208,6 +209,17 @@ const checks=[
   s.service.includes("async claimCenterIntake(")&&
   s.intakeController.includes('Post("my-centers/:centerRef/claims")')&&
   s.ctrl.includes('Post("me/claim-intake")')],
+ ["real patient account claim is multi-instance rate limited before failing business transaction",
+  s.throttleDb.includes("CREATE TABLE cg15_patient_claim_attempt_throttle")&&
+  s.throttleDb.includes("PRIMARY KEY(root_realm_id,account_id)")&&
+  s.service.includes("ON CONFLICT(root_realm_id,account_id) DO UPDATE SET")&&
+  s.service.includes("15 minutes")&&
+  s.service.includes("if((budget.rows[0]?.attempts??21)>20)")&&
+  s.service.indexOf("const budget=await this.db.query")<
+   s.service.indexOf("const c=await this.db.connect();let active=false;")&&
+  s.service.includes('CG15_PATIENT_IDENTITY_RATE_LIMIT')&&
+  s.webProxy.includes("CG15_PATIENT_IDENTITY_RATE_LIMIT")&&
+  s.errors.includes("CG15_PATIENT_IDENTITY_RATE_LIMIT")],
  ["both Web and Android patient can claim real original center patient",
   s.web.includes('request<Profile>("me/claim-intake"')&&
   s.native.includes('"/api/v1/patients/me/claim-intake"')&&
