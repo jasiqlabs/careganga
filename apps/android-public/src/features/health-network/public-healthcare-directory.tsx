@@ -362,7 +362,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     </View>)}
     <Text style={styles.helper}>{doctorDetails.notice}</Text>
     {selection?.kind==="doctor"&&
-     <DoctorSchedulePreview key={selection.ref} doctorRef={selection.ref}/>}
+     <DoctorSchedulePreview key={selection.ref} doctorRef={selection.ref}
+      reschedule={reschedule}/>}
    </View>:null}
    {state.status==="LOADING"&&<ActivityIndicator accessibilityLabel="Checking current verified listings"/>}
    {state.status==="ERROR"&&<View style={styles.card}>
