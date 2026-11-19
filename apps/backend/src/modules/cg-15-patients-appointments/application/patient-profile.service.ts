@@ -156,7 +156,7 @@ export class PatientProfileService{
    await c.query(
     "INSERT INTO cg15_patient(root_realm_id,id,virtual_display_id,first_name,last_name,"+
     "date_of_birth,profile_status,created_by_account) "+
-    "VALUES($1,$2,$3,$4,$5,$6,'VERIFIED',$7)",
+    "VALUES($1,$2,$3,$4,$5,$6,'PROVISIONAL',$7)",
     [actor.realmId,patientId,display,firstName,lastName,dateOfBirth,actor.accountId]);
    await c.query(
     "INSERT INTO cg15_patient_account_link(root_realm_id,patient_id,account_id,proof_type) "+
@@ -176,7 +176,7 @@ export class PatientProfileService{
     [actor.realmId,actor.accountId,requestKey,patientId]);
    await c.query("COMMIT");tx=false;
    return {virtualPatientId:display,firstName,lastName,dateOfBirth,
-    profileStatus:"VERIFIED",version:1,consentGranted:true,consentVersion:terms.version};
+    profileStatus:"PROVISIONAL",version:1,consentGranted:true,consentVersion:terms.version};
   }catch(e){if(tx)await c.query("ROLLBACK");throw e;}
   finally{c.release();}
  }
@@ -194,7 +194,7 @@ export class PatientProfileService{
    const old=await this.owned(c,actor,true);
    if(!old)throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
    if(old.revision!==expected)throw new ConflictException({code:"CG15_PATIENT_CHANGED"});
-   if(old.profile_status!=="VERIFIED")
+   if(!["VERIFIED","PROVISIONAL"].includes(old.profile_status))
     throw new ForbiddenException({code:"CG15_PATIENT_FORBIDDEN"});
    const firstName=v.firstName===undefined?old.first_name:name(v.firstName,"firstName",2);
    const lastName=v.lastName===undefined?old.last_name:name(v.lastName,"lastName",1);
@@ -228,7 +228,7 @@ export class PatientProfileService{
    const old=await this.owned(c,actor,true);
    if(!old)throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
    if(old.revision!==expected)throw new ConflictException({code:"CG15_PATIENT_CHANGED"});
-   if(old.profile_status!=="VERIFIED")
+   if(!["VERIFIED","PROVISIONAL"].includes(old.profile_status))
     throw new ForbiddenException({code:"CG15_PATIENT_FORBIDDEN"});
    const currentVersion=v.granted?terms.version:old.consent_version;
    if(!currentVersion)
