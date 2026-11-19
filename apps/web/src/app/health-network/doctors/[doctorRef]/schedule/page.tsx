@@ -130,6 +130,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
        selected.consultationFeeVersion!==null?
        validReschedule?
        <PatientRescheduleAction bookingRef={rescheduleRef} expectedVersion={version}
+        key={[rescheduleRef,doctorRef,centerRef,slot.startAt,slot.endAt,
+         selected.consultationFeeMinor,selected.consultationFeeVersion].join("|")}
         doctorRef={doctorRef} centerRef={centerRef}
         doctorName={selected.doctorName} centerName={selected.centerName}
         startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
@@ -159,6 +161,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
        c.consultationFeeVersion!==null?
        validReschedule?
        <PatientRescheduleAction bookingRef={rescheduleRef} expectedVersion={version}
+        key={[rescheduleRef,doctorRef,c.centerRef,c.startAt,c.endAt,
+         c.consultationFeeMinor,c.consultationFeeVersion].join("|")}
         doctorRef={doctorRef} centerRef={c.centerRef}
         doctorName={doctor.doctorName} centerName={c.centerName}
         startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
