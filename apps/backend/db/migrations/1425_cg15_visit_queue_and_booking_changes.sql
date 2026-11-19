@@ -57,7 +57,7 @@ CREATE INDEX ix_cg15_visit_events ON cg15_visit_event
 CREATE FUNCTION cg15_visit_event_frozen() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  RAISE EXCEPTION 'Patient visit events are immutable';
-END; $;
+END; $$;
 CREATE TRIGGER cg15_visit_event_immutable BEFORE UPDATE OR DELETE ON cg15_visit_event
  FOR EACH ROW EXECUTE FUNCTION cg15_visit_event_frozen();
 
