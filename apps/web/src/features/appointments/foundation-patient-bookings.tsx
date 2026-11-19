@@ -324,7 +324,8 @@ export function FoundationPatientBookings(){
     <h2>Consultation records</h2>
     {result.items.length===0&&<p>No consultations match these filters.</p>}
     {result.items.map(item=><button key={item.bookingRef} type="button"
-     aria-pressed={selected===item.bookingRef} onClick={()=>setSelected(item.bookingRef)}
+     aria-pressed={selected===item.bookingRef} disabled={overrideBusy}
+     onClick={()=>setSelected(item.bookingRef)}
      style={{display:"block",width:"100%",textAlign:"left",padding:14,
       border:"1px solid #d7dfdb",borderRadius:12,marginBottom:8}}>
      <strong>{item.bookingId}</strong><span> — {statusName(item.bookingStatus)}</span>
