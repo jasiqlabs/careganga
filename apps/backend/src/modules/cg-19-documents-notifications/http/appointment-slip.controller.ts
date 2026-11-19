@@ -9,6 +9,31 @@ import {HealthPublicRequestThrottleService}
 export class AppointmentSlipController{
  constructor(private readonly slips:AppointmentSlipDocumentService,
   private readonly throttle:HealthPublicRequestThrottleService){}
+ @Get("staff/:bookingRef/status")
+ @Header("Cache-Control","private, no-store")
+ staffStatus(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string){
+  return this.slips.status(bearer,ref,true);
+ }
+ @Post("staff/:bookingRef/issue")
+ @Header("Cache-Control","private, no-store")
+ staffIssue(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string,
+  @Body()raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   Object.keys(raw).length!==1||!("requestKey" in raw)||
+   typeof raw.requestKey!=="string")
+   throw new BadRequestException({code:"CG19_SLIP_UNAVAILABLE"});
+  return this.slips.issue(bearer,ref,raw.requestKey,true);
+ }
+ @Get("staff/:bookingRef/file")
+ @Header("Cache-Control","private, no-store")
+ async staffFile(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string,
+  @Res()reply:Response){
+  const pdf=await this.slips.download(bearer,ref,true);
+  reply.setHeader("Content-Type","application/pdf");
+  reply.setHeader("Content-Disposition","attachment; filename=careganga-consultation.pdf");
+  reply.setHeader("Cache-Control","private, no-store");
+  reply.status(200).end(pdf);
+ }
  @Get("me/:bookingRef/status")
  @Header("Cache-Control","private, no-store")
  status(@Headers("authorization")bearer:string,@Param("bookingRef")ref:string){
