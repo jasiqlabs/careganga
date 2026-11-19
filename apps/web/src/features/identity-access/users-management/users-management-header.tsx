@@ -1,6 +1,6 @@
 "use client";
 
-import { SettingsIcon, ShieldCheckIcon } from "./users-management-icons";
+import { SettingsIcon } from "./users-management-icons";
 
 export function UsersManagementHeader() {
   return (
@@ -12,9 +12,6 @@ export function UsersManagementHeader() {
             <SettingsIcon size={18} />
           </span>
         </div>
-        <p className="cg-um-main-subheading">
-          Complete Command Center &amp; Control Panel
-        </p>
       </div>
     </div>
   );

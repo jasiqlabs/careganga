@@ -30,9 +30,13 @@ export function DeleteConfirmationModal({
   if (!isOpen || !account) return null;
 
   return (
-    <div className="cg-um-modal-backdrop" role="presentation" onClick={e => {
-      if (e.target === e.currentTarget && !busy) onClose();
-    }}>
+    <div
+      className="cg-um-modal-backdrop"
+      role="presentation"
+      onClick={e => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -46,7 +50,7 @@ export function DeleteConfirmationModal({
               <AlertTriangleIcon size={18} />
             </span>
             <h2 id="um-delete-title" className="cg-um-modal-title danger">
-              Delete User Account
+              Deactivate User Account
             </h2>
           </div>
           <button
@@ -67,7 +71,7 @@ export function DeleteConfirmationModal({
           </div>
 
           <p className="cg-um-delete-message">
-            Are you sure you want to permanently delete the account for{" "}
+            Are you sure you want to deactivate the account for{" "}
             <strong>{account.displayName}</strong>?
           </p>
           <p className="cg-um-delete-submessage">
@@ -76,7 +80,7 @@ export function DeleteConfirmationModal({
 
           <div className="cg-um-delete-warning-banner">
             <AlertTriangleIcon size={16} className="cg-um-banner-icon" />
-            <span>Warning: This action cannot be undone and will revoke all portal access rights.</span>
+            <span>Warning: This action will set the account status to Deactivated and revoke all portal access rights.</span>
           </div>
 
           {notice && (
@@ -109,7 +113,7 @@ export function DeleteConfirmationModal({
             onClick={onConfirm}
           >
             <Trash2Icon size={16} />
-            <span>{busy ? "Deleting…" : "Yes, Delete"}</span>
+            <span>{busy ? "Deactivating…" : "Yes, Deactivate"}</span>
           </button>
         </footer>
       </div>

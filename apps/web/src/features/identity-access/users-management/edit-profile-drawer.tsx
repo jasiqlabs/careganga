@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import type { FormEvent } from "react";
 import type { CG01AccountView } from "@careganga/api-contracts";
 import {
   XIcon,
   EditIcon,
-  ShieldIcon,
-  KeyIcon,
-  UserCheckIcon
+  UserCheckIcon,
+  ShieldIcon
 } from "./users-management-icons";
 import {
   accountStatusLabel,
@@ -50,16 +48,26 @@ export function EditProfileDrawer({
   if (!isOpen || !account) return null;
 
   const empId = formatEmployeeId(account);
+  const isStatusActive = status === "ACTIVE";
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave();
   };
 
+  const handleToggleStatus = () => {
+    if (busy || account.roleProtected) return;
+    onStatusChange(isStatusActive ? "SUSPENDED" : "ACTIVE");
+  };
+
   return (
-    <div className="cg-um-drawer-backdrop" role="presentation" onClick={e => {
-      if (e.target === e.currentTarget && !busy) onClose();
-    }}>
+    <div
+      className="cg-um-drawer-backdrop"
+      role="presentation"
+      onClick={e => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
       <aside
         role="dialog"
         aria-modal="true"
@@ -73,11 +81,16 @@ export function EditProfileDrawer({
               <EditIcon size={20} />
             </div>
             <div>
-              <h2 id="um-edit-profile-title" className="cg-um-drawer-title">
-                Edit Account Profile
-              </h2>
+              <div className="cg-um-drawer-title-row">
+                <h2 id="um-edit-profile-title" className="cg-um-drawer-title">
+                  Edit Account Profile
+                </h2>
+                <span className="cg-um-role-chip primary">
+                  {account.roleName || "Staff"}
+                </span>
+              </div>
               <p className="cg-um-drawer-subtitle">
-                {account.displayName} ({empId})
+                Update profile, contact details, and account status
               </p>
             </div>
           </div>
@@ -98,20 +111,25 @@ export function EditProfileDrawer({
           <div className="cg-um-drawer-body">
             {/* Display Name */}
             <div className="cg-um-field">
-              <label htmlFor="um-edit-name">FULL NAME</label>
+              <label htmlFor="um-edit-name">
+                Full Name <span className="cg-um-required-star">*</span>
+              </label>
               <input
                 id="um-edit-name"
                 type="text"
                 value={account.displayName}
                 disabled
                 className="is-read-only"
+                aria-readonly="true"
               />
-              <span className="cg-um-field-hint">Primary legal name is verified by Foundation admin</span>
+              <span className="cg-um-field-hint">Primary name is verified via Foundation registration</span>
             </div>
 
             {/* Email */}
             <div className="cg-um-field">
-              <label htmlFor="um-edit-email">OFFICIAL EMAIL</label>
+              <label htmlFor="um-edit-email">
+                Work Email Address <span className="cg-um-required-star">*</span>
+              </label>
               <input
                 id="um-edit-email"
                 type="email"
@@ -119,12 +137,13 @@ export function EditProfileDrawer({
                 disabled
                 placeholder="No email registered"
                 className="is-read-only"
+                aria-readonly="true"
               />
             </div>
 
             {/* Mobile / Username */}
             <div className="cg-um-field">
-              <label htmlFor="um-edit-phone">CONTACT NUMBER (USERNAME)</label>
+              <label htmlFor="um-edit-phone">Mobile Number</label>
               <input
                 id="um-edit-phone"
                 type="tel"
@@ -132,10 +151,11 @@ export function EditProfileDrawer({
                 disabled
                 placeholder="No mobile registered"
                 className="is-read-only"
+                aria-readonly="true"
               />
             </div>
 
-            {/* Role Selection */}
+            {/* Role Selection / Details */}
             {!account.roleProtected ? (
               <div className="cg-um-field">
                 <label htmlFor="um-edit-role">ASSIGNED ROLE</label>
@@ -153,29 +173,35 @@ export function EditProfileDrawer({
                     </option>
                   ))}
                 </select>
+                <span className="cg-um-field-hint">Only server-permitted roles in realm are eligible</span>
               </div>
             ) : (
               <div className="cg-um-drawer-banner amber">
+                <ShieldIcon size={15} />
                 <span>Protected Administrator account role cannot be reassigned here.</span>
               </div>
             )}
 
-            {/* Account Status Control */}
+            {/* Login Account Status Toggle Switch */}
             {!account.roleProtected && (
-              <div className="cg-um-field">
-                <label htmlFor="um-edit-status">ACCOUNT STATUS</label>
-                <select
-                  id="um-edit-status"
-                  value={status}
-                  onChange={e => onStatusChange(e.target.value as "ACTIVE" | "SUSPENDED" | "DEACTIVATED")}
+              <div className="cg-um-field-toggle-card">
+                <div className="cg-um-toggle-label-wrap">
+                  <strong className="cg-um-toggle-title">Login Account Status</strong>
+                  <span className="cg-um-toggle-desc">
+                    Enable or temporarily suspend platform access for this account
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isStatusActive}
+                  onClick={handleToggleStatus}
                   disabled={busy}
-                  className="cg-um-select"
+                  className={`cg-um-toggle-switch ${isStatusActive ? "active" : ""}`}
                 >
-                  <option value="ACTIVE">Active (Full access)</option>
-                  <option value="SUSPENDED">Suspended (Temporarily on hold)</option>
-                  <option value="DEACTIVATED">Deactivated (Revoked access)</option>
-                </select>
-                <span className="cg-um-field-hint">Status changes invalidate active login sessions</span>
+                  <span className="cg-um-toggle-knob" />
+                </button>
               </div>
             )}
 
@@ -209,7 +235,7 @@ export function EditProfileDrawer({
               disabled={busy || uncertain}
             >
               <UserCheckIcon size={16} />
-              <span>{busy ? "Saving…" : "Save Changes"}</span>
+              <span>{busy ? "Saving…" : "Save Profile Changes"}</span>
             </button>
           </footer>
         </form>

@@ -620,6 +620,7 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
         onAssignRole={openAssignRoleModal}
         onStatusChange={handleStatusChangeRequest}
         onDeleteAccount={openDeleteConfirmModal}
+        busy={busy}
       />
 
       {/* Section 6 (Prompt): Edit Account Profile Drawer */}
