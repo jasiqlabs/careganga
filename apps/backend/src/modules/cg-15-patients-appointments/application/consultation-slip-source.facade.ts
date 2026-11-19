@@ -11,7 +11,7 @@ export type OriginalConsultationSlip={
  consultationFeeMinor:string;bookingStatus:string;collectionStatus:"DUE_AT_CENTER";
 };
 type SourceRow={root_realm_id:string;id:string;booking_display_id:string;
- revision:number;first_name:string;last_name:string;doctor_name:string;
+ revision:number;terms_revision:number;first_name:string;last_name:string;doctor_name:string;
  center_name:string;center_address:string;start_at:Date;end_at:Date;
  time_zone:string;fee_minor:string;booking_state:string;collection_state:"DUE_AT_CENTER"};
 @Injectable()
@@ -28,7 +28,7 @@ export class ConsultationSlipSourceFacade{
   const actor=await this.sessions.verifySession(bearer);
   if(!UUID.test(id))throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
   const rows=await this.db.query<SourceRow>(
-   "SELECT a.root_realm_id,a.id,a.booking_display_id,a.revision,"+
+   "SELECT a.root_realm_id,a.id,a.booking_display_id,a.revision,a.terms_revision,"+
    "p.first_name,p.last_name,a.doctor_name,a.center_name,a.center_address,"+
    "a.start_at,a.end_at,a.time_zone,a.fee_minor::text,a.booking_state,a.collection_state "+
    "FROM cg15_consultation_appointment a "+
@@ -44,14 +44,17 @@ export class ConsultationSlipSourceFacade{
   const row=rows.rows[0];
   if(!row)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
   const value={rootRef:row.root_realm_id,bookingRef:row.id,
-   bookingId:row.booking_display_id,sourceVersion:row.revision,
+   bookingId:row.booking_display_id,sourceVersion:row.terms_revision,
    patientName:row.first_name+" "+row.last_name,
    doctorName:row.doctor_name,centerName:row.center_name,
    centerAddress:row.center_address,startAt:row.start_at.toISOString(),
    endAt:row.end_at.toISOString(),timeZone:row.time_zone,
    consultationFeeMinor:row.fee_minor,bookingStatus:row.booking_state,
    collectionStatus:row.collection_state};
-  const sourceDigest=createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  // Operational check-in updates appointment.revision/bookingStatus, but NOT
+  // the accepted terms source digest. Cancel/reschedule increment terms revision.
+  const {bookingStatus:_status,...originalTerms}=value;
+  const sourceDigest=createHash("sha256").update(JSON.stringify(originalTerms)).digest("hex");
   return {...value,sourceDigest};
  }
  /** Public verifier can only know current validity. It never returns a
@@ -59,7 +62,7 @@ export class ConsultationSlipSourceFacade{
   */
  async activeForToken(rootRef:string,bookingRef:string,version:number){
   const rows=await this.db.query<{status:string;end_at:Date;revision:number}>(
-   "SELECT booking_state AS status,end_at,revision "+
+   "SELECT booking_state AS status,end_at,terms_revision AS revision "+
    "FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
    [rootRef,bookingRef]);
   const row=rows.rows[0];
