@@ -35,11 +35,25 @@ function validDate(v:unknown){
  if(typeof v!=="string"||!DAY.test(v)||!Number.isFinite(Date.parse(v+"T00:00:00Z"))||
   new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)
   throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
- const today=new Date().toISOString().slice(0,10);
- const limit=new Date(Date.now()+maxAdvanceDays*86400000).toISOString().slice(0,10);
- if(v<today||v>limit)
+ // Accept a wide UTC envelope only for pre-query abuse limits.
+ // Precise bookability is checked against the verified center's own local day.
+ const utc=Date.parse(new Date().toISOString().slice(0,10)+"T00:00:00Z");
+ const earliest=new Date(utc-2*86400000).toISOString().slice(0,10);
+ const latest=new Date(utc+(maxAdvanceDays+2)*86400000).toISOString().slice(0,10);
+ if(v<earliest||v>latest)
   throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
  return v;
+}
+function withinCenterBookingWindow(day:string,zone:string){
+ try{
+  const local=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
+   timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  const today=local.year+"-"+local.month+"-"+local.day;
+  const last=new Date(Date.UTC(Number(local.year),Number(local.month)-1,
+   Number(local.day)+maxAdvanceDays)).toISOString().slice(0,10);
+  return day>=today&&day<=last;
+ }catch{return false;}
 }
 function minute(x:string){return Number(x.slice(0,2))*60+Number(x.slice(3,5));}
 function hhmm(m:number){return String(Math.floor(m/60)).padStart(2,"0")+":"+
@@ -181,7 +195,9 @@ export class DoctorAvailabilityService{
   const doctorRef=validId(doctorRaw),day=validDate(dayRaw);
   const centers=await this.centers(doctorRef);
   if(!centers.length)throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
-  const result=await Promise.all(centers.map(async center=>{
+  const localCenters=centers.filter(x=>withinCenterBookingWindow(day,x.time_zone));
+  if(!localCenters.length)throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
+  const result=await Promise.all(localCenters.map(async center=>{
    const schedule=await this.scheduleFor(center,day);
    return {centerRef:center.center_id,centerName:center.center_name,
     centerSlug:center.center_slug,timeZone:center.time_zone,
@@ -205,10 +221,14 @@ export class DoctorAvailabilityService{
   const centers=await this.centers(doctorRef,centerRef);
   const center=centers[0];
   if(!center)throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
+  if(!withinCenterBookingWindow(day,center.time_zone))
+   throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
   return this.dayForSource(center,day);
  }
  private async dayForSource(center:DoctorCenter,day:string):
   Promise<DayPreview>{
+  if(!withinCenterBookingWindow(day,center.time_zone))
+   throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
   const current=await this.scheduleFor(center,day);
   if(!current)return {status:"NO_VERIFIED_SCHEDULE",bookingEnabled:false,
    day,centerRef:center.center_id,centerName:center.center_name,
@@ -292,9 +312,11 @@ export class DoctorAvailabilityService{
    throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
   const centers=await this.centers(doctorRef);
   if(!centers.length)throw new NotFoundException({code:"CG15_AVAILABILITY_UNAVAILABLE"});
+  const localCenters=centers.filter(x=>withinCenterBookingWindow(day,x.time_zone));
+  if(!localCenters.length)throw new BadRequestException({code:"CG15_AVAILABILITY_INVALID"});
   const matched=[];
   let sharedInstant:string|null=null;
-  for(const center of centers){
+  for(const center of localCenters){
    const calendar=await this.dayForSource(center,day);
    const chosen=calendar.slots.find(s=>s.startLocal===clockRaw);
    // A time-first option must mean the same actual UTC instant, not
