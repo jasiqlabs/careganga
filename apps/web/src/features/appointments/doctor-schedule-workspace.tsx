@@ -252,6 +252,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    setNotice("The original working hours are copied into an UNSAVED draft for "+
     destination.centerName+". Review center-specific hours and doctor overlap, "+
     "adjust sessions if needed, then choose Save verified working hours. "+
+    "Overlapping in-person center times are alternative locations: only one "+
+    "real doctor appointment can be held at a time across ALL centers. "+
     "Other centers and old confirmed bookings have not changed.");
   }catch(e){
    if(n===seq.current)setError(e instanceof Error?e.message:
@@ -287,7 +289,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      results.push({associationRef:ref,centerName:dest.centerName,
       doctorRef:dest.doctorRef,centerRef:dest.centerRef,timeZone:dest.timeZone,
       version:dest.version,eligible,
-      reason:eligible?"Source identity and timezone match. Final operating hours, global doctor overlap and revisions are checked only by target Save.":
+      reason:eligible?"Source identity and timezone match. Same-time in-person centers are alternative choices, not simultaneous visits. Final hours, active reservations and revisions are checked by target Save.":
        "Different doctor, same original center or incompatible time zone.",
       sourceRef:source.associationRef,sourceVersion:source.version});
     }catch(e){
@@ -758,8 +760,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      aria-label="Copy current doctor schedule to another center">
      <h3>Copy this doctor's working hours to another verified center</h3>
      <p>The copy is only a draft. Each target must be reviewed and saved separately.
-      The server rejects overlapping in-person doctor times, incompatible
-      center hours or changed revision. Existing appointments stay untouched.</p>
+      Overlapping in-person times at two approved centers are alternative
+      choices only: booking the doctor at one center blocks that time at
+      all others. Different-mode conflicts, incompatible hours or changed
+      revisions are rejected. Existing appointments stay untouched.</p>
      <label>Another approved center for {selected.doctorName}
       <select value={copyTarget} disabled={working||uncertain}
        onChange={e=>{setCopyTarget(e.target.value);setCopyReview(null);}}>
@@ -790,7 +794,9 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
       This is a series of <strong>independent</strong> center saves—not a
       single transaction. Every target is rechecked for the same doctor,
       current center approval, timezone, operating hours, other bookings,
-      doctor-global overlap and expected version. A rejected center is not changed.</p>
+      doctor-global booked time and expected version. Same-time in-person
+      center schedules are exclusive location alternatives, never two
+      concurrent doctor consultations. A rejected center is not changed.</p>
      <div role="group" aria-label="Select same-doctor target centers">
       {roster.filter(row=>row.doctorRef===selected.doctorRef&&
        row.associationRef!==selected.associationRef&&
