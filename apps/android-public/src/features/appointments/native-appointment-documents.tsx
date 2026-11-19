@@ -37,6 +37,21 @@ async function authorized(path:string,method:"GET"|"POST"="GET",input?:object){
  }
  return r;
 }
+/** Every native PDF read receives a new short-lived CG19 grant pinned to
+ * the current CG01 patient account and original CG15 booking version. The
+ * protected read then rechecks actual patient consent and private file ACL.
+ */
+async function verifiedSlipRead(bookingRef:string){
+ const issued=await authorized("/api/v1/appointments/slips/me/"+
+  bookingRef+"/download-grant","POST",{});
+ const raw:unknown=await issued.json().catch(()=>null);
+ if(!raw||typeof raw!=="object"||!("grant" in raw)||
+  typeof raw.grant!=="string"||
+  !/^[0-9]{10}\.[a-f0-9]{64}$/.test(raw.grant))
+  throw Error("Current private appointment PDF authorization is unavailable.");
+ return authorized("/api/v1/appointments/slips/me/"+bookingRef+
+  "/restricted-file?grant="+encodeURIComponent(raw.grant));
+}
 export function NativeAppointmentDocuments({
  bookingRef,bookingStatus
 }:{bookingRef:string;bookingStatus:string}){
@@ -64,10 +79,8 @@ export function NativeAppointmentDocuments({
   };
  },[]);
  async function previewFile(kind:Kind){
-  const route=kind==="pdf"?
-   "/api/v1/appointments/slips/me/"+bookingRef+"/file":
-   "/api/v1/appointments/consultations/me/"+bookingRef+"/calendar.ics";
-  const response=await authorized(route);
+  const response=kind==="pdf"?await verifiedSlipRead(bookingRef):
+   await authorized("/api/v1/appointments/consultations/me/"+bookingRef+"/calendar.ics");
   const type=response.headers.get("Content-Type")??"";
   if(kind==="pdf"&&!type.includes("application/pdf")||
    kind==="calendar"&&!type.includes("text/calendar"))
@@ -158,7 +171,7 @@ export function NativeAppointmentDocuments({
    if(original.status!=="ISSUED"||!original.canDownload)
     throw Error("Issue or verify your current private consultation slip first.");
    // A new protected read rechecks the actual patient relationship/consent.
-   const reply=await authorized("/api/v1/appointments/slips/me/"+bookingRef+"/file");
+   const reply=await verifiedSlipRead(bookingRef);
    if(!reply.headers.get("Content-Type")?.includes("application/pdf"))
     throw Error("The private consultation file type is not valid.");
    const bytes=await reply.bytes();
