@@ -5,7 +5,7 @@ import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
 import {PatientPrivateDetailsPanel} from "./patient-private-details-panel";
 
 type Profile={virtualPatientId:string;firstName:string;lastName:string;
- dateOfBirth:string|null;profileStatus:string;version:number;
+ dateOfBirth:string|null;profileStatus:string;version:number;canLinkAnotherAccount?:boolean;
  consentGranted:boolean;consentVersion:string|null};
 type Consent={available:boolean;version:string|null;text:string|null};
 type Contact={hasNumber:boolean;verified:boolean;providerConfigured:boolean;maskedContact:string|null};
@@ -43,6 +43,10 @@ export function PatientProfilePanel(){
  const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
  const [claimDisplay,setClaimDisplay]=useState(""),[claimCode,setClaimCode]=useState("");
  const [claimAgree,setClaimAgree]=useState(false);
+ const [secondLogin,setSecondLogin]=useState("");
+ const [secondCode,setSecondCode]=useState<{authorizationCode:string;expiresAt:string}|null>(null);
+ const [secondAcceptCode,setSecondAcceptCode]=useState("");
+ const [secondConfirmed,setSecondConfirmed]=useState(false);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
@@ -115,6 +119,7 @@ export function PatientProfilePanel(){
   await act(async()=>{
    await request<{signedOut:boolean}>("logout","POST");
    setSignedIn(false);setProfile(null);setContact(null);setIdentityProof(null);setPassword("");setAgree(false);
+   setSecondCode(null);setSecondAcceptCode("");setSecondConfirmed(false);
    pendingRegistration.current=null;
    setMessage("Signed out of your patient profile.");
   });
@@ -188,6 +193,29 @@ export function PatientProfilePanel(){
    setProfile(current);setFirst(current.firstName);setLast(current.lastName);
    setDob(current.dateOfBirth??"");setClaimCode("");setClaimAgree(false);
    setMessage("Your clinic-created patient record is now linked to your own verified account.");
+  });
+ }
+ async function issueSecondLoginLink(){
+  await act(async()=>{
+   if(!profile?.canLinkAnotherAccount||!profile.consentGranted)
+    throw Error("Your current verified patient account cannot issue a second-login link.");
+   const data=await request<{authorizationCode:string;expiresAt:string}>(
+    "me/second-account-link-code","POST",{
+     recipientIdentifier:secondLogin.trim(),personallyConfirmed:true});
+   setSecondCode(data);
+   setMessage("A one-time code was issued only for the specific second account login. Share it privately, not by public message.");
+  });
+ }
+ async function acceptSecondLoginLink(){
+  await act(async()=>{
+   if(!secondConfirmed||!contact?.verified)
+    throw Error("Verify your own account contact and confirm this is your patient identity.");
+   const linked=await request<Profile>("me/accept-second-account","POST",{
+    authorizationCode:secondAcceptCode.trim().toUpperCase(),
+    personallyConfirmed:secondConfirmed});
+   setProfile(linked);setFirst(linked.firstName);setLast(linked.lastName);
+   setDob(linked.dateOfBirth??"");setSecondAcceptCode("");setSecondConfirmed(false);
+   setMessage("Your other personal login was linked to your existing verified patient profile. Staff permissions have not changed.");
   });
  }
  async function issueIdentityProof(){
@@ -310,6 +338,25 @@ export function PatientProfilePanel(){
        !/^CGC-[A-F0-9]{24}$/.test(claimCode)}>Claim my patient record</button>
      </form>
     </section>}
+    {!profile&&<section aria-label="Use approved second account for same verified patient"
+     style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
+     <h2>Already have a patient profile under another personal login?</h2>
+     <p>Sign in to your original verified patient account first and create a
+      recipient-specific one-time link code for this account's email or mobile login.
+      Sharing a family phone never links two different people automatically.</p>
+     <label>One-time code from your original patient login
+      <input type="text" value={secondAcceptCode} maxLength={36}
+       onChange={e=>setSecondAcceptCode(e.target.value.trim().toUpperCase())}
+       placeholder="CGL-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"/></label>
+     <label><input type="checkbox" checked={secondConfirmed}
+      onChange={e=>setSecondConfirmed(e.target.checked)}/>
+      {" "}This second login belongs to me, the same individually verified patient;
+      I understand this links my existing private patient records.</label>
+     <button type="button" disabled={busy||!contact?.verified||!secondConfirmed||
+      !/^CGL-[A-F0-9]{32}$/.test(secondAcceptCode)}
+      onClick={()=>void acceptSecondLoginLink()}>
+      Link this second personal account</button>
+    </section>}
     {!profile&&<section aria-label="Verify registered account contact"
      style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
      <h2>Verify your account mobile contact</h2>
@@ -355,6 +402,26 @@ export function PatientProfilePanel(){
       {busy?"Saving…":profile?"Save patient details":"Create my patient profile"}
      </button>
     </form>
+    {profile?.profileStatus==="VERIFIED"&&profile.consentGranted&&
+     profile.canLinkAnotherAccount&&<section aria-label="Link another personal account"
+      style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
+      <h2>Use this patient profile from another account you own</h2>
+      <p>Only link a second CareGanga login belonging to you, the same verified
+       person. Enter its unique login email or mobile number. Other family
+       members must have their own patient identity; no staff role or membership
+       permission is copied.</p>
+      <label>Other personal account's login
+       <input type="text" maxLength={254} value={secondLogin}
+        autoComplete="off" onChange={e=>{setSecondLogin(e.target.value);setSecondCode(null);}}
+        placeholder="Second account's email or mobile"/></label>
+      <button type="button" disabled={busy||secondLogin.trim().length<6}
+       onClick={()=>void issueSecondLoginLink()}>Issue private one-time link code</button>
+      {secondCode&&<p role="status">Only enter this code when signed in to that
+       exact second account: <strong style={{fontFamily:"monospace"}}>
+       {secondCode.authorizationCode}</strong>.
+       Expires {new Date(secondCode.expiresAt).toLocaleTimeString("en-IN")}.
+       This is not permission for another person or a family member.</p>}
+     </section>}
     {profile&&<MyConsultationHistory/>}
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPrivateDetailsPanel key={profile.virtualPatientId+":details"}
