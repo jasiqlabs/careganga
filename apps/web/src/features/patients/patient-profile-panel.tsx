@@ -39,6 +39,8 @@ export function PatientProfilePanel(){
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
  const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
+ const [claimDisplay,setClaimDisplay]=useState(""),[claimCode,setClaimCode]=useState("");
+ const [claimAgree,setClaimAgree]=useState(false);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
@@ -174,6 +176,18 @@ export function PatientProfilePanel(){
    setMessage(granted?"Your consent is recorded.":"Your consent withdrawal is recorded.");
   });
  }
+ async function claimClinicIntake(){
+  await act(async()=>{
+   if(!policy.available||!claimAgree||!contact?.verified)
+    throw Error("Verify your account contact and accept the patient-care consent.");
+   const current=await request<Profile>("me/claim-intake","POST",{
+    virtualPatientId:claimDisplay,claimCode,
+    consentAccepted:claimAgree,consentVersion:policy.version});
+   setProfile(current);setFirst(current.firstName);setLast(current.lastName);
+   setDob(current.dateOfBirth??"");setClaimCode("");setClaimAgree(false);
+   setMessage("Your clinic-created patient record is now linked to your own verified account.");
+  });
+ }
  async function issueIdentityProof(){
   await act(async()=>{
    const result=await request<{verificationCode:string;expiresAt:string}>(
@@ -267,6 +281,33 @@ export function PatientProfilePanel(){
     </section>}
     {!profile&&<p>You do not yet have a CareGanga patient profile.
      Verified contact and approved patient-care consent are required to create one.</p>}
+    {!profile&&<section aria-label="Claim your clinic-created patient record"
+     style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
+     <h2>Already registered at a healthcare center?</h2>
+     <p>If clinic staff created your provisional patient record, ask them for
+      the private one-time claim code after they check your identity document.
+      This does not use or merge records based on a shared family mobile number.</p>
+     <form onSubmit={e=>{e.preventDefault();void claimClinicIntake();}}
+      style={{display:"grid",gap:10}}>
+      <label>CareGanga Virtual Patient ID
+       <input type="text" required maxLength={20} value={claimDisplay}
+        onChange={e=>setClaimDisplay(e.target.value.trim().toUpperCase())}
+        placeholder="CGP-XXXXXXXXXXXXXXXX"/></label>
+      <label>One-time code from your healthcare center
+       <input type="text" required maxLength={28} value={claimCode}
+        onChange={e=>setClaimCode(e.target.value.trim().toUpperCase())}
+        placeholder="CGC-XXXXXXXXXXXXXXXXXXXXXXXX"/></label>
+      {policy.available?<><h3>Patient-care consent</h3>
+       <p style={{whiteSpace:"pre-wrap"}}>{policy.text}</p>
+       <label><input type="checkbox" checked={claimAgree}
+        onChange={e=>setClaimAgree(e.target.checked)}/>
+        {" "}I accept the current patient-care consent and am the person verified at the center.</label>
+      </>:<p role="alert">Approved patient-care consent is not configured.</p>}
+      <button type="submit" disabled={busy||!policy.available||!claimAgree||
+       !contact?.verified||!/^CGP-[A-F0-9]{16}$/.test(claimDisplay)||
+       !/^CGC-[A-F0-9]{24}$/.test(claimCode)}>Claim my patient record</button>
+     </form>
+    </section>}
     {!profile&&<section aria-label="Verify registered account contact"
      style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
      <h2>Verify your account mobile contact</h2>
