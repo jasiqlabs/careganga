@@ -614,6 +614,15 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      aria-controls={"cg15-h07-panel-"+item.id}
      id={"cg15-h07-tab-"+item.id} disabled={working}
      className={tab===item.id?"primary":""}
+     onKeyDown={e=>{
+      if(!["ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;
+      e.preventDefault();
+      const index=tabs.findIndex(x=>x.id===tab);
+      const next=e.key==="Home"?0:e.key==="End"?tabs.length-1:
+       (index+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;
+      changeTab(tabs[next].id);
+      document.getElementById("cg15-h07-tab-"+tabs[next].id)?.focus();
+     }}
      onClick={()=>changeTab(item.id)}>{item.label}</button>)}
    </div>
    {tab==="CALENDAR"&&<section role="tabpanel" className="form-section"
