@@ -1,5 +1,5 @@
 import {useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -46,6 +46,8 @@ export function NativeConsultationAction(p:Props){
  const [booking,setBooking]=useState<Booking|null>(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
+ const [reasonForVisit,setReasonForVisit]=useState("");
+ const confirmedReason=useRef<string|null>(null);
  const [staffBusy,setStaffBusy]=useState(false);
  const [staffCode,setStaffCode]=useState<{centerRef:string;authorizationCode:string;expiresAt:string}|null>(null);
  const [staffMessage,setStaffMessage]=useState("");
@@ -141,13 +143,17 @@ export function NativeConsultationAction(p:Props){
    setMessage("Temporary reservation expired. Choose a current time.");return;
   }
   setBusy(true);setMessage("");
-  if(!confirmKey.current)confirmKey.current=Crypto.randomUUID();
+  if(!confirmKey.current){
+   confirmKey.current=Crypto.randomUUID();
+   confirmedReason.current=reasonForVisit.trim();
+  }
   try{
    const t=await token();
    const result=await post<Booking>("confirm",{
     requestKey:confirmKey.current,holdRef:hold.holdRef,
     acceptedFeeMinor:hold.consultationFeeMinor,acceptedFeeVersion:hold.feeVersion,
-    paymentMode:"PAY_AT_CENTER"},t);
+    paymentMode:"PAY_AT_CENTER",
+    ...(confirmedReason.current?{reasonForVisit:confirmedReason.current}:{})},t);
    setBooking(result);setUncertain(false);
    const slip=await issuePatientSlip(result.bookingRef,t);
    setMessage(slip==="ISSUED"?
@@ -244,6 +250,16 @@ export function NativeConsultationAction(p:Props){
   <Text style={style.text}>Consultation ₹{(Number(p.feeMinor)/100).toFixed(2)}.
    Payment due at center. No online payment.</Text>
   {!!message&&<Text accessibilityRole="alert" style={style.text}>{message}</Text>}
+  {!booking&&!uncertain&&!p.reschedule&&<View style={{gap:4}}>
+   <Text style={style.text}>Reason for visit (optional, private)</Text>
+   <TextInput multiline value={reasonForVisit} maxLength={300}
+    editable={!busy&&!confirmKey.current}
+    accessibilityLabel="Optional private reason for consultation"
+    placeholder="Brief reason, only if you wish" onChangeText={setReasonForVisit}
+    style={style.reasonInput}/>
+   <Text style={style.text}>Stored with your patient-care consent and encryption,
+    not printed on the appointment slip or sent in notifications.</Text>
+  </View>}
   {booking?<Text accessibilityRole="header" style={style.heading}>
    Confirmed booking: {booking.bookingId}. Payment due at center.</Text>:
    uncertain?<View style={{gap:8}}>
@@ -279,6 +295,8 @@ const style=StyleSheet.create({
  backgroundColor:theme.surface},
  text:{fontSize:13,color:theme.text},
  heading:{fontSize:15,fontWeight:"700",color:theme.text},
+ reasonInput:{minHeight:64,padding:10,borderRadius:8,borderWidth:1,
+  borderColor:theme.border,color:theme.text,textAlignVertical:"top"},
  button:{minHeight:44,backgroundColor:theme.primary,padding:12,borderRadius:8,
  alignItems:"center",justifyContent:"center"},
  buttonText:{fontSize:13,fontWeight:"700",color:theme.primaryText}
