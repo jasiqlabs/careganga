@@ -172,8 +172,13 @@ export function FoundationPatientBookings(){
      "This report could not be authorized. Refresh the selected booking.");
    if(selectedForPrint.current!==ref)
     throw Error("The selected booking changed. Review its history before printing.");
-   window.print();
-   setPrintMessage("The report print dialog was opened for this audited booking. Saving or printing a copy is controlled by your browser.");
+   const root=document.body;
+   root.classList.add("cg15-h15-report-print");
+   const restore=()=>root.classList.remove("cg15-h15-report-print");
+   window.addEventListener("afterprint",restore,{once:true});
+   try{window.print();}
+   finally{restore();window.removeEventListener("afterprint",restore);}
+   setPrintMessage("Print was requested only for the selected audited appointment and its complete original history. A physical or saved copy cannot be revoked.");
   }catch(e){setPrintMessage(e instanceof Error?e.message:
    "Report printing is unavailable. Review the original booking.");}
   finally{setPrintBusy(false);}
@@ -247,14 +252,15 @@ export function FoundationPatientBookings(){
  }
  return <section className="role-workspace" aria-label="Patient and booking management">
   <style>{`@media print{
-   body *{visibility:hidden!important;}
-   .cg15-print-scope,.cg15-print-scope *{visibility:visible!important;}
-   .cg15-print-scope{position:absolute!important;inset:0 auto auto 0!important;
+   body.cg15-h15-report-print *{visibility:hidden!important;}
+   body.cg15-h15-report-print .cg15-print-scope,
+   body.cg15-h15-report-print .cg15-print-scope *{visibility:visible!important;}
+   body.cg15-h15-report-print .cg15-print-scope{position:absolute!important;inset:0 auto auto 0!important;
     box-sizing:border-box;width:100%!important;max-width:100%!important;
     min-height:0!important;padding:18px!important;border:none!important;
     background:#fff!important;color:#111!important;}
-   .cg15-print-scope button{display:none!important;}
-   .cg15-print-scope [aria-label="Protected Foundation appointment cancellation override"]{
+   body.cg15-h15-report-print .cg15-print-scope button{display:none!important;}
+   body.cg15-h15-report-print .cg15-print-scope [aria-label="Protected Foundation appointment cancellation override"]{
     display:none!important;visibility:hidden!important;
    }
    .cg15-print-scope p{break-inside:avoid;}
