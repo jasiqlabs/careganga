@@ -67,7 +67,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
   const stamp=++seq.current;
   if(!c){setItems([]);setSummary(null);setSelectedSlip(null);return;}
   if(!day){setItems([]);setSummary(null);setMessage("The center local date is unavailable.");return;}
-  if(!after)setSummary(null);
+  setSummary(null);
   try{
    const data=await request<{items:Item[];next:string|null}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
@@ -75,7 +75,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    if(stamp!==seq.current||selectedCenter.current!==c)return;
    setItems(data.items);setSelectedSlip(null);setCancelPending(null);
    setCursor(after);setNextCursor(data.next);setUncertain(false);
-   if(!after)void request<Summary>(token,
+   void request<Summary>(token,
     "my-centers/"+encodeURIComponent(c)+"/summary?date="+encodeURIComponent(day))
     .then(report=>{
      if(stamp===seq.current&&selectedCenter.current===c&&
