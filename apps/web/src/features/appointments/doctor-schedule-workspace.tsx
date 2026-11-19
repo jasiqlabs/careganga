@@ -474,6 +474,14 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   }
  }
  return <section className="role-workspace" aria-label="Doctor schedules and availability">
+  <style>{`
+   .cg15-h07-body{display:grid;grid-template-columns:minmax(270px,32%) minmax(0,1fr);gap:16px;align-items:start}
+   .cg15-h07-roster-list{display:grid;gap:8px}
+   .cg15-h07-roster-list button{text-align:left;white-space:normal;min-height:44px}
+   .cg15-h07-roster-list button[aria-pressed="true"]{border-color:var(--cg-primary,#1767ac);font-weight:700}
+   .cg15-h07-body .role-table-wrap{overflow-x:auto;max-width:100%}
+   @media(max-width:860px){.cg15-h07-body{grid-template-columns:minmax(0,1fr)}}
+  `}</style>
   <header className="topbar"><div>
    <h1>Doctor Schedule & Availability</h1>
    <p>Choose a currently verified doctor and center, then set real working hours.
@@ -499,7 +507,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     working-session and approved-leave totals are calculated separately from
     the live source, not from this limited list. Use location filters to narrow
     a large list.</p>
-   <h2>Doctor and center</h2>
+   </div>
+   <div className="cg15-h07-body" aria-label="Current doctor roster and editable schedule">
+    <div className="form-section">
+     <h2>Doctor and center</h2>
    {channel==="foundation"&&<div className="form-grid"
     aria-label="Filter approved schedules by current healthcare location">
     <label>State
@@ -580,7 +591,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    {loading&&<p role="status">Checking current doctor associations…</p>}
    {!loading&&result.length===0&&
     <p role="status">No matching, currently approved doctor-center associations.</p>}
-   <div className="toolbar" role="group" aria-label="Select doctor and healthcare center">
+   <div className="cg15-h07-roster-list" role="group" aria-label="Select doctor and healthcare center">
     {result.map(r=><button type="button" key={r.associationRef}
      disabled={working} aria-pressed={selected?.associationRef===r.associationRef}
      onClick={()=>void select(r.associationRef)}>
@@ -872,5 +883,6 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    </>}
    </section>}
   </div>}
+   </div>
  </section>;
 }
