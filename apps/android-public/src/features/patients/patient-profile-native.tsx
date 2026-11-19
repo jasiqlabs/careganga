@@ -58,6 +58,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
  const [message,setMessage]=useState("");
  const [contact,setContact]=useState<Contact|null>(null);
  const [verificationCode,setVerificationCode]=useState("");
+ const [identityProof,setIdentityProof]=useState<{verificationCode:string;expiresAt:string}|null>(null);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
  const load=useCallback(async(auth:string)=>{
@@ -70,11 +71,12 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
   if(status.status===401)return false;
   setContact(status.data);
   setProfile(p);
+  if(p?.profileStatus!=="PROVISIONAL")setIdentityProof(null);
   if(p){setFirst(p.firstName);setLast(p.lastName);setDob(p.dateOfBirth??"");}
   return true;
  },[]);
  const clear=useCallback(()=>{
-  setToken(null);setProfile(null);setContact(null);setPassword("");setAgreed(false);
+  setToken(null);setProfile(null);setContact(null);setIdentityProof(null);setPassword("");setAgreed(false);
   pendingRegistration.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
@@ -236,6 +238,24 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
    setProfile(r.data);setMessage(granted?"Consent was recorded.":"Consent withdrawal was recorded.");
   });
  }
+ function issueIdentityProof(){
+  if(!token||!profile||profile.profileStatus!=="PROVISIONAL")return;
+  void run(async()=>{
+   const r=await invoke<{verificationCode:string;expiresAt:string}>(
+    "/api/v1/patients/me/identity-verification","POST",{},token);
+   if(!r.data)throw Error("The identity verification code was not issued.");
+   setIdentityProof(r.data);
+   setMessage("Show this one-time code and your identity document to authorized center staff. Expires in 15 minutes.");
+  });
+ }
+ function checkIdentityStatus(){
+  if(!token)return;
+  void run(async()=>{
+   const ok=await load(token);
+   if(!ok)throw Error("Your account is no longer authorized.");
+   setMessage("Your current patient identity status was refreshed.");
+  });
+ }
  const button=(label:string,onPress:()=>void,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
    disabled={disabled} style={[styles.action,disabled&&styles.disabled]}
@@ -290,6 +310,18 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       <Text>Patient-care consent: {profile.consentGranted?"Granted":"Withdrawn"}</Text>
      </View>:<Text>No patient profile is linked yet. A verified account
        contact and approved patient-care consent are required.</Text>}
+     {profile?.profileStatus==="PROVISIONAL"&&<View style={styles.field}>
+      <Text style={styles.subtitle}>Verify patient identity at a healthcare center</Text>
+      <Text>Mobile verification confirms the account, not clinical identity.
+       Visit an approved center with an identity document and show your
+       Virtual Patient ID and this one-time code to assigned staff.</Text>
+      {button("Get one-time clinic verification code",issueIdentityProof,
+       busy||!profile.consentGranted)}
+      {identityProof&&<Text selectable style={styles.subtitle}>
+       {identityProof.verificationCode}</Text>}
+      {identityProof&&<Text>Expires {new Date(identityProof.expiresAt).toLocaleTimeString("en-IN")}</Text>}
+      {button("Check current identity status",checkIdentityStatus,busy)}
+     </View>}
      {!profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Verify account mobile contact</Text>
       {contact?.verified?<Text>Your CareGanga contact is verified.</Text>:
