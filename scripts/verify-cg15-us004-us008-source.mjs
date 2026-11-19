@@ -61,6 +61,8 @@ const s={
  webAdmin:read("apps/web/src/features/appointments/foundation-patient-bookings.tsx"),
  adminPage:read("apps/web/src/app/(admin)/admin/health-network/patients/page.tsx"),
  adminBff:read("apps/web/src/app/api/appointments/admin/patients/route.ts"),
+ rootCancelBff:read("apps/web/src/app/api/appointments/admin/bookings/[bookingRef]/cancel-override/route.ts"),
+ sessions:read("apps/backend/src/modules/cg-01-identity-access/application/session.service.ts"),
  centerScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
  roles:read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts"),
  nav:read("apps/web/src/shared/foundation-admin-nav.tsx"),
@@ -198,6 +200,23 @@ const checks=[
   s.queue.includes('center,item?"VALID":"DENIED"')&&
   s.catalog.includes("CG15_QUEUE_RATE_LIMIT")&&
   s.queueBff.includes('"CG15_QUEUE_RATE_LIMIT"')],
+ ["original US007 override is protected root-only and does not widen patient/center cutoff",
+  s.roles.includes('key:"health.appointments.override"')&&
+  s.roles.includes('assignable:false,sensitive:true')&&
+  s.sessions.includes("async requireFreshFoundationRootProof(")&&
+  s.service.includes('this.identity.requireAction(bearer,"health.appointments.override")')&&
+  s.service.includes("await this.identity.limitFoundationRootProof(actor)")&&
+  s.service.includes("this.identity.requireFreshFoundationRootProof(")&&
+  s.service.includes('v.reason!=="FOUNDATION_OVERRIDE"')&&
+  s.service.includes('rootOverride?Date.now():Date.now()+changeCutoffMs()')&&
+  s.service.includes("old.revision!==expected")&&
+  s.service.includes('return this.cancelOriginal(bearer,idRaw,input,uuid(centerRaw))')&&
+  s.bookingCtrl.includes('admin/bookings/:bookingRef/cancel-override')&&
+  s.rootCancelBff.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
+  s.rootCancelBff.includes('reason:"FOUNDATION_OVERRIDE"')&&
+  s.admin.includes('bookingVersion:x.revision')&&
+  s.webAdmin.includes("Confirm exceptional cancellation")&&
+  s.webAdmin.includes("refreshOverrideSource()")],
  ["source: queue writes preserve exact original request only for unknown results",
   s.webQueue.includes("status:r.status")&&
   s.webQueue.includes("deterministic")&&
