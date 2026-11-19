@@ -50,9 +50,11 @@ export default async function VerifiedDoctor({params}:Props){
   <section className="cg-public-section">
    <h2>Doctor working hours</h2>
    <p><Link href={"/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule"}>
-    Preview verified doctor-center consultation schedules</Link></p>
-   <p>Working hours are not confirmed free appointments.
-    Online booking and payments are not enabled; contact the center directly.</p>
+    View available times & book an in-person appointment</Link></p>
+   <p>Doctor schedules are live advisory previews. Verified patients can request
+    a temporary hold and confirm an in-person consultation where current slots
+    and approved fees are available. Payment is due at the center;
+    no online payment or financial assistance approval is implied.</p>
   </section>
  </main>;
 }
