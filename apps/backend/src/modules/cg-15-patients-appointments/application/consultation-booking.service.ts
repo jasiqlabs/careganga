@@ -350,6 +350,7 @@ export class ConsultationBookingService{
   prior:number,action:string,key:string,old:Record<string,unknown>|null){
   const snapshot={status:booking.booking_state,startAt:booking.start_at.toISOString(),
    endAt:booking.end_at.toISOString(),centerRef:booking.center_id,
+   centerName:booking.center_name,
    doctorRef:booking.doctor_id,feeMinor:booking.fee_minor,
    collectionState:booking.collection_state};
   await tx.query(
@@ -410,8 +411,10 @@ export class ConsultationBookingService{
     [actor.realmId,id,old.revision,old.revision+1,
      JSON.stringify({status:old.booking_state,bookingId:old.booking_display_id,
       startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
-      centerRef:old.center_id,feeMinor:old.fee_minor,feeVersion:old.fee_version}),
+      centerRef:old.center_id,centerName:old.center_name,
+      feeMinor:old.fee_minor,feeVersion:old.fee_version}),
      JSON.stringify({status:"CANCELLED",requestDigest,reason:v.reason,
+      centerName:old.center_name,
       collectionState:"NOT_COLLECTIBLE"}),actor.accountId,key]);
    await tx.query("COMMIT");open=false;return presentBooking(changed.rows[0]);
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
@@ -488,11 +491,13 @@ export class ConsultationBookingService{
     "VALUES($1,$2,$3,$4,'RESCHEDULED',$5,$6,$7,$8)",
     [actor.realmId,id,old.revision,old.revision+1,
      JSON.stringify({status:old.booking_state,reservationRef:old.reservation_id,
-      centerRef:old.center_id,associationRef:old.association_id,
+      centerRef:old.center_id,centerName:old.center_name,
+      associationRef:old.association_id,
       startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
       feeMinor:old.fee_minor,feeVersion:old.fee_version}),
      JSON.stringify({status:"CONFIRMED",requestDigest,
       reservationRef:nr.rows[0].id,centerRef:center,
+      centerName:current.source.center_name,
       startAt:start.toISOString(),endAt:end.toISOString(),
       feeMinor:fee,feeVersion:current.feeVersion,
       collectionState:"DUE_AT_CENTER"}),actor.accountId,key]);
