@@ -29,6 +29,7 @@ async function api<T>(path:string,method="GET",body?:Record<string,unknown>):Pro
 }
 export function NativeConsultationHistory(){
  const [items,setItems]=useState<Booking[]>([]);
+ const [statusFilter,setStatusFilter]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [nextCursor,setNextCursor]=useState<string|null>(null);
  const [moreBusy,setMoreBusy]=useState(false);
@@ -41,11 +42,13 @@ export function NativeConsultationHistory(){
  const detailSeq=useRef(0);
  const keys=useRef<Map<string,string>>(new Map());
  const refresh=useCallback(async()=>{
-  const result=await api<{items:Booking[];next:string|null}>("me?limit=20");
+  const result=await api<{items:Booking[];next:string|null}>(
+   "me?limit=20"+(statusFilter?"&status="+encodeURIComponent(statusFilter):""));
   setItems(result.items);setNextCursor(result.next);setUncertain(false);
- },[]);
+ },[statusFilter]);
  useEffect(()=>{
   let alive=true;
+  setLoading(true);setItems([]);setNextCursor(null);
   void refresh().catch(e=>{if(alive)setError(e instanceof Error?e.message:
    "Current patient appointments cannot be confirmed.");})
    .finally(()=>{if(alive)setLoading(false);});
@@ -83,7 +86,8 @@ export function NativeConsultationHistory(){
   setMoreBusy(true);setError("");
   try{
    const page=await api<{items:Booking[];next:string|null}>(
-    "me?limit=20&after="+encodeURIComponent(nextCursor));
+    "me?limit=20&after="+encodeURIComponent(nextCursor)+
+    (statusFilter?"&status="+encodeURIComponent(statusFilter):""));
    setItems(current=>{
     const known=new Set(current.map(x=>x.bookingRef));
     return [...current,...page.items.filter(x=>!known.has(x.bookingRef))];
@@ -132,13 +136,29 @@ export function NativeConsultationHistory(){
   <Text accessibilityRole="header" style={styles.heading}>My Consultations</Text>
   <Text style={styles.note}>Only appointments linked to this signed-in patient are shown.
    Pay at the healthcare center; no online payment is recorded here.</Text>
+  <Text style={styles.note}>Filter appointments by current status</Text>
+  <View style={styles.filters} accessibilityLabel="Patient appointment status filters">
+   {([
+    ["","All"],["CONFIRMED","Confirmed"],["ARRIVED","Checked in"],
+    ["WAITING","Waiting"],["IN_CONSULTATION","In consultation"],
+    ["COMPLETED","Completed"],["NO_SHOW","Not attended"],
+    ["CANCELLED","Cancelled"]
+   ] as const).map(([value,label])=>
+    <Pressable key={value} accessibilityRole="button"
+     accessibilityLabel={"Show "+label+" appointments"}
+     accessibilityState={{selected:statusFilter===value,disabled:busy||uncertain}}
+     disabled={busy||uncertain} onPress={()=>{if(value!==statusFilter)setStatusFilter(value);}}
+     style={[styles.filterChip,statusFilter===value&&styles.filterSelected]}>
+     <Text style={styles.filterText}>{label}</Text>
+    </Pressable>)}
+  </View>
   {loading&&<Text>Checking current appointments…</Text>}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {button("Refresh my consultations",()=>{
    setLoading(true);void refresh().catch(e=>setError(String(e)))
     .finally(()=>setLoading(false));
   },busy)}
-  {!loading&&items.length===0&&<Text>No consultations are linked to this account yet.</Text>}
+  {!loading&&items.length===0&&<Text>No appointments match the selected status.</Text>}
   {items.map(x=><View key={x.bookingRef} style={styles.card}>
    <Text style={styles.heading}>Booking: {x.bookingId}</Text>
    <Text>{x.doctorName} · {x.centerName}</Text>
@@ -192,6 +212,11 @@ const styles=StyleSheet.create({
   backgroundColor:theme.surface,gap:7},
  details:{gap:10,padding:12,borderWidth:1,borderRadius:10,
   borderColor:theme.border,backgroundColor:theme.background},
+ filters:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ filterChip:{paddingHorizontal:12,paddingVertical:9,borderRadius:9,
+  borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface},
+ filterSelected:{borderColor:theme.primary,borderWidth:2},
+ filterText:{fontSize:13,color:theme.text},
  actions:{flexDirection:"row",gap:12,flexWrap:"wrap"},
  button:{minHeight:46,padding:11,borderRadius:9,backgroundColor:theme.primary,
   justifyContent:"center",alignItems:"center"},
