@@ -6,13 +6,13 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **90/128 SOURCE_VERIFIED, 29 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **91/128 SOURCE_VERIFIED, 28 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
 | Original QA | Current classification | Correct workstream | What the latest source still lacks |
 |---|---|---|---|
-| US-001-QA11 | SOURCE_GAP | CG15 direct source/code work | Foundation H07 now offers per-target reviewed, UNSAVED copy of one verified doctor's original schedule, with target timezone identity check and reuse of original guarded `DoctorScheduleService.save` for center hours, global overlap, CAS. Bulk multi-center previews and full original H07 actions remain absent; real two-center runtime rejection NOT_RUN. |
+| US-001-QA11 | SOURCE_VERIFIED | CG15 original H07 multi-center schedule | Up to eight real same-doctor targets, individual current source/timezone/revision review, explicit partial-save acknowledgment, server-protected per-target operating-hours/global doctor overlap/CAS with independent request key; UNKNOWN stops batch. Actual browser/SQL and H07 pixel QA NOT_RUN. |
 | US-001-QA13 | SOURCE_GAP | CG15 direct source/code work | H07 roster now returns genuine scoped PostgreSQL booking count, today's center-local schedule window count and currently active approved doctor-leave count, replacing the three placeholder-dash KPI cards; existing doctor/center names, status, editable weekly grid, reviewed target copy, leave and summary are real. Original H07 State/District/Block/Center query filters, exact screenshot layout/tabs/calendar, complete bulk copy and physical responsive/pixel/accessibility QA still missing; remains SOURCE_GAP. |
 | US-001-QA16 | SOURCE_GAP | CG19 private document / communication owner | No per-root timer/poller created and source idle gate limited to on-demand APIs; original due-only CG19 notification/reconcile/worker proof not integrated |
 | US-002-QA02 | SOURCE_GAP | Policy/identity approval | doctor/time-first returns exact center/time choices with fee/address; US001 currently rejects overlapping in-person doctor schedules at two centers, so two simultaneous valid center choices require an explicitly consistent original location policy |
@@ -70,4 +70,13 @@ Source commits added migration `1433_cg19_appointment_event_notification_source.
 
 Source script `scripts/verify-cg15-communications-source.mjs` was evaluated against six actual latest GitHub branch files: **12/12 static assertions present**. This was *not* an executed PostgreSQL migration, provider callback, Nest build, native/browser QA, or qualified security signoff. The patient notification support currently includes **IN_APP, EMAIL, SMS**, not unsupported WhatsApp/push channels. Original US-005-QA12 therefore remains SOURCE_GAP. Original US-006-QA14 and US-007-QA01/QA12 move to SOURCE_VERIFIED for their constrained, source-only acceptance.
 
-**Canonical case counts: 90 verified / 29 source gaps / 2 not verifiable / 7 not applicable (128). Actual runtime QA PASS 0/128. No branch merge.**
+**Historical CG19 checkpoint counts: 90 verified / 29 source gaps / 2 not verifiable / 7 not applicable (128). Actual runtime QA PASS 0/128. No branch merge.**
+
+
+## 19 November 2026 — H07 bulk schedule source completion (US-001-QA11)
+
+The protected H07 screen now offers reviewed multi-target copies of at most 8 actual CG14 verified same-doctor associations, with explicit user acknowledgment that every center saves separately, not atomically. Each target is refreshed before PUT, original doctor and timezone matching plus source current version verified; the existing protected `DoctorScheduleService.save` applies current CG01 actor, real CG14 doctor/center, center hours, immutable revision, doctor-global conflict, and CAS request key. Individual target outcomes are disclosed; ambiguous network results stop the batch. A schedule with expired original effective end is not copied as an indefinite new schedule. Source checks were added; 10 targeted backend/Web source assertions verified in-session. PostgreSQL, build, browser, DST, conflicts and original H07 client UI QA still NOT_RUN.
+
+H07 State/District/Block/Center-specific appointment, working-session and approved-leave KPI counts now match the selected actual region, not the whole Foundation. Full original H07 visual/tabs/calendar scenario US-001-QA13 remains SOURCE_GAP.
+
+**Current 128-case counts: 91 SOURCE_VERIFIED / 28 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE. Runtime QA PASS 0/128; formal SOURCE_COMPLETE 0/8. No merge.**
