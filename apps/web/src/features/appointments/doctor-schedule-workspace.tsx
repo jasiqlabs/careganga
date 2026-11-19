@@ -40,11 +40,37 @@ function pathFor(channel:Channel,centerRef?:string){
  return channel==="foundation"?"admin":"my-centers/"+
   encodeURIComponent(centerRef??"");
 }
-const isoDate=(v:string)=>{
- const date=new Date(v);
- if(!Number.isFinite(date.getTime()))throw Error("Choose a valid exception date and time.");
- return date.toISOString();
-};
+/** Strictly interpret H07 datetime-local in the actual center's IANA zone,
+ * not in the Foundation reviewer's device zone. Reject missing and ambiguous
+ * DST hours rather than moving a doctor leave interval silently. */
+function centerTime(v:string,zone:string){
+ if(!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(v))
+  throw Error("Choose a valid date and time for this center.");
+ const nominal=Date.parse(v+":00Z");
+ if(!Number.isFinite(nominal))
+  throw Error("Choose a valid date and time for this center.");
+ let formatter:Intl.DateTimeFormat;
+ try{formatter=new Intl.DateTimeFormat("en-GB",{
+  timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit",
+  hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+ });}catch{throw Error("This healthcare center has an unsupported time zone.");}
+ const local=(millis:number)=>{
+  const p=Object.fromEntries(formatter.formatToParts(new Date(millis))
+   .map(t=>[t.type,t.value]));
+  return p.year+"-"+p.month+"-"+p.day+"T"+p.hour+":"+p.minute;
+ };
+ const offsets=new Set<number>();
+ for(const sample of [-129600000,-86400000,-43200000,0,43200000,86400000,129600000]){
+  const moment=nominal+sample;
+  const civil=local(moment);
+  offsets.add(Date.parse(civil+":00Z")-moment);
+ }
+ const matches=[...offsets].map(offset=>nominal-offset)
+  .filter(ms=>Number.isFinite(ms)&&local(ms)===v);
+ if(matches.length!==1)
+  throw Error("That center-local time is missing or ambiguous due to a daylight-saving change. Choose another time.");
+ return new Date(matches[0]).toISOString();
+}
 export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  channel:Channel;centerRef?:string;canManage?:boolean
 }){
@@ -137,7 +163,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    const r=await api<{message:string}>(base+"/"+
     encodeURIComponent(selected.associationRef)+"/exceptions","POST",{
      requestKey:exceptionKey.current,expectedVersion:selected.version,
-     kind,startAt:isoDate(blockFrom),endAt:isoDate(blockUntil),reason
+     kind,startAt:centerTime(blockFrom,selected.timeZone),
+     endAt:centerTime(blockUntil,selected.timeZone),reason
     });
    exceptionKey.current="";await refresh();
    setReason("");setBlockFrom("");setBlockUntil("");setNotice(r.message);
@@ -290,11 +317,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
        <option value="HOLIDAY">Center holiday</option>
       </select>
      </label>
-     <label>Starts at
+     <label>Starts at ({selected.timeZone} center time)
       <input type="datetime-local" value={blockFrom} disabled={working||uncertain}
        onChange={e=>{setBlockFrom(e.target.value);exceptionKey.current="";}}/>
      </label>
-     <label>Ends at
+     <label>Ends at ({selected.timeZone} center time)
       <input type="datetime-local" value={blockUntil} disabled={working||uncertain}
        onChange={e=>{setBlockUntil(e.target.value);exceptionKey.current="";}}/>
      </label>
