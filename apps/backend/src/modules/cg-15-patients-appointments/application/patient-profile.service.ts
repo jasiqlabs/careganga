@@ -332,6 +332,13 @@ export class PatientProfileService{
    if(!patient||patient.profile_status!=="PROVISIONAL"||
      patient.consent_granted!==true)
     throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   const last=await c.query<{created_at:Date}>(
+    "SELECT created_at FROM cg15_patient_identity_challenge "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND used_at IS NULL "+
+    "ORDER BY created_at DESC LIMIT 1",
+    [actor.realmId,patient.id]);
+   if(last.rows[0]&&Date.now()-last.rows[0].created_at.getTime()<60_000)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_TOO_SOON"});
    // One currently issued code per patient. A new code invalidates all
    // older challenges; the raw code is never persisted or logged.
    await c.query(
