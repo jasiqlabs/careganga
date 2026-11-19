@@ -32,7 +32,11 @@ const files=[
  "1437_cg15_private_consultation_intent_consent.sql",
  "1438_cg19_patient_owned_private_files.sql",
  "1439_cg15_private_patient_optional_details.sql",
- "1440_cg19_patient_specific_clinical_file_grants.sql"
+ "1440_cg19_patient_specific_clinical_file_grants.sql",
+ "1441_cg01_shared_family_phone_patient_email_login.sql",
+ "1442_cg15_verified_patient_explicit_secondary_account.sql",
+ "1443_cg15_dependent_intake_authorization_context.sql",
+ "1444_cg15_protected_duplicate_patient_review.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
