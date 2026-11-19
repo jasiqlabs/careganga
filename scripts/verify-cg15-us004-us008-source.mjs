@@ -14,6 +14,13 @@ const s={
  db4:read("apps/backend/db/migrations/1424_cg15_consultation_reservation_and_appointments.sql"),
  db5:read("apps/backend/db/migrations/1426_cg19_private_consultation_slip.sql"),
  db6:read("apps/backend/db/migrations/1425_cg15_visit_queue_and_booking_changes.sql"),
+ assistedDb:read("apps/backend/db/migrations/1430_cg15_patient_assisted_booking_authorization.sql"),
+ patientOwn:read("apps/backend/src/modules/cg-15-patients-appointments/application/patient-profile.service.ts"),
+ patientController:read("apps/backend/src/modules/cg-15-patients-appointments/http/patient-profile.controller.ts"),
+ staffBff:read("apps/web/src/app/api/appointments/staff-consultations/[...parts]/route.ts"),
+ staffWeb:read("apps/web/src/features/appointments/center-assisted-consultation-booking.tsx"),
+ staffPortal:read("apps/web/src/features/health-network/center-draft-portal.tsx"),
+ staffIntake:read("apps/web/src/features/patients/center-patient-intake-workspace.tsx"),
  service:read("apps/backend/src/modules/cg-15-patients-appointments/application/consultation-booking.service.ts"),
  original:read("apps/backend/src/modules/cg-15-patients-appointments/application/consultation-slip-source.facade.ts"),
  queue:read("apps/backend/src/modules/cg-15-patients-appointments/application/consultation-queue.service.ts"),
@@ -274,6 +281,38 @@ const checks=[
   s.adminCtrl.includes('@Query("search")search?:string')&&
   s.webAdmin.includes("Find a patient or booking")&&
   s.adminBff.includes('key==="search"?80:50')],
+ ["patient-owned short-lived center booking code and original hold are bound by composite FK",
+  s.assistedDb.includes("cg15_patient_assisted_booking_code")&&
+  s.assistedDb.includes("FOREIGN KEY(root_realm_id,hold_id,patient_id,center_id)")&&
+  s.assistedDb.includes("cg15_assisted_booking_code_immutable")&&
+  s.patientOwn.includes("async beginAssistedBooking(")&&
+  s.patientController.includes('Post("me/assisted-booking-code")')],
+ ["receptionist holder uses real doctor-global hold, verified person and scoped own center",
+  s.service.includes("async holdForCenter(")&&
+  s.service.includes("async confirmForCenter(")&&
+  s.service.includes("this.assistedPatientForHold(")&&
+  s.service.includes("this.currentAssistedPatient(")&&
+  s.service.includes('"health.patients.intake"')&&
+  s.service.includes("INSERT INTO cg15_consultation_hold")&&
+  s.bookingCtrl.includes('Post("staff/holds")')&&
+  s.bookingCtrl.includes('Post("staff/confirm")')],
+ ["only authenticated receptionist staff BFF can submit patient booking using same request key",
+  s.staffBff.includes('get("cg_staff_session")')&&
+  !s.staffBff.includes('get("cg_patient_session")')&&
+  s.staffBff.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
+  s.staffWeb.includes('request<Hold>("holds","POST"')&&
+  s.staffWeb.includes('request<Booking>("confirm","POST"')&&
+  s.staffWeb.includes("confirmations/by-request/")],
+ ["center portal and intake-only receptionist route both mount original patient booking",
+  s.staffPortal.includes("<CenterAssistedConsultationBooking")&&
+  s.staffIntake.includes("<CenterAssistedConsultationBooking")&&
+  s.webBooking.includes("me/assisted-booking-code")&&
+  s.nativeBooking.includes("me/assisted-booking-code")],
+ ["patient consultation history uses precise cursored paging Web and Android",
+  s.service.includes("cursor_at")&&
+  s.service.includes("afterRaw.split")&&
+  s.webHistory.includes("Load older consultations")&&
+  s.nativeHistory.includes("Load older consultations")],
  ["all CG15 SQL migrations have explicit opt-in manual lexical checker",
   s.pkg.includes('verify:cg15-migrations-source') ],
  ["all 128 original QA identifiers preserved",
