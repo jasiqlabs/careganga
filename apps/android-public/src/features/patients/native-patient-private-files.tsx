@@ -4,6 +4,7 @@ import {File,Paths} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {NativePatientClinicalFileShares} from "./native-patient-clinical-file-shares";
 
 type Kind="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
 type PatientFileItem={fileRef:string;classification:Kind;mime:string;
@@ -219,6 +220,8 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
    <Text style={styles.note}>{row.revoked?"Revoked":"Verified"} ·
     {" "+new Date(row.createdAt).toLocaleDateString("en-IN")}</Text>
    {!row.revoked&&<>
+    <NativePatientClinicalFileShares token={token} fileRef={row.fileRef}
+     consentGranted={consentGranted} onExpired={onExpired}/>
     {button("View my private file",()=>void readFile(row))}
     {button("Revoke this document",()=>void revoke(row))}
    </>}
