@@ -45,6 +45,15 @@ export default async function ProtectedH15PatientManagement(){
     canViewHealthNetwork={rightsSet.has("health.providers.view")}/>
    <main className="workspace">
     <p><Link href="/admin">Back to account</Link></p>
+    {rightsSet.has("health.patients.intake")&&
+     <section className="form-section" aria-label="Authorized patient registration and new booking">
+      <h2>Register patient or book a consultation</h2>
+      <p>Use your real assigned healthcare center for in-person intake or a
+       patient-authorized consultation. A CareGanga Virtual Patient ID is not
+       a government-issued health identifier. No online payment is created.</p>
+      <Link href="/admin/health-network/patient-intake">
+       Open Patient & Booking Management</Link>
+     </section>}
     <FoundationPatientBookings/>
    </main>
   </div>;
