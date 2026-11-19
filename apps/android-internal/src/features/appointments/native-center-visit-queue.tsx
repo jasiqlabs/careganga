@@ -5,7 +5,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 type Center={centerRef:string;centerName:string;timeZone:string};
-type Item={appointmentRef:string;bookingId:string;doctorRef:string;patientName:string;
+type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
  startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
@@ -43,6 +43,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
+ const [doctorFilter,setDoctorFilter]=useState(""),[statusFilter,setStatusFilter]=useState("");
  const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -125,6 +126,19 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   }catch(e){fail(e);setUncertain(true);}
   finally{setBusy(false);}
  }
+ const doctorChoices=Array.from(new Map(items.map(x=>
+  [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
+  .sort((a,b)=>a.name.localeCompare(b.name));
+ const statuses=[...new Set(items.map(x=>x.bookingStatus))].sort();
+ const visible=items.filter(x=>(!doctorFilter||x.doctorRef===doctorFilter)&&
+  (!statusFilter||x.bookingStatus===statusFilter));
+ const filter=(label:string,current:string,value:string,choose:(x:string)=>void)=>(
+  <Pressable accessibilityRole="button" accessibilityState={{
+    selected:current===value,disabled:busy}} disabled={busy}
+    onPress={()=>choose(value)} style={[styles.button,current===value&&styles.selected]}>
+   <Text style={styles.buttonLabel}>{label}</Text>
+  </Pressable>
+ );
  const button=(name:string,onClick:()=>void,disabled=false)=>(
   <Pressable accessibilityRole="button" onPress={onClick}
    disabled={disabled} accessibilityState={{disabled}}
@@ -151,7 +165,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
       disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
      onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);
-       setVerifiedSlip(null);setQrToken("");setCenter(c.centerRef);setUncertain(false);}}>
+       setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+       setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
     </Pressable>)}</View>
    {center&&<View style={styles.card}>
@@ -170,13 +185,35 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    </View>}
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
-    {button("Previous day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
-    {button("Next day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
+    {button("Previous day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+     setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
+    {button("Next day",()=>{seq.current++;setItems([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
+     setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
-   {!items.length&&!loading&&<Text style={styles.help}>No consultations are currently shown for this date.</Text>}
-   {items.map(a=><View key={a.appointmentRef} style={styles.card}>
+   {center&&items.length>0&&<>
+    <Text style={styles.help}>Filter by doctor</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+     contentContainerStyle={styles.row}>
+     {filter("All doctors",doctorFilter,"",setDoctorFilter)}
+     {doctorChoices.map(d=><View key={d.ref}>
+      {filter(d.name,doctorFilter,d.ref,setDoctorFilter)}</View>)}
+    </ScrollView>
+    <Text style={styles.help}>Filter by visit status</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+     contentContainerStyle={styles.row}>
+     {filter("All statuses",statusFilter,"",setStatusFilter)}
+     {statuses.map(state=><View key={state}>
+      {filter(state.replaceAll("_"," "),statusFilter,state,setStatusFilter)}</View>)}
+    </ScrollView>
+   </>}
+   {center&&items.length===0&&!loading&&
+    <Text style={styles.help}>No consultations were returned for this date.</Text>}
+   {center&&items.length>0&&visible.length===0&&
+    <Text style={styles.help}>No consultations match these filters.</Text>}
+   {visible.map(a=><View key={a.appointmentRef} style={styles.card}>
     <Text style={styles.title}>{a.patientName}</Text>
-    <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN")}</Text>
+    <Text style={styles.help}>Doctor: {a.doctorName}</Text>
+    <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
     <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
     <View style={styles.row}>
      {a.bookingStatus==="CONFIRMED"&&button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
