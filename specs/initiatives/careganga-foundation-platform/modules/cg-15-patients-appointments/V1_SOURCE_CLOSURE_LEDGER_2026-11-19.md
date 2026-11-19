@@ -6,7 +6,7 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only baseline: **87/128 SOURCE_VERIFIED, 32 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+Source-only current snapshot: **90/128 SOURCE_VERIFIED, 29 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
 
 ## Current unresolved cases with original tracker reasons
 
@@ -34,11 +34,11 @@ Source-only baseline: **87/128 SOURCE_VERIFIED, 32 SOURCE_GAP, 2 NOT_VERIFIABLE,
 | US-005-QA10 | SOURCE_GAP | CG19 private document / communication owner | Android has authenticated native PDF/calendar preview, Web PDF/calendar; exact native share/print and device/back parity untested and not fully implemented. |
 | US-005-QA12 | SOURCE_GAP | CG19 private document / communication owner | Optional CG19 true delivery after commit not connected; booking never shows false delivery status. |
 | US-006-QA05 | SOURCE_GAP | CG14 clinician identity + CG01 purpose authority | CG01 now has a separate assignable sensitive `health.visits.clinical.manage` action. `ConsultationQueueService.transition` checks both `health.visits.manage` and this additional action inside the same current CG14 center authorization transaction before any WAITING→IN_CONSULTATION or IN_CONSULTATION→COMPLETED write, while basic reception cannot mark clinical state. Web and Internal Android hide clinical actions without the independent grant. Actual verified doctor-account→CG14 doctor→current appointment-center relationship is not yet established, so an inappropriate staff grant could still act; therefore doctor-specific scenario remains SOURCE_GAP pending CG14 clinician identity link and real authorization tests. |
-| US-006-QA14 | SOURCE_GAP | CG19 private document / communication owner | Optional consented CG19 visit progress messaging/delivery status not integrated. |
+| US-006-QA14 | SOURCE_VERIFIED | CG19 original appointment notifications | Source integration now uses committed CG15 immutable appointment event→1433 outbox→consented CG19 IN_APP/EMAIL/SMS→real provider receipts. Actual delivery/permissions/device QA NOT_RUN. |
 | US-006-QA15 | SOURCE_GAP | CG15 direct source/code work | No original bounded missed-queue-event reconciliation job/idle-source trace; no bogus workers created. |
-| US-007-QA01 | SOURCE_GAP | CG19 private document / communication owner | Own patient Web/native cancellation, source reason and cutoff now exist; optional CG19 cancellation notice/delivery not connected. |
+| US-007-QA01 | SOURCE_VERIFIED | CG15/CG19 cancellation owner | Original patient cancellation and source event now enter real postcommit CG19 notification outbox, current account and consent checked. Provider/device/SQL QA NOT_RUN. |
 | US-007-QA11 | SOURCE_GAP | Policy/identity approval | Source disallows after cutoff, non-CONFIRMED and in-progress changes; suspended-center override workflow and qualified policy review not yet implemented. |
-| US-007-QA12 | SOURCE_GAP | CG19 private document / communication owner | No CG19 consented post-commit cancel/reschedule notification/delivery status. |
+| US-007-QA12 | SOURCE_VERIFIED | CG19 original appointment notifications | Original cancellation/reschedule events, bounded source outbox, current consent/owner checks and provider-status handling are wired. Provider receipts and patient UX QA NOT_RUN. |
 | US-007-QA16 | SOURCE_GAP | CG17/CG19 cross-owner financial and notice integration | Doctor-global source keys and CAS are present; original CG17 refund, CG19 cancellation notice, cross-owner queue effect and runtime races unverified. |
 | US-008-QA04 | SOURCE_GAP | CG14 clinician identity + CG01 purpose authority | Own-center queue gives minimum permitted check-in row; no clinician-only scoped clinical longitudinal read and Center B record exclusion proof. |
 | US-008-QA08 | SOURCE_GAP | CG19 private document / communication owner | CG19 patient-owned private scanned photo/prescription upload/history/revocation workflow not integrated. |
@@ -55,10 +55,19 @@ Source-only baseline: **87/128 SOURCE_VERIFIED, 32 SOURCE_GAP, 2 NOT_VERIFIABLE,
 
 **Policy contradiction:** US-002-QA02 requires two *same instant* selectable physical centers for one doctor but approved V1 has one doctor-global singleton nonoverlap (GIST). Do not weaken a patient safety constraint to pass the test; obtain actual approved behavior or revise the original story only through formal owner decision.
 
-**Local acceptance:** `npm ci`, all CG15 static preflights, Nest/Next builds, both native TypeScript checks and physical Android flows. PostgreSQL clean/upgrade migrations 1420–1432 incl. `btree_gist`, backup/restore, EXPLAIN, invalid hold release, two-session same-doctor race, role/consent revoke during check-in, doctor-switch swap, multi-instance claim quota, actual index use. Compare actual client H07/H15 screenshots/animation and test private PDF/QR/print/scanning, 128 original cases, cross-center/root IDOR, clinician-only actions and secure storage. Record command, SHA, expected/observed result, redacted evidence; PASS only when actually executed.
+**Local acceptance:** `npm ci`, all CG15 static preflights, Nest/Next builds, both native TypeScript checks and physical Android flows. PostgreSQL clean/upgrade migrations 1420–1433 incl. `btree_gist`, backup/restore, EXPLAIN, invalid hold release, two-session same-doctor race, role/consent revoke during check-in, doctor-switch swap, multi-instance claim quota, actual index use. Compare actual client H07/H15 screenshots/animation and test private PDF/QR/print/scanning, 128 original cases, cross-center/root IDOR, clinician-only actions and secure storage. Record command, SHA, expected/observed result, redacted evidence; PASS only when actually executed.
 
 **Merge gate:** 0 unresolved mandatory CG15 source issues, approved necessary cross-owner implementations/policies, independent source security/DB/UI/mobile review cleared, local QA and client visual evidence recorded. **No current approval to merge or deploy.**
 
 ## Source work already done, not runtime certified
 
 Four real Web/Android booking clients now attempt original CG19 private slip issue after confirmation; H15 selected-only print; revoked doctor/fee invalidates HELD reservation on attempted confirmation; withdrawn patient consent invalidates public QR; real H07 KPI counts; extra current-center sensitive clinical transition grant; US002 static JS checks read and passed 25/25 from current GitHub source. Other story scripts are authored but NOT executed in a real repo checkout.
+
+
+## 19 November 2026 — CG19 appointment outbox integration review
+
+Source commits added migration `1433_cg19_appointment_event_notification_source.sql`, exact original CG15 event FK and transactional trigger, indexed pending-only CG19 outbox, consented and verified patient-account capture, existing shared CG19 `CommunicationWorker` recovery and true provider receipt semantics. Independent source review identified that CG19's in-app inbox/read paths did not recheck latest patient-care consent and live patient-account ownership. Both protected paths now require live current consent, original independent patient proof and current link, preventing already queued old appointment notices being disclosed after withdrawal or account unlink. The original notification status is never fabricated as DELIVERED.
+
+Source script `scripts/verify-cg15-communications-source.mjs` was evaluated against six actual latest GitHub branch files: **12/12 static assertions present**. This was *not* an executed PostgreSQL migration, provider callback, Nest build, native/browser QA, or qualified security signoff. The patient notification support currently includes **IN_APP, EMAIL, SMS**, not unsupported WhatsApp/push channels. Original US-005-QA12 therefore remains SOURCE_GAP. Original US-006-QA14 and US-007-QA01/QA12 move to SOURCE_VERIFIED for their constrained, source-only acceptance.
+
+**Canonical case counts: 90 verified / 29 source gaps / 2 not verifiable / 7 not applicable (128). Actual runtime QA PASS 0/128. No branch merge.**
