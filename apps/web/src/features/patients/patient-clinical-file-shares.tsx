@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 type Booking={bookingRef:string;bookingId:string;bookingStatus:string};
-type Share={grantRef:string;status:string;version:number;
+type Share={grantRef:string;status:string;version:number;currentlyAuthorized:boolean;
  bookingId:string;doctorName:string;centerName:string;
  grantedAt:string;revoked:boolean};
 type Shares={shares:Share[]};
@@ -115,7 +115,8 @@ export function PatientClinicalFileShares({fileRef,consentGranted}:{
    {grants.map(row=><div className="notice" key={row.grantRef}>
     <strong>{row.bookingId}</strong>
     <p>{row.doctorName} · {row.centerName} ·
-     {" "+(row.status==="ACTIVE"?"Active subject to current consent":"Revoked")}</p>
+     {" "+(row.status!=="ACTIVE"?"Revoked":row.currentlyAuthorized?
+      "Active for this booked clinician":"No longer accessible — booking or care permission changed")}</p>
     {row.status==="ACTIVE"&&<button type="button" disabled={busy}
      onClick={()=>void revoke(row)}>Revoke doctor access</button>}
    </div>)}
