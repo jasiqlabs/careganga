@@ -11,7 +11,8 @@ type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;
  bookable:false};
 type Detail={status:string;centerName:string;timeZone:string;slots:Slot[];
  bookingEnabled:false;message:string};
-type Match={centerName:string;centerSlug:string;timeZone:string;bookable:false};
+type Match={centerName:string;centerSlug:string;timeZone:string;bookable:false;
+ address:string;pinCode:string;consultationFeeMinor:string|null};
 type Choices={centerChoices:Match[];message:string;bookingEnabled:false};
 const dateAt=(offset:number)=>{
  const now=new Date();
@@ -142,7 +143,8 @@ export function DoctorSchedulePreview({doctorRef}:{doctorRef:string}){
    {choices.centerChoices.length===0?
     <Text style={style.help}>No matching working time in another center.</Text>:
     choices.centerChoices.map(c=><Text key={c.centerSlug} style={style.help}>
-     {c.centerName} ({c.timeZone}) — preview only
+     {c.centerName}, {c.address}, {c.pinCode}.
+     {money(c.consultationFeeMinor)}. {c.timeZone}. Preview only
     </Text>)}
   </View>}
   <Text style={style.help}>For actual appointment availability or
