@@ -1,8 +1,8 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 type Row={bookingRef:string;bookingId:string;virtualPatientId:string;
  patientName:string;patientProfileStatus:string;patientConsentGranted:boolean|null;
- doctorName:string;centerName:string;bookingStatus:string;
+ doctorName:string;centerName:string;bookingStatus:string;bookingVersion:number;
  startAt:string;timeZone:string;createdAt:string;collectionStatus:string;consultationFeeMinor:string};
 type Center={centerRef:string;centerName:string;stateRef:string;
  districtRef:string;centerType:string};
@@ -49,6 +49,12 @@ export function FoundationPatientBookings(){
  const [history,setHistory]=useState<OriginalHistory|null>(null);
  const [historyBusy,setHistoryBusy]=useState(false);
  const [historyError,setHistoryError]=useState("");
+ const [overridePassword,setOverridePassword]=useState("");
+ const [overrideAcknowledged,setOverrideAcknowledged]=useState(false);
+ const [overrideBusy,setOverrideBusy]=useState(false);
+ const [overrideUncertain,setOverrideUncertain]=useState(false);
+ const [overrideMessage,setOverrideMessage]=useState("");
+ const overrideKey=useRef("");
  const [message,setMessage]=useState(""),[loading,setLoading]=useState(true);
  const load=useCallback(async(q:Query)=>{
   const params=new URLSearchParams();
@@ -83,6 +89,11 @@ export function FoundationPatientBookings(){
   .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[query,load]);
+ useEffect(()=>{
+  overrideKey.current="";
+  setOverridePassword("");setOverrideAcknowledged(false);
+  setOverrideMessage("");setOverrideUncertain(false);
+ },[selected]);
  useEffect(()=>{
   if(!selected){setHistory(null);return;}
   let active=true;
