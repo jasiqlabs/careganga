@@ -248,7 +248,10 @@ export class NotificationService{
   }
   async recover(bearer:string){
     const actor=await this.sessions.requireAction(bearer,"communications.delivery.process");
-    return this.captureCommittedDecisions(actor.realmId);
+    const decisions=await this.captureCommittedDecisions(actor.realmId);
+    const appointments=await this.captureCommittedAppointments(actor.realmId);
+    // Preserve original CG03 recovery fields for existing clients.
+    return {...decisions,appointments};
   }
   async inbox(bearer:string,limitInput:unknown=20){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
