@@ -4,6 +4,38 @@ import {ConsultationBookingService} from "../application/consultation-booking.se
 @Controller("api/v1/appointments/consultations")
 export class ConsultationBookingController{
  constructor(private readonly bookings:ConsultationBookingService){}
+ @Get("staff/centers/:centerRef/doctors")
+ @Header("Cache-Control","private, no-store")
+ centerDoctors(@Headers("authorization")bearer:string,@Param("centerRef")center:string){
+  return this.bookings.centerDoctors(bearer,center);
+ }
+ @Get("staff/centers/:centerRef/doctor/:doctorRef/slots")
+ @Header("Cache-Control","private, no-store")
+ centerSlots(@Headers("authorization")bearer:string,
+  @Param("centerRef")center:string,@Param("doctorRef")doctor:string,
+  @Query("date")date:string){
+  return this.bookings.centerSlots(bearer,center,doctor,date);
+ }
+ @Post("staff/holds")
+ @Header("Cache-Control","private, no-store")
+ staffHold(@Headers("authorization")bearer:string,@Body()input:unknown){
+  return this.bookings.holdForCenter(bearer,input);
+ }
+ @Post("staff/confirm")
+ @Header("Cache-Control","private, no-store")
+ staffConfirm(@Headers("authorization")bearer:string,@Body()input:unknown){
+  return this.bookings.confirmForCenter(bearer,input);
+ }
+ @Get("staff/holds/by-request/:requestKey")
+ @Header("Cache-Control","private, no-store")
+ staffHoldRequest(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.bookings.holdByRequest(bearer,key,true);
+ }
+ @Get("staff/confirmations/by-request/:requestKey")
+ @Header("Cache-Control","private, no-store")
+ staffConfirmationRequest(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
+  return this.bookings.confirmationByRequest(bearer,key,true);
+ }
  @Post("holds")
  @Header("Cache-Control","private, no-store")
  hold(@Headers("authorization")bearer:string,@Body()input:unknown){
