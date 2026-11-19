@@ -9,7 +9,7 @@ type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
  startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
  bookingStatus?:string;startAt?:string;timeZone?:string;canCheckIn?:boolean};
 const dateAt=(offset:number,zone:string)=>{
@@ -40,7 +40,7 @@ async function request<T>(token:string,path:string,method="GET",body?:object):Pr
  }
  return await response.json() as T;
 }
-export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
+export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
@@ -50,6 +50,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [selectedSlip,setSelectedSlip]=useState<Item|null>(null);
+ const [cancelPending,setCancelPending]=useState<string|null>(null);
+ const cancelKeys=useRef<Map<string,string>>(new Map());
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const commands=useRef<Map<string,string>>(new Map()),seq=useRef(0),selectedCenter=useRef("");
@@ -66,7 +68,8 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
      (after?"&after="+encodeURIComponent(after):""));
    if(stamp!==seq.current||selectedCenter.current!==c)return;
-   setItems(data.items);setSelectedSlip(null);setCursor(after);setNextCursor(data.next);setUncertain(false);
+   setItems(data.items);setSelectedSlip(null);setCancelPending(null);
+   setCursor(after);setNextCursor(data.next);setUncertain(false);
   }catch(e){if(stamp===seq.current&&selectedCenter.current===c){setItems([]);fail(e);}}
  },[token,fail]);
  useEffect(()=>{
@@ -132,6 +135,45 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   }catch(e){fail(e);setUncertain(true);}
   finally{setBusy(false);}
  }
+ async function cancelBooking(item:Item){
+  if(!canCancel||busy||uncertain||!center||
+   cancelPending!==item.appointmentRef||
+   item.bookingStatus!=="CONFIRMED"||item.visitRef)return;
+  const activeCenter=center;
+  const signature=activeCenter+":"+item.appointmentRef+":"+item.bookingVersion;
+  let key=cancelKeys.current.get(signature);
+  if(!key){key=Crypto.randomUUID();cancelKeys.current.set(signature,key);}
+  setBusy(true);setMessage("");
+  try{
+   const response=await identityRequest(
+    "/api/v1/appointments/consultations/staff/centers/"+
+    encodeURIComponent(activeCenter)+"/bookings/"+
+    encodeURIComponent(item.appointmentRef)+"/cancel",{
+     method:"POST",cache:"no-store",
+     headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+     body:JSON.stringify({requestKey:key,expectedVersion:item.bookingVersion,
+      reason:"CENTER_REQUEST"})
+    });
+   const raw:unknown=await response.json().catch(()=>null);
+   if(!response.ok){
+    const detail=raw&&typeof raw==="object"&&"message" in raw&&
+     typeof raw.message==="string"&&raw.message.length<=220?
+     raw.message:"The center cancellation was rejected. Refresh its booking.";
+    throw Object.assign(new Error(detail),{status:response.status});
+   }
+   if(!raw||typeof raw!=="object"||!("bookingStatus" in raw)||
+    raw.bookingStatus!=="CANCELLED")
+    throw Error("Cancellation outcome uncertain. Check the original booking.");
+   cancelKeys.current.delete(signature);
+   await load(activeCenter,dateAt(offset,centerZone),cursor);
+   setCancelPending(null);
+   setMessage("The original consultation was cancelled at this assigned center.");
+  }catch(e){
+   fail(e);
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   setUncertain(!(typeof status==="number"&&status>=400&&status<500));
+  }finally{setBusy(false);}
+ }
  const doctorChoices=Array.from(new Map(items.map(x=>
   [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
   .sort((a,b)=>a.name.localeCompare(b.name));
@@ -172,7 +214,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      style={[styles.button,center===c.centerRef&&styles.selected]}
      onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);setSelectedSlip(null);setCursor("");setNextCursor(null);setPreviousCursors([]);
        setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
-       setCenter(c.centerRef);setUncertain(false);}}>
+       setCancelPending(null);setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
     </Pressable>)}</View>
    {center&&<View style={styles.card}>
@@ -192,9 +234,9 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
    <Text style={styles.help}>Consultation date: {dateAt(offset,centerZone)}</Text>
    <View style={styles.row}>
     {button("Previous day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
-     setSelectedSlip(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
+     setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.max(-14,n-1));},busy||offset<=-14)}
     {button("Next day",()=>{seq.current++;setItems([]);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setDoctorFilter("");setStatusFilter("");
-     setSelectedSlip(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
+     setSelectedSlip(null);setCancelPending(null);setOffset(n=>Math.min(30,n+1));},busy||offset>=30)}
    </View>
    {center&&items.length>0&&<>
     <Text style={styles.help}>Filter by doctor</Text>
@@ -228,6 +270,14 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
     <Text style={styles.help}>Doctor: {a.doctorName}</Text>
     <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
     <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
+    {canCancel&&a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
+     (cancelPending===a.appointmentRef?
+      <View style={styles.card}>
+       <Text style={styles.help}>Cancel this confirmed appointment at your assigned center? The audit history will remain.</Text>
+       {button("Confirm center cancellation",()=>void cancelBooking(a),busy||uncertain)}
+       {button("Keep appointment",()=>setCancelPending(null),busy)}
+      </View>:
+      button("Cancel center booking",()=>setCancelPending(a.appointmentRef),busy||uncertain))}
     <View style={styles.row}>
      {a.bookingStatus==="CONFIRMED"&&button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
      {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
