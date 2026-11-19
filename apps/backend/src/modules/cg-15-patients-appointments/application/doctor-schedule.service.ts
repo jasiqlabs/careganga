@@ -358,7 +358,7 @@ export class DoctorScheduleService{
     "AND ($7::text='' OR COALESCE(s.status,'NOT_SCHEDULED')=$7) "+
      "AND ($8::text='' OR EXISTS(SELECT 1 FROM unnest(d.specialties) specialization "+
      "WHERE position(lower($8) in lower(specialization))>0)) "+
-     "AND p.status='VERIFIED' AND c.status='VERIFIED' "
+     "AND p.status='VERIFIED' AND c.status='VERIFIED' "+
     "AND c.access_state='ENABLED' AND d.status='VERIFIED' "+
     "AND assoc.affiliation_state='APPROVED' "+
     "AND assoc.approved_from<=now() "+
