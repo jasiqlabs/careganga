@@ -60,8 +60,8 @@ export class ConsultationQueueService{
  }
  async options(bearer:string){
   const actor=await this.identity.requireAction(bearer,"health.visits.manage");
-  const r=await this.db.query<{center_ref:string;center_name:string}>(
-   "SELECT DISTINCT c.id AS center_ref,c.display_name AS center_name "+
+  const r=await this.db.query<{center_ref:string;center_name:string;time_zone:string}>(
+   "SELECT DISTINCT c.id AS center_ref,c.display_name AS center_name,c.time_zone "+
    "FROM health_center_account_affiliation a "+
    "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
    "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
@@ -69,7 +69,7 @@ export class ConsultationQueueService{
    "AND p.status='VERIFIED' AND c.status='VERIFIED' "+
    "AND c.access_state='ENABLED' ORDER BY c.display_name,c.id LIMIT 40",
    [actor.realmId,actor.accountId]);
-  return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name}))};
+  return {centers:r.rows.map(row=>({centerRef:row.center_ref,centerName:row.center_name,timeZone:row.time_zone}))};
  }
  async list(bearer:string,centerRaw:string,dayRaw:unknown){
   const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
