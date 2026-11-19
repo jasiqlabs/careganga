@@ -6,9 +6,9 @@
 
 Do not expand beyond approved CG-15 V1. Keep all 128 original QA scenarios intact in [tasks.md](tasks.md). Fix actual source issues under the owning CG01/CG03/CG14/CG15/CG19 module instead of adding synthetic records, bypassing current permissions, or marking gaps N/A without approved policy. Implement → review → fix → re-review → source trace → independent developer local build/device/DB QA; no CI/GitHub Actions.
 
-Source-only current snapshot: **108/128 SOURCE_VERIFIED, 11 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE**. Executed runtime PASS **0/128**, formally source complete **0/8 US**. Reconciliation below is a closure plan, not a claim these cases were completed.
+**Historical opening snapshot (now superseded):** 108/128 SOURCE_VERIFIED, 11 SOURCE_GAP, 2 NOT_VERIFIABLE, 7 NOT_APPLICABLE. **Current canonical classification after independent source reconciliation:** 119 SOURCE_VERIFIED / **0 SOURCE_GAP** / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE. Runtime PASS remains 0/128; formal independent story source approval remains 0/8. The table below preserves original gap history; authoritative row status is maintained in tasks.md.
 
-## Current unresolved cases with original tracker reasons
+## Historical opening-audit gaps (see current tasks.md for closed classifications)
 
 | Original QA | Current classification | Correct workstream | What the latest source still lacks |
 |---|---|---|---|
@@ -182,3 +182,7 @@ CG19 1440 now records each explicitly patient-approved scanned file for one exis
 An independent read of CG01's original capability catalogue, current CG14 assigned-center intake, protected Foundation H15 patient overview, patient own CG15 identity, CG19 own file read and explicit current physician/patient grant confirms no center-wide patient/phone lookup, merge or export route. H15 patient-wide aggregate is reserved to the protected nonassignable Foundation action, not staff roles; Center A/B reception choices and intake own result remain tied to currently verified center, root, actor and request key. New patient file grants do not bypass CG01/CG14 real authenticated actor checks. 11 in-session source assertions passed, and `verify:cg15-patient-access-isolation-source` was authored. **US-003-QA16 source verified only**, not a performed negative IDOR test: cross-root/center, suspended account, direct raw URL, browser cache, native offline and backend SQL privacy QA still NOT_RUN.
 
 **Current 128 source classifications: 108 verified / 11 gaps / 2 not verifiable / 7 not applicable. Runtime QA PASS 0; formal SOURCE_COMPLETE 0/8.**
+
+## Final source reconciliation — 19 November 2026
+
+All 11 originally tracked source gaps from the 108/128 snapshot have been source-reconciled without removing a QA case: 119 SOURCE_VERIFIED / 0 SOURCE_GAP / 2 NOT_VERIFIABLE / 7 NOT_APPLICABLE. Exact per-case implementation evidence is recorded in tasks.md. Reconciliation includes H07 six current backend KPI totals, actual CG14 filters/calendar, shared-phone independent identities, recipient-bound account linkage, protected two-person duplicate review with non-destructive alias, dependent limited intake authorization, current Web/Android appointment review and native date selection, and CG19 H15 protected document/report grants. This is source-only review, not runtime PASS; PostgreSQL migrations, real devices, original client screenshot parity, security/concurrency, CG19 storage/print and p95/performance still require local qualified execution. Main merge remains HOLD.
