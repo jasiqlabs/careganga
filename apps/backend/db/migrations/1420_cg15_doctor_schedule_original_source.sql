@@ -99,7 +99,8 @@ CREATE TABLE cg15_schedule_exception(
  start_at timestamptz NOT NULL,
  end_at timestamptz NOT NULL,
  reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 3 AND 240),
- source_digest char(64) NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}
+ source_digest char(64) NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}$'),
+ version integer NOT NULL CHECK(version BETWEEN 1 AND 2147483646),
  proposed_by uuid NOT NULL,
  original_case_ref uuid,
  approved_case_ref uuid,
@@ -162,7 +163,7 @@ CREATE INDEX ix_cg15_schedule_event_history
  ON cg15_schedule_event(root_realm_id,schedule_id,created_at DESC,id);
 -- Review submissions may append their original CG03 case reference once.
 -- The exact proposed doctor, center, dates, reason and digest never change.
-CREATE FUNCTION cg15_exception_source_guard() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg15_exception_source_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF TG_OP='DELETE' OR NEW.id IS DISTINCT FROM OLD.id OR
   NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
@@ -185,99 +186,11 @@ BEGIN
   RAISE EXCEPTION 'Original doctor schedule exception cannot be rewritten';
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg15_exception_source_frozen
  BEFORE UPDATE OR DELETE ON cg15_schedule_exception FOR EACH ROW
  EXECUTE FUNCTION cg15_exception_source_guard();
 
-CREATE FUNCTION cg15_schedule_source_immutable() RETURNS trigger LANGUAGE plpgsql AS $
-BEGIN
- RAISE EXCEPTION 'Historical healthcare schedule source cannot be changed';
-END $$;
-CREATE TRIGGER cg15_revision_frozen BEFORE UPDATE OR DELETE ON cg15_schedule_revision
- FOR EACH ROW EXECUTE FUNCTION cg15_schedule_source_immutable();
-CREATE TRIGGER cg15_window_frozen BEFORE UPDATE OR DELETE ON cg15_schedule_weekly_window
- FOR EACH ROW EXECUTE FUNCTION cg15_schedule_source_immutable();
-CREATE TRIGGER cg15_event_frozen BEFORE UPDATE OR DELETE ON cg15_schedule_event
- FOR EACH ROW EXECUTE FUNCTION cg15_schedule_source_immutable();
-CREATE FUNCTION cg15_command_source_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
- IF TG_OP='DELETE' OR NEW.id IS DISTINCT FROM OLD.id OR
-  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
-  NEW.actor_ref IS DISTINCT FROM OLD.actor_ref OR
-  NEW.action_key IS DISTINCT FROM OLD.action_key OR
-  NEW.request_key IS DISTINCT FROM OLD.request_key OR
-  NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
-  NEW.created_at IS DISTINCT FROM OLD.created_at OR
-  OLD.result_ref IS NOT NULL OR NEW.result_ref IS NULL OR
-  NEW.result_version IS NULL THEN
-  RAISE EXCEPTION 'Healthcare schedule command cannot be rewritten';
- END IF;
- RETURN NEW;
-END $$;
-CREATE TRIGGER cg15_command_guard
- BEFORE UPDATE OR DELETE ON cg15_schedule_command
- FOR EACH ROW EXECUTE FUNCTION cg15_command_source_guard();
-),
- version integer NOT NULL CHECK(version BETWEEN 1 AND 2147483646),
- proposed_by uuid NOT NULL,
- approved_case_ref uuid,
- created_at timestamptz NOT NULL DEFAULT now(),
- updated_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,id),
- FOREIGN KEY(root_realm_id,schedule_id,doctor_id,center_id,association_id)
-  REFERENCES cg15_doctor_schedule(root_realm_id,id,doctor_id,center_id,association_id)
-  ON DELETE RESTRICT,
- FOREIGN KEY(proposed_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(approved_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
- CHECK(start_at<end_at),
- CHECK(kind<>'LEAVE' OR state<>'ACTIVE' OR approved_case_ref IS NOT NULL)
-);
-CREATE INDEX ix_cg15_exception_active
- ON cg15_schedule_exception(root_realm_id,doctor_id,start_at,end_at)
- WHERE state='ACTIVE';
-CREATE INDEX ix_cg15_exception_pending
- ON cg15_schedule_exception(root_realm_id,state,created_at DESC)
- WHERE state='PENDING';
-
-CREATE TABLE cg15_schedule_command(
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- root_realm_id uuid NOT NULL,
- actor_ref uuid NOT NULL,
- action_key text NOT NULL CHECK(action_key IN('SAVE_WEEK','PROPOSE_EXCEPTION','CANCEL_EXCEPTION')),
- request_key uuid NOT NULL,
- request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
- result_ref uuid,
- result_version integer,
- created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,actor_ref,action_key,request_key),
- FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- CHECK((result_ref IS NULL)=(result_version IS NULL)),
- CHECK(result_version IS NULL OR result_version BETWEEN 1 AND 2147483646)
-);
-CREATE TABLE cg15_schedule_event(
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- root_realm_id uuid NOT NULL,
- schedule_id uuid NOT NULL,
- revision_id uuid,
- exception_id uuid,
- actor_ref uuid NOT NULL,
- action_key text NOT NULL CHECK(action_key IN('SCHEDULE_CREATED','SCHEDULE_CHANGED',
-  'EXCEPTION_PROPOSED','EXCEPTION_CANCELLED')),
- source_digest char(64) NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}$'),
- request_key uuid NOT NULL,
- created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,actor_ref,action_key,request_key),
- FOREIGN KEY(root_realm_id,schedule_id) REFERENCES cg15_doctor_schedule(root_realm_id,id)
-  ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,schedule_id,revision_id)
-  REFERENCES cg15_schedule_revision(root_realm_id,schedule_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,exception_id)
-  REFERENCES cg15_schedule_exception(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
-);
-CREATE INDEX ix_cg15_schedule_event_history
- ON cg15_schedule_event(root_realm_id,schedule_id,created_at DESC,id);
 CREATE FUNCTION cg15_schedule_source_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  RAISE EXCEPTION 'Historical healthcare schedule source cannot be changed';
