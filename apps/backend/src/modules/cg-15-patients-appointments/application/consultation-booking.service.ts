@@ -346,6 +346,145 @@ export class ConsultationBookingService{
    [actor.realmId,booking.id,prior,booking.revision,action,
     old?JSON.stringify(old):null,JSON.stringify(snapshot),actor.accountId,key]);
  }
+ async cancel(bearer:string,idRaw:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer),id=uuid(idRaw);
+  const v=body(input,["requestKey","expectedVersion","reason"]);
+  const key=uuid(v.requestKey),expected=Number(v.expectedVersion);
+  if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
+    typeof v.reason!=="string"||!["PATIENT_REQUEST","OTHER"].includes(v.reason))
+   throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+  const requestDigest=SHA({id,expected,reason:v.reason,action:"CANCELLED"});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const doctor=await tx.query<{doctor_id:string}>(
+    "SELECT doctor_id FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,id]);
+   if(!doctor.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   await this.doctorLock(tx,actor,doctor.rows[0].doctor_id);
+   const patient=await this.ownPatient(tx,actor,false);
+   const row=await tx.query<Booking>(
+    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND id=$2 AND patient_id=$3 FOR UPDATE",[actor.realmId,id,patient.id]);
+   const old=row.rows[0];
+   if(!old)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   const previously=await tx.query<{new_snapshot:{requestDigest?:string}}>(
+    "SELECT new_snapshot FROM cg15_appointment_event WHERE root_realm_id=$1 "+
+    "AND appointment_id=$2 AND action='CANCELLED' AND request_key=$3",
+    [actor.realmId,id,key]);
+   if(previously.rows[0]){
+    if(previously.rows[0].new_snapshot?.requestDigest!==requestDigest)
+     throw new ConflictException({code:"CG15_BOOKING_REQUEST_CONFLICT"});
+    await tx.query("COMMIT");open=false;return presentBooking(old);
+   }
+   if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
+     old.start_at.getTime()<=Date.now())
+    throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
+   await tx.query(
+    "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='CONFIRMED'",
+    [actor.realmId,old.reservation_id]);
+   const changed=await tx.query<Booking>(
+    "UPDATE cg15_consultation_appointment SET booking_state='CANCELLED',"+
+    "revision=revision+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 RETURNING *",
+    [actor.realmId,id]);
+   await tx.query(
+    "INSERT INTO cg15_appointment_event(root_realm_id,appointment_id,prior_revision,"+
+    "new_revision,action,prior_snapshot,new_snapshot,actor_account_id,request_key) "+
+    "VALUES($1,$2,$3,$4,'CANCELLED',$5,$6,$7,$8)",
+    [actor.realmId,id,old.revision,old.revision+1,
+     JSON.stringify({status:old.booking_state,bookingId:old.booking_display_id,
+      startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
+      centerRef:old.center_id,feeMinor:old.fee_minor,feeVersion:old.fee_version}),
+     JSON.stringify({status:"CANCELLED",requestDigest,reason:v.reason,
+      collectionState:"DUE_AT_CENTER"}),actor.accountId,key]);
+   await tx.query("COMMIT");open=false;return presentBooking(changed.rows[0]);
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+ async reschedule(bearer:string,idRaw:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer),id=uuid(idRaw);
+  const v=body(input,["requestKey","expectedVersion","centerRef",
+   "startAt","endAt","acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
+  const key=uuid(v.requestKey),center=uuid(v.centerRef);
+  const expected=Number(v.expectedVersion),start=epoch(v.startAt),end=epoch(v.endAt);
+  const fee=String(v.acceptedFeeMinor??"");
+  if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
+   !Number.isSafeInteger(v.acceptedFeeVersion)||!/^\\d{1,11}$/.test(fee)||
+   v.paymentMode!=="PAY_AT_CENTER")
+   throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+  const requestDigest=SHA({id,expected,center,start:start.toISOString(),
+   end:end.toISOString(),fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER"});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const doctor=await tx.query<{doctor_id:string}>(
+    "SELECT doctor_id FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,id]);
+   if(!doctor.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   await this.doctorLock(tx,actor,doctor.rows[0].doctor_id);
+   const patient=await this.ownPatient(tx,actor,false);
+   const booking=await tx.query<Booking>(
+    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND id=$2 AND patient_id=$3 FOR UPDATE",[actor.realmId,id,patient.id]);
+   const old=booking.rows[0];
+   if(!old)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
+   const prev=await tx.query<{new_snapshot:{requestDigest?:string}}>(
+    "SELECT new_snapshot FROM cg15_appointment_event WHERE root_realm_id=$1 "+
+    "AND appointment_id=$2 AND action='RESCHEDULED' AND request_key=$3",
+    [actor.realmId,id,key]);
+   if(prev.rows[0]){
+    if(prev.rows[0].new_snapshot?.requestDigest!==requestDigest)
+     throw new ConflictException({code:"CG15_BOOKING_REQUEST_CONFLICT"});
+    await tx.query("COMMIT");open=false;return presentBooking(old);
+   }
+   if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
+    old.start_at.getTime()<=Date.now()||
+    (old.start_at.getTime()===start.getTime()&&old.center_id===center))
+    throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
+   // Original old slot is released and new slot is acquired in ONE transaction.
+   // A failure of exclusion/fee/consent rolls back both changes.
+   const current=await this.eligible(tx,actor,old.doctor_id,center,start,end);
+   if(current.patient.id!==old.patient_id||current.feeMinor!==fee||
+    current.feeVersion!==v.acceptedFeeVersion)
+    throw new ConflictException({code:"CG15_BOOKING_PRICE_CHANGED"});
+   await tx.query(
+    "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='CONFIRMED'",
+    [actor.realmId,old.reservation_id]);
+   const nr=await tx.query<{id:string}>(
+    "INSERT INTO cg15_doctor_reservation(root_realm_id,doctor_id,center_id,"+
+    "association_id,start_at,end_at,status) "+
+    "VALUES($1,$2,$3,$4,$5,$6,'CONFIRMED') RETURNING id",
+    [actor.realmId,old.doctor_id,center,current.source.association_ref,start,end]);
+   const changed=await tx.query<Booking>(
+    "UPDATE cg15_consultation_appointment SET center_id=$3,association_id=$4,"+
+    "reservation_id=$5,start_at=$6,end_at=$7,time_zone=$8,"+
+    "fee_minor=$9,fee_version=$10,revision=revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
+    [actor.realmId,id,center,current.source.association_ref,nr.rows[0].id,
+     start,end,current.source.time_zone,fee,current.feeVersion]);
+   await tx.query(
+    "INSERT INTO cg15_appointment_event(root_realm_id,appointment_id,prior_revision,"+
+    "new_revision,action,prior_snapshot,new_snapshot,actor_account_id,request_key) "+
+    "VALUES($1,$2,$3,$4,'RESCHEDULED',$5,$6,$7,$8)",
+    [actor.realmId,id,old.revision,old.revision+1,
+     JSON.stringify({status:old.booking_state,reservationRef:old.reservation_id,
+      centerRef:old.center_id,associationRef:old.association_id,
+      startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
+      feeMinor:old.fee_minor,feeVersion:old.fee_version}),
+     JSON.stringify({status:"CONFIRMED",requestDigest,
+      reservationRef:nr.rows[0].id,centerRef:center,
+      startAt:start.toISOString(),endAt:end.toISOString(),
+      feeMinor:fee,feeVersion:current.feeVersion,
+      collectionState:"DUE_AT_CENTER"}),actor.accountId,key]);
+   await tx.query("COMMIT");open=false;return presentBooking(changed.rows[0]);
+  }catch(e){if(open)await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="23P01")
+    throw new ConflictException({code:"CG15_BOOKING_SLOT_TAKEN"});
+   throw e;
+  }finally{tx.release();}
+ }
  async mine(bearer:string,limitRaw:unknown=20){
   const actor=await this.identity.verifySession(bearer);
   const limit=Number(limitRaw);
