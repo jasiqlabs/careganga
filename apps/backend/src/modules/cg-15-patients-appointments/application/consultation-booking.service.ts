@@ -54,6 +54,14 @@ function holdMinutes(){
   throw new ServiceUnavailableException({code:"CG15_BOOKING_HOLD_NOT_CONFIGURED"});
  return value;
 }
+function changeCutoffMs(){
+ // Simple one-source patient cancellation/reschedule rule; no speculative
+ // penalties or refunds. Foundation can configure 0..24 hours in deployment.
+ const minutes=Number(process.env.CG15_CHANGE_CUTOFF_MINUTES??"60");
+ if(!Number.isSafeInteger(minutes)||minutes<0||minutes>1440)
+  throw new ServiceUnavailableException({code:"CG15_BOOKING_CHANGE_POLICY_UNAVAILABLE"});
+ return minutes*60000;
+}
 function local(date:Date,zone:string){
  let f:Intl.DateTimeFormat;
  try{
@@ -88,6 +96,7 @@ function presentBooking(v:Booking){return {
  centerAddress:v.center_address,consultationFeeMinor:v.fee_minor,
  feeVersion:v.fee_version,consultationCurrency:"INR" as const,
  bookingStatus:v.booking_state,termsVersion:v.terms_revision,paymentMode:v.payment_mode,
+ canPatientChange:v.booking_state==="CONFIRMED"&&ms(v.start_at)>Date.now()+changeCutoffMs(),
  collectionStatus:v.collection_state,version:v.revision,
  createdAt:v.created_at.toISOString(),updatedAt:v.updated_at.toISOString()
 };}
@@ -382,14 +391,15 @@ export class ConsultationBookingService{
     await tx.query("COMMIT");open=false;return presentBooking(old);
    }
    if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
-     old.start_at.getTime()<=Date.now())
-    throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
+     old.start_at.getTime()<=Date.now()+changeCutoffMs())
+    throw new ConflictException({code:"CG15_BOOKING_CHANGE_CLOSED"});
    await tx.query(
     "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
     "WHERE root_realm_id=$1 AND id=$2 AND status='CONFIRMED'",
     [actor.realmId,old.reservation_id]);
    const changed=await tx.query<Booking>(
     "UPDATE cg15_consultation_appointment SET booking_state='CANCELLED',"+
+    "collection_state='NOT_COLLECTIBLE',"+
     "revision=revision+1,terms_revision=terms_revision+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
     [actor.realmId,id]);
@@ -402,7 +412,7 @@ export class ConsultationBookingService{
       startAt:old.start_at.toISOString(),endAt:old.end_at.toISOString(),
       centerRef:old.center_id,feeMinor:old.fee_minor,feeVersion:old.fee_version}),
      JSON.stringify({status:"CANCELLED",requestDigest,reason:v.reason,
-      collectionState:"DUE_AT_CENTER"}),actor.accountId,key]);
+      collectionState:"NOT_COLLECTIBLE"}),actor.accountId,key]);
    await tx.query("COMMIT");open=false;return presentBooking(changed.rows[0]);
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
@@ -444,7 +454,7 @@ export class ConsultationBookingService{
     await tx.query("COMMIT");open=false;return presentBooking(old);
    }
    if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
-    old.start_at.getTime()<=Date.now()||
+    old.start_at.getTime()<=Date.now()+changeCutoffMs()||
     (old.start_at.getTime()===start.getTime()&&old.center_id===center))
     throw new ConflictException({code:"CG15_BOOKING_SLOT_CHANGED"});
    // Original old slot is released and new slot is acquired in ONE transaction.
