@@ -26,7 +26,8 @@ export function CenterPatientIntakeWorkspace(){
    return data as Options;
   }).then(options=>{
    if(!active)return;
-   const valid=options.centers.filter(item=>UUID.test(item.centerRef)&&
+   const valid=options.centers.filter(item=>item&&typeof item==="object"&&
+    typeof item.centerRef==="string"&&UUID.test(item.centerRef)&&
     typeof item.centerName==="string"&&typeof item.providerName==="string");
    setCenters(valid);
    setChosen(valid.length===1?valid[0].centerRef:"");
