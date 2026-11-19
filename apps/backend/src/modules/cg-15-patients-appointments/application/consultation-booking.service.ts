@@ -22,7 +22,7 @@ type Booking={id:string;booking_display_id:string;patient_id:string;doctor_id:st
  center_id:string;association_id:string;hold_id:string;reservation_id:string;
  start_at:Date;end_at:Date;time_zone:string;doctor_name:string;center_name:string;
  center_address:string;fee_minor:string;fee_version:number;
- booking_state:string;collection_state:string;payment_mode:string;revision:number;
+ booking_state:string;collection_state:string;payment_mode:string;revision:number;terms_revision:number;
  confirmation_digest:string;created_at:Date;updated_at:Date};
 type Patient={id:string;profile_status:string;consent_granted:boolean|null;verified:Date|null};
 type Slot={scheduleId:string;revisionId:string;minutes:number};
@@ -87,7 +87,7 @@ function presentBooking(v:Booking){return {
  timeZone:v.time_zone,doctorName:v.doctor_name,centerName:v.center_name,
  centerAddress:v.center_address,consultationFeeMinor:v.fee_minor,
  feeVersion:v.fee_version,consultationCurrency:"INR" as const,
- bookingStatus:v.booking_state,paymentMode:v.payment_mode,
+ bookingStatus:v.booking_state,termsVersion:v.terms_revision,paymentMode:v.payment_mode,
  collectionStatus:v.collection_state,version:v.revision,
  createdAt:v.created_at.toISOString(),updatedAt:v.updated_at.toISOString()
 };}
@@ -390,7 +390,8 @@ export class ConsultationBookingService{
     [actor.realmId,old.reservation_id]);
    const changed=await tx.query<Booking>(
     "UPDATE cg15_consultation_appointment SET booking_state='CANCELLED',"+
-    "revision=revision+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 RETURNING *",
+    "revision=revision+1,terms_revision=terms_revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
     [actor.realmId,id]);
    await tx.query(
     "INSERT INTO cg15_appointment_event(root_realm_id,appointment_id,prior_revision,"+
@@ -465,7 +466,8 @@ export class ConsultationBookingService{
     "UPDATE cg15_consultation_appointment SET center_id=$3,association_id=$4,"+
     "reservation_id=$5,start_at=$6,end_at=$7,time_zone=$8,"+
     "doctor_name=$9,center_name=$10,center_address=$11,"+
-    "fee_minor=$12,fee_version=$13,revision=revision+1,updated_at=now() "+
+    "fee_minor=$12,fee_version=$13,revision=revision+1,"+
+    "terms_revision=terms_revision+1,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 RETURNING *",
     [actor.realmId,id,center,current.source.association_ref,nr.rows[0].id,
      start,end,current.source.time_zone,current.source.doctor_name,
