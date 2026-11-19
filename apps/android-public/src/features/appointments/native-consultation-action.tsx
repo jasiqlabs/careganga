@@ -116,7 +116,9 @@ export function NativeConsultationAction(p:Props){
   try{
    const t=await token();
    if(!t)throw Error("Sign in to your patient account.");
-    if(!base)throw Error("The patient API is not configured.");
+   if(!base||!/^https?:\/\//.test(base)||
+    (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+    throw Error("The secure patient API is not configured.");
     const response=await fetch(new URL("/api/v1/patients/me/assisted-booking-code",base),{
      method:"POST",cache:"no-store",signal:AbortSignal.timeout(12000),
      headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
