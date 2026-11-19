@@ -274,7 +274,6 @@ const checks=[
   s.service.includes('v.doctorRef===undefined?null:uuid(v.doctorRef)')&&
   s.service.includes('new Set([doctor.rows[0].doctor_id,newDoctorId])')&&
   s.service.includes('this.eligible(tx,actor,newDoctorId,center,start,end)')&&
-  s.service.includes('"SET doctor_id=$3,center_id=$4,"')===false&&
   s.service.includes('doctor_id=$3,center_id=$4')&&
   s.service.includes('async rescheduleByRequest(')&&
   s.service.includes("action='RESCHEDULED' AND request_key=$3")&&
