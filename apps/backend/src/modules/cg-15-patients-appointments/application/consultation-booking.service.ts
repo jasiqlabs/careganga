@@ -609,18 +609,34 @@ export class ConsultationBookingService{
  async cancelForCenter(bearer:string,centerRaw:string,idRaw:string,input:unknown){
   return this.cancelOriginal(bearer,idRaw,input,uuid(centerRaw));
  }
- private async cancelOriginal(bearer:string,idRaw:string,input:unknown,centerRef?:string){
-  const actor=await this.identity.verifySession(bearer),id=uuid(idRaw);
-  const v=body(input,["requestKey","expectedVersion","reason"]);
+ /** Original US-007 exceptional policy: protected Foundation only, current
+  * password proof and immutable CANCELLED event. No after-start rewrite.
+  */
+ async cancelWithFoundationOverride(bearer:string,idRaw:string,input:unknown){
+  return this.cancelOriginal(bearer,idRaw,input,undefined,true);
+ }
+ private async cancelOriginal(bearer:string,idRaw:string,input:unknown,
+  centerRef?:string,rootOverride=false){
+  const actor=rootOverride?
+   await this.identity.requireAction(bearer,"health.appointments.override"):
+   await this.identity.verifySession(bearer);
+  const id=uuid(idRaw);
+  const v=body(input,rootOverride?["requestKey","expectedVersion","reason","currentPassword"]:
+   ["requestKey","expectedVersion","reason"]);
   const key=uuid(v.requestKey),expected=Number(v.expectedVersion);
   if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
     typeof v.reason!=="string"||
-    (centerRef?v.reason!=="CENTER_REQUEST":!["PATIENT_REQUEST","OTHER"].includes(v.reason)))
+    (rootOverride?v.reason!=="FOUNDATION_OVERRIDE":
+     centerRef?v.reason!=="CENTER_REQUEST":
+     !["PATIENT_REQUEST","OTHER"].includes(v.reason)))
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   const requestDigest=SHA({id,expected,reason:v.reason,action:"CANCELLED"});
+  if(rootOverride)await this.identity.limitFoundationRootProof(actor);
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
+   if(rootOverride)await this.identity.requireFreshFoundationRootProof(
+    tx,actor,String(v.currentPassword??""));
    // Check exact currently assigned center before taking the doctor lock.
    // Patient self-cancellation still requires real account ownership below.
    if(centerRef)await this.centerScope.assertCurrent(
@@ -631,11 +647,14 @@ export class ConsultationBookingService{
     centerRef?[actor.realmId,id,centerRef]:[actor.realmId,id]);
    if(!doctor.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    await this.doctorLock(tx,actor,doctor.rows[0].doctor_id);
-   const patient=centerRef?null:await this.ownPatient(tx,actor,false);
+   const patient=centerRef||rootOverride?null:
+    await this.ownPatient(tx,actor,false);
+   const filter=centerRef?"AND center_id=$3 ":
+    rootOverride?"":"AND patient_id=$3 ";
    const row=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
-    "AND id=$2 AND "+(centerRef?"center_id=$3":"patient_id=$3")+" FOR UPDATE",
-    [actor.realmId,id,centerRef??patient!.id]);
+    "AND id=$2 "+filter+"FOR UPDATE",
+    rootOverride?[actor.realmId,id]:[actor.realmId,id,centerRef??patient!.id]);
    const old=row.rows[0];
    if(!old)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    const previously=await tx.query<{new_snapshot:{requestDigest?:string}}>(
@@ -648,7 +667,7 @@ export class ConsultationBookingService{
     await tx.query("COMMIT");open=false;return presentBooking(old);
    }
    if(old.revision!==expected||old.booking_state!=="CONFIRMED"||
-     old.start_at.getTime()<=Date.now()+changeCutoffMs())
+     old.start_at.getTime()<=(rootOverride?Date.now():Date.now()+changeCutoffMs()))
     throw new ConflictException({code:"CG15_BOOKING_CHANGE_CLOSED"});
    await tx.query(
     "UPDATE cg15_doctor_reservation SET status='RELEASED' "+
