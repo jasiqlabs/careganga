@@ -4,6 +4,8 @@ export const dynamic="force-dynamic";
 type Context={params:Promise<{parts:string[]}>};
 const CODES=new Set([
  "CG15_PATIENT_INVALID","CG15_PATIENT_NOT_REGISTERED","CG15_PATIENT_FORBIDDEN",
+ "CG15_PATIENT_PRIVATE_INVALID","CG15_PATIENT_PRIVATE_UNAVAILABLE",
+ "CG15_PATIENT_PRIVATE_CHANGED",
  "CG15_PATIENT_CONTACT_UNVERIFIED","CG15_PATIENT_CONSENT_REQUIRED",
  "CG15_PATIENT_CONSENT_UNAVAILABLE","CG15_PATIENT_CHANGED",
  "CG15_PATIENT_REQUEST_CONFLICT","CG15_PATIENT_ALREADY_REGISTERED",
@@ -30,6 +32,7 @@ const authorized=(parts:string[],method:string)=>{
   route==="mobile/confirm"&&method==="POST"||
   route==="me"&&["GET","PATCH"].includes(method)||
   route==="me/consent"&&method==="POST"||
+  route==="me/private-details"&&["GET","POST"].includes(method)||
   route==="registration"&&method==="POST"||
   route==="me/identity-verification"&&method==="POST"||
   route==="me/claim-intake"&&method==="POST"||
