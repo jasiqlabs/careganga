@@ -125,6 +125,17 @@ export function FoundationPatientBookings(){
   (!query.districtRef||c.districtRef===query.districtRef)&&
   (!query.centerType||c.centerType===query.centerType))??[];
  return <section className="role-workspace" aria-label="Patient and booking management">
+  <style>{`@media print{
+   body *{visibility:hidden!important;}
+   .cg15-print-scope,.cg15-print-scope *{visibility:visible!important;}
+   .cg15-print-scope{position:absolute!important;inset:0 auto auto 0!important;
+    box-sizing:border-box;width:100%!important;max-width:100%!important;
+    min-height:0!important;padding:18px!important;border:none!important;
+    background:#fff!important;color:#111!important;}
+   .cg15-print-scope button{display:none!important;}
+   .cg15-print-scope p{break-inside:avoid;}
+   .cg15-print-scope article{break-inside:avoid;}
+  }`}</style>
   <header className="topbar"><div>
    <h1>Patient &amp; Booking Management</h1>
    <p>Manage actual patient consultations across healthcare centers</p>
@@ -242,7 +253,7 @@ export function FoundationPatientBookings(){
     {result.next&&<button type="button" onClick={()=>
      setQuery(q=>({...q,after:result.next!}))}>Next results</button>}
    </section>
-   <section aria-label="Selected patient and appointment details"
+   <section className="cg15-print-scope" aria-label="Selected patient and appointment details"
     style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12,alignSelf:"start"}}>
     <h2>Patient Details</h2>
     {!selectedBooking?<p>Select an actual consultation to view its limited details.</p>:
@@ -263,6 +274,11 @@ export function FoundationPatientBookings(){
       <p><strong>Status:</strong> {statusName(selectedBooking.bookingStatus)}</p>
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
        · {statusName(selectedBooking.collectionStatus)}</p>
+      <p>Original CareGanga appointment record — not a receipt, prescription,
+       government Health ID or evidence of financial assistance.</p>
+      <button type="button" disabled={historyBusy||!history||
+       history.bookingId!==selectedBooking.bookingId}
+       onClick={()=>window.print()}>Print selected booking report</button>
       <h3>Booking History</h3>
       {historyBusy&&!history&&<p role="status">Checking original booking events…</p>}
       {!!historyError&&<p role="alert">{historyError}</p>}
@@ -282,6 +298,8 @@ export function FoundationPatientBookings(){
        {e.after?.consultationFeeMinor&&
         <p>Accepted consultation: {money(e.after.consultationFeeMinor)}</p>}
       </article>)}
+      {history?.next&&<p>Older booking events remain. Printing includes only
+       this selected booking and the event entries currently loaded below.</p>}
       {history?.next&&<button type="button" disabled={historyBusy}
        onClick={()=>void moreHistory()}>Older booking events</button>}
       <p>This event history contains only this protected booking's operational changes.
