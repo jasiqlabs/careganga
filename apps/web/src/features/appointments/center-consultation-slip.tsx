@@ -71,9 +71,12 @@ export function CenterConsultationSlip({bookingRef,bookingStatus}:{
    {record?.canDownload&&
     <a href={"/api/appointments/staff-slips/"+path+"/file"}
      target="_blank" rel="noopener noreferrer">Open private consultation PDF</a>}
-   {!record?.canDownload&&!uncertain&&
+   {record?.status==="NOT_ISSUED"&&!uncertain&&
     <button type="button" disabled={busy} onClick={()=>void issue()}>
      Issue current consultation slip</button>}
+   {record&&!record.canDownload&&record.status!=="NOT_ISSUED"&&
+    <p role="status">This original document is in {record.status.toLowerCase()} state.
+     Check its status; no new issue request will be made automatically.</p>}
    {uncertain&&<p role="alert">Keep the same original request reference.
     Refresh the status before generating any new document.</p>}
   </div>}
