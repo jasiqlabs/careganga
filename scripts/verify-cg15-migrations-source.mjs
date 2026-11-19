@@ -28,7 +28,8 @@ const files=[
  "1433_cg19_appointment_event_notification_source.sql",
  "1434_cg15_center_qr_verification_guard.sql",
  "1435_cg19_appointment_pending_recovery_global.sql",
- "1436_cg14_verified_clinician_account_link.sql"
+ "1436_cg14_verified_clinician_account_link.sql",
+ "1437_cg15_private_consultation_intent_consent.sql"
 ];
 function inspect(sql,minimumStatements=3){
  const errors=[],statements=[],parentheses=[];
