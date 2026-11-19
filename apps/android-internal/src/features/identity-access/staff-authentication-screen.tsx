@@ -248,6 +248,7 @@ export function StaffAuthenticationScreen(){
   if(patientQueueOpen&&token&&actor&&roleActions.includes("health.visits.manage"))
     return <NativeCenterVisitQueue token={token}
       canCancel={roleActions.includes("health.appointments.cancel")}
+      canClinicalManage={roleActions.includes("health.visits.clinical.manage")}
       onExit={closePatientQueue} onExpired={expireSession}/>;
   if(patientBookingOpen&&token&&actor&&roleActions.includes("health.patients.intake"))
     return <NativeCenterAssistedBooking token={token} onExit={closePatientBooking}
