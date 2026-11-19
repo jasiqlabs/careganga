@@ -105,8 +105,14 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    setHold(result);setUncertain(false);
    setMessage("The doctor's time is held for this patient. Confirm before the displayed expiry.");
   }catch(e){
-   setUncertain(true);setMessage((e instanceof Error?e.message:
-    "The hold may have succeeded.")+" Check the original request before another booking.");
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   if(typeof status==="number"&&status>=400&&status<500){
+    setUncertain(false);setMessage(e instanceof Error?e.message:
+     "This patient authorization or time is not available. Refresh and choose again.");
+   }else{
+    setUncertain(true);setMessage((e instanceof Error?e.message:
+     "The hold may have succeeded.")+" Check the original request before another booking.");
+   }
   }finally{setBusy(false);}
  }
  async function confirm(retry=false){
@@ -127,9 +133,15 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    setBooking(result);setUncertain(false);
    setMessage("Consultation confirmed. The consultation amount is DUE at the center.");
   }catch(e){
-   setUncertain(true);
-   setMessage((e instanceof Error?e.message:"The confirmation may have succeeded.")+
-    " Check the original request; do not create another booking.");
+   const status=e&&typeof e==="object"&&"status" in e?e.status:null;
+   if(typeof status==="number"&&status>=400&&status<500){
+    setUncertain(false);setMessage(e instanceof Error?e.message:
+     "The held time or fee is no longer available. Refresh the current schedule.");
+   }else{
+    setUncertain(true);
+    setMessage((e instanceof Error?e.message:"The confirmation may have succeeded.")+
+     " Check the original request; do not create another booking.");
+   }
   }finally{setBusy(false);}
  }
  async function checkOriginal(){
@@ -170,7 +182,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
   </div>:<>
    <div style={{display:"grid",gap:10,maxWidth:520}}>
     <label>Doctor at this center
-     <select value={doctor} disabled={busy||!!hold} onChange={e=>{
+     <select value={doctor} disabled={busy||uncertain||!!hold} onChange={e=>{
       requestEpoch.current++;setDoctor(e.target.value);setAvailability(null);
       setSelected(null);holdAttempt.current=null;confirmAttempt.current=null;}}>
       <option value="">Choose a verified doctor</option>
@@ -178,18 +190,18 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
        {d.doctorName}</option>)}
      </select></label>
     <label>Consultation date (next 30 days)
-     <input type="date" value={date} disabled={busy||!!hold}
+     <input type="date" value={date} disabled={busy||uncertain||!!hold}
       onChange={e=>{requestEpoch.current++;setDate(e.target.value);
        setAvailability(null);setSelected(null);holdAttempt.current=null;}}/></label>
-    <button type="button" disabled={busy||!doctor||!date||!!hold}
+    <button type="button" disabled={busy||uncertain||!doctor||!date||!!hold}
      onClick={()=>void refreshSlots(doctor,date)}>
      {slotsLoading?"Checking…":"Check original available times"}</button>
     <label>Patient's Virtual Patient ID
-     <input value={patientId} disabled={busy||!!hold} maxLength={20}
+     <input value={patientId} disabled={busy||uncertain||!!hold} maxLength={20}
       onChange={e=>{setPatientId(e.target.value.trim().toUpperCase());holdAttempt.current=null;}}
       placeholder="CGP-XXXXXXXXXXXXXXXX"/></label>
     <label>Patient's one-time code for this center
-     <input value={code} disabled={busy||!!hold} maxLength={28}
+     <input value={code} disabled={busy||uncertain||!!hold} maxLength={28}
       onChange={e=>{setCode(e.target.value.trim().toUpperCase());holdAttempt.current=null;}}
       placeholder="CGB-XXXXXXXXXXXXXXXXXXXXXXXX"/></label>
    </div>
@@ -215,6 +227,9 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
     <p>Confirmed consultation fee: {money(hold.consultationFeeMinor)}. Payment due at center.</p>
     <button type="button" disabled={busy||uncertain||Date.parse(hold.expiresAt)<=Date.now()}
      onClick={()=>void confirm()}>Confirm this authorized appointment</button>
+    {!uncertain&&Date.parse(hold.expiresAt)<=Date.now()&&
+     <button type="button" disabled={busy} onClick={clear}>
+      Start a new verified booking after the hold expired</button>}
    </div>}
    {uncertain&&<div role="alert" className="notice">
     <p>The last action may already have succeeded. Do not create a different
