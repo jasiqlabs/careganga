@@ -7,6 +7,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationHistory} from "../appointments/native-consultation-history";
+import {NativePatientPrivateDetails} from "./native-patient-private-details";
 import {NativePatientPrivateFiles} from "./native-patient-private-files";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
@@ -384,6 +385,9 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      {button(busy?"Saving…":profile?"Save details":"Create patient profile",
       profile?save:register,busy||!first.trim()||!last.trim()||
        (!profile&&(!policy.available||!agreed||!contact?.verified)))}
+     {profile?.profileStatus==="VERIFIED"&&token&&
+      <NativePatientPrivateDetails token={token}
+       consentGranted={profile.consentGranted} onExpired={clear}/>}
      {profile&&<NativeConsultationHistory/>}
      {profile?.profileStatus==="VERIFIED"&&token&&
       <NativePatientPrivateFiles token={token}
