@@ -4,17 +4,21 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-type Center={centerRef:string;centerName:string};
+type Center={centerRef:string;centerName:string;timeZone:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;patientName:string;
  startAt:string;bookingStatus:string;bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
  bookingStatus?:string;startAt?:string;timeZone?:string;canCheckIn?:boolean};
-const dateAt=(offset:number)=>{
- const d=new Date();const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+offset);
- return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+
-  String(x.getDate()).padStart(2,"0");
+const dateAt=(offset:number,zone:string)=>{
+ try{
+  const parts=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{
+   timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return new Date(Date.UTC(Number(parts.year),Number(parts.month)-1,
+   Number(parts.day)+offset)).toISOString().slice(0,10);
+ }catch{return "";}
 };
 async function request<T>(token:string,path:string,method="GET",body?:object):Promise<T>{
  const response=await identityRequest("/api/v1/appointments/queue/"+path,{
@@ -39,6 +43,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
+ const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
@@ -50,6 +55,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
  const load=useCallback(async(c:string,day:string)=>{
   const stamp=++seq.current;
   if(!c){setItems([]);return;}
+  if(!day){setItems([]);setMessage("The center local date is unavailable.");return;}
   try{
    const data=await request<{items:Item[]}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day));
@@ -69,9 +75,9 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
   return()=>{live=false;};
  },[token,fail]);
  useEffect(()=>{
-  void load(center,dateAt(offset));
+  void load(center,dateAt(offset,centerZone));
   return()=>{seq.current++;};
- },[center,offset,load]);
+ },[center,centerZone,offset,load]);
  useEffect(()=>{
   const back=BackHandler.addEventListener("hardwareBackPress",()=>{
    onExit();return true;
@@ -144,7 +150,7 @@ export function NativeCenterVisitQueue({token,onExit,onExpired}:Props){
      accessibilityState={{selected:center===c.centerRef,disabled:busy}}
       disabled={busy}
      style={[styles.button,center===c.centerRef&&styles.selected]}
-     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setItems([]);
+     onPress={()=>{selectedCenter.current=c.centerRef;seq.current++;setOffset(0);setItems([]);
        setVerifiedSlip(null);setQrToken("");setCenter(c.centerRef);setUncertain(false);}}>
      <Text style={styles.buttonLabel}>{c.centerName}</Text>
     </Pressable>)}</View>
