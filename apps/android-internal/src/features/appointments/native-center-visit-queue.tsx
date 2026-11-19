@@ -6,6 +6,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterConsultationSlip} from "./native-center-consultation-slip";
 type Center={centerRef:string;centerName:string;timeZone:string};
+type ClinicianAssignment={centerRef:string;doctorRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;patientName:string;
  consentGranted:boolean;startAt:string;endAt:string;bookingStatus:string;
  bookingVersion:number;visitRef:string|null;
@@ -49,6 +50,7 @@ async function request<T>(token:string,path:string,method="GET",body?:object):Pr
 }
 export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
+ const [clinicianAssignments,setClinicianAssignments]=useState<ClinicianAssignment[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
  const [summary,setSummary]=useState<Summary|null>(null);
@@ -96,10 +98,12 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
  },[token,fail]);
  useEffect(()=>{
   let live=true;
-  void request<{centers:Center[]}>(token,"my-centers")
+  void request<{centers:Center[];clinicianAssignments:ClinicianAssignment[]}>(token,"my-centers")
    .then(data=>{
     if(!live)return;
     setCenters(data.centers);
+    setClinicianAssignments((data.clinicianAssignments??[]).filter(x=>
+     typeof x?.doctorRef==="string"&&typeof x?.centerRef==="string"));
     if(data.centers.length===1){selectedCenter.current=data.centers[0].centerRef;setCenter(data.centers[0].centerRef);}
    }).catch(e=>{if(live)fail(e);})
    .finally(()=>{if(live)setLoading(false);});
@@ -363,8 +367,8 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
      {a.consentGranted&&a.bookingStatus==="CONFIRMED"&&
       button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
      {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
-     {canClinicalManage&&a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
-     {canClinicalManage&&a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
+     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
+     {canClinicalManage&&clinicianAssignments.some(link=>link.centerRef===center&&link.doctorRef===a.doctorRef)&&a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
      {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
       Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
       button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
