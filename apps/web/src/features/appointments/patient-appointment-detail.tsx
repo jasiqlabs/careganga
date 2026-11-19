@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 type Booking={bookingRef:string;bookingId:string;doctorName:string;centerName:string;
  centerAddress:string;startAt:string;endAt:string;timeZone:string;
  bookingStatus:string;collectionStatus:string;paymentMode:string;
@@ -9,6 +9,9 @@ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
  const [booking,setBooking]=useState<Booking|null>(null);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
+ const [slip,setSlip]=useState<{status:string;canDownload:boolean}|null>(null);
+ const [busy,setBusy]=useState(false),[unknown,setUnknown]=useState(false);
+ const issueKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   if(!ID.test(bookingRef))throw Error("This appointment link is invalid.");
   const response=await fetch("/api/consultations/me/"+bookingRef,{
@@ -17,6 +20,9 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   if(!response.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
    typeof data.message==="string"?data.message:"The appointment cannot be checked.");
   setBooking(data as Booking);
+  const status=await fetch("/api/appointments/slips/me/"+bookingRef+"/status",{
+   cache:"no-store",credentials:"same-origin"});
+  if(status.ok)setSlip(await status.json() as {status:string;canDownload:boolean});
  },[bookingRef]);
  useEffect(()=>{
   let active=true;
@@ -25,6 +31,27 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[refresh]);
+ async function issue(){
+  if(busy||unknown||!booking)return;
+  setBusy(true);setError("");
+  if(!issueKey.current)issueKey.current=crypto.randomUUID();
+  try{
+   const r=await fetch("/api/appointments/slips/me/"+bookingRef+"/issue",{
+    method:"POST",cache:"no-store",credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:issueKey.current})});
+   const value:unknown=await r.json().catch(()=>null);
+   if(!r.ok)throw Error(value&&typeof value==="object"&&"message" in value&&
+    typeof value.message==="string"?value.message:"The private PDF issue result is uncertain.");
+   const state=value&&typeof value==="object"&&"status" in value?value.status:null;
+   if(state!=="ISSUED"){
+    setUnknown(true);setError("The private PDF issue is not confirmed. Check the current status.");
+   }else{
+    await refresh();setUnknown(false);
+   }
+  }catch(e){setUnknown(true);setError(e instanceof Error?e.message:"Slip issue status is uncertain.");}
+  finally{setBusy(false);}
+ }
  const money=(s:string)=>new Intl.NumberFormat("en-IN",{
   style:"currency",currency:"INR"}).format(Number(s)/100);
  return <section className="cg-public-section">
@@ -47,9 +74,22 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(booking.bookingStatus)&&
     <p><a href={"/api/consultations/me/"+encodeURIComponent(bookingRef)+"/calendar.ics"}>
      Add appointment to my calendar</a></p>}
-   <p>Private PDF or QR slip will be available only after original
-    CG-19 secure issuance is configured and verified. This booking ID is not
-    a public record-access token.</p>
+   <section aria-label="Private appointment slip">
+    <h3>My appointment slip</h3>
+    <p>Original CG-19 private PDF · one patient copy for pay-at-center
+     · status-only QR, no clinical record access.</p>
+    {slip?.status==="ISSUED"&&slip.canDownload?
+     <p><a href={"/api/appointments/slips/me/"+encodeURIComponent(bookingRef)+"/file"}>
+      Download my private PDF &amp; QR slip</a></p>:
+     booking.bookingStatus==="CANCELLED"?<p>A cancelled appointment has no current slip.</p>:
+     <button type="button" disabled={busy||unknown} onClick={()=>void issue()}>
+      {busy?"Issuing…":"Issue my secure appointment slip"}</button>}
+    {unknown&&<button type="button" disabled={busy} onClick={()=>void refresh()
+     .then(()=>setUnknown(false)).catch(e=>setError(String(e)))}>
+     Check original document status</button>}
+    <p>The QR reveals only whether this booking is currently valid.
+     It does not identify the patient publicly.</p>
+   </section>
    <Link href="/patients/me">Back to my consultations</Link>
   </div>}
  </section>;
