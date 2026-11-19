@@ -341,6 +341,7 @@ export class DoctorScheduleService{
     "JOIN cg03_case dc ON dc.id=dr.approval_case_ref "+
     "AND dc.realm_id=dr.root_realm_id AND dc.status='OWNER_COMPLETED' "+
     "AND dc.case_kind='HEALTH_DOCTOR_VERIFICATION' "+
+    "AND dc.health_doctor_id=d.id AND dc.health_doctor_revision_id=dr.id "+
     "AND dc.health_source_digest=dr.source_digest "+
     "JOIN cg03_case_decision dd ON dd.case_id=dc.id AND dd.realm_id=dc.realm_id "+
     "AND dd.action='APPROVE' AND dd.fresh_password_verified_at IS NOT NULL "+
@@ -359,6 +360,7 @@ export class DoctorScheduleService{
     "JOIN cg03_case cc ON cc.id=cr.approval_case_ref "+
     "AND cc.realm_id=cr.root_realm_id AND cc.status='OWNER_COMPLETED' "+
     "AND cc.case_kind='HEALTH_CENTER_VERIFICATION' "+
+    "AND cc.health_center_id=c.id AND cc.health_center_revision_id=cr.id "+
     "AND cc.health_source_digest=cr.source_digest "+
     "JOIN cg03_case_decision cd ON cd.case_id=cc.id AND cd.realm_id=cc.realm_id "+
     "AND cd.action='APPROVE' AND cd.fresh_password_verified_at IS NOT NULL "+
