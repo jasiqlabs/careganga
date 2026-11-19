@@ -1,5 +1,5 @@
 import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -59,6 +59,183 @@ export class PatientAdminOverviewService{
     message:"Protected source version verified. Only this booking and the loaded original history may be printed."};
   }catch(e){if(started)await c.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{c.release();}
+ }
+
+ /** H15 restricted review queue, bounded and rooted; never a public patient
+  * search or an authorization to read source clinical files.
+  */
+ async duplicateReviews(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  const result=await this.db.query<{
+   id:string;status:string;revision:number;created_at:Date;
+   source_display:string;canonical_display:string;
+   proposed_by:string;decided_by:string|null;decision_at:Date|null}>(
+   "SELECT d.id,d.status,d.revision,d.created_at,"+
+   "source.virtual_display_id AS source_display,"+
+   "canonical.virtual_display_id AS canonical_display,"+
+   "d.proposed_by_account AS proposed_by,d.decided_by_account AS decided_by,"+
+   "d.decision_at FROM cg15_patient_duplicate_review d "+
+   "JOIN cg15_patient source ON source.root_realm_id=d.root_realm_id "+
+   "AND source.id=d.source_patient_id "+
+   "JOIN cg15_patient canonical ON canonical.root_realm_id=d.root_realm_id "+
+   "AND canonical.id=d.canonical_patient_id "+
+   "WHERE d.root_realm_id=$1 ORDER BY d.created_at DESC,d.id DESC LIMIT 30",
+   [actor.realmId]);
+  return {items:result.rows.map(r=>({
+   reviewRef:r.id,status:r.status,version:r.revision,
+   sourceVirtualPatientId:r.source_display,
+   canonicalVirtualPatientId:r.canonical_display,
+   proposedByCurrentAccount:r.proposed_by===actor.accountId,
+   decidedByCurrentAccount:r.decided_by===actor.accountId,
+   proposedAt:r.created_at.toISOString(),
+   decidedAt:r.decision_at?.toISOString()??null
+  })),limit:30,
+   message:"Only a protected independent reviewer may approve same-person identity evidence. No private appointments or files are merged into another account."};
+ }
+ async proposeDuplicate(bearer:string,input:unknown){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  if(!input||typeof input!=="object"||Array.isArray(input))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const v=input as Record<string,unknown>;
+  if(Object.keys(v).some(k=>!["requestKey","sourceVirtualPatientId",
+   "canonicalVirtualPatientId","possibleDuplicateConfirmed"].includes(k))||
+   typeof v.requestKey!=="string"||!ID.test(v.requestKey)||
+   typeof v.sourceVirtualPatientId!=="string"||
+   typeof v.canonicalVirtualPatientId!=="string"||
+   !/^CGP-[A-F0-9]{16}$/.test(v.sourceVirtualPatientId)||
+   !/^CGP-[A-F0-9]{16}$/.test(v.canonicalVirtualPatientId)||
+   v.sourceVirtualPatientId===v.canonicalVirtualPatientId||
+   v.possibleDuplicateConfirmed!==true)
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const key=v.requestKey;
+  const digest=createHash("sha256").update(JSON.stringify([
+   v.sourceVirtualPatientId,v.canonicalVirtualPatientId,
+   "POSSIBLE_SAME_PERSON_REVIEW_ONLY"])).digest("hex");
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   const people=await tx.query<{id:string;virtual_display_id:string;profile_status:string}>(
+    "SELECT id,virtual_display_id,profile_status FROM cg15_patient "+
+    "WHERE root_realm_id=$1 AND virtual_display_id IN($2,$3) "+
+    "ORDER BY id FOR SHARE",
+    [actor.realmId,v.sourceVirtualPatientId,v.canonicalVirtualPatientId]);
+   const source=people.rows.find(p=>p.virtual_display_id===v.sourceVirtualPatientId);
+   const canonical=people.rows.find(p=>p.virtual_display_id===v.canonicalVirtualPatientId);
+   if(!source||!canonical||["ARCHIVED","RESTRICTED"].includes(source.profile_status)||
+    ["ARCHIVED","RESTRICTED"].includes(canonical.profile_status))
+    throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
+   // An already-reviewed alias can never become a new source/target chain.
+   const alias=await tx.query(
+    "SELECT 1 FROM cg15_patient_reviewed_alias "+
+    "WHERE root_realm_id=$1 AND (source_patient_id IN($2,$3) "+
+    "OR canonical_patient_id=$2) LIMIT 1",
+    [actor.realmId,source.id,canonical.id]);
+   if(alias.rowCount)
+    throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_ALREADY_REVIEWED"});
+   await tx.query(
+    "INSERT INTO cg15_patient_duplicate_review(root_realm_id,"+
+    "source_patient_id,canonical_patient_id,proposed_by_account,"+
+    "request_key,request_digest) VALUES($1,$2,$3,$4,$5,$6) "+
+    "ON CONFLICT(root_realm_id,proposed_by_account,request_key) DO NOTHING",
+    [actor.realmId,source.id,canonical.id,actor.accountId,key,digest]);
+   const review=await tx.query<{id:string;request_digest:string;status:string;revision:number}>(
+    "SELECT id,request_digest,status,revision FROM cg15_patient_duplicate_review "+
+    "WHERE root_realm_id=$1 AND proposed_by_account=$2 AND request_key=$3 FOR UPDATE",
+    [actor.realmId,actor.accountId,key]);
+   if(!review.rows[0]||review.rows[0].request_digest!==digest)
+    throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_ALREADY_REVIEWED"});
+   await tx.query("COMMIT");open=false;
+   return {reviewRef:review.rows[0].id,status:review.rows[0].status,
+    version:review.rows[0].revision,message:"Possible duplicate submitted for an independent Foundation identity review. No patient records or access rights changed."};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+    throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_ALREADY_REVIEWED"});
+   throw e;
+  }finally{tx.release();}
+ }
+ /** Approval is an audited non-destructive administrative identity alias.
+  * Never re-key old appointments/documents or transfer clinical ACLs.
+  */
+ async decideDuplicate(bearer:string,reviewRaw:string,input:unknown){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  if(!ID.test(reviewRaw)||!input||typeof input!=="object"||Array.isArray(input))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const v=input as Record<string,unknown>;
+  if(Object.keys(v).some(k=>!["decision","expectedVersion","currentPassword",
+   "samePersonEvidenceReviewed"].includes(k))||
+   !["APPROVE","REJECT"].includes(String(v.decision))||
+   v.expectedVersion!==1||typeof v.currentPassword!=="string"||
+   v.currentPassword.length<8||v.currentPassword.length>1024||
+   (v.decision==="APPROVE"&&v.samePersonEvidenceReviewed!==true))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  await this.sessions.limitFoundationRootProof(actor);
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,v.currentPassword);
+   const review=await tx.query<{
+    id:string;source_patient_id:string;canonical_patient_id:string;
+    proposed_by_account:string;status:string;revision:number;
+    decided_by_account:string|null}>(
+    "SELECT id,source_patient_id,canonical_patient_id,proposed_by_account,"+
+    "status,revision,decided_by_account FROM cg15_patient_duplicate_review "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [actor.realmId,reviewRaw]);
+   const source=review.rows[0];
+   if(!source)throw new NotFoundException({code:"CG15_PATIENT_NOT_REGISTERED"});
+   if(source.proposed_by_account===actor.accountId)
+    throw new ConflictException({code:"CG15_PATIENT_REVIEW_REQUIRES_INDEPENDENT_ACTOR"});
+   const targetStatus=v.decision==="APPROVE"?"APPROVED":"REJECTED";
+   if(source.status!=="PENDING"||source.revision!==1)
+    throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_REVIEW_CHANGED"});
+   if(targetStatus==="APPROVED"){
+    const people=await tx.query<{id:string;profile_status:string;proven:boolean}>(
+     "SELECT p.id,p.profile_status,EXISTS("+
+     "SELECT 1 FROM cg15_patient_identity_event proof "+
+     "WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) AS proven "+
+     "FROM cg15_patient p WHERE p.root_realm_id=$1 AND p.id IN($2,$3) "+
+     "ORDER BY p.id FOR SHARE",
+     [actor.realmId,source.source_patient_id,source.canonical_patient_id]);
+    if(people.rows.length!==2||people.rows.some(p=>
+     p.profile_status!=="VERIFIED"||p.proven!==true))
+     throw new ConflictException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+    const chains=await tx.query(
+     "SELECT 1 FROM cg15_patient_reviewed_alias "+
+     "WHERE root_realm_id=$1 AND (source_patient_id IN($2,$3) "+
+     "OR canonical_patient_id=$2) LIMIT 1",
+     [actor.realmId,source.source_patient_id,source.canonical_patient_id]);
+    if(chains.rowCount)
+     throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_ALREADY_REVIEWED"});
+   }
+   await tx.query(
+    "UPDATE cg15_patient_duplicate_review SET status=$3,revision=2,"+
+    "decided_by_account=$4,decision_at=now(),decision_basis=$5 "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='PENDING' AND revision=1",
+    [actor.realmId,source.id,targetStatus,actor.accountId,
+     targetStatus==="APPROVED"?"SAME_PERSON_EVIDENCE_REVIEWED":"IDENTITY_NOT_ESTABLISHED"]);
+   if(targetStatus==="APPROVED")
+    await tx.query(
+     "INSERT INTO cg15_patient_reviewed_alias(root_realm_id,"+
+     "source_patient_id,canonical_patient_id,review_id,approved_by_account) "+
+     "VALUES($1,$2,$3,$4,$5)",
+     [actor.realmId,source.source_patient_id,
+      source.canonical_patient_id,source.id,actor.accountId]);
+   await tx.query(
+    "INSERT INTO access_audit(realm_id,actor_account_id,action_key,outcome,"+
+    "safe_context,correlation_ref) VALUES($1,$2,$3,'SUCCESS',$4::jsonb,$5)",
+    [actor.realmId,actor.accountId,"health.patients.duplicate-review."+
+     targetStatus.toLowerCase(),JSON.stringify({reviewRef:source.id,
+      status:targetStatus,source:"CG15",preservedOriginalRecords:true}),randomUUID()]);
+   await tx.query("COMMIT");open=false;
+   return {status:targetStatus,reviewRef:source.id,version:2,
+    message:targetStatus==="APPROVED"?
+     "Verified same-person administrative alias recorded. Original bookings, files, patient IDs, consents and account permissions remain unchanged.":
+     "Possible duplicate rejected. All original patient records remain unchanged."};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+    throw new ConflictException({code:"CG15_PATIENT_DUPLICATE_ALREADY_REVIEWED"});
+   throw e;
+  }finally{tx.release();}
  }
  async bookingHistory(bearer:string,rawRef:string,beforeRaw?:string){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
