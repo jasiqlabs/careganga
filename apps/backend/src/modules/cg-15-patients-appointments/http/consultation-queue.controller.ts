@@ -18,6 +18,10 @@ export class ConsultationQueueController{
  @Header("Cache-Control","private, no-store")
  checkIn(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
   @Body()value:unknown){return this.queue.checkIn(bearer,center,value);}
+ @Post("my-centers/:centerRef/no-show")
+ @Header("Cache-Control","private, no-store")
+ noShow(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
+  @Body()value:unknown){return this.queue.markNoShow(bearer,center,value);}
  @Post("my-centers/:centerRef/visits/:visitRef/transition")
  @Header("Cache-Control","private, no-store")
  transition(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
