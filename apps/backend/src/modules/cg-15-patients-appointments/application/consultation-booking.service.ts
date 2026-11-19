@@ -881,9 +881,11 @@ export class ConsultationBookingService{
   ];
   return lines.join("\r\n")+"\r\n";
  }
- async mine(bearer:string,limitRaw:unknown=20,afterRaw?:string){
+ async mine(bearer:string,limitRaw:unknown=20,afterRaw?:string,statusRaw?:string){
   const actor=await this.identity.verifySession(bearer);
-  const limit=Number(limitRaw);
+  const limit=Number(limitRaw),status=statusRaw??"";
+  if(status!==""&&!VALID_STATES.includes(status as typeof VALID_STATES[number]))
+   throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   if(!Number.isInteger(limit)||limit<1||limit>50)
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   let afterAt:string|null=null,afterId:string|null=null;
@@ -904,10 +906,11 @@ export class ConsultationBookingService{
     "'YYYY-MM-DD"+'"'+"T"+'"'+"HH24:MI:SS.US"+'"'+"Z"+'"'+"') AS cursor_at "+
     "FROM cg15_consultation_appointment a "+
     "WHERE a.root_realm_id=$1 AND a.patient_id=$2 "+
-    "AND ($4::timestamptz IS NULL OR "+
+    "AND ($6::text='' OR a.booking_state=$6) "+
+    "AND ($4::timestamptz IS NULL OR "
     "(a.created_at,a.id)<($4::timestamptz,$5::uuid)) "+
     "ORDER BY a.created_at DESC,a.id DESC LIMIT $3",
-    [actor.realmId,patient.id,limit+1,afterAt,afterId]);
+    [actor.realmId,patient.id,limit+1,afterAt,afterId,status]);
    await tx.query("COMMIT");open=false;
    const items=row.rows.slice(0,limit),last=items.at(-1);
    return {items:items.map(presentBooking),next:row.rows.length>limit&&last?
