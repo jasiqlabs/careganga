@@ -182,7 +182,7 @@ export function PatientProfilePanel(){
        <label>One-time code
         <input inputMode="numeric" autoComplete="one-time-code" value={verificationCode}
          onChange={e=>setVerificationCode(e.target.value)} maxLength={10}/></label>
-       <button type="button" disabled={busy||!/^\\d{4,10}$/.test(verificationCode)}
+       <button type="button" disabled={busy||!/^\d{4,10}$/.test(verificationCode)}
         onClick={()=>void confirmVerification()}>Verify code</button>
       </div>}
     </section>}
