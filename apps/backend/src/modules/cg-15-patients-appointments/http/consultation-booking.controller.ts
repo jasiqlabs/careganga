@@ -43,8 +43,9 @@ export class ConsultationBookingController{
  }
  @Get("me")
  @Header("Cache-Control","private, no-store")
- mine(@Headers("authorization")bearer:string,@Query("limit")limit?:string){
-  return this.bookings.mine(bearer,limit===undefined?20:Number(limit));
+ mine(@Headers("authorization")bearer:string,@Query("limit")limit?:string,
+  @Query("after")after?:string){
+  return this.bookings.mine(bearer,limit===undefined?20:Number(limit),after);
  }
  @Get("me/:bookingRef/calendar.ics")
  @Header("Cache-Control","private, no-store")
