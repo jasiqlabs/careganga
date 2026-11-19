@@ -26,7 +26,8 @@
     "verify:cg15-us003-source": "node scripts/verify-cg15-us003-source.mjs",
     "verify:cg15-us004-us008-source": "node scripts/verify-cg15-us004-us008-source.mjs",
     "verify:cg15-migrations-source": "node scripts/verify-cg15-migrations-source.mjs",
-    "verify:cg15-communications-source": "node scripts/verify-cg15-communications-source.mjs"
+    "verify:cg15-communications-source": "node scripts/verify-cg15-communications-source.mjs",
+    "verify:cg15-clinician-source": "node scripts/verify-cg15-clinician-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
