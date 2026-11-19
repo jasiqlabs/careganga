@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterConsultationSlip} from "./center-consultation-slip";
 import {CenterQrCameraScanner} from "./center-qr-camera-scanner";
+import {ClinicianVisitHistory} from "./clinician-visit-history";
 type Center={centerRef:string;centerName:string;timeZone:string};
 type ClinicianAssignment={doctorRef:string;centerRef:string};
 type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:string;
@@ -331,6 +332,10 @@ export function CenterVisitQueue(){
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN",{
      timeZone:item.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
     <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
+    {item.consentGranted&&item.visitRef&&canClinicalManage&&
+     clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&
+     <ClinicianVisitHistory key={center+":"+item.appointmentRef}
+      centerRef={center} bookingRef={item.appointmentRef}/>}
     <button type="button" disabled={historyBusy}
      aria-expanded={historyRef===item.appointmentRef}
      onClick={()=>{if(historyRef===item.appointmentRef){
