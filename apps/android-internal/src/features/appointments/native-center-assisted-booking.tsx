@@ -12,7 +12,7 @@ type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;bookabl
 type Daily={status:string;doctorName:string;centerName:string;consultationFeeMinor:string|null;
  consultationFeeVersion:number|null;timeZone:string;slots:Slot[]};
 type Hold={holdRef:string;status:string;expiresAt:string;consultationFeeMinor:string;feeVersion:number};
-type Booking={bookingId:string;bookingStatus:string;collectionStatus:string;
+type Booking={bookingRef:string;bookingId:string;bookingStatus:string;collectionStatus:string;
  consultationFeeMinor:string};
 type Attempt={signature:string;key:string;body:Record<string,unknown>};
 const VIRTUAL=/^CGP-[A-F0-9]{16}$/;
@@ -61,6 +61,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
  const [uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
  const [phase,setPhase]=useState<"HOLD"|"CONFIRM"|null>(null);
  const holdAttempt=useRef<Attempt|null>(null),confirmAttempt=useRef<Attempt|null>(null);
+ const slipKey=useRef<string|null>(null);
  const serial=useRef(0);
  const expired=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -74,7 +75,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
  const clear=()=>{
   setPatientId("");setCode("");setHold(null);setBooking(null);setChosenSlot(null);
   setUncertain(false);setPhase(null);setMessage("");
-  holdAttempt.current=null;confirmAttempt.current=null;
+  holdAttempt.current=null;confirmAttempt.current=null;slipKey.current=null;
  };
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -159,6 +160,34 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
    }
   }finally{setBusy(false);}
  }
+ /** One original private CG19 slip after actual committed staff booking.
+  * A failed document issue never undoes or misrepresents the appointment.
+  * Recover original slip status before reusing the same issue key.
+  */
+ async function issueCurrentSlip(ref:string):Promise<boolean>{
+  if(!/^[a-f0-9-]{36}$/i.test(ref))return false;
+  const uri="/api/v1/appointments/slips/staff/"+encodeURIComponent(ref);
+  try{
+   const statusReply=await identityRequest(uri+"/status",{
+    cache:"no-store",headers:{Authorization:"Bearer "+token}});
+   if(!statusReply.ok){if(statusReply.status===401)onExpired();return false;}
+   const status:unknown=await statusReply.json().catch(()=>null);
+   if(!status||typeof status!=="object"||!("status" in status))return false;
+   if(status.status==="ISSUED"&&"canDownload" in status&&status.canDownload===true)
+    return true;
+   if(status.status!=="NOT_ISSUED")return false;
+   if(!slipKey.current)slipKey.current=Crypto.randomUUID();
+   const issuedReply=await identityRequest(uri+"/issue",{
+    method:"POST",cache:"no-store",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify({requestKey:slipKey.current})
+   });
+   if(!issuedReply.ok){if(issuedReply.status===401)onExpired();return false;}
+   const data:unknown=await issuedReply.json().catch(()=>null);
+   return !!data&&typeof data==="object"&&"status" in data&&
+    data.status==="ISSUED"&&"confirmed" in data&&data.confirmed===true;
+  }catch{return false;}
+ }
  async function confirm(retry=false){
   if(busy||(!retry&&uncertain)||!hold||booking)return;
   if(Date.parse(hold.expiresAt)<=Date.now()){
@@ -175,7 +204,10 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
    const result=await api<Booking>(token,"confirm","POST",{
     ...attempt.body,requestKey:attempt.key});
    setBooking(result);setUncertain(false);
-   setMessage("Consultation confirmed. Payment is due at this center.");
+   const slip=await issueCurrentSlip(result.bookingRef);
+   setMessage(slip?
+    "Consultation confirmed. The original private slip is issued. Payment is due at this center.":
+    "Consultation confirmed. Payment is due at this center. Check the private center slip before giving the patient a document.");
   }catch(e){
    if(e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status<500){
     setUncertain(false);expired(e);
@@ -190,7 +222,10 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
     const record=await api<Booking>(token,"confirmations/by-request/"+
      confirmAttempt.current.key);
     setBooking(record);setUncertain(false);
-    setMessage("The original consultation was confirmed.");
+    const slip=await issueCurrentSlip(record.bookingRef);
+    setMessage(slip?
+     "Original consultation confirmed. Its private slip is issued.":
+     "Original consultation confirmed. Check its original private slip status.");
    }else if(phase==="HOLD"&&holdAttempt.current){
     const record=await api<Hold>(token,"holds/by-request/"+
      holdAttempt.current.key);
@@ -264,6 +299,8 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
     <Text style={styles.title}>Confirmed: {booking.bookingId}</Text>
     <Text style={styles.note}>Appointment {booking.bookingStatus}, payment
      {booking.collectionStatus}; consultation {money(booking.consultationFeeMinor)}.</Text>
+    <Text style={styles.note}>Your current authorized center may reopen this
+     booking in Consultation Check-In to review its original private slip.</Text>
     {button("Book another patient",clear,busy)}
    </View>}
    {uncertain&&<View style={styles.card}>
