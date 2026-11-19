@@ -258,22 +258,41 @@ export class ConsultationBookingService{
    slot:{scheduleId:scheduleRow.schedule_id,revisionId:scheduleRow.revision_id,
     minutes:scheduleRow.slot_minutes}};
  }
- async hold(bearer:string,input:unknown){
+ async holdForCenter(bearer:string,input:unknown){
+  return this.hold(bearer,input,true);
+ }
+ async confirmForCenter(bearer:string,input:unknown){
+  return this.confirm(bearer,input,true);
+ }
+ async hold(bearer:string,input:unknown,assisted=false){
   const actor=await this.identity.verifySession(bearer);
   const v=body(input,["requestKey","doctorRef","centerRef","startAt","endAt",
-   "acceptedFeeMinor","acceptedFeeVersion","paymentMode"]);
+   "acceptedFeeMinor","acceptedFeeVersion","paymentMode",
+   ...(assisted?["virtualPatientId","authorizationCode"]:[])]);
   const key=uuid(v.requestKey),doctorId=uuid(v.doctorRef),centerId=uuid(v.centerRef);
   const start=epoch(v.startAt),end=epoch(v.endAt);
   const fee=String(v.acceptedFeeMinor??"");
   if(!/^\d{1,11}$/.test(fee)||!Number.isSafeInteger(v.acceptedFeeVersion)||
    v.paymentMode!=="PAY_AT_CENTER")throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+  const patientDisplay=assisted?v.virtualPatientId:"";
+  const authorization=assisted?v.authorizationCode:"";
+  if(assisted&&(typeof patientDisplay!=="string"||
+   !/^CGP-[A-F0-9]{16}$/.test(patientDisplay)||
+   typeof authorization!=="string"||
+   !/^CGB-[A-F0-9]{24}$/.test(authorization)))
+   throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+  const authorizationDigest=assisted?createHash("sha256")
+   .update(String(authorization)).digest("hex"):"";
   const signature=SHA({doctorId,centerId,start:start.toISOString(),end:end.toISOString(),
-   fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER"});
+   fee,feeVersion:v.acceptedFeeVersion,paymentMode:"PAY_AT_CENTER",
+   ...(assisted?{patientDisplay,authorizationDigest}:{})});
   const minutes=holdMinutes();
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
    await this.doctorLock(tx,actor,doctorId);
+   if(assisted)await this.centerScope.assertCurrent(
+    tx,actor,centerId,"health.patients.intake");
    const existing=await tx.query<Hold>(
     "SELECT * FROM cg15_consultation_hold WHERE root_realm_id=$1 "+
     "AND created_by_account=$2 AND request_key=$3 FOR UPDATE",
@@ -285,7 +304,11 @@ export class ConsultationBookingService{
     await tx.query("COMMIT");open=false;
     return presentHold(old);
    }
-   const eligible=await this.eligible(tx,actor,doctorId,centerId,start,end);
+   const assistedPatient=assisted?
+    await this.assistedPatientForHold(tx,actor,centerId,
+     String(patientDisplay),authorizationDigest):undefined;
+   const eligible=await this.eligible(
+    tx,actor,doctorId,centerId,start,end,assistedPatient);
    if(eligible.feeMinor!==fee||eligible.feeVersion!==v.acceptedFeeVersion)
     throw new ConflictException({code:"CG15_BOOKING_PRICE_CHANGED"});
    const id=randomUUID();
@@ -303,6 +326,16 @@ export class ConsultationBookingService{
     "INSERT INTO cg15_doctor_reservation(root_realm_id,hold_id,doctor_id,center_id,"+
     "association_id,start_at,end_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,'HELD')",
     [actor.realmId,id,doctorId,centerId,eligible.source.association_ref,start,end]);
+   if(assistedPatient){
+    const consumed=await tx.query(
+     "UPDATE cg15_patient_assisted_booking_code "+
+     "SET consumed_at=now(),consumed_by_account=$3,hold_id=$4 "+
+     "WHERE root_realm_id=$1 AND id=$2 AND consumed_at IS NULL "+
+     "AND revoked_at IS NULL AND expires_at>now()",
+     [actor.realmId,assistedPatient.authorization_id,actor.accountId,id]);
+    if(consumed.rowCount!==1)
+     throw new ConflictException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
+   }
    await tx.query("COMMIT");open=false;
    return presentHold(inserted.rows[0]);
   }catch(e){if(open)await tx.query("ROLLBACK");
