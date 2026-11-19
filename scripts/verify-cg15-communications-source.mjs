@@ -7,6 +7,7 @@ const root=resolve(import.meta.dirname,"..");
 const read=p=>readFileSync(resolve(root,p),"utf8");
 const src={
  db:read("apps/backend/db/migrations/1433_cg19_appointment_event_notification_source.sql"),
+ recoveryIndex:read("apps/backend/db/migrations/1435_cg19_appointment_pending_recovery_global.sql"),
  captured:read("apps/backend/src/modules/cg-19-documents-notifications/application/notification.service.ts"),
  worker:read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/communication-worker.ts"),
  delivery:read("apps/backend/src/modules/cg-19-documents-notifications/application/delivery.service.ts"),
@@ -61,6 +62,17 @@ const checks=[
   src.worker.includes("captureCommittedAppointments(realm)")&&
   src.worker.includes("captureCommittedAppointments(this.rootRef)")&&
   src.worker.includes("UNLISTEN cg19_appointment_committed")],
+ ["one cross-root bounded missed queue/appointment source recovery, no per-root idle polling",
+  src.worker.includes("private async reconcilePendingAppointments()")&&
+  src.worker.includes("SELECT realm_id FROM cg19_appointment_event_outbox")&&
+  src.worker.includes("WHERE state='PENDING'")&&
+  src.worker.includes("ORDER BY recorded_at,realm_id,event_id LIMIT 64")&&
+  src.worker.includes("await this.reconcilePendingAppointments()")&&
+  src.worker.includes("this.source.captureCommittedAppointments(root)")&&
+  src.captured.includes("LIMIT 25 FOR UPDATE OF ob SKIP LOCKED")&&
+  src.recoveryIndex.includes("CREATE INDEX ix_cg19_appointment_pending_recovery_global")&&
+  src.recoveryIndex.includes("ON cg19_appointment_event_outbox(recorded_at,realm_id,event_id)")&&
+  src.recoveryIndex.includes("WHERE state='PENDING'")],
  ["original story set preserved and local command wired",
   src.pkg.includes("verify:cg15-communications-source")&&
   Array.from({length:8},(_,n)=>n+1).every(n=>
