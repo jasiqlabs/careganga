@@ -101,6 +101,77 @@ export class ConsultationQueueService{
   * bounded by immutable revision. No clinical notes, consent proof, phone,
   * medical file URLs, diagnostic source, or other-center patient exposure.
   */
+ /**
+  * Original clinician-only, purpose-limited patient consultation timeline.
+  * No receptionist may call this endpoint. The read is anchored to a genuine
+  * checked-in consultation with the actual signed-in verified doctor, and
+  * returns only that doctor's prior operational visits at this SAME center.
+  * No phone, diagnosis, note, unscanned file, or Center B consultation.
+  */
+ async clinicalHistory(bearer:string,centerRaw:string,bookingRaw:string,beforeRaw?:string){
+  const actor=await this.identity.verifySession(bearer);
+  const center=param(centerRaw),booking=param(bookingRaw);
+  const cursor=/^(\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{3}Z)_([a-f0-9-]{36})$/i;
+  let at:string|null=null,prior:string|null=null;
+  if(beforeRaw!==undefined){
+   const m=cursor.exec(beforeRaw);
+   if(!m||!ID.test(m[2])||!Number.isFinite(Date.parse(m[1]))||
+     new Date(m[1]).toISOString()!==m[1])
+    throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+   at=m[1];prior=m[2];
+  }
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   // Both independent CG01 capabilities and a real current CG14 center
+   // membership are revalidated inside this exact read transaction.
+   await this.scope(tx,actor,center);
+   await this.centers.assertCurrent(tx,actor,center,"health.visits.clinical.manage");
+   const source=await tx.query<{patient_id:string;doctor_id:string}>(
+    "SELECT a.patient_id,a.doctor_id FROM cg15_consultation_appointment a "+
+    "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id "+
+    "AND p.id=a.patient_id "+
+    "JOIN cg15_visit_queue v ON v.root_realm_id=a.root_realm_id "+
+    "AND v.appointment_id=a.id AND v.center_id=$2 "+
+    "WHERE a.root_realm_id=$1 AND a.center_id=$2 AND a.id=$3 "+
+    "AND p.profile_status='VERIFIED' "+
+    "AND v.state IN('ARRIVED','WAITING','IN_CONSULTATION','COMPLETED') "+
+    "FOR SHARE OF a,p,v",
+    [actor.realmId,center,booking]);
+   if(!source.rows[0])throw new NotFoundException({code:"CG15_QUEUE_NOT_FOUND"});
+   const src=source.rows[0];
+   await this.clinicians.assertCurrentAppointmentClinician(
+    tx,actor,center,src.doctor_id);
+   const allowed=await tx.query(
+    "SELECT 1 FROM cg15_patient_identity_event identity "+
+    "WHERE identity.root_realm_id=$1 AND identity.patient_id=$2 "+
+    "AND (SELECT c.granted FROM cg15_patient_consent c "+
+    "WHERE c.root_realm_id=identity.root_realm_id "+
+    "AND c.patient_id=identity.patient_id AND c.purpose='PATIENT_CARE' "+
+    "ORDER BY c.revision_no DESC LIMIT 1)=true LIMIT 1",
+    [actor.realmId,src.patient_id]);
+   if(!allowed.rowCount)throw new NotFoundException({code:"CG15_QUEUE_NOT_FOUND"});
+   const visitRows=await tx.query<{id:string;booking_display_id:string;
+    start_at:Date;booking_state:string}>(
+    "SELECT a.id,a.booking_display_id,a.start_at,a.booking_state "+
+    "FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=$1 AND a.center_id=$2 "+
+    "AND a.patient_id=$3 AND a.doctor_id=$4 "+
+    "AND (a.start_at,a.id)<=(SELECT start_at,id FROM "+
+    "cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$5) "+
+    "AND ($6::timestamptz IS NULL OR "+
+    "(a.start_at,a.id)<($6::timestamptz,$7::uuid)) "+
+    "ORDER BY a.start_at DESC,a.id DESC LIMIT 26",
+    [actor.realmId,center,src.patient_id,src.doctor_id,booking,at,prior]);
+   const page=visitRows.rows.slice(0,25);
+   await tx.query("COMMIT");open=false;
+   return {appointmentRef:booking,items:page.map(x=>({
+    bookingId:x.booking_display_id,consultationAt:x.start_at.toISOString(),
+    status:x.booking_state})),next:visitRows.rows.length>25&&page.length?
+    page[page.length-1].start_at.toISOString()+"_"+page[page.length-1].id:null};
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async bookingHistory(bearer:string,centerRaw:string,bookingRaw:string,beforeRaw?:string){
   const actor=await this.identity.verifySession(bearer),
    center=param(centerRaw),bookingRef=param(bookingRaw);
