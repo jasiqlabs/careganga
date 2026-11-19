@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {DoctorSchedulePreview} from "./doctor-schedule-preview";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Mode="centers"|"doctors";
@@ -359,6 +360,8 @@ export function PublicHealthcareDirectory({onExit}:{onExit:()=>void}){
      {label("View center",()=>void show({kind:"center",slug:c.centerSlug}))}
     </View>)}
     <Text style={styles.helper}>{doctorDetails.notice}</Text>
+    {selection?.kind==="doctor"&&
+     <DoctorSchedulePreview key={selection.ref} doctorRef={selection.ref}/>}
    </View>:null}
    {state.status==="LOADING"&&<ActivityIndicator accessibilityLabel="Checking current verified listings"/>}
    {state.status==="ERROR"&&<View style={styles.card}>
