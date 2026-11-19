@@ -3,6 +3,7 @@ import Link from "next/link";
 import {notFound} from "next/navigation";
 import {publicDoctor} from "../../../../../features/health-network/public-directory-source";
 import {PatientBookingAction} from "../../../../../features/appointments/patient-booking-action";
+import {PatientRescheduleAction} from "../../../../../features/appointments/patient-reschedule-action";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={title:"Doctor working hours | CareGanga",
  description:"Preview verified doctor's published working schedule. Pay-at-center consultations may be available.",
@@ -47,6 +48,10 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const time=typeof query.time==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(query.time)?
   query.time:"";
  const mode=query.mode==="time"?"time":"center";
+ const rescheduleRef=typeof query.reschedule==="string"&&ID.test(query.reschedule)?
+  query.reschedule:"";
+ const version=typeof query.version==="string"?Number(query.version):0;
+ const validReschedule=!!rescheduleRef&&Number.isSafeInteger(version)&&version>0;
  const options=date?await source<Options>("doctor/"+
   encodeURIComponent(doctorRef)+"/center-options?date="+encodeURIComponent(date)):null;
  const validCenter=!!options?.centers.some(x=>x.centerRef===centerRef);
@@ -67,7 +72,11 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
    <p>Choose a day and center, or look up a time across the doctor's verified centers.
     Available times are advisory until a temporary reservation succeeds.
     Appointments are confirmed only after final review; payment is due at the center.</p>
+   {validReschedule&&<p>You are choosing a new time for an existing appointment.
+     Your original time is retained until the change is confirmed.</p>}
    <form method="get" style={{display:"grid",gap:16,maxWidth:680}}>
+    {validReschedule&&<><input type="hidden" name="reschedule" value={rescheduleRef}/>
+     <input type="hidden" name="version" value={version}/></>}
     <fieldset style={{border:"1px solid #d7dfdb",borderRadius:12,padding:14}}>
      <legend>How would you like to search?</legend>
      <label style={{display:"inline-flex",gap:8,marginRight:18}}>
@@ -119,6 +128,13 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
       {slot.startLocal}–{slot.endLocal}
       {slot.bookable&&selected.consultationFeeMinor!==null&&
        selected.consultationFeeVersion!==null?
+       validReschedule?
+       <PatientRescheduleAction bookingRef={rescheduleRef} expectedVersion={version}
+        doctorRef={doctorRef} centerRef={centerRef}
+        doctorName={selected.doctorName} centerName={selected.centerName}
+        startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
+        feeMinor={selected.consultationFeeMinor}
+        feeVersion={selected.consultationFeeVersion}/>:
        <PatientBookingAction doctorRef={doctorRef} centerRef={centerRef}
         doctorName={selected.doctorName} centerName={selected.centerName}
         startAt={slot.startAt} endAt={slot.endAt} timeZone={selected.timeZone}
@@ -138,6 +154,13 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
       Time zone: {c.timeZone}.
       {c.bookable&&c.consultationFeeMinor!==null&&
        c.consultationFeeVersion!==null?
+       validReschedule?
+       <PatientRescheduleAction bookingRef={rescheduleRef} expectedVersion={version}
+        doctorRef={doctorRef} centerRef={c.centerRef}
+        doctorName={doctor.doctorName} centerName={c.centerName}
+        startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
+        feeMinor={c.consultationFeeMinor}
+        feeVersion={c.consultationFeeVersion}/>:
        <PatientBookingAction doctorRef={doctorRef} centerRef={c.centerRef}
         doctorName={doctor.doctorName} centerName={c.centerName}
         startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
