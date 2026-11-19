@@ -94,7 +94,7 @@ export class ConsultationBookingService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly identity:SessionService,
   private readonly directory:HealthPublicDirectoryService){}
- private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor){
+ private async ownPatient(tx:PoolClient,actor:VerifiedFoundationActor,requireConsent=true){
   const r=await tx.query<Patient>(
    "SELECT p.id,p.profile_status,a.contact_phone_verified_at AS verified,"+
    "(SELECT c.granted FROM cg15_patient_consent c "+
@@ -108,8 +108,9 @@ export class ConsultationBookingService{
    "AND a.status='ACTIVE' FOR SHARE OF p,a,l",
    [actor.realmId,actor.accountId]);
   const patient=r.rows[0];
-  if(!patient||patient.consent_granted!==true||!patient.verified||
-    !["PROVISIONAL","VERIFIED"].includes(patient.profile_status))
+  if(!patient||!patient.verified||
+    !["PROVISIONAL","VERIFIED"].includes(patient.profile_status)||
+    (requireConsent&&patient.consent_granted!==true))
    throw new ForbiddenException({code:"CG15_BOOKING_PATIENT_NOT_READY"});
   return patient;
  }
@@ -254,7 +255,7 @@ export class ConsultationBookingService{
     "AND id=$2 AND created_by_account=$3",
     [actor.realmId,id,actor.accountId]);
    if(!row.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
-   await this.ownPatient(tx,actor);
+   await this.ownPatient(tx,actor,false);
    await tx.query("COMMIT");open=false;
    return presentHold(row.rows[0]);
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
@@ -353,7 +354,7 @@ export class ConsultationBookingService{
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
-   const patient=await this.ownPatient(tx,actor);
+   const patient=await this.ownPatient(tx,actor,false);
    const row=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
     "AND patient_id=$2 ORDER BY created_at DESC,id DESC LIMIT $3",
@@ -369,7 +370,7 @@ export class ConsultationBookingService{
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
-   const patient=await this.ownPatient(tx,actor);
+   const patient=await this.ownPatient(tx,actor,false);
    const r=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment "+
     "WHERE root_realm_id=$1 AND id=$2 AND patient_id=$3",
