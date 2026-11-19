@@ -27,6 +27,26 @@ export class DoctorScheduleController{
   @Body()body:unknown){
   return this.schedule.exception(token,"foundation",assoc,body);
  }
+ @Get("leave/ready")
+ @Header("Cache-Control","private, no-store")
+ readyLeaves(@Headers("authorization")token:string){
+  return this.schedule.readyLeaves(token);
+ }
+ @Post("leave/:caseRef/apply")
+ applyLeave(@Headers("authorization")token:string,@Param("caseRef")caseRef:string,
+  @Body()body:unknown){return this.schedule.applyLeave(token,caseRef,body);}
+ @Post("admin/:associationRef/exceptions/:exceptionRef/cancel")
+ adminCancel(@Headers("authorization")token:string,
+  @Param("associationRef")assoc:string,@Param("exceptionRef")exceptionRef:string,
+  @Body()body:unknown){
+  return this.schedule.cancelException(token,"foundation",assoc,exceptionRef,body);
+ }
+ @Post("my-centers/:centerRef/:associationRef/exceptions/:exceptionRef/cancel")
+ centerCancel(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("associationRef")assoc:string,
+  @Param("exceptionRef")exceptionRef:string,@Body()body:unknown){
+  return this.schedule.cancelException(token,"center",assoc,exceptionRef,body,center);
+ }
  @Get("my-centers/:centerRef")
  @Header("Cache-Control","private, no-store")
  center(@Headers("authorization")token:string,@Param("centerRef")center:string){
