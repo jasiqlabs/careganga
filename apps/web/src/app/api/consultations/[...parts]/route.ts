@@ -49,6 +49,13 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
   const params=new URLSearchParams();
   if(method==="GET"&&parts.length===1&&parts[0]==="me"){
    params.set("limit","20");
+   if([...req.nextUrl.searchParams.keys()].some(k=>!["after","status"].includes(k)))
+    return copy(400,"This appointment filter is not supported.");
+   const status=req.nextUrl.searchParams.get("status")??"";
+   if(status&&!["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION",
+    "COMPLETED","NO_SHOW","CANCELLED"].includes(status))
+    return copy(400,"Choose a supported appointment status.");
+   if(status)params.set("status",status);
    const after=req.nextUrl.searchParams.get("after");
    if(after!==null){
     if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z\|[a-f0-9-]{36}$/i.test(after)||
