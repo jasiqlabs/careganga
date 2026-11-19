@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
+import { AdminProfileWorkspace } from "../../../features/identity-access/admin-profile-workspace";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
+import { AuthWelcomeListener } from "../../../shared/auth-notification";
 import { ClinicianAccountAcceptance } from "../../../features/health-network/clinician-account-link";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
@@ -41,12 +43,12 @@ export default async function AdminHome() {
         if(permissions.ok){
           const effective=await permissions.json() as {actions?:{key?:string}[]};
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
-          canViewFinance=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.accounts.view");
-          canViewVouchers=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.vouchers.view");
           canViewHealthcare=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.providers.view");
           canEditOwnCenter=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.centers.draft.edit");
           canIntakePatients=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.patients.intake");
           canManageVisits=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.visits.manage");
+          canViewFinance=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.accounts.view");
+          canViewVouchers=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="finance.vouchers.view");
           canViewAccounts=Array.isArray(effective.actions)&&
             (effective.actions.some(x=>x.key==="accounts.view")||
               (effective.actions.some(x=>x.key==="accounts.create")&&
@@ -77,18 +79,25 @@ export default async function AdminHome() {
   if (invalidSession) redirect("/admin/login");
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
+    <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
     <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
-      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers} canViewHealthNetwork={canViewHealthcare} canViewPatientIntake={canIntakePatients} canViewVisitQueue={canManageVisits}/>
-    <main className="workspace"><header className="topbar"><div><h1>My account</h1><p>Verified Foundation access</p></div><Link href="/">View site</Link></header>
-    <section><h2>Signed in</h2><p>{current.displayName}</p><p>Role: {current.roleName}</p><p>Access: {current.scope}</p><p><Link href="/admin/password">Change password</Link></p>
+      canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers}
+      canViewHealthNetwork={canViewHealthcare} canViewPatientIntake={canIntakePatients}
+      canViewVisitQueue={canManageVisits}/>
+    <main className="workspace">
+      <AdminProfileWorkspace
+        displayName={current.displayName}
+        roleName={current.roleName}
+        scope={current.scope}
+        canViewSettings={canViewSettings}
+      />
       {canViewHealthcare&&<p><Link href="/admin/health-network">Healthcare provider registrations</Link></p>}
       {canEditOwnCenter&&<p><Link href="/center">My healthcare center</Link></p>}
       {canIntakePatients&&<p><Link href="/admin/health-network/patient-intake">Register a provisional patient</Link></p>}
       {canManageVisits&&<p><Link href="/admin/health-network/queue">My consultation queue</Link></p>}
-      <SignOutButton/></section>
-    <ClinicianAccountAcceptance/>
+      <ClinicianAccountAcceptance/>
     </main>
   </div>;
 }

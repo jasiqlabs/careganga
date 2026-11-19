@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,
+import {ActivityIndicator,Platform,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -13,15 +13,22 @@ async function contactApi<T>(path:string,method:"GET"|"POST"="GET",body?:object)
   if(!web||!/^https?:\/\//.test(web)||
     (process.env.NODE_ENV==="production"&&!web.startsWith("https://")))
     throw Error("UNAVAILABLE");
+  let resolvedWeb = web;
+  if (Platform.OS === "android" && (resolvedWeb.startsWith("http://localhost:") || resolvedWeb.startsWith("http://127.0.0.1:"))) {
+    resolvedWeb = resolvedWeb.replace(/localhost|127\.0\.0\.1/, "10.0.2.2");
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
   let response:Response;
   try{
-    response=await fetch(new URL("/api/support/"+path,web).toString(),{
+    response=await fetch(new URL("/api/support/"+path,resolvedWeb).toString(),{
       method,cache:"no-store",
       headers:body?{"Content-Type":"application/json"}:undefined,
       ...(body?{body:JSON.stringify(body)}:{}),
-      signal:AbortSignal.timeout(12000)
+      signal:controller.signal
     });
   }catch{throw Error("UNKNOWN")}
+  finally{clearTimeout(timer);}
   if(!response.ok)throw Error(response.status===429?"LIMIT":
     response.status===400?"INVALID":
     response.status===409?"CONFLICT":"UNKNOWN");
