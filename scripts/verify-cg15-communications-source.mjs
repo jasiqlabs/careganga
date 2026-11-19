@@ -51,6 +51,11 @@ const checks=[
   src.delivery.includes("consent.purpose='PATIENT_CARE'")&&
   src.delivery.includes("l.revoked_at IS NULL")&&
   src.delivery.includes("if(!own.rowCount)permitted=false")],
+ ["appointment inbox and read both recheck CURRENT ownership and consent",
+  src.captured.split("n.source_kind<>'CG15_APPOINTMENT' OR EXISTS(").length===3&&
+  src.captured.split("AND owned.revoked_at IS NULL").length===3&&
+  src.captured.split("appointment_event.id=n.cg15_appointment_event_id").length===3&&
+  src.captured.split("consent.purpose='PATIENT_CARE'").length>=4],
  ["worker catches original transactional NOTIFY and bounded recovery",
   src.worker.includes("LISTEN cg19_appointment_committed")&&
   src.worker.includes("captureCommittedAppointments(realm)")&&
