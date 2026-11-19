@@ -519,11 +519,9 @@ export class PatientProfileService{
    !/^CGL-[A-F0-9]{32}$/.test(v.authorizationCode))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const tokenHash=createHash("sha256").update(v.authorizationCode).digest("hex");
-  const c=await this.db.connect();let open=false;
-  try{
-   await c.query("BEGIN");open=true;
-   await this.activeAccount(c,actor,true);
-   const attempts=await c.query<{attempts:number}>(
+  // Meter every attempt in its OWN committed transaction. Rolling back an
+  // invalid link must never reset its brute-force counter.
+  const attempts=await this.db.query<{attempts:number}>(
     "INSERT INTO cg15_patient_claim_attempt_throttle("+
     "root_realm_id,account_id,window_started_at,attempts) VALUES($1,$2,now(),1) "+
     "ON CONFLICT(root_realm_id,account_id) DO UPDATE SET "+
@@ -534,9 +532,13 @@ export class PatientProfileService{
     "cg15_patient_claim_attempt_throttle.window_started_at "+
     "<now()-interval '15 minutes' THEN now() ELSE "+
     "cg15_patient_claim_attempt_throttle.window_started_at END RETURNING attempts",
-    [actor.realmId,actor.accountId]);
-   if((attempts.rows[0]?.attempts??7)>6)
-    throw new HttpException({code:"CG15_PATIENT_IDENTITY_RATE_LIMIT"},429);
+   [actor.realmId,actor.accountId]);
+  if((attempts.rows[0]?.attempts??7)>6)
+   throw new HttpException({code:"CG15_PATIENT_IDENTITY_RATE_LIMIT"},429);
+  const c=await this.db.connect();let open=false;
+  try{
+   await c.query("BEGIN");open=true;
+   await this.activeAccount(c,actor,true);
    const auth=await c.query<{
     id:string;patient_id:string;issued_by_account:string;
     recipient_account_id:string;used_at:Date|null;
