@@ -6,6 +6,13 @@ export class ConsultationQueueController{
  @Get("my-centers")
  @Header("Cache-Control","private, no-store")
  options(@Headers("authorization")bearer:string){return this.queue.options(bearer);}
+ @Get("my-centers/:centerRef/bookings/:bookingRef/clinical-history")
+ @Header("Cache-Control","private, no-store")
+ clinicalHistory(@Headers("authorization")bearer:string,
+  @Param("centerRef")center:string,@Param("bookingRef")booking:string,
+  @Query("before")before?:string){
+  return this.queue.clinicalHistory(bearer,center,booking,before);
+ }
  @Get("my-centers/:centerRef/bookings/:bookingRef/history")
  @Header("Cache-Control","private, no-store")
  history(@Headers("authorization")bearer:string,@Param("centerRef")center:string,
