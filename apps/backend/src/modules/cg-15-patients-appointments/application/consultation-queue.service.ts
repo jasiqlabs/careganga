@@ -108,6 +108,48 @@ export class ConsultationQueueService{
   }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
+ async verifySlipAtMyCenter(bearer:string,centerRaw:string,raw:unknown){
+  const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
+  const v=input(raw,["token"]);
+  if(typeof v.token!=="string"||!/^CGV-[A-F0-9]{24}$/.test(v.token))
+   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+  // The token is a random HMAC-backed status lookup, not identity or care consent.
+  // Only a currently affiliated center receptionist may resolve a booking.
+  const tokenHash=createHash("sha256").update(v.token).digest("hex");
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await this.scope(tx,actor,center);
+   const r=await tx.query<{
+    id:string;booking_display_id:string;patient_display_name:string;
+    doctor_name:string;start_at:Date;end_at:Date;time_zone:string;
+    booking_state:string;terms_revision:number
+   }>(
+    "SELECT a.id,a.booking_display_id,a.patient_display_name,"+
+    "a.doctor_name,a.start_at,a.end_at,a.time_zone,a.booking_state,a.terms_revision "+
+    "FROM cg19_consultation_slip d "+
+    "JOIN cg15_consultation_appointment a "+
+    "ON a.root_realm_id=d.root_realm_id AND a.id=d.appointment_id "+
+    "WHERE d.root_realm_id=$1 AND a.center_id=$2 AND d.qr_digest=$3 "+
+    "AND d.status='ISSUED' AND d.revoked_at IS NULL "+
+    "AND d.source_revision=a.terms_revision "+
+    "AND a.booking_state IN('CONFIRMED','ARRIVED','WAITING','IN_CONSULTATION') "+
+    "AND a.start_at>now()-interval '12 hours' "+
+    "AND a.end_at<now()+interval '30 days' LIMIT 1",
+    [actor.realmId,center,tokenHash]);
+   const item=r.rows[0];
+   await tx.query("COMMIT");open=false;
+   if(!item)return {valid:false};
+   return {valid:true,bookingRef:item.id,bookingId:item.booking_display_id,
+    patientName:item.patient_display_name,doctorName:item.doctor_name,
+    bookingStatus:item.booking_state,startAt:item.start_at.toISOString(),
+    timeZone:item.time_zone,
+    canCheckIn:item.booking_state==="CONFIRMED"&&
+      item.start_at.getTime()<=Date.now()+3*3600000&&
+      item.end_at.getTime()>=Date.now()-12*3600000};
+  }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
  async checkIn(bearer:string,centerRaw:string,raw:unknown){
   const actor=await this.identity.verifySession(bearer),center=param(centerRaw);
   const v=input(raw,["appointmentRef","requestKey","expectedVersion"]);
