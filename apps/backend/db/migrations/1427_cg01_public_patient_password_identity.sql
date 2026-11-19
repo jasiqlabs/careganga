@@ -27,6 +27,12 @@ INSERT INTO role(realm_id,name,normalized_name,description,is_protected,active)
 CREATE FUNCTION cg01_patient_public_role_immutable() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
+ IF TG_OP='DELETE' THEN
+  IF OLD.normalized_name='careganga patient' THEN
+   RAISE EXCEPTION 'Public patient role cannot be deleted';
+  END IF;
+  RETURN OLD;
+ END IF;
  IF OLD.normalized_name='careganga patient' OR NEW.normalized_name='careganga patient' THEN
   RAISE EXCEPTION 'Public patient role cannot be edited';
  END IF;
