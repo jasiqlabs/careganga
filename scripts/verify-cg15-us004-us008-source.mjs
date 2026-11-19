@@ -58,6 +58,7 @@ const s={
  webAdmin:read("apps/web/src/features/appointments/foundation-patient-bookings.tsx"),
  adminPage:read("apps/web/src/app/(admin)/admin/health-network/patients/page.tsx"),
  adminBff:read("apps/web/src/app/api/appointments/admin/patients/route.ts"),
+ centerScope:read("apps/backend/src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts"),
  roles:read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts"),
  nav:read("apps/web/src/shared/foundation-admin-nav.tsx"),
  catalog:read("apps/backend/src/core/http/safe-error-copy.ts"),
@@ -267,6 +268,21 @@ const checks=[
   s.bookingCtrl.includes('Get("confirmations/by-request/:requestKey")')&&
   s.webBooking.includes("confirmations/by-request/")&&
   s.nativeBooking.includes("holds/by-request/")],
+ ["staff cancellation uses explicit CG01 grant, current center scope, original lock and one event",
+  s.roles.includes('key:"health.appointments.cancel"')&&
+  s.centerScope.includes('"health.appointments.cancel"')&&
+  s.service.includes("async cancelForCenter(")&&
+  s.service.includes('tx,actor,centerRef,"health.appointments.cancel"')&&
+  s.service.includes('centerRef?"AND center_id=$3":""')&&
+  s.service.includes("private async cancelOriginal(")&&
+  s.service.includes("'CANCELLED'")&&
+  s.bookingCtrl.includes('Post("staff/centers/:centerRef/bookings/:bookingRef/cancel")')&&
+  s.staffBff.includes('p[2]==="bookings"&&ID.test(p[3])&&p[4]==="cancel"')&&
+  s.webQueue.includes('reason:"CENTER_REQUEST"')&&
+  s.webQueue.includes('Confirm center cancellation')&&
+  s.nativeQueue.includes('canCancel&&a.bookingStatus==="CONFIRMED"')&&
+  s.nativeQueue.includes('reason:"CENTER_REQUEST"')&&
+  s.internalApp.includes('canCancel={roleActions.includes("health.appointments.cancel")}')],
  ["patient-only hold status blocks staff-created reservations of other patients",
   s.service.includes("if(patient.id!==row.rows[0].patient_id)")&&
   s.service.includes('await this.ownPatient(tx,actor,false)')&&
