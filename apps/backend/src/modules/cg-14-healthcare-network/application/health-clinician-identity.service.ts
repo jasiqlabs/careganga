@@ -51,9 +51,16 @@ export class HealthClinicianIdentityService{
   if(typeof search!=="string"||search.trim().length>80||
     /[\u0000-\u001f\u007f]/.test(search))
    throw new BadRequestException({code:"HEALTH_CLINICIAN_INVALID"});
-  const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\ async propose(bearer:string,doctorRaw:string,raw:unknown){");
+  const term=search.trim().toLowerCase().replace(/[\\%_]/g,character=>"\\"+character);
   const r=await this.db.query<{id:string;display_name:string}>(
-   "SELECT a.id,a.display_name FROM account a "+
+   "SELECT DISTINCT a.id,a.display_name FROM account a "+
+   "JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id "+
+   "AND ar.revoked_at IS NULL "+
+   "JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=false "+
+   "JOIN role_grant visits ON visits.role_id=r.id "+
+   "AND visits.capability_key='health.visits.manage' "+
+   "JOIN role_grant clinical ON clinical.role_id=r.id "+
+   "AND clinical.capability_key='health.visits.clinical.manage' "+
    "WHERE a.realm_id=$1 AND a.status='ACTIVE' AND a.id<>$2 "+
    "AND ($3='' OR lower(a.display_name) LIKE $3 ESCAPE '\\') "+
    "AND NOT EXISTS(SELECT 1 FROM health_doctor_account_link link "+
@@ -89,8 +96,16 @@ export class HealthClinicianIdentityService{
     [actor.realmId,doctor]);
    if(!d.rowCount)throw new NotFoundException({code:"HEALTH_CLINICIAN_NOT_VERIFIED"});
    const a=await c.query(
-    "SELECT id FROM account WHERE realm_id=$1 AND id=$2 "+
-    "AND status='ACTIVE' FOR SHARE",
+    "SELECT a.id FROM account a WHERE a.realm_id=$1 AND a.id=$2 "+
+    "AND a.status='ACTIVE' AND EXISTS("+
+    "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
+    "AND r.active=true AND r.is_protected=false "+
+    "JOIN role_grant visits ON visits.role_id=r.id "+
+    "AND visits.capability_key='health.visits.manage' "+
+    "JOIN role_grant clinical ON clinical.role_id=r.id "+
+    "AND clinical.capability_key='health.visits.clinical.manage' "+
+    "WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id "+
+    "AND ar.revoked_at IS NULL) FOR SHARE OF a",
     [actor.realmId,account]);
    if(!a.rowCount)throw new NotFoundException({code:"HEALTH_CLINICIAN_ACCOUNT_UNAVAILABLE"});
    // A pending/active proposal is unique for BOTH source identities. A
