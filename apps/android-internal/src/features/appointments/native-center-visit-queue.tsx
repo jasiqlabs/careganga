@@ -10,7 +10,8 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:st
  consentGranted:boolean;startAt:string;endAt:string;bookingStatus:string;
  bookingVersion:number;visitRef:string|null;
  visitStatus:string|null;visitVersion:number|null;queueToken:string|null};
-type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canCancel:boolean;canClinicalManage:boolean;
+ onExit:()=>void;onExpired:()=>void};
 type Summary={centerRef:string;day:string;total:number;confirmed:number;arrived:number;
  waiting:number;inConsultation:number;completed:number;noShow:number;cancelled:number};
 type AuditEvent={revision:number;action:string;when:string;by:string;
@@ -46,7 +47,7 @@ async function request<T>(token:string,path:string,method="GET",body?:object):Pr
  }
  return await response.json() as T;
 }
-export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props){
+export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[offset,setOffset]=useState(0);
  const [items,setItems]=useState<Item[]>([]);
@@ -362,8 +363,8 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      {a.consentGranted&&a.bookingStatus==="CONFIRMED"&&
       button("Check in",()=>void change(a,"CHECK_IN"),busy||uncertain)}
      {a.visitStatus==="ARRIVED"&&button("Waiting",()=>void change(a,"WAITING"),busy||uncertain)}
-     {a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
-     {a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
+     {canClinicalManage&&a.visitStatus==="WAITING"&&button("In consultation",()=>void change(a,"IN_CONSULTATION"),busy||uncertain)}
+     {canClinicalManage&&a.visitStatus==="IN_CONSULTATION"&&button("Complete",()=>void change(a,"COMPLETED"),busy||uncertain)}
      {a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
       Number.isFinite(Date.parse(a.endAt))&&Date.parse(a.endAt)<=Date.now()&&
       button("Mark missed appointment",()=>void change(a,"NO_SHOW"),busy||uncertain)}
