@@ -101,6 +101,70 @@ export class CenterPatientIntakeService{
   * current code issued by this authenticated patient's own CG01 account.
   * Phone numbers and display IDs alone never authorize an identity claim.
   */
+ /** Clinic-created, still-unclaimed patient: only the issuing receptionist
+  * can hand a verified person a short-lived claim code. This cannot transfer
+  * ownership by shared family number or Virtual Patient ID alone.
+  */
+ async issueClaim(bearer:string,centerRaw:string,input:unknown){
+  const actor=await this.sessions.verifySession(bearer);
+  const centerRef=uuid(centerRaw,"centerRef"),v=body(input);
+  if(Object.keys(v).some(k=>!["requestKey","virtualPatientId",
+   "identityCheckedInPerson"].includes(k))||
+   typeof v.virtualPatientId!=="string"||
+   !/^CGP-[A-F0-9]{16}$/.test(v.virtualPatientId)||
+   v.identityCheckedInPerson!==true)
+   throw new BadRequestException({code:"CG15_PATIENT_IDENTITY_PROOF_REQUIRED"});
+  const key=uuid(v.requestKey),display=v.virtualPatientId;
+  const tx=await this.db.connect();let active=false;
+  try{
+   await tx.query("BEGIN");active=true;
+   await this.scope(tx,actor,centerRef);
+   const source=await tx.query<{id:string;patient_id:string;profile_status:string}>(
+    "SELECT i.id,i.patient_id,p.profile_status FROM cg15_patient_center_intake i "+
+    "JOIN cg15_patient p ON p.root_realm_id=i.root_realm_id AND p.id=i.patient_id "+
+    "WHERE i.root_realm_id=$1 AND i.center_id=$2 "+
+    "AND i.created_by_account=$3 AND p.virtual_display_id=$4 "+
+    "FOR UPDATE OF i,p",
+    [actor.realmId,centerRef,actor.accountId,display]);
+   const patient=source.rows[0];
+   if(!patient||patient.profile_status!=="PROVISIONAL")
+    throw new NotFoundException({code:"CG15_PATIENT_INTAKE_NOT_FOUND"});
+   const owner=await tx.query(
+    "SELECT 1 FROM cg15_patient_account_link WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 AND revoked_at IS NULL LIMIT 1",
+    [actor.realmId,patient.patient_id]);
+   if(owner.rowCount)throw new ConflictException({code:"CG15_PATIENT_ALREADY_REGISTERED"});
+   const previous=await tx.query<{patient_id:string}>(
+    "SELECT patient_id FROM cg15_patient_center_claim WHERE root_realm_id=$1 "+
+    "AND issued_by_account=$2 AND request_key=$3",
+    [actor.realmId,actor.accountId,key]);
+   if(previous.rows[0]){
+    if(previous.rows[0].patient_id!==patient.patient_id)
+     throw new ConflictException({code:"CG15_PATIENT_REQUEST_CONFLICT"});
+    await tx.query("COMMIT");active=false;
+    return {status:"ALREADY_ISSUED",virtualPatientId:display,
+     message:"The prior code was issued but cannot be redisplayed. If it was lost, request a new code with a fresh request key."};
+   }
+   await tx.query(
+    "UPDATE cg15_patient_center_claim SET revoked_at=now() "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND claimed_at IS NULL AND revoked_at IS NULL",
+    [actor.realmId,patient.patient_id]);
+   const code="CGC-"+randomBytes(12).toString("hex").toUpperCase();
+   const digest=createHash("sha256").update(code).digest("hex");
+   const inserted=await tx.query<{expires_at:Date}>(
+    "INSERT INTO cg15_patient_center_claim(root_realm_id,intake_id,patient_id,"+
+    "center_id,issued_by_account,request_key,claim_digest,"+
+    "identity_checked_in_person,expires_at) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,true,now()+interval '15 minutes') RETURNING expires_at",
+    [actor.realmId,patient.id,patient.patient_id,centerRef,actor.accountId,key,digest]);
+   await tx.query("COMMIT");active=false;
+   return {status:"ISSUED",virtualPatientId:display,claimCode:code,
+    expiresAt:inserted.rows[0].expires_at.toISOString(),
+    message:"Give the code only to this verified person. They must sign in to their own account, accept current patient-care consent, and claim within 15 minutes."};
+  }catch(e){if(active)await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+
  async verifyIdentity(bearer:string,centerRaw:string,input:unknown){
   const actor=await this.sessions.verifySession(bearer);
   const centerRef=uuid(centerRaw,"centerRef"),v=body(input);
