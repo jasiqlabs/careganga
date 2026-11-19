@@ -24,7 +24,8 @@ const files=[
  "1429_cg15_patient_center_intake_claim.sql",
  "1430_cg15_patient_assisted_booking_authorization.sql",
  "1431_cg15_patient_claim_attempt_throttle.sql",
- "1432_cg15_center_day_appointment_index.sql"
+ "1432_cg15_center_day_appointment_index.sql",
+ "1433_cg19_appointment_event_notification_source.sql"
 ];
 function inspect(sql){
  const errors=[],statements=[],parentheses=[];
@@ -136,6 +137,15 @@ for(const name of files){
    !source.includes("cg15_assisted_booking_code_immutable")||
    !source.includes("WHERE consumed_at IS NULL AND revoked_at IS NULL")))
   result.errors.push("Patient-authorized clinic booking proof source is incomplete");
+ if(name.startsWith("1433")&&
+  (!source.includes("CREATE TABLE cg19_appointment_event_outbox")||
+   !source.includes("PRIMARY KEY(realm_id,event_id)")||
+   !source.includes("WHERE state='PENDING'")||
+   !source.includes("REFERENCES cg15_appointment_event(root_realm_id,id)")||
+   !source.includes("source_kind IN ('CG03_DECISION','NOTICE','CG15_APPOINTMENT')")||
+   !source.includes("pg_notify('cg19_appointment_committed'")||
+   !source.includes("AFTER INSERT ON cg15_appointment_event")))
+  result.errors.push("Original CG15 -> CG19 transactional notification outbox is incomplete");
  if(name.startsWith("1432")&&
   (!source.includes("CREATE INDEX ix_cg15_appointment_center_local_day")||
    !source.includes("((start_at AT TIME ZONE time_zone)::date)")||
