@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { showAuthNotification } from "../../shared/auth-notification";
+import { mapAuthError, mapAuthClientError, type AuthErrorPayload } from "./auth-error-mapper";
 
 interface LoginFormProps {
   onForgotPassword?: () => void;
@@ -85,73 +86,25 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
         })
       });
 
-      const data = (await response.json().catch(() => null)) as {
-        message?: string;
-        code?: string;
-        displayName?: string;
-        signedIn?: boolean;
-        field?: string;
-      } | null;
+      const data = (await response.json().catch(() => null)) as AuthErrorPayload | null;
 
       if (!response.ok) {
         setLoading(false);
+        const mapped = mapAuthError(response.status, data);
 
-        const safe = data && typeof data === "object" && !Array.isArray(data)
-          ? (data as Record<string, unknown>)
-          : {};
-
-        if (response.status === 400) {
-          const target = safe.field === "identifier" || safe.field === "password" ? safe.field : null;
-          const msg =
-            typeof safe.message === "string" && safe.message.length >= 10 && safe.message.length <= 220
-              ? safe.message
-              : "Check the mobile number/email and password fields before signing in.";
-          if (target === "identifier") {
-            setIdentifierError(msg);
-          } else if (target === "password") {
-            setPasswordError(msg);
-          } else {
-            setGlobalError(msg);
-          }
-          showAuthNotification({
-            type: "ERROR",
-            title: "Validation Error",
-            message: msg
-          });
-        } else if (response.status === 401) {
-          // Identity failures share one generic server-owned, Admin-editable message.
-          // Never reveal whether the identifier exists or the account is inactive.
-          const isSafe =
-            safe.code === "IDENTITY_LOGIN_INVALID" &&
-            typeof safe.message === "string" &&
-            safe.message.length >= 16 &&
-            safe.message.length <= 220;
-          const msg = isSafe
-            ? (safe.message as string)
-            : "Mobile number/email or password could not be confirmed.";
-          setGlobalError(msg);
-          showAuthNotification({
-            type: "ERROR",
-            title: "Sign-In Failed",
-            message: msg
-          });
-        } else if (response.status === 429) {
-          const msg = "Too many login attempts. Please try again later.";
-          setGlobalError(msg);
-          showAuthNotification({
-            type: "ERROR",
-            title: "Too Many Attempts",
-            message: msg
-          });
+        if (mapped.field === "identifier") {
+          setIdentifierError(mapped.message);
+        } else if (mapped.field === "password") {
+          setPasswordError(mapped.message);
         } else {
-          const msg = "Sign-in cannot be confirmed right now. Check your connection and retry.";
-          setGlobalError(msg);
-          showAuthNotification({
-            type: "ERROR",
-            title: "Sign-In Unavailable",
-            message: msg
-          });
+          setGlobalError(mapped.message);
         }
+
+        showAuthNotification({
+          type: mapped.notificationType,
+          title: mapped.notificationTitle,
+          message: mapped.message
+        });
         return;
       }
 
@@ -161,7 +114,7 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
           "cg_auth_event",
           JSON.stringify({
             type: "LOGIN_SUCCESS",
-            displayName: data?.displayName
+            displayName: (data as Record<string, unknown>)?.displayName
           })
         );
       } catch {
@@ -171,14 +124,14 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
       setPassword("");
       router.replace("/admin/dashboard");
       router.refresh();
-    } catch {
+    } catch (err: unknown) {
       setLoading(false);
-      const msg = "Sign-in cannot be confirmed right now. Check your connection and retry.";
-      setGlobalError(msg);
+      const mapped = mapAuthClientError(err);
+      setGlobalError(mapped.message);
       showAuthNotification({
-        type: "ERROR",
-        title: "Connection Error",
-        message: msg
+        type: mapped.notificationType,
+        title: mapped.notificationTitle,
+        message: mapped.message
       });
     }
   }
@@ -327,12 +280,12 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
       {/* Global Error Banner strictly positioned ABOVE the action button */}
       {globalError && (
         <div className="cg-global-auth-error-banner" role="alert">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
             <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             <circle cx="12" cy="16" r="1" fill="currentColor" />
           </svg>
-          <span>{globalError}</span>
+          <span style={{ wordBreak: "break-word" }}>{globalError}</span>
         </div>
       )}
 

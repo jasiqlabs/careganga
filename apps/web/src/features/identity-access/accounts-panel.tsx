@@ -1,386 +1,669 @@
 "use client";
-import { FormEvent,useCallback,useEffect,useRef,useState } from "react";
-import type { CG01AccountList,CG01AccountView,CG01AccountOption } from "@careganga/api-contracts";
-type RoleOption={value:string;label:string;context:string};
-type Notice={kind:"success"|"error"|"uncertain";text:string};
-type Pending={kind:"assign"|"revoke"|"status";target:CG01AccountView;status?:"ACTIVE"|"SUSPENDED"|"DEACTIVATED"};
-type Editor="create"|"detail"|null;
-/** The transport enums are never presented as product copy. */
-const accountStatusLabel=(status:string):string=>({
-  ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
-} as Record<string,string>)[status]??"Status unavailable";
-const auditOutcomeLabel=(outcome:string):string=>({
-  Confirmed:"Completed",Denied:"Not permitted",Pending:"Awaiting confirmation"
-} as Record<string,string>)[outcome]??"Outcome unavailable";
 
-async function read<T>(path:string):Promise<T>{
-  const response=await fetch("/api/access/"+path,{cache:"no-store",credentials:"same-origin"});
-  if(!response.ok)throw new Error(response.status===401?"Session expired":
-    response.status===403?"Permission denied":"Account information is temporarily unavailable");
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import type { CG01AccountList, CG01AccountView } from "@careganga/api-contracts";
+import type { RoleOption, Notice, PendingAction, ViewMode, Density } from "./users-management/users-management-types";
+import { formatEmployeeId, formatDisplayDate, accountStatusLabel } from "./users-management/users-management-types";
+import { UsersManagementHeader } from "./users-management/users-management-header";
+import { AdvancedSearchPanel } from "./users-management/advanced-search-panel";
+import { EmployeeStatsCards } from "./users-management/employee-stats-cards";
+import { EmployeeTableView } from "./users-management/employee-table-view";
+import { EmployeeCardView } from "./users-management/employee-card-view";
+import { AddStaffDrawer } from "./users-management/add-staff-drawer";
+import { UserDetailsDrawer } from "./users-management/user-details-drawer";
+import { EditProfileDrawer } from "./users-management/edit-profile-drawer";
+import { AssignRoleModal } from "./users-management/assign-role-modal";
+import { DeleteConfirmationModal } from "./users-management/delete-confirmation-modal";
+
+type Editor = "create" | "detail" | "edit" | null;
+
+async function read<T>(path: string): Promise<T> {
+  const response = await fetch("/api/access/" + path, { cache: "no-store", credentials: "same-origin" });
+  if (!response.ok) {
+    throw new Error(
+      response.status === 401
+        ? "Session expired"
+        : response.status === 403
+        ? "Permission denied"
+        : "Account information is temporarily unavailable"
+    );
+  }
   return response.json() as Promise<T>;
 }
-async function change(path:string,method:string,payload:object):Promise<unknown>{
-  let response:Response;
-  try{response=await fetch("/api/access/"+path,{
-    method,headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)
-  });}catch{throw new Error("UNKNOWN");}
-  if(!response.ok){
-    let info:unknown=null;try{info=await response.json();}catch{}
-    const code=info&&typeof info==="object"&&"code" in info?String(info.code):"";
-    if(response.status===409)throw new Error(code==="STALE_ACCOUNT"?"Account changed elsewhere. Refresh before saving.":
-      code==="DUPLICATE_ACCOUNT_OR_ASSIGNMENT"?"This account or assignment already exists.":
-      "This request conflicts with the current account state.");
-    if(response.status===401||response.status===403)throw new Error("Permission denied or session expired");
-    if(response.status===400)throw new Error("Check your entry or selected role.");
+
+async function change(path: string, method: string, payload: object): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch("/api/access/" + path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    });
+  } catch {
     throw new Error("UNKNOWN");
   }
-  try{return await response.json() as unknown;}catch{throw new Error("UNKNOWN");}
+  if (!response.ok) {
+    let info: unknown = null;
+    try {
+      info = await response.json();
+    } catch {}
+    const code = info && typeof info === "object" && "code" in info ? String(info.code) : "";
+    if (response.status === 409) {
+      throw new Error(
+        code === "STALE_ACCOUNT"
+          ? "Account changed elsewhere. Refresh before saving."
+          : code === "DUPLICATE_ACCOUNT_OR_ASSIGNMENT"
+          ? "This account or assignment already exists."
+          : "This request conflicts with the current account state."
+      );
+    }
+    if (response.status === 401 || response.status === 403) throw new Error("Permission denied or session expired");
+    if (response.status === 400) throw new Error("Check your entry or selected role.");
+    throw new Error("UNKNOWN");
+  }
+  try {
+    return (await response.json()) as unknown;
+  } catch {
+    throw new Error("UNKNOWN");
+  }
 }
-export function AccountsPanel({createOnly=false}:{createOnly?:boolean}){
-  const [list,setList]=useState<CG01AccountList|null>(null);
-  const [actions,setActions]=useState<string[]>([]);
-  const [roles,setRoles]=useState<RoleOption[]>([]);
-  const [rolesLoading,setRolesLoading]=useState(false);
-  const [history,setHistory]=useState<Array<{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}>|null>(null);
-  const [filter,setFilter]=useState("all");
-  const [query,setQuery]=useState("");
-  const [applied,setApplied]=useState("");
-  const [offset,setOffset]=useState(0);
-  const [loading,setLoading]=useState(true);
-  const [busy,setBusy]=useState(false);
-  const [notice,setNotice]=useState<Notice|null>(null);
-  const [editor,setEditor]=useState<Editor>(null);
-  const [target,setTarget]=useState<CG01AccountView|null>(null);
-  const [pending,setPending]=useState<Pending|null>(null);
-  const [fullName,setFullName]=useState("");
-  const [email,setEmail]=useState("");
-  const [phone,setPhone]=useState("");
-  const [newPassword,setNewPassword]=useState("");
-  const [showNewPassword,setShowNewPassword]=useState(false);
-  const [roleRef,setRoleRef]=useState("");
-  const [uncertain,setUncertain]=useState(false);
-  const [searchRole,setSearchRole]=useState("");
-  const requestKey=useRef("");
-  const generation=useRef(0);
-  const createEntryOpened=useRef(false);
-  const roleRead=useRef(0);
-  const historyRead=useRef(0);
 
-  const purge=useCallback((message:string)=>{
-    ++generation.current;++roleRead.current;++historyRead.current;setList(null);setRoles([]);setRolesLoading(false);setActions([]);setHistory(null);setTarget(null);
-    setPending(null);setEditor(null);setLoading(false);
-    setNotice({kind:"error",text:message});
-  },[]);
-  const load=useCallback(async(search:string,skip:number,status:string)=>{
-    const seq=++generation.current;
-    setLoading(true);
-    try{
-      if(createOnly) {
-        // An creater can choose a role without reading the confidential staff directory.
-        const access=await read<{actions:{key:string}[]}>("effective");
-        if(seq!==generation.current)return;
-        if(!access||!Array.isArray(access.actions)||
-           !access.actions.every(x=>x&&typeof x.key==="string"))
-          throw new Error("Invalid access response");
-        const keys=access.actions.map(x=>x.key);
-        if(!keys.includes("accounts.create")||!keys.includes("roles.assign"))
-          throw new Error("Permission denied");
-        setList(null);setActions(keys);return;
+export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) {
+  const [list, setList] = useState<CG01AccountList | null>(null);
+  const [actions, setActions] = useState<string[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [history, setHistory] = useState<Array<{
+    eventRef: string;
+    occurredAt: string;
+    actionLabel: string;
+    outcome: string;
+    actorDisplay: string;
+  }> | null>(null);
+
+  // Filters & Pagination State
+  const [filter, setFilter] = useState("all");
+  const [applied, setApplied] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(20);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  // View Preferences State
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [density, setDensity] = useState<Density>("comfortable");
+
+  // Drawers and Modals State
+  const [editor, setEditor] = useState<Editor>(null);
+  const [activeModal, setActiveModal] = useState<"assignRole" | "deleteConfirm" | "statusConfirm" | null>(null);
+  const [target, setTarget] = useState<CG01AccountView | null>(null);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+
+  // Add Staff Form State
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [roleRef, setRoleRef] = useState("");
+  const [uncertain, setUncertain] = useState(false);
+  const [searchRole, setSearchRole] = useState("");
+  const [editStatus, setEditStatus] = useState<"ACTIVE" | "SUSPENDED" | "DEACTIVATED">("ACTIVE");
+
+  const requestKey = useRef("");
+  const generation = useRef(0);
+  const createEntryOpened = useRef(false);
+  const roleRead = useRef(0);
+  const historyRead = useRef(0);
+
+  const purge = useCallback((message: string) => {
+    ++generation.current;
+    ++roleRead.current;
+    ++historyRead.current;
+    setList(null);
+    setRoles([]);
+    setRolesLoading(false);
+    setActions([]);
+    setHistory(null);
+    setTarget(null);
+    setPending(null);
+    setEditor(null);
+    setActiveModal(null);
+    setLoading(false);
+    setNotice({ kind: "error", text: message });
+  }, []);
+
+  const load = useCallback(
+    async (search: string, skip: number, status: string) => {
+      const seq = ++generation.current;
+      setLoading(true);
+      try {
+        if (createOnly) {
+          const access = await read<{ actions: { key: string }[] }>("effective");
+          if (seq !== generation.current) return;
+          if (
+            !access ||
+            !Array.isArray(access.actions) ||
+            !access.actions.every(x => x && typeof x.key === "string")
+          ) {
+            throw new Error("Invalid access response");
+          }
+          const keys = access.actions.map(x => x.key);
+          if (!keys.includes("accounts.create") || !keys.includes("roles.assign")) {
+            throw new Error("Permission denied");
+          }
+          setList(null);
+          setActions(keys);
+          return;
+        }
+
+        const params = new URLSearchParams({ search, offset: String(skip), limit: String(limit), status });
+        const [listResponse, access] = await Promise.all([
+          read<CG01AccountList>("accounts?" + params.toString()),
+          read<{ actions: { key: string }[] }>("effective")
+        ]);
+        if (seq !== generation.current) return;
+        if (
+          !listResponse ||
+          !Array.isArray(listResponse.accounts) ||
+          !access ||
+          !Array.isArray(access.actions)
+        ) {
+          throw new Error("Invalid account response");
+        }
+        setList(listResponse);
+        setActions(access.actions.map(x => x.key));
+        setApplied(search);
+        setOffset(skip);
+        setFilter(status);
+        setTarget(old => listResponse.accounts.find(x => x.accountRef === old?.accountRef) ?? null);
+      } catch (e) {
+        if (seq !== generation.current) return;
+        purge(e instanceof Error ? e.message : "Accounts unavailable");
+      } finally {
+        if (seq === generation.current) setLoading(false);
       }
-      const params=new URLSearchParams({search,offset:String(skip),limit:"20",status});
-      const [listResponse,access]=await Promise.all([
-        read<CG01AccountList>("accounts?"+params.toString()),
-        read<{actions:{key:string}[]}>("effective")
-      ]);
-      if(seq!==generation.current)return;
-      if(!listResponse||!Array.isArray(listResponse.accounts)||!access||
-        !Array.isArray(access.actions))throw new Error("Invalid account response");
-      setList(listResponse);setActions(access.actions.map(x=>x.key));setApplied(search);
-      setOffset(skip);setFilter(status);
-      setTarget(old=>listResponse.accounts.find(x=>x.accountRef===old?.accountRef)??null);
-    }catch(e){
-      if(seq!==generation.current)return;
-      purge(e instanceof Error?e.message:"Accounts unavailable");
-    }finally{if(seq===generation.current)setLoading(false);}
-  },[purge,createOnly]);
-  useEffect(()=>{void load("",0,"all");},[load]);
-  useEffect(()=>{
-    const onFocus=()=>{if(document.visibilityState==="visible")void load(applied,offset,filter);};
-    window.addEventListener("focus",onFocus);
-    return()=>window.removeEventListener("focus",onFocus);
-  },[load,applied,offset,filter]);
-  const canCreate=actions.includes("accounts.create")&&actions.includes("roles.assign");
-  const canAssign=actions.includes("roles.assign");
-  const canStatus=actions.includes("accounts.status.manage");
-  async function roleSearch(value:string){
-    const request=++roleRead.current;
+    },
+    [purge, createOnly, limit]
+  );
+
+  useEffect(() => {
+    void load("", 0, "all");
+  }, [load]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void load(applied, offset, filter);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load, applied, offset, filter]);
+
+  const canCreate = actions.includes("accounts.create") && actions.includes("roles.assign");
+  const canAssign = actions.includes("roles.assign");
+  const canStatus = actions.includes("accounts.status.manage");
+
+  async function roleSearch(value: string) {
+    const request = ++roleRead.current;
     setRolesLoading(true);
-    try{
-      const params=new URLSearchParams({search:value});
-      const result=await read<{options:RoleOption[]}>("roles/options?"+params.toString());
-      if(request!==roleRead.current)return;
-      if(!Array.isArray(result.options))throw new Error("Invalid role response");
-      const filtered=result.options.filter(x=>x.context==="Foundation");
-      const unique=Array.from(new Map(filtered.map(r=>[r.value,r])).values());
+    try {
+      const params = new URLSearchParams({ search: value });
+      const result = await read<{ options: RoleOption[] }>("roles/options?" + params.toString());
+      if (request !== roleRead.current) return;
+      if (!Array.isArray(result.options)) throw new Error("Invalid role response");
+      const filtered = result.options.filter(x => !x.context || x.context.toLowerCase() === "foundation");
+      const unique = Array.from(new Map(filtered.map(r => [r.value, r])).values());
       setRoles(unique);
-      setRoleRef(prev=>(prev&&unique.some(r=>r.value===prev)?prev:""));
-    }catch(e){
-      if(request!==roleRead.current)return;
+      setRoleRef(prev => (prev && unique.some(r => r.value === prev) ? prev : ""));
+    } catch (e) {
+      if (request !== roleRead.current) return;
       setRoles([]);
       setRoleRef("");
-      if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
-      else setNotice({kind:"error",text:"Eligible roles are temporarily unavailable."});
-    }finally{
-      if(request===roleRead.current)setRolesLoading(false);
+      if (e instanceof Error && /session expired|permission denied/i.test(e.message)) purge(e.message);
+      else setNotice({ kind: "error", text: "Eligible roles are temporarily unavailable." });
+    } finally {
+      if (request === roleRead.current) setRolesLoading(false);
     }
   }
-  function openCreate(){
-    ++roleRead.current;++historyRead.current;
-    setEditor("create");setPending(null);setHistory(null);setFullName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
-    setSearchRole("");setNotice(null);requestKey.current=crypto.randomUUID();
+
+  function openCreate() {
+    ++roleRead.current;
+    ++historyRead.current;
+    setEditor("create");
+    setPending(null);
+    setActiveModal(null);
+    setHistory(null);
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setNewPassword("");
+    setRoleRef("");
+    setSearchRole("");
+    setNotice(null);
+    requestKey.current = crypto.randomUUID();
     void roleSearch("");
   }
-  useEffect(()=>{
-    if(createOnly&&canCreate&&!createEntryOpened.current){
-      createEntryOpened.current=true;
+
+  useEffect(() => {
+    if (createOnly && canCreate && !createEntryOpened.current) {
+      createEntryOpened.current = true;
       openCreate();
     }
-  },[createOnly,canCreate]);
-  function openAccount(row:CG01AccountView){
-    ++roleRead.current;++historyRead.current;
-    setEditor("detail");setTarget(row);setHistory(null);setPending(null);setRoleRef(row.roleRef??"");
-    setNotice(null);requestKey.current=crypto.randomUUID();
-    if(canAssign)void roleSearch("");
+  }, [createOnly, canCreate]);
+
+  function openAccount(row: CG01AccountView) {
+    ++roleRead.current;
+    ++historyRead.current;
+    setEditor("detail");
+    setTarget(row);
+    setHistory(null);
+    setPending(null);
+    setActiveModal(null);
+    setRoleRef(row.roleRef ?? "");
+    setEditStatus(row.status);
+    setNotice(null);
+    requestKey.current = crypto.randomUUID();
+    if (canAssign) void roleSearch("");
   }
-  async function loadAccountHistory(accountRef:string){
-    if(!actions.includes("access.audit.view"))return;
-    const request=++historyRead.current;
-    try{
-      const result=await read<{events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string;actorDisplay:string}[]}>(
-        "audit?limit=30&targetRef="+encodeURIComponent(accountRef));
-      if(request!==historyRead.current)return;
-      if(!Array.isArray(result.events))throw new Error("Invalid history response");
+
+  function openEdit(row: CG01AccountView) {
+    ++roleRead.current;
+    ++historyRead.current;
+    setEditor("edit");
+    setTarget(row);
+    setHistory(null);
+    setPending(null);
+    setActiveModal(null);
+    setRoleRef(row.roleRef ?? "");
+    setEditStatus(row.status);
+    setNotice(null);
+    requestKey.current = crypto.randomUUID();
+    if (canAssign) void roleSearch("");
+  }
+
+  function openAssignRoleModal(row: CG01AccountView) {
+    setTarget(row);
+    setRoleRef(row.roleRef ?? "");
+    setActiveModal("assignRole");
+    setNotice(null);
+    requestKey.current = crypto.randomUUID();
+    if (canAssign) void roleSearch("");
+  }
+
+  function openDeleteConfirmModal(row: CG01AccountView) {
+    setTarget(row);
+    setActiveModal("deleteConfirm");
+    setNotice(null);
+    requestKey.current = crypto.randomUUID();
+  }
+
+  async function loadAccountHistory(accountRef: string) {
+    if (!actions.includes("access.audit.view")) return;
+    const request = ++historyRead.current;
+    try {
+      const result = await read<{
+        events: {
+          eventRef: string;
+          occurredAt: string;
+          actionLabel: string;
+          outcome: string;
+          actorDisplay: string;
+        }[];
+      }>("audit?limit=30&targetRef=" + encodeURIComponent(accountRef));
+      if (request !== historyRead.current) return;
+      if (!Array.isArray(result.events)) throw new Error("Invalid history response");
       setHistory(result.events);
-    }catch(error){
-      if(request!==historyRead.current)return;
+    } catch (error) {
+      if (request !== historyRead.current) return;
       setHistory(null);
-      if(error instanceof Error&&/session expired|permission denied/i.test(error.message))
-        purgeProtectedHistory(error.message);
-      else setNotice({kind:"error",text:"Access history could not be verified."});
+      if (error instanceof Error && /session expired|permission denied/i.test(error.message)) {
+        purge(error.message);
+      } else {
+        setNotice({ kind: "error", text: "Access history could not be verified." });
+      }
     }
   }
-  function purgeProtectedHistory(message:string){purge(message);}
-  async function submitCreate(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();if(!canCreate||busy||uncertain||!roleRef)return;
-    setBusy(true);setNotice(null);
-    try{
-      await change("accounts","POST",{displayName:fullName.trim(),email:email.trim().toLowerCase()||undefined,
-        mobile:phone.trim(),password:newPassword,roleRef,requestKey:requestKey.current});
-      setEditor(null);setNewPassword("");setNotice({kind:"success",text:"Staff account created and active."});
-      requestKey.current="";await load(applied,0,filter);
-    }catch(e){
-      if(e instanceof Error&&e.message==="UNKNOWN")setUncertain(true);
-      if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
-      else setNotice({kind:e instanceof Error&&e.message==="UNKNOWN"?"uncertain":"error",
-        text:e instanceof Error&&e.message==="UNKNOWN"?"Account creation is unconfirmed. Refresh before another attempt.":
-          e instanceof Error?e.message:"Staff account creation could not be confirmed."});
-    }finally{setBusy(false);}
-  }
-  async function submitChange(){
-    if(!pending||busy||uncertain)return;
-    const choice=pending;setBusy(true);setNotice(null);
-    const key=requestKey.current||crypto.randomUUID();requestKey.current=key;
-    try{
-      const path="accounts/"+choice.target.accountRef;
-      if(choice.kind==="assign"){
-        if(!roleRef)return;
-        await change(path+"/role","PUT",{roleRef,expectedRevision:choice.target.revision,requestKey:key});
-      }else if(choice.kind==="revoke"){
-        await change(path+"/role","DELETE",{expectedRevision:choice.target.revision,requestKey:key});
-      }else if(choice.status){
-        await change(path+"/status","PATCH",{status:choice.status,
-          expectedRevision:choice.target.revision,requestKey:key});
+
+  async function submitCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canCreate || busy || uncertain || !roleRef) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await change("accounts", "POST", {
+        displayName: fullName.trim(),
+        email: email.trim().toLowerCase() || undefined,
+        mobile: phone.trim(),
+        password: newPassword,
+        roleRef,
+        requestKey: requestKey.current
+      });
+      setEditor(null);
+      setNewPassword("");
+      setNotice({ kind: "success", text: "Staff account created and active." });
+      requestKey.current = "";
+      await load(applied, 0, filter);
+    } catch (e) {
+      if (e instanceof Error && e.message === "UNKNOWN") setUncertain(true);
+      if (e instanceof Error && /session expired|permission denied/i.test(e.message)) purge(e.message);
+      else {
+        setNotice({
+          kind: e instanceof Error && e.message === "UNKNOWN" ? "uncertain" : "error",
+          text:
+            e instanceof Error && e.message === "UNKNOWN"
+              ? "Account creation is unconfirmed. Refresh before another attempt."
+              : e instanceof Error
+              ? e.message
+              : "Staff account creation could not be confirmed."
+        });
       }
-      setPending(null);setEditor(null);setNotice({kind:"success",text:"Account change confirmed."});
-      requestKey.current="";await load(applied,offset,filter);
-    }catch(e){
-      if(e instanceof Error&&e.message==="UNKNOWN")setUncertain(true);
-      if(e instanceof Error&&/session expired|permission denied/i.test(e.message))purge(e.message);
-      else setNotice({kind:e instanceof Error&&e.message==="UNKNOWN"?"uncertain":"error",
-        text:e instanceof Error&&e.message==="UNKNOWN"?"Could not confirm the result. Refresh before retrying.":
-          e instanceof Error?e.message:"Account change could not be confirmed."});
-    }finally{setBusy(false);}
+    } finally {
+      setBusy(false);
+    }
   }
-  const stats=list?.summary;
-  const values=[
-    ["Total Accounts",stats?.total],["Active",stats?.active],
-    ["Suspended",stats?.suspended],
-    ["Deactivated",stats?.deactivated],["Assigned Roles",stats?.assigned]
-  ] as const;
-  return <div className="role-workspace">
-    <header className="topbar"><div><h1>Users Management</h1>
-      <p>Foundation staff accounts and current role access</p></div>
-      <div className="toolbar">{canCreate&&<button type="button" className="primary"
-        onClick={openCreate}>Add staff</button>}</div>
-    </header>
-    {createOnly&&<p>Create an eligible Foundation staff member without access to the private staff directory.</p>}
-    {createOnly&&notice&&<p role={notice.kind==="success"?"status":"alert"}
-      className={"notice "+notice.kind}>{notice.text}</p>}
-    {createOnly&&uncertain&&<p role="alert">The result is uncertain. Refresh account status before creating another user.</p>}
-    {!createOnly&&<>
-    <form className="search-row" onSubmit={event=>{
-      event.preventDefault();void load(query.trim(),0,filter);
-    }}>
-      <label htmlFor="account-search">Search accounts</label>
-      <input id="account-search" value={query} onChange={event=>setQuery(event.target.value)}
-        maxLength={80} placeholder="Name, mobile or email" autoComplete="off"/>
-      <button type="submit" disabled={loading}>Search</button>
-      <button type="button" disabled={loading} onClick={()=>{
-        setQuery("");void load("",0,"all");
-      }}>Clear filters</button>
-    </form>
-    <section className="kpi-grid" aria-label="Current Foundation staff accounts">
-      {values.map(([label,value])=><div className="kpi" key={label}>
-        <small>{label}</small><strong>{value??"—"}</strong>
-      </div>)}
-    </section>
-    <div className="toolbar" role="group" aria-label="Account status">
-      {(["all","ACTIVE","SUSPENDED","DEACTIVATED"] as const).map(s=>
-        <button type="button" aria-pressed={filter===s} key={s} disabled={loading}
-          onClick={()=>void load(applied,0,s)}>{s==="all"?"All":s==="ACTIVE"?"Active":
-          s==="SUSPENDED"?"Suspended":"Deactivated"}</button>)}
+
+  async function executeChange(pendingAction: PendingAction, newRoleRef?: string) {
+    if (busy || uncertain) return;
+    setBusy(true);
+    setNotice(null);
+    const key = requestKey.current || crypto.randomUUID();
+    requestKey.current = key;
+    try {
+      const path = "accounts/" + pendingAction.target.accountRef;
+      if (pendingAction.kind === "assign") {
+        const refToUse = newRoleRef || roleRef;
+        if (!refToUse) return;
+        await change(path + "/role", "PUT", {
+          roleRef: refToUse,
+          expectedRevision: pendingAction.target.revision,
+          requestKey: key
+        });
+      } else if (pendingAction.kind === "revoke") {
+        await change(path + "/role", "DELETE", {
+          expectedRevision: pendingAction.target.revision,
+          requestKey: key
+        });
+      } else if (pendingAction.status) {
+        await change(path + "/status", "PATCH", {
+          status: pendingAction.status,
+          expectedRevision: pendingAction.target.revision,
+          requestKey: key
+        });
+      }
+      setPending(null);
+      setEditor(null);
+      setActiveModal(null);
+      setNotice({ kind: "success", text: "Account change confirmed." });
+      requestKey.current = "";
+      await load(applied, offset, filter);
+    } catch (e) {
+      if (e instanceof Error && e.message === "UNKNOWN") setUncertain(true);
+      if (e instanceof Error && /session expired|permission denied/i.test(e.message)) purge(e.message);
+      else {
+        setNotice({
+          kind: e instanceof Error && e.message === "UNKNOWN" ? "uncertain" : "error",
+          text:
+            e instanceof Error && e.message === "UNKNOWN"
+              ? "Could not confirm the result. Refresh before retrying."
+              : e instanceof Error
+              ? e.message
+              : "Account change could not be confirmed."
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const handleStatusChangeRequest = (
+    account: CG01AccountView,
+    status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED"
+  ) => {
+    const action: PendingAction = { kind: "status", target: account, status };
+    setPending(action);
+    void executeChange(action);
+  };
+
+  const handleAssignRoleConfirm = () => {
+    if (!target || !roleRef) return;
+    const action: PendingAction = { kind: "assign", target };
+    setPending(action);
+    void executeChange(action, roleRef);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!target) return;
+    const action: PendingAction = { kind: "status", target, status: "DEACTIVATED" };
+    setPending(action);
+    void executeChange(action);
+  };
+
+  const handleEditProfileSave = () => {
+    if (!target) return;
+    if (roleRef && roleRef !== target.roleRef) {
+      const action: PendingAction = { kind: "assign", target };
+      setPending(action);
+      void executeChange(action, roleRef);
+    } else if (editStatus && editStatus !== target.status) {
+      const action: PendingAction = { kind: "status", target, status: editStatus };
+      setPending(action);
+      void executeChange(action);
+    } else {
+      setEditor(null);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!list || !list.accounts.length) return;
+    const headers = ["Employee ID", "Full Name", "Email", "Phone", "Role", "Status", "Joining Date"];
+    const rows = list.accounts.map(a => [
+      formatEmployeeId(a),
+      `"${a.displayName.replace(/"/g, '""')}"`,
+      `"${a.email || ""}"`,
+      `"${a.phone || ""}"`,
+      `"${a.roleName || "Volunteer"}"`,
+      accountStatusLabel(a.status),
+      formatDisplayDate(a.assignedAt)
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `CareGanga_Staff_Accounts_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="cg-um-workspace">
+      {/* Page Title & Subtitle Header */}
+      <UsersManagementHeader />
+
+      {/* Notice Banner */}
+      {notice && (
+        <div
+          role={notice.kind === "success" ? "status" : "alert"}
+          className={`cg-um-notice-box ${notice.kind}`}
+        >
+          {notice.text}
+        </div>
+      )}
+
+      {uncertain && (
+        <div className="cg-um-notice-box uncertain" role="alert">
+          <span>The last action status is unconfirmed. Refresh account status before trying again.</span>
+          <button
+            type="button"
+            className="cg-um-btn cg-um-btn-outline cg-um-btn-sm"
+            style={{ marginLeft: "0.75rem" }}
+            onClick={() => {
+              setUncertain(false);
+              setPending(null);
+              setEditor(null);
+              setActiveModal(null);
+              void load(applied, offset, filter);
+            }}
+          >
+            Refresh Status
+          </button>
+        </div>
+      )}
+
+      {createOnly && (
+        <div className="cg-um-notice-box success" role="status">
+          <span>Create an eligible Foundation staff member without access to the private staff directory.</span>
+        </div>
+      )}
+
+      {!createOnly && (
+        <>
+          {/* Section 1.B: Advanced Digital Search Panel */}
+          <AdvancedSearchPanel
+            loading={loading}
+            roles={roles}
+            onSearch={(kw, st) => void load(kw, 0, st)}
+            onClear={() => void load("", 0, "all")}
+            onExport={handleExportCSV}
+            initialQuery={applied}
+            initialStatus={filter}
+          />
+
+          {/* Section 1.C: Employee Statistics Cards (Row of 6) */}
+          <EmployeeStatsCards
+            summary={list?.summary}
+            loading={loading}
+          />
+
+          {/* Section 1.D & 2: Employee List (Table View or Card View) */}
+          {viewMode === "table" ? (
+            <EmployeeTableView
+              accounts={list?.accounts ?? []}
+              total={list?.total ?? 0}
+              offset={offset}
+              limit={limit}
+              loading={loading}
+              actions={actions}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              density={density}
+              onDensityChange={setDensity}
+              onPageChange={newOffset => void load(applied, newOffset, filter)}
+              onRefresh={() => void load(applied, offset, filter)}
+              onAddStaff={openCreate}
+              onViewDetails={openAccount}
+              onEditAccount={openEdit}
+              onAssignRole={openAssignRoleModal}
+              onStatusChange={handleStatusChangeRequest}
+              onDeleteAccount={openDeleteConfirmModal}
+            />
+          ) : (
+            <EmployeeCardView
+              accounts={list?.accounts ?? []}
+              total={list?.total ?? 0}
+              offset={offset}
+              limit={limit}
+              loading={loading}
+              actions={actions}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              density={density}
+              onDensityChange={setDensity}
+              onPageChange={newOffset => void load(applied, newOffset, filter)}
+              onRefresh={() => void load(applied, offset, filter)}
+              onAddStaff={openCreate}
+              onViewDetails={openAccount}
+              onEditAccount={openEdit}
+              onAssignRole={openAssignRoleModal}
+              onStatusChange={handleStatusChangeRequest}
+              onDeleteAccount={openDeleteConfirmModal}
+            />
+          )}
+        </>
+      )}
+
+      {/* Section 3: Add New Staff Account Drawer */}
+      <AddStaffDrawer
+        isOpen={editor === "create"}
+        onClose={() => setEditor(null)}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        searchRole={searchRole}
+        onSearchRoleChange={setSearchRole}
+        onSearchRoleSubmit={() => void roleSearch(searchRole)}
+        fullName={fullName}
+        onFullNameChange={setFullName}
+        email={email}
+        onEmailChange={setEmail}
+        phone={phone}
+        onPhoneChange={setPhone}
+        newPassword={newPassword}
+        onNewPasswordChange={setNewPassword}
+        roleRef={roleRef}
+        onRoleRefChange={setRoleRef}
+        busy={busy}
+        uncertain={uncertain}
+        notice={notice}
+        onSubmit={submitCreate}
+      />
+
+      {/* Section 4: User Details (Full Profile View) Drawer */}
+      <UserDetailsDrawer
+        isOpen={editor === "detail"}
+        onClose={() => setEditor(null)}
+        account={target}
+        actions={actions}
+        history={history}
+        onLoadHistory={loadAccountHistory}
+        onEditProfile={openEdit}
+        onAssignRole={openAssignRoleModal}
+        onStatusChange={handleStatusChangeRequest}
+        onDeleteAccount={openDeleteConfirmModal}
+      />
+
+      {/* Section 6 (Prompt): Edit Account Profile Drawer */}
+      <EditProfileDrawer
+        isOpen={editor === "edit"}
+        onClose={() => setEditor(null)}
+        account={target}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        roleRef={roleRef}
+        onRoleRefChange={setRoleRef}
+        status={editStatus}
+        onStatusChange={setEditStatus}
+        busy={busy}
+        uncertain={uncertain}
+        notice={notice}
+        onSave={handleEditProfileSave}
+      />
+
+      {/* Section 5: Assign Role Modal */}
+      <AssignRoleModal
+        isOpen={activeModal === "assignRole"}
+        onClose={() => setActiveModal(null)}
+        account={target}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        selectedRoleRef={roleRef}
+        onSelectRoleRef={setRoleRef}
+        busy={busy}
+        uncertain={uncertain}
+        notice={notice}
+        onConfirm={handleAssignRoleConfirm}
+      />
+
+      {/* Section 6: Delete User Account Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={activeModal === "deleteConfirm"}
+        onClose={() => setActiveModal(null)}
+        account={target}
+        busy={busy}
+        uncertain={uncertain}
+        notice={notice}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
-    {notice&&<p role={notice.kind==="success"?"status":"alert"} className={"notice "+notice.kind}>
-      {notice.text}</p>}
-    {uncertain&&<button type="button" onClick={()=>{
-      setUncertain(false);setPending(null);setEditor(null);void load(applied,offset,filter);
-    }}>Refresh account status before trying again</button>}
-    {loading?<p role="status">Verifying staff accounts…</p>:
-      list&&!list.accounts.length?<section className="role-empty"><h2>No accounts match</h2>
-        <p>Try another search or status. No sample staff records are shown.</p></section>:
-      list&&<section className="role-table-wrap" aria-label="Foundation staff directory">
-        <table className="role-table">
-          <thead><tr><th>Name and contact</th><th>Current role</th><th>Status</th>
-            <th>Actions</th></tr></thead>
-          <tbody>{list.accounts.map(row=><tr key={row.accountRef}>
-            <td><strong>{row.displayName}</strong><p>{row.email??row.phone??"Mobile login"}</p></td>
-            <td>{row.roleName??"Not assigned"}</td>
-            <td><span className={"account-status "+row.status.toLowerCase()}>{accountStatusLabel(row.status)}</span></td>
-            <td><button type="button" onClick={()=>openAccount(row)}>View details</button></td>
-          </tr>)}</tbody>
-        </table>
-      </section>}
-    {list&&list.total>20&&<div className="toolbar" aria-label="Account pages">
-      <button type="button" disabled={loading||offset===0}
-        onClick={()=>void load(applied,Math.max(0,offset-20),filter)}>Previous</button>
-      <span>Showing {offset+1}–{Math.min(offset+20,list.total)} of {list.total}</span>
-      <button type="button" disabled={loading||offset+20>=list.total}
-        onClick={()=>void load(applied,offset+20,filter)}>Next</button>
-    </div>}
-    </>}
-    {(editor||pending)&&<div className="drawer-backdrop" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="account-drawer-title"
-        className="role-drawer">
-        <header className="topbar"><h2 id="account-drawer-title">
-          {editor==="create"?"Add New Staff Account":pending?"Confirm account change":"Account details"}
-        </h2><button type="button" disabled={busy} onClick={()=>{
-          setEditor(null);setPending(null);
-        }}>Close</button></header>
-        {editor==="create"&&<form className="form" onSubmit={event=>void submitCreate(event)}>
-          <label className="field">Full name<input required maxLength={160}
-            value={fullName} onChange={event=>setFullName(event.target.value)}/></label>
-          <label className="field">Mobile number (username)
-            <input required type="tel" inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10}
-              value={phone} placeholder="10-digit mobile number"
-              onChange={event=>setPhone(event.target.value.replace(/[^0-9]/g,"").slice(0,10))}/>
-          </label>
-          <label className="field">Email (optional)
-            <input type="email" maxLength={254} value={email}
-              onChange={event=>setEmail(event.target.value)}/>
-          </label>
-          <label className="field">Initial password
-            <input required minLength={8} maxLength={1024} type={showNewPassword?"text":"password"}
-              autoComplete="new-password" value={newPassword}
-              onChange={event=>setNewPassword(event.target.value)}/>
-            <button type="button" onClick={()=>setShowNewPassword(v=>!v)}>
-              {showNewPassword?"Hide":"Show"} password</button>
-          </label>
-          <p>Applies to: <strong>Entire foundation</strong></p>
-          <label className="field">Find an eligible role<input value={searchRole} maxLength={80}
-            onChange={event=>setSearchRole(event.target.value)}/></label>
-          <button type="button" onClick={()=>void roleSearch(searchRole)}>Find roles</button>
-          <label className="field">Assign role<select value={roleRef} required disabled={rolesLoading}
-            onChange={event=>setRoleRef(event.target.value)}>
-            <option value="">{rolesLoading?"Loading eligible roles…":roles.length===0?"No eligible roles available":"Choose a role explicitly"}</option>
-            {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
-          </select></label>
-          <p>Account is active immediately after creation.</p>
-          {notice&&<p role={notice.kind==="success"?"status":"alert"}
-             className={"notice "+notice.kind}>{notice.text}</p>}
-          {uncertain&&<p role="alert">The account may already have been created. Refresh the directory before retrying.</p>}
-          <div className="toolbar"><button type="button" onClick={()=>setEditor(null)}>Cancel</button>
-            <button type="submit" className="primary" disabled={busy||uncertain||!roleRef||phone.length!==10||newPassword.length<8}>
-              {busy?"Saving…":"Create Staff Account"}
-            </button></div>
-        </form>}
-        {editor==="detail"&&target&&!pending&&<div className="form">
-          <h3>{target.displayName}</h3><p>{target.email??target.phone??"Mobile login"}</p>
-          {target.phone&&<p>Mobile: {target.phone}</p>}
-          <p>Status: {accountStatusLabel(target.status)}</p>
-          <p>Current role: {target.roleName??"Not assigned"}</p>
-          {actions.includes("access.audit.view")&&<button type="button"
-            onClick={()=>void loadAccountHistory(target.accountRef)}>View access history</button>}
-          {history&&<section aria-label="Account access history">
-            <h3>Recent access history</h3>
-            {!history.length&&<p>No account access events found in the selected period.</p>}
-            {history.map(e=><p key={e.eventRef}>
-              {e.actionLabel} · {auditOutcomeLabel(e.outcome)} · {e.actorDisplay} · {new Date(e.occurredAt).toLocaleString()}
-            </p>)}
-          </section>}
-          {target.roleProtected?<p>This protected administrator cannot be changed here.</p>:<>
-            {canAssign&&<div className="form">
-              <label className="field">Find eligible roles<input maxLength={80}
-                value={searchRole} onChange={event=>setSearchRole(event.target.value)}/></label>
-              <button type="button" onClick={()=>void roleSearch(searchRole)}>Find roles</button>
-              <label className="field">Role<select value={roleRef} disabled={rolesLoading}
-                onChange={event=>setRoleRef(event.target.value)}>
-                <option value="">{rolesLoading?"Loading eligible roles…":roles.length===0?"No custom roles available":"Choose a custom role"}</option>
-                {roles.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}
-              </select></label>
-              <button type="button" disabled={!roleRef||roleRef===target.roleRef} onClick={()=>{
-                setPending({kind:"assign",target});requestKey.current=crypto.randomUUID();
-              }}>Assign chosen role</button>
-              {target.roleRef&&<button type="button" onClick={()=>{
-                setPending({kind:"revoke",target});requestKey.current=crypto.randomUUID();
-              }}>Revoke current role</button>}
-            </div>}
-            {canStatus&&target.status!=="DEACTIVATED"&&<div className="toolbar">
-              {target.status==="ACTIVE"?<button type="button" onClick={()=>{
-                setPending({kind:"status",target,status:"SUSPENDED"});requestKey.current=crypto.randomUUID();
-              }}>Suspend account</button>:<button type="button" onClick={()=>{
-                setPending({kind:"status",target,status:"ACTIVE"});requestKey.current=crypto.randomUUID();
-              }}>Reactivate account</button>}
-              <button type="button" onClick={()=>{
-                setPending({kind:"status",target,status:"DEACTIVATED"});requestKey.current=crypto.randomUUID();
-              }}>Deactivate account</button>
-            </div>}
-          </>}
-        </div>}
-        {pending&&<div className="form">
-          <p>Confirm the {pending.kind==="assign"?"role assignment":
-            pending.kind==="revoke"?"role revocation":"account status change"} for {pending.target.displayName}.</p>
-          {pending.kind==="assign"&&<p>Selected role: {roles.find(r=>r.value===roleRef)?.label??"Please choose a role"}</p>}
-          {pending.kind==="status"&&<p>New status: {accountStatusLabel(pending.status??"")}</p>}
-          <p>This will invalidate previously issued sessions if access changes.</p>
-          {notice&&<p role={notice.kind==="success"?"status":"alert"}
-             className={"notice "+notice.kind}>{notice.text}</p>}
-          {uncertain&&<p role="alert">This request may have been saved. Refresh account status before submitting another change.</p>}
-          <div className="toolbar"><button type="button" disabled={busy} onClick={()=>setPending(null)}>Back</button>
-            <button type="button" className="primary" disabled={busy||uncertain}
-              onClick={()=>void submitChange()}>{busy?"Saving…":"Confirm change"}</button>
-          </div>
-        </div>}
-      </section>
-    </div>}
-  </div>;
+  );
 }

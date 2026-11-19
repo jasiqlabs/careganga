@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as cg} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "./http-client";
+import {AccessDeniedScreen} from "./access-denied-screen";
 
 type Policy={maxSessionAgeSeconds:number;idleTimeoutSeconds:number;
   failedAttemptWindowSeconds:number;maxFailedAttempts:number;
@@ -45,6 +46,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
   const [checkingOutcome,setCheckingOutcome]=useState(false);
   const [loading,setLoading]=useState(true);
   const [unknown,setUnknown]=useState(false);
+  const [denied,setDenied]=useState(false);
   const [message,setMessage]=useState("");
   const requestKey=useRef("");
   const generation=useRef(0);
@@ -55,7 +57,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       const result=await identityRequest("/api/identity/security-policy",{
         headers:{Authorization:"Bearer "+token}});
       if(result.status===401){if(seq===generation.current)onExpired();return false;}
-      if(result.status===403){if(seq===generation.current){setCurrent(null);onExit();}return false;}
+      if(result.status===403){if(seq===generation.current){setCurrent(null);setDenied(true);}return false;}
       if(!result.ok)throw Error("Current security policy unavailable");
       const payload:unknown=await result.json();
       if(!validPolicy(payload))throw Error("Policy response could not be verified");
@@ -173,6 +175,7 @@ export function SecurityPolicyScreen({token,onExit,onExpired}:{
       setMessage("The outcome cannot be confirmed. Refresh the policy before trying again.");
     }finally{saving.current=false;setBusy(false);}
   }
+  if(denied)return <AccessDeniedScreen reason="Security Policy is restricted to the Foundation Super Admin." onMyAccount={onExit}/>;
   return <SafeAreaView style={styles.root}><KeyboardAvoidingView
     behavior={Platform.OS==="ios"?"padding":undefined} style={styles.root}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>

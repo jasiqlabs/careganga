@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
+import dns from "node:dns";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
+
+// Ensure dual-stack environments resolve IPv4 addresses first to avoid ISP IPv6 DNS ENOTFOUND
+try { dns.setDefaultResultOrder?.("ipv4first"); } catch {}
 
 // Safely load environment files if present in cwd or workspace root
 try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
@@ -10,8 +14,23 @@ try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../.
 async function migrate(): Promise<void> {
   const url = process.env.DATABASE_MIGRATION_URL;
   if (!url) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
-  const pool = new Pool({ connectionString: url, max: 1, application_name: "careganga-migrations" });
-  const client = await pool.connect();
+  const pool = new Pool({
+    connectionString: url,
+    max: 1,
+    connectionTimeoutMillis: 15_000,
+    application_name: "careganga-migrations"
+  });
+  let client;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      client = await pool.connect();
+      break;
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1) + Math.random() * 500));
+    }
+  }
+  if (!client) throw new Error("Failed to connect to database after bounded retries");
   try {
     await client.query("SELECT pg_advisory_lock(16041115, 1)");
     try {
@@ -58,7 +77,8 @@ async function migrate(): Promise<void> {
     await pool.end();
   }
 }
-void migrate().catch(() => {
-  process.stderr.write("CareGanga migration failed; no partial changes from failing migration committed.\n");
+void migrate().catch((error: unknown) => {
+  const reason = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`CareGanga migration failed: ${reason}\nno partial changes from failing migration committed.\n`);
   process.exitCode = 1;
 });

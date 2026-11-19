@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {CommunicationsWorkspace} from "../../../../features/communications/communications-workspace";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function FoundationCommunicationsPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -37,9 +38,7 @@ export default async function FoundationCommunicationsPage(){
       process=keys.includes("communications.delivery.process"),
       delivery=keys.includes("communications.delivery.view");
     if(!read&&!manage&&!delivery&&!approve&&!process)
-      return <main className="page main"><h1>Access denied</h1>
-        <p>Notices are restricted to your current Foundation role.</p>
-        <Link href="/admin">My account</Link></main>;
+      return <AccessDeniedView reason="Notices are restricted to your current Foundation role." />;
     return <div className="shell">
       <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="communications"
         displayName={actor.displayName} roleName={actor.roleName}

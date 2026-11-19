@@ -21,8 +21,29 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bodyParser: true, rawBody: true });
   app.enableShutdownHooks();
   app.use(correlateRequest);
-  app.useGlobalFilters(new SafeErrorsFilter(app.get<Pool>(DATABASE)));
+  const pool = app.get<Pool>(DATABASE);
+  app.useGlobalFilters(new SafeErrorsFilter(pool));
   app.enableCors({ origin: cfg.webOrigin, credentials: false, methods: ["GET","POST","PATCH","DELETE"] });
+
+  // Verify database readiness before accepting incoming network traffic
+  let dbReady = false;
+  let lastDbError: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await pool.query("SELECT 1");
+      dbReady = true;
+      break;
+    } catch (err) {
+      lastDbError = err;
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1) + Math.random() * 500));
+      }
+    }
+  }
+  if (!dbReady) {
+    throw new Error(`Database readiness check failed: ${lastDbError instanceof Error ? lastDbError.message : String(lastDbError)}`);
+  }
+
   await app.listen(cfg.port, "0.0.0.0");
 }
 void bootstrap().catch((error: unknown) => {

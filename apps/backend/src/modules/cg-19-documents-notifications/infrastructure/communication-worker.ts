@@ -21,9 +21,27 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
   async onModuleInit(){
     this.stopped=false;
     // One LISTEN connection and one bounded due-index sweep per process.
-    // No per-account timers or outbound requests when the queue is empty.
-    const sub=await this.db.connect();
+    // Bounded retry allows cloud compute cold-start / transient DNS blips to resolve without crashing startup.
+    let sub: PoolClient | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3 && !this.stopped; attempt++) {
+      try {
+        sub = await this.db.connect();
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1) + Math.random() * 500));
+        }
+      }
+    }
+    if (!sub) throw lastErr;
     try{
+      sub.on("error", () => {
+        // Prevent idle client drops from causing unhandled process errors.
+        try { sub?.release(); } catch {}
+        if (this.subscription === sub) this.subscription = null;
+      });
       await sub.query("LISTEN cg19_decision_committed");
       this.subscription=sub;
       sub.on("notification",(event:Notification)=>{
