@@ -48,6 +48,7 @@ export class AppointmentSlipDocumentService{
  async issue(bearer:string,bookingRaw:string,requestRaw:string){
   const bookingRef=uuid(bookingRaw),requestKey=uuid(requestRaw);
   const source=await this.original.original(bearer,bookingRef);
+  const verifiedActor=await this.original.actorForSlip(bearer);
   if(source.bookingStatus==="CANCELLED"||source.bookingStatus==="NO_SHOW")
    throw new ConflictException({code:"CG19_SLIP_UNAVAILABLE"});
   const qr=token(source);
@@ -74,7 +75,7 @@ export class AppointmentSlipDocumentService{
      "source_revision,source_digest,issued_by_account,issue_key,qr_digest,object_key) "+
      "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
      [source.rootRef,docId,source.bookingRef,source.sourceVersion,
-      source.sourceDigest,(await this.originalAccount(bearer)).accountId,
+      source.sourceDigest,verifiedActor.accountId,
       requestKey,hash(qr),objectKey]);
     document=created.rows[0];first=true;
    }
@@ -133,11 +134,6 @@ export class AppointmentSlipDocumentService{
     [source.rootRef,document.id]).catch(()=>undefined);
    return {status:"UNKNOWN",documentRef:document.id,confirmed:false};
   }
- }
- private async originalAccount(bearer:string){
-  // CG15 source accepts the authenticated actor; retrieve the original
-  // account ID through the verified token, never a UI-supplied ID.
-  return this.original.actorForSlip(bearer);
  }
  async download(bearer:string,bookingRaw:string){
   const source=await this.original.original(bearer,uuid(bookingRaw));
