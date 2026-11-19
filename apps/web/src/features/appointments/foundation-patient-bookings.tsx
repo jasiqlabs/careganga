@@ -13,7 +13,7 @@ type Stats={totalPatients:number;activePatients:number;totalBookings:number;
 type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[];
  states:StateChoice[];districts:DistrictChoice[];centerTypes:string[];
  geographyComplete:boolean;centerChoicesComplete:boolean};
-type Query={status:string;centerRef:string;after:string;day:string;
+type Query={status:string;centerRef:string;after:string;day:string;fromDay:string;untilDay:string;
  stateRef:string;districtRef:string;centerType:string;search:string;centerSearch:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
  consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
@@ -40,7 +40,7 @@ const centerTime=(iso:string,zone:string)=>{
  }catch{return "Original center local time unavailable";}
 };
 export function FoundationPatientBookings(){
- const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",
+ const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:"",day:"",fromDay:"",untilDay:"",
  stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});
  const [searchDraft,setSearchDraft]=useState("");
  const [centerDraft,setCenterDraft]=useState("");
@@ -61,6 +61,8 @@ export function FoundationPatientBookings(){
   if(q.status)params.set("status",q.status);
   if(q.centerRef)params.set("centerRef",q.centerRef);
   if(q.day)params.set("day",q.day);
+  if(q.fromDay)params.set("fromDay",q.fromDay);
+  if(q.untilDay)params.set("untilDay",q.untilDay);
   if(q.stateRef)params.set("stateRef",q.stateRef);
   if(q.districtRef)params.set("districtRef",q.districtRef);
   if(q.centerType)params.set("centerType",q.centerType);
@@ -311,11 +313,15 @@ export function FoundationPatientBookings(){
        {status.replaceAll("_"," ")}</option>)}
      </select>
     </label>
-    <label>Consultation date (center local date)
-     <input type="date" value={query.day}
-      onChange={e=>update({day:e.target.value})}/>
+    <label>Appointment from (center local date)
+     <input type="date" value={query.fromDay} max={query.untilDay||undefined}
+      onChange={e=>{setMessage("");update({fromDay:e.target.value,day:""});}}/>
     </label>
-    <button type="button" onClick={()=>{setSearchDraft("");setCenterDraft("");setMessage("");setQuery({status:"",centerRef:"",after:"",day:"",
+    <label>Appointment through (center local date)
+     <input type="date" value={query.untilDay} min={query.fromDay||undefined}
+      onChange={e=>{setMessage("");update({untilDay:e.target.value,day:""});}}/>
+    </label>
+    <button type="button" onClick={()=>{setSearchDraft("");setCenterDraft("");setMessage("");setQuery({status:"",centerRef:"",after:"",day:"",fromDay:"",untilDay:"",
       stateRef:"",districtRef:"",centerType:"",search:"",centerSearch:""});}}>
      Reset filters</button>
    </div>
