@@ -3,6 +3,8 @@ import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {fetch as expoFetch} from "expo/fetch";
 import {File,Paths} from "expo-file-system";
 import * as Crypto from "expo-crypto";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -103,6 +105,48 @@ export function NativeCenterConsultationSlip({token,bookingRef,bookingStatus,onE
    "Original document issue is uncertain. Do not issue a second document.");}
   finally{setBusy(false);}
  }
+ /** Always recheck original CG19 staff center grant/consent and
+  * issued document before opening a device share or print dialog.
+  * A dispatched copy is an explicit external disclosure, never a new
+  * public document URL or an assumed delivery receipt.
+  */
+ async function nativeAuthorizedPdf(mode:"SHARE"|"PRINT"){
+  if(busy||!current?.canDownload)return;
+  setBusy(true);setMessage("");
+  let temporary:File|null=null;
+  try{
+   const statusReply=await call(path+"/status");
+   const record=await statusReply.json() as Status;
+   if(record.status!=="ISSUED"||!record.canDownload)
+    throw Error("This original consultation slip is no longer authorized.");
+   const fileResponse=await call(path+"/file");
+   if(!fileResponse.headers.get("Content-Type")?.includes("application/pdf"))
+    throw Error("Private consultation document type is invalid.");
+   const data=await fileResponse.bytes();
+   if(data.length<100||data.length>10485760||
+    data[0]!==37||data[1]!==80||data[2]!==68||data[3]!==70)
+    throw Error("Original private consultation PDF could not be verified.");
+   temporary=new File(Paths.cache,"careganga-staff-action-"+
+    Crypto.randomUUID()+".pdf");
+   temporary.create();await temporary.write(data);
+   if(mode==="SHARE"){
+    if(!await Sharing.isAvailableAsync())
+     throw Error("Device sharing is unavailable.");
+    await Sharing.shareAsync(temporary.uri,{mimeType:"application/pdf",
+     dialogTitle:"Share current private center consultation PDF"});
+    setMessage("Share sheet closed. CareGanga cannot verify which recipient received a copy.");
+   }else{
+    await Print.printAsync({uri:temporary.uri});
+    setMessage("Print dialog closed. Printing is not independently confirmed.");
+   }
+  }catch(e){
+   setUncertain(true);
+   setMessage(e instanceof Error?e.message:"Private PDF share or print unavailable.");
+  }finally{
+   try{temporary?.delete();}catch{/* OS dispatch owns external copy. */}
+   setBusy(false);
+  }
+ }
  async function openIssued(){
   if(busy||!current?.canDownload)return;
   setBusy(true);setMessage("");
@@ -128,6 +172,12 @@ export function NativeCenterConsultationSlip({token,bookingRef,bookingStatus,onE
    {!!message&&<Text accessibilityRole="alert" style={styles.note}>{message}</Text>}
    {button("Check original slip status",()=>void status())}
    {current?.canDownload&&button("Open private PDF",()=>void openIssued())}
+   {current?.canDownload&&!uncertain&&<>
+    {button("Print current private consultation PDF",()=>void nativeAuthorizedPdf("PRINT"))}
+    {button("Share private PDF outside CareGanga",()=>void nativeAuthorizedPdf("SHARE"))}
+    <Text style={styles.note}>Only share with an authorized recipient.
+     The app cannot revoke a printed or externally shared copy.</Text>
+   </>}
    {current?.status==="NOT_ISSUED"&&!uncertain&&
     button("Issue original consultation slip",()=>void issue())}
    {uncertain&&<Text style={styles.note}>Keep the original issue reference.
