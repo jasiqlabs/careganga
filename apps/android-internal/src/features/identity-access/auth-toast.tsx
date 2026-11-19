@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { IconAlertCircle, IconCheckCircle2 } from "./auth-icons";
 
-export type ToastType = "error" | "success" | "info";
+export type ToastType = "error" | "success" | "warning" | "info";
 
 export interface ToastPayload {
   id?: string;
@@ -133,12 +133,54 @@ export function AuthToast({ toast, onDismiss }: AuthToastProps) {
   }
 
   const isError = current.type === "error";
+  const isWarning = current.type === "warning";
+  const isSuccess = current.type === "success";
 
   // Interpolate progress width from "100%" down to "0%"
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"]
   });
+
+  const cardStyle = isError
+    ? styles.toastErrorCard
+    : isWarning
+      ? styles.toastWarningCard
+      : isSuccess
+        ? styles.toastSuccessCard
+        : styles.toastInfoCard;
+
+  const titleStyle = isError
+    ? styles.titleError
+    : isWarning
+      ? styles.titleWarning
+      : isSuccess
+        ? styles.titleSuccess
+        : styles.titleInfo;
+
+  const messageStyle = isError
+    ? styles.messageError
+    : isWarning
+      ? styles.messageWarning
+      : isSuccess
+        ? styles.messageSuccess
+        : styles.messageInfo;
+
+  const progressStyle = isError
+    ? styles.progressError
+    : isWarning
+      ? styles.progressWarning
+      : isSuccess
+        ? styles.progressSuccess
+        : styles.progressInfo;
+
+  const iconColor = isError
+    ? "#F87171"
+    : isWarning
+      ? "#FBBF24"
+      : isSuccess
+        ? "#34D399"
+        : "#38BDF8";
 
   return (
     <Animated.View
@@ -155,39 +197,24 @@ export function AuthToast({ toast, onDismiss }: AuthToastProps) {
         accessibilityRole="alert"
         accessibilityLabel={`${current.title}: ${current.message}`}
         onPress={dismissToast}
-        style={[
-          styles.toastCard,
-          isError ? styles.toastErrorCard : styles.toastSuccessCard
-        ]}
+        style={[styles.toastCard, cardStyle]}
       >
         <View style={styles.contentRow}>
           {/* Status Icon */}
           <View style={styles.iconBox}>
-            {isError ? (
-              <IconAlertCircle size={20} color="#F87171" />
+            {isSuccess ? (
+              <IconCheckCircle2 size={20} color={iconColor} />
             ) : (
-              <IconCheckCircle2 size={20} color="#34D399" />
+              <IconAlertCircle size={20} color={iconColor} />
             )}
           </View>
 
           {/* Text Details */}
           <View style={styles.textBox}>
-            <Text
-              style={[
-                styles.titleText,
-                isError ? styles.titleError : styles.titleSuccess
-              ]}
-              numberOfLines={1}
-            >
+            <Text style={[styles.titleText, titleStyle]} numberOfLines={1}>
               {current.title}
             </Text>
-            <Text
-              style={[
-                styles.messageText,
-                isError ? styles.messageError : styles.messageSuccess
-              ]}
-              numberOfLines={2}
-            >
+            <Text style={[styles.messageText, messageStyle]} numberOfLines={2}>
               {current.message}
             </Text>
           </View>
@@ -196,11 +223,7 @@ export function AuthToast({ toast, onDismiss }: AuthToastProps) {
         {/* Thin bottom progress indicator that continuously shrinks from right to left */}
         <View style={styles.progressTrack}>
           <Animated.View
-            style={[
-              styles.progressBar,
-              isError ? styles.progressError : styles.progressSuccess,
-              { width: progressWidth }
-            ]}
+            style={[styles.progressBar, progressStyle, { width: progressWidth }]}
           />
         </View>
       </Pressable>
@@ -228,6 +251,9 @@ export function useAuthToast() {
   return { toast, showToast, hideToast };
 }
 
+export const CareGangaToast = AuthToast;
+export const useCareGangaToast = useAuthToast;
+
 const styles = StyleSheet.create({
   overlayContainer: {
     position: "absolute",
@@ -251,9 +277,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#450A0A",
     borderColor: "rgba(239, 68, 68, 0.45)"
   },
+  toastWarningCard: {
+    backgroundColor: "#451A03",
+    borderColor: "rgba(245, 158, 11, 0.45)"
+  },
   toastSuccessCard: {
     backgroundColor: "#064E3B",
     borderColor: "rgba(52, 211, 153, 0.45)"
+  },
+  toastInfoCard: {
+    backgroundColor: "#082F49",
+    borderColor: "rgba(56, 189, 248, 0.45)"
   },
   contentRow: {
     flexDirection: "row",
@@ -283,8 +317,14 @@ const styles = StyleSheet.create({
   titleError: {
     color: "#FEE2E2"
   },
+  titleWarning: {
+    color: "#FDE68A"
+  },
   titleSuccess: {
     color: "#ECFDF5"
+  },
+  titleInfo: {
+    color: "#BAE6FD"
   },
   messageText: {
     fontSize: 12,
@@ -294,8 +334,14 @@ const styles = StyleSheet.create({
   messageError: {
     color: "#FECACA"
   },
+  messageWarning: {
+    color: "#FEF3C7"
+  },
   messageSuccess: {
     color: "#A7F3D0"
+  },
+  messageInfo: {
+    color: "#E0F2FE"
   },
   progressTrack: {
     height: 3,
@@ -309,7 +355,13 @@ const styles = StyleSheet.create({
   progressError: {
     backgroundColor: "#EF4444"
   },
+  progressWarning: {
+    backgroundColor: "#F59E0B"
+  },
   progressSuccess: {
     backgroundColor: "#10B981"
+  },
+  progressInfo: {
+    backgroundColor: "#0284C7"
   }
 });
