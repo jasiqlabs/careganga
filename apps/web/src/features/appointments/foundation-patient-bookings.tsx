@@ -8,12 +8,20 @@ type Stats={totalPatients:number;activePatients:number;totalBookings:number;
  todayBookings:number;completed:number;pending:number};
 type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[]};
 type Query={status:string;centerRef:string;after:string};
+type EventPart={status:string|null;startAt:string|null;endAt:string|null;
+ consultationFeeMinor:string|null}|null;
+type HistoricEvent={action:string;revision:number;when:string;by:string;
+ before:EventPart;after:EventPart};
+type OriginalHistory={bookingId:string|null;items:HistoricEvent[];next:number|null};
 const money=(s:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR"}).format(Number(s)/100);
 export function FoundationPatientBookings(){
  const [query,setQuery]=useState<Query>({status:"",centerRef:"",after:""});
  const [result,setResult]=useState<Result|null>(null);
  const [selected,setSelected]=useState("");
+ const [history,setHistory]=useState<OriginalHistory|null>(null);
+ const [historyBusy,setHistoryBusy]=useState(false);
+ const [historyError,setHistoryError]=useState("");
  const [message,setMessage]=useState(""),[loading,setLoading]=useState(true);
  const load=useCallback(async(q:Query)=>{
   const params=new URLSearchParams();
@@ -42,6 +50,39 @@ export function FoundationPatientBookings(){
   .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[query,load]);
+ useEffect(()=>{
+  if(!selected){setHistory(null);return;}
+  let active=true;
+  setHistoryBusy(true);setHistory(null);setHistoryError("");
+  void fetch("/api/appointments/admin/patients/"+encodeURIComponent(selected)+
+   "/history",{cache:"no-store",credentials:"same-origin"})
+   .then(async r=>{
+    const raw:unknown=await r.json().catch(()=>null);
+    if(!r.ok)throw Error(raw&&typeof raw==="object"&&"message" in raw&&
+     typeof raw.message==="string"?raw.message:"Booking history unavailable.");
+    return raw as OriginalHistory;
+   }).then(data=>{if(active)setHistory(data);})
+   .catch(e=>{if(active)setHistoryError(e instanceof Error?e.message:
+    "Booking history unavailable.");})
+   .finally(()=>{if(active)setHistoryBusy(false);});
+  return()=>{active=false;};
+ },[selected]);
+ async function moreHistory(){
+  if(!selected||historyBusy||!history?.next)return;
+  setHistoryBusy(true);setHistoryError("");
+  try{
+   const r=await fetch("/api/appointments/admin/patients/"+
+    encodeURIComponent(selected)+"/history?before="+history.next,{
+     cache:"no-store",credentials:"same-origin"});
+   const raw:unknown=await r.json().catch(()=>null);
+   if(!r.ok)throw Error(raw&&typeof raw==="object"&&"message" in raw&&
+    typeof raw.message==="string"?raw.message:"Further history unavailable.");
+   const next=raw as OriginalHistory;
+   setHistory(old=>old?.bookingId===next.bookingId?
+    {...old,items:[...old.items,...next.items],next:next.next}:old);
+  }catch(e){setHistoryError(e instanceof Error?e.message:"Further history is unavailable.");}
+  finally{setHistoryBusy(false);}
+ }
  const selectedBooking=result?.items.find(x=>x.bookingRef===selected);
  const update=(change:Partial<Query>)=>setQuery(q=>({...q,...change,after:""}));
  const metrics=result?.metrics;
@@ -121,8 +162,25 @@ export function FoundationPatientBookings(){
       <p><strong>Consultation:</strong> {money(selectedBooking.consultationFeeMinor)}
        · {selectedBooking.collectionStatus.replaceAll("_"," ")}</p>
       <h3>Booking History</h3>
-      <p>This record shows the current appointment. Other patient records and clinical
-       files are not made available by this overview.</p>
+      {historyBusy&&!history&&<p role="status">Checking original booking events…</p>}
+      {!!historyError&&<p role="alert">{historyError}</p>}
+      {history?.items.length===0&&<p>No recorded changes are available for this booking.</p>}
+      {history?.items.map(e=><article key={e.revision}
+       style={{padding:10,borderBottom:"1px solid #d7dfdb"}}>
+       <p><strong>{e.action.replaceAll("_"," ")}</strong> —
+        {new Date(e.when).toLocaleString("en-IN")}</p>
+       <p>Recorded by {e.by}</p>
+       {e.before?.status&&<p>Previously: {e.before.status.replaceAll("_"," ")}
+        {e.before.startAt?" · "+new Date(e.before.startAt).toLocaleString("en-IN"):""}</p>}
+       {e.after?.status&&<p>Updated: {e.after.status.replaceAll("_"," ")}
+        {e.after.startAt?" · "+new Date(e.after.startAt).toLocaleString("en-IN"):""}</p>}
+       {e.after?.consultationFeeMinor&&
+        <p>Accepted consultation: {money(e.after.consultationFeeMinor)}</p>}
+      </article>)}
+      {history?.next&&<button type="button" disabled={historyBusy}
+       onClick={()=>void moreHistory()}>Older booking events</button>}
+      <p>This event history contains only this protected booking's operational changes.
+       Medical reports and other patient records are not disclosed.</p>
       <p>Medical Profile, Documents, Prescriptions and Care Plan remain hidden until
        their actual consented owner sources are authorized.</p>
      </>}
