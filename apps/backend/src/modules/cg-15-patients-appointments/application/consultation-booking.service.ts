@@ -565,25 +565,42 @@ export class ConsultationBookingService{
     old?JSON.stringify(old):null,JSON.stringify(snapshot),actor.accountId,key]);
  }
  async cancel(bearer:string,idRaw:string,input:unknown){
+  return this.cancelOriginal(bearer,idRaw,input);
+ }
+ /** Reception can cancel only with its own separately assigned cancellation
+  * grant AND current CG14 verified center affiliation. This is the same
+  * original booking/doctor lock, revision, request key and immutable event.
+  */
+ async cancelForCenter(bearer:string,centerRaw:string,idRaw:string,input:unknown){
+  return this.cancelOriginal(bearer,idRaw,input,uuid(centerRaw));
+ }
+ private async cancelOriginal(bearer:string,idRaw:string,input:unknown,centerRef?:string){
   const actor=await this.identity.verifySession(bearer),id=uuid(idRaw);
   const v=body(input,["requestKey","expectedVersion","reason"]);
   const key=uuid(v.requestKey),expected=Number(v.expectedVersion);
   if(!Number.isSafeInteger(expected)||expected<1||expected>2147483645||
-    typeof v.reason!=="string"||!["PATIENT_REQUEST","OTHER"].includes(v.reason))
+    typeof v.reason!=="string"||
+    (centerRef?v.reason!=="CENTER_REQUEST":!["PATIENT_REQUEST","OTHER"].includes(v.reason)))
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
   const requestDigest=SHA({id,expected,reason:v.reason,action:"CANCELLED"});
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
+   // Check exact currently assigned center before taking the doctor lock.
+   // Patient self-cancellation still requires real account ownership below.
+   if(centerRef)await this.centerScope.assertCurrent(
+    tx,actor,centerRef,"health.appointments.cancel");
    const doctor=await tx.query<{doctor_id:string}>(
-    "SELECT doctor_id FROM cg15_consultation_appointment WHERE root_realm_id=$1 AND id=$2",
-    [actor.realmId,id]);
+    "SELECT doctor_id FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
+    "AND id=$2 "+(centerRef?"AND center_id=$3":""),
+    centerRef?[actor.realmId,id,centerRef]:[actor.realmId,id]);
    if(!doctor.rows[0])throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    await this.doctorLock(tx,actor,doctor.rows[0].doctor_id);
-   const patient=await this.ownPatient(tx,actor,false);
+   const patient=centerRef?null:await this.ownPatient(tx,actor,false);
    const row=await tx.query<Booking>(
     "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
-    "AND id=$2 AND patient_id=$3 FOR UPDATE",[actor.realmId,id,patient.id]);
+    "AND id=$2 AND "+(centerRef?"center_id=$3":"patient_id=$3")+" FOR UPDATE",
+    [actor.realmId,id,centerRef??patient!.id]);
    const old=row.rows[0];
    if(!old)throw new NotFoundException({code:"CG15_BOOKING_NOT_FOUND"});
    const previously=await tx.query<{new_snapshot:{requestDigest?:string}}>(
