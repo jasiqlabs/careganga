@@ -444,7 +444,7 @@ export class PatientProfileService{
   const recipient=typeof v.recipientIdentifier==="string"?
    v.recipientIdentifier.trim().toLowerCase():"";
   if(v.personallyConfirmed!==true||recipient.length<6||
-   recipient.length>254||!/^(?:[6-9][0-9]{9}|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)$/.test(recipient))
+   recipient.length>254||!/^(?:[6-9][0-9]{9}|[^\s@]+@[^\s@]+\.[^\s@]+)$/.test(recipient))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const c=await this.db.connect();let open=false;
   try{
