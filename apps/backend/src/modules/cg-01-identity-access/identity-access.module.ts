@@ -19,6 +19,8 @@ import { ProtectedAccessOwnerService } from "./application/protected-access-owne
 import { CommunicationRecipientSource } from "./application/communication-recipient-source.service";
 import { MobileVerificationService } from "./application/mobile-verification.service";
 import { MobileVerificationController } from "./http/mobile-verification.controller";
+import { PublicPatientSignupController } from "./http/public-patient-signup.controller";
+import { PublicPatientSignupService } from "./application/public-patient-signup.service";
 
 @Module({
   controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
