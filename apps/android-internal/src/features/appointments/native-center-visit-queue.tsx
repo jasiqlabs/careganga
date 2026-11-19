@@ -13,6 +13,9 @@ type Item={appointmentRef:string;bookingId:string;doctorRef:string;doctorName:st
 type Props={token:string;canCancel:boolean;onExit:()=>void;onExpired:()=>void};
 type Summary={centerRef:string;day:string;total:number;confirmed:number;arrived:number;
  waiting:number;inConsultation:number;completed:number;noShow:number;cancelled:number};
+type AuditEvent={revision:number;action:string;when:string;by:string;
+ beforeStatus:string|null;afterStatus:string|null};
+type AuditHistory={bookingId:string;events:AuditEvent[];next:number|null};
 type VerifiedSlip={valid:boolean;bookingId?:string;patientName?:string;
  bookingStatus?:string;startAt?:string;timeZone?:string;canCheckIn?:boolean};
 const dateAt=(offset:number,zone:string)=>{
@@ -54,6 +57,11 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
  const centerZone=centers.find(x=>x.centerRef===center)?.timeZone??"UTC";
  const [qrToken,setQrToken]=useState(""),[verifiedSlip,setVerifiedSlip]=useState<VerifiedSlip|null>(null);
  const [selectedSlip,setSelectedSlip]=useState<Item|null>(null);
+ const [auditRef,setAuditRef]=useState("");
+ const [audit,setAudit]=useState<AuditHistory|null>(null);
+ const [auditBusy,setAuditBusy]=useState(false);
+ const [auditError,setAuditError]=useState("");
+ const auditSerial=useRef(0);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
  const cancelKeys=useRef<Map<string,string>>(new Map());
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -74,6 +82,7 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
      (after?"&after="+encodeURIComponent(after):""));
    if(stamp!==seq.current||selectedCenter.current!==c)return;
    setItems(data.items);setSelectedSlip(null);setCancelPending(null);
+   auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");
    setCursor(after);setNextCursor(data.next);setUncertain(false);
    void request<Summary>(token,
     "my-centers/"+encodeURIComponent(c)+"/summary?date="+encodeURIComponent(day))
@@ -194,6 +203,24 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
    setUncertain(!(typeof status==="number"&&status>=400&&status<500));
   }finally{setBusy(false);}
  }
+ async function loadAudit(item:Item,before?:number){
+  if(!center||auditBusy)return;
+  if(auditRef!==item.appointmentRef){setAudit(null);setAuditRef(item.appointmentRef);}
+  const stamp=++auditSerial.current,centerAtRequest=center;
+  setAuditBusy(true);setAuditError("");
+  try{
+   const data=await request<AuditHistory>(token,
+    "my-centers/"+encodeURIComponent(centerAtRequest)+"/bookings/"+
+    encodeURIComponent(item.appointmentRef)+"/history"+
+    (before===undefined?"":"?before="+encodeURIComponent(String(before))));
+   if(stamp!==auditSerial.current||selectedCenter.current!==centerAtRequest)return;
+   setAudit(old=>before!==undefined&&old&&auditRef===item.appointmentRef?
+    {...data,events:[...old.events,...data.events]}:data);
+  }catch(e){
+   if(stamp===auditSerial.current){fail(e);
+    setAuditError(e instanceof Error?e.message:"Current booking history is unavailable.");}
+  }finally{if(stamp===auditSerial.current)setAuditBusy(false);}
+ }
  const doctorChoices=Array.from(new Map(items.map(x=>
   [x.doctorRef,{ref:x.doctorRef,name:x.doctorName}])).values())
   .sort((a,b)=>a.name.localeCompare(b.name));
@@ -301,6 +328,26 @@ export function NativeCenterVisitQueue({token,canCancel,onExit,onExpired}:Props)
     <Text style={styles.help}>Doctor: {a.doctorName}</Text>
     <Text style={styles.help}>{a.bookingId} · {new Date(a.startAt).toLocaleString("en-IN",{timeZone:centerZone,dateStyle:"medium",timeStyle:"short"})}</Text>
     <Text style={styles.help}>Current state: {a.bookingStatus} · Queue: {a.queueToken??"Not checked in"}</Text>
+    {button(auditRef===a.appointmentRef?"Hide booking history":"Original booking history",
+     ()=>{if(auditRef===a.appointmentRef){
+      auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");
+     }else void loadAudit(a);},auditBusy)}
+    {auditRef===a.appointmentRef&&<View style={styles.card}>
+     {auditBusy&&!audit&&<ActivityIndicator accessibilityLabel="Checking actual booking history"/>}
+     {!!auditError&&<Text accessibilityRole="alert" style={styles.error}>{auditError}</Text>}
+     {audit?.events.length===0&&<Text style={styles.help}>No original booking events.</Text>}
+     {audit?.events.map(event=><View key={event.revision} style={styles.card}>
+      <Text style={styles.help}>{event.action.replaceAll("_"," ")}</Text>
+      <Text style={styles.help}>{new Date(event.when).toLocaleString("en-IN")}
+       · {event.by}</Text>
+      <Text style={styles.help}>{event.beforeStatus??"New"}
+       → {event.afterStatus??"Current state unavailable"}</Text>
+     </View>)}
+     {audit?.next&&button("Older original events",
+      ()=>void loadAudit(a,audit.next??undefined),auditBusy)}
+     <Text style={styles.help}>Only operational status events are shown.
+      No private clinical documents or medical notes are included.</Text>
+    </View>}
     {!a.consentGranted&&<Text style={styles.help}>Care consent withdrawn. New check-in and private documents are unavailable.</Text>}
     {canCancel&&a.bookingStatus==="CONFIRMED"&&!a.visitRef&&
      (cancelPending===a.appointmentRef?
