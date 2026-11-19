@@ -9,7 +9,7 @@ const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;doctorName:string;
  centerRef:string;centerName:string;startAt:string;endAt:string;timeZone:string;
- consultationFeeMinor:string;bookingStatus:string;paymentMode:string;
+ consultationFeeMinor:string;bookingStatus:string;canPatientChange:boolean;paymentMode:string;
  collectionStatus:string;version:number};
 async function api<T>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||
@@ -105,7 +105,7 @@ export function NativeConsultationHistory(){
    <Text>Consultation: ₹{(Number(x.consultationFeeMinor)/100).toFixed(2)}</Text>
    <Text>Payment: {x.collectionStatus.replaceAll("_"," ")}</Text>
    <NativeAppointmentDocuments bookingRef={x.bookingRef} bookingStatus={x.bookingStatus}/>
-   {x.bookingStatus==="CONFIRMED"&&new Date(x.startAt).getTime()>Date.now()&&
+   {x.canPatientChange===true&&
     <View style={styles.actions}>
      {button("Reschedule",()=>setReschedule(x),busy||uncertain)}
      {button("Cancel",()=>confirmation(x),busy||uncertain)}
