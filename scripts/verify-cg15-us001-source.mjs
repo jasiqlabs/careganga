@@ -108,6 +108,14 @@ const tests=[
  ["source: H07 Foundation Web and Center Portal",s.web.includes("Weekly working hours")&&
   s.web.includes("doctorName")&&s.webAdmin.includes("DoctorScheduleWorkspace")&&
   s.centerPortal.includes("DoctorScheduleWorkspace")],
+ ["source: H07 target-copy is a reviewed draft using existing guarded save only",
+  s.web.includes("Copy this doctor's working hours to another verified center")&&
+  s.web.includes("Prepare copy at selected center")&&
+  s.web.includes("destination.doctorRef!==source.doctorRef")&&
+  s.web.includes("destination.timeZone!==source.timeZone")&&
+  s.web.includes("Other centers and old confirmed bookings have not changed")&&
+  s.service.includes("this.noOtherCenterOverlap(tx,actor,src,input.mode,input.windows)")&&
+  s.service.includes("this.hours(tx,actor,src.center_id,input.windows)")],
  ["source: protected two-role Foundation leave UX",s.webReview.includes("Record independent CG-03 decision")&&
   s.webReview.includes("Apply approved leave")&&
   s.webReviewPage.includes("canReview")],
