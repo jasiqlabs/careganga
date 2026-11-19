@@ -95,7 +95,7 @@ export function PatientProfilePanel(){
     throw Error("Your account could not be confirmed. Please check the original request.");
    signupCommand.current=null;setSignupPassword("");setSignupCode("");setPassword("");
    setIdentifier(payload.mobile);setSignupMode(false);
-   setMessage("Your CareGanga patient account was created. Sign in and verify your registered mobile before creating a patient profile.");
+   setMessage("Your CareGanga account was created with verified mobile contact. Sign in using your mobile number and password, then create your patient profile.");
   });
  }
  async function login(){
