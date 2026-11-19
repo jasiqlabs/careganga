@@ -9,7 +9,7 @@ type Stats={totalPatients:number;activePatients:number;totalBookings:number;
 type Result={metrics:Stats;items:Row[];next:string|null;centerChoices:Center[]};
 type Query={status:string;centerRef:string;after:string};
 type EventPart={status:string|null;startAt:string|null;endAt:string|null;
- consultationFeeMinor:string|null}|null;
+ consultationFeeMinor:string|null;centerName:string|null;reason:string|null}|null;
 type HistoricEvent={action:string;revision:number;when:string;by:string;
  before:EventPart;after:EventPart};
 type OriginalHistory={bookingId:string|null;items:HistoricEvent[];next:number|null};
@@ -174,6 +174,9 @@ export function FoundationPatientBookings(){
         {e.before.startAt?" · "+new Date(e.before.startAt).toLocaleString("en-IN"):""}</p>}
        {e.after?.status&&<p>Updated: {e.after.status.replaceAll("_"," ")}
         {e.after.startAt?" · "+new Date(e.after.startAt).toLocaleString("en-IN"):""}</p>}
+       {e.before?.centerName&&<p>Previous center: {e.before.centerName}</p>}
+       {e.after?.centerName&&<p>Current center: {e.after.centerName}</p>}
+       {e.after?.reason&&<p>Reason: {e.after.reason.replaceAll("_"," ").toLowerCase()}</p>}
        {e.after?.consultationFeeMinor&&
         <p>Accepted consultation: {money(e.after.consultationFeeMinor)}</p>}
       </article>)}
