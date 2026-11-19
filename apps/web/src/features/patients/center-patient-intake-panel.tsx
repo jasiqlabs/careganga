@@ -1,0 +1,143 @@
+"use client";
+import {useCallback,useEffect,useRef,useState} from "react";
+type Consent={available:boolean;version:string|null;text:string|null};
+type Result={virtualPatientId:string;firstName:string;lastName:string;
+ dateOfBirth:string|null;profileStatus:"PROVISIONAL";createdAt:string;message:string};
+type Permission={actions?:{key:string}[]};
+type Pending={requestKey:string;digest:string};
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+async function request<T>(url:string,method="GET",body?:Record<string,unknown>):
+ Promise<{status:number;data:T|null;message:string}>{
+ const r=await fetch(url,{method,cache:"no-store",credentials:"same-origin",
+  headers:body?{"Content-Type":"application/json"}:undefined,
+  body:body?JSON.stringify(body):undefined});
+ const result:unknown=await r.json().catch(()=>null);
+ const object=result&&typeof result==="object"&&!Array.isArray(result)?
+  result as Record<string,unknown>:{};
+ return {status:r.status,data:r.ok?result as T:null,
+  message:typeof object.message==="string"?object.message:
+   "The request could not be confirmed. Check its current status."};
+}
+/** H15 minimal own-center assisted intake. Intentionally does not search,
+ * claim or verify patients by name/mobile; the issued ID is provisional.
+ */
+export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
+ const [allowed,setAllowed]=useState(false),[ready,setReady]=useState(false);
+ const [policy,setPolicy]=useState<Consent>({available:false,version:null,text:null});
+ const [first,setFirst]=useState(""),[last,setLast]=useState("");
+ const [dob,setDob]=useState(""),[attested,setAttested]=useState(false);
+ const [result,setResult]=useState<Result|null>(null);
+ const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
+ const [message,setMessage]=useState("");
+ const pending=useRef<Pending|null>(null);
+ const path="/api/appointments/patients/my-centers/"+encodeURIComponent(centerRef)+"/intakes";
+ const reset=useCallback(()=>{
+  setFirst("");setLast("");setDob("");setAttested(false);
+  setMessage("");setResult(null);setUncertain(false);pending.current=null;
+ },[]);
+ useEffect(()=>{
+  let alive=true;
+  reset();setReady(false);setAllowed(false);
+  if(!UUID.test(centerRef))return()=>{alive=false;};
+  void Promise.all([
+   request<Permission>("/api/access/effective"),
+   request<Consent>("/api/patients/policy")
+  ]).then(([access,consent])=>{
+   if(!alive)return;
+   setAllowed(!!access.data?.actions?.some(action=>action.key==="health.patients.intake"));
+   if(consent.data)setPolicy(consent.data);
+   setReady(true);
+  }).catch(()=>{if(alive){setAllowed(false);setReady(true);}});
+  return()=>{alive=false;};
+ },[centerRef,reset]);
+ const payload=()=>({
+  firstName:first.trim(),lastName:last.trim(),dateOfBirth:dob||null,
+  consentVersion:policy.version,assistedConsentAttested:attested
+ });
+ async function submit(){
+  if(busy||uncertain||!allowed||!policy.available||!attested||!first.trim()||
+   !last.trim())return;
+  const input=payload(),digest=JSON.stringify(input);
+  if(pending.current?.digest!==digest)
+   pending.current={digest,requestKey:crypto.randomUUID()};
+  setBusy(true);setMessage("");
+  try{
+   const r=await request<Result>(path,"POST",
+    {requestKey:pending.current.requestKey,...input});
+   if(r.data){
+    setResult(r.data);setMessage(r.data.message);
+    setUncertain(false);pending.current=null;
+   }else{
+    setMessage(r.message);
+    if(r.status>=500)setUncertain(true);
+   }
+  }catch{
+   setUncertain(true);
+   setMessage("The intake result is uncertain. Check the same request before retrying.");
+  }finally{setBusy(false);}
+ }
+ async function check(){
+  if(!pending.current||busy)return;
+  setBusy(true);setMessage("");
+  try{
+   const r=await request<Result>(path+"/"+pending.current.requestKey);
+   if(r.data){
+    setResult(r.data);setUncertain(false);pending.current=null;
+    setMessage("This intake was previously recorded. It was not created twice.");
+   }else if(r.status===404){
+    setUncertain(false);
+    setMessage("No saved intake was found for this request. You may retry unchanged details.");
+   }else{
+    setMessage(r.message);setUncertain(true);
+   }
+  }catch{
+   setUncertain(true);setMessage("The saved result cannot be checked right now.");
+  }finally{setBusy(false);}
+ }
+ if(!ready)return <p role="status">Checking patient-intake permission…</p>;
+ if(!allowed)return null;
+ return <section className="form-section" aria-label="Center-assisted provisional patient intake">
+  <h3>Register a provisional patient</h3>
+  <p>For permitted reception staff at this center. Enter only the patient's minimum
+   details after explaining the approved consent. This is not a verified patient
+   identity, an appointment, a government ID or permission to view clinical files.</p>
+  {message&&<p role="status" aria-live="polite">{message}</p>}
+  {result?<div role="status" className="notice">
+   <strong>CareGanga Virtual Patient ID: {result.virtualPatientId}</strong>
+   <p>{result.firstName} {result.lastName} · {result.profileStatus}</p>
+   <p>Identity and patient-account claim remain unverified. Keep the ID private.</p>
+   <button type="button" onClick={reset}>Register another person</button>
+  </div>:
+  <div style={{display:"grid",gap:12,maxWidth:650}}>
+   {!policy.available?<p role="alert">Foundation-approved consent is not configured.
+     New patient registration is unavailable.</p>:<>
+    <label>First name
+     <input value={first} maxLength={100} required disabled={busy||uncertain}
+      onChange={e=>setFirst(e.target.value)}/></label>
+    <label>Last name
+     <input value={last} maxLength={100} required disabled={busy||uncertain}
+      onChange={e=>setLast(e.target.value)}/></label>
+    <label>Date of birth (optional)
+     <input type="date" value={dob} disabled={busy||uncertain}
+      max={new Date().toISOString().slice(0,10)}
+      onChange={e=>setDob(e.target.value)}/></label>
+    <div style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
+     <h4>Explain the current patient-care consent</h4>
+     <p style={{whiteSpace:"pre-wrap"}}>{policy.text}</p>
+     <label><input type="checkbox" checked={attested} disabled={busy||uncertain}
+      onChange={e=>setAttested(e.target.checked)}/>
+      {" "}I explained this consent to the patient and recorded their informed agreement
+      to this provisional registration.</label>
+    </div>
+    <button type="button" className="primary" onClick={()=>void submit()}
+     disabled={busy||uncertain||!attested||first.trim().length<2||!last.trim()}>
+     {busy?"Checking…":"Register provisional patient"}</button>
+   </>}
+   {uncertain&&<div role="alert">
+    <p>The original request may already be saved. Check it before doing anything else.</p>
+    <button type="button" disabled={busy} onClick={()=>void check()}>
+     Check original intake result</button>
+   </div>}
+  </div>}
+ </section>;
+}
