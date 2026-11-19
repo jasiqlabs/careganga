@@ -638,6 +638,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
       windows.some(w=>!w.startLocal||!w.endLocal)}
      onClick={()=>void saveWeek()}>Save original slot settings</button>}
    </section>}
+   {tab==="WEEKLY"&&<section role="tabpanel" className="form-section"
+    id="cg15-h07-panel-WEEKLY" aria-labelledby="cg15-h07-tab-WEEKLY">
    <h3>Weekly working hours</h3>
    <p>Add morning and afternoon sessions separately, as on the original
     CareGanga Doctor Schedule screen. Each session must fit inside verified
@@ -783,14 +785,19 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <button type="button" disabled={working}
      onClick={()=>void select(selected.associationRef)}>Discard unsaved changes</button>
    </div>}
-   <h3>Leave, holidays and blocked time</h3>
+   </section>}
+   {(tab==="LEAVE"||tab==="HOLIDAY")&&<section role="tabpanel"
+    className="form-section" id={"cg15-h07-panel-"+tab}
+    aria-labelledby={"cg15-h07-tab-"+tab}>
+   <h3>{tab==="HOLIDAY"?"Center holidays":"Doctor leave and blocked time"}</h3>
    <p>Leave is an independent approval request, not an automatic booking
     cancellation. A center-specific block never modifies another center's
     confirmed patient record.</p>
    <div className="role-table-wrap"><table className="role-table">
     <thead><tr><th>Type</th><th>Starts</th><th>Ends</th><th>State</th>
      <th>Action</th></tr></thead>
-    <tbody>{selected.exceptions.map(e=><tr key={e.exceptionRef}>
+    <tbody>{selected.exceptions.filter(e=>tab==="HOLIDAY"?
+     e.kind==="HOLIDAY":e.kind!=="HOLIDAY").map(e=><tr key={e.exceptionRef}>
      <td>{clean(e.kind)}</td>
      <td>{new Date(e.startAt).toLocaleString("en-IN")}</td>
      <td>{new Date(e.endAt).toLocaleString("en-IN")}</td>
@@ -800,16 +807,18 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
        onClick={()=>void cancel(e)}>Cancel block</button>}</td>
     </tr>)}</tbody>
    </table></div>
-   {selected.exceptions.length===0&&
-    <p role="status">No current leave or blocked-time requests.</p>}
+   {selected.exceptions.filter(e=>tab==="HOLIDAY"?
+    e.kind==="HOLIDAY":e.kind!=="HOLIDAY").length===0&&
+    <p role="status">No saved {tab==="HOLIDAY"?"center holidays":"leave or blocked time"}.</p>
    {canManage&&selected.version>0&&<>
     <div className="form-grid">
      <label>Request type
-      <select value={kind} disabled={working||uncertain}
+      <select value={kind} disabled={working||uncertain||tab==="HOLIDAY"}
        onChange={e=>{setKind(e.target.value as typeof kind);exceptionKey.current="";}}>
-       <option value="LEAVE">Doctor leave — requires independent review</option>
-       <option value="BLOCK">Center-specific blocked time</option>
-       <option value="HOLIDAY">Center holiday</option>
+       {tab==="HOLIDAY"?<option value="HOLIDAY">Center holiday</option>:<>
+        <option value="LEAVE">Doctor leave — requires independent review</option>
+        <option value="BLOCK">Center-specific blocked time</option>
+       </>}
       </select>
      </label>
      <label>Starts at ({selected.timeZone} center time)
@@ -829,8 +838,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <button type="button" disabled={working||uncertain||!blockFrom||
      !blockUntil||reason.trim().length<3}
      onClick={()=>void saveException()}>
-     {working?"Saving…":"Record leave or blocked time"}</button>
+     {working?"Saving…":tab==="HOLIDAY"?
+      "Record center holiday":"Record leave or blocked time"}</button>
    </>}
+   </section>}
   </div>}
  </section>;
 }
