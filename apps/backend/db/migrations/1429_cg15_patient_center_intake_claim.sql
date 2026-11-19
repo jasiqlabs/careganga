@@ -1,6 +1,11 @@
 -- CG-15 US-003: a patient may securely claim a clinic-created provisional
 -- intake after center staff verified the person in the room. No phone number,
 -- display ID or unchecked online account may merge/claim another patient's data.
+-- Bind any claim to the SAME originating intake, patient AND center:
+-- matching three independent FKs would otherwise permit mixed origins.
+ALTER TABLE cg15_patient_center_intake
+ ADD CONSTRAINT cg15_intake_original_patient_center
+ UNIQUE(root_realm_id,id,patient_id,center_id);
 CREATE TABLE cg15_patient_center_claim(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -22,8 +27,8 @@ CREATE TABLE cg15_patient_center_claim(
  CHECK(expires_at>created_at),
  CHECK(claimed_at IS NULL OR claimed_by_account IS NOT NULL),
  CHECK(claimed_at IS NULL OR claimed_at>=created_at),
- FOREIGN KEY(root_realm_id,intake_id)
-  REFERENCES cg15_patient_center_intake(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,intake_id,patient_id,center_id)
+  REFERENCES cg15_patient_center_intake(root_realm_id,id,patient_id,center_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,patient_id)
   REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,center_id)
