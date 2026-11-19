@@ -10,6 +10,7 @@ import {RecipientNotifications} from "../../../packages/native-communications/sr
 import {FoundationContactScreen} from "../src/features/support/foundation-contact-screen";
 import {PublicCmsContent} from "../src/features/cms/public-cms-screen";
 import {PublicHealthcareDirectory} from "../src/features/health-network/public-healthcare-directory";
+import {PatientProfileNative} from "../src/features/patients/patient-profile-native";
 
 const KEY="cg_public_own_notice_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -51,6 +52,7 @@ export default function PublicHome(){
   const [noticeOpen,setNoticeOpen]=useState(false);
   const [contactOpen,setContactOpen]=useState(false);
   const [directoryOpen,setDirectoryOpen]=useState(false);
+  const [patientOpen,setPatientOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
@@ -131,6 +133,7 @@ export default function PublicHome(){
   }
   if(contactOpen)return <FoundationContactScreen onExit={()=>setContactOpen(false)}/>;
   if(directoryOpen)return <PublicHealthcareDirectory onExit={()=>setDirectoryOpen(false)}/>;
+  if(patientOpen)return <PatientProfileNative onExit={()=>setPatientOpen(false)}/>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
@@ -152,6 +155,14 @@ export default function PublicHome(){
             <Pressable accessibilityRole="button" style={styles.primary}
               onPress={()=>setDirectoryOpen(true)}>
               <Text style={styles.primaryText}>Find healthcare centers & doctors</Text>
+            </Pressable>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.heading}>My Patient Profile</Text>
+            <Text>View your own Virtual Patient ID and manage patient-care consent with your existing CareGanga account.</Text>
+            <Pressable accessibilityRole="button" style={styles.primary}
+              onPress={()=>setPatientOpen(true)}>
+              <Text style={styles.primaryText}>Open my patient profile</Text>
             </Pressable>
           </View>
           <View style={styles.card}>
