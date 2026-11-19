@@ -11,7 +11,7 @@ type DoctorCenter={
  root_realm_id:string;doctor_id:string;doctor_name:string;center_id:string;
  center_name:string;center_slug:string;association_id:string;time_zone:string;
  center_type:string;address_line:string;pin_code:string;
- amount_minor:string|null;fee_from:Date|null;
+ amount_minor:string|null;fee_from:Date|null;fee_version:number|null;
 };
 type Schedule={
  schedule_id:string;center_id:string;association_id:string;time_zone:string;
@@ -91,7 +91,8 @@ export class DoctorAvailabilityService{
    "c.id AS center_id,c.display_name AS center_name,"+
    "c.public_slug AS center_slug,assoc.id AS association_id,c.time_zone,"+
    "c.center_type,c.address_line,c.pin_code,"+
-   "fee.amount_minor::text AS amount_minor,fee.effective_from AS fee_from "+
+   "fee.amount_minor::text AS amount_minor,fee.effective_from AS fee_from,"+
+   "fee.version AS fee_version "+
    "FROM health_doctor doc "+
    "JOIN health_doctor_center assoc ON assoc.doctor_id=doc.id "+
    "AND assoc.root_realm_id=doc.root_realm_id "+
@@ -145,7 +146,7 @@ export class DoctorAvailabilityService{
    "JOIN cg19_upload_intent di ON di.id=dl.upload_intent_id "+
    "AND di.realm_id=dl.realm_id AND di.status='VALIDATED' "+
    "AND di.classification='HEALTH_DOCTOR_LICENSE' "+
-   "LEFT JOIN LATERAL (SELECT f.amount_minor,f.effective_from "+
+   "LEFT JOIN LATERAL (SELECT f.amount_minor,f.effective_from,f.version "+
    "FROM health_center_fee f WHERE f.root_realm_id=assoc.root_realm_id "+
    "AND f.doctor_center_id=assoc.id AND f.fee_kind='CONSULTATION' "+
    "AND f.consultation_mode='IN_PERSON' AND f.status='APPROVED' "+
@@ -187,7 +188,8 @@ export class DoctorAvailabilityService{
    return {centerRef:center.center_id,centerName:center.center_name,
     centerSlug:center.center_slug,timeZone:center.time_zone,
     address: center.address_line,pinCode:center.pin_code,
-    consultationFeeMinor:center.amount_minor,consultationCurrency:"INR",
+    consultationFeeMinor:center.amount_minor,consultationFeeVersion:center.fee_version,
+    consultationCurrency:"INR",
     hasWorkingSchedule:!!schedule?.has_window,
     doctorName:center.doctor_name,
     bookingEnabled:false};
@@ -253,7 +255,8 @@ export class DoctorAvailabilityService{
    day,doctorName:center.doctor_name,centerName:center.center_name,
    centerRef:center.center_id,centerSlug:center.center_slug,
    timeZone:center.time_zone,
-   consultationFeeMinor:center.amount_minor,consultationCurrency:"INR",
+   consultationFeeMinor:center.amount_minor,consultationFeeVersion:center.fee_version,
+    consultationCurrency:"INR",
    slots,message:GENERAL_MESSAGE};
  }
  async slotFirst(doctorRaw:string,dayRaw:unknown,clockRaw:unknown){
@@ -273,7 +276,9 @@ export class DoctorAvailabilityService{
     sharedInstant=chosen.startAt;
     matched.push({centerRef:center.center_id,centerName:center.center_name,
     centerSlug:center.center_slug,timeZone:center.time_zone,
-    consultationFeeMinor:center.amount_minor,consultationCurrency:"INR",
+    address:center.address_line,pinCode:center.pin_code,
+    consultationFeeMinor:center.amount_minor,consultationFeeVersion:center.fee_version,
+    consultationCurrency:"INR",
     startAt:chosen.startAt,endAt:chosen.endAt,bookable:false});
    }
   }
