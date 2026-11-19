@@ -57,13 +57,16 @@ export function CenterQrCameraScanner({disabled,resetKey,onCode}:{
     return;
    }
    if(serial!==generation.current)return;
+   // Construct decoder before acquiring the private camera stream:
+   // a decoder failure must never leave a newly acquired camera running.
+   const decoder=new API({formats:["qr_code"]});
    const camera=await navigator.mediaDevices.getUserMedia({
     audio:false,video:{facingMode:{ideal:"environment"}}
    });
    if(serial!==generation.current||disabled){
     camera.getTracks().forEach(track=>track.stop());return;
    }
-   detector.current=new API({formats:["qr_code"]});
+   detector.current=decoder;
    stream.current=camera;
    setActive(true);
   }catch{
