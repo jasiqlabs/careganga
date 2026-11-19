@@ -43,6 +43,38 @@ export class HealthClinicianIdentityService{
   }catch(e){if(open)await c.query("ROLLBACK");throw e;}
   finally{c.release();}
  }
+ /** Search only currently active CG01 staff login candidates. The reviewer
+  * selects a real named person; internal IDs are never displayed to users.
+  */
+ async accountOptions(bearer:string,search=""){
+  const actor=await this.sessions.requireAction(bearer,"health.doctors.verify");
+  if(typeof search!=="string"||search.trim().length>80||
+    /[\u0000-\u001f\u007f]/.test(search))
+   throw new BadRequestException({code:"HEALTH_CLINICIAN_INVALID"});
+  const term=search.trim().toLowerCase().replace(/[\\%_]/g,"\\ async propose(bearer:string,doctorRaw:string,raw:unknown){");
+  const r=await this.db.query<{id:string;display_name:string}>(
+   "SELECT a.id,a.display_name FROM account a "+
+   "WHERE a.realm_id=$1 AND a.status='ACTIVE' AND a.id<>$2 "+
+   "AND ($3='' OR lower(a.display_name) LIKE $3 ESCAPE '\\') "+
+   "AND NOT EXISTS(SELECT 1 FROM health_doctor_account_link link "+
+   "WHERE link.root_realm_id=a.realm_id AND link.account_id=a.id "+
+   "AND link.status IN('PENDING','ACTIVE')) "+
+   "ORDER BY a.display_name,a.id LIMIT 25",
+   [actor.realmId,actor.accountId,term?"%"+term+"%":""]);
+  return {options:r.rows.map(x=>({accountRef:x.id,displayName:x.display_name}))};
+ }
+ async doctorLink(bearer:string,doctorRaw:string){
+  const actor=await this.sessions.requireAction(bearer,"health.doctors.verify");
+  const doctor=id(doctorRaw);
+  const r=await this.db.query<{id:string;status:string;display_name:string}>(
+   "SELECT l.id,l.status,a.display_name FROM health_doctor_account_link l "+
+   "JOIN account a ON a.id=l.account_id AND a.realm_id=l.root_realm_id "+
+   "WHERE l.root_realm_id=$1 AND l.doctor_id=$2 "+
+   "AND l.status IN('PENDING','ACTIVE') LIMIT 1",
+   [actor.realmId,doctor]);
+  return {link:r.rows[0]?{linkRef:r.rows[0].id,
+   status:r.rows[0].status,accountName:r.rows[0].display_name}:null};
+ }
  async propose(bearer:string,doctorRaw:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"health.doctors.verify");
   const doctor=id(doctorRaw),v=body(raw,["accountRef"]);
