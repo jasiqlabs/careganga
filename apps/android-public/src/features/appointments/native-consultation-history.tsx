@@ -30,12 +30,14 @@ async function api<T>(path:string,method="GET",body?:Record<string,unknown>):Pro
 export function NativeConsultationHistory(){
  const [items,setItems]=useState<Booking[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
+ const [nextCursor,setNextCursor]=useState<string|null>(null);
+ const [moreBusy,setMoreBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[error,setError]=useState("");
  const [reschedule,setReschedule]=useState<Booking|null>(null);
  const keys=useRef<Map<string,string>>(new Map());
  const refresh=useCallback(async()=>{
-  const result=await api<{items:Booking[]}>("me?limit=20");
-  setItems(result.items);setUncertain(false);
+  const result=await api<{items:Booking[];next:string|null}>("me?limit=20");
+  setItems(result.items);setNextCursor(result.next);setUncertain(false);
  },[]);
  useEffect(()=>{
   let alive=true;
@@ -51,6 +53,20 @@ export function NativeConsultationHistory(){
   });
   return()=>sub.remove();
  },[reschedule]);
+ async function more(){
+  if(busy||moreBusy||!nextCursor)return;
+  setMoreBusy(true);setError("");
+  try{
+   const page=await api<{items:Booking[];next:string|null}>(
+    "me?limit=20&after="+encodeURIComponent(nextCursor));
+   setItems(current=>{
+    const known=new Set(current.map(x=>x.bookingRef));
+    return [...current,...page.items.filter(x=>!known.has(x.bookingRef))];
+   });
+   setNextCursor(page.next);
+  }catch(e){setError(e instanceof Error?e.message:"Older consultations are unavailable.");}
+  finally{setMoreBusy(false);}
+ }
  async function cancel(book:Booking){
   if(busy||uncertain)return;
   const reference=book.bookingRef+":"+book.version+":cancel";
@@ -111,6 +127,8 @@ export function NativeConsultationHistory(){
      {button("Cancel",()=>confirmation(x),busy||uncertain)}
     </View>}
   </View>)}
+  {nextCursor&&button(moreBusy?"Loading older consultations…":"Load older consultations",
+   ()=>void more(),busy||moreBusy)}
   {uncertain&&<Text style={styles.note}>
    The original write may have completed. Refresh the source before another action.
   </Text>}
