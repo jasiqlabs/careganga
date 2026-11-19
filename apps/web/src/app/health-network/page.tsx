@@ -54,8 +54,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
     <Link href="/health-network?tab=centers" aria-current={tab==="centers"?"page":undefined}>Centers</Link>
     <Link href="/health-network?tab=doctors" aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
    </nav>
+   <p><Link href="/patients/me">My private patient profile and consent</Link></p>
   </section>
-  <section className="cg-public-section" aria-label="Search the directory">
+  <section className="cg-public-section" aria-label="Search the directory"
    <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
     <input type="hidden" name="tab" value={tab}/>
     <label>Search name or {tab==="doctors"?"qualification":"provider"}
