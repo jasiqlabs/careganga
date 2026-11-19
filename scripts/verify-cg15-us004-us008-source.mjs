@@ -202,6 +202,17 @@ const checks=[
   s.cg19.includes("PrivateObjectStorage")&&
   s.cg19.includes("readVerifiedPrivateObject")&&
   s.cg19.includes("writeVerifiedPrivateDocument")],
+ ["genuine booking confirmed in all four clients invokes original CG19 private slip source safely",
+  s.webBooking.includes("issuePatientSlip(value.bookingRef)")&&
+  s.webBooking.includes("issuePatientSlip(booking.bookingRef)")&&
+  s.nativeBooking.includes("issuePatientSlip(result.bookingRef,t)")&&
+  s.staffWeb.includes("issueCurrentSlip(result.bookingRef)")&&
+  s.nativeStaffBooking.includes("issueCurrentSlip(result.bookingRef)")&&
+  s.nativeStaffBooking.includes("issueCurrentSlip(record.bookingRef)")&&
+  s.nativeStaffBooking.includes("/api/v1/appointments/slips/staff/")&&
+  s.cg19.includes("UNIQUE(root_realm_id,appointment_id,source_revision)")===false&&
+  s.db5.includes("UNIQUE(root_realm_id,appointment_id,source_revision)")&&
+  s.cg19.includes('this.original.originalForCenter(bearer,bookingRef)')],
  ["private slip issues only one source revision and preserves immutable bytes",
   s.db5.includes("UNIQUE(root_realm_id,appointment_id,source_revision)")&&
   s.db5.includes("cg19_consultation_slip_source_frozen")],
