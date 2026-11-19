@@ -1,8 +1,14 @@
-import {Controller,Get,Header,Headers,Param,Query} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Query} from "@nestjs/common";
 import {PatientAdminOverviewService} from "../application/patient-admin-overview.service";
 @Controller("api/v1/appointments/admin/patients")
 export class PatientAdminOverviewController{
  constructor(private readonly admin:PatientAdminOverviewService){}
+ @Post(":bookingRef/print-authorization")
+ @Header("Cache-Control","private, no-store")
+ authorizePrint(@Headers("authorization")bearer:string,
+  @Param("bookingRef")id:string,@Body()body:unknown){
+  return this.admin.authorizePrint(bearer,id,body);
+ }
  @Get(":bookingRef/history")
  @Header("Cache-Control","private, no-store")
  history(@Headers("authorization")bearer:string,@Param("bookingRef")id:string,
