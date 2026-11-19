@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "../../../features/identity-access/signout-button";
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
+import { ClinicianAccountAcceptance } from "../../../features/health-network/clinician-account-link";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -87,6 +88,7 @@ export default async function AdminHome() {
       {canIntakePatients&&<p><Link href="/admin/health-network/patient-intake">Register a provisional patient</Link></p>}
       {canManageVisits&&<p><Link href="/admin/health-network/queue">My consultation queue</Link></p>}
       <SignOutButton/></section>
+    <ClinicianAccountAcceptance/>
     </main>
   </div>;
 }
