@@ -573,21 +573,37 @@ export class ConsultationBookingService{
   ];
   return lines.join("\r\n")+"\r\n";
  }
- async mine(bearer:string,limitRaw:unknown=20){
+ async mine(bearer:string,limitRaw:unknown=20,afterRaw?:string){
   const actor=await this.identity.verifySession(bearer);
   const limit=Number(limitRaw);
   if(!Number.isInteger(limit)||limit<1||limit>50)
    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+  let afterAt:string|null=null,afterId:string|null=null;
+  if(afterRaw!==undefined&&afterRaw!==""){
+   const parts=afterRaw.split("|");
+   if(parts.length!==2||!ID.test(parts[1])||
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(parts[0])||
+    !Number.isFinite(Date.parse(parts[0])))
+    throw new BadRequestException({code:"CG15_BOOKING_INVALID"});
+   afterAt=parts[0];afterId=parts[1];
+  }
   const tx=await this.db.connect();let open=false;
   try{
    await tx.query("BEGIN");open=true;
    const patient=await this.ownPatient(tx,actor,false);
-   const row=await tx.query<Booking>(
-    "SELECT * FROM cg15_consultation_appointment WHERE root_realm_id=$1 "+
-    "AND patient_id=$2 ORDER BY created_at DESC,id DESC LIMIT $3",
-    [actor.realmId,patient.id,limit]);
+   const row=await tx.query<Booking&{cursor_at:string}>(
+    "SELECT a.*,to_char(a.created_at AT TIME ZONE 'UTC',"+
+    "'YYYY-MM-DD"+'"'+"T"+'"'+"HH24:MI:SS.US"+'"'+"Z"+'"'+"') AS cursor_at "+
+    "FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=$1 AND a.patient_id=$2 "+
+    "AND ($4::timestamptz IS NULL OR "+
+    "(a.created_at,a.id)<($4::timestamptz,$5::uuid)) "+
+    "ORDER BY a.created_at DESC,a.id DESC LIMIT $3",
+    [actor.realmId,patient.id,limit+1,afterAt,afterId]);
    await tx.query("COMMIT");open=false;
-   return {items:row.rows.map(presentBooking),next:null};
+   const items=row.rows.slice(0,limit),last=items.at(-1);
+   return {items:items.map(presentBooking),next:row.rows.length>limit&&last?
+    last.cursor_at+"|"+last.id:null};
   }catch(e){if(open)await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
