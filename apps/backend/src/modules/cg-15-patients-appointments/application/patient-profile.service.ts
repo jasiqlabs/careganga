@@ -433,6 +433,174 @@ export class PatientProfileService{
   finally{c.release();}
  }
 
+
+ /** One verified person explicitly authorizes their existing second CG01
+  * login; the intended recipient is pinned by its unique login identifier.
+  * A shared telephone or knowing the Patient ID cannot grant access.
+  */
+ async issueSecondAccountLink(bearer:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer),v=record(input);
+  only(v,["recipientIdentifier","personallyConfirmed"]);
+  const recipient=typeof v.recipientIdentifier==="string"?
+   v.recipientIdentifier.trim().toLowerCase():"";
+  if(v.personallyConfirmed!==true||recipient.length<6||
+   recipient.length>254||!/^(?:[6-9][0-9]{9}|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)$/.test(recipient))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const c=await this.db.connect();let open=false;
+  try{
+   await c.query("BEGIN");open=true;
+   await this.activeAccount(c,actor,true);
+   const person=await this.owned(c,actor,true);
+   if(!person||person.profile_status!=="VERIFIED"||person.consent_granted!==true)
+    throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   const verified=await c.query(
+    "SELECT 1 FROM cg15_patient_identity_event WHERE root_realm_id=$1 "+
+    "AND patient_id=$2",[actor.realmId,person.id]);
+   const primary=await c.query(
+    "SELECT 1 FROM cg15_patient_account_link WHERE root_realm_id=$1 "+
+    "AND patient_id=$2 AND account_id=$3 AND revoked_at IS NULL "+
+    "AND proof_type='CG01_VERIFIED_ACCOUNT_CONTACT'",
+    [actor.realmId,person.id,actor.accountId]);
+   if(!verified.rowCount||!primary.rowCount)
+    throw new ForbiddenException({code:"CG15_PATIENT_IDENTITY_NOT_READY"});
+   const destination=await c.query<{id:string}>(
+    "SELECT id FROM account WHERE realm_id=$1 AND status='ACTIVE' "+
+    "AND contact_phone_verified_at IS NOT NULL "+
+    "AND (normalized_mobile=$2 OR normalized_email=$2) LIMIT 1",
+    [actor.realmId,recipient]);
+   const account=destination.rows[0]?.id;
+   if(!account||account===actor.accountId)
+    throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+   const existing=await c.query(
+    "SELECT 1 FROM cg15_patient_account_link WHERE root_realm_id=$1 "+
+    "AND account_id=$2 AND revoked_at IS NULL",
+    [actor.realmId,account]);
+   if(existing.rowCount)
+    throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+   const recent=await c.query<{issued:string;last:Date|null}>(
+    "SELECT count(*)::text AS issued,max(created_at) AS last "+
+    "FROM cg15_patient_second_account_link_code "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 "+
+    "AND created_at>now()-interval '24 hours'",
+    [actor.realmId,person.id]);
+   if(Number(recent.rows[0]?.issued??0)>=10||
+    recent.rows[0]?.last&&Date.now()-recent.rows[0].last.getTime()<60_000)
+    throw new ConflictException({code:"CG15_PATIENT_IDENTITY_TOO_SOON"});
+   await c.query(
+    "UPDATE cg15_patient_second_account_link_code SET revoked_at=now() "+
+    "WHERE root_realm_id=$1 AND patient_id=$2 AND used_at IS NULL AND revoked_at IS NULL",
+    [actor.realmId,person.id]);
+   const code="CGL-"+randomBytes(16).toString("hex").toUpperCase();
+   const hash=createHash("sha256").update(code).digest("hex");
+   const saved=await c.query<{expires_at:Date}>(
+    "INSERT INTO cg15_patient_second_account_link_code("+
+    "root_realm_id,patient_id,issued_by_account,recipient_account_id,"+
+    "code_digest,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '15 minutes') "+
+    "RETURNING expires_at",
+    [actor.realmId,person.id,actor.accountId,account,hash]);
+   await c.query("COMMIT");open=false;
+   return {status:"ISSUED",authorizationCode:code,
+    expiresAt:saved.rows[0].expires_at.toISOString(),
+    message:"Only give this code to your other personal account. The code "+
+     "works only for the chosen login, expires in 15 minutes and never grants staff permissions."};
+  }catch(e){if(open)await c.query("ROLLBACK");throw e;}
+  finally{c.release();}
+ }
+
+ /** Recipient's independently password-authenticated CG01 account accepts
+  * an exact owner-approved, recipient-bound, one-time same-person link.
+  * This links NO roles, phone contacts, documents, or unrelated patients.
+  */
+ async acceptSecondAccountLink(bearer:string,input:unknown){
+  const actor=await this.identity.verifySession(bearer),v=record(input);
+  only(v,["authorizationCode","personallyConfirmed"]);
+  if(v.personallyConfirmed!==true||
+   typeof v.authorizationCode!=="string"||
+   !/^CGL-[A-F0-9]{32}$/.test(v.authorizationCode))
+   throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
+  const tokenHash=createHash("sha256").update(v.authorizationCode).digest("hex");
+  const c=await this.db.connect();let open=false;
+  try{
+   await c.query("BEGIN");open=true;
+   await this.activeAccount(c,actor,true);
+   const attempts=await c.query<{attempts:number}>(
+    "INSERT INTO cg15_patient_claim_attempt_throttle("+
+    "root_realm_id,account_id,window_started_at,attempts) VALUES($1,$2,now(),1) "+
+    "ON CONFLICT(root_realm_id,account_id) DO UPDATE SET "+
+    "attempts=CASE WHEN cg15_patient_claim_attempt_throttle.window_started_at "+
+    "<now()-interval '15 minutes' THEN 1 ELSE "+
+    "LEAST(cg15_patient_claim_attempt_throttle.attempts+1,2147483645) END,"+
+    "window_started_at=CASE WHEN "+
+    "cg15_patient_claim_attempt_throttle.window_started_at "+
+    "<now()-interval '15 minutes' THEN now() ELSE "+
+    "cg15_patient_claim_attempt_throttle.window_started_at END RETURNING attempts",
+    [actor.realmId,actor.accountId]);
+   if((attempts.rows[0]?.attempts??7)>6)
+    throw new HttpException({code:"CG15_PATIENT_IDENTITY_RATE_LIMIT"},429);
+   const auth=await c.query<{
+    id:string;patient_id:string;issued_by_account:string;
+    recipient_account_id:string;used_at:Date|null;
+    revoked_at:Date|null;expires_at:Date}>(
+    "SELECT id,patient_id,issued_by_account,recipient_account_id,"+
+    "used_at,revoked_at,expires_at "+
+    "FROM cg15_patient_second_account_link_code "+
+    "WHERE root_realm_id=$1 AND code_digest=$2 AND recipient_account_id=$3 FOR UPDATE",
+    [actor.realmId,tokenHash,actor.accountId]);
+   const code=auth.rows[0];
+   if(!code||code.revoked_at||code.expires_at.getTime()<=Date.now())
+    throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+   const already=await this.owned(c,actor,true);
+   if(code.used_at){
+    if(already?.id!==code.patient_id)
+     throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+    await c.query("COMMIT");open=false;
+    return {...this.present(already),status:"ALREADY_LINKED"};
+   }
+   if(already)throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+   const primary=await c.query<{id:string}>(
+    "SELECT l.id FROM cg15_patient_account_link l "+
+    "JOIN account a ON a.id=l.account_id AND a.realm_id=l.root_realm_id "+
+    "AND a.status='ACTIVE' "+
+    "WHERE l.root_realm_id=$1 AND l.patient_id=$2 "+
+    "AND l.account_id=$3 AND l.proof_type='CG01_VERIFIED_ACCOUNT_CONTACT' "+
+    "AND l.revoked_at IS NULL FOR SHARE OF l",
+    [actor.realmId,code.patient_id,code.issued_by_account]);
+   const patient=await c.query<{id:string;profile_status:string;revision:number}>(
+    "SELECT id,profile_status,revision FROM cg15_patient "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [actor.realmId,code.patient_id]);
+   const person=patient.rows[0];
+   const allowed=await c.query(
+    "SELECT 1 FROM cg15_patient_identity_event proof "+
+    "WHERE proof.root_realm_id=$1 AND proof.patient_id=$2 "+
+    "AND (SELECT consent.granted FROM cg15_patient_consent consent "+
+    "WHERE consent.root_realm_id=$1 AND consent.patient_id=$2 "+
+    "AND consent.purpose='PATIENT_CARE' ORDER BY consent.revision_no DESC LIMIT 1)=true",
+    [actor.realmId,code.patient_id]);
+   if(!primary.rowCount||person?.profile_status!=="VERIFIED"||!allowed.rowCount)
+    throw new ConflictException({code:"CG15_PATIENT_ACCOUNT_LINK_UNAVAILABLE"});
+   await c.query(
+    "INSERT INTO cg15_patient_account_link(root_realm_id,patient_id,account_id,"+
+    "proof_type) VALUES($1,$2,$3,'CG15_EXPLICIT_SECOND_ACCOUNT')",
+    [actor.realmId,person.id,actor.accountId]);
+   await c.query(
+    "UPDATE cg15_patient SET revision=revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2",[actor.realmId,person.id]);
+   await c.query(
+    "INSERT INTO cg15_patient_change_event(root_realm_id,patient_id,revision_no,"+
+    "action,actor_account_id) VALUES($1,$2,$3,'SECOND_ACCOUNT_LINKED',$4)",
+    [actor.realmId,person.id,person.revision+1,actor.accountId]);
+   await c.query(
+    "UPDATE cg15_patient_second_account_link_code "+
+    "SET used_at=now(),used_by_account=$3 "+
+    "WHERE root_realm_id=$1 AND id=$2 AND used_at IS NULL",
+    [actor.realmId,code.id,actor.accountId]);
+   await c.query("COMMIT");open=false;
+   const linked=await this.me(bearer);
+   return {...linked,status:"LINKED"};
+  }catch(e){if(open)await c.query("ROLLBACK");throw e;}
+  finally{c.release();}
+ }
  async update(bearer:string,input:unknown){
   const actor=await this.identity.verifySession(bearer);
   const v=record(input);
