@@ -8,7 +8,7 @@ import {NativeAppointmentDocuments} from "./native-appointment-documents";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;doctorName:string;
- centerRef:string;centerName:string;startAt:string;endAt:string;timeZone:string;
+ centerRef:string;centerName:string;centerAddress?:string;startAt:string;endAt:string;timeZone:string;
  consultationFeeMinor:string;bookingStatus:string;canPatientChange:boolean;paymentMode:string;
  collectionStatus:string;version:number};
 async function api<T>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>{
@@ -34,6 +34,11 @@ export function NativeConsultationHistory(){
  const [moreBusy,setMoreBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[error,setError]=useState("");
  const [reschedule,setReschedule]=useState<Booking|null>(null);
+ const [selectedRef,setSelectedRef]=useState<string|null>(null);
+ const [detail,setDetail]=useState<Booking|null>(null);
+ const [detailBusy,setDetailBusy]=useState(false);
+ const [detailError,setDetailError]=useState("");
+ const detailSeq=useRef(0);
  const keys=useRef<Map<string,string>>(new Map());
  const refresh=useCallback(async()=>{
   const result=await api<{items:Booking[];next:string|null}>("me?limit=20");
@@ -47,12 +52,32 @@ export function NativeConsultationHistory(){
   return()=>{alive=false;};
  },[refresh]);
  useEffect(()=>{
-  if(!reschedule)return;
+  if(!reschedule&&!selectedRef)return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-   setReschedule(null);return true;
+   if(reschedule){setReschedule(null);void refresh();return true;}
+   detailSeq.current++;setSelectedRef(null);setDetail(null);
+   setDetailError("");return true;
   });
   return()=>sub.remove();
- },[reschedule]);
+ },[reschedule,selectedRef,refresh]);
+ async function toggleDetail(book:Booking){
+  if(selectedRef===book.bookingRef){
+   detailSeq.current++;setSelectedRef(null);setDetail(null);
+   setDetailError("");return;
+  }
+  const seq=++detailSeq.current;
+  setSelectedRef(book.bookingRef);setDetail(null);setDetailError("");
+  setDetailBusy(true);
+  try{
+   const current=await api<Booking>("me/"+encodeURIComponent(book.bookingRef));
+   if(seq!==detailSeq.current)return;
+   if(current.bookingRef!==book.bookingRef)
+    throw Error("The exact original appointment could not be verified.");
+   setDetail(current);
+  }catch(e){if(seq===detailSeq.current)setDetailError(e instanceof Error?
+   e.message:"The appointment details could not be verified.");}
+  finally{if(seq===detailSeq.current)setDetailBusy(false);}
+ }
  async function more(){
   if(busy||moreBusy||!nextCursor)return;
   setMoreBusy(true);setError("");
@@ -96,9 +121,11 @@ export function NativeConsultationHistory(){
    style={[styles.button,disabled&&styles.disabled]}>
    <Text style={styles.buttonText}>{text}</Text></Pressable>;
  if(reschedule)return <View style={styles.page}>
-  {button("Back to my appointments",()=>{setReschedule(null);void refresh();})}
+  {button("Back to my appointments",()=>{setReschedule(null);setSelectedRef(null);
+   setDetail(null);void refresh();})}
   <Text style={styles.heading}>Choose a new consultation</Text>
-  <PublicHealthcareDirectory onExit={()=>{setReschedule(null);void refresh();}}
+  <PublicHealthcareDirectory onExit={()=>{setReschedule(null);
+   setSelectedRef(null);setDetail(null);void refresh();}}
    reschedule={{bookingRef:reschedule.bookingRef,expectedVersion:reschedule.version}}/>
  </View>;
  return <View style={styles.page}>
@@ -120,12 +147,34 @@ export function NativeConsultationHistory(){
    <Text>Status: {x.bookingStatus.replaceAll("_"," ")}</Text>
    <Text>Consultation: ₹{(Number(x.consultationFeeMinor)/100).toFixed(2)}</Text>
    <Text>Payment: {x.collectionStatus.replaceAll("_"," ")}</Text>
-   <NativeAppointmentDocuments bookingRef={x.bookingRef} bookingStatus={x.bookingStatus}/>
-   {x.canPatientChange===true&&
-    <View style={styles.actions}>
-     {button("Reschedule",()=>setReschedule(x),busy||uncertain)}
-     {button("Cancel",()=>confirmation(x),busy||uncertain)}
+   {button(selectedRef===x.bookingRef?"Close appointment details":
+    "View appointment details",()=>void toggleDetail(x),busy||uncertain)}
+   {selectedRef===x.bookingRef&&<>
+    {detailBusy&&<Text>Checking the current private appointment…</Text>}
+    {!!detailError&&<Text accessibilityRole="alert" style={styles.error}>{detailError}</Text>}
+    {detail?.bookingRef===x.bookingRef&&<View style={styles.details}
+     accessibilityLabel="Verified private appointment details">
+     <Text style={styles.heading}>Current booking: {detail.bookingId}</Text>
+     <Text>Doctor: {detail.doctorName}</Text>
+     <Text>Healthcare center: {detail.centerName}</Text>
+     {!!detail.centerAddress&&<Text>{detail.centerAddress}</Text>}
+     <Text>{new Date(detail.startAt).toLocaleString("en-IN",{
+      timeZone:detail.timeZone,dateStyle:"full",timeStyle:"short"})}
+      {" ("+detail.timeZone+")"}</Text>
+     <Text>Status: {detail.bookingStatus.replaceAll("_"," ")}</Text>
+     <Text>Full consultation: ₹{(Number(detail.consultationFeeMinor)/100).toFixed(2)}</Text>
+     <Text>Payment: {detail.collectionStatus.replaceAll("_"," ")}
+      {" · "+detail.paymentMode.replaceAll("_"," ")}</Text>
+     <Text>CareGanga has not verified a payment or issued a receipt for
+      this pay-at-center consultation.</Text>
+     <NativeAppointmentDocuments bookingRef={detail.bookingRef}
+      bookingStatus={detail.bookingStatus}/>
+     {detail.canPatientChange===true&&<View style={styles.actions}>
+      {button("Reschedule this appointment",()=>setReschedule(detail),busy||uncertain)}
+      {button("Cancel this appointment",()=>confirmation(detail),busy||uncertain)}
+     </View>}
     </View>}
+   </>}
   </View>)}
   {nextCursor&&button(moreBusy?"Loading older consultations…":"Load older consultations",
    ()=>void more(),busy||moreBusy)}
@@ -141,6 +190,8 @@ const styles=StyleSheet.create({
  error:{color:theme.error,fontSize:13},
  card:{padding:14,borderWidth:1,borderRadius:12,borderColor:theme.border,
   backgroundColor:theme.surface,gap:7},
+ details:{gap:10,padding:12,borderWidth:1,borderRadius:10,
+  borderColor:theme.border,backgroundColor:theme.background},
  actions:{flexDirection:"row",gap:12,flexWrap:"wrap"},
  button:{minHeight:46,padding:11,borderRadius:9,backgroundColor:theme.primary,
   justifyContent:"center",alignItems:"center"},
