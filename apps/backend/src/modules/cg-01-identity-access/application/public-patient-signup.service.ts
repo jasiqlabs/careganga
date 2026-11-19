@@ -177,13 +177,27 @@ export class PublicPatientSignupService{
     "FOR SHARE OF r",[root]);
    if(!role.rows[0])throw new ServiceUnavailableException({
     code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
-   // Verified SMS proof was obtained before BEGIN. Concurrent requests
-   // with the same key are reconciled by the FOR UPDATE replay above.
+   // Verified SMS controls a CONTACT, not a unique human. Keep the
+   // historic first account's mobile login unchanged. A different person
+   // using the same household phone signs in with their own unique email;
+   // their account must still pass independent CG15 patient identity proof.
+   // Serialize new patient signups for this phone across app instances.
+   // Password hashing and the SMS provider call remain outside the lock.
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    ["CG01:PATIENT_SHARED_CONTACT:"+digits]);
+   const alreadyLogin=await tx.query<{id:string}>(
+    "SELECT id FROM account WHERE normalized_mobile=$1 LIMIT 1",
+    [digits]);
+   const emailOnly=Boolean(alreadyLogin.rows[0]);
+   if(emailOnly&&!normalizedEmail)
+    throw new ConflictException({code:"CG01_PUBLIC_SIGNUP_EXISTS",
+     message:"For a shared family phone, provide your own email address and use it to sign in."});
    const newAccount=await tx.query<{id:string}>(
     "INSERT INTO account(realm_id,display_name,normalized_mobile,"+
     "normalized_email,contact_phone,contact_phone_verified_at,status) "+
     "VALUES($1,$2,$3,$4,$5,now(),'ACTIVE') RETURNING id",
-    [root,safeFirst+" "+safeLast,digits,normalizedEmail,"+91"+digits]);
+    [root,safeFirst+" "+safeLast,emailOnly?null:digits,normalizedEmail,
+     "+91"+digits]);
    const id=newAccount.rows[0].id;
    await tx.query(
     "INSERT INTO identity_credential(account_id,password_hash) VALUES($1,$2)",
