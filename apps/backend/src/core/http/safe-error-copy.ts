@@ -240,6 +240,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_CENTER_MEDIA_RIGHTS_INVALID:"Record a real photo owner or written publication consent and a useful image description.",
       HEALTH_CENTER_MEDIA_RIGHTS_CHANGED:"Photo publication rights changed. Refresh the original image before retrying.",
       HEALTH_CENTER_MEDIA_NOT_VERIFIED:"Only a securely scanned, unrevoked center photo can be selected for publication.",
+      CG15_AVAILABILITY_INVALID:"Choose an existing verified doctor, center and valid date or time within the next 30 days.",
+      CG15_AVAILABILITY_UNAVAILABLE:"Current verified doctor working hours are unavailable. Please contact the center directly.",
       CG15_SCHEDULE_INVALID:"Check the doctor, dates, session times and slot duration before saving.",
       CG15_SCHEDULE_CHANGED:"This doctor schedule or leave request changed. Refresh its current details before saving.",
       CG15_SCHEDULE_INELIGIBLE:"The doctor or healthcare center is no longer approved for scheduling.",
