@@ -62,16 +62,23 @@ export class PatientAdminOverviewService{
  async overview(bearer:string,query:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   if(!query||typeof query!=="object"||Array.isArray(query)||
-   Object.keys(query).some(k=>!["centerRef","status","after","limit","day"].includes(k)))
+   Object.keys(query).some(k=>!["centerRef","status","after","limit","day","stateRef","districtRef","centerType"].includes(k)))
    throw new BadRequestException({code:"CG15_PATIENT_INVALID"});
   const center=query.centerRef===undefined?"":query.centerRef;
   const status=query.status===undefined?"":query.status;
   const after=query.after===undefined?"":query.after;
   const limit=query.limit===undefined?20:Number(query.limit);
   const day=query.day===undefined?"":query.day;
+  const state=query.stateRef===undefined?"":query.stateRef;
+  const district=query.districtRef===undefined?"":query.districtRef;
+  const centerType=query.centerType===undefined?"":query.centerType;
   if(typeof center!=="string"||center!==""&&!ID.test(center)||
    typeof status!=="string"||status!==""&&!STATE.has(status)||
    typeof after!=="string"||after!==""&&!ID.test(after)||
+   typeof state!=="string"||state!==""&&!ID.test(state)||
+   typeof district!=="string"||district!==""&&!ID.test(district)||
+   typeof centerType!=="string"||centerType.length>40||
+   centerType!==""&&!/^[A-Z_]+$/.test(centerType)||
    !Number.isSafeInteger(limit)||limit<1||limit>50||
    typeof day!=="string"||day!==""&&
     (!DAY.test(day)||!Number.isFinite(Date.parse(day+"T00:00:00Z"))||
@@ -99,27 +106,54 @@ export class PatientAdminOverviewService{
     "a.created_at,a.collection_state,a.fee_minor::text "+
     "FROM cg15_consultation_appointment a "+
     "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id AND p.id=a.patient_id "+
+    "JOIN health_center location ON location.root_realm_id=a.root_realm_id "+
+    "AND location.id=a.center_id "+
     "WHERE a.root_realm_id=$1 "+
     "AND ($2::uuid IS NULL OR a.center_id=$2) "+
     "AND ($3::text='' OR a.booking_state=$3) "+
     "AND ($4::uuid IS NULL OR a.id<$4) "+
     "AND ($6::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date=$6::date) "+
+    "AND ($7::uuid IS NULL OR location.state_ref=$7) "+
+    "AND ($8::uuid IS NULL OR location.district_ref=$8) "+
+    "AND ($9::text='' OR location.center_type=$9) "+
     "ORDER BY a.id DESC LIMIT $5",
-    [actor.realmId,center||null,status,after||null,limit+1,day||null]);
-   const choices=await tx.query<{center_id:string;center_name:string}>(
-    "SELECT DISTINCT center_id,center_name FROM cg15_consultation_appointment "+
-    "WHERE root_realm_id=$1 ORDER BY center_name,center_id LIMIT 51",
+    [actor.realmId,center||null,status,after||null,limit+1,day||null,state||null,district||null,centerType]);
+   const choices=await tx.query<{
+    center_id:string;center_name:string;center_type:string;
+    state_ref:string;state_name:string;district_ref:string;district_name:string
+   }>(
+    "SELECT DISTINCT c.id AS center_id,c.display_name AS center_name,c.center_type,"+
+    "c.state_ref,st.display_name AS state_name,c.district_ref,di.display_name AS district_name "+
+    "FROM cg15_consultation_appointment a "+
+    "JOIN health_center c ON c.root_realm_id=a.root_realm_id AND c.id=a.center_id "+
+    "JOIN geography_area st ON st.root_realm_id=c.root_realm_id AND st.id=c.state_ref "+
+    "JOIN geography_area di ON di.root_realm_id=c.root_realm_id AND di.id=c.district_ref "+
+    "WHERE a.root_realm_id=$1 ORDER BY c.display_name,c.id,c.center_type,"+
+    "c.state_ref,st.display_name,c.district_ref,di.display_name LIMIT 201",
     [actor.realmId]);
    await tx.query("COMMIT");
    const item=rows.rows.slice(0,limit);
    const c=totals.rows[0];
+   // Never silently offer an incomplete geography picker as exhaustive.
+   // Actual H15 location filter defaults fail closed rather than invent names.
+   const geographyComplete=choices.rows.length<=200;
+   const validOptions=geographyComplete?choices.rows:[];
+   const regionMap=new Map(validOptions.map(x=>
+    [x.state_ref,{stateRef:x.state_ref,stateName:x.state_name}]));
+   const districtMap=new Map(validOptions.map(x=>
+    [x.district_ref,{districtRef:x.district_ref,districtName:x.district_name,
+     stateRef:x.state_ref}]));
+   const facilityTypes=[...new Set(validOptions.map(x=>x.center_type))].sort();
    return {metrics:{
     totalPatients:Number(c.patients),activePatients:Number(c.active_patients),
     totalBookings:Number(c.bookings),todayBookings:Number(c.today_bookings),
     completed:Number(c.completed),pending:Number(c.pending)
-   },centerChoices:choices.rows.length<=50?choices.rows.map(x=>({
-    centerRef:x.center_id,centerName:x.center_name
-   })):[],items:item.map(x=>({
+   },centerChoices:validOptions.map(x=>({
+    centerRef:x.center_id,centerName:x.center_name,
+    stateRef:x.state_ref,districtRef:x.district_ref,centerType:x.center_type
+   })),states:[...regionMap.values()].sort((a,b)=>a.stateName.localeCompare(b.stateName)),
+   districts:[...districtMap.values()].sort((a,b)=>a.districtName.localeCompare(b.districtName)),
+   centerTypes:facilityTypes,geographyComplete,items:item.map(x=>({
     bookingRef:x.id,bookingId:x.booking_display_id,
     virtualPatientId:x.virtual_display_id,
     patientName:x.first_name+" "+x.last_name,
