@@ -907,7 +907,7 @@ export class ConsultationBookingService{
     "FROM cg15_consultation_appointment a "+
     "WHERE a.root_realm_id=$1 AND a.patient_id=$2 "+
     "AND ($6::text='' OR a.booking_state=$6) "+
-    "AND ($4::timestamptz IS NULL OR "
+    "AND ($4::timestamptz IS NULL OR "+
     "(a.created_at,a.id)<($4::timestamptz,$5::uuid)) "+
     "ORDER BY a.created_at DESC,a.id DESC LIMIT $3",
     [actor.realmId,patient.id,limit+1,afterAt,afterId,status]);
