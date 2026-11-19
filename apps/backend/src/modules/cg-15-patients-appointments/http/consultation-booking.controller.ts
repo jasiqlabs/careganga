@@ -1,4 +1,5 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,Query} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Query,Res} from "@nestjs/common";
+import type {Response} from "express";
 import {ConsultationBookingService} from "../application/consultation-booking.service";
 @Controller("api/v1/appointments/consultations")
 export class ConsultationBookingController{
@@ -34,6 +35,14 @@ export class ConsultationBookingController{
  @Header("Cache-Control","private, no-store")
  mine(@Headers("authorization")bearer:string,@Query("limit")limit?:string){
   return this.bookings.mine(bearer,limit===undefined?20:Number(limit));
+ }
+ @Get("me/:bookingRef/calendar.ics")
+ @Header("Cache-Control","private, no-store")
+ calendar(@Headers("authorization")bearer:string,@Param("bookingRef")id:string,
+  @Res({passthrough:true})response:Response){
+  response.setHeader("Content-Type","text/calendar; charset=utf-8");
+  response.setHeader("Content-Disposition","attachment; filename=careganga-consultation.ics");
+  return this.bookings.calendar(bearer,id);
  }
  @Get("me/:bookingRef")
  @Header("Cache-Control","private, no-store")
