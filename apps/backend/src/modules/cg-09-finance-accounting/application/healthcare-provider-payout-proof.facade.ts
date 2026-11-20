@@ -20,7 +20,7 @@ export class HealthcareProviderPayoutProofFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
  private async current(c:PoolClient,actor:VerifiedFoundationActor,
   ref?:string){
-  await this.identity.assertCurrent(c,actor,"finance.reconciliation.view");
+  await this.identity.assertCurrent(c,actor,"finance.reconciliation.manage");
   const rows=await c.query<Payout>(
    "SELECT bank.id AS reconciliation_ref,bank.bank_item_ref,"+
    "j.id AS journal_ref,bank.bank_account_id AS bank_account_ref,"+
