@@ -186,7 +186,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
         {([
           {key:"total",label:"Total Inquiries",hint:"All received"},
           {key:"unread",label:"Unread Inquiries",hint:"Awaiting your review"},
-          {key:"closed",label:"Resolved Messages",hint:"Cases closed by the Foundation"},
+          {key:"closed",label:"Resolved or Closed",hint:"Finalized cases"},
           {key:"received_today",label:"Received Today",hint:"Based on server date"}
         ] as const).map(({key,label,hint})=>
           <div className="kpi" key={key}><span>{label}</span>
@@ -218,7 +218,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <td><strong>{x.name}</strong><p>{x.contact}</p></td>
           <td>{x.subject}{x.unread&&!x.archived&&<strong> · Unread</strong>}
             {x.archived&&<span> · Archived</span>}</td>
-          <td>{x.status==="CLOSED"?"RESOLVED":x.status}</td>
+          <td>{x.status.replaceAll("_"," ")}</td>
           <td>{new Date(x.createdAt).toLocaleString()}</td>
           <td><button type="button" disabled={busy}
             onClick={()=>void detail(x.caseRef)}>Open</button></td>
@@ -244,7 +244,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <div className="topbar"><h2>{selected.ticketNumber} · {selected.subject}</h2>
             <button type="button" onClick={()=>setSelected(null)}>Close panel</button></div>
           <p><strong>{selected.name}</strong> · {selected.contact}</p>
-          <p>Status: {selected.status==="CLOSED"?"RESOLVED":selected.status} · Revision {selected.revision}</p>
+          <p>Status: {selected.status.replaceAll("_"," ")} · Revision {selected.revision}</p>
           <p style={{whiteSpace:"pre-wrap"}}>{selected.message}</p>
           {selected.sourceChannel==="CENTER_PORTAL"&&
            <FoundationSupportAttachments key={selected.caseRef} caseRef={selected.caseRef}/>}

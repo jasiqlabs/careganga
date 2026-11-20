@@ -212,7 +212,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       {tab==="CASES"&&mayView&&(selected?<View style={s.card}>
         <Text style={s.heading}>{selected.ticketNumber} · {selected.subject}</Text>
         <Text>{selected.name} · {selected.contact}</Text>
-        <Text style={s.muted}>{selected.status} · Revision {selected.revision}</Text>
+        <Text style={s.muted}>{selected.status.replaceAll("_"," ")} · Revision {selected.revision}</Text>
         <Text selectable style={s.message}>{selected.message}</Text>
         <Text style={s.heading}>Replies and history</Text>
         {selected.replies.length===0&&<Text>No replies recorded yet.</Text>}
@@ -300,7 +300,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         {counts&&<View style={s.card}>
           <Text style={s.heading}>Contact Messages</Text>
           {([["Total Inquiries",counts.total],["Unread",counts.unread],
-            ["Resolved",counts.closed],["Received Today",counts.received_today]] as const)
+            ["Resolved or Closed",counts.closed],["Received Today",counts.received_today]] as const)
             .map(([label,value])=><Text key={label}>{label}: {value}</Text>)}
         </View>}
         <View style={s.card}><Text style={s.heading}>Filter messages</Text>
@@ -332,7 +332,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
           accessibilityRole="button" disabled={busy} onPress={()=>void show(item.caseRef)}>
           <Text style={s.heading}>{item.ticketNumber} · {item.subject}</Text>
           <Text>{item.name} · {item.contact}</Text>
-          <Text style={s.muted}>{item.status} · {item.unread?"Unread":"Read"}
+          <Text style={s.muted}>{item.status.replaceAll("_"," ")} · {item.unread?"Unread":"Read"}
             {item.archived?" · Archived":""}</Text>
           <Text style={s.muted}>{new Date(item.createdAt).toLocaleString()}</Text>
         </Pressable>)}
