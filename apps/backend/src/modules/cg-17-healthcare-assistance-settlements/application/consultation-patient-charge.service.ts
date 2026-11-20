@@ -121,7 +121,7 @@ export class ConsultationPatientChargeService{
    "AND valid_from<=now() AND valid_until>now() "+
    "AND activated_at IS NOT NULL AND activated_at<=$4 "+
    "AND approval_state='ACTIVE' "+
-   "ORDER BY (doctor_ref IS NOT NULL) DESC,valid_from DESC,id DESC LIMIT 1",
+   "ORDER BY (doctor_ref IS NOT NULL) DESC,valid_from DESC,id DESC LIMIT 1 FOR SHARE",
    [realm,source.centerRef,source.doctorRef,at]);
   return q.rows[0]??null;
  }
