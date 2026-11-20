@@ -16,7 +16,7 @@ const TOKEN=/^[A-Za-z0-9_-]{43}$/;
 const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
 type CaseRow={id:string;ticket_number:string;realm_id:string;request_key:string;request_digest:string;
   caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
-  status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
+  status:"OPEN"|"ASSIGNED"|"IN_PROGRESS"|"WAITING_FOR_USER"|"ESCALATED"|"REPLIED"|"RESOLVED"|"CLOSED";revision:number;assigned_account_id:string|null;
   latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null;
   source_channel:string;center_id?:string|null};
 type FaqRow={id:string;question:string;answer:string;state:string;revision:number;
@@ -73,7 +73,12 @@ function open(blob:Buffer):{name:string;contact:string;subject:string;message:st
       name:string;contact:string;subject:string;message:string};
 }
 function publicState(status:string){
-  return status==="CLOSED"?"CLOSED":status==="REPLIED"?"RESPONDED":"SUBMITTED";
+  return status==="CLOSED"?"CLOSED":
+    status==="RESOLVED"?"RESOLVED":
+    status==="WAITING_FOR_USER"?"ACTION_REQUIRED":
+    status==="REPLIED"?"RESPONDED":
+    ["ASSIGNED","IN_PROGRESS","ESCALATED"].includes(status)?"IN_PROGRESS":
+    "SUBMITTED";
 }
 /** Bounded keyed blind-index terms; no plaintext contact/subject enters DB indexes. */
 function searchTerms(values:readonly string[]):string[]{
@@ -430,7 +435,10 @@ export class SupportService{
             throw new ForbiddenException("Eligible support agent unavailable");
         }
         await client.query(
-          "UPDATE cg19_support_case SET assigned_account_id=$3,revision=revision+1,"+
+          "UPDATE cg19_support_case SET assigned_account_id=$3,"+
+          "status=CASE WHEN status='OPEN' AND $3::uuid IS NOT NULL "+
+          "THEN 'ASSIGNED' WHEN status='ASSIGNED' AND $3::uuid IS NULL "+
+          "THEN 'OPEN' ELSE status END,revision=revision+1,"+
           "updated_at=now() WHERE realm_id=$1 AND id=$2",
           [a.realmId,id,target]);
         await this.event(client,a.realmId,id,a.accountId,"ASSIGNED",
@@ -461,8 +469,9 @@ export class SupportService{
           [a.realmId,id]);
         await this.event(client,a.realmId,id,a.accountId,"REPLIED");
       }else{
-        if(!["OPEN","CLOSED"].includes(String(x.status)))
-          throw new BadRequestException("Choose Open or Closed");
+        if(!["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+          "ESCALATED","RESOLVED","CLOSED"].includes(String(x.status)))
+          throw new BadRequestException("Choose a supported case status");
         if(c.status===x.status)throw new ConflictException("Case is already in this state");
         await client.query(
           "UPDATE cg19_support_case SET status=$3,closed_at="+
@@ -470,7 +479,9 @@ export class SupportService{
           "revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",
           [a.realmId,id,x.status]);
         await this.event(client,a.realmId,id,a.accountId,
-          x.status==="CLOSED"?"CLOSED":"REOPENED");
+          x.status==="CLOSED"?"CLOSED":
+            c.status==="CLOSED"?"REOPENED":"STATUS_UPDATED",
+          {status:x.status});
       }
       await client.query("COMMIT");begun=false;
       return {status:"CONFIRMED",revision:c.revision+1};
