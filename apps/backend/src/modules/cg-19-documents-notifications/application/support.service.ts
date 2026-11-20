@@ -319,7 +319,7 @@ export class SupportService{
       "'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',"+
       "'REPLIED','RESOLVED')) AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
-      "count(*) FILTER(WHERE c.status='CLOSED') AS closed,"+
+      "count(*) FILTER(WHERE c.status IN('RESOLVED','CLOSED')) AS closed,"+
       "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
       "count(*) FILTER(WHERE (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) AS unread,"+
