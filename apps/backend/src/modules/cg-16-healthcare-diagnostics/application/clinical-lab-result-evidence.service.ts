@@ -302,6 +302,22 @@ export class ClinicalLabResultEvidenceService{
     "WHERE root_realm_id=$1 AND order_ref=$2 AND id=$3",
     [currentActor.realmId,order,current.result_revision_ref,
      file.rows[0].id,current.sha256]);
+   // The report row and the clinical order advance together or neither
+   // commits. Migration 1609 checks the exact CG19 file, sample state and
+   // matching immutable event at transaction commit.
+   const accepted=await c.query<{revision:number}>(
+    "UPDATE lab_order SET status='RESULT_READY',revision=revision+1,"+
+    "updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND center_ref=$3 "+
+    "AND status='PROCESSING' RETURNING revision",
+    [currentActor.realmId,order,center]);
+   if(!accepted.rows[0])
+    throw new ConflictException({code:"LAB_RESULT_ORDER_NOT_READY"});
+   await c.query(
+    "INSERT INTO lab_order_event(root_realm_id,order_ref,source_key,"+
+    "actor_ref,event_type,prior_revision,new_revision) "+
+    "VALUES($1,$2,$3,$4,'RESULT_FILE_READY',$5,$6)",
+    [currentActor.realmId,order,current.request_key,currentActor.accountId,
+     accepted.rows[0].revision-1,accepted.rows[0].revision]);
    await this.log(c,currentActor,upload,"SCAN_VERIFIED",file.rows[0].id);
    return {uploadRef:upload,status:"RESULT_READY",cleanVerified:true,
     resultRef:current.result_revision_ref,professionallyReleased:false,
