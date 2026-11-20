@@ -17,6 +17,7 @@ function allowed(p:string[],method:string){
  if(p.length===2&&p[0]==="catalog"&&p[1]==="admin")return method==="GET";
  if(p.length===1&&["categories","tests","packages"].includes(p[0]))
   return method==="GET"||method==="POST";
+ if(p.length===2&&p[0]==="tests"&&p[1]==="export")return method==="POST";
  if(p.length===2&&p[0]==="tests"&&ID.test(p[1]))
   return method==="PATCH";
  if(p.length===2&&["centers","my-centers"].includes(p[0])&&p[1]==="eligible")

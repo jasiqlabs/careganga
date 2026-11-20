@@ -202,6 +202,33 @@ export class DiagnosticsCatalogService{
    return {tests:r.rows};
   });
  }
+ async exportSelected(bearer:string,raw:unknown){
+  const x=obj(raw,["testRefs"]);
+  if(!Array.isArray(x.testRefs)||x.testRefs.length===0||
+   x.testRefs.length>100)
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"tests"});
+  const refs=x.testRefs.map(v=>uuid(v,"testRef"));
+  if(new Set(refs).size!==refs.length)
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"tests"});
+  const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.view");
+  return this.run(async tx=>{
+   await this.current(tx,actor,"diagnostics.catalog.view");
+   const rows=await tx.query<{
+    testRef:string;code:string;name:string;category:string;
+    sampleType:string;status:string
+   }>(
+    "SELECT t.id AS \"testRef\",t.unique_test_code AS code,t.name,"+
+    "c.display_name AS category,t.sample_type AS \"sampleType\",t.status "+
+    "FROM diagnostic_test t JOIN test_category c ON "+
+    "c.root_realm_id=t.root_realm_id AND c.id=t.category_ref "+
+    "WHERE t.root_realm_id=$1 AND t.id=ANY($2::uuid[]) "+
+    "ORDER BY t.name,t.id LIMIT 100",
+    [actor.realmId,refs]);
+   if(rows.rowCount!==refs.length)
+    throw new ForbiddenException("Refresh your authorized test list before exporting.");
+   return {tests:rows.rows,exportedCount:rows.rows.length};
+  });
+ }
  async createTest(bearer:string,raw:unknown){
   const x=obj(raw,["requestKey","testCode","name","categoryRef","sampleType",
    "parametersDescription","clinicalDescription"]);

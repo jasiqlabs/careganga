@@ -178,14 +178,29 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
     expectedVersion:selected.revision},
    "Test deactivated. Original approved price records remain preserved.");
  }
- function exportVisible(){
-  const rows=[["Test code","Test name","Category","Sample type","Status"],
-   ...visible.map(t=>[t.code,t.name,t.category,label(t.sampleType),t.status])];
-  const blob=new Blob(["\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")],
-   {type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="diagnostic-tests-visible.csv";a.click();
-  URL.revokeObjectURL(url);
+ async function exportVisible(){
+  if(!visible.length||busy||uncertain)return;
+  setBusy(true);setError("");
+  try{
+   const response=await diagnosticsCall<{tests:{
+    testRef:string;code:string;name:string;category:string;
+    sampleType:string;status:string
+   }[];exportedCount:number}>("tests/export","POST",
+    {testRefs:visible.map(t=>t.testRef)});
+   if(!Array.isArray(response.tests)||response.tests.length!==visible.length)
+    throw Error("Refresh this page before exporting the currently permitted tests.");
+   const rows=[["Test code","Test name","Category","Sample type","Status"],
+    ...response.tests.map(t=>[t.code,t.name,t.category,label(t.sampleType),t.status])];
+   const blob=new Blob(["\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")],
+    {type:"text/csv;charset=utf-8"});
+   const url=URL.createObjectURL(blob);
+   const link=document.createElement("a");
+   link.href=url;link.download="diagnostic-tests-visible.csv";link.click();
+   URL.revokeObjectURL(url);
+   setNotice("Exported "+response.tests.length+" currently authorized diagnostic tests.");
+  }catch(e){
+   setError(e instanceof Error?e.message:"Test export could not be confirmed.");
+  }finally{setBusy(false);}
  }
  return <section className="cg-health-workspace cg-diagnostics" aria-label="Lab Test Master & Pricing">
   <header className="topbar">
@@ -195,7 +210,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    <div className="toolbar">
     <button type="button" onClick={()=>void reload().catch(e=>
      setError(e instanceof Error?e.message:"Catalogue cannot be refreshed."))}>Refresh</button>
-    <button type="button" disabled={!visible.length} onClick={exportVisible}>
+    <button type="button" disabled={!visible.length||busy||uncertain} onClick={()=>void exportVisible()}>
      Export shown tests ({visible.length})</button>
     {canManage&&<button type="button" className="primary" onClick={()=>openForm()}>
      Add New Test</button>}

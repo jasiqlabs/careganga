@@ -16,6 +16,10 @@ export class DiagnosticsCatalogController{
  tests(@Headers("authorization")token:string,@Query()filter:unknown){
   return this.catalog.tests(token,filter);
  }
+ @Post("tests/export")
+ exportSelected(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.catalog.exportSelected(token,body);
+ }
  @Post("tests")
  createTest(@Headers("authorization")token:string,@Body()body:unknown){
   return this.catalog.createTest(token,body);
