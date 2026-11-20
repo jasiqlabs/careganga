@@ -1,14 +1,15 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {FoundationJournalPostingPanel} from "./foundation-journal-posting-panel";
 type Center={centerRef:string;name:string};
 type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
  doctorName:string;completedAt:string;approvedSupportMinor:string;
  state:"READY_TO_RECOGNIZE"|"APPROVED_LIABILITY"};
 type Options={appointments:Appointment[];complete:boolean};
-type Status={state:string;amountMinor?:string;currency?:string;
+type Status={state:string;liabilityRef?:string;amountMinor?:string;currency?:string;
  postingState?:string;foundationJournalPosted:boolean;providerSettled:boolean;
  originalServiceCompletedAt?:string};
-type Props={canManage:boolean};
+type Props={canManage:boolean;canPost:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const money=(v:string)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR",maximumFractionDigits:2
@@ -33,7 +34,7 @@ async function request<T>(path:string,body?:object):Promise<T>{
  * CG14/CG15/CG17 sources and protected staff BFF own authorization.
  * Cash collections, CG09 posted journals and provider payments are separate.
  */
-export function CompletedConsultationLiabilityWorkspace({canManage}:Props){
+export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState("");
  const [appointments,setAppointments]=useState<Appointment[]>([]);
@@ -187,6 +188,12 @@ export function CompletedConsultationLiabilityWorkspace({canManage}:Props){
     selected.state==="READY_TO_RECOGNIZE"&&!uncertain&&
     <button type="button" className="primary" disabled={busy}
      onClick={()=>void recognize()}>Recognize approved completed-service obligation</button>}
+   {canPost&&status?.state==="APPROVED_LIABILITY"&&
+    !status.foundationJournalPosted&&status.liabilityRef&&
+    ID.test(status.liabilityRef)&&
+    <FoundationJournalPostingPanel key={status.liabilityRef}
+     centerRef={center} liabilityRef={status.liabilityRef}
+     onPosted={async()=>{await check();}}/>}
    {uncertain&&<p role="alert">The previous write may have succeeded.
     Check its original status before another attempt; no new liability will be created.</p>}
    <button type="button" disabled={busy} onClick={()=>void check()}>
