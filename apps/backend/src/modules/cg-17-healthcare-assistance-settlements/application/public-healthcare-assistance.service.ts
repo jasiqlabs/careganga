@@ -51,7 +51,8 @@ export class PublicHealthcareAssistanceService{
     "c.display_name AS \"centerName\","+
     
     "rule.mode,rule.percent_basis_points AS \"percentBasisPoints\","+
-    "rule.fixed_minor::text AS \"fixedMinor\","+
+    "CASE WHEN rule.mode=\'FIXED\' THEN "+
+    "LEAST(rule.fixed_minor,rule.cap_minor)::text ELSE NULL END AS \"fixedMinor\","+
     "rule.cap_minor::text AS \"capMinor\",rule.valid_until AS \"validUntil\" "+
     "FROM healthcare_policy_revision rule "+
     "JOIN access_realm root ON root.id=rule.root_realm_id "+
