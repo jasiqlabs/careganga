@@ -43,6 +43,11 @@ CREATE TABLE center_merchant_binding(
 CREATE UNIQUE INDEX ux_cg17_active_center_merchant
  ON center_merchant_binding(root_realm_id,center_ref)
  WHERE verification_state IN('PENDING_VERIFICATION','VERIFIED');
+-- A merchant key must never be reused for a different center or Foundation
+-- realm. This blocks an accidentally provisioned Foundation-wide key.
+CREATE UNIQUE INDEX ux_cg17_one_center_per_provider_key
+ ON center_merchant_binding(provider,public_key_id)
+ WHERE verification_state IN('PENDING_VERIFICATION','VERIFIED');
 CREATE INDEX ix_cg17_merchant_review
  ON center_merchant_binding(root_realm_id,verification_state,created_at DESC,id);
 CREATE FUNCTION cg17_merchant_binding_guard() RETURNS trigger
