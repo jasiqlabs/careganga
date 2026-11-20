@@ -13,6 +13,9 @@ type NoticeCounts={counts:Array<{channel:Channel;status:string;count:number}>};
 type PhoneProof={hasNumber:boolean;verified:boolean;maskedContact:string|null;
   verifiedAt:string|null;providerConfigured:boolean};
 type Alert={kind:"error"|"success"|"info";message:string};
+type ClientEmailReference={code:string;title:string;owner:string;trigger:string;
+  recipient:string;subject:string;body:string;attachmentRule:string;
+  placeholders:string[];state:string;deliveryEnabled:false};
 async function req<T>(path:string,method:"GET"|"POST"="GET",body?:object){
   let response:Response;
   try{response=await fetch("/api/communications/"+path,{
@@ -51,7 +54,7 @@ export function CommunicationsWorkspace({
   mayManage:boolean;mayApprove:boolean;mayProcess:boolean;mayRead:boolean;
   mayViewDelivery:boolean;mayChooseAccounts:boolean;mayChooseRoles:boolean;
 }){
-  const [tab,setTab]=useState<"NOTICES"|"INBOX">(
+  const [tab,setTab]=useState<"NOTICES"|"INBOX"|"EMAIL_TEMPLATES">(
     mayManage?"NOTICES":"INBOX");
   const [notices,setNotices]=useState<Notice[]>([]);
   const [inbox,setInbox]=useState<InboxItem[]>([]);
@@ -81,6 +84,9 @@ export function CommunicationsWorkspace({
   const [alert,setAlert]=useState<Alert|null>(null);
   const [delivery,setDelivery]=useState<NoticeCounts|null>(null);
   const [deliveryRef,setDeliveryRef]=useState("");
+  const [emailReferences,setEmailReferences]=useState<ClientEmailReference[]>([]);
+  const [emailSearch,setEmailSearch]=useState("");
+  const [emailLoading,setEmailLoading]=useState(false);
   const reload=useCallback(async()=>{
     setLoading(true);
     try{
@@ -255,6 +261,38 @@ export function CommunicationsWorkspace({
     }catch(e){setAlert({kind:"error",message:explain(e)})}
     finally{setBusy(false);}
   }
+  async function loadEmailReferences(){
+    if(!mayManage)return;
+    setEmailLoading(true);
+    try{
+      const data=await req<{templates:ClientEmailReference[];total:number;deliveryEnabled:false}>(
+        "client-email-templates");
+      if(!Array.isArray(data.templates)||data.total!==52||data.deliveryEnabled!==false)
+        throw Error("UNKNOWN");
+      setEmailReferences(data.templates);
+    }catch(e){setAlert({kind:"error",message:explain(e)})}
+    finally{setEmailLoading(false)}
+  }
+  async function importClientDrafts(){
+    if(!mayManage||busy)return;
+    setBusy(true);
+    try{
+      const result=await req<{imported:number;alreadyPresent:number;deliveryEnabled:false}>(
+        "client-email-templates/import-drafts","POST");
+      if(result.deliveryEnabled!==false)throw Error("UNKNOWN");
+      setAlert({kind:"success",message:
+        `${result.imported} email references imported as disabled drafts. `+
+        `${result.alreadyPresent} already existed. No messages were sent.`});
+      await loadEmailReferences();
+    }catch(e){
+      setAlert({kind:"error",message:
+        e instanceof Error&&e.message==="CONFLICT"?
+          "A saved client email reference differs from this source version. "+
+          "Review the original template before importing again; no emails were sent.":
+          explain(e)});
+    }
+    finally{setBusy(false)}
+  }
   const shown=notices.filter(x=>
     (statusFilter==="ALL"||x.state===statusFilter)&&
     (x.title+" "+x.state+" "+x.priority).toLowerCase().includes(search.toLowerCase()));
@@ -281,6 +319,9 @@ export function CommunicationsWorkspace({
         aria-pressed={tab==="NOTICES"}>Notices & broadcasts</button>}
       {mayRead&&<button type="button" onClick={()=>setTab("INBOX")}
         aria-pressed={tab==="INBOX"}>My notifications</button>}
+      {mayManage&&<button type="button" onClick={()=>{setTab("EMAIL_TEMPLATES");
+        void loadEmailReferences();}} aria-pressed={tab==="EMAIL_TEMPLATES"}>
+        Email reference templates</button>}
       {mayProcess&&<button type="button" onClick={()=>void runRecovery("recover-decisions")}
         disabled={busy}>Recover committed approvals</button>}
       {mayProcess&&<button type="button" onClick={()=>void runRecovery("process-due")}
@@ -293,6 +334,45 @@ export function CommunicationsWorkspace({
           {" "}{c.state.replaceAll("_"," ")}.
           {c.configured?" Provider response and signed receipt still required.":
             " In-app messages work independently."}</p>)}
+      </div>
+    </section>}
+    {tab==="EMAIL_TEMPLATES"&&mayManage&&<section className="role-pane">
+      <div className="role-pane-heading"><h2>Client transactional email templates (52)</h2></div>
+      <div className="role-detail-content">
+        <p>These are the client-approved reference words and attachment requirements.
+          Importing creates <strong>disabled source drafts only</strong>. They do not
+          send email or create membership, donation, HR or payroll records.
+          Each business trigger, recipient and approved PDF pack must first
+          be implemented and verified by its owning module.</p>
+        <div className="toolbar">
+          <button type="button" disabled={busy||emailLoading}
+            onClick={()=>void importClientDrafts()}>
+            Import missing references as disabled drafts</button>
+          <button type="button" disabled={busy||emailLoading}
+            onClick={()=>void loadEmailReferences()}>Refresh references</button>
+        </div>
+        <label className="field">Find a template
+          <input value={emailSearch} maxLength={80}
+            onChange={e=>setEmailSearch(e.target.value)}
+            placeholder="Template ID, name or module"/></label>
+        {emailLoading&&<p role="status">Checking current template references…</p>}
+        {!emailLoading&&emailReferences.length===0&&<p role="status">
+          Select Refresh references to view the client catalog.</p>}
+        {emailReferences.filter(t=>(t.code+" "+t.title+" "+t.owner)
+          .toLowerCase().includes(emailSearch.trim().toLowerCase()))
+          .map(t=><details key={t.code} className="permission-group">
+            <summary><strong>{t.code}</strong> · {t.title} · {t.state.replaceAll("_"," ")}</summary>
+            <p><strong>Source trigger:</strong> {t.trigger}</p>
+            <p><strong>Recipient:</strong> {t.recipient||"Verify the recipient from the owning source"}</p>
+            <p><strong>Approved document requirement:</strong> {t.attachmentRule}</p>
+            <p><strong>Required fields:</strong> {t.placeholders.join(", ")||"None"}</p>
+            <p><strong>Subject preview (placeholders only)</strong></p>
+            <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{t.subject}</pre>
+            <p><strong>Email body preview (placeholders only)</strong></p>
+            <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{t.body}</pre>
+            <p>Delivery unavailable until the source event, permission and every
+              required approved document are verified.</p>
+          </details>)}
       </div>
     </section>}
     {tab==="NOTICES"&&mayManage&&<>

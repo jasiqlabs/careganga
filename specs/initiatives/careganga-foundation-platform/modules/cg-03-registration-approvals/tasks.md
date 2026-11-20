@@ -99,3 +99,12 @@ The current code-based review and fix evidence is [the six-owner formal source r
 ## 20 November 2026 — CG-01 reference UI/UX alignment: approvals loading states (source only)
 
 The CG-03 reviewer page uses the latest MD IRFAN CG-01 Foundation Admin shell already merged from `main`. Its process-authority and application-list loading notices have now been styled consistently with existing authenticated modules using `cg-module-loading` and accessible `role="status"`; the applications table reports `aria-busy` during loading. This is **presentation only** and preserves CG-03 protected review, owner finalization, permission rules, account visibility, current API requests, immutable application data and no new use cases. The [page-by-page CG-01 source audit](../../../../../docs/qa/CAREGANGA-CG01-IRFAN-UIUX-PAGE-BY-PAGE-SOURCE-AUDIT-20261120.md) records open visual/interaction checks. `npm run verify:cg01-uiux-source` is a prescribed local lexical check (not executed here), not a live UI PASS. **Canonical QA case statuses unchanged; actual Web/Android/browser/screen-reader QA and independent approvals NOT_RUN. Main merge HOLD.**
+
+
+## Supplemental 20-Nov-2026 client acceptance (no new story / QA count)
+
+**Source:** [document examples](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md).
+
+Extend current CG-03 QA at owner handoff: document verification must never send final approval pack, reviewer disclosure reasons safe, duplicate decision one source effect, no bogus donation reviewer case; downstream CG19 event triggers wait for genuine CG-04/CG-10 source. Keep original CG-01 grant cases unchanged.
+
+**Execution:** CLIENT_SOURCE_MAPPED; any missing source implementation is SOURCE_GAP/DEPENDENT_OWNER; actual runtime, migration, rendered PDF and delivery-provider QA NOT_RUN. Reuse existing story QA traces, not a second tracker.

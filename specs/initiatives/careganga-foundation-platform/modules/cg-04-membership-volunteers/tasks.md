@@ -122,3 +122,12 @@
 
 ## 18 November 2026 — original website receiving acceptance — existing QA receiving checks
 In the ORIGINAL US-001/002/003 story QA, verify **real tier cards/search/verify, four-step volunteer form, location/PIN dependent validation, consent/referral, true applicant status and original mobile layout** against Batch02 021604–021739 and Batch01 020435–020504 and /membership; /volunteer; consented Team Directory; source contract [here](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Trace protected Admin edit → original owner record → genuine approval when required → public Web/native verified state → wrong scope/revoke/expired/empty and CG-21 editable human error. Retain the original QA count/IDs and mark only executed evidence PASS. **REFERENCE_ALIGNED / SOURCE RECEIVING WORK OPEN / RUNTIME VISUAL DEVICE NOT_RUN.**
+
+
+## Supplemental client 20-Nov source QA within existing story count
+
+**Reference:** [five designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 original event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). New source material does **not** change old QA outcomes or imply runtime PASS.
+
+Extend existing US-002 / US-003 acceptance within existing scenario counts: real tier and fee, real source-authorized final approval, 3 approved PDFs complete before email, no duplicate ID on replay, volunteer free, QR revocation and prior version supersession, expiry/N/A and lifetime reminder suppression, privacy of volunteer card fields, cross-root/branch denial. Side-by-side compare client certificate, welcome letter and front/back volunteer JPGs in Web/PDF and relevant Android; runtime NOT_RUN.
+
+**Next JASIQ-dev cycle:** implement in real owner source → independent review/fix/re-review → trace existing story QA to code → render and compare original client JPG / provider test / real Web+Android; all actual executions NOT_RUN.

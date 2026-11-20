@@ -2,8 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterSupportAttachments} from "./center-support-attachments";
 
-type Case={caseRef:string;subject:string;status:string;revision:number;updatedAt:string};
-type Detail={caseRef:string;subject:string;message:string;status:string;revision:number;
+type Case={caseRef:string;ticketNumber:string;subject:string;status:string;revision:number;updatedAt:string};
+type Detail={caseRef:string;ticketNumber:string;subject:string;message:string;status:string;revision:number;
  replies:{message:string;createdAt:string}[]};
 async function request<T>(path:string,init?:RequestInit):Promise<T>{
  const response=await fetch("/api/support/"+path,{...init,cache:"no-store",
@@ -44,15 +44,15 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
   if(!createKey.current)createKey.current=crypto.randomUUID();
   setBusy(true);setError("");setNotice("");
   try{
-   const result=await request<{caseRef:string;replayed:boolean}>(prefix,{
+   const result=await request<{caseRef:string;ticketNumber:string;replayed:boolean}>(prefix,{
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({requestKey:createKey.current,subject:subject.trim(),
       message:message.trim()})
    });
    createKey.current="";setSubject("");setMessage("");
    await list();await open(result.caseRef);
-   setNotice(result.replayed?"Recovered your original support request.":
-    "Your center support case was submitted to the Foundation.");
+   setNotice(result.replayed?`Recovered support ticket ${result.ticketNumber}.`:
+    `Your support ticket ${result.ticketNumber} was submitted to the Foundation.`);
   }catch(e){setError(e instanceof Error?e.message:
    "The request outcome is uncertain. Refresh your original cases before creating another.");}
   finally{setBusy(false);}
@@ -100,24 +100,25 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
   <div className="toolbar">
    {items.map(item=><button type="button" key={item.caseRef}
     aria-pressed={item.caseRef===detail?.caseRef}
-    onClick={()=>void open(item.caseRef)}>{item.subject} · {item.status}</button>)}
+    onClick={()=>void open(item.caseRef)}>{item.ticketNumber} · {item.subject} · {item.status}</button>)}
   </div>
   {detail&&<article className="form-section">
    <h3>{detail.subject}</h3>
-   <p>Status: {detail.status}</p>
+   <p><strong>Ticket number: {detail.ticketNumber}</strong></p>
+   <p>Status: {detail.status.replaceAll("_"," ")}</p>
    <p>{detail.message}</p>
    <CenterSupportAttachments key={detail.caseRef} centerRef={centerRef}
     caseRef={detail.caseRef} caseRevision={detail.revision}
-    closed={detail.status==="CLOSED"}/>
+    closed={["CLOSED","RESOLVED"].includes(detail.status)}/>
    <h4>Conversation</h4>
    {detail.replies.length===0&&<p>The Foundation has not yet replied.</p>}
    {detail.replies.map((item,i)=><p key={i}>{item.message}</p>)}
-   {detail.status!=="CLOSED"&&<>
+   {!["CLOSED","RESOLVED"].includes(detail.status)&&<>
     <label>Write a reply
      <textarea value={reply} onChange={e=>{setReply(e.target.value);replyKey.current="";}}
       rows={3} maxLength={2400}/></label>
     <button type="button" disabled={busy||reply.trim().length<2}
-     onClick={()=>void submitReply()}>{busy?"Sending…":"Reply to this case"}</button>
+     onClick={()=>void submitReply()}>{busy?"Saving…":"Save reply to this case"}</button>
    </>}
   </article>}
  </section>;

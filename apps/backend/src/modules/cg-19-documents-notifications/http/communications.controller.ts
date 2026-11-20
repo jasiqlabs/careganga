@@ -5,11 +5,13 @@ import {
 import {NotificationService} from "../application/notification.service";
 import {NoticeService} from "../application/notice.service";
 import {DeliveryService} from "../application/delivery.service";
+import {ClientEmailTemplateService} from "../application/client-email-template.service";
 @Controller("api/communications")
 export class CommunicationsController{
   constructor(private readonly inbox:NotificationService,
     private readonly notices:NoticeService,
-    private readonly delivery:DeliveryService){}
+    private readonly delivery:DeliveryService,
+    private readonly clientEmails:ClientEmailTemplateService){}
   @Get("inbox")
   inboxPage(@Headers("authorization")token:string,@Query("limit")limit?:string){
     return this.inbox.inbox(token,limit??20);
@@ -26,6 +28,14 @@ export class CommunicationsController{
   @Post("preferences")
   preference(@Headers("authorization")token:string,@Body()body:unknown){
     return this.inbox.setPreference(token,body);
+  }
+  @Get("client-email-templates")
+  clientEmailCatalog(@Headers("authorization")token:string){
+    return this.clientEmails.list(token);
+  }
+  @Post("client-email-templates/import-drafts")
+  importClientEmailDrafts(@Headers("authorization")token:string){
+    return this.clientEmails.importDrafts(token);
   }
   @Post("recover-decisions")
   recover(@Headers("authorization")token:string){

@@ -378,3 +378,12 @@ The original QA cases above remain authoritative and unchanged. Execute the rele
 
 ## 18 November 2026 — formal source review finding trace (six owner gates)
 The current code-based review and fix evidence is [the six-owner formal source review](../../../../../docs/qa/CAREGANGA-FOUNDATION-FINANCE-CMS-FORMAL-SOURCE-REVIEW-20261118.md). **Owner finding:** HIGH branch leaks and Foundation-root privilege issues fixed across Accounts, Voucher, Budget, Web and Internal Android; build/DB/API security proof remains blocked. This is the same original QA matrix — no new user stories or QA IDs. Corrected source was re-read after commit; the static Finance scope check returned 28/28 current predicates, **not runtime tests**. Independent reviewer/security/DB/Harness final gate, current design SHA signoff, backend/Web/Android build, disposable PostgreSQL migration, original screenshot comparison and positive/negative/error/manual QA remain **NOT_RUN/BLOCKED**. **Module formal SOURCE_COMPLETE: NOT_APPROVED**, original runtime QA outcomes remain NOT_RUN; no merge to main.
+
+
+## Supplemental 20-Nov-2026 client acceptance (no new story / QA count)
+
+**Source:** [document examples](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md).
+
+Extend real CG09 financial integration QA: one original payment event → one posting, no donor/member duplicated financial balance; distinct provider accepted/success/unknown, refund approved/processed, salary approved/disbursed. No 80G until policy verified. Mark future owner-dependent template integration NOT_RUN.
+
+**Execution:** CLIENT_SOURCE_MAPPED; any missing source implementation is SOURCE_GAP/DEPENDENT_OWNER; actual runtime, migration, rendered PDF and delivery-provider QA NOT_RUN. Reuse existing story QA traces, not a second tracker.

@@ -54,3 +54,12 @@ Password hashes use the existing slow salted algorithm and policy checks. Avoid 
 ## 5. Acceptance and QA
 
 The canonical [tasks.md](tasks.md) owns **51 cases** across US-001 **18**, US-002 **11**, US-003 **14** and US-004 **8**. Implement → independent source review → fix → re-review → trace each amended case to real backend/DB/Web/Android evidence. These traces are not live tests. Runtime database migration, duplicate and reset concurrency, configured SMTP/SMS, backend/Web/native builds, device flow, security bypass, authorization, accessibility, performance, screenshot comparisons and independent qualified security/database approval remain **NOT_RUN** until actually executed.
+
+
+## 20-Nov-2026 client document/email v2 source-owner reconciliation
+
+**Authority:** [five original designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template email master](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). Existing module stories and historic QA status unchanged; this is new client acceptance evidence, not delivered functionality.
+
+Own real identities, role/branch grant authority, and account access event. Client CG-EMP-007 requires single-use expiring password setup link but current CG-01 approved baseline is Admin-created ACTIVE account with password. **Flag contract discrepancy**; do not change login or add plaintext password/email credentials without owner confirmation. For CG-EMP-008/009 and CG-PROM-002 emit only legitimate saved access/grant/status changes for CG-19, protect recipients and audit.
+
+**Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.

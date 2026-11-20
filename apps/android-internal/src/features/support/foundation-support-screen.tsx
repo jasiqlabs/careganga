@@ -6,13 +6,14 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type CaseView={caseRef:string;subject:string;name:string;contact:string;
-  status:"OPEN"|"REPLIED"|"CLOSED";revision:number;
+type CaseView={caseRef:string;ticketNumber:string;subject:string;name:string;contact:string;
+  status:string;revision:number;
   assignedAccountRef:string|null;unread:boolean;archived:boolean;
   createdAt:string;updatedAt:string};
 type Detail=CaseView&{message:string;replies:Array<{replyRef:string;body:string;
   authorAccountRef:string;createdAt:string}>;
-  history:Array<{kind:string;at:string}>};
+  history:Array<{kind:string;at:string}>;
+  statusNotes?:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
 type Counts={total:number;unread:number;open:number;replied:number;
   closed:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
@@ -53,6 +54,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   const [selected,setSelected]=useState<Detail|null>(null);
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [agents,setAgents]=useState<Option[]>([]),[assignee,setAssignee]=useState("");
+  const [nextStatus,setNextStatus]=useState("OPEN");
+  const [statusNote,setStatusNote]=useState("");
   const [agentSearch,setAgentSearch]=useState("");
   const [appliedAgentSearch,setAppliedAgentSearch]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]),[editing,setEditing]=useState<Faq|null>(null);
@@ -101,6 +104,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     try{
       const item=await api<Detail>(token,"cases/"+ref);
       setSelected(item);setAssignee(item.assignedAccountRef??"");
+      setNextStatus(item.status);setStatusNote("");
       setReply("");setReplyKey("");
       await api(token,"cases/"+ref+"/read","POST");
       await load();
@@ -109,9 +113,9 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       if(error instanceof Error&&error.message==="EXPIRED")onExpired();
     }finally{setBusy(false)}
   }
-  async function action(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"ARCHIVE"){
+  async function action(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"SET_STATUS"|"ARCHIVE"){
     if(!selected||busy)return;
-    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN"].includes(kind)&&!mayManage)
+    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN","SET_STATUS"].includes(kind)&&!mayManage)
       return;
     setBusy(true);setMessage("");
     try{
@@ -127,11 +131,19 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       }else if(kind==="ARCHIVE"){
         await api(token,path+"/archive","POST",{archived:!selected.archived});
       }else{
+        const status=kind==="CLOSE"?"CLOSED":kind==="REOPEN"?"OPEN":nextStatus;
+        if(["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(status)&&
+          statusNote.trim().length<8){
+          setMessage("Add a private status or resolution summary of at least eight characters.");
+          return;
+        }
         await api(token,path+"/status","PATCH",{
-          expectedRevision:selected.revision,status:kind==="CLOSE"?"CLOSED":"OPEN"});
+          expectedRevision:selected.revision,status,
+          ...(statusNote.trim()?{note:statusNote.trim()}:{})});
       }
       const updated=await api<Detail>(token,path);
-      setSelected(updated);await load();
+      setSelected(updated);setNextStatus(updated.status);
+      setStatusNote("");await load();
       setMessage(kind==="REPLY"?
         "Reply saved privately. External delivery has not been claimed.":
         "Original case state confirmed.");
@@ -198,15 +210,22 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       </View>
       {loading&&<ActivityIndicator accessibilityLabel="Loading current support records"/>}
       {tab==="CASES"&&mayView&&(selected?<View style={s.card}>
-        <Text style={s.heading}>{selected.subject}</Text>
+        <Text style={s.heading}>{selected.ticketNumber} · {selected.subject}</Text>
         <Text>{selected.name} · {selected.contact}</Text>
-        <Text style={s.muted}>{selected.status} · Revision {selected.revision}</Text>
+        <Text style={s.muted}>{selected.status.replaceAll("_"," ")} · Revision {selected.revision}</Text>
         <Text selectable style={s.message}>{selected.message}</Text>
         <Text style={s.heading}>Replies and history</Text>
         {selected.replies.length===0&&<Text>No replies recorded yet.</Text>}
         {selected.replies.map(r=><View key={r.replyRef} style={s.item}>
           <Text style={s.message}>{r.body}</Text>
           <Text style={s.muted}>{new Date(r.createdAt).toLocaleString()}</Text>
+        </View>)}
+        <Text style={s.heading}>Private status and resolution notes</Text>
+        {(selected.statusNotes?.length??0)===0&&<Text>No resolution notes have been recorded.</Text>}
+        {(selected.statusNotes??[]).map(note=><View key={note.revision} style={s.item}>
+          <Text style={s.heading}>{note.status.replaceAll("_"," ")} · revision {note.revision}</Text>
+          <Text selectable style={s.message}>{note.summary}</Text>
+          <Text style={s.muted}>{new Date(note.recordedAt).toLocaleString()}</Text>
         </View>)}
         {selected.history.map((h,i)=><Text key={i} style={s.muted}>
           {h.kind} · {new Date(h.at).toLocaleString()}</Text>)}
@@ -230,12 +249,43 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
             <Pressable style={s.button} disabled={busy}
               onPress={()=>void action("ASSIGN")}><Text>Save assignment</Text></Pressable>
           </>:<Text>Current role cannot open account options.</Text>}
-          <Pressable style={s.button} disabled={busy||selected.status==="CLOSED"}
+          <Text style={s.heading}>Update support status</Text>
+          <View style={s.rowWrap}>
+            {["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+              "ESCALATED","RESOLVED","CLOSED"].map(value=>
+              <Pressable key={value} style={s.button}
+                accessibilityRole="button"
+                accessibilityState={{selected:nextStatus===value,disabled:
+                  selected.status==="CLOSED"&&value!=="OPEN"||
+                  selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value)||
+                  value==="ASSIGNED"&&!selected.assignedAccountRef}}
+                disabled={selected.status==="CLOSED"&&value!=="OPEN"||
+                  selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value)||
+                  value==="ASSIGNED"&&!selected.assignedAccountRef}
+                onPress={()=>setNextStatus(value)}>
+                <Text>{value.replaceAll("_"," ")}</Text>
+              </Pressable>)}
+          </View>
+          <Text style={s.heading}>Private status or resolution summary</Text>
+          <TextInput multiline style={[s.input,s.longInput]}
+            maxLength={1200} value={statusNote} onChangeText={setStatusNote}
+            accessibilityLabel="Status or resolution summary"
+            placeholder="Required for Waiting for User, Resolved or Closed"/>
+          <Text style={s.muted}>Visible only to authorized Foundation staff.
+            Saving a note does not claim external email delivery.</Text>
+          <Pressable style={s.button}
+            disabled={busy||nextStatus===selected.status||
+              ["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(nextStatus)&&
+              statusNote.trim().length<8}
+            onPress={()=>void action("SET_STATUS")}>
+            <Text>Save status</Text>
+          </Pressable>
+          <Pressable style={s.button} disabled={busy||selected.status==="CLOSED"||statusNote.trim().length<8}
             onPress={()=>void action("CLOSE")}><Text>Close case</Text></Pressable>
           <Pressable style={s.button} disabled={busy||selected.status==="OPEN"}
             onPress={()=>void action("REOPEN")}><Text>Reopen case</Text></Pressable>
         </View>}
-        {mayReply&&selected.status!=="CLOSED"&&<View style={s.card}>
+        {mayReply&&!["CLOSED","RESOLVED"].includes(selected.status)&&<View style={s.card}>
           <Text style={s.heading}>Private reply</Text>
           <TextInput multiline value={reply} onChangeText={setReply}
             accessibilityLabel="Private reply" maxLength={2400} style={[s.input,s.longInput]}/>
@@ -250,12 +300,13 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         {counts&&<View style={s.card}>
           <Text style={s.heading}>Contact Messages</Text>
           {([["Total Inquiries",counts.total],["Unread",counts.unread],
-            ["Resolved",counts.closed],["Received Today",counts.received_today]] as const)
+            ["Resolved or Closed",counts.closed],["Received Today",counts.received_today]] as const)
             .map(([label,value])=><Text key={label}>{label}: {value}</Text>)}
         </View>}
         <View style={s.card}><Text style={s.heading}>Filter messages</Text>
           <View style={s.rowWrap}>
-            {["ALL","OPEN","UNREAD","REPLIED","CLOSED","ARCHIVED"].map(v=>
+            {["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+              "ESCALATED","REPLIED","RESOLVED","CLOSED","UNREAD","ARCHIVED"].map(v=>
               <Pressable key={v} style={s.button} accessibilityRole="button"
                 accessibilityState={{selected:filter===v}} onPress={()=>chooseFilter(v)}>
                 <Text>{v}</Text></Pressable>)}
@@ -279,9 +330,9 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         {cases.length===0&&!loading&&<Text>No messages match this page.</Text>}
         {cases.map(item=><Pressable key={item.caseRef} style={s.card}
           accessibilityRole="button" disabled={busy} onPress={()=>void show(item.caseRef)}>
-          <Text style={s.heading}>{item.subject}</Text>
+          <Text style={s.heading}>{item.ticketNumber} · {item.subject}</Text>
           <Text>{item.name} · {item.contact}</Text>
-          <Text style={s.muted}>{item.status} · {item.unread?"Unread":"Read"}
+          <Text style={s.muted}>{item.status.replaceAll("_"," ")} · {item.unread?"Unread":"Read"}
             {item.archived?" · Archived":""}</Text>
           <Text style={s.muted}>{new Date(item.createdAt).toLocaleString()}</Text>
         </Pressable>)}

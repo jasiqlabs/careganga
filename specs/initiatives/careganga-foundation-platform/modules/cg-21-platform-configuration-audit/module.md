@@ -71,3 +71,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 
 ## 18 November 2026 — original website receiving acceptance
 Original visitor/admin routes: **all original public and Admin forms, including /membership /volunteer /contact**. Screenshots: **Batch02 021604–021739, Batch03 021809–022004, 167 original Admin screenshots**. Owner: one protected editable error/copy catalog shared by every source-owning API, Web and Android. See [47-screen original source contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Existing US-001/002 retained; screenshot controls are not backend operation proof.
+
+
+## 20-Nov-2026 client document/email v2 source-owner reconciliation
+
+**Authority:** [five original designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template email master](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). Existing module stories and historic QA status unchanged; this is new client acceptance evidence, not delivered functionality.
+
+CG-21 is the protected source for verified Foundation current Section 8/legal entity, PAN/CIN/TAN, 80G status, registered office(s), official phone/email/domain, logo versions, approved signer/seal and transactional sender configuration feeding CG19 PDF/email output. Client source has different office addresses and **Registered Trust** stamp vs Section 8 Company text: no sample should be treated as approved legal fact. Do not cut sample signature/logo/person out of personal artwork for public assets.
+
+**Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.

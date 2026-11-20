@@ -93,3 +93,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 
 ## 18 November 2026 — original website receiving acceptance
 **Original route/journey:** Campaigns; Donate Now; Upcoming Projects Support; actual donor receipt/certificate. **Reference:** original first 10 + Batch02 021139–021224. **Owner:** CG-07 campaign and payment source, CG-09 actual journal, CG-19 client-original donor receipt/certificate version, not commercial invoice. Use this [47-screen public owner and QA map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), preserving the existing US-001/002/003 boundaries and all real financial/document permissions; screenshots are not authorized seeds.
+
+
+## 20-Nov-2026 client five-document / email-v2 acceptance (source mapped; not yet executed)
+
+**New client authority:** [Five source designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md); [52 client email templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). This is acceptance refinement of existing stories, **not** an extra module or completed code/QA. Re-check approval hashes before formal stage promotion.
+
+CG-07 supplies original donation, intent, provider-confirmed success and correction/refund events; CG-09 owns money posting; CG-19 owns the landscape official PDF and email. New 20-Nov JPG is an additional design reference to older 16-Nov donation PDFs, not a replacement CG-09 finance invoice. CG-DON-001 sends after confirmed success **with no separate donation approval**. Duplicate charges are CG-DON-002/003 cases, not duplicate receipts. CG-REF-001–005 track Requested, Under Review, Approved, Processing, Processed, Failed and Rejected; provider-confirmed Processed only. Real legal/80G and signatory facts require CG-21 validation.
+
+**Status:** Owner integration and PDF/provider/runtime checks remain PENDING/NOT_RUN where absent; historical source-review evidence is unchanged.

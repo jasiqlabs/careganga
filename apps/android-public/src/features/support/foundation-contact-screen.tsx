@@ -5,7 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 type Faq={faqRef:string;question:string;answer:string};
-type Receipt={receipt:string;expiresAt:string;status:string;result:string};
+type Receipt={receipt:string;ticketNumber:string;expiresAt:string;status:string;result:string};
 const web=process.env.EXPO_PUBLIC_CONTACT_WEB_ORIGIN;
 async function contactApi<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
   // Native guest requests enter the signed, trusted Next Web ingress.
@@ -81,9 +81,9 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
     if(busy||!proof)return;
     setBusy(true);setFeedback("");
     try{
-      const result=await contactApi<{status:string}>(
+      const result=await contactApi<{status:string;ticketNumber:string}>(
         "receipt/status","POST",{receipt:proof.trim()});
-      setProofStatus(result.status);
+      setProofStatus(`${result.ticketNumber} · ${result.status.replaceAll("_"," ")}`);
     }catch(e){setFeedback(explain(e))}
     finally{setBusy(false)}
   }
@@ -98,6 +98,7 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
     <View style={s.card}>
       {receipt?<View style={s.card}>
         <Text style={s.heading}>Your request was recorded</Text>
+        <Text selectable>Ticket number: {receipt.ticketNumber}</Text>
         <Text>Keep this private receipt in a safe place. Leaving the page may
           remove the displayed code from this device.</Text>
         <Text selectable style={s.code}>{receipt.receipt}</Text>

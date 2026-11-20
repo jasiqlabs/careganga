@@ -14,9 +14,9 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
 const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
-type CaseRow={id:string;realm_id:string;request_key:string;request_digest:string;
+type CaseRow={id:string;ticket_number:string;realm_id:string;request_key:string;request_digest:string;
   caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
-  status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
+  status:"OPEN"|"ASSIGNED"|"IN_PROGRESS"|"WAITING_FOR_USER"|"ESCALATED"|"REPLIED"|"RESOLVED"|"CLOSED";revision:number;assigned_account_id:string|null;
   latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null;
   source_channel:string;center_id?:string|null};
 type FaqRow={id:string;question:string;answer:string;state:string;revision:number;
@@ -73,7 +73,12 @@ function open(blob:Buffer):{name:string;contact:string;subject:string;message:st
       name:string;contact:string;subject:string;message:string};
 }
 function publicState(status:string){
-  return status==="CLOSED"?"CLOSED":status==="REPLIED"?"RESPONDED":"SUBMITTED";
+  return status==="CLOSED"?"CLOSED":
+    status==="RESOLVED"?"RESOLVED":
+    status==="WAITING_FOR_USER"?"ACTION_REQUIRED":
+    status==="REPLIED"?"RESPONDED":
+    ["ASSIGNED","IN_PROGRESS","ESCALATED"].includes(status)?"IN_PROGRESS":
+    "SUBMITTED";
 }
 /** Bounded keyed blind-index terms; no plaintext contact/subject enters DB indexes. */
 function searchTerms(values:readonly string[]):string[]{
@@ -202,14 +207,15 @@ export class SupportService{
         if(old.rows[0].request_digest!==digest||old.rows[0].caller_digest!==caller)
           throw new ConflictException("The original request key was already used");
         await client.query("COMMIT");begun=false;
-        return {receipt,expiresAt:old.rows[0].receipt_expires_at.toISOString(),
+        return {receipt,ticketNumber:old.rows[0].ticket_number,
+          expiresAt:old.rows[0].receipt_expires_at.toISOString(),
           status:publicState(old.rows[0].status),result:"PREVIOUSLY_CONFIRMED"};
       }
-      const created=await client.query<{id:string;receipt_expires_at:Date}>(
+      const created=await client.query<{id:string;ticket_number:string;receipt_expires_at:Date}>(
         "INSERT INTO cg19_support_case(realm_id,request_key,request_digest,"+
         "caller_digest,receipt_digest,receipt_expires_at,request_encrypted) "+
         "VALUES($1,$2,$3,$4,$5,now()+interval '30 days',$6) "+
-        "RETURNING id,receipt_expires_at",
+        "RETURNING id,ticket_number,receipt_expires_at",
         [realm,requestKey,digest,caller,receiptDigest,seal({name,contact,subject,message})]);
       const terms=searchTerms([name,contact,subject]);
       if(terms.length){
@@ -220,7 +226,8 @@ export class SupportService{
       }
       await this.event(client,realm,created.rows[0].id,null,"CONTACT_SUBMITTED");
       await client.query("COMMIT");begun=false;
-      return {receipt,expiresAt:created.rows[0].receipt_expires_at.toISOString(),
+      return {receipt,ticketNumber:created.rows[0].ticket_number,
+        expiresAt:created.rows[0].receipt_expires_at.toISOString(),
         status:"SUBMITTED",result:"CONFIRMED"};
     }catch(e){if(begun)try{await client.query("ROLLBACK");}catch{};throw e;}
     finally{client.release();}
@@ -231,22 +238,23 @@ export class SupportService{
     if(typeof x.receipt!=="string"||!TOKEN.test(x.receipt))
       throw new BadRequestException("Enter the original private receipt");
     const candidate=Buffer.from(sha(x.receipt),"hex");
-    const rows=await this.db.query<{receipt_digest:string;status:string}>(
-      "SELECT c.receipt_digest,c.status FROM cg19_support_case c "+
+    const rows=await this.db.query<{receipt_digest:string;ticket_number:string;status:string}>(
+      "SELECT c.receipt_digest,c.ticket_number,c.status FROM cg19_support_case c "+
       "JOIN access_realm r ON r.id=c.realm_id AND r.realm_key='FOUNDATION_ROOT' "+
       "WHERE c.receipt_digest=$1 AND c.receipt_expires_at>now() LIMIT 1",
       [candidate.toString("hex")]);
     const row=rows.rows[0];
     if(!row||!timingSafeEqual(candidate,Buffer.from(row.receipt_digest,"hex")))
       throw new NotFoundException("Original receipt unavailable or expired");
-    return {status:publicState(row.status)};
+    return {status:publicState(row.status),ticketNumber:row.ticket_number};
   }
   async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL",
     pageCursor:unknown=null,search:unknown=""){
     const a=await this.actor(bearer,"support.cases.view");
     const limit=Number(rawLimit);
     if(!Number.isInteger(limit)||limit<1||limit>30||
-      typeof filter!=="string"||!["ALL","OPEN","REPLIED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
+      typeof filter!=="string"||!["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+      "ESCALATED","REPLIED","RESOLVED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
       typeof search!=="string"||search.length>100)
       throw new BadRequestException("Choose a supported filter");
     let searchDigests:string[]|null=null;
@@ -307,9 +315,11 @@ export class SupportService{
     })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
       closed:string;unread:string;archived:string;received_today:string}>(
-      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status='OPEN') AS open,"+
+      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status IN("+
+      "'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',"+
+      "'REPLIED')) AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
-      "count(*) FILTER(WHERE c.status='CLOSED') AS closed,"+
+      "count(*) FILTER(WHERE c.status IN('RESOLVED','CLOSED')) AS closed,"+
       "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
       "count(*) FILTER(WHERE (rs.last_seen_inbound_at IS NULL OR "+
       "rs.last_seen_inbound_at<c.latest_inbound_at) AND rs.archived_at IS NULL) AS unread,"+
@@ -319,7 +329,8 @@ export class SupportService{
       "WHERE c.realm_id=$1",[a.realmId,a.accountId]);
     return {nextCursor,items:shown.map(row=>{
       const data=open(row.request_encrypted);
-      return {caseRef:row.id,subject:data.subject,name:data.name,
+      return {caseRef:row.id,ticketNumber:row.ticket_number,
+        subject:data.subject,name:data.name,
         contact:data.contact,status:row.status,revision:row.revision,
         assignedAccountRef:row.assigned_account_id,
         createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),
@@ -333,7 +344,7 @@ export class SupportService{
       "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND id=$2",[a.realmId,ref]);
     if(!found.rowCount)throw new NotFoundException("Case unavailable");
     const row=found.rows[0],request=open(row.request_encrypted);
-    const [replies,history,reading]=await Promise.all([
+    const [replies,history,reading,notes]=await Promise.all([
       this.db.query<{id:string;author_account_id:string;body_encrypted:Buffer;
         created_at:Date}>(
         "SELECT id,author_account_id,body_encrypted,created_at "+
@@ -346,10 +357,16 @@ export class SupportService{
       this.db.query<{last_seen_inbound_at:Date|null;archived_at:Date|null}>(
         "SELECT last_seen_inbound_at,archived_at FROM cg19_support_read_state "+
         "WHERE realm_id=$1 AND case_id=$2 AND operator_account_id=$3",
-        [a.realmId,ref,a.accountId])
+        [a.realmId,ref,a.accountId]),
+      this.db.query<{case_revision:number;new_status:string;note_encrypted:Buffer;
+        created_at:Date}>(
+        "SELECT case_revision,new_status,note_encrypted,created_at "+
+        "FROM cg19_support_status_note WHERE realm_id=$1 AND case_id=$2 "+
+        "ORDER BY case_revision DESC LIMIT 100",[a.realmId,ref])
     ]);
     const seen=reading.rows[0];
-    return {caseRef:row.id,sourceChannel:row.source_channel,...request,status:row.status,
+    return {caseRef:row.id,ticketNumber:row.ticket_number,
+      sourceChannel:row.source_channel,...request,status:row.status,
       unread:!seen?.last_seen_inbound_at||seen.last_seen_inbound_at<row.latest_inbound_at,
       archived:!!seen?.archived_at,
       revision:row.revision,assignedAccountRef:row.assigned_account_id,
@@ -358,7 +375,12 @@ export class SupportService{
         replyRef:reply.id,authorAccountRef:reply.author_account_id,
         body:(open(reply.body_encrypted)).message,
         createdAt:reply.created_at.toISOString()
-      })),history:history.rows.map(h=>({kind:h.kind,at:h.occurred_at.toISOString()}))};
+      })),history:history.rows.map(h=>({kind:h.kind,at:h.occurred_at.toISOString()})),
+      statusNotes:notes.rows.map(note=>({
+        revision:note.case_revision,status:note.new_status,
+        summary:open(note.note_encrypted).message,
+        recordedAt:note.created_at.toISOString()
+      }))};
   }
   private async mutate(bearer:string,rawRef:unknown,capability:string,
     payload:unknown,action:"ASSIGN"|"REPLY"|"STATUS"|"READ"|"ARCHIVE"){
@@ -366,7 +388,7 @@ export class SupportService{
     const x=input(payload,action==="ASSIGN"?
       ["expectedRevision","assignedAccountRef"]:
       action==="REPLY"?["expectedRevision","requestKey","body"]:
-      action==="STATUS"?["expectedRevision","status"]:
+      action==="STATUS"?["expectedRevision","status","note"]:
       action==="READ"?[]:["archived"]);
     const expected=action==="READ"||action==="ARCHIVE"?null:revision(x.expectedRevision);
     const client=await this.db.connect();let begun=false;
@@ -417,6 +439,8 @@ export class SupportService{
         throw new ConflictException("This support case changed. Refresh before retrying.");
       }
       if(action==="ASSIGN"){
+        if(["CLOSED","RESOLVED"].includes(c.status))
+          throw new ConflictException("Reopen or resume this case before reassigning it.");
         const target=x.assignedAccountRef===null?null:uuid(x.assignedAccountRef);
         if(target){
           // Selection is a distinct CG-01 permission. Backend enforcement does
@@ -426,13 +450,17 @@ export class SupportService{
             throw new ForbiddenException("Eligible support agent unavailable");
         }
         await client.query(
-          "UPDATE cg19_support_case SET assigned_account_id=$3,revision=revision+1,"+
+          "UPDATE cg19_support_case SET assigned_account_id=$3,"+
+          "status=CASE WHEN status='OPEN' AND $3::uuid IS NOT NULL "+
+          "THEN 'ASSIGNED' WHEN status='ASSIGNED' AND $3::uuid IS NULL "+
+          "THEN 'OPEN' ELSE status END,revision=revision+1,"+
           "updated_at=now() WHERE realm_id=$1 AND id=$2",
           [a.realmId,id,target]);
         await this.event(client,a.realmId,id,a.accountId,"ASSIGNED",
           {assigned:!!target});
       }else if(action==="REPLY"){
-        if(c.status==="CLOSED")throw new ConflictException("Reopen this case before replying");
+        if(["CLOSED","RESOLVED"].includes(c.status))
+          throw new ConflictException("Reopen this case before replying");
         const body=clean(x.body,2,2400),key=uuid(x.requestKey);
         const hash=sha(body);
         const prior=await client.query<{body_digest:string}>(
@@ -457,16 +485,38 @@ export class SupportService{
           [a.realmId,id]);
         await this.event(client,a.realmId,id,a.accountId,"REPLIED");
       }else{
-        if(!["OPEN","CLOSED"].includes(String(x.status)))
-          throw new BadRequestException("Choose Open or Closed");
+        if(!["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+          "ESCALATED","RESOLVED","CLOSED"].includes(String(x.status)))
+          throw new BadRequestException("Choose a supported case status");
         if(c.status===x.status)throw new ConflictException("Case is already in this state");
+        if(c.status==="CLOSED"&&x.status!=="OPEN")
+          throw new ConflictException("Reopen the closed case before changing its status.");
+        if(c.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(String(x.status)))
+          throw new ConflictException("Reopen a resolved case before continuing work.");
+        if(x.status==="ASSIGNED"&&!c.assigned_account_id)
+          throw new ConflictException("Assign an eligible operator before using Assigned status.");
+        const mustExplain=["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(String(x.status));
+        const explanation=x.note===undefined||x.note===null?null:clean(x.note,8,1200);
+        if(mustExplain&&!explanation)
+          throw new BadRequestException("Enter a case update or resolution summary (8–1200 characters).");
         await client.query(
           "UPDATE cg19_support_case SET status=$3,closed_at="+
           "CASE WHEN $3='CLOSED' THEN now() ELSE NULL END,"+
           "revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",
           [a.realmId,id,x.status]);
+        if(explanation){
+          await client.query(
+            "INSERT INTO cg19_support_status_note("+
+            "realm_id,case_id,actor_account_id,case_revision,new_status,"+
+            "note_digest,note_encrypted) VALUES($1,$2,$3,$4,$5,$6,$7)",
+            [a.realmId,id,a.accountId,c.revision+1,String(x.status),
+              hmac("status-note",a.realmId+":"+id+":"+explanation),
+              seal({name:"",contact:"",subject:"",message:explanation})]);
+        }
         await this.event(client,a.realmId,id,a.accountId,
-          x.status==="CLOSED"?"CLOSED":"REOPENED");
+          x.status==="CLOSED"?"CLOSED":
+            c.status==="CLOSED"?"REOPENED":"STATUS_UPDATED",
+          {status:x.status});
       }
       await client.query("COMMIT");begun=false;
       return {status:"CONFIRMED",revision:c.revision+1};
@@ -511,16 +561,18 @@ export class SupportService{
           existing.rows[0].caller_digest!==caller)
           throw new ConflictException("This support request key belongs to another message");
         await tx.query("COMMIT");started=false;
-        return {caseRef:existing.rows[0].id,revision:existing.rows[0].revision,
+        return {caseRef:existing.rows[0].id,
+          ticketNumber:existing.rows[0].ticket_number,
+          revision:existing.rows[0].revision,
           status:existing.rows[0].status,replayed:true};
       }
       const receipt=createHmac("sha256",scopedKey("center-receipt"))
         .update(actor.realmId+":"+center+":"+key).digest("base64url");
-      const result=await tx.query<{id:string;revision:number;status:string}>(
+      const result=await tx.query<{id:string;ticket_number:string;revision:number;status:string}>(
         "INSERT INTO cg19_support_case(realm_id,center_id,source_channel,request_key,"+
         "request_digest,caller_digest,receipt_digest,receipt_expires_at,request_encrypted) "+
         "VALUES($1,$2,'CENTER_PORTAL',$3,$4,$5,$6,now()+interval '30 days',$7) "+
-        "RETURNING id,revision,status",
+        "RETURNING id,ticket_number,revision,status",
         [actor.realmId,center,key,digest,caller,sha(receipt),
           seal({name:"Healthcare center representative",contact:"Center Portal",
             subject,message})]);
@@ -531,8 +583,8 @@ export class SupportService{
         [actor.realmId,record.id,searchTerms([subject]).map(v=>hmac("search",v))]);
       await this.event(tx,actor.realmId,record.id,actor.accountId,"CONTACT_SUBMITTED");
       await tx.query("COMMIT");started=false;
-      return {caseRef:record.id,revision:record.revision,
-        status:record.status,replayed:false};
+      return {caseRef:record.id,ticketNumber:record.ticket_number,
+        revision:record.revision,status:record.status,replayed:false};
     }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
     finally{tx.release();}
   }
@@ -543,14 +595,15 @@ export class SupportService{
       await tx.query("BEGIN");started=true;
       await this.centerScope.assertCurrent(tx,actor,center);
       const data=await tx.query<CaseRow>(
-        "SELECT id,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
+        "SELECT id,ticket_number,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
         "receipt_expires_at,request_encrypted,status,revision,assigned_account_id,"+
         "latest_inbound_at,created_at,updated_at,closed_at FROM cg19_support_case "+
         "WHERE realm_id=$1 AND source_channel='CENTER_PORTAL' AND center_id=$2 "+
         "ORDER BY updated_at DESC,id DESC LIMIT 50",[actor.realmId,center]);
       await tx.query("COMMIT");started=false;
       return {cases:data.rows.map(c=>({
-        caseRef:c.id,subject:open(c.request_encrypted).subject,
+        caseRef:c.id,ticketNumber:c.ticket_number,
+        subject:open(c.request_encrypted).subject,
         status:c.status,revision:c.revision,updatedAt:c.updated_at.toISOString()
       }))};
     }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
@@ -574,7 +627,8 @@ export class SupportService{
         "WHERE realm_id=$1 AND case_id=$2 ORDER BY created_at,id LIMIT 100",
         [actor.realmId,ref]);
       await tx.query("COMMIT");started=false;
-      return {caseRef:c.id,subject:open(c.request_encrypted).subject,
+      return {caseRef:c.id,ticketNumber:c.ticket_number,
+        subject:open(c.request_encrypted).subject,
         message:open(c.request_encrypted).message,status:c.status,
         revision:c.revision,replies:messages.rows.map(m=>({
           message:open(m.body_encrypted).message,createdAt:m.created_at.toISOString()
@@ -611,8 +665,8 @@ export class SupportService{
       }
       if(c.revision!==expected)
         throw new ConflictException("This case changed. Refresh before replying.");
-      if(c.status==="CLOSED")
-        throw new ConflictException("This case is closed. Contact the Foundation for reopening.");
+      if(["CLOSED","RESOLVED"].includes(c.status))
+        throw new ConflictException("This case is finalized. Contact the Foundation to reopen it.");
       await tx.query(
         "INSERT INTO cg19_support_reply(realm_id,case_id,author_account_id,"+
         "request_key,body_digest,body_encrypted) VALUES($1,$2,$3,$4,$5,$6)",

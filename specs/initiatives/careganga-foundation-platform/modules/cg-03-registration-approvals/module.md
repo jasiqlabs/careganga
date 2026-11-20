@@ -63,3 +63,11 @@ CG-03 preserves a distinct proposer and current authorized reviewer, immutable v
 Preserve the exact verified CareGanga color, typography, spacing, icons, sidebar/header, cards/tables, modal/drawer/form, statuses and source-supported animation—not a replacement theme. Original audit references: U11, U12, U13, B29. The screenshot/video is the source of actual token values, and no exact animation speed/easing may be guessed from still images. Responsive/native accessibility and reduced-motion adaptations keep the same brand. Actual visual QA comparison is VISUAL_NOT_RUN.
 
 All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls apply: data uniqueness, migration/rollback, races/replay, failure/recovery, privacy-safe logging, bounded queries/workers and human-readable validated/pending/denied/empty/failed states. The module provides required [UIUX](uiux.md), [DLD](dld.md) and one [tasks](tasks.md) file with per-story QA; no duplicate stories or CI. Review/fix/re-review are source-based; formal design approval and runtime/device proof remain pending.
+
+## 20-Nov-2026 client document/email v2 source-owner reconciliation
+
+**Authority:** [five original designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template email master](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). Existing module stories and historic QA status unchanged; this is new client acceptance evidence, not delivered functionality.
+
+CG-03 holds actual source-linked cases and separate verification/decision states for future membership, volunteer, employee, designation and promotion events, but does not own their records. Distinguish Documents Received, Verified, Sent Back/Rejected, Final Approved, source effect and actual issued PDF; client CG-MEM/VOL/EMP/DES/PROM templates may only correspond to the authoritative event. **Donation has NO donation approval stage**; don't insert CG-03 approval into confirmed donor receipt.
+
+**Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.
