@@ -228,3 +228,8 @@ Trace all client 52 template IDs against source-owned committed events, version/
 
 
 **US-002-QA12/13 and US-003-QA01/05/09:** [All 52 client template source/owner/attachment/negative acceptance rows](../../../../../docs/qa/CAREGANGA-52-EMAIL-TEMPLATE-SOURCE-QA-MATRIX-20261120.md). This matrix is supplemental source trace, **not 52 new QA IDs or any runtime PASS**. Existing member/volunteer/donation/HR/payroll owner interactions remain deferred to their own approved implementation cycles.
+
+
+**US-003-QA07/QA09 center finalized state check:** `center-support-desk.tsx` now treats `RESOLVED` and `CLOSED` as locked for replies and support attachments (not just reply forms). `SupportService.centerReply` denies both; current real center can only resume after an authorized Foundation staff OPEN transition. Direct API/role/check, stale-revision and runtime UI tests NOT_RUN. 
+
+**US-002-QA12/QA13 email gate:** `1905` is a schema/provider copy *capacity improvement only*. Do not promote disabled `CG-*` client SOURCE_DRAFTs to live mail: original notification source-kind constraints remain CG03_DECISION/NOTICE and source owners/approved documents/verified recipients are absent. Source status DEPENDENT_OWNER; provider/attachment/runtime tests NOT_RUN.

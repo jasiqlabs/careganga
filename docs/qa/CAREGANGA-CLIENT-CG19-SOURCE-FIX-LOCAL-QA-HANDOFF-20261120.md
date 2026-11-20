@@ -70,3 +70,12 @@ Preserve the test run logs in a **private** QA location; never commit tokens, ra
 
 
 **Additional resolved-case regression (US-003-QA03/09):** A Foundation staff reply and an eligible center portal reply must both reject when case status is `RESOLVED` or `CLOSED` until a Foundation authorized operator explicitly reopens the case as `OPEN`. Both Web/Android staff and center Web must hide reply actions for finalized cases. Test direct forged API bypass and ensure no private reply/audit created. Source fix committed after this handoff's original checkpoint; runtime testing still NOT_RUN.
+
+
+### 20-Nov follow-up source-review fix: finalized center attachments (US-003-QA07/09)
+
+After disallowing silent reply reopening on `RESOLVED`/`CLOSED`, the center Web portal now passes **both** statuses to its existing `CenterSupportAttachments.closed` guard and hides direct reply actions. Staff must reopen as OPEN first, with current revision and permission; a center operator cannot bypass by calling support reply endpoint directly. The public guest receipt remains read-only and uses its private proof; no missing support email event is synthesized. Verify actual browser/API behavior before claiming QA PASS.
+
+### Email length is capacity only (US-002-QA12/13)
+
+`1905` widens the allowed EMAIL body snapshot/template column and SendGrid adapter limit. Existing `cg19_notification.source_kind` and `cg19_message_template.kind` still only support real previous CG03/NOTICE workflows; the 52 `cg19_client_email_template` records remain permanently `SOURCE_DRAFT` and **cannot** be routed or sent from that migration. Per-owner approved dispatch, document attachment generation, event/recipient evidence and new business source integrations are **NOT_IMPLEMENTED**. Do not mistake a 481-char-safe provider adapter for a working CG-MEM/CG-DON/CG-SUP email workflow.

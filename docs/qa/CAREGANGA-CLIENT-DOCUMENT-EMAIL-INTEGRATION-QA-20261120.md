@@ -79,3 +79,6 @@ No new client-facing feature, module, workflow, data seed, exposed sample signat
 
 
 **Additional US-003-QA03/09 source fix:** Resolved cases previously allowed both Foundation and center reply to silently move to REPLIED, bypassing the required reopen step. Both `SupportService.mutate(REPLY)` and `centerReply` now deny `RESOLVED` and `CLOSED` pending authorized explicit OPEN, with Web/Internal Android/center Web reply actions hidden. Re-test direct API, stale revision and negative scope; backend/Web/Android runtime NOT_RUN.
+
+
+**Critical truth check:** `1905` increases allowed EMAIL-only copy length but does **not** implement a new authorized source event kind/recipient/attachment pipeline. The existing CG03_DECISION/NOTICE `cg19_notification` sources remain unchanged. All 52 client `SOURCE_DRAFT` templates are intentionally unavailable for sending until genuine owner data and CG-19 versioned document integration are explicitly implemented/reviewed. Center portal's `RESOLVED` and `CLOSED` support cases now block both reply and attachment editor; recheck HTTP direct access at runtime. Do not label these dependent event-approval scenarios complete.
