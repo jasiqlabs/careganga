@@ -109,9 +109,9 @@ export class ClinicalLabPatientReleaseService{
     "AND result_revision_ref=$2",[a.realmId,approved.result_ref]);
    return {resultRef:approved.result_ref,resultVersion:approved.result_version,
     reportDigest:approved.report_digest,
-    releaseState:found.rows[0]?"RELEASED":"AWAITING_CLINICIAN_ATTESTATION",
+    releaseState:found.rows[0]?"RELEASED":"AWAITING_RELEASE",
     patientDownloadAvailable:!!found.rows[0],
-    signedPdfCertificateVerified:false,notificationDelivered:false};
+    notificationDelivered:false};
   });
  }
  async release(token:string,centerRaw:string,orderRaw:string,raw:unknown){
@@ -150,8 +150,7 @@ export class ClinicalLabPatientReleaseService{
      x.release_digest!==sum)
      throw new ConflictException({code:"LAB_RELEASE_ALREADY_EXISTS"});
     return {releaseRef:x.id,releaseState:"RELEASED",
-     patientDownloadAvailable:true,signedPdfCertificateVerified:false,
-     notificationDelivered:false,replayed:true};
+     patientDownloadAvailable:true,notificationDelivered:false,replayed:true};
    }
    const consent=await c.query(
     "SELECT 1 FROM cg15_patient_consent consent "+
@@ -174,8 +173,7 @@ export class ClinicalLabPatientReleaseService{
      source.file_ref,source.report_digest,source.patient_ref,center,
      actor.accountId,clinician.doctorRef,clinician.reviewRevisionRef,key,sum]);
    return {releaseRef:added.rows[0].id,releaseState:"RELEASED",
-    patientDownloadAvailable:true,signedPdfCertificateVerified:false,
-    notificationDelivered:false,replayed:false};
+    patientDownloadAvailable:true,notificationDelivered:false,replayed:false};
   });
  }
  /** Patient ownership and current care consent are checked on EVERY read.
@@ -224,7 +222,7 @@ export class ClinicalLabPatientReleaseService{
    return {reports:rows.rows.slice(0,50).map(x=>({
     releaseRef:x.id,orderLabel:x.display_order_ref,
     reportVersion:x.version_no,releasedAt:x.released_at.toISOString(),
-    clinicianAttested:true,certificateSignatureVerified:false
+    approvedByClinician:true
    })),complete:rows.rows.length<=50};
   });
  }
