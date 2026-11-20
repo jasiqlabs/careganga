@@ -6,6 +6,7 @@ import {
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {DoctorSchedulePreview} from "./doctor-schedule-preview";
+import {PublicLabOfferDirectory} from "./public-lab-offer-directory";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Mode="centers"|"doctors";
@@ -54,6 +55,7 @@ const label=(title:string,onPress:()=>void,active=false)=>(
 export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
+ const [labMenu,setLabMenu]=useState(false);
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
  const [service,setService]=useState(""),[day,setDay]=useState("");
@@ -172,6 +174,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   setResetVersion(v=>v+1);
  }
  function back(){
+  if(labMenu){setLabMenu(false);return;}
   seq.current++;
   const previous=detailHistory.current.pop();
   if(selection&&previous){
@@ -188,7 +191,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    back();return true;
   });
   return()=>listener.remove();
- },[selection,load,show,onExit]);
+ },[selection,load,show,onExit,labMenu]);
+ if(labMenu)return <PublicLabOfferDirectory onExit={()=>setLabMenu(false)}/>;
  const centerDetails=selection?.kind==="center"?state.details as Details|null:null;
  const doctorDetails=selection?.kind==="doctor"?state.details as DoctorDetails|null:null;
  return <SafeAreaView style={styles.page}>
@@ -200,6 +204,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     <View style={styles.row}>
      {label("Centers",()=>{setSelection(null);setMode("centers");},mode==="centers")}
      {label("Doctors",()=>{setSelection(null);setMode("doctors");},mode==="doctors")}
+     {!reschedule&&label("Lab tests & prices",()=>{setLabMenu(true);})}
     </View>
     <Text style={styles.label}>Search name or qualification</Text>
     <TextInput accessibilityLabel="Search current verified directory" style={styles.input}
