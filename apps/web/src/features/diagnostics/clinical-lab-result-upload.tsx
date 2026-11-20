@@ -45,7 +45,7 @@ export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
    setState(result.status);
    if(result.cleanVerified){
     setNotice("PDF uploaded and security-scan verified. Clinical review, professional release and patient delivery are NOT complete.");
-    await onVerified();
+    try{await onVerified();}catch{setError("Report verified, but the latest order view could not be refreshed.");}
    }else setNotice("Report is not yet scan-verified. No professional approval or release has occurred.");
   }catch(e){setError(e instanceof Error?e.message:"The original upload cannot be checked.");}
   finally{setBusy(false);}
@@ -107,8 +107,9 @@ export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
   </label>
   <div className="toolbar">
    <button type="button" className="primary"
-    disabled={busy||!safePdf(file)||!!intent.current} onClick={()=>void upload()}>
-    {busy?"Checking secure report…":"Upload and verify PDF"}</button>
+    disabled={busy||!safePdf(file)||["RESULT_READY","VALIDATED","REJECTED","UPLOADED_UNVERIFIED","VERIFICATION_UNAVAILABLE"].includes(state)}
+    onClick={()=>void upload()}>
+    {busy?"Checking secure report…":intent.current?"Retry same original upload":"Upload and verify PDF"}</button>
    {intent.current&&<button type="button" disabled={busy} onClick={()=>void check()}>
     Check existing upload</button>}
   </div>
