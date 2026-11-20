@@ -314,14 +314,15 @@ export class DiagnosticsCatalogService{
     iso(x.activeFromUtc,"activeFromUtc").toISOString(),
    activeToUtc:x.activeToUtc===undefined||x.activeToUtc===null?null:
     iso(x.activeToUtc,"activeToUtc").toISOString()};
-  if(data.activeToUtc&&data.activeFromUtc&&data.activeToUtc<=data.activeFromUtc||
-     data.activeToUtc&&new Date(data.activeToUtc).getTime()<=Date.now())
+  if(data.activeToUtc&&data.activeFromUtc&&data.activeToUtc<=data.activeFromUtc)
    throw new BadRequestException({code:"LAB_CATALOG_PACKAGE_INVALID",field:"activeToUtc"});
   const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.manage");
   return this.run(async tx=>{
    await this.current(tx,actor,"diagnostics.catalog.manage");
    const cmd=await this.command(tx,actor,"PACKAGE_CREATE",x.requestKey,data);
    if(cmd.replay)return {packageRef:cmd.replay,replayed:true};
+   if(data.activeToUtc&&new Date(data.activeToUtc).getTime()<=Date.now())
+    throw new BadRequestException({code:"LAB_CATALOG_PACKAGE_INVALID",field:"activeToUtc"});
    const actual=await tx.query<{id:string;revision:number}>(
     "SELECT t.id,t.revision FROM diagnostic_test t JOIN test_category c "+
     "ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref "+
@@ -585,7 +586,9 @@ export class DiagnosticsCatalogService{
     "(SELECT count(*) FROM diagnostic_test WHERE root_realm_id=$1) AS total_tests,"+
     "(SELECT count(*) FROM diagnostic_test WHERE root_realm_id=$1 AND status='ACTIVE') AS active_tests,"+
     "(SELECT count(*) FROM test_category WHERE root_realm_id=$1 AND status='ACTIVE') AS categories,"+
-    "(SELECT count(*) FROM diagnostic_package WHERE root_realm_id=$1 AND status='ACTIVE') AS packages",
+    "(SELECT count(*) FROM diagnostic_package WHERE root_realm_id=$1 "+
+    "AND status='ACTIVE' AND active_from<=now() "+
+    "AND (active_to IS NULL OR active_to>now())) AS packages",
     [actor.realmId]);
    const stats=data.rows[0];
    return {totalTests:Number(stats.total_tests),activeTests:Number(stats.active_tests),
