@@ -9,6 +9,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthLabCatalogSourceFacade,CG14_CURRENT_LAB_EVIDENCE_SQL} from "../../cg-14-healthcare-network/application/health-lab-catalog-source.facade";
+import {DiagnosticsPriceReviewSource} from "./diagnostics-price-review.service";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
@@ -107,7 +108,8 @@ export class DiagnosticsCatalogService{
   @Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
-  private readonly lab:HealthLabCatalogSourceFacade
+  private readonly lab:HealthLabCatalogSourceFacade,
+  private readonly priceReviews:DiagnosticsPriceReviewSource
  ){}
  private async run<T>(handler:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();let active=false;
@@ -471,9 +473,13 @@ export class DiagnosticsCatalogService{
     "pr.version_no AS version,pr.effective_from AS \"effectiveFromUtc\","+
     "pr.effective_to AS \"effectiveToUtc\",pr.base_price_minor::text AS \"basePriceMinor\","+
     "pr.advertised_patient_price_minor::text AS \"patientPriceMinor\","+
-    "pr.price_currency AS currency,pr.status,pr.discount_reason AS \"discountReason\" "+
+    "pr.price_currency AS currency,pr.status,pr.discount_reason AS \"discountReason\", "+
+    "review.id AS \"reviewCaseRef\",review.case_number AS \"reviewReference\", "+
+    "review.revision AS \"reviewCaseRevision\",review.status AS \"reviewStatus\" "+
     "FROM lab_center_price_version pr JOIN lab_center_test_mapping m ON "+
     "m.root_realm_id=pr.root_realm_id AND m.id=pr.center_test_mapping_ref "+
+    "LEFT JOIN cg03_case review ON review.realm_id=pr.root_realm_id "+
+    "AND review.cg16_price_id=pr.id AND review.case_kind='HEALTH_LAB_PRICE_REVIEW' "+
     "WHERE pr.root_realm_id=$1 AND m.center_ref=$2 "+
     "AND ($3='' OR pr.center_test_mapping_ref::text=$3) "+
     "ORDER BY pr.created_at DESC,pr.id DESC LIMIT 100",
@@ -542,17 +548,29 @@ export class DiagnosticsCatalogService{
     "$3,$4,$5,$6,$7,$8,$9) RETURNING id",
     [actor.realmId,mappingRef,data.from,data.to,data.base,data.patient,
      data.currency,data.reason||null,actor.accountId]);
+   const review=await this.priceReviews.create(tx,actor,p.rows[0].id,
+    uuid(x.requestKey,"requestKey"));
    await this.done(tx,actor,x.requestKey,p.rows[0].id);
-   return {priceRef:p.rows[0].id,status:"PROPOSED",replayed:false};
+   return {priceRef:p.rows[0].id,status:"PROPOSED",
+    reviewReference:review.reference,reviewCaseRef:review.caseRef,replayed:false};
   });
  }
  async approvePrice(bearer:string,rawRef:string,raw:unknown){
   const priceRef=uuid(rawRef,"priceRef");
-  const x=obj(raw,["requestKey","expectedVersion"]);
+  const x=obj(raw,["requestKey","expectedVersion","expectedCaseRevision",
+   "currentPassword"]);
   const expected=integer(x.expectedVersion,"expectedVersion",1);
+  const expectedCaseRevision=integer(x.expectedCaseRevision,"expectedCaseRevision",1);
+  const requestKey=uuid(x.requestKey,"requestKey");
+  if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||
+     x.currentPassword.length>1024)
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"currentPassword"});
   const actor=await this.sessions.requireAction(bearer,"diagnostics.pricing.approve");
+  await this.sessions.requireAction(bearer,"approvals.review");
+  await this.sessions.limitFoundationRootProof(actor);
   return this.run(async tx=>{
    await this.current(tx,actor,"diagnostics.pricing.approve");
+   await this.current(tx,actor,"approvals.review");
    const info=await tx.query<{center_ref:string;center_test_mapping_ref:string}>(
     "SELECT m.center_ref,pr.center_test_mapping_ref "+
     "FROM lab_center_price_version pr JOIN lab_center_test_mapping m "+
@@ -571,7 +589,8 @@ export class DiagnosticsCatalogService{
     throw new ConflictException({code:"LAB_CATALOG_ITEM_UNAVAILABLE"});
    await this.eligibleItem(tx,actor.realmId,mapping.rows[0].test_or_package_kind,
     (mapping.rows[0].test_ref??mapping.rows[0].package_ref)!);
-   const cmd=await this.command(tx,actor,"PRICE_APPROVE",x.requestKey,{priceRef,expected});
+   const cmd=await this.command(tx,actor,"PRICE_APPROVE",requestKey,
+    {priceRef,expected,expectedCaseRevision});
    if(cmd.replay)return {priceRef:cmd.replay,status:"APPROVED",replayed:true};
    const proposal=await tx.query<{
     version_no:number;status:string;proposed_by:string;
@@ -591,6 +610,12 @@ export class DiagnosticsCatalogService{
    if(proposal.rows[0].effective_to&&
      proposal.rows[0].effective_to.getTime()<=Date.now())
     throw new ConflictException({code:"LAB_CATALOG_PRICE_EXPIRED"});
+   // No amount, price interval or financial state changes before the
+   // immutable CG03 source-pinned case is approved with fresh password.
+   const caseDecision=await this.priceReviews.decide(tx,actor,{
+    priceRef,priceVersion:expected,expectedCaseRevision,requestKey,
+    currentPassword:x.currentPassword
+   });
    const prior=await tx.query<{id:string;effective_from:Date;effective_to:Date|null}>(
     "SELECT id,effective_from,effective_to FROM lab_center_price_version "+
     "WHERE root_realm_id=$1 AND center_test_mapping_ref=$2 AND status='APPROVED' "+
@@ -622,8 +647,10 @@ export class DiagnosticsCatalogService{
     "UPDATE lab_center_price_version SET status='APPROVED',"+
     "approved_by=$3,reviewed_at=now() WHERE root_realm_id=$1 AND id=$2",
     [actor.realmId,priceRef,actor.accountId]);
-   await this.done(tx,actor,x.requestKey,priceRef);
-   return {priceRef,status:"APPROVED",replayed:false};
+   await this.priceReviews.finish(tx,actor,caseDecision.caseRef);
+   await this.done(tx,actor,requestKey,priceRef);
+   return {priceRef,status:"APPROVED",reviewReference:caseDecision.caseNumber,
+    replayed:false};
   });
  }
  async summary(bearer:string){
