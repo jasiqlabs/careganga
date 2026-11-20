@@ -92,8 +92,9 @@ export class VerifiedProviderPayoutService{
     bank.version!==claim.destination_version)
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_DESTINATION_CHANGED"});
    const prior=await c.query<{amount_minor:string;bank_item_ref:string;
-    verified_at:Date}>(
-    "SELECT payout.amount_minor::text,bank.bank_item_ref,payout.verified_at "+
+    bank_reconciliation_ref:string;verified_at:Date}>(
+    "SELECT payout.amount_minor::text,bank.bank_item_ref,"+
+    "payout.bank_reconciliation_ref,payout.verified_at "+
     "FROM provider_settlement_payment payout "+
     "JOIN finance_bank_reconciliation bank ON "+
     "bank.id=payout.bank_reconciliation_ref "+
@@ -104,6 +105,7 @@ export class VerifiedProviderPayoutService{
    if(prior.rows.length>100)
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_HISTORY_TOO_LARGE"});
    const payoutHistory=prior.rows.map(x=>({
+    bankMatchRef:x.bank_reconciliation_ref,
     bankItemLabel:x.bank_item_ref,amountMinor:x.amount_minor,
     verifiedAt:x.verified_at.toISOString()
    }));
