@@ -198,6 +198,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_EVIDENCE_REPLAY_CONFLICT:"This file request was previously used for different information. Check the original upload.",
       HEALTH_EVIDENCE_SOURCE_CHANGED:"The provider or center changed since the file was selected. Refresh and verify the current proof.",
       HEALTH_EVIDENCE_NOT_VERIFIED:"Choose a current, securely scanned and verified private supporting document.",
+      HEALTH_DIAGNOSTIC_LICENSE_EXPIRED:"Enter the actual current diagnostic licence expiry date from the original evidence before submitting this lab for independent review.",
       HEALTH_REVIEW_INVALID:"Check the healthcare review details, decision and original file before submitting.",
       HEALTH_REVIEW_UNAVAILABLE:"The requested healthcare verification review is unavailable for your current role.",
       HEALTH_REVIEW_CONFLICT:"This healthcare review has changed or was decided elsewhere. Refresh the current case.",

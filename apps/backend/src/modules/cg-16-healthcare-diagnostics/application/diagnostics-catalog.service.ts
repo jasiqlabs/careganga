@@ -815,6 +815,11 @@ export class DiagnosticsCatalogService{
     "JOIN health_center_revision rev ON rev.id=pub.verified_center_revision_id "+
     "AND rev.root_realm_id=c.root_realm_id AND rev.provider_id=p.id "+
     "AND rev.center_id=c.id "+
+    "AND c.diagnostic_license_valid_through IS NOT NULL "+
+    "AND c.diagnostic_license_valid_through >= "+
+    "(now() AT TIME ZONE c.time_zone)::date "+
+    "AND rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
+    "c.diagnostic_license_valid_through::text "+
     "JOIN cg03_case review ON review.id=rev.approval_case_ref "+
     "AND review.realm_id=c.root_realm_id AND review.status='OWNER_COMPLETED' "+
     "AND review.case_kind='HEALTH_CENTER_VERIFICATION' "+

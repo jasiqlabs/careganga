@@ -7,8 +7,9 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 /** Current CG-14 review evidence. Do not substitute a self-declared "verified"
  * flag, upload name, or copied CG-16 licensing state for the real original
  * CG-03 final decision plus CG-19 clean, non-revoked license proof.
- * The owning CG-14 source does not yet store a verified expiration timestamp,
- * so license calendar validity remains a separate open-source requirement. */
+ * Diagnostic licence validity comes only from the date frozen in the
+ * original CG03-approved center revision and its genuine CG19 proof.
+ * Legacy records without that date are UNKNOWN, never assumed valid. */
 export const CG14_CURRENT_LAB_EVIDENCE_SQL=
  "EXISTS (SELECT 1 FROM health_center_revision rev "+
  "JOIN cg03_case review ON review.id=rev.approval_case_ref "+
@@ -31,7 +32,11 @@ export const CG14_CURRENT_LAB_EVIDENCE_SQL=
  "AND intent.realm_id=proof.realm_id AND intent.status='VALIDATED' "+
  "AND intent.classification='HEALTH_CENTER_LICENSE' "+
  "WHERE rev.root_realm_id=c.root_realm_id AND rev.provider_id=p.id "+
- "AND rev.center_id=c.id) ";
+ "AND rev.center_id=c.id "+
+ "AND c.diagnostic_license_valid_through IS NOT NULL "+
+ "AND c.diagnostic_license_valid_through >= (now() AT TIME ZONE c.time_zone)::date "+
+ "AND rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
+ "c.diagnostic_license_valid_through::text) ";
 export type VerifiedLabCenter={
  centerRef:string;name:string;publicSlug:string|null;publicationState:string;
 };
