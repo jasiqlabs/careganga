@@ -62,6 +62,8 @@ assert.match(sql,/EXCLUDE USING gist/,"real price overlap DB constraint missing"
 assert.match(sql,/FOREIGN KEY\(root_realm_id,center_ref\)/,
  "center mapped to CG14 original root owner");
 const service=read(backend+"application/diagnostics-catalog.service.ts");
+const publicSource=read(backend+"application/diagnostics-public-catalog.service.ts");
+const validity=read("apps/backend/db/migrations/1603_cg16_test_master_validity.sql");
 const cg14=read(sources[0]);
 const bff=read("apps/web/src/app/api/diagnostics/[...parts]/route.ts");
 const permissions=read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts");
@@ -78,6 +80,20 @@ assert.match(service,/publishedOffers/,"source-backed H09 published KPI missing"
 assert.match(service,/health_center_publication pub/,"actual original public publication missing");
 assert.match(service,/lab_center_price_window_event/,
  "audited supersession of approved tariff missing");
+assert.match(validity,/cg16_test_valid_window/,"Test source effective window missing");
+assert.match(service,/active_from<=now\(\)/,"Test source activation guard missing");
+assert.match(service,/active_to>now\(\)/,"Test source expiry guard missing");
+assert.match(service,/this\.priceReviews\.create\(tx,actor/,"CG03 case must be submitted on proposed price");
+assert.match(service,/this\.priceReviews\.decide\(tx,actor/,"Original case decision must approve tariff");
+assert.match(service,/this\.priceReviews\.finish\(tx,actor/,"CG03 original owner case must finalize");
+assert.match(service,/pricingReview\.status='OWNER_COMPLETED'/,
+ "H09 public total must exclude tariffs without completed CG03 approval");
+assert.match(publicSource,/pricingReview\.status='OWNER_COMPLETED'/,
+ "Public lab offers must exclude unreviewed commercial tariffs");
+assert.match(publicSource,/component\.active_to IS NOT NULL/,
+ "Public package offers must hide expired tests");
+assert.match(service,/new Date\(data\.from\)/,"Price validity must follow original source timeline");
+
 const caseMigration=read("apps/backend/db/migrations/1602_cg16_original_cg03_lab_price_review.sql");
 const priceCase=read(backend+"application/diagnostics-price-review.service.ts");
 for(const expected of [
