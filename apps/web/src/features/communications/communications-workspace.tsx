@@ -284,7 +284,13 @@ export function CommunicationsWorkspace({
         `${result.imported} email references imported as disabled drafts. `+
         `${result.alreadyPresent} already existed. No messages were sent.`});
       await loadEmailReferences();
-    }catch(e){setAlert({kind:"error",message:explain(e)})}
+    }catch(e){
+      setAlert({kind:"error",message:
+        e instanceof Error&&e.message==="CONFLICT"?
+          "A saved client email reference differs from this source version. "+
+          "Review the original template before importing again; no emails were sent.":
+          explain(e)});
+    }
     finally{setBusy(false)}
   }
   const shown=notices.filter(x=>
