@@ -11,7 +11,8 @@ import {HealthPublicDirectoryService}
  * CG17 consumes this typed read-only contract; it must not copy masters.
  */
 export type Cg15ChargeSource=Readonly<{
- sourceRef:string;sourceVersion:number;patientRef:string;doctorRef:string;
+ sourceRef:string;sourceVersion:number;termsVersion:number;
+ startAt:Date;endAt:Date;patientRef:string;doctorRef:string;
  centerRef:string;associationRef:string;createdBy:string;
  bookedAt:Date;bookingState:string;collectionState:string;
  feeMinor:string;feeVersion:number;feeRef:string;currency:"INR";
@@ -93,15 +94,16 @@ export class ConsultationChargeSourceFacade{
    throw new ConflictException({code:"CONSULTATION_PROVIDER_NO_LONGER_VERIFIED"});
  }
  private async fee(c:PoolClient,a:VerifiedFoundationActor,
-  association:string,minor:string,version:number,at:Date){
+  association:string,minor:string,version:number,at:Date,
+  historical=false){
   const verified=await c.query<{id:string;amount_minor:string;version:number}>(
    "SELECT id,amount_minor::text,version FROM health_center_fee "+
    "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
    "AND fee_kind='CONSULTATION' AND consultation_mode='IN_PERSON' "+
-   "AND status='APPROVED' AND version=$3 "+
+   "AND status='APPROVED' AND ($6::boolean OR version=$3) "+
    "AND amount_minor=$4::bigint AND effective_from<=$5 "+
    "ORDER BY effective_from DESC,id DESC LIMIT 1 FOR SHARE",
-   [a.realmId,association,version,minor,at]);
+   [a.realmId,association,version,minor,at,historical]);
   if(!verified.rows[0])
    throw new ConflictException({code:"CONSULTATION_ORIGINAL_FEE_UNAVAILABLE"});
   return verified.rows[0].id;
@@ -136,10 +138,12 @@ export class ConsultationChargeSourceFacade{
    center_id:string;association_id:string;fee_minor:string;fee_version:number;
    booking_state:string;collection_state:string;currency:string;
    booking_display_id:string;created_at:Date;revision:number;
+   terms_revision:number;start_at:Date;end_at:Date;
    created_by_account:string;hold_id:string}>(
    "SELECT id,patient_id,doctor_id,center_id,association_id,"+
    "fee_minor::text,fee_version,booking_state,collection_state,currency,"+
-   "booking_display_id,created_at,revision,created_by_account,hold_id "+
+   "booking_display_id,created_at,revision,terms_revision,start_at,end_at,"+
+   "created_by_account,hold_id "+
    "FROM cg15_consultation_appointment "+
    "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
    [a.realmId,ref]);
@@ -163,8 +167,11 @@ export class ConsultationChargeSourceFacade{
    throw new ConflictException({code:"CONSULTATION_ORIGINAL_CARE_UNAVAILABLE"});
   if(!allowHistorical)await this.eligibleCurrent(
    c,a,x.center_id,x.doctor_id,x.association_id);
-  const feeRef=await this.fee(c,a,x.association_id,x.fee_minor,x.fee_version,x.created_at);
-  return {sourceRef:x.id,sourceVersion:x.revision,patientRef:x.patient_id,
+  const feeRef=await this.fee(c,a,x.association_id,x.fee_minor,x.fee_version,
+   x.created_at,allowHistorical);
+  return {sourceRef:x.id,sourceVersion:x.revision,
+   termsVersion:x.terms_revision,startAt:x.start_at,endAt:x.end_at,
+   patientRef:x.patient_id,
    doctorRef:x.doctor_id,centerRef:x.center_id,associationRef:x.association_id,
    createdBy:x.created_by_account,bookedAt:x.created_at,
    bookingState:x.booking_state,collectionState:x.collection_state,
