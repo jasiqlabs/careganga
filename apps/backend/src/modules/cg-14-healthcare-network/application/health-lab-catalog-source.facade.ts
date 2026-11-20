@@ -53,7 +53,8 @@ export class HealthLabCatalogSourceFacade{
   actor?:VerifiedFoundationActor,own=false,
   action:"diagnostics.pricing.view"|"diagnostics.pricing.manage"|
    "lab.orders.create"|"lab.orders.view"|"lab.samples.manage"|
-   "lab.results.record"|"lab.report.review"|"lab.report.release"=
+   "lab.results.record"|"lab.report.review"|"lab.report.release"|
+   "lab.equipment.view"|"lab.equipment.manage"|"lab.quality.record"=
    "diagnostics.pricing.manage"):Promise<VerifiedLabCenter>{
   if(!UUID.test(centerRef))throw new BadRequestException({code:"LAB_CENTER_INVALID"});
   const center=await tx.query<{
