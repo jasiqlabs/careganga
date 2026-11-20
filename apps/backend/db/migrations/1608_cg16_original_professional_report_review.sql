@@ -40,8 +40,8 @@ CREATE TABLE cg16_lab_result_professional_review(
   REFERENCES health_doctor(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,reviewer_revision_ref)
   REFERENCES health_doctor_revision(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,reviewer_license_proof_ref)
-  REFERENCES cg19_stored_file(realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(reviewer_license_proof_ref,root_realm_id)
+  REFERENCES cg19_stored_file(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,reviewer_affiliation_ref)
   REFERENCES health_doctor_center(root_realm_id,id) ON DELETE RESTRICT
 );
@@ -52,6 +52,34 @@ CREATE FUNCTION cg16_lab_professional_review_source_guard() RETURNS trigger
 BEGIN
  IF TG_OP<>'INSERT' THEN
   RAISE EXCEPTION 'Professional lab report decision is immutable';
+ END IF;
+ IF NOT EXISTS(
+  SELECT 1 FROM health_doctor_revision professional
+  JOIN health_doctor doctor ON
+   doctor.root_realm_id=professional.root_realm_id AND
+   doctor.id=professional.doctor_id
+  JOIN health_doctor_center affiliation ON
+   affiliation.root_realm_id=professional.root_realm_id AND
+   affiliation.id=NEW.reviewer_affiliation_ref AND
+   affiliation.doctor_id=professional.doctor_id
+  JOIN lab_order accepted ON
+   accepted.root_realm_id=professional.root_realm_id AND
+   accepted.center_ref=affiliation.center_id AND
+   accepted.id=NEW.order_ref
+  JOIN health_center center ON
+   center.root_realm_id=accepted.root_realm_id AND
+   center.id=accepted.center_ref
+  WHERE professional.root_realm_id=NEW.root_realm_id
+   AND professional.id=NEW.reviewer_revision_ref
+   AND professional.doctor_id=NEW.reviewer_doctor_ref
+   AND professional.proof_file_ref=NEW.reviewer_license_proof_ref
+   AND doctor.professional_license_valid_through=NEW.reviewer_license_valid_through
+   AND doctor.professional_license_valid_through>=
+       (now() AT TIME ZONE center.time_zone)::date
+   AND doctor.status='VERIFIED'
+   AND affiliation.affiliation_state='APPROVED'
+ ) THEN
+  RAISE EXCEPTION 'Professional review requires actual currently verified clinician source';
  END IF;
  IF NOT EXISTS(
   SELECT 1 FROM lab_result_revision result
