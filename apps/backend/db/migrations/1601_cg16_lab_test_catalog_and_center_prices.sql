@@ -156,6 +156,31 @@ ALTER TABLE lab_center_price_version ADD CONSTRAINT cg16_approved_price_no_overl
 CREATE INDEX ix_cg16_center_price_current
  ON lab_center_price_version(root_realm_id,center_test_mapping_ref,status,effective_from DESC,id);
 
+-- Revised commercial offers may start inside the previous open-ended price.
+-- Never overwrite the originally approved commercial amount or erase the old
+-- published period: append an immutable prior-window closure as an audit fact.
+CREATE TABLE lab_center_price_window_event (
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ event_id uuid NOT NULL DEFAULT gen_random_uuid(),
+ old_price_ref uuid NOT NULL,
+ replacement_price_ref uuid NOT NULL,
+ previous_effective_to timestamptz,
+ new_effective_to timestamptz NOT NULL,
+ actor_ref uuid NOT NULL,
+ recorded_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,event_id),
+ UNIQUE(root_realm_id,old_price_ref,replacement_price_ref),
+ CHECK(old_price_ref<>replacement_price_ref),
+ FOREIGN KEY(root_realm_id,old_price_ref)
+  REFERENCES lab_center_price_version(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,replacement_price_ref)
+  REFERENCES lab_center_price_version(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg16_price_history ON lab_center_price_window_event(
+ root_realm_id,old_price_ref,recorded_at,event_id
+);
+
 -- Idempotency: source key is scoped to Foundation+actor, and the fixed digest
 -- also pins the business action and payload; never claim success before commit.
 CREATE TABLE lab_catalog_command (
@@ -186,18 +211,57 @@ CREATE TRIGGER cg16_package_line_frozen BEFORE UPDATE OR DELETE
  ON diagnostic_package_line FOR EACH ROW EXECUTE FUNCTION cg16_catalog_immutable_snapshot();
 CREATE FUNCTION cg16_approved_price_immutable() RETURNS trigger LANGUAGE plpgsql AS $cg16$
 BEGIN
- IF TG_OP='DELETE' OR OLD.status='APPROVED' THEN
-  RAISE EXCEPTION 'Approved lab pricing is immutable';
+ IF TG_OP='DELETE' THEN
+  RAISE EXCEPTION 'Lab price history cannot be deleted';
  END IF;
- IF NEW.root_realm_id<>OLD.root_realm_id OR
-    NEW.center_test_mapping_ref<>OLD.center_test_mapping_ref OR
-    NEW.version_no<>OLD.version_no OR NEW.effective_from<>OLD.effective_from OR
+ IF OLD.status='APPROVED' THEN
+  -- The only permitted approved-row update is a source-audited shortening of
+  -- its end to the start of a newly proposed price for this SAME mapping.
+  IF NEW.id IS DISTINCT FROM OLD.id OR
+     NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+     NEW.center_test_mapping_ref IS DISTINCT FROM OLD.center_test_mapping_ref OR
+     NEW.version_no IS DISTINCT FROM OLD.version_no OR
+     NEW.effective_from IS DISTINCT FROM OLD.effective_from OR
+     NEW.base_price_minor IS DISTINCT FROM OLD.base_price_minor OR
+     NEW.advertised_patient_price_minor IS DISTINCT FROM OLD.advertised_patient_price_minor OR
+     NEW.price_currency IS DISTINCT FROM OLD.price_currency OR
+     NEW.discount_reason IS DISTINCT FROM OLD.discount_reason OR
+     NEW.proposed_by IS DISTINCT FROM OLD.proposed_by OR
+     NEW.approved_by IS DISTINCT FROM OLD.approved_by OR
+     NEW.reviewed_at IS DISTINCT FROM OLD.reviewed_at OR
+     NEW.created_at IS DISTINCT FROM OLD.created_at OR
+     NEW.status IS DISTINCT FROM OLD.status OR
+     NEW.effective_to IS NULL OR
+     NEW.effective_to<=OLD.effective_from OR
+     (OLD.effective_to IS NOT NULL AND NEW.effective_to>=OLD.effective_to) OR
+     NOT EXISTS(
+      SELECT 1 FROM lab_center_price_window_event e
+      JOIN lab_center_price_version replacement ON
+       replacement.root_realm_id=e.root_realm_id AND
+       replacement.id=e.replacement_price_ref
+      WHERE e.root_realm_id=OLD.root_realm_id AND e.old_price_ref=OLD.id
+       AND e.previous_effective_to IS NOT DISTINCT FROM OLD.effective_to
+       AND e.new_effective_to=NEW.effective_to
+       AND replacement.center_test_mapping_ref=OLD.center_test_mapping_ref
+       AND replacement.effective_from=NEW.effective_to
+       AND replacement.status='PROPOSED'
+     ) THEN
+   RAISE EXCEPTION 'Approved price terms or unaudited validity change rejected';
+  END IF;
+  RETURN NEW;
+ END IF;
+ IF NEW.id IS DISTINCT FROM OLD.id OR
+    NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+    NEW.center_test_mapping_ref IS DISTINCT FROM OLD.center_test_mapping_ref OR
+    NEW.version_no IS DISTINCT FROM OLD.version_no OR
+    NEW.effective_from IS DISTINCT FROM OLD.effective_from OR
     NEW.effective_to IS DISTINCT FROM OLD.effective_to OR
-    NEW.base_price_minor<>OLD.base_price_minor OR
-    NEW.advertised_patient_price_minor<>OLD.advertised_patient_price_minor OR
-    NEW.price_currency<>OLD.price_currency OR
-    NEW.proposed_by<>OLD.proposed_by OR
-    NEW.discount_reason IS DISTINCT FROM OLD.discount_reason THEN
+    NEW.base_price_minor IS DISTINCT FROM OLD.base_price_minor OR
+    NEW.advertised_patient_price_minor IS DISTINCT FROM OLD.advertised_patient_price_minor OR
+    NEW.price_currency IS DISTINCT FROM OLD.price_currency OR
+    NEW.proposed_by IS DISTINCT FROM OLD.proposed_by OR
+    NEW.discount_reason IS DISTINCT FROM OLD.discount_reason OR
+    NEW.created_at IS DISTINCT FROM OLD.created_at THEN
   RAISE EXCEPTION 'Proposed lab pricing terms are immutable';
  END IF;
  RETURN NEW;
@@ -231,3 +295,5 @@ CREATE INDEX ix_cg16_event_actor ON lab_catalog_event(
 );
 CREATE TRIGGER cg16_audit_event_frozen BEFORE UPDATE OR DELETE
  ON lab_catalog_event FOR EACH ROW EXECUTE FUNCTION cg16_catalog_immutable_snapshot();
+CREATE TRIGGER cg16_price_window_event_frozen BEFORE UPDATE OR DELETE
+ ON lab_center_price_window_event FOR EACH ROW EXECUTE FUNCTION cg16_catalog_immutable_snapshot();

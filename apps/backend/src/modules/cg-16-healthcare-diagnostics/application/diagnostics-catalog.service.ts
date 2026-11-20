@@ -556,8 +556,9 @@ export class DiagnosticsCatalogService{
    const cmd=await this.command(tx,actor,"PRICE_APPROVE",x.requestKey,{priceRef,expected});
    if(cmd.replay)return {priceRef:cmd.replay,status:"APPROVED",replayed:true};
    const proposal=await tx.query<{
-    version_no:number;status:string;proposed_by:string;effective_to:Date|null
-   }>("SELECT version_no,status,proposed_by,effective_to "+
+    version_no:number;status:string;proposed_by:string;
+    effective_from:Date;effective_to:Date|null
+   }>("SELECT version_no,status,proposed_by,effective_from,effective_to "+
     "FROM lab_center_price_version WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
     [actor.realmId,priceRef]);
    if(!proposal.rows[0]||proposal.rows[0].version_no!==expected||
@@ -568,6 +569,33 @@ export class DiagnosticsCatalogService{
    if(proposal.rows[0].effective_to&&
      proposal.rows[0].effective_to.getTime()<=Date.now())
     throw new ConflictException({code:"LAB_CATALOG_PRICE_EXPIRED"});
+   const prior=await tx.query<{id:string;effective_from:Date;effective_to:Date|null}>(
+    "SELECT id,effective_from,effective_to FROM lab_center_price_version "+
+    "WHERE root_realm_id=$1 AND center_test_mapping_ref=$2 AND status='APPROVED' "+
+    "AND tstzrange(effective_from,effective_to,'[)') && "+
+    "tstzrange($3::timestamptz,$4::timestamptz,'[)') "+
+    "ORDER BY effective_from,id FOR UPDATE",
+    [actor.realmId,info.rows[0].center_test_mapping_ref,
+     proposal.rows[0].effective_from,proposal.rows[0].effective_to]);
+   if(prior.rows.length>1)
+    throw new ConflictException({code:"LAB_CATALOG_CONFLICT"});
+   if(prior.rows.length===1){
+    const old=prior.rows[0],proposedStart=proposal.rows[0].effective_from;
+    // Never redate old accepted care or let a new price start before the
+    // original effective price. Only a future replacement can end it early.
+    if(old.effective_from.getTime()>=proposedStart.getTime()||
+      proposedStart.getTime()<=Date.now()+1000)
+     throw new ConflictException({code:"LAB_CATALOG_RATE_OVERLAP"});
+    await tx.query(
+     "INSERT INTO lab_center_price_window_event(root_realm_id,old_price_ref,"+
+     "replacement_price_ref,previous_effective_to,new_effective_to,actor_ref) "+
+     "VALUES($1,$2,$3,$4,$5,$6)",
+     [actor.realmId,old.id,priceRef,old.effective_to,proposedStart,actor.accountId]);
+    await tx.query(
+     "UPDATE lab_center_price_version SET effective_to=$3 "+
+     "WHERE root_realm_id=$1 AND id=$2 AND status='APPROVED'",
+     [actor.realmId,old.id,proposedStart]);
+   }
    await tx.query(
     "UPDATE lab_center_price_version SET status='APPROVED',"+
     "approved_by=$3,reviewed_at=now() WHERE root_realm_id=$1 AND id=$2",
