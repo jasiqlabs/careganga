@@ -10,8 +10,9 @@ type Order={orderRef:string;displayOrderRef:string;status:string;
 type Detail={order:Order;lines:{name:string;code:string;sampleType:string;
  quantity:number;quotedLineTotalMinor:string}[];
  samples:{label:string;sampleType:string;status:string}[]};
-const money=(n:string)=>new Intl.NumberFormat("en-IN",{
- style:"currency",currency:"INR"}).format(Number(n)/100);
+const money=(n:string)=>/^\d{1,11}$/.test(n)&&Number.isSafeInteger(Number(n))?
+ new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
+  .format(Number(n)/100):"Price unavailable";
 async function api<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
  const response=await fetch("/api/lab-clinical/"+path,{
   method,cache:"no-store",credentials:"same-origin",
@@ -196,8 +197,9 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
        return <tr key={item.mappingRef}>
         <td>{src?.name??"Current offer unavailable"}</td>
         <td>{item.quantity}</td>
-        <td>{src?money(String(BigInt(src.currentPatientPriceMinor)*
-         BigInt(item.quantity))):"Refresh required"}</td>
+        <td>{src&&/^\d{1,10}$/.test(src.currentPatientPriceMinor)?
+         money(String(Number(src.currentPatientPriceMinor)*item.quantity)):
+         "Refresh required"}</td>
         <td><button type="button" disabled={busy||uncertain}
          onClick={()=>setCart(old=>old.filter(c=>c.mappingRef!==item.mappingRef))}>
          Remove</button></td>

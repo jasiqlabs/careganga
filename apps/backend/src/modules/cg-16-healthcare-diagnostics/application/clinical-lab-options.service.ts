@@ -1,4 +1,4 @@
-import {Inject,Injectable,ServiceUnavailableException} from "@nestjs/common";
+import {ForbiddenException,Inject,Injectable,ServiceUnavailableException} from "@nestjs/common";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -28,7 +28,10 @@ export class ClinicalLabOptionsService{
   let action:"lab.orders.create"|"lab.orders.view"="lab.orders.view";
   let actor;
   try{actor=await this.sessions.requireAction(token,action);}
-  catch{action="lab.orders.create";actor=await this.sessions.requireAction(token,action);}
+  catch(e){
+   if(!(e instanceof ForbiddenException))throw e;
+   action="lab.orders.create";actor=await this.sessions.requireAction(token,action);
+  }
   return this.tx(async c=>{
    const rows=await c.query<{centerRef:string;name:string}>(
     "SELECT f.center_id AS \\"centerRef\\",hc.display_name AS name "+
@@ -109,11 +112,13 @@ export class ClinicalLabOptionsService{
     "JOIN cg03_case review ON review.realm_id=price.root_realm_id "+
     "AND review.case_kind='HEALTH_LAB_PRICE_REVIEW' "+
     "AND review.cg16_price_id=price.id AND review.status='OWNER_COMPLETED' "+
+    "AND review.proposer_id=price.proposed_by "+
     "AND review.cg16_price_version=price.version_no "+
     "JOIN cg03_case_decision decision ON decision.realm_id=review.realm_id "+
     "AND decision.case_id=review.id AND decision.action='APPROVE' "+
     "AND decision.actor_id=price.approved_by "+
     "AND decision.actor_id<>review.proposer_id "+
+    "AND decision.accepted_case_revision=review.revision-1 "+
     "AND decision.fresh_password_verified_at IS NOT NULL "+
     "LEFT JOIN diagnostic_test t ON t.root_realm_id=m.root_realm_id "+
     "AND t.id=m.test_ref "+

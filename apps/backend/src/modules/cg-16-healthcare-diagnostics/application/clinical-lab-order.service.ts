@@ -95,6 +95,7 @@ export class ClinicalLabOrderService{
    "AND decision.action='APPROVE' "+
    "AND decision.actor_id=price.approved_by "+
    "AND decision.actor_id<>review.proposer_id "+
+   "AND decision.accepted_case_revision=review.revision-1 "+
    "AND decision.fresh_password_verified_at IS NOT NULL "+
    "WHERE m.root_realm_id=$1 AND m.center_ref=$2 AND m.id=$3 "+
    "AND m.publication_state='ACTIVE' FOR SHARE OF m,price",
@@ -142,7 +143,7 @@ export class ClinicalLabOrderService{
     "WHERE l.root_realm_id=$1 AND l.package_ref=$2 AND "+
     "l.package_revision=$3 AND t.status='ACTIVE' AND cat.status='ACTIVE' "+
     "AND t.active_from<=now() AND (t.active_to IS NULL OR t.active_to>now()) "+
-    "ORDER BY l.order_index",
+    "ORDER BY l.order_index FOR SHARE OF t,cat",
     [root,item.package_ref,pack.rows[0].revision]);
    const expected=await c.query<{count:string}>(
     "SELECT count(*)::text AS count FROM diagnostic_package_line "+
