@@ -1,13 +1,17 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {CenterCollectionWorkspace} from "./center-collection-workspace";
+import {PatientCenterCollectionSummary} from "./patient-center-collection-summary";
 type Contribution={state:string;accepted?:boolean;replayed?:boolean;
+ chargeRef?:string;
  bookingRef?:string;holdRef?:string;expiresAt?:string;
  grossMinor?:string;foundationSupportMinor?:string;patientPayableMinor?:string;
  feeVersion?:number;sourceVersion?:number;policyRevisionRef?:string|null;currency?:string;
  collectionVerified?:boolean;foundationLiabilityCreated?:boolean;
  patientCollectionVerified?:boolean;message?:string};
 type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
- canAccept?:boolean};
+ canAccept?:boolean;canViewCollections?:boolean;
+ canRecordCollections?:boolean;canRefundCollections?:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const pretty=(s:string)=>"₹"+(Number(s)/100).toLocaleString("en-IN",{
  minimumFractionDigits:2,maximumFractionDigits:2});
@@ -21,7 +25,8 @@ function valid(v:Contribution){
 /** Web patient/authorized center copy of original CG15 → CG17 pricing;
  * this does not verify collected payment, award a future liability or tax.
  */
-export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept=true}:Props){
+export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept=true,
+ canViewCollections=false,canRecordCollections=false,canRefundCollections=false}:Props){
  const [quote,setQuote]=useState<Contribution|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -147,6 +152,12 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
    onClick={()=>void refresh()}>
    {busy?"Checking…":"Check original contribution status"}
   </button>}
+  {bookingRef&&quote?.accepted===true&&!!quote.chargeRef&&centerRef&&
+   canViewCollections&&<CenterCollectionWorkspace key={quote.chargeRef}
+    centerRef={centerRef} chargeRef={quote.chargeRef}
+    canRecord={canRecordCollections} canRefund={canRefundCollections}/>}
+  {bookingRef&&quote?.accepted===true&&!centerRef&&
+   <PatientCenterCollectionSummary bookingRef={bookingRef}/>}
   {uncertain&&<p role="alert">The previous acceptance may have succeeded.
    Check this same booking before attempting any new request. Retrying retains
    the original request key.</p>}
