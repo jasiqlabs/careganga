@@ -35,7 +35,7 @@ export default async function HealthNetworkPage(){
     if(!actions.has("health.providers.view")&&
       !(actions.has("approvals.review")&&actions.has("health.providers.verify")))
       return <AccessDeniedView reason="Your current role cannot read healthcare provider registrations." accountHref="/admin"/>;
-return <HealthcareAdminShell active="healthNetwork"
+    return <HealthcareAdminShell active="healthNetwork"
     actor={{displayName:person.displayName,roleName:person.roleName}}
     actions={actions}>
       {!actions.has("health.providers.view")&&
@@ -46,7 +46,7 @@ return <HealthcareAdminShell active="healthNetwork"
       {actions.has("approvals.review")&&
        (actions.has("health.providers.verify")||actions.has("health.doctors.verify"))&&
        <p><Link href="/admin/health-network/reviews">Review healthcare registrations</Link></p>}
-ce">
+
       {actions.has("health.schedules.view")&&
         <p><Link href="/admin/health-network/schedules">
          Doctor Schedule & Availability</Link></p>}
@@ -66,7 +66,8 @@ ce">
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
-        canManageFinance={actions.has("health.providers.finance.manage")</HealthcareAdminShell>;iv>;
+        canManageFinance={actions.has("health.providers.finance.manage")}/>}
+  </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
       e.digest.startsWith("NEXT_REDIRECT"))throw e;

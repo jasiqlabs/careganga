@@ -210,6 +210,11 @@ for(const p of [
  const code=read("apps/web/src/app/(admin)/"+p);
  check(code.includes("<HealthcareAdminShell")&&!code.includes("<FoundationAdminNav"),
   p+" does not reuse the canonical healthcare Admin shell");
+ check(code.split("<HealthcareAdminShell").length===2&&
+  code.split("</HealthcareAdminShell>").length===2&&
+  !code.includes('>ce">')&&!code.includes(';iv>;')&&
+  !code.includes('<main className="workspace cg-health-admin-workspace">'),
+  p+" has a malformed or duplicated healthcare wrapper");
 }
 check(nav.includes("healthReviewerAccess")&&nav.includes("healthPublisherAccess")&&
  nav.includes('"/admin/health-network/reviews"')&&

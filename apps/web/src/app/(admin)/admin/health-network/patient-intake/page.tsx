@@ -38,11 +38,14 @@ export default async function ReceptionPatientIntake(){
   const actions=new Set<string>(effective.actions.flatMap((item:unknown)=>
    item&&typeof item==="object"&&"key" in item&&
    typeof item.key==="string"?[item.key]:[]));
-  if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>return <HealthcareAdminShell active="healthPatientIntake"
+  if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>;
+  return <HealthcareAdminShell active="healthPatientIntake"
     actor={{displayName:actor.displayName,roleName:actor.roleName}}
-    actions={actions}>ce">
+    actions={actions}>
     <p><Link href="/admin">Back to my account</Link></p>
-    <CenterPatientIntakeWorkspace/></HealthcareAdminShell>;iv>;
+    <CenterPatientIntakeWorkspace/>
+   
+  </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
    typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

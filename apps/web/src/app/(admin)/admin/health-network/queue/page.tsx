@@ -30,10 +30,12 @@ export default async function CenterQueuePage(){
    throw Error("Current role unavailable");
   const allowed=new Set<string>(rights.actions.flatMap((i:unknown)=>
    i&&typeof i==="object"&&"key" in i&&typeof i.key==="string"?[i.key]:[]));
-  if(!allowed.has("health.visits.manage"))return <AccessDeniedView reason="Your current role cannot manage visits at a healthcare center." accountHref="/admin"/>return <HealthcareAdminShell active="healthVisitQueue"
+  if(!allowed.has("health.visits.manage"))return <AccessDeniedView reason="Your current role cannot manage visits at a healthcare center." accountHref="/admin"/>;
+  return <HealthcareAdminShell active="healthVisitQueue"
     actor={{displayName:person.displayName,roleName:person.roleName}}
-    actions={allowed}>ce"><p><Link href="/admin">Back to my account</Link></p>
-    <CenterVisitQue</HealthcareAdminShell>;iv>;
+    actions={allowed}><p><Link href="/admin">Back to my account</Link></p>
+    <CenterVisitQueue/>
+  </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;

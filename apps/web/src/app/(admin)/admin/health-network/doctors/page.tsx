@@ -33,12 +33,13 @@ export default async function HealthcareDoctorsPage(){
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
     if(!keys.has("health.doctors.view"))
       return <AccessDeniedView reason="Your current role cannot access protected professional registrations." accountHref="/admin"/>;
-return <HealthcareAdminShell active="healthDoctors"
+    return <HealthcareAdminShell active="healthDoctors"
     actor={{displayName:person.displayName,roleName:person.roleName}}
-    actions={keys}>ce">
+    actions={keys}>
         <DoctorOnboarding canManage={keys.has("health.doctors.manage")}
           canVerify={keys.has("health.doctors.verify")}/>
-  </HealthcareAdminShell>;iv>;
+      
+  </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

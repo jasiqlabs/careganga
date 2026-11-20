@@ -30,11 +30,13 @@ export default async function HealthcareReviewsPage(){
   const keys=new Set<string>(rights.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!(keys.has("health.providers.verify")||keys.has("health.doctors.verify"))||!keys.has("approvals.review"))
-   return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>return <HealthcareAdminShell active="healthNetwork" pageLabel="Registration reviews"
+   return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>;
+  return <HealthcareAdminShell active="healthNetwork" pageLabel="Registration reviews"
     actor={{displayName:person.displayName,roleName:person.roleName}}
-    actions={keys}>ce"><HealthReviewInbox
+    actions={keys}><HealthReviewInbox
       canManageProviders={keys.has("health.providers.manage")}
-      canManageDoctors={keys.has("health.doctors.manage"</HealthcareAdminShell>;iv>;
+      canManageDoctors={keys.has("health.doctors.manage")}/>
+  </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

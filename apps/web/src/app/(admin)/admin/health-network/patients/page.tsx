@@ -33,9 +33,10 @@ export default async function ProtectedH15PatientManagement(){
   const rightsSet=new Set<string>(scope.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!rightsSet.has("health.patients.admin.view"))
-   return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>return <HealthcareAdminShell active="healthPatientAdmin"
+   return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>;
+  return <HealthcareAdminShell active="healthPatientAdmin"
     actor={{displayName:actor.displayName,roleName:actor.roleName}}
-    actions={rightsSet}>ce">
+    actions={rightsSet}>
     <p><Link href="/admin">Back to account</Link></p>
     {rightsSet.has("health.patients.intake")&&
      <section className="form-section cg-health-action-panel" aria-label="Authorized patient registration and new booking">
@@ -49,7 +50,9 @@ export default async function ProtectedH15PatientManagement(){
         Open patient intake
        </Link>
       </section>}
-    <FoundationPatientBookings/></HealthcareAdminShell>;iv>;
+    <FoundationPatientBookings/>
+   
+  </HealthcareAdminShell>;
  }catch(error){
   if(error&&typeof error==="object"&&"digest" in error&&
    typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
