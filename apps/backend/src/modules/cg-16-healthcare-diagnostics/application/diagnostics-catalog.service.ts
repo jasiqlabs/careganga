@@ -633,7 +633,10 @@ export class DiagnosticsCatalogService{
     total_tests:string;active_tests:string;categories:string;packages:string
    }>("SELECT "+
     "(SELECT count(*) FROM diagnostic_test WHERE root_realm_id=$1) AS total_tests,"+
-    "(SELECT count(*) FROM diagnostic_test WHERE root_realm_id=$1 AND status='ACTIVE') AS active_tests,"+
+    "(SELECT count(*) FROM diagnostic_test t JOIN test_category cat "+
+    "ON cat.root_realm_id=t.root_realm_id AND cat.id=t.category_ref "+
+    "WHERE t.root_realm_id=$1 AND t.status='ACTIVE' "+
+    "AND cat.status='ACTIVE') AS active_tests,"+
     "(SELECT count(*) FROM test_category WHERE root_realm_id=$1 AND status='ACTIVE') AS categories,"+
     "(SELECT count(*) FROM diagnostic_package WHERE root_realm_id=$1 "+
     "AND status='ACTIVE' AND active_from<=now() "+
@@ -658,8 +661,30 @@ export class DiagnosticsCatalogService{
     "AND p.id=c.provider_id AND p.status='VERIFIED' "+
     "JOIN health_center_capability cap ON cap.root_realm_id=c.root_realm_id "+
     "AND cap.center_id=c.id AND cap.capability_code='DIAGNOSTICS' "+
+    "JOIN health_center_publication pub ON pub.root_realm_id=c.root_realm_id "+
+    "AND pub.center_id=c.id AND pub.generation=c.publication_generation "+
+    "JOIN health_center_revision rev ON rev.id=pub.verified_center_revision_id "+
+    "AND rev.root_realm_id=c.root_realm_id AND rev.provider_id=p.id "+
+    "AND rev.center_id=c.id "+
+    "JOIN cg03_case review ON review.id=rev.approval_case_ref "+
+    "AND review.realm_id=c.root_realm_id AND review.status='OWNER_COMPLETED' "+
+    "AND review.case_kind='HEALTH_CENTER_VERIFICATION' "+
+    "AND review.health_center_id=c.id "+
+    "AND review.health_center_revision_id=rev.id "+
+    "AND review.health_source_digest=rev.source_digest "+
+    "JOIN cg03_case_decision decision ON decision.id=pub.original_final_decision_ref "+
+    "AND decision.realm_id=review.realm_id AND decision.case_id=review.id "+
+    "AND decision.action='APPROVE' "+
+    "AND decision.fresh_password_verified_at IS NOT NULL "+
+    "AND decision.actor_id<>review.proposer_id "+
+    "JOIN cg19_stored_file proof ON proof.id=rev.proof_file_ref "+
+    "AND proof.realm_id=c.root_realm_id AND proof.owner_kind='CG14_DRAFT' "+
+    "AND proof.health_center_id=c.id AND proof.health_provider_id=p.id "+
+    "AND proof.revoked_at IS NULL AND proof.scan_status='CLEAN_VERIFIED' "+
+    "JOIN cg19_upload_intent intent ON intent.id=proof.upload_intent_id "+
+    "AND intent.realm_id=proof.realm_id AND intent.status='VALIDATED' "+
+    "AND intent.classification='HEALTH_CENTER_LICENSE' "+
     "WHERE m.root_realm_id=$1 AND m.publication_state='ACTIVE' "+
-    "AND "+CG14_CURRENT_LAB_EVIDENCE_SQL+
     "AND ((m.test_or_package_kind='TEST' AND EXISTS("+
     "SELECT 1 FROM diagnostic_test t JOIN test_category cat "+
     "ON cat.root_realm_id=t.root_realm_id AND cat.id=t.category_ref "+
