@@ -100,6 +100,11 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
    await diagnosticRequest(token,what.path,what.method,{
     requestKey:what.requestKey,...what.fields});
    command.current=null;setUncertain(false);setEditing(false);
+   if(what.path==="categories"){setCatCode("");setCatName("");}
+   if(what.path==="packages"){
+    setPackageCode("");setPackageName("");setPackageDescription("");
+    setPackageFrom("");setPackageTo("");setLines([]);setIncludeRef("");
+   }
    setMessage(what.label);
    try{await refresh()}catch{
     setMessage(what.label+" Latest list unavailable; refresh before another action.");
@@ -252,7 +257,11 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
     {canManage&&!editing&&button("Add new diagnostic test",()=>openTest(),busy||uncertain)}
     {canManage&&editing&&<View style={s.item}>
      <Text style={s.heading}>Diagnostic test details</Text>
-     {field("Unique test code",testCode,setTestCode,"Up to 24 letters/numbers",24)}
+     {selected&&selected.code===testCode?
+      <View style={s.field}>
+       <Text style={s.label}>Original test code (cannot be changed)</Text>
+       <Text style={s.note}>{testCode}</Text>
+      </View>:field("Unique test code",testCode,setTestCode,"Up to 24 letters/numbers",24)}
      {field("Test name",testName,setTestName,"Name",160)}
      <Text style={s.label}>Select current active category</Text>
      {categories.filter(x=>x.status==="ACTIVE").map(x=>button(x.name,
