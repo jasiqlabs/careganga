@@ -10,6 +10,8 @@ import {HealthLabCatalogSourceFacade}
 export type LabClinicalAction=
  "lab.orders.create"|"lab.orders.view"|"lab.samples.manage"|
  "lab.results.record"|"lab.report.review"|"lab.report.release";
+export type LabEquipmentAction="lab.equipment.view"|"lab.equipment.manage"|
+ "lab.quality.record";
 export type CareSource={kind:"CENTER_INTAKE"|"CONSULTATION";ref:string};
 export type CurrentPatientCare={patientRef:string;consentRevision:number;
  consentRecordedAt:Date;careSource:CareSource};
@@ -22,11 +24,8 @@ export class ClinicalLabAdmissionService{
  constructor(private readonly sessions:SessionService,
   private readonly lab:HealthLabCatalogSourceFacade){}
 
- async requireCurrent(tx:PoolClient,bearer:string,centerRef:string,
-  action:LabClinicalAction):Promise<VerifiedFoundationActor>{
-  if(process.env.CAREGANGA_ERP_LAB_ENABLED!=="true"||
-     process.env.CAREGANGA_LAB_CLINICAL_READINESS!=="APPROVED")
-   throw new ServiceUnavailableException({code:"LAB_CLINICAL_OPERATIONS_DISABLED"});
+ private async requireLabGrant(tx:PoolClient,bearer:string,centerRef:string,
+  action:LabClinicalAction|LabEquipmentAction):Promise<VerifiedFoundationActor>{
   if(!UUID.test(centerRef))
    throw new BadRequestException({code:"LAB_CENTER_INVALID"});
   const actor=await this.sessions.requireAction(bearer,action);
@@ -55,6 +54,23 @@ export class ClinicalLabAdmissionService{
   if(!g.rowCount)
    throw new ForbiddenException({code:"LAB_CENTER_ERP_NOT_APPROVED"});
   return actor;
+ }
+ async requireCurrent(tx:PoolClient,bearer:string,centerRef:string,
+  action:LabClinicalAction):Promise<VerifiedFoundationActor>{
+  if(process.env.CAREGANGA_ERP_LAB_ENABLED!=="true"||
+     process.env.CAREGANGA_LAB_CLINICAL_READINESS!=="APPROVED")
+   throw new ServiceUnavailableException({code:"LAB_CLINICAL_OPERATIONS_DISABLED"});
+  return this.requireLabGrant(tx,bearer,centerRef,action);
+ }
+ /** Equipment and quality are optional LAB_ERP activities, independent of
+  * CG15 patient/order clinical readiness. The same CG14 center and CG03
+  * approved current grant apply, without a new shadow center permission.
+  */
+ async requireEquipmentCurrent(tx:PoolClient,bearer:string,centerRef:string,
+  action:LabEquipmentAction):Promise<VerifiedFoundationActor>{
+  if(process.env.CAREGANGA_ERP_LAB_ENABLED!=="true")
+   throw new ServiceUnavailableException({code:"LAB_EQUIPMENT_DISABLED"});
+  return this.requireLabGrant(tx,bearer,centerRef,action);
  }
 
  /** Patient ID is not consent. Recheck CG15 profile, original in-person
