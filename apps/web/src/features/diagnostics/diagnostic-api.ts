@@ -25,7 +25,9 @@ export type DiagnosticPrice={
  priceRef:string;mappingRef:string;version:number;
  effectiveFromUtc:string;effectiveToUtc:string|null;
  basePriceMinor:string;patientPriceMinor:string;currency:string;status:string;
- discountReason:string|null
+ discountReason:string|null;
+ reviewCaseRef:string|null;reviewReference:string|null;
+ reviewCaseRevision:number|null;reviewStatus:string|null
 };
 export async function diagnosticsCall<T>(
  path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object

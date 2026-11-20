@@ -46,7 +46,8 @@ export default async function DiagnosticsAdminPage(){
     canManage={actions.has("diagnostics.catalog.manage")}
     canViewPricing={actions.has("diagnostics.pricing.view")}
     canManagePricing={actions.has("diagnostics.pricing.manage")}
-    canApprovePricing={actions.has("diagnostics.pricing.approve")}/>
+    canApprovePricing={actions.has("diagnostics.pricing.approve")&&
+     actions.has("approvals.review")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&

@@ -48,6 +48,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [basePrice,setBasePrice]=useState(""),[patientPrice,setPatientPrice]=useState("");
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
  const [discountReason,setDiscountReason]=useState("");
+ const [reviewPassword,setReviewPassword]=useState("");
 
  const reload=useCallback(async()=>{
   const [overview,cat,t,p,lab]=await Promise.all([
@@ -180,10 +181,21 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   }catch(e){setError(e instanceof Error?e.message:"Check the proposed price.");}
  }
  function approve(p:DiagnosticPrice){
+  if(!p.reviewCaseRef||!p.reviewCaseRevision||
+    !["SUBMITTED","IN_REVIEW"].includes(p.reviewStatus??"")){
+   setError("The original price review cannot be confirmed. Refresh before approving.");
+   return;
+  }
+  if(reviewPassword.length<8){
+   setError("Enter your current Foundation password to approve the proposed price.");
+   return;
+  }
+  const currentPassword=reviewPassword;
+  setReviewPassword("");
   void change("approval:"+p.priceRef,
    "test-prices/"+encodeURIComponent(p.priceRef)+"/approve","POST",
-   {expectedVersion:p.version},
-   "Commercial price approved. No patient payment or Foundation contribution was recorded.");
+   {expectedVersion:p.version,expectedCaseRevision:p.reviewCaseRevision,currentPassword},
+   "Original Foundation approval completed. No patient payment or assistance was recorded.");
  }
  function deactivate(){
   if(!selected||busy||uncertain||selected.status!=="ACTIVE")return;
@@ -469,6 +481,18 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      </form>}
     </div>
     <div><h3>Actual Price Proposals</h3>
+     {canApprovePricing&&prices.some(p=>p.status==="PROPOSED")&&
+      <div className="form-section" aria-label="Protected Foundation price decision">
+       <p>Approvals require a different authorized Foundation reviewer and
+        fresh verification of your current password.
+        These are CG-03 reviewed commercial prices, not paid invoices.</p>
+       <label className="field">Your current Foundation password
+        <input type="password" autoComplete="current-password"
+         minLength={8} maxLength={1024}
+         value={reviewPassword} onChange={e=>setReviewPassword(e.target.value)}
+         aria-label="Current password for independent price approval"/>
+       </label>
+      </div>}
      {!prices.length?<p className="cg-module-empty">No price proposals for this lab yet.</p>:
       <div className="table-wrap"><table><thead><tr><th>Item</th><th>Price</th>
        <th>Period</th><th>Status</th><th>Review</th></tr></thead>
@@ -478,10 +502,13 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
          Base {formatRupees(p.basePriceMinor)}</div></td>
         <td>{new Date(p.effectiveFromUtc).toLocaleDateString("en-IN")}
          {p.effectiveToUtc?" – "+new Date(p.effectiveToUtc).toLocaleDateString("en-IN"):" onward"}</td>
-        <td>{label(p.status)}</td><td>
-         {canApprovePricing&&p.status==="PROPOSED"?
-          <button type="button" disabled={busy||uncertain} onClick={()=>approve(p)}>
-           Approve after review</button>:"—"}</td>
+        <td>{label(p.status)}
+         {p.reviewReference&&<div>{p.reviewReference} · {label(p.reviewStatus??"Pending")}</div>}
+        </td><td>
+         {canApprovePricing&&p.status==="PROPOSED"&&p.reviewCaseRevision&&
+          ["SUBMITTED","IN_REVIEW"].includes(p.reviewStatus??"")?
+          <button type="button" disabled={busy||uncertain||reviewPassword.length<8}
+           onClick={()=>approve(p)}>Approve with current password</button>:"—"}</td>
        </tr>)}</tbody></table></div>}
     </div>
    </div>}
