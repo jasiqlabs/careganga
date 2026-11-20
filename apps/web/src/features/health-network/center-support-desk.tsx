@@ -105,11 +105,11 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
   {detail&&<article className="form-section">
    <h3>{detail.subject}</h3>
    <p><strong>Ticket number: {detail.ticketNumber}</strong></p>
-   <p>Status: {detail.status}</p>
+   <p>Status: {detail.status.replaceAll("_"," ")}</p>
    <p>{detail.message}</p>
    <CenterSupportAttachments key={detail.caseRef} centerRef={centerRef}
     caseRef={detail.caseRef} caseRevision={detail.revision}
-    closed={detail.status==="CLOSED"}/>
+    closed={["CLOSED","RESOLVED"].includes(detail.status)}/>
    <h4>Conversation</h4>
    {detail.replies.length===0&&<p>The Foundation has not yet replied.</p>}
    {detail.replies.map((item,i)=><p key={i}>{item.message}</p>)}
@@ -118,7 +118,7 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
      <textarea value={reply} onChange={e=>{setReply(e.target.value);replyKey.current="";}}
       rows={3} maxLength={2400}/></label>
     <button type="button" disabled={busy||reply.trim().length<2}
-     onClick={()=>void submitReply()}>{busy?"Sending…":"Reply to this case"}</button>
+     onClick={()=>void submitReply()}>{busy?"Saving…":"Save reply to this case"}</button>
    </>}
   </article>}
  </section>;
