@@ -4,14 +4,15 @@ import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,View}
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeFoundationJournalPanel} from "./native-foundation-journal-panel";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Center={centerRef:string;name:string};
 type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
  doctorName:string;completedAt:string;approvedSupportMinor:string;state:string};
-type Status={state:string;amountMinor?:string;postingState?:string;
+type Status={state:string;liabilityRef?:string;amountMinor?:string;postingState?:string;
  foundationJournalPosted:boolean;providerSettled:boolean};
 type Options={appointments:Appointment[];complete:boolean};
-type Props={token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canPost:boolean;onExit:()=>void;onExpired:()=>void};
 const money=(v:string)=>"₹"+(Number(v)/100).toFixed(2);
 const path="api/v1/healthcare-assistance/foundation-liabilities/";
 async function api(token:string,tail:string,body?:{requestKey:string}){
@@ -39,7 +40,7 @@ function statusValid(v:unknown):v is Status{
 /** Existing source-authorized Foundation staff only: no patient payment
  * collection, fabricated posted journal, bank transfer or duplicate visits.
  */
-export function NativeCompletedConsultationLiabilities({token,canManage,
+export function NativeCompletedConsultationLiabilities({token,canManage,canPost,
  onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [options,setOptions]=useState<Appointment[]>([]);
@@ -194,6 +195,12 @@ export function NativeCompletedConsultationLiabilities({token,canManage,
        "It does not collect patient money or pay the healthcare center.",[
         {text:"Cancel",style:"cancel"},
         {text:"Recognize",onPress:()=>void save()}]),busy)}
+    {canPost&&status?.state==="APPROVED_LIABILITY"&&
+     status.foundationJournalPosted!==true&&status.liabilityRef&&
+     ID.test(status.liabilityRef)&&
+     <NativeFoundationJournalPanel key={status.liabilityRef}
+      token={token} centerRef={center} liabilityRef={status.liabilityRef}
+      onPosted={check} onExpired={onExpired}/>}
     {btn("Check original obligation state",()=>void check(),busy)}
     {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
      Outcome uncertain. Check this original appointment before retrying;
