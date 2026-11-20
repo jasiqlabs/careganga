@@ -1,4 +1,4 @@
-import {useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import {File,UploadType} from "expo-file-system";
@@ -6,8 +6,10 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type Props={token:string;centerRef:string;orderRef:string;
+type Props={token:string;centerRef:string;orderRef:string;hasDraft:boolean;
  onVerified:()=>Promise<void>;onExpired:()=>void};
+type Current={exists:boolean;uploadRef?:string;status?:string;cleanVerified:boolean;
+ original?:{requestKey:string;sizeBytes:number;sha256:string;mime:string}};
 type Picked={uri:string;size:number;name:string};
 type Prepare={uploadRef:string;status:string;uploadReady:boolean;
  uploadUrl?:string;uploadHeaders?:Record<string,string>;message?:string};
@@ -27,15 +29,39 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:o
  return await result.json() as T;
 }
 /** Original CG19 scan-verified evidence only. NO professional approval/release. */
-export function NativeLabResultUpload({token,centerRef,orderRef,onVerified,onExpired}:Props){
+export function NativeLabResultUpload({token,centerRef,orderRef,hasDraft,onVerified,onExpired}:Props){
  const [picked,setPicked]=useState<Picked|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
+ const [checkingExisting,setCheckingExisting]=useState(true);
+ const [anotherOperator,setAnotherOperator]=useState(false);
  const [status,setStatus]=useState("NOT_UPLOADED");
  const original=useRef<{requestKey:string;sizeBytes:number;sha256:string;mime:string}|null>(null);
  const uploadRef=useRef("");
  const base="centers/"+centerRef+"/orders/"+orderRef+"/reports";
+ useEffect(()=>{
+  let active=true;
+  setCheckingExisting(true);
+  void api<Current>(token,base+"/current").then(result=>{
+   if(!active)return;
+   if(result.exists&&result.uploadRef&&result.original){
+    uploadRef.current=result.uploadRef;original.current=result.original;
+    setStatus(result.status??"UNKNOWN");
+    setMessage(result.cleanVerified?
+     "Scanner-verified private PDF; medical review and release still pending.":
+     "Original report upload recovered. Re-select the SAME PDF to retry, or check the status.");
+   }else if(hasDraft){setAnotherOperator(true);
+    setMessage("A report was started by another operator. Its original operator must check it.");}
+  }).catch(e=>{
+   if(!active)return;
+   setAnotherOperator(true);
+   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+   setMessage(e instanceof Error?e.message:"Existing private report state cannot be checked.");
+  }).finally(()=>{if(active)setCheckingExisting(false)});
+  return()=>{active=false};
+ },[token,base,hasDraft,onExpired]);
  async function choose(){
-  if(busy||uploadRef.current)return;
+  if(busy||checkingExisting||anotherOperator||
+    ["RESULT_READY","VALIDATED","REJECTED"].includes(status))return;
   try{
    const result=await DocumentPicker.getDocumentAsync({type:"application/pdf",
     multiple:false,copyToCacheDirectory:true});
@@ -67,7 +93,8 @@ export function NativeLabResultUpload({token,centerRef,orderRef,onVerified,onExp
   }finally{setBusy(false);}
  }
  async function upload(){
-  if(!picked||busy||["RESULT_READY","VALIDATED","REJECTED"].includes(status))return;
+  if(!picked||busy||checkingExisting||anotherOperator||
+    ["RESULT_READY","VALIDATED","REJECTED","UPLOADED_UNVERIFIED","VERIFICATION_UNAVAILABLE"].includes(status))return;
   setBusy(true);setMessage("");
   try{
    const f=new File(picked.uri),sha256=await f.digest("SHA-256");
@@ -114,20 +141,22 @@ export function NativeLabResultUpload({token,centerRef,orderRef,onVerified,onExp
   <Text style={s.heading}>Private clinical report PDF</Text>
   <Text style={s.text}>Evidence upload and malware verification are separate from
    qualified clinical review, professional release and patient delivery.</Text>
-  {!uploadRef.current&&<Pressable accessibilityRole="button" disabled={busy}
+  <Pressable accessibilityRole="button" disabled={busy||checkingExisting||anotherOperator||
+    ["RESULT_READY","VALIDATED","REJECTED"].includes(status)}
    style={s.button} onPress={()=>void choose()}>
    <Text style={s.text}>{picked?picked.name:"Choose private PDF (max 10 MB)"}</Text>
-  </Pressable>}
-  {!!picked&&<Pressable accessibilityRole="button" disabled={busy||
+  </Pressable>
+  {!!picked&&<Pressable accessibilityRole="button" disabled={busy||checkingExisting||anotherOperator||
    ["RESULT_READY","VALIDATED","REJECTED","UPLOADED_UNVERIFIED","VERIFICATION_UNAVAILABLE"].includes(status)}
    style={s.button} onPress={()=>void upload()}>
    <Text style={s.text}>{uploadRef.current?"Retry the same upload":"Upload and verify original PDF"}</Text>
   </Pressable>}
-  {!!uploadRef.current&&<Pressable accessibilityRole="button" disabled={busy}
+  {!!uploadRef.current&&<Pressable accessibilityRole="button" disabled={busy||checkingExisting}
    style={s.button} onPress={()=>void check()}>
    <Text style={s.text}>Check original scan status</Text>
   </Pressable>}
-  <Text style={s.text}>Report evidence: {status.replaceAll("_"," ")}.
+  <Text style={s.text}>{checkingExisting?"Checking original report evidence…":
+    "Report evidence: "+status.replaceAll("_"," ")+"."}
    Clinical approval: not completed. Released to patient: no.</Text>
   {!!message&&<Text accessibilityRole="alert" style={s.message}>{message}</Text>}
  </View>;
