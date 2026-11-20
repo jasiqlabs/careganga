@@ -4,12 +4,14 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-type Split={state:string;accepted?:boolean;replayed?:boolean;
+import {NativeCenterCollectionWorkspace} from "./native-center-collection-workspace";
+type Split={state:string;accepted?:boolean;replayed?:boolean;chargeRef?:string;
  grossMinor?:string;foundationSupportMinor?:string;
  patientPayableMinor?:string;feeVersion?:number;sourceVersion?:number;
  policyRevisionRef?:string|null;currency?:string};
 type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
- staffToken?:string;canAccept?:boolean;onExpired?:()=>void};
+ staffToken?:string;canAccept?:boolean;onExpired?:()=>void;
+ canViewCollections?:boolean;canRecordCollections?:boolean;canRefundCollections?:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const money=(minor:string)=>"₹"+(Number(minor)/100).toFixed(2);
 const valid=(x:Split)=>["grossMinor","foundationSupportMinor",
@@ -39,7 +41,8 @@ async function remote<T>(path:string,method:"GET"|"POST",
  * backend source. Private doctor/patient details never persist in device store.
  */
 export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
- staffToken,canAccept=true,onExpired}:Props){
+ staffToken,canAccept=true,onExpired,canViewCollections=false,
+ canRecordCollections=false,canRefundCollections=false}:Props){
  const [value,setValue]=useState<Split|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
@@ -141,6 +144,12 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
   </View>}
+  {staffToken&&centerRef&&ID.test(centerRef)&&value?.accepted&&
+   value.chargeRef&&ID.test(value.chargeRef)&&canViewCollections&&
+   <NativeCenterCollectionWorkspace key={value.chargeRef}
+    token={staffToken} centerRef={centerRef} chargeRef={value.chargeRef}
+    canRecord={canRecordCollections} canRefund={canRefundCollections}
+    onExpired={onExpired??(()=>undefined)}/>}
   {bookingRef&&btn("Check original contribution status",()=>void check(),busy)}
   {uncertain&&<Text style={s.note}>Last acceptance may have succeeded.
    Do not generate another request. Checking uses this original appointment.</Text>}
