@@ -137,9 +137,11 @@ export class CenterPatientReceiptService{
   if(doc.status==="ISSUED")return {...this.statusView(doc),replayed:true};
   if(!["PENDING","UNKNOWN"].includes(doc.status))
    throw new ConflictException({code:"CENTER_CASH_RECEIPT_UNAVAILABLE"});
-  // A prior storage write might have succeeded while the SQL response was
-  // lost. Never overwrite create-only S3/Firebase key on that retry.
+  // On retry read the original create-only object first. Authentication/
+  // same-center revocation failures in finalize must propagate, not become
+  // a misleading storage retry or a second receipt write.
   if(!created){
+   let recovered:{version:string;digest:string;size:number}|null=null;
    try{
     const stored=await this.storage.reconcileIssuedPrivateDocument({
      objectKey:doc.object_key,maxBytes:10485760});
@@ -151,12 +153,16 @@ export class CenterPatientReceiptService{
     const parsed=await PDFDocument.load(bytes,{updateMetadata:false});
     if(parsed.getSubject()!=="CG17-CENTER-CASH-RECEIPT:"+doc.source_digest)
      throw Error("Private receipt no longer matches original cash");
-    return this.finalize(token,center,collection,doc,root,stored.objectVersion,
-     stored.sha256,stored.sizeBytes,true);
+    recovered={version:stored.objectVersion,digest:stored.sha256,
+     size:stored.sizeBytes};
    }catch{
-    // An unverified or absent prior file is never a confirmed receipt.
+    // Missing/unverified object is not an issued cash receipt.
    }
+   if(recovered)
+    return this.finalize(token,center,collection,doc,root,recovered.version,
+     recovered.digest,recovered.size,true);
   }
+  let written:{version:string;digest:string;size:number};
   try{
    const bytes=await renderCenterCashReceipt({
     receiptNumber:source.cash_receipt_number,
@@ -169,8 +175,7 @@ export class CenterPatientReceiptService{
     objectKey:doc.object_key,bytes,sha256:digest});
    if(!stored.objectVersion||stored.objectVersion.length>160||
     stored.sha256!==digest)throw Error("Secure receipt storage not verified");
-   return this.finalize(token,center,collection,doc,root,
-    stored.objectVersion,digest,bytes.length,false);
+   written={version:stored.objectVersion,digest,size:bytes.length};
   }catch{
    await this.db.query(
     "UPDATE cg19_center_patient_receipt_document SET status='UNKNOWN',updated_at=now() "+
@@ -178,6 +183,8 @@ export class CenterPatientReceiptService{
     [root,doc.id]).catch(()=>undefined);
    return {status:"UNKNOWN",canDownload:false,documentRef:doc.id};
   }
+  return this.finalize(token,center,collection,doc,root,
+   written.version,written.digest,written.size,false);
  }
  private async finalize(token:string,center:string,collection:string,
   doc:Document,root:string,objectVersion:string,digest:string,
