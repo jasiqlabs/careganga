@@ -99,9 +99,16 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   try{
    await diagnosticsCall(path,method,{requestKey,...fields});
    delete keys.current[operation];
-   await reload();
-   if(refreshCenter&&canViewPricing&&centerRef)await reloadCenter(centerRef);
+   // A confirmed commit must not become an "uncertain write" just because
+   // a later list refresh fails or the network goes offline.
    setNotice(success);
+   try{
+    await reload();
+    if(refreshCenter&&canViewPricing&&centerRef)await reloadCenter(centerRef);
+   }catch(e){
+    setError("Saved successfully, but the latest list could not be refreshed. "+
+     "Use Refresh before making another change.");
+   }
   }catch(e){
    setError(e instanceof Error?e.message:"This change could not be confirmed.");
    if(writeUncertain(e))setUncertain(true);
@@ -232,7 +239,8 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    The result may already be saved. Refresh the original records before another change.
    <button type="button" disabled={busy} onClick={()=>void Promise.all([
     reload(),canViewPricing?reloadCenter(centerRef):Promise.resolve()
-   ]).then(()=>{setUncertain(false);setError("");setNotice("Current records refreshed.");})
+   ]).then(()=>{keys.current={};setUncertain(false);setError("");
+     setNotice("Current records refreshed. Review what was saved before another change.");})
     .catch(e=>setError(e instanceof Error?e.message:"Records are unavailable."))}>
     Check current records</button></div>}
   {summary&&<div className="cg-diagnostics-kpis" aria-label="Current lab catalogue totals">

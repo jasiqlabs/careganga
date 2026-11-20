@@ -51,8 +51,10 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
   try{
    await diagnosticsCall(path,"POST",{requestKey:key,...fields});
    delete keys.current[operation];
-   await reload();
    setNotice(message);
+   try{await reload();}
+   catch{setError("The change was saved, but the current lab list could not "+
+    "be refreshed. Check the original lab record before another change.");}
   }catch(e){
    setError(e instanceof Error?e.message:"This lab proposal could not be confirmed.");
    if(writeUncertain(e))setUncertain(true);
@@ -95,7 +97,8 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
   {uncertain&&<div role="alert" className="notice">
    A proposal may already be saved. Refresh original records before trying again.
    <button type="button" disabled={busy} onClick={()=>void reload().then(()=>{
-    setUncertain(false);setError("");setNotice("Original lab records refreshed.");
+    keys.current={};setUncertain(false);setError("");
+    setNotice("Original lab records refreshed. Review current proposals before continuing.");
    }).catch(e=>setError(e instanceof Error?e.message:"Current records unavailable."))}>
     Check current lab records</button>
   </div>}
