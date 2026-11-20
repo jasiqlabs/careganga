@@ -34,7 +34,8 @@
     "verify:cg15-patient-private-details-source": "node scripts/verify-cg15-patient-private-details-source.mjs",
     "verify:cg15-patient-clinical-sharing-source": "node scripts/verify-cg15-patient-clinical-sharing-source.mjs",
     "verify:cg15-patient-access-isolation-source": "node scripts/verify-cg15-patient-access-isolation-source.mjs",
-    "verify:cg15-final-source-gaps": "node scripts/verify-cg15-final-source-gaps.mjs"
+    "verify:cg15-final-source-gaps": "node scripts/verify-cg15-final-source-gaps.mjs",
+    "verify:cg01-uiux-source": "node scripts/verify-cg01-uiux-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
