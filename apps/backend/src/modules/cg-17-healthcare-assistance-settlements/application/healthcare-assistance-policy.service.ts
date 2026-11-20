@@ -384,11 +384,12 @@ export class HealthcareAssistancePolicyService{
     "center_ref,doctor_ref,service_kind,revision_no,valid_from,valid_until,"+
     "mode,percent_basis_points,fixed_minor,cap_minor,eligibility,"+
     "approval_state,activated_at,actor_ref,request_key,request_digest,source_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,"+
+    "CASE WHEN $15::boolean THEN now() ELSE NULL END,$16,$17,$18,$19) "+
     "RETURNING *",
     [actor.realmId,policyRef,v.centerRef,v.doctorRef,v.serviceKind,version,
      v.from,v.until,v.mode,v.bps,v.fixed,v.cap,v.eligibility,state,
-     active?new Date():null,actor.accountId,v.requestKey,hash,hash]);
+     active,actor.accountId,v.requestKey,hash,hash]);
    let caseRef:string|null=null;
    if(full){
     const review=await this.approval.create(c,actor,{
