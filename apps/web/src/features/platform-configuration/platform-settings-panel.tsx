@@ -227,7 +227,7 @@ export function PlatformSettingsPanel(){
       <button type="button" disabled={busy} onClick={()=>void checkOutcome()}>
         {busy?"Checking…":"Check previous change"}</button>
     </section>}
-    {loading?<p role="status">Verifying Foundation configuration…</p>:setting&&<>
+    {loading?<p className="cg-module-loading" role="status">Verifying Foundation configuration…</p>:setting&&<>
       <section className="role-pane" aria-label="System parameters">
         <div className="role-pane-heading"><div><h2>System Parameters</h2>
           <p>Operational defaults managed by the Foundation</p></div>
@@ -242,7 +242,7 @@ export function PlatformSettingsPanel(){
       <section className="role-pane" aria-labelledby="config-history-title">
         <div className="role-pane-heading"><h2 id="config-history-title">Setting change history</h2></div>
         <div className="role-detail-content">
-          {!history.length?<p>No saved changes yet. The secure default is in effect.</p>:
+          {!history.length?<p className="cg-module-empty" role="status">No saved changes yet. The secure default is in effect.</p>:
             <ul>{history.map(h=><li key={h.revision}>
               Revision {h.revision}: {h.value} records · {h.changedBy} ·
               {new Date(h.changedAt).toLocaleString()}</li>)}</ul>}
@@ -254,7 +254,7 @@ export function PlatformSettingsPanel(){
           <button type="button" disabled={busy||unknown||edit||integrationEdit} onClick={()=>startIntegration()}>
             Add reference</button></div>
         <div className="role-detail-content">
-          {!connections.length?<p>No integration references configured. Optional providers remain unavailable.</p>:
+          {!connections.length?<p className="cg-module-empty" role="status">No integration references configured. Optional providers remain unavailable.</p>:
             connections.map(c=><div className="permission-group" key={c.provider+"/"+c.purpose}>
               <strong>{label(c.provider)} · {label(c.purpose)}</strong>
               <p>{c.status==="CONFIGURED_NOT_VERIFIED"?"Configured, not verified":

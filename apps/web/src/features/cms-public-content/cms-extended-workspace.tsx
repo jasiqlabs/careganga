@@ -299,7 +299,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    <p>Editable original content. One private draft, independent review and public publication.</p>
   </div><div className="cg-cms-actions">
    <button disabled={busy} onClick={()=>void refresh().catch(e=>setError(e.message))}>Refresh pages</button>
-   {canManage&&<button disabled={busy} onClick={()=>begin(kind)}>New editorial page</button>}
+   {canManage&&<button type="button" className="primary" disabled={busy} onClick={()=>begin(kind)}>New editorial page</button>}
   </div></div>
   {error&&<p className="cg-cms-error" role="alert">{error}</p>}
   {notice&&<p className="cg-cms-notice" role="status">{notice}</p>}
@@ -348,7 +348,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      {canManage?"Open editor":"View source"}</button></td>
    </tr>)}</tbody>
   </table>
-  {visible.length===0&&<p role="status" className="cg-cms-muted">
+  {visible.length===0&&<p role="status" className="cg-module-empty">
    No actual editorial pages match. Change the filters or create a new page.</p>}
   </div>
   {editorOpen&&(canManage||selected)&&<>

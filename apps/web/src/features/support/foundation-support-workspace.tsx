@@ -208,7 +208,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           <td><button type="button" disabled={busy}
             onClick={()=>void detail(x.caseRef)}>Open</button></td>
         </tr>)}</tbody>
-      </table>{!loading&&visible.length===0&&<p className="notice">
+      </table>{!loading&&visible.length===0&&<p className="cg-module-empty" role="status">
         No permitted messages in this page or filter.</p>}
       </div>
       <div className="toolbar" aria-label="Support message pages">
@@ -234,7 +234,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           {selected.sourceChannel==="CENTER_PORTAL"&&
            <FoundationSupportAttachments key={selected.caseRef} caseRef={selected.caseRef}/>}
           <h3>Private reply history</h3>
-          {selected.replies.length===0&&<p>No operator replies yet.</p>}
+          {selected.replies.length===0&&<p className="cg-module-empty" role="status">No operator replies yet.</p>}
           {selected.replies.map(r=><article key={r.replyRef} className="permission-group">
             <p style={{whiteSpace:"pre-wrap"}}>{r.body}</p>
             <small>{new Date(r.createdAt).toLocaleString()}</small>
