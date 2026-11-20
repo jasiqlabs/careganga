@@ -8,7 +8,8 @@ type Payment={collectionRef:string;method:"CASH"|"UPI"|"CARD"|"BANK";
  amountMinor:string;state:string;cashReceiptNumber:string|null;recordedAt:string;
  receiptPdfState:string};
 type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
- kind:string;refundReceiptNumber:string;recordedAt:string};
+ kind:string;refundReceiptNumber:string|null;providerRefundRef?:string|null;
+ recordedAt:string};
 type Statement={chargeRef:string;currency:"INR";patientDueMinor:string;
  collectedMinor:string;outstandingMinor:string;pendingElectronicMinor:string;
  refundedOrCorrectedMinor:string;state:string;collections:Payment[];
@@ -176,7 +177,7 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
    <Text style={styles.amount}>Actually collected: {rupees(data.collectedMinor)}</Text>
    <Text style={styles.amount}>Still due: {rupees(data.outstandingMinor)}</Text>
    <Text style={styles.note}>Electronic pending: {rupees(data.pendingElectronicMinor)}.
-    Refunds/corrections: {rupees(data.refundedOrCorrectedMinor)}.
+    Verified refunds/corrections: {rupees(data.refundedOrCorrectedMinor)}.
     Status: {data.state.replaceAll("_"," ")}.</Text>
    {canRecord&&BigInt(data.outstandingMinor)>0n&&<View style={styles.form}>
     <Text style={styles.heading}>Record actual center collection</Text>
@@ -225,7 +226,7 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
    </View>}
    {data.adjustments.length>0&&<Text style={styles.heading}>Refund history</Text>}
    {data.adjustments.map(x=><Text key={x.adjustmentRef} style={styles.note}>
-    {x.kind.replaceAll("_"," ")}: {rupees(x.amountMinor)} — {x.refundReceiptNumber}
+    {x.kind.replaceAll("_"," ")}: {rupees(x.amountMinor)} — {x.refundReceiptNumber??x.providerRefundRef??"Original provider evidence"}
    </Text>)}
   </>}
   {button("Refresh original payment status",()=>void check(),busy||loading)}
