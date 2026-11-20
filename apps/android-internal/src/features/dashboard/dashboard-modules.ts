@@ -59,6 +59,7 @@ export interface ModuleActionHandlers {
   openLabEquipment: () => void;
   openHealthcarePolicies: () => void;
   openCenterMerchant: () => void;
+  openFoundationLiabilities: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -285,6 +286,19 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openCenterMerchant
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.liabilities.view")) {
+    list.push({
+      key: "healthcareFoundationLiabilities",
+      title: "Foundation Healthcare Obligations",
+      shortLabel: "Foundation Dues",
+      description: "Approved Foundation support for genuinely completed consultations.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openFoundationLiabilities
     });
   }
   if (roleActions.includes("lab.equipment.view")) {
