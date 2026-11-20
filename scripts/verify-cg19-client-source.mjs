@@ -75,6 +75,7 @@ assert.match(proxy,/parts\[0\]==="client-email-templates"/);
 const ui=read("apps/web/src/features/communications/communications-workspace.tsx");
 assert.match(ui,/disabled (?:source )?drafts only/i);
 assert.match(ui,/Email reference templates/);
+assert.match(ui,/saved client email reference differs from this source version/i);
 const supportStatesSql=read("apps/backend/db/migrations/1903_cg19_client_support_states.sql");
 assert.match(supportStatesSql,/WAITING_FOR_USER/);
 assert.match(supportStatesSql,/STATUS_UPDATED/);

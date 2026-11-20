@@ -236,3 +236,6 @@ Trace all client 52 template IDs against source-owned committed events, version/
 
 
 **CG-19 US-003-QA02/07/09/12 security regression:** `center-support-attachment.service.ts` original `own(...editable)` now rejects `RESOLVED` as well as `CLOSED` on new upload initiation and confirm, even by direct API. Existing authorized listing, download and revocation remain. Verify case transition race OPEN→RESOLVED while upload is in flight and cross-center attempts in PostgreSQL/storage runtime; source inspected only, NOT_RUN.
+
+
+**US-002-QA06/12 source UX guard:** The original notice workflow remains distinct from the 52 client disabled draft imports. A mismatch in stored client source SHA/digest produces a specific actionable conflict message, with no false delivery claim. QA check source-authored; Web/API runtime NOT_RUN.
