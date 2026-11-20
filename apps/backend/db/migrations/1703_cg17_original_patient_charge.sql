@@ -10,6 +10,10 @@ CREATE TABLE patient_charge(
  line_ref text NOT NULL DEFAULT 'CONSULTATION'
   CHECK(line_ref='CONSULTATION'),
  source_version integer NOT NULL CHECK(source_version>0),
+ source_terms_version integer NOT NULL CHECK(source_terms_version>0),
+ source_start_at timestamptz NOT NULL,
+ source_end_at timestamptz NOT NULL,
+ CHECK(source_end_at>source_start_at),
  source_digest char(64) NOT NULL CHECK(source_digest ~ '^[a-f0-9]{64}$'),
  center_ref uuid NOT NULL,
  doctor_ref uuid NOT NULL,
