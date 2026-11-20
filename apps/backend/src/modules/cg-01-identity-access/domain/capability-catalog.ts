@@ -109,6 +109,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"healthcare.assistance.collections.view",businessLabel:"View verified own-center patient collections",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.collections.record",businessLabel:"Attest actual own-center cash or submit pending electronic proof",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.collections.refund",businessLabel:"Refund or correct verified own-center cash receipts",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.liabilities.view",businessLabel:"View source-approved Foundation healthcare obligations",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.liabilities.manage",businessLabel:"Recognize actual completed-service healthcare obligations",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.charges.view",businessLabel:"View verified own-center patient contributions",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.charges.accept",businessLabel:"Accept original own-center patient contribution",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.policies.view",businessLabel:"View approved healthcare assistance policies",group:"Healthcare assistance",assignable:true,sensitive:true},
