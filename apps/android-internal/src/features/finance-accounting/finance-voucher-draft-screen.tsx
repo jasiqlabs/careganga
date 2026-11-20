@@ -246,7 +246,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   }catch{setProblem("The original save is not confirmed. Check again before retrying.");}
   finally{setBusy(false);}
  }
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}><Pressable style={s.back} accessibilityRole="button"
    disabled={busy||Boolean(pending)} onPress={()=>editing?setEditing(false):onClose()}>
    <Text style={s.link}>‹ Back</Text></Pressable>
@@ -397,7 +397,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:t.background},
+ safe:{flex:1,backgroundColor:t.adminCanvas},
  header:{flexDirection:"row",gap:10,padding:14,alignItems:"center",
   backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
  heading:{flex:1},eyebrow:{fontSize:10,color:t.mutedText},

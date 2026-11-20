@@ -16,6 +16,8 @@ export const careGangaTheme = {
   primaryPressed:"#1748BE",
   primaryText:"#FFFFFF",
   background:"#F4F4F1",
+  /** Authenticated Android CG-01 canvas. Public website/app retain their own visual contract. */
+  adminCanvas:"#F8FAFC",
   surface:"#FFFFFF",
   text:"#16233B",
   mutedText:"#637084",

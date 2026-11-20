@@ -248,7 +248,7 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
    style={[styles.button,disabled&&styles.disabled]}>
    <Text style={styles.buttonLabel}>{name}</Text>
   </Pressable>);
- return <SafeAreaView style={styles.page}>
+ return <SafeAreaView style={styles.page} edges={["left","right"]}>
   <ScrollView contentContainerStyle={styles.content}>
    {button("Back to my Foundation account",onExit,busy)}
    <Text accessibilityRole="header" style={styles.pageTitle}>My Consultation Queue</Text>
@@ -408,7 +408,7 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({
- page:{flex:1,backgroundColor:t.background},
+ page:{flex:1,backgroundColor:t.adminCanvas},
  content:{padding:18,paddingBottom:56,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
  pageTitle:{fontSize:23,fontWeight:"800",color:t.sidebar,marginBottom:4},
  title:{fontSize:17,fontWeight:"700",color:t.text},

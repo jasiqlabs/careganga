@@ -14414,3 +14414,176 @@ button:disabled {
     padding: .9rem;
   }
 }
+
+/* CG-01 Nov 2026 visual parity for EXISTING admin business modules.
+ * Restricted to authenticated Foundation workspaces. Deliberately excludes the
+ * client-owned public site and the custom CG-01 roles/users/security layouts.
+ * Presentation only: no fields, permissions, messages or workflows are changed.
+ */
+.shell > .workspace {
+  background-color: #F8FAFC;
+}
+.shell > .workspace :is(.role-workspace, .cg-fin-manual) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-content: start;
+  gap: clamp(.85rem, 1.4vw, 1.25rem);
+}
+.shell > .workspace .role-workspace > .topbar,
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child {
+  border-bottom: 0;
+  background: transparent;
+  padding: 0 0 .25rem;
+  gap: .8rem;
+  min-width: 0;
+}
+.shell > .workspace .role-workspace > .topbar h1,
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child h1,
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child h2 {
+  margin: 0;
+  color: var(--cg-text);
+  font-size: var(--cg-heading-lg);
+  line-height: 1.22;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+.shell > .workspace .role-workspace > .topbar p,
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child p {
+  color: var(--cg-muted);
+  font-size: var(--cg-text-sm);
+  line-height: 1.5;
+}
+.shell > .workspace :is(.role-pane, .cg-fin-card, .card) {
+  min-width: 0;
+  background: var(--cg-surface);
+  border: 1px solid var(--cg-border);
+  border-radius: .875rem;
+  box-shadow: 0 3px 16px rgba(15, 23, 42, .045);
+}
+.shell > .workspace .cg-fin-card {
+  padding: clamp(.85rem, 1.6vw, 1.3rem);
+  display: grid;
+  gap: .85rem;
+}
+.shell > .workspace .card:not(.kpi) {
+  padding: clamp(.85rem, 1.6vw, 1.25rem);
+}
+.shell > .workspace .cg-fin-manual > :is(.cg-fin-voucher-dashboard, .cg-fin-table-wrap, .cg-fin-card) {
+  min-width: 0;
+}
+.shell > .workspace :is(.table-wrap, .role-table-wrap, .cg-fin-table-wrap) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--cg-border);
+  border-radius: .8rem;
+  background: var(--cg-surface);
+  scrollbar-width: thin;
+}
+.shell > .workspace .table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--cg-text-sm);
+}
+.shell > .workspace .table-wrap :is(th, td) {
+  padding: .8rem .85rem;
+  border-bottom: 1px solid var(--cg-border);
+  vertical-align: middle;
+}
+.shell > .workspace .table-wrap th,
+.shell > .workspace :is(.role-table, .cg-fin-table) th {
+  background: #F8FAFC;
+  color: #475569;
+  font-weight: 750;
+  letter-spacing: .015em;
+}
+.shell > .workspace :is(.table-wrap table, .role-table, .cg-fin-table) tbody tr:hover {
+  background: #F7F9FE;
+}
+.shell > .workspace :is(.cg-fin-empty, .role-empty) {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  color: var(--cg-muted);
+  background: #FAFBFE;
+  text-align: center;
+  border-radius: .75rem;
+  line-height: 1.5;
+}
+.shell > .workspace :is(.field, .cg-fin-field) {
+  min-width: 0;
+}
+.shell > .workspace :is(.field, .cg-fin-field) :is(input, select, textarea) {
+  max-width: 100%;
+  font-family: inherit;
+  border-radius: .65rem;
+}
+.shell > .workspace :is(.field, .cg-fin-field) :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--cg-focus);
+  outline-offset: 1px;
+}
+.shell > .workspace :is(.role-workspace, .cg-fin-manual, .cg-health-admin-workspace)
+  :is(button, a, [role="button"]):focus-visible {
+  outline: 2px solid var(--cg-focus);
+  outline-offset: 3px;
+}
+.shell > .workspace .role-workspace .toolbar,
+.shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: .7rem;
+}
+.shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions button,
+.shell > .workspace .role-workspace .toolbar button {
+  min-height: 2.75rem;
+  border-radius: .65rem;
+  font-weight: 650;
+}
+.shell > .workspace :is(.role-pane-heading, .cg-fin-drawer-header) h2 {
+  margin: 0;
+  font-size: var(--cg-heading-sm);
+  line-height: 1.3;
+  font-weight: 750;
+}
+.shell > .workspace :is(.role-workspace, .cg-fin-manual, .cg-health-admin-workspace)
+  :is(.notice, .cg-fin-notice, [role="alert"]) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 48rem) {
+  .shell > .workspace {
+    padding: clamp(.85rem, 3vw, 1.25rem);
+  }
+  .shell > .workspace .role-workspace > .topbar,
+  .shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child {
+    align-items: stretch;
+  }
+  .shell > .workspace .role-workspace > .topbar h1,
+  .shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child h1,
+  .shell > .workspace .cg-fin-manual > .cg-fin-toolbar:first-child h2 {
+    font-size: var(--cg-heading-md);
+  }
+  .shell > .workspace :is(.table-wrap, .role-table-wrap, .cg-fin-table-wrap) {
+    -webkit-overflow-scrolling: touch;
+  }
+  .shell > .workspace .role-workspace .toolbar > :is(button, a),
+  .shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > :is(button, a) {
+    flex: 0 1 auto;
+  }
+}
+@media (max-width: 28rem) {
+  .shell > .workspace .role-workspace .toolbar > :is(button, a),
+  .shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > :is(button, a) {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .shell > .workspace .cg-fin-card {
+    padding: .85rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell > .workspace :is(.role-pane, .cg-fin-card, .card) {
+    transition: none;
+  }
+}

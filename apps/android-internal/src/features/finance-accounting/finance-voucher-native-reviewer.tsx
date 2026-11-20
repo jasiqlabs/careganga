@@ -163,7 +163,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
   }catch(e){setError(msg(e));if(e instanceof Error&&e.message==="EXPIRED")onExpired();}
   finally{setBusy(false);}
  }
- return <SafeAreaView style={s.page} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.page} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable style={s.button} disabled={busy||!!pending}
     onPress={()=>{if(selected){setSelected(null);setOriginal(null);}
@@ -235,7 +235,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- page:{flex:1,backgroundColor:t.background},
+ page:{flex:1,backgroundColor:t.adminCanvas},
  header:{flexDirection:"row",alignItems:"center",gap:10,padding:12,
   borderBottomWidth:1,borderBottomColor:t.border,backgroundColor:t.surface},
  heading:{flex:1},eyebrow:{fontSize:10,color:t.mutedText},

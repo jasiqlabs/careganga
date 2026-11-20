@@ -121,7 +121,7 @@ export function FinanceClaimNativeReviewer({token,onExit,onExpired}:{
    if(e instanceof Error&&e.message==="EXPIRED")onExpired();}
   finally{setBusy(false);}
  }
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable style={s.back} accessibilityRole="button" onPress={()=>{
     if(selected){setSelected(null);setPassword("");}else onExit();}}>
@@ -185,7 +185,7 @@ export function FinanceClaimNativeReviewer({token,onExit,onExpired}:{
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:t.background},
+ safe:{flex:1,backgroundColor:t.adminCanvas},
  header:{minHeight:66,padding:15,flexDirection:"row",alignItems:"center",
    gap:14,borderBottomWidth:1,borderBottomColor:t.border,backgroundColor:t.surface},
  back:{minHeight:48,justifyContent:"center"},backText:{fontSize:13,color:t.primary,fontWeight:"700"},

@@ -125,7 +125,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
     onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" accessibilityLabel="Back to Foundation"
     hitSlop={12} style={s.back} onPress={onExit}><Text style={s.backText}>‹ Back</Text></Pressable>
@@ -244,7 +244,7 @@ const s=StyleSheet.create({
   justifyContent:"center",minHeight:48,backgroundColor:theme.surface,alignSelf:"flex-start"},
  createText:{color:theme.primary,fontSize:13,fontWeight:"600"},
 
- safe:{flex:1,backgroundColor:theme.background},
+ safe:{flex:1,backgroundColor:theme.adminCanvas},
  header:{backgroundColor:theme.surface,borderBottomColor:theme.border,borderBottomWidth:1,
   paddingHorizontal:14,paddingVertical:12,flexDirection:"row",alignItems:"center",gap:8},
  headerTitle:{flex:1,minWidth:0},

@@ -238,7 +238,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
     finally{try{temporary?.delete();}catch{}setBusy(false);}
   }
   const verified=result&&"cleanVerified" in result&&result.cleanVerified;
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined}
       style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -345,7 +345,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
   content:{padding:18,gap:15,paddingBottom:40,maxWidth:760,width:"100%",alignSelf:"center"},
   row:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:10},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},

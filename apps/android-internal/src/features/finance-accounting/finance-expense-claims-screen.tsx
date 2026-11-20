@@ -109,7 +109,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   ["category","Category","e.g. Travel"],["expenseDate","Expense date","YYYY-MM-DD"],
   ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"]
  ];
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" onPress={onExit} style={s.back}>
     <Text style={s.backText}>‹ Back</Text></Pressable>
@@ -175,7 +175,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:theme.background},
+ safe:{flex:1,backgroundColor:theme.adminCanvas},
  header:{backgroundColor:theme.surface,padding:16,flexDirection:"row",alignItems:"center",gap:14,
   borderBottomWidth:1,borderBottomColor:theme.border},
  back:{minHeight:48,justifyContent:"center"},

@@ -205,7 +205,7 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
       style={[styles.button,primary&&styles.primary,disabled&&styles.disabled]}>
       <Text style={[styles.buttonText,primary&&styles.primaryText]}>{label}</Text></Pressable>;
   }
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={styles.title}>Branch registration</Text>
@@ -363,7 +363,7 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
   content:{padding:18,gap:12,paddingBottom:40},
   title:{fontSize:24,fontWeight:"800",color:theme.sidebar},
   help:{fontSize:13,color:theme.mutedText},

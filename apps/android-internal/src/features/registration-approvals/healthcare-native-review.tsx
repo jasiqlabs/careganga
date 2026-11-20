@@ -189,7 +189,7 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
     canManageDoctors:canManageProviders;
   const rows=detail?.source?Object.entries(detail.source.source).filter(([key])=>
     !/(?:Ref|Id|digest|file|url|token|objectKey|bank)/i.test(key)):[];
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -318,7 +318,7 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
- page:{flex:1,backgroundColor:t.background},
+ page:{flex:1,backgroundColor:t.adminCanvas},
  content:{padding:18,paddingBottom:60,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
  header:{flexDirection:"row",alignItems:"center",gap:12},
  title:{fontSize:23,fontWeight:"800",color:t.sidebar,flexShrink:1},

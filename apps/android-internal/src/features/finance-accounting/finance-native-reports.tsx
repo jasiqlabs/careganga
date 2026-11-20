@@ -302,7 +302,7 @@ export function FinanceNativeReports({token,canReconcile,canUploadStatement,canR
   }catch{setError("The current posted report could not be exported to a local file.");}
   finally{try{file?.delete();}catch{}setBusy(false);}
  }
- return <SafeAreaView style={s.screen} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.screen} edges={["left","right"]}>
   <View style={s.header}><Pressable accessibilityRole="button" onPress={onExit}>
    <Text style={s.back}>‹ Back</Text></Pressable>
    <Text accessibilityRole="header" style={s.title}>Financial Ledger & Reports</Text></View>

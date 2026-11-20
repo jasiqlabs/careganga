@@ -177,7 +177,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     setAppliedSearch(search.trim());setCursor(null);setPrevious([]);setNext(null);
     setMessage("");
   }
-  return <SafeAreaView style={s.page}>
+  return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
         <Pressable style={s.button} accessibilityRole="button" onPress={selected?
@@ -324,7 +324,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   </SafeAreaView>;
 }
 const s=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
   content:{padding:16,paddingBottom:55,gap:14,width:"100%",maxWidth:800,alignSelf:"center"},
   row:{flexDirection:"row",gap:9,alignItems:"center",flexWrap:"wrap"},
   rowWrap:{flexDirection:"row",flexWrap:"wrap",gap:7},

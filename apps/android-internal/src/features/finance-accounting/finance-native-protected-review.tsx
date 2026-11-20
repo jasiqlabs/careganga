@@ -89,7 +89,7 @@ export function FinanceNativeProtectedReview({token,kind,canConfigure,onExit,onE
   info.info as Record<string,unknown>:{};
  const invoiceItems=info.items&&typeof info.items==="object"?
   info.items as Record<string,unknown>:{};
- return <SafeAreaView style={s.screen} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.screen} edges={["left","right"]}>
   <View style={s.header}><Pressable accessibilityRole="button" onPress={()=>
     selected?setSelected(null):onExit()}><Text style={s.back}>‹ Back</Text></Pressable>
    <Text accessibilityRole="header" style={s.title}>

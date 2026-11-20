@@ -257,7 +257,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
       else setMessage("The reviewer-process result is uncertain. Check the previous version.");
     }finally{setBusy(false);}
   }
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={styles.page} behavior={Platform.OS==="ios"?"padding":undefined}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.row}>
@@ -438,7 +438,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
   content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:40},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
   heading:{fontSize:15,fontWeight:"700",color:theme.text},

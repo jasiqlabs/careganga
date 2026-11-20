@@ -194,7 +194,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
     }catch(e){setNotice(explain(e))}
     finally{setBusy(false)}
   }
-  return <SafeAreaView style={s.page}>
+  return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
         <Pressable style={s.button} accessibilityRole="button" onPress={onExit}>
@@ -322,7 +322,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   </SafeAreaView>;
 }
 const s=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
   content:{padding:16,paddingBottom:45,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
   row:{flexDirection:"row",gap:8,alignItems:"center",flexWrap:"wrap"},
   rowWrap:{flexDirection:"row",gap:8,alignItems:"center",flexWrap:"wrap"},
