@@ -98,7 +98,12 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"health.providers.finance.manage",businessLabel:"Manage protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.providers.verify",businessLabel:"Review submitted healthcare provider and center registrations",group:"Healthcare network",assignable:true,sensitive:true},
   {key:"health.centers.activate",businessLabel:"Enable or suspend verified healthcare center access",group:"Healthcare network",assignable:true,sensitive:true},
-  {key:"health.centers.publish",businessLabel:"Publish or withdraw verified healthcare center listing",group:"Healthcare network",assignable:true,sensitive:true}
+  {key:"health.centers.publish",businessLabel:"Publish or withdraw verified healthcare center listing",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"diagnostics.catalog.view",businessLabel:"View diagnostic tests and packages",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
+  {key:"diagnostics.catalog.manage",businessLabel:"Maintain diagnostic tests and packages",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
+  {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
+  {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
+  {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{
