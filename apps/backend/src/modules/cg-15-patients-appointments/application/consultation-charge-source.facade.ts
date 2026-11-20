@@ -22,7 +22,7 @@ export type Cg15HoldQuoteSource=Readonly<{
  feeMinor:string;feeVersion:number;feeRef:string;
  expiresAt:Date;currency:"INR"
 }>;
-const eligible=["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED","NO_SHOW"];
+const eligible=["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED"];
 @Injectable()
 export class ConsultationChargeSourceFacade{
  constructor(private readonly scope:HealthCenterSupportScopeFacade,
