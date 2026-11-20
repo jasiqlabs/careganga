@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {
- diagnosticsCall,writeUncertain,moneyMinor,formatRupees,localDateTimeToUtc,
+ diagnosticsCall,writeUncertain,moneyMinor,formatRupees,localDateTimeToUtc,toLocalDateTime,
  type DiagnosticCategory,type DiagnosticTest,type DiagnosticPackage,
  type DiagnosticCenter,type DiagnosticMapping,type DiagnosticPrice
 } from "./diagnostic-api";
@@ -36,6 +36,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [showForm,setShowForm]=useState(false),[editRef,setEditRef]=useState("");
  const [catCode,setCatCode]=useState(""),[catName,setCatName]=useState("");
  const [testCode,setTestCode]=useState(""),[testName,setTestName]=useState("");
+ const [testFrom,setTestFrom]=useState(""),[testUntil,setTestUntil]=useState("");
  const [categoryRef,setCategoryRef]=useState(""),[sampleType,setSampleType]=useState("BLOOD");
  const [description,setDescription]=useState(""),[parameters,setParameters]=useState("");
  const [pkgCode,setPkgCode]=useState(""),[pkgName,setPkgName]=useState("");
@@ -126,6 +127,8 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   setSampleType(record?.sampleType??"BLOOD");
   setDescription(record?.clinicalDescription??"");
   setParameters(record?.parametersDescription??"");
+  setTestFrom(record&&!copy?toLocalDateTime(record.activeFromUtc):"");
+  setTestUntil(record&&!copy?toLocalDateTime(record.activeToUtc):"");
   setShowForm(true);
  }
  function saveCategory(e:FormEvent<HTMLFormElement>){
@@ -135,14 +138,21 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  }
  function saveTest(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
-  const record=tests.find(x=>x.testRef===editRef);
-  const fields={testCode,name:testName,categoryRef,sampleType,
-   clinicalDescription:description,parametersDescription:parameters};
-  if(record)void change("test-edit","tests/"+encodeURIComponent(record.testRef),
-   "PATCH",{...fields,expectedVersion:record.revision,status:record.status},
-   "Test details updated. Approved historical prices remain unchanged.",false);
-  else void change("test-create","tests","POST",fields,
-   "Diagnostic test created in the Foundation catalogue.",false);
+  try{
+   const activeFromUtc=testFrom?localDateTimeToUtc(testFrom,"test start"):null;
+   const activeToUtc=testUntil?localDateTimeToUtc(testUntil,"test end"):null;
+   if(activeToUtc&&activeFromUtc&&activeToUtc<=activeFromUtc)
+    throw Error("Test availability must end after it starts.");
+   const record=tests.find(x=>x.testRef===editRef);
+   const fields={testCode,name:testName,categoryRef,sampleType,
+    clinicalDescription:description,parametersDescription:parameters,
+    activeFromUtc,activeToUtc};
+   if(record)void change("test-edit","tests/"+encodeURIComponent(record.testRef),
+    "PATCH",{...fields,expectedVersion:record.revision,status:record.status},
+    "Test details updated. Previously approved revisions remain in the audit.",false);
+   else void change("test-create","tests","POST",fields,
+    "Diagnostic test created with source-backed availability.",false);
+  }catch(e){setError(e instanceof Error?e.message:"Check the test availability dates.");}
  }
  function savePackage(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
@@ -207,7 +217,8 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    {testCode:selected.code,name:selected.name,categoryRef:selected.categoryRef,
     sampleType:selected.sampleType,parametersDescription:selected.parametersDescription,
     clinicalDescription:selected.clinicalDescription,status:"INACTIVE",
-    expectedVersion:selected.revision},
+    expectedVersion:selected.revision,activeFromUtc:selected.activeFromUtc,
+    activeToUtc:selected.activeToUtc},
    "Test deactivated. Original approved price records remain preserved.");
  }
  async function exportVisible(){
@@ -283,7 +294,11 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      <thead><tr><th>Test</th><th>Category</th><th>Sample</th><th>Status</th><th>Details</th></tr></thead>
      <tbody>{visible.map(t=><tr key={t.testRef}>
       <td><strong>{t.name}</strong><div>{t.code}</div></td>
-      <td>{t.category}</td><td>{label(t.sampleType)}</td><td>{label(t.status)}</td>
+      <td>{t.category}</td><td>{label(t.sampleType)}</td>
+      <td>{t.status!=="ACTIVE"?"Inactive":
+       new Date(t.activeFromUtc).getTime()>Date.now()?"Scheduled":
+       t.activeToUtc&&new Date(t.activeToUtc).getTime()<=Date.now()?
+       "Expired":"Available"}</td>
       <td><button type="button" aria-pressed={selectedRef===t.testRef}
        onClick={()=>{setSelectedRef(t.testRef);setTab("Test Information");setShowForm(false);}}>
        View</button></td>
@@ -301,6 +316,11 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      {tab==="Test Information"&&<dl className="cg-diagnostics-facts">
       <div><dt>Category</dt><dd>{selected.category}</dd></div>
       <div><dt>Sample type</dt><dd>{label(selected.sampleType)}</dd></div>
+      <div><dt>Available from</dt><dd>{
+       new Date(selected.activeFromUtc).toLocaleString("en-IN")}</dd></div>
+      <div><dt>Available until</dt><dd>{
+       selected.activeToUtc?new Date(selected.activeToUtc).toLocaleString("en-IN"):
+       "No scheduled end"}</dd></div>
       <div><dt>Clinical description</dt><dd>{selected.clinicalDescription||"Not recorded"}</dd></div>
       <div><dt>Parameters</dt><dd>{selected.parametersDescription||"Not recorded"}</dd></div>
      </dl>}
@@ -398,6 +418,12 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
       onChange={e=>setSampleType(e.target.value)}>
        {samples.map(s=><option key={s} value={s}>{label(s)}</option>)}
       </select></label>
+     <label className="field">Test available from (blank = now)
+      <input type="datetime-local" value={testFrom}
+       onChange={e=>setTestFrom(e.target.value)}/></label>
+     <label className="field">Test available until (optional)
+      <input type="datetime-local" value={testUntil}
+       onChange={e=>setTestUntil(e.target.value)}/></label>
      <label className="field">General description<textarea maxLength={2000} value={description}
       onChange={e=>setDescription(e.target.value)}/></label>
      <label className="field">Test parameter information<textarea maxLength={2000}

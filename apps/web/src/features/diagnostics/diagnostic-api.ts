@@ -4,7 +4,8 @@ export type DiagnosticCategory={
 export type DiagnosticTest={
  testRef:string;code:string;name:string;categoryRef:string;category:string;
  sampleType:string;parametersDescription:string;clinicalDescription:string;
- status:"ACTIVE"|"INACTIVE";revision:number
+ status:"ACTIVE"|"INACTIVE";revision:number;
+ activeFromUtc:string;activeToUtc:string|null
 };
 export type DiagnosticPackage={
  packageRef:string;code:string;name:string;description:string;
@@ -63,6 +64,14 @@ export function formatRupees(minor:string|number){
  return Number.isSafeInteger(value)&&value>=0?
   new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
    .format(value/100):"Price unavailable";
+}
+export function toLocalDateTime(value:string|null|undefined):string{
+ if(!value)return "";
+ const date=new Date(value);
+ if(!Number.isFinite(date.getTime()))return "";
+ const digits=(n:number)=>String(n).padStart(2,"0");
+ return String(date.getFullYear())+"-"+digits(date.getMonth()+1)+"-"+digits(date.getDate())+
+  "T"+digits(date.getHours())+":"+digits(date.getMinutes());
 }
 export function localDateTimeToUtc(value:string,field:string):string{
  if(!value||!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))
