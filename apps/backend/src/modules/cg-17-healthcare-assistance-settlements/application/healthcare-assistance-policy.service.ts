@@ -23,6 +23,7 @@ type Revision={
  mode:Mode;percent_basis_points:number|null;fixed_minor:string|null;
  cap_minor:string;eligibility:string;approval_state:string;created_at:Date;
  actor_ref:string;approved_case_ref:string|null;approved_decision_ref:string|null;
+ activated_at:Date|null;
  request_digest:string;request_key:string;source_digest:string;
  review_case_ref?:string|null;review_status?:string|null
 };
@@ -95,6 +96,7 @@ const view=(r:Revision)=>({
  current:new Date(r.valid_from).getTime()<=Date.now()&&
   new Date(r.valid_until).getTime()>Date.now()&&r.approval_state==="ACTIVE",
  approvedByIndependentReview:!!r.approved_case_ref&&!!r.approved_decision_ref,
+ activatedAt:r.activated_at?.toISOString()??null,
  createdAt:new Date(r.created_at).toISOString(),
  reviewCaseRef:r.review_case_ref??null,reviewStatus:r.review_status??null
 });
@@ -381,12 +383,12 @@ export class HealthcareAssistancePolicyService{
     "INSERT INTO healthcare_policy_revision(root_realm_id,policy_ref,"+
     "center_ref,doctor_ref,service_kind,revision_no,valid_from,valid_until,"+
     "mode,percent_basis_points,fixed_minor,cap_minor,eligibility,"+
-    "approval_state,actor_ref,request_key,request_digest,source_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) "+
+    "approval_state,activated_at,actor_ref,request_key,request_digest,source_digest) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) "+
     "RETURNING *",
     [actor.realmId,policyRef,v.centerRef,v.doctorRef,v.serviceKind,version,
      v.from,v.until,v.mode,v.bps,v.fixed,v.cap,v.eligibility,state,
-     actor.accountId,v.requestKey,hash,hash]);
+     active?new Date():null,actor.accountId,v.requestKey,hash,hash]);
    let caseRef:string|null=null;
    if(full){
     const review=await this.approval.create(c,actor,{
@@ -491,7 +493,7 @@ export class HealthcareAssistancePolicyService{
    }
    const approved=await c.query<Revision>(
     "UPDATE healthcare_policy_revision SET approval_state='ACTIVE',"+
-    "approved_case_ref=$3,approved_decision_ref=$4,"+
+    "approved_case_ref=$3,approved_decision_ref=$4,activated_at=now(),"+
     "changed_by=$5,changed_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND approval_state='PENDING_APPROVAL' "+
     "RETURNING *",
