@@ -62,7 +62,7 @@ export class CenterSupportAttachmentService{
    "source_channel='CENTER_PORTAL' FOR SHARE",
    [actor.realmId,center,caseRef]);
   const c=original.rows[0];
-  if(!c||editable&&(c.status==="CLOSED"||
+  if(!c||editable&&(["CLOSED","RESOLVED"].includes(c.status)||
     (expected!==null&&expected!==c.revision)))
    throw new ConflictException({code:"CENTER_SUPPORT_FILE_CHANGED"});
   return c;
