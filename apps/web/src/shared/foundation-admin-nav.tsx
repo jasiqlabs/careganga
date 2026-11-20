@@ -72,6 +72,8 @@ export type FoundationAdminNavProps = {
   canViewPatientIntake?: boolean;
   canViewVisitQueue?: boolean;
   canViewPatientAdmin?: boolean;
+  /** Source-verified role actions for consistent first-render navigation; revalidated on mount. */
+  initialActions?: readonly string[];
 };
 
 /**
@@ -324,7 +326,8 @@ export function FoundationAdminNav({
   canViewSchedules = false,
   canViewPatientIntake = false,
   canViewVisitQueue = false,
-  canViewPatientAdmin = false
+  canViewPatientAdmin = false,
+  initialActions
 }: FoundationAdminNavProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -573,7 +576,9 @@ export function FoundationAdminNav({
   }, []);
 
   // Effective actions revalidation
-  const [currentActions, setCurrentActions] = useState<Set<string>|null>(null);
+  const [currentActions, setCurrentActions] = useState<Set<string>|null>(() =>
+    initialActions ? new Set(initialActions) : null
+  );
   useEffect(() => {
     let live = true;
     void fetch("/api/access/effective", { cache: "no-store" })

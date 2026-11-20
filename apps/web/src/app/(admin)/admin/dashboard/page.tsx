@@ -27,6 +27,9 @@ export default async function AdminDashboardPage() {
   let canViewVouchers = false;
   let canViewFoundation = false;
   let canViewBranches = false;
+  // Already verified by the backend for this request; avoids temporary missing
+  // healthcare/CMS/finance navigation before the shared sidebar rechecks access.
+  let verifiedActions: string[] | undefined;
 
   if (backend) {
     try {
@@ -46,8 +49,9 @@ export default async function AdminDashboardPage() {
         if (permissions.ok) {
           const effective = (await permissions.json()) as { actions?: { key?: string }[] };
           const keys = Array.isArray(effective.actions)
-            ? effective.actions.map(x => x.key ?? "")
+            ? effective.actions.flatMap(x => typeof x?.key === "string" ? [x.key] : [])
             : [];
+          verifiedActions = keys;
           canViewRoles = keys.includes("roles.view");
           canViewFinance = keys.includes("finance.accounts.view");
           canViewVouchers = keys.includes("finance.vouchers.view");
@@ -107,6 +111,7 @@ export default async function AdminDashboardPage() {
     <div className="shell">
       <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
       <FoundationAdminNav
+        initialActions={verifiedActions}
         active="dashboard"
         displayName={current.displayName}
         roleName={current.roleName}
