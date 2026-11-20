@@ -113,7 +113,7 @@ export function CenterSupportDesk({centerRef}:{centerRef:string}){
    <h4>Conversation</h4>
    {detail.replies.length===0&&<p>The Foundation has not yet replied.</p>}
    {detail.replies.map((item,i)=><p key={i}>{item.message}</p>)}
-   {detail.status!=="CLOSED"&&<>
+   {!["CLOSED","RESOLVED"].includes(detail.status)&&<>
     <label>Write a reply
      <textarea value={reply} onChange={e=>{setReply(e.target.value);replyKey.current="";}}
       rows={3} maxLength={2400}/></label>

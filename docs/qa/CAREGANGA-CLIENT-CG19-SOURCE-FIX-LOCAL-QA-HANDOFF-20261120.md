@@ -67,3 +67,6 @@ CG-04/07/10/11 source owners remain *not implemented in main at this review chec
 `commit SHA | story/QA ID | original client source | backend file:function | SQL table/index/constraint | Web screenshot route | Android screen/device | actor/realm/role | input/outcome | actual status/error | source finding & fix commit | reviewer | date/time | PASS/FAIL/NOT_RUN | remaining source gap`. 
 
 Preserve the test run logs in a **private** QA location; never commit tokens, raw patient/HR salary/donor data, signed links, provider headers or unredacted client sample person information. Repeat Fix → Re-review → QA trace until the existing scenario is genuinely executable and passes. Do not update historical source-verified counters to runtime PASS without proof.
+
+
+**Additional resolved-case regression (US-003-QA03/09):** A Foundation staff reply and an eligible center portal reply must both reject when case status is `RESOLVED` or `CLOSED` until a Foundation authorized operator explicitly reopens the case as `OPEN`. Both Web/Android staff and center Web must hide reply actions for finalized cases. Test direct forged API bypass and ensure no private reply/audit created. Source fix committed after this handoff's original checkpoint; runtime testing still NOT_RUN.

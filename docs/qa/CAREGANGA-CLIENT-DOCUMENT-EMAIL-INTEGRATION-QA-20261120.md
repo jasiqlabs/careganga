@@ -76,3 +76,6 @@ No new client-facing feature, module, workflow, data seed, exposed sample signat
 
 
 **Template-by-template trace:** [52 client email QA source matrix](CAREGANGA-52-EMAIL-TEMPLATE-SOURCE-QA-MATRIX-20261120.md). Each of the 52 templates has original trigger, receiving owner, original attachment rule and relevant negative acceptance under existing story IDs. Copy source matched, but **business event / mail / attachment / device runtime remains NOT_RUN**.
+
+
+**Additional US-003-QA03/09 source fix:** Resolved cases previously allowed both Foundation and center reply to silently move to REPLIED, bypassing the required reopen step. Both `SupportService.mutate(REPLY)` and `centerReply` now deny `RESOLVED` and `CLOSED` pending authorized explicit OPEN, with Web/Internal Android/center Web reply actions hidden. Re-test direct API, stale revision and negative scope; backend/Web/Android runtime NOT_RUN.
