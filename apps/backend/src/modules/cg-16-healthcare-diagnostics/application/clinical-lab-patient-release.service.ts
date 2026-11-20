@@ -102,8 +102,11 @@ export class ClinicalLabPatientReleaseService{
   const center=id(centerRaw),order=id(orderRaw);
   return this.tx(async c=>{
    const a=await this.admission.requireCurrent(c,token,center,"lab.report.release");
-   await this.professionals.assertCurrent(c,a,center,"lab.report.release");
+   const clinician=await this.professionals.assertCurrent(c,a,center,"lab.report.release");
    const approved=await this.source(c,a,center,order);
+   if(approved.reviewer_account_ref!==a.accountId||
+    approved.reviewer_doctor_ref!==clinician.doctorRef)
+    throw new ForbiddenException({code:"LAB_RELEASE_ORIGINAL_REVIEWER_REQUIRED"});
    const found=await c.query<Release>(
     "SELECT * FROM cg16_lab_report_release WHERE root_realm_id=$1 "+
     "AND result_revision_ref=$2",[a.realmId,approved.result_ref]);
