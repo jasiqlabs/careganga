@@ -39,6 +39,7 @@ export type FoundationAdminNavProps = {
     | "healthDiagnostics"
     | "healthLabPricing"
     | "healthLabOrders"
+    | "healthLabEquipment"
     | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
@@ -106,6 +107,7 @@ function getNavIcon(key: string) {
     case "healthDiagnostics":
     case "healthLabPricing":
     case "healthLabOrders":
+    case "healthLabEquipment":
     case "healthSchedules":
     case "healthPatientIntake":
     case "healthVisitQueue":
@@ -680,6 +682,7 @@ export function FoundationAdminNav({
   const diagnosticsAccess = allowed("diagnostics.catalog.view", false);
   const labPricingAccess = allowed("diagnostics.pricing.view", false);
   const labOrderAccess = allowed("lab.orders.view", false)||allowed("lab.orders.create", false);
+  const equipmentAccess = allowed("lab.equipment.view", false);
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
@@ -715,6 +718,7 @@ export function FoundationAdminNav({
     ...(diagnosticsAccess ? [{ key: "healthDiagnostics" as const, label: "Lab Test Master & Pricing", href: "/admin/health-network/diagnostics" }] : []),
     ...(labPricingAccess ? [{ key: "healthLabPricing" as const, label: "My Lab Pricing", href: "/admin/health-network/lab-pricing" }] : []),
     ...(labOrderAccess ? [{ key: "healthLabOrders" as const, label: "Lab Orders & Samples", href: "/admin/health-network/lab-orders" }] : []),
+    ...(equipmentAccess ? [{ key: "healthLabEquipment" as const, label: "Lab Equipment & Quality", href: "/admin/health-network/equipment" }] : []),
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
@@ -761,6 +765,7 @@ export function FoundationAdminNav({
     healthDiagnostics: "Lab Test Master & Pricing",
     healthLabPricing: "My Lab Pricing",
     healthLabOrders: "Lab Orders & Samples",
+    healthLabEquipment: "Lab Equipment & Quality",
     healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
@@ -920,7 +925,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
             { name: "HEALTHCARE", keys: [
-              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthSchedules", "healthPatientIntake",
+              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthSchedules", "healthPatientIntake",
               "healthVisitQueue", "healthPatientAdmin"
             ] },
             {
