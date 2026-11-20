@@ -98,7 +98,7 @@ export class ConsultationChargeSourceFacade{
    feeRef,expiresAt:x.expires_at,currency:"INR"};
  }
  async booking(c:PoolClient,a:VerifiedFoundationActor,ref:string,
-  center?:string):Promise<Cg15ChargeSource>{
+  center?:string,allowHistorical=false):Promise<Cg15ChargeSource>{
   const q=await c.query<{id:string;patient_id:string;doctor_id:string;
    center_id:string;association_id:string;fee_minor:string;fee_version:number;
    booking_state:string;collection_state:string;currency:string;
@@ -114,8 +114,9 @@ export class ConsultationChargeSourceFacade{
   if(!x||center&&x.center_id!==center)
    throw new NotFoundException({code:"CONSULTATION_SOURCE_UNAVAILABLE"});
   const consentRevision=await this.patient(c,a,x.patient_id,x.center_id,!!center);
-  if(x.currency!=="INR"||x.collection_state==="NOT_COLLECTIBLE"||
-     !eligible.includes(x.booking_state)||x.booking_state==="CANCELLED")
+  if(x.currency!=="INR"||(!allowHistorical&&
+     (x.collection_state==="NOT_COLLECTIBLE"||
+      !eligible.includes(x.booking_state)||x.booking_state==="CANCELLED")))
    throw new ConflictException({code:"CONSULTATION_NOT_COLLECTIBLE"});
   if(!x.created_at||x.fee_version<1)
    throw new ConflictException({code:"CONSULTATION_ORIGINAL_FEE_UNAVAILABLE"});
