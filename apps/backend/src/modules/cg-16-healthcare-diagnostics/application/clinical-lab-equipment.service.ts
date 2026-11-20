@@ -5,6 +5,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {ClinicalLabAdmissionService} from "./clinical-lab-admission.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {CG14_CURRENT_LAB_EVIDENCE_SQL} from "../../cg-14-healthcare-network/application/health-lab-catalog-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -85,6 +86,67 @@ export class ClinicalLabEquipmentService{
   // Serialize retries of exactly one source command, no global tenant lock.
   await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    [actor.realmId+":"+actor.accountId+":"+key]);
+ }
+ /** Foundation H08 summary: original CG14/CG03/CG19 verified labs with a
+  * live approved LAB_ERP grant only. Aggregate health-center equipment
+  * counts: no serial numbers, quality file URLs, patients or inventory stock.
+  * This is request-driven, never an idle per-center recurring scan.
+  */
+ async foundationSummary(token:string){
+  const actor=await this.sessions.requireAction(token,"health.providers.view");
+  await this.sessions.requireAction(token,"lab.equipment.view");
+  if(process.env.CAREGANGA_ERP_LAB_ENABLED!=="true")
+   return {enabled:false,centers:[]};
+  return this.tx(async c=>{
+   const rows=await c.query<{
+    centerRef:string;name:string;total:string;ready:string;due:string
+   }>(
+    "SELECT c.id AS \"centerRef\",c.display_name AS name,"+
+    "count(e.id)::text AS total,"+
+    "count(e.id) FILTER(WHERE e.status='ACTIVE' AND e.readiness='READY' "+
+    "AND e.calibration_due_on>=(now() AT TIME ZONE c.time_zone)::date "+
+    "AND f.id IS NOT NULL AND f.revoked_at IS NULL)::text AS ready,"+
+    "count(e.id) FILTER(WHERE e.status='ACTIVE' "+
+    "AND e.readiness='READY' AND (e.calibration_due_on IS NULL OR "+
+    "e.calibration_due_on<(now() AT TIME ZONE c.time_zone)::date OR "+
+    "f.id IS NULL OR f.revoked_at IS NOT NULL))::text AS due "+
+    "FROM health_center c JOIN health_provider p ON "+
+    "p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+    "JOIN health_center_capability cap ON cap.root_realm_id=c.root_realm_id "+
+    "AND cap.center_id=c.id AND cap.capability_code='DIAGNOSTICS' "+
+    "LEFT JOIN lab_equipment e ON e.root_realm_id=c.root_realm_id "+
+    "AND e.center_ref=c.id "+
+    "LEFT JOIN cg19_lab_quality_file f ON f.root_realm_id=e.root_realm_id "+
+    "AND f.id=e.evidence_file_ref "+
+    "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' "+
+    "AND c.access_state='ENABLED' AND p.status='VERIFIED' AND "+
+    CG14_CURRENT_LAB_EVIDENCE_SQL+
+    "AND EXISTS(SELECT 1 FROM health_center_erp_grant g "+
+    "JOIN health_center_erp_grant_revision rev ON "+
+    "rev.root_realm_id=g.root_realm_id AND rev.center_id=g.center_id "+
+    "AND rev.capability=g.capability AND rev.id=g.approved_revision_id "+
+    "JOIN cg03_case review ON review.id=rev.original_case_ref "+
+    "AND review.realm_id=rev.root_realm_id AND review.status='OWNER_COMPLETED' "+
+    "AND review.case_kind='HEALTH_CENTER_ERP_GRANT' "+
+    "AND review.health_erp_revision_id=rev.id "+
+    "JOIN cg03_case_decision decision ON decision.id=g.original_decision_ref "+
+    "AND decision.realm_id=review.realm_id AND decision.case_id=review.id "+
+    "AND decision.action='APPROVE' AND decision.actor_id=g.approved_by "+
+    "AND decision.actor_id<>review.proposer_id "+
+    "AND decision.fresh_password_verified_at IS NOT NULL "+
+    "WHERE g.root_realm_id=c.root_realm_id AND g.center_id=c.id "+
+    "AND g.capability='LAB_ERP' AND g.state='APPROVED' "+
+    "AND rev.effective_from<=now() AND "+
+    "(rev.effective_until IS NULL OR rev.effective_until>now())) "+
+    "GROUP BY c.id,c.display_name,c.time_zone "+
+    "ORDER BY c.display_name,c.id LIMIT 51",[actor.realmId]);
+   if(rows.rows.length>50)
+    throw new ConflictException({code:"LAB_EQUIPMENT_OVERSIGHT_LIMIT"});
+   return {enabled:true,centers:rows.rows.map(row=>({
+    centerRef:row.centerRef,name:row.name,total:Number(row.total),
+    ready:Number(row.ready),due:Number(row.due)
+   }))};
+  });
  }
  async eligibleCenters(token:string){
   // No patient/CG15/order dependency. This is visible only to a staff actor
