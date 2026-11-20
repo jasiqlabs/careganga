@@ -347,6 +347,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
      selected.samples.length>0&&selected.samples.every(s=>s.status==="PROCESSING")?
     <ClinicalLabResultUpload key={center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}
+     hasDraft={selected.report?.state==="DRAFT"}
      onVerified={async()=>{await show(selected.order.orderRef);}}/>:
     canRecordResults&&selected.report?.state==="DRAFT"?<p>
      The existing report is not yet scan-verified. A previously started upload
