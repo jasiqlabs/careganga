@@ -817,6 +817,8 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={closePatientBooking}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeCenterAssistedBooking token={token} onExit={closePatientBooking}
+          canViewCharge={roleActions.includes("healthcare.assistance.charges.view")}
+          canAcceptCharge={roleActions.includes("healthcare.assistance.charges.accept")}
           onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthPatientBooking", closePatientBooking);
