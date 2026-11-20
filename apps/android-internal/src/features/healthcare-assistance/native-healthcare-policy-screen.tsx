@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeHealthcarePolicyApproval} from "./native-healthcare-policy-approval";
 
 type Center={centerRef:string;name:string};
 type Doctor={doctorRef:string;name:string};
@@ -14,8 +15,8 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  doctorRef:string|null;serviceKind:Kind;revision:number;
  validFrom:string;validUntil:string;mode:"PERCENT"|"FIXED";
  percentBasisPoints:number|null;fixedMinor:string|null;capMinor:string;
- status:string;current:boolean};
-type Props={token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void};
+ status:string;current:boolean;reviewCaseRef:string|null;reviewStatus:string|null};
+type Props={token:string;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 type Attempt={parts:string;body:Record<string,unknown>;success:string};
 const money=(s:string|null)=>s&&/^\d+$/.test(s)?
  "₹"+(Number(s)/100).toFixed(2):"Not configured";
@@ -61,7 +62,7 @@ async function api<T>(token:string,parts:string,
   {status:result.status});
  return result.json() as Promise<T>;
 }
-export function NativeHealthcarePolicyScreen({token,canManage,
+export function NativeHealthcarePolicyScreen({token,canManage,canReview,
  onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
@@ -253,6 +254,9 @@ export function NativeHealthcarePolicyScreen({token,canManage,
      </>}
     </View>)}
    </View>}
+   <NativeHealthcarePolicyApproval token={token} canReview={canReview}
+    canManage={canManage} policies={policies} onExpired={onExpired}
+    onChanged={async()=>{if(center)await refresh(center);}}/>
   </ScrollView>
  </SafeAreaView>;
 }
