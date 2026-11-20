@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,
+import {ActivityIndicator,Modal,Pressable,StyleSheet,
  Text,View} from "react-native";
 import {WebView} from "react-native-webview";
 import * as Crypto from "expo-crypto";
@@ -163,8 +163,8 @@ export function NativeCenterMerchantCheckout({status,begin,onExpired,
      onMessage={event=>{
       const signal=event.nativeEvent.data;
       if(signal==="CHECK"||signal==="CLOSE"){
-       setHtml("");setNotice("Provider checkout returned. Confirmation
-        remains pending until verified on the server.");
+       setHtml("");setNotice("Provider checkout returned. Confirmation "+
+        "remains pending until verified on the server.");
        void refresh().catch(err);
       }else if(signal==="ERROR"){
        setHtml("");setError("Provider checkout could not open.");
