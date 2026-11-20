@@ -56,6 +56,8 @@ export interface ModuleActionHandlers {
   openApprovals: () => void;
   openPatientQueue: () => void;
   openLabOrders: () => void;
+  openLabTestMaster: () => void;
+  openMyLabPricing: () => void;
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
   openHealthReviews: () => void;
@@ -223,6 +225,33 @@ export function getAuthorizedModules(
     });
   }
 
+  // Exact same actor/CG01 capabilities as Foundation Web H09 and own-center pricing.
+  if (roleActions.includes("diagnostics.catalog.view")) {
+    list.push({
+      key: "healthLabTestMaster",
+      title: "Lab Test Master & Pricing",
+      shortLabel: "Test Master",
+      description: "Manage permitted tests, packages and approved commercial lab prices.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabTestMaster
+    });
+  }
+  if (roleActions.includes("diagnostics.pricing.view")) {
+    list.push({
+      key: "healthMyLabPricing",
+      title: "My Lab Pricing",
+      shortLabel: "Lab Pricing",
+      description: "View or propose commercial pricing at currently assigned laboratories.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#F1F5F9",
+      iconColor: "#475569",
+      onOpen: handlers.openMyLabPricing
+    });
+  }
   if (roleActions.includes("lab.orders.view") || roleActions.includes("lab.orders.create")) {
     list.push({
       key: "healthLabOrders",
@@ -518,6 +547,8 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "accounts",
   "approvals",
   "healthVisitQueue",
+  "healthLabTestMaster",
+  "healthMyLabPricing",
   "healthLabOrders",
   "healthPatientBooking",
   "finance",
