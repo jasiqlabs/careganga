@@ -33,6 +33,9 @@ export const CG14_CURRENT_LAB_EVIDENCE_SQL=
  "AND intent.classification='HEALTH_CENTER_LICENSE' "+
  "WHERE rev.root_realm_id=c.root_realm_id AND rev.provider_id=p.id "+
  "AND rev.center_id=c.id "+
+ "AND rev.revision_no=(SELECT MAX(latest.revision_no) FROM "+
+ "health_center_revision latest WHERE latest.root_realm_id=c.root_realm_id "+
+ "AND latest.center_id=c.id) "+
  "AND c.diagnostic_license_valid_through IS NOT NULL "+
  "AND c.diagnostic_license_valid_through >= (now() AT TIME ZONE c.time_zone)::date "+
  "AND rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
