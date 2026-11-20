@@ -203,8 +203,8 @@ export function PatientBookingAction(p:Props){
   <p style={{margin:"0 0 8px"}}><strong>{p.doctorName}</strong> · {p.centerName}</p>
   <p style={{margin:"0 0 8px"}}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})} ({p.timeZone})</p>
-  <p style={{margin:"0 0 8px"}}>Consultation: {currency(p.feeMinor)} ·
-   <strong> Pay at center</strong>. No online charge or Foundation benefit is claimed.</p>
+  <p style={{margin:"0 0 8px"}}>Approved consultation fee: {currency(p.feeMinor)} ·
+   <strong> Pay at center</strong>. An actual Foundation contribution quote is shown before confirmation. No payment is collected online.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
    {!confirmed&&!uncertain&&!review&&<label style={{display:"grid",gap:4,marginBlock:8}}>
     Reason for consultation (optional, private)
