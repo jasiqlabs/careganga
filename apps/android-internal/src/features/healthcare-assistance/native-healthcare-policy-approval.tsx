@@ -88,7 +88,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
   }finally{setBusy(false);}
  }
  function decide(action:"APPROVE"|"REJECT"){
-  if(!canReview||!detail||detail.status!=="SUBMITTED"||
+  if(!canReview||!detail||!["SUBMITTED","IN_REVIEW"].includes(detail.status)||
    password.length<8||busy||uncertain)return;
   Alert.alert("Confirm independent CG03 review",
    action==="APPROVE"?
@@ -161,7 +161,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
      {" "+new Date(detail.source.validUntil).toLocaleDateString("en-IN")}.</Text>
     <Text style={s.body}>Current source: {detail.status}. You cannot approve
      your own original policy request.</Text>
-    {detail.status==="SUBMITTED"&&<>
+    {["SUBMITTED","IN_REVIEW"].includes(detail.status)&&<>
      <Text style={s.label}>Review remarks (optional)</Text>
      <TextInput value={remarks} maxLength={500} multiline style={s.input}
       editable={!busy&&!uncertain} onChangeText={setRemarks}/>
