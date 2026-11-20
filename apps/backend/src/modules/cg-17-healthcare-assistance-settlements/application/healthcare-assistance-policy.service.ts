@@ -23,7 +23,7 @@ type Revision={
  mode:Mode;percent_basis_points:number|null;fixed_minor:string|null;
  cap_minor:string;eligibility:string;approval_state:string;created_at:Date;
  actor_ref:string;approved_case_ref:string|null;approved_decision_ref:string|null;
- request_digest:string;request_key:string
+ request_digest:string;request_key:string;source_digest:string
 };
 const uuid=(x:unknown)=>{
  if(typeof x!=="string"||!ID.test(x))
