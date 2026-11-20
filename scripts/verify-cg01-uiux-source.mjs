@@ -180,6 +180,23 @@ for(const selector of [
  '[role="tab"][aria-selected="true"]'
 ]) check(css.includes(selector),"CG-01 module statistics/selected-tab source missing: "+selector);
 
+
+const cg01EmptyStateOwners=[
+ "foundation-structure/branch-draft-panel.tsx",
+ "foundation-structure/foundation-structure-panel.tsx",
+ "health-network/provider-onboarding.tsx",
+ "health-network/doctor-onboarding.tsx",
+ "communications/communications-workspace.tsx",
+ "appointments/doctor-schedule-workspace.tsx"
+];
+for(const path of cg01EmptyStateOwners){
+ const content=read("apps/web/src/features/"+path);
+ check(content.includes('className="cg-module-empty" role="status"'),
+  path+" missing shared CG-01 empty-state treatment");
+}
+check(css.includes(".cg-module-empty"),
+ "CG-01 source-matched empty-state style missing from authenticated admin");
+
 console.log("CG-01 UI SOURCE CHECK only: "+web.length+" Web routes ("+
  protectedCount+" protected; "+navCount+" nav + "+healthcareCount+
  " healthcare shell), "+native.length+" native screen inset checks, "+keys.length+

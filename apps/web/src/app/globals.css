@@ -14777,3 +14777,24 @@ button:disabled {
     transition: none;
   }
 }
+
+/* CG-01 source-matched empty-state surface for existing operational lists. */
+.shell > .workspace .cg-module-empty {
+  min-width: 0;
+  margin: .6rem 0;
+  padding: clamp(1.15rem, 2.2vw, 1.75rem);
+  border: 1px solid var(--cg-border);
+  border-radius: .875rem;
+  background: var(--cg-surface);
+  color: var(--cg-muted);
+  font-size: var(--cg-text-sm);
+  line-height: 1.55;
+  text-align: center;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, .03);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 48rem) {
+  .shell > .workspace .cg-module-empty {
+    padding: 1rem .9rem;
+  }
+}

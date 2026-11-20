@@ -478,7 +478,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
         </p>}
       </form>
       {!loading&&list.length===0&&
-        <p>No providers match the current filters. Reset filters or register a provider.</p>}
+        <p className="cg-module-empty" role="status">No providers match the current filters. Reset filters or register a provider.</p>}
       <div className="table-wrap"><table><thead><tr><th>Organization</th><th>Type</th>
         <th>Centers</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {list.map(x=><tr key={x.providerRef}><td>{x.name}</td><td>{x.type}</td>

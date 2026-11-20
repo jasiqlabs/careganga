@@ -614,7 +614,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     “{appliedSearch}”. Searches use the original verified doctor and center records.</p>}
    {loading&&<p role="status" className="cg-module-loading">Checking current doctor associations…</p>}
    {!loading&&result.length===0&&
-    <p role="status">No matching, currently approved doctor-center associations.</p>}
+    <p className="cg-module-empty" role="status">No matching, currently approved doctor-center associations.</p>}
    <div className="cg15-h07-roster-list" role="group" aria-label="Select doctor and healthcare center">
     {result.map(r=><button type="button" key={r.associationRef}
      disabled={working} aria-pressed={selected?.associationRef===r.associationRef}

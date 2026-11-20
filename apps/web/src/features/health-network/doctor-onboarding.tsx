@@ -241,7 +241,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     </form>}
     <section className="form-section">
       <h2>Registered professionals</h2>
-      {!loading&&rows.length===0&&<p>No doctor registrations have been entered yet.</p>}
+      {!loading&&rows.length===0&&<p className="cg-module-empty" role="status">No doctor registrations have been entered yet.</p>}
       <div className="table-wrap"><table><thead><tr>
         <th>Professional</th><th>Specialties</th><th>Verification</th><th>Action</th>
       </tr></thead><tbody>

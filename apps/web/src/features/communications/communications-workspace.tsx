@@ -374,7 +374,7 @@ export function CommunicationsWorkspace({
                 <option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}
             </select></label>
           </div>
-          {loading?<p role="status" className="cg-module-loading">Verifying notices…</p>:!shown.length?<p>No matching notices.</p>:
+          {loading?<p role="status" className="cg-module-loading">Verifying notices…</p>:!shown.length?<p className="cg-module-empty" role="status">No matching notices.</p>:
             <div className="role-table-wrap"><table className="role-table">
               <thead><tr><th>Notice</th><th>Audience</th>
                 <th>Priority</th><th>Status</th><th>Actions</th></tr></thead>

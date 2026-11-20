@@ -128,3 +128,7 @@ Following the parallel nine-screen loading implementation, the CG-03 protected a
 After the separate CG-03 owner change, this independent source parity pass compares real CG-01 Roles/Users compact statistic cards to *existing* CG-02 Foundation KPIs, CG-09 Finance summary KPIs and CG-18 CMS publication counters. Admin-only styles align surface, spacing, selection and typography; the Foundation tablist also uses a visible and accessible selected state. Independently specified H07/H15 healthcare original KPI layouts, finance metrics, CMS counts and all existing click handlers/data are unchanged. Local CG-01 source guard also checks these styles.
 
 **Actual browser/device and client screenshot QA remains NOT_RUN; main merge HOLD.**
+
+## Operational empty-state parity follow-up — 20 November 2026
+
+Review of the real owning React screens found plain paragraph/no-result messages in **CG-02 branch drafts and geographical/departments lists, CG-14 providers and doctors, CG-21 communications/notices, and CG-15 H07 doctor-center association results**. The existing messages are retained verbatim and now receive an Admin-scoped CG-01-style neutral empty-state surface and accessible `role="status"`. No mock counts, invented records, disabled actions, new scenario or backend change was added. The local lexical UI guard checks these owner markers. Confirm on actual browser at 1440/1024/768/390/320 widths and with screen readers; actual rendered comparison remains `NOT_RUN`. Original H07/H15 and client healthcare references remain separate visual authorities.
