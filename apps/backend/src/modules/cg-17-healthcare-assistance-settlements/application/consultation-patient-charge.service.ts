@@ -30,6 +30,7 @@ type Policy={id:string;source_digest:string;mode:"PERCENT"|"FIXED";
  percent_basis_points:number|null;fixed_minor:string|null;cap_minor:string};
 type Charge={id:string;root_realm_id:string;source_kind:string;
  source_ref:string;source_version:number;source_digest:string;
+ source_terms_version:number;source_start_at:Date;source_end_at:Date;
  center_ref:string;patient_ref:string;doctor_ref:string;association_ref:string;
  fee_revision_ref:string;fee_version:number;policy_revision_ref:string|null;
  gross_minor:string;support_minor:string;due_minor:string;currency:string;
@@ -61,8 +62,12 @@ const exposed=(c:Charge,source:Cg15ChargeSource)=>({
  feeVersion:c.fee_version,sourceVersion:c.source_version,
  policyRevisionRef:c.policy_revision_ref,
  state:source.bookingState==="CANCELLED"?"SOURCE_CANCELLED":
-  source.sourceVersion!==c.source_version||source.centerRef!==c.center_ref||
-  source.doctorRef!==c.doctor_ref||source.feeMinor!==c.gross_minor?
+  source.termsVersion!==c.source_terms_version||
+  source.startAt.getTime()!==c.source_start_at.getTime()||
+  source.endAt.getTime()!==c.source_end_at.getTime()||
+  source.centerRef!==c.center_ref||source.doctorRef!==c.doctor_ref||
+  source.associationRef!==c.association_ref||
+  source.feeMinor!==c.gross_minor?
    "SOURCE_CHANGED_REVIEW_REQUIRED":"PATIENT_DUE",
  collectionVerified:false,foundationLiabilityCreated:false,
  acceptedAt:c.accepted_at.toISOString(),
@@ -217,19 +222,23 @@ export class ConsultationPatientChargeService{
       source.sourceVersion!==expected.sourceVersion)
     throw new ConflictException({code:"CONSULTATION_QUOTE_CHANGED"});
    const sourceHash=sha(["CG15_CONSULTATION",source.sourceRef,
-    source.sourceVersion,source.patientRef,source.doctorRef,
+    source.sourceVersion,source.termsVersion,
+    source.startAt.toISOString(),source.endAt.toISOString(),
+    source.patientRef,source.doctorRef,
     source.centerRef,source.associationRef,source.feeRef,
     source.feeVersion,source.feeMinor,source.consentRevision,
     source.bookedAt.toISOString()]);
    const saved=await c.query<Charge>(
     "INSERT INTO patient_charge(root_realm_id,source_ref,source_version,"+
+    "source_terms_version,source_start_at,source_end_at,"+
     "source_digest,center_ref,patient_ref,doctor_ref,association_ref,"+
     "fee_revision_ref,fee_version,policy_revision_ref,"+
     "patient_consent_revision,gross_minor,support_minor,due_minor,"+
     "accepted_by_account,request_key,request_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) "+
     "RETURNING *",
-    [actor.realmId,booking,source.sourceVersion,sourceHash,
+    [actor.realmId,booking,source.sourceVersion,source.termsVersion,
+     source.startAt,source.endAt,sourceHash,
      source.centerRef,source.patientRef,source.doctorRef,source.associationRef,
      source.feeRef,source.feeVersion,policy?.id??null,
      source.consentRevision,calculated.grossMinor,
