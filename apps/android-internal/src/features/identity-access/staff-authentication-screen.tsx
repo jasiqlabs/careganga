@@ -32,6 +32,7 @@ const NativeCenterVisitQueue = lazy(() => import("../appointments/native-center-
 const NativeCenterAssistedBooking = lazy(() => import("../appointments/native-center-assisted-booking").then(m => ({ default: m.NativeCenterAssistedBooking })));
 const NativeClinicalLabScreen = lazy(() => import("../diagnostics/native-clinical-lab-screen").then(m => ({ default: m.NativeClinicalLabScreen })));
 const NativeLabEquipmentScreen = lazy(() => import("../diagnostics/native-lab-equipment-screen").then(m => ({ default: m.NativeLabEquipmentScreen })));
+const NativeHealthcarePolicyScreen = lazy(() => import("../healthcare-assistance/native-healthcare-policy-screen").then(m => ({ default: m.NativeHealthcarePolicyScreen })));
 const NativeLabTestMasterScreen = lazy(() => import("../diagnostics/native-lab-test-master-screen").then(m => ({ default: m.NativeLabTestMasterScreen })));
 const NativeMyLabPricingScreen = lazy(() => import("../diagnostics/native-my-lab-pricing-screen").then(m => ({ default: m.NativeMyLabPricingScreen })));
 const PrivateCaseEvidenceScreen = lazy(() => import("../documents/private-case-evidence-screen").then(m => ({ default: m.PrivateCaseEvidenceScreen })));
@@ -136,6 +137,7 @@ export function StaffAuthenticationScreen() {
   const [patientQueueOpen, setPatientQueueOpen] = useState(false);
   const [labOrdersOpen, setLabOrdersOpen] = useState(false);
   const [labEquipmentOpen, setLabEquipmentOpen] = useState(false);
+  const [healthcarePoliciesOpen, setHealthcarePoliciesOpen] = useState(false);
   const [labTestMasterOpen, setLabTestMasterOpen] = useState(false);
   const [myLabPricingOpen, setMyLabPricingOpen] = useState(false);
   const [patientBookingOpen, setPatientBookingOpen] = useState(false);
@@ -163,6 +165,7 @@ export function StaffAuthenticationScreen() {
   const closePatientQueue = useCallback(() => setPatientQueueOpen(false), []);
   const closeLabOrders = useCallback(() => setLabOrdersOpen(false), []);
   const closeLabEquipment = useCallback(() => setLabEquipmentOpen(false), []);
+  const closeHealthcarePolicies = useCallback(() => setHealthcarePoliciesOpen(false), []);
   const closeLabTestMaster = useCallback(() => setLabTestMasterOpen(false), []);
   const closeMyLabPricing = useCallback(() => setMyLabPricingOpen(false), []);
   const closePatientBooking = useCallback(() => setPatientBookingOpen(false), []);
@@ -200,6 +203,7 @@ export function StaffAuthenticationScreen() {
       patientQueueOpen ||
       labOrdersOpen ||
       labEquipmentOpen ||
+      healthcarePoliciesOpen ||
       labTestMasterOpen ||
       myLabPricingOpen ||
       patientBookingOpen ||
@@ -266,6 +270,7 @@ export function StaffAuthenticationScreen() {
     patientQueueOpen,
     labOrdersOpen,
     labEquipmentOpen,
+    healthcarePoliciesOpen,
     labTestMasterOpen,
     myLabPricingOpen,
     patientBookingOpen,
@@ -581,6 +586,7 @@ export function StaffAuthenticationScreen() {
       openPatientQueue: () => openOnly(setPatientQueueOpen),
       openLabOrders: () => openOnly(setLabOrdersOpen),
       openLabEquipment: () => openOnly(setLabEquipmentOpen),
+      openHealthcarePolicies: () => openOnly(setHealthcarePoliciesOpen),
       openLabTestMaster: () => openOnly(setLabTestMasterOpen),
       openMyLabPricing: () => openOnly(setMyLabPricingOpen),
       openPatientBooking: () => openOnly(setPatientBookingOpen),
@@ -751,6 +757,18 @@ export function StaffAuthenticationScreen() {
           onExit={closeMyLabPricing} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthMyLabPricing", closeMyLabPricing);
+
+  // CG17 US001 policy configuration is Foundation staff only; it creates
+  // neither a patient booking nor paid/settled state.
+  if (healthcarePoliciesOpen && token && actor &&
+      roleActions.includes("healthcare.assistance.policies.view"))
+    return renderInShell(<ScreenErrorBoundary onExit={closeHealthcarePolicies}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+        <NativeHealthcarePolicyScreen token={token}
+          canManage={roleActions.includes("healthcare.assistance.policies.manage")}
+          onExit={closeHealthcarePolicies} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>, "healthAssistancePolicies", closeHealthcarePolicies);
 
   // CG16 H08/H10 US005 instrument/quality workflow, no patient data.
   if (labEquipmentOpen && token && actor &&
