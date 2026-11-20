@@ -18,12 +18,34 @@ assert.equal(new Set(emails.map(t=>t.code)).size,52,"Unique client template code
 assert.ok(emails.every(t=>/^CG-(MEM|VOL|DON|REF|EMP|DES|PROM|SAL|SUP)-[0-9]{3}$/.test(t.code)));
 assert.ok(emails.every(t=>t.subject&&t.body&&t.trigger&&t.attachmentRule));
 const original=read("docs/research/client-reference-20261120/master-email-spec-v2-parsed.txt");
-for(const t of emails){
- assert.ok(original.includes(t.code+" — "+t.title),t.code+" title mismatch");
- assert.ok(original.includes("Subject: "+t.subject),t.code+" subject mismatch");
+const markers=[...original.matchAll(
+ /^(CG-(?:MEM|VOL|DON|REF|EMP|DES|PROM|SAL|SUP)-\d{3})\s+—\s+([^\n]+)/gm)]
+ .map(m=>({code:m[1],title:m[2].trim(),index:m.index}));
+assert.equal(markers.length,52,"Original DOCX extraction has 52 template markers");
+const removePageLabels=x=>x
+ .replace(/^<PARSED TEXT FOR PAGE: \d+ \/ 22>\s*$/gm,"")
+ .replace(/^\s*CareGanga Foundation \| Master Email Template & Workflow Specification \| Developer Handover\s*$/gm,"");
+for(const [i,m] of markers.entries()){
+ const end=markers[i+1]?.index??original.indexOf("\nJ. Master attachment",m.index);
+ assert.ok(end>m.index,"Template source boundary present: "+m.code);
+ const part=removePageLabels(original.slice(m.index,end));
+ const field=k=>part.match(new RegExp("^"+k+":\\s*(.*)$","m"))?.[1]?.trim()??"";
+ const body=(part.match(/^Subject: [^\n]+\n([\s\S]*?)^Attachment \/ developer rule:/m)||
+  [])[1]?.trim()??"";
+ const rule=(part.match(/^Attachment \/ developer rule:\s*([\s\S]*)$/m)||
+  [])[1]?.trim().replace(/\n\s*/g," ")??"";
+ const source=emails[i];
+ assert.equal(source.code,m.code,"Template source order/code: "+m.code);
+ assert.equal(source.title,m.title,"Template title: "+m.code);
+ assert.equal(source.trigger,field("Trigger"),"Client trigger: "+m.code);
+ assert.equal(source.recipient,field("Recipient"),"Client recipient rule: "+m.code);
+ assert.equal(source.subject,field("Subject"),"Client subject: "+m.code);
+ assert.equal(source.body,body,"Client email body: "+m.code);
+ assert.equal(source.attachmentRule,rule,"Client attachment rules: "+m.code);
  const fields=[...new Set(
-  [...(t.subject+"\n"+t.body).matchAll(/\{#([A-Z0-9_]+)#\}/g)].map(x=>x[1]))];
- assert.deepEqual(t.placeholders,fields,t.code+" placeholder mismatch");
+  [...(source.subject+"\n"+source.body).matchAll(/\{#([A-Z0-9_]+)#\}/g)]
+   .map(x=>x[1]))];
+ assert.deepEqual(source.placeholders,fields,"Placeholder list: "+m.code);
 }
 const draftSql=read("apps/backend/db/migrations/1902_cg19_client_email_source_drafts.sql");
 assert.match(draftSql,/CHECK\(enabled=false\)/);
@@ -57,7 +79,23 @@ const supportSql=read("apps/backend/db/migrations/1901_cg19_client_support_ticke
 assert.match(supportSql,/ADD COLUMN ticket_number text NOT NULL/);
 assert.match(supportSql,/UNIQUE\(ticket_number\)/);
 assert.match(supportSql,/ticket_number IS DISTINCT FROM OLD\.ticket_number/);
+const noteSql=read("apps/backend/db/migrations/1904_cg19_support_status_notes.sql");
+assert.match(noteSql,/CREATE TABLE cg19_support_status_note/);
+assert.match(noteSql,/note_encrypted bytea/);
+assert.match(noteSql,/UNIQUE\(case_id,case_revision\)/);
+assert.match(noteSql,/cg19_support_immutable_evidence/);
 const support=read(dir+"application/support.service.ts");
+assert.match(support,/statusNotes:notes\.rows\.map/);
+assert.match(support,/WAITING_FOR_USER","RESOLVED","CLOSED"\]\.includes/);
+assert.match(support,/if\(c\.status==="CLOSED"&&x\.status!=="OPEN"\)/);
+assert.match(support,/if\(c\.status==="RESOLVED"/);
+assert.match(support,/hmac\("status-note"/);
+assert.match(support,/new ConflictException\("Assign an eligible operator/);
+assert.doesNotMatch(support,/sha\(explanation\)/);
+assert.match(staffWeb,/statusNote\.trim\(\)\.length<8/);
+assert.match(staffAndroid,/statusNote\.trim\(\)\.length<8/);
+assert.match(staffWeb,/selected\.statusNotes\.map/);
+assert.match(staffAndroid,/selected\.statusNotes\.map/);
 assert.match(support,/ticketNumber:old\.rows\[0\]\.ticket_number/);
 assert.match(support,/ticketNumber:created\.rows\[0\]\.ticket_number/);
 assert.match(support,/ticketNumber:row\.ticket_number/);
@@ -74,5 +112,5 @@ const sourceCodes=new Set(emails.map(t=>t.code));
 for(const id of ["CG-MEM-007","CG-VOL-005","CG-DON-001","CG-REF-004",
  "CG-EMP-005","CG-SAL-002","CG-SUP-001","CG-SUP-006"])
  assert.ok(sourceCodes.has(id),"Missing high-risk source event "+id);
-console.log("CG19 client SOURCE checks passed: 52 exact references, disabled mail drafts, secure support ticket parity.");
+console.log("CG19 SOURCE checks: 52 exact client texts/triggers/attachment rules; disabled drafts, scoped ticket/status/notes safeguards.");
 console.log("Not a Postgres migration, provider, PDF, Web build or Android device test.");
