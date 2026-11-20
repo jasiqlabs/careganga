@@ -7,7 +7,8 @@ import {
 } from "./diagnostic-api";
 type Props={canManage:boolean;canViewPricing:boolean;
  canManagePricing:boolean;canApprovePricing:boolean};
-type Summary={totalTests:number;activeTests:number;categories:number;packages:number};
+type Summary={totalTests:number;activeTests:number;categories:number;packages:number;
+ publishedOffers:number;averagePublishedPatientPriceMinor:string|null};
 const samples=["BLOOD","URINE","STOOL","SALIVA","SWAB","TISSUE","OTHER","NOT_APPLICABLE"];
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,x=>x.toUpperCase());
 function csvCell(raw:unknown){
@@ -243,11 +244,16 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      setNotice("Current records refreshed. Review what was saved before another change.");})
     .catch(e=>setError(e instanceof Error?e.message:"Records are unavailable."))}>
     Check current records</button></div>}
-  {summary&&<div className="cg-diagnostics-kpis" aria-label="Current lab catalogue totals">
+  {summary&&<div className="cg-diagnostics-kpis" aria-label="Source-backed diagnostic totals">
    {([["Total Tests",summary.totalTests],["Active Tests",summary.activeTests],
-    ["Categories",summary.categories],["Active Packages",summary.packages]] as const)
+    ["Categories",summary.categories],["Available Packages",summary.packages],
+    ["Current Published Offers",summary.publishedOffers]] as const)
     .map(([name,value])=><article key={name} className="cg-diagnostics-kpi">
      <span>{name}</span><strong>{value.toLocaleString("en-IN")}</strong></article>)}
+   <article className="cg-diagnostics-kpi"><span>Average Current Patient Price</span>
+    <strong>{summary.averagePublishedPatientPriceMinor===null?
+     "No current offer":formatRupees(summary.averagePublishedPatientPriceMinor)}</strong>
+   </article>
   </div>}
   <div className="cg-diagnostics-layout">
    <section className="form-section">

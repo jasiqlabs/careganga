@@ -640,8 +640,40 @@ export class DiagnosticsCatalogService{
     "AND (active_to IS NULL OR active_to>now())) AS packages",
     [actor.realmId]);
    const stats=data.rows[0];
+   // A current offer must have a real approved unexpired tariff and CG14
+   // published, verified center with original protected approval/proof.
+   // Test master counts by themselves are never advertised as published.
+   const offers=await tx.query<{published_offers:string;average_minor:string|null}>(
+    "SELECT count(DISTINCT m.id) AS published_offers, "+
+    "ROUND(AVG(price.advertised_patient_price_minor))::text AS average_minor "+
+    "FROM lab_center_test_mapping m "+
+    "JOIN lab_center_price_version price ON price.root_realm_id=m.root_realm_id "+
+    "AND price.center_test_mapping_ref=m.id AND price.status='APPROVED' "+
+    "AND price.effective_from<=now() "+
+    "AND (price.effective_to IS NULL OR price.effective_to>now()) "+
+    "JOIN health_center c ON c.root_realm_id=m.root_realm_id "+
+    "AND c.id=m.center_ref AND c.status='VERIFIED' "+
+    "AND c.access_state='ENABLED' AND c.publication_state='PUBLISHED' "+
+    "JOIN health_provider p ON p.root_realm_id=c.root_realm_id "+
+    "AND p.id=c.provider_id AND p.status='VERIFIED' "+
+    "JOIN health_center_capability cap ON cap.root_realm_id=c.root_realm_id "+
+    "AND cap.center_id=c.id AND cap.capability_code='DIAGNOSTICS' "+
+    "WHERE m.root_realm_id=$1 AND m.publication_state='ACTIVE' "+
+    "AND "+CG14_CURRENT_LAB_EVIDENCE_SQL+
+    "AND ((m.test_or_package_kind='TEST' AND EXISTS("+
+    "SELECT 1 FROM diagnostic_test t JOIN test_category cat "+
+    "ON cat.root_realm_id=t.root_realm_id AND cat.id=t.category_ref "+
+    "WHERE t.root_realm_id=m.root_realm_id AND t.id=m.test_ref "+
+    "AND t.status='ACTIVE' AND cat.status='ACTIVE')) OR "+
+    "(m.test_or_package_kind='PACKAGE' AND EXISTS("+
+    "SELECT 1 FROM diagnostic_package pkg WHERE pkg.root_realm_id=m.root_realm_id "+
+    "AND pkg.id=m.package_ref AND pkg.status='ACTIVE' AND pkg.active_from<=now() "+
+    "AND (pkg.active_to IS NULL OR pkg.active_to>now()))))",
+    [actor.realmId]);
    return {totalTests:Number(stats.total_tests),activeTests:Number(stats.active_tests),
-    categories:Number(stats.categories),packages:Number(stats.packages)};
+    categories:Number(stats.categories),packages:Number(stats.packages),
+    publishedOffers:Number(offers.rows[0]?.published_offers??0),
+    averagePublishedPatientPriceMinor:offers.rows[0]?.average_minor??null};
   });
  }
 }
