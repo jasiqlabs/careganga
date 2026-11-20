@@ -211,6 +211,6 @@ const s=StyleSheet.create({
  button:{minHeight:48,borderWidth:1,borderColor:t.border,
   borderRadius:10,padding:11,justifyContent:"center"},
  buttonText:{color:t.text,fontSize:14,fontWeight:"600"},
- selected:{borderColor:t.info,backgroundColor:t.adminCanvas},
+ selected:{borderColor:t.primary,backgroundColor:t.selectedSurface},
  disabled:{opacity:0.5}
 });
