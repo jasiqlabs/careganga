@@ -39,6 +39,9 @@ function allowed(parts:string[],method:string){
  if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
    parts[5]==="reviewer-file")return method==="GET";
+ if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="release")
+  return method==="GET"||method==="POST";
  if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
     parts[2]==="orders"&&UUID.test(parts[3]))return method==="GET";
  return false;
