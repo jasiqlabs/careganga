@@ -4,6 +4,7 @@ import {notFound} from "next/navigation";
 import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
+import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -16,8 +17,9 @@ export async function editorialMetadata(slug:string):Promise<Metadata>{
   robots:{index:true,follow:true}};
 }
 export async function CmsEditorialRoute({slug}:{slug:string}){
- const [page,navigation,home]=await Promise.all([
-  publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home")]);
+ const [page,navigation,home,labOffers]=await Promise.all([
+  publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
+  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
  if(page.state==="NOT_PUBLISHED")notFound();
  if(page.state!=="PUBLISHED")return <main className="page main">
   <h1>Foundation content temporarily unavailable</h1>
@@ -39,6 +41,22 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
+   <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">
+    <h2>Current approved laboratory tests and prices</h2>
+    <p>These are verified partner laboratory commercial prices, not an appointment,
+     Foundation assistance, a received payment or a medical report. Contact the
+     original verified laboratory to confirm services.</p>
+    <ul>
+     {labOffers.items.slice(0,3).map(offer=><li key={offer.offerRef}>
+      <strong>{offer.name}</strong> — {offer.centerName}: {rupees(offer.patientPriceMinor)}
+      {" "}<Link href={"/health-network/lab-tests?center="+
+       encodeURIComponent(offer.centerSlug)}>View current lab test options</Link>
+     </li>)}
+    </ul>
+    <Link className="cg-site-action" href="/health-network/lab-tests">
+     Browse all currently approved tests and prices</Link>
+   </section>}
  </CmsPublicPage>;
 }
 
