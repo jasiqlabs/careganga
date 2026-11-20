@@ -119,6 +119,21 @@ CREATE TABLE cg16_lab_review_file_access(
  original_cg19_file_ref uuid NOT NULL,
  reviewer_account_ref uuid NOT NULL,
  report_digest char(64) NOT NULL CHECK(report_digest ~ '^[a-f0-9]{64}
+ accessed_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,result_revision_ref,reviewer_account_ref),
+ FOREIGN KEY(root_realm_id,result_revision_ref,original_cg19_file_ref)
+  REFERENCES cg19_lab_result_file(root_realm_id,result_revision_ref,id)
+  ON DELETE RESTRICT,
+ FOREIGN KEY(reviewer_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TRIGGER cg16_lab_review_file_access_frozen
+ BEFORE UPDATE OR DELETE ON cg16_lab_review_file_access
+ FOR EACH ROW EXECUTE FUNCTION cg19_lab_result_event_frozen();
+
+-- No public release rows, no patient download and no clinical e-signature
+-- are created by inserting this review. Actual release remains independent.
 ),
  accessed_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
