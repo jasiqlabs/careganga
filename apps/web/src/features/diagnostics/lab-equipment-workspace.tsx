@@ -12,7 +12,8 @@ type Event={eventRef:string;eventType:string;description:string;
 type Evidence={fileRef:string;documentKind:string;scannedAt:string};
 type History={equipment:Equipment;events:Event[];files:Evidence[]};
 type Attempt={path:string;body:Record<string,unknown>;success:string};
-type Props={canView:boolean;canManage:boolean;canUpload:boolean};
+type Props={canView:boolean;canManage:boolean;canUpload:boolean;
+ fixedCenterRef?:string};
 const UUID=/^[a-f0-9-]{36}$/i;
 async function api<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
  const response=await fetch("/api/lab-equipment/"+path,{
@@ -34,7 +35,7 @@ const status=(e:Equipment)=>e.status==="RETIRED"?"Retired":
  e.effectiveReadiness==="READY"?"Ready (proof verified)":
  e.effectiveReadiness==="CALIBRATION_DUE"?"Calibration due — not ready":
  e.effectiveReadiness==="OUT_OF_SERVICE"?"Out of service":"Not ready";
-export function LabEquipmentWorkspace({canView,canManage,canUpload}:Props){
+export function LabEquipmentWorkspace({canView,canManage,canUpload,fixedCenterRef}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [items,setItems]=useState<Equipment[]>([]),[selected,setSelected]=useState<History|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -59,11 +60,14 @@ export function LabEquipmentWorkspace({canView,canManage,canUpload}:Props){
   let active=true;
   void api<{centers:Center[]}>("centers/eligible").then(v=>{
    if(!active)return;
-   setCenters(v.centers);if(v.centers.length===1)setCenter(v.centers[0].centerRef);
+   const available=fixedCenterRef?v.centers.filter(c=>c.centerRef===fixedCenterRef):
+    v.centers;
+   setCenters(available);
+   if(available.length===1)setCenter(available[0].centerRef);
   }).catch(e=>{if(active)setError(e instanceof Error?e.message:"No current lab access.");})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;++sequence.current};
- },[]);
+ },[fixedCenterRef]);
  useEffect(()=>{
   ++sequence.current;setSelected(null);setItems([]);latest.current=null;
   setUncertain(false);setMessage("");setProof("");
@@ -149,12 +153,12 @@ export function LabEquipmentWorkspace({canView,canManage,canUpload}:Props){
   {loading&&<p role="status">Checking your approved laboratories…</p>}
   {!loading&&centers.length===0&&<p className="cg-module-empty">
    No eligible Laboratory ERP center is currently assigned.</p>}
-  <label className="field">Assigned laboratory
+  {!fixedCenterRef&&<label className="field">Assigned laboratory
    <select value={center} disabled={busy||uncertain} onChange={e=>setCenter(e.target.value)}>
     <option value="">Select a currently assigned lab</option>
     {centers.map(c=><option value={c.centerRef} key={c.centerRef}>{c.name}</option>)}
    </select>
-  </label>
+  </label>}
   {uncertain&&<div className="notice" role="alert">
    The previous operation might already be saved. Do not create another action.
    <div className="toolbar">
