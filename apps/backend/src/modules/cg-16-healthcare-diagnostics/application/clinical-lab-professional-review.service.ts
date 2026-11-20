@@ -129,10 +129,15 @@ export class ClinicalLabProfessionalReviewService{
     "SELECT decision,reviewed_at FROM cg16_lab_result_professional_review "+
     "WHERE root_realm_id=$1 AND result_revision_ref=$2",
     [actor.realmId,report.result_ref]);
+   const release=await c.query(
+    "SELECT 1 FROM cg16_lab_report_release "+
+    "WHERE root_realm_id=$1 AND result_revision_ref=$2",
+    [actor.realmId,report.result_ref]);
    return {resultRef:report.result_ref,resultVersion:report.version_no,
     reportDigest:report.report_digest,hasReview:!!found.rows[0],
     reviewDecision:found.rows[0]?.decision??null,
-    patientRelease:"NOT_ISSUED",notificationDelivery:"NOT_SENT"};
+    patientRelease:release.rowCount?"RELEASED":"NOT_ISSUED",
+    notificationDelivery:"NOT_SENT"};
   });
  }
  /** The only copy available for a professional review is read through the
