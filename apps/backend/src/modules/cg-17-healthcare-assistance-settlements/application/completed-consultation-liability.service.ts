@@ -18,6 +18,23 @@ const id=(raw:unknown)=>{
  return raw;
 };
 const sha=(input:unknown)=>createHash("sha256").update(JSON.stringify(input)).digest("hex");
+const serviceDate=(source:OriginalCompletedConsultation)=>{
+ try{
+  if(!source.timeZone||source.timeZone.length>100)
+   throw Error("Invalid original time zone");
+  const parts=new Intl.DateTimeFormat("en-GB",{
+   timeZone:source.timeZone,calendar:"gregory",
+   year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(source.completedAt);
+  const field=(name:string)=>parts.find(x=>x.type===name)?.value??"";
+  const value=field("year")+"-"+field("month")+"-"+field("day");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))
+   throw Error("Invalid original local date");
+  return value;
+ }catch{
+  throw new ConflictException({code:"CG15_COMPLETION_LOCAL_DATE_UNAVAILABLE"});
+ }
+};
 type Charge={
  id:string;source_ref:string;source_terms_version:number;
  source_start_at:Date;source_end_at:Date;center_ref:string;
@@ -231,10 +248,10 @@ export class CompletedConsultationLiabilityService{
    const stored=await c.query<Liability>(
     "INSERT INTO foundation_liability(root_realm_id,center_ref,source_kind,"+
     "source_ref,completion_event_ref,award_ref,charge_ref,service_completed_at,"+
-    "amount_minor,source_digest,created_by_account) "+
-    "VALUES($1,$2,'CG15_CONSULTATION',$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *",
+    "service_local_date,amount_minor,source_digest,created_by_account) "+
+    "VALUES($1,$2,'CG15_CONSULTATION',$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *",
     [a.realmId,center,booking,source.completionEventRef,award.rows[0].id,
-     charge.id,source.completedAt,charge.support_minor,liabilityDigest,a.accountId]);
+     charge.id,source.completedAt,serviceDate(source),charge.support_minor,liabilityDigest,a.accountId]);
    await c.query(
     "INSERT INTO cg17_financial_effect(root_realm_id,liability_ref,effect_kind,"+
     "source_kind,source_ref,source_revision,idempotency_key,amount_minor,"+
