@@ -3,6 +3,8 @@ import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.mod
 import {PatientsAppointmentsModule} from "../cg-15-patients-appointments/patients-appointments.module";
 import {HealthNetworkModule} from "../cg-14-healthcare-network/health-network.module";
 import {PublicHealthcareAssistanceService} from "./application/public-healthcare-assistance.service";
+import {CenterPatientCollectionService} from "./application/center-patient-collection.service";
+import {CenterPatientCollectionController} from "./http/center-patient-collection.controller";
 import {PublicHealthcareAssistanceController} from "./http/public-healthcare-assistance.controller";
 import {HealthcarePolicyApprovalService} from "./application/healthcare-policy-approval.service";
 import {HealthcarePolicyApprovalController} from "./http/healthcare-policy-approval.controller";
@@ -15,8 +17,8 @@ import {HealthcareAssistancePolicyController}
  from "./http/healthcare-assistance-policy.controller";
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule],
- providers:[PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
- controllers:[PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
+ providers:[CenterPatientCollectionService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
+ controllers:[CenterPatientCollectionController,PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
  exports:[HealthcareAssistancePolicyService,ConsultationPatientChargeService]
 })
 export class HealthcareAssistanceModule{}
