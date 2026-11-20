@@ -1,6 +1,10 @@
 -- CG17 US004: original center-owned patient money, NOT Foundation finance.
 -- Patient can remain DUE independently of actual CG17 approved Foundation
 -- liability. US003 future gateway uses the SAME center_collection owner.
+-- Original CG17 accepted charge has a four-column patient scope key,
+-- but this FK needs an independently declared exact three-column key.
+ALTER TABLE patient_charge ADD CONSTRAINT uq_cg17_charge_center_scope
+ UNIQUE(root_realm_id,id,center_ref);
 CREATE TABLE center_collection(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
