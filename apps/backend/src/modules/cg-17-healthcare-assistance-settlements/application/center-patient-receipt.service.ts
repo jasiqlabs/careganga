@@ -6,7 +6,6 @@ import {PDFDocument} from "pdf-lib";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
-import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {PrivateObjectStorage}
