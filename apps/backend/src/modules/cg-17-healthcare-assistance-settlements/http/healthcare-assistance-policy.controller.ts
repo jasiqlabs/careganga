@@ -21,6 +21,9 @@ export class HealthcareAssistancePolicyController{
  submit(@Headers("authorization")token:string,@Body()body:unknown){
   return this.policies.submit(token,body);
  }
+ @Post("cases/:caseRef/activate")
+ activate(@Headers("authorization")token:string,@Param("caseRef")ref:string,
+  @Body()body:unknown){return this.policies.activate(token,ref,body);}
  @Post(":policyRef/withdraw")
  withdraw(@Headers("authorization")token:string,@Param("policyRef")ref:string,
   @Body()body:unknown){return this.policies.withdraw(token,ref,body);}
