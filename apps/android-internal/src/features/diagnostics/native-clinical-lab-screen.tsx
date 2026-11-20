@@ -116,7 +116,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
  }
  async function create(retry=false){
   if(busy||!canCreate||(!retry&&uncertain)||!center)return;
-  const patient=patients.find(p=>p.patientRef===chosenPatient);
+  const patient=patients.find(p=>p.patientRef+"|"+p.careSourceRef===chosenPatient);
   if(!retry&&(!patient||cart.length===0)){
    setMessage("Choose one authorized patient and at least one approved test.");return;
   }
@@ -196,9 +196,9 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
     <Text style={s.note}>Select one currently consented patient and approved test.</Text>
     {patients.map(p=>button(p.name+" · "+p.virtualPatientId+
       (p.careSourceKind==="CENTER_INTAKE"?" · Center intake":" · Consultation"),
-      ()=>setChosenPatient(p.patientRef),busy))}
+      ()=>setChosenPatient(p.patientRef+"|"+p.careSourceRef),busy))}
     {!!chosenPatient&&<Text style={s.note}>Patient selected: {
-     patients.find(p=>p.patientRef===chosenPatient)?.name??"Selection unavailable"}</Text>}
+     patients.find(p=>p.patientRef+"|"+p.careSourceRef===chosenPatient)?.name??"Selection unavailable"}</Text>}
     {offers.filter(o=>!cart.some(c=>c.mappingRef===o.mappingRef)).map(o=>button(
      o.name+" · "+money(o.currentPatientPriceMinor),
      ()=>setChosenOffer(o.mappingRef),busy))}
