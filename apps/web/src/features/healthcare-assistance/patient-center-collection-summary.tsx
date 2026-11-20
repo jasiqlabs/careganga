@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 type Actual={state:string;patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;
  refundedOrCorrectedMinor?:string;currency?:string;
+ outstandingSince?:string|null;outstandingAgeDays?:number;
  foundationIncomeRecorded?:boolean;foundationLiabilityCreated?:boolean;
  collections?:Array<{collectionRef:string;method:string;state:string;
  receiptPdfState:string}>};
@@ -71,6 +72,9 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
      bookingRef+"/collections/"+c.collectionRef+"/pdf"}>
      Download cash receipt {i+1}</a></p>)}
   </section>}
+  {data?.outstandingSince&&<p>Outstanding since accepted charge on {
+   new Date(data.outstandingSince).toLocaleDateString("en-IN")}.
+   No late charge is assumed.</p>}
   <p>Only verified center collections are counted. An entered UPI/card
    reference does not confirm payment; Foundation assistance is separate.</p>
   <button type="button" disabled={checking}
