@@ -36,6 +36,7 @@ async function request<T>(path:string,method:"GET"|"POST"="GET",body?:Record<str
 export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}){
  const [permission,setPermission]=useState(false),[loading,setLoading]=useState(true);
  const [chargeAccess,setChargeAccess]=useState({view:false,accept:false});
+ const [collectionAccess,setCollectionAccess]=useState({view:false,record:false,refund:false});
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [date,setDate]=useState("");
  const [availability,setAvailability]=useState<Day|null>(null);
@@ -54,6 +55,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
   let active=true;
   setLoading(true);setDoctors([]);setPermission(false);
   setChargeAccess({view:false,accept:false});
+  setCollectionAccess({view:false,record:false,refund:false});
   // A new center must never inherit the previous patient's code or identity.
   setPatientId("");setCode("");setHold(null);setBooking(null);
   setAvailability(null);setUncertain(false);setAttemptKind(null);
@@ -66,6 +68,14 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
      Array.isArray(data.actions)?data.actions:[];
     const can=actions.some((x:unknown)=>x&&typeof x==="object"&&
      "key" in x&&x.key==="health.patients.intake");
+    setCollectionAccess({
+     view:actions.some((x:unknown)=>x&&typeof x==="object"&&
+      "key" in x&&x.key==="healthcare.assistance.collections.view"),
+     record:actions.some((x:unknown)=>x&&typeof x==="object"&&
+      "key" in x&&x.key==="healthcare.assistance.collections.record"),
+     refund:actions.some((x:unknown)=>x&&typeof x==="object"&&
+      "key" in x&&x.key==="healthcare.assistance.collections.refund")
+    });
     setChargeAccess({
      view:actions.some((x:unknown)=>x&&typeof x==="object"&&
       "key" in x&&x.key==="healthcare.assistance.charges.view"),
@@ -232,7 +242,10 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
     Consultation: {money(booking.consultationFeeMinor)}.</p>
    {chargeAccess.view&&<ConsultationContribution
     key={booking.bookingRef} bookingRef={booking.bookingRef}
-    centerRef={centerRef} canAccept={chargeAccess.accept}/>}
+    centerRef={centerRef} canAccept={chargeAccess.accept}
+    canViewCollections={collectionAccess.view}
+    canRecordCollections={collectionAccess.record}
+    canRefundCollections={collectionAccess.refund}/>}
    <button type="button" onClick={clear}>Start another authorized booking</button>
   </div>:<>
    <div style={{display:"grid",gap:10,maxWidth:520}}>
