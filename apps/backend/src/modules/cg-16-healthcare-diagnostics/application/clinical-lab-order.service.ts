@@ -288,7 +288,7 @@ export class ClinicalLabOrderService{
     "FROM lab_order WHERE root_realm_id=$1 AND center_ref=$2 AND id=$3",
     [actor.realmId,centerRef,orderRef]);
    if(!r.rows[0])throw new NotFoundException({code:"LAB_CLINICAL_ORDER_UNAVAILABLE"});
-   const [lines,samples]=await Promise.all([
+   const [lines,samples,report]=await Promise.all([
     c.query("SELECT test_name_snapshot AS name,test_code_snapshot AS code,"+
      "sample_type_snapshot AS \"sampleType\",qty AS quantity,"+
      "accepted_line_total_minor::text AS \"quotedLineTotalMinor\" "+
@@ -296,9 +296,15 @@ export class ClinicalLabOrderService{
      "ORDER BY created_at,id",[actor.realmId,orderRef]),
     c.query("SELECT id AS \"sampleRef\",opaque_sample_label AS label,material_type AS \"sampleType\","+
      "custody_state AS status,revision FROM lab_sample WHERE root_realm_id=$1 "+
-     "AND order_ref=$2 ORDER BY created_at,id",[actor.realmId,orderRef])
+     "AND order_ref=$2 ORDER BY created_at,id",[actor.realmId,orderRef]),
+    c.query("SELECT result_state AS state FROM lab_result_revision "+
+     "WHERE root_realm_id=$1 AND order_ref=$2 ORDER BY version_no DESC LIMIT 1",
+     [actor.realmId,orderRef])
    ]);
-   return {order:r.rows[0],lines:lines.rows,samples:samples.rows};
+   // The restricted order-detail view reports source evidence state only.
+   // Never imply a DRAFT/RESULT_READY file has professional approval or release.
+   return {order:r.rows[0],lines:lines.rows,samples:samples.rows,
+    report:report.rows[0]??null};
   });
  }
 }
