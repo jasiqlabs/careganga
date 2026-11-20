@@ -3,7 +3,8 @@ import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 type Item={collectionRef:string;method:string;amountMinor:string;state:string;
  cashReceiptNumber:string|null;recordedAt:string;receiptPdfState:string};
 type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
- kind:string;refundReceiptNumber:string;recordedAt:string};
+ kind:string;refundReceiptNumber:string|null;providerRefundRef?:string|null;
+ recordedAt:string};
 type Statement={chargeRef:string;currency:"INR";patientDueMinor:string;
  collectedMinor:string;outstandingMinor:string;pendingElectronicMinor:string;
  refundedOrCorrectedMinor:string;state:string;collections:Item[];
@@ -153,7 +154,7 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
     <div><dt>Still due from patient</dt><dd>{money(data.outstandingMinor)}</dd></div>
     <div><dt>Electronic verification pending</dt>
      <dd>{money(data.pendingElectronicMinor)}</dd></div>
-    <div><dt>Cash refunded or corrected</dt>
+    <div><dt>Verified refunds or corrections</dt>
      <dd>{money(data.refundedOrCorrectedMinor)}</dd></div>
    </dl>
    <p>Payment state: <strong>{data.state.replaceAll("_"," ")}</strong>.
@@ -224,7 +225,7 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
      </tr>)}</tbody>
     </table></div>}
    {data.adjustments.length>0&&<p role="status">
-    {data.adjustments.length} original cash adjustment(s) retained for audit.
+    {data.adjustments.length} original cash/provider adjustment(s) retained for audit.
    </p>}
   </section>}
   {canRefund&&data?.collections.some(c=>c.method==="CASH"&&
