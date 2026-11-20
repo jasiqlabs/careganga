@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {ConsultationContribution} from "../healthcare-assistance/consultation-contribution";
 
 type Doctor={doctorRef:string;doctorName:string};
 type Day={status:string;bookingEnabled:boolean;doctorName:string;centerName:string;
@@ -34,6 +35,7 @@ async function request<T>(path:string,method:"GET"|"POST"="GET",body?:Record<str
  */
 export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}){
  const [permission,setPermission]=useState(false),[loading,setLoading]=useState(true);
+ const [chargeAccess,setChargeAccess]=useState({view:false,accept:false});
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [date,setDate]=useState("");
  const [availability,setAvailability]=useState<Day|null>(null);
@@ -51,6 +53,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
  useEffect(()=>{
   let active=true;
   setLoading(true);setDoctors([]);setPermission(false);
+  setChargeAccess({view:false,accept:false});
   // A new center must never inherit the previous patient's code or identity.
   setPatientId("");setCode("");setHold(null);setBooking(null);
   setAvailability(null);setUncertain(false);setAttemptKind(null);
@@ -63,6 +66,11 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
      Array.isArray(data.actions)?data.actions:[];
     const can=actions.some((x:unknown)=>x&&typeof x==="object"&&
      "key" in x&&x.key==="health.patients.intake");
+    setChargeAccess({
+     view:actions.some((x:unknown)=>x&&typeof x==="object"&&
+      "key" in x&&x.key==="healthcare.assistance.charges.view"),
+     accept:actions.some((x:unknown)=>x&&typeof x==="object"&&
+      "key" in x&&x.key==="healthcare.assistance.charges.accept")});
     if(!can){setPermission(false);return;}
     const original=await request<{doctors:Doctor[];complete:boolean}>(root+"/doctors");
     if(!active)return;
@@ -222,6 +230,9 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
    <strong>Confirmed booking: {booking.bookingId}</strong>
    <p>Status: {booking.bookingStatus}. Payment: {booking.collectionStatus}.
     Consultation: {money(booking.consultationFeeMinor)}.</p>
+   {chargeAccess.view&&<ConsultationContribution
+    key={booking.bookingRef} bookingRef={booking.bookingRef}
+    centerRef={centerRef} canAccept={chargeAccess.accept}/>}
    <button type="button" onClick={clear}>Start another authorized booking</button>
   </div>:<>
    <div style={{display:"grid",gap:10,maxWidth:520}}>
@@ -270,7 +281,12 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
     <h3>Time reserved</h3>
     <p>{selected?.startAt?new Date(selected.startAt).toLocaleString("en-IN"):"Selected consultation"}.
      Temporary hold expires {new Date(hold.expiresAt).toLocaleTimeString("en-IN")}.</p>
-    <p>Confirmed consultation fee: {money(hold.consultationFeeMinor)}. Payment due at center.</p>
+    <p>Approved consultation fee: {money(hold.consultationFeeMinor)}.
+     The patient due is calculated from the original contribution policy.
+     No amount has been collected here.</p>
+    {chargeAccess.view&&<ConsultationContribution
+     key={hold.holdRef} holdRef={hold.holdRef} centerRef={centerRef}
+     canAccept={false}/>} 
     <button type="button" disabled={busy||uncertain||Date.parse(hold.expiresAt)<=Date.now()}
      onClick={()=>void confirm()}>Confirm this authorized appointment</button>
     {!uncertain&&Date.parse(hold.expiresAt)<=Date.now()&&
