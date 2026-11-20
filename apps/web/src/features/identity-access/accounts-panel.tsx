@@ -268,6 +268,7 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
   }
 
   function openEdit(row: CG01AccountView) {
+    if (row.roleProtected || (!canAssign && !canStatus)) return;
     ++roleRead.current;
     ++historyRead.current;
     setEditor("edit");
@@ -283,6 +284,7 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
   }
 
   function openAssignRoleModal(row: CG01AccountView) {
+    if (row.roleProtected || !canAssign) return;
     setTarget(row);
     setRoleRef(row.roleRef ?? "");
     setActiveModal("assignRole");
@@ -292,6 +294,7 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
   }
 
   function openDeleteConfirmModal(row: CG01AccountView) {
+    if (row.roleProtected || !canStatus) return;
     setTarget(row);
     setActiveModal("deleteConfirm");
     setNotice(null);
@@ -420,32 +423,35 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
     account: CG01AccountView,
     status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED"
   ) => {
+    if (account.roleProtected || !canStatus) return;
     const action: PendingAction = { kind: "status", target: account, status };
     setPending(action);
     void executeChange(action);
   };
 
   const handleAssignRoleConfirm = () => {
-    if (!target || !roleRef) return;
+    if (!target || !roleRef || !canAssign || target.roleProtected) return;
     const action: PendingAction = { kind: "assign", target };
     setPending(action);
     void executeChange(action, roleRef);
   };
 
   const handleDeleteConfirm = () => {
-    if (!target) return;
+    if (!target || !canStatus || target.roleProtected) return;
     const action: PendingAction = { kind: "status", target, status: "DEACTIVATED" };
     setPending(action);
     void executeChange(action);
   };
 
   const handleEditProfileSave = () => {
-    if (!target) return;
+    if (!target || target.roleProtected) return;
     if (roleRef && roleRef !== target.roleRef) {
+      if (!canAssign) return;
       const action: PendingAction = { kind: "assign", target };
       setPending(action);
       void executeChange(action, roleRef);
     } else if (editStatus && editStatus !== target.status) {
+      if (!canStatus) return;
       const action: PendingAction = { kind: "status", target, status: editStatus };
       setPending(action);
       void executeChange(action);
@@ -638,6 +644,8 @@ export function AccountsPanel({ createOnly = false }: { createOnly?: boolean }) 
         uncertain={uncertain}
         notice={notice}
         onSave={handleEditProfileSave}
+        canAssign={canAssign}
+        canStatus={canStatus}
       />
 
       {/* Section 5: Assign Role Modal */}

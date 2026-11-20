@@ -28,6 +28,8 @@ interface EditProfileDrawerProps {
   uncertain: boolean;
   notice: Notice | null;
   onSave: () => void;
+  canAssign?: boolean;
+  canStatus?: boolean;
 }
 
 export function EditProfileDrawer({
@@ -43,7 +45,9 @@ export function EditProfileDrawer({
   busy,
   uncertain,
   notice,
-  onSave
+  onSave,
+  canAssign = true,
+  canStatus = true
 }: EditProfileDrawerProps) {
   if (!isOpen || !account) return null;
 
@@ -56,7 +60,7 @@ export function EditProfileDrawer({
   };
 
   const handleToggleStatus = () => {
-    if (busy || account.roleProtected) return;
+    if (busy || account.roleProtected || !canStatus) return;
     onStatusChange(isStatusActive ? "SUSPENDED" : "ACTIVE");
   };
 
@@ -157,24 +161,39 @@ export function EditProfileDrawer({
 
             {/* Role Selection / Details */}
             {!account.roleProtected ? (
-              <div className="cg-um-field">
-                <label htmlFor="um-edit-role">ASSIGNED ROLE</label>
-                <select
-                  id="um-edit-role"
-                  value={roleRef}
-                  onChange={e => onRoleRefChange(e.target.value)}
-                  disabled={busy || rolesLoading}
-                  className="cg-um-select"
-                >
-                  <option value="">{rolesLoading ? "Loading roles…" : "Select a role"}</option>
-                  {roles.map(r => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="cg-um-field-hint">Only server-permitted roles in realm are eligible</span>
-              </div>
+              canAssign ? (
+                <div className="cg-um-field">
+                  <label htmlFor="um-edit-role">ASSIGNED ROLE</label>
+                  <select
+                    id="um-edit-role"
+                    value={roleRef}
+                    onChange={e => onRoleRefChange(e.target.value)}
+                    disabled={busy || rolesLoading}
+                    className="cg-um-select"
+                  >
+                    <option value="">{rolesLoading ? "Loading roles…" : "Select a role"}</option>
+                    {roles.map(r => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="cg-um-field-hint">Only server-permitted roles in realm are eligible</span>
+                </div>
+              ) : (
+                <div className="cg-um-field">
+                  <label htmlFor="um-edit-role">ASSIGNED ROLE</label>
+                  <input
+                    id="um-edit-role"
+                    type="text"
+                    value={account.roleName || "Staff"}
+                    disabled
+                    className="is-read-only"
+                    aria-readonly="true"
+                  />
+                  <span className="cg-um-field-hint">Role reassignment requires role assignment permission</span>
+                </div>
+              )
             ) : (
               <div className="cg-um-drawer-banner amber">
                 <ShieldIcon size={15} />
@@ -184,25 +203,38 @@ export function EditProfileDrawer({
 
             {/* Login Account Status Toggle Switch */}
             {!account.roleProtected && (
-              <div className="cg-um-field-toggle-card">
-                <div className="cg-um-toggle-label-wrap">
-                  <strong className="cg-um-toggle-title">Login Account Status</strong>
-                  <span className="cg-um-toggle-desc">
-                    Enable or temporarily suspend platform access for this account
-                  </span>
-                </div>
+              canStatus ? (
+                <div className="cg-um-field-toggle-card">
+                  <div className="cg-um-toggle-label-wrap">
+                    <strong className="cg-um-toggle-title">Login Account Status</strong>
+                    <span className="cg-um-toggle-desc">
+                      Enable or temporarily suspend platform access for this account
+                    </span>
+                  </div>
 
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isStatusActive}
-                  onClick={handleToggleStatus}
-                  disabled={busy}
-                  className={`cg-um-toggle-switch ${isStatusActive ? "active" : ""}`}
-                >
-                  <span className="cg-um-toggle-knob" />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isStatusActive}
+                    onClick={handleToggleStatus}
+                    disabled={busy}
+                    className={`cg-um-toggle-switch ${isStatusActive ? "active" : ""}`}
+                  >
+                    <span className="cg-um-toggle-knob" />
+                  </button>
+                </div>
+              ) : (
+                <div className="cg-um-field">
+                  <label>Login Account Status</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
+                    <span className={`cg-um-status-pill ${account.status.toLowerCase()}`}>
+                      <span className="cg-um-status-dot" aria-hidden="true" />
+                      <span>{accountStatusLabel(account.status)}</span>
+                    </span>
+                    <span className="cg-um-field-hint">Status modification requires status management permission</span>
+                  </div>
+                </div>
+              )
             )}
 
             {/* Notice / Uncertain Alert */}
@@ -232,7 +264,7 @@ export function EditProfileDrawer({
             <button
               type="submit"
               className="cg-um-btn cg-um-btn-primary"
-              disabled={busy || uncertain}
+              disabled={busy || uncertain || (!canAssign && !canStatus)}
             >
               <UserCheckIcon size={16} />
               <span>{busy ? "Saving…" : "Save Profile Changes"}</span>
