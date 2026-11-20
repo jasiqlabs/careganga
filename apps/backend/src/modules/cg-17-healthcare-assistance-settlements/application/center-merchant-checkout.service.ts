@@ -141,17 +141,28 @@ export class CenterMerchantCheckoutService{
     "WHERE root_realm_id=$1 AND charge_ref=$2 "+
     "ORDER BY created_at DESC,id DESC LIMIT 1",[a.realmId,charge.id]);
    const recorded=pending.rows[0];
-   if(!recorded)return {onlineAvailable:false,
-    reason:"NO_ORDER_YET",patientPayableMinor:charge.due_minor,
-    paidMinor:(await this.remaining(c,a.realmId,charge.id)).toString()};
+   if(!recorded){
+    let available=false;
+    try{await this.merchants.verified(c,a.realmId,charge.center_ref);
+     available=true;}catch{}
+    const paid=await this.remaining(c,a.realmId,charge.id);
+    return {onlineAvailable:available&&paid<BigInt(charge.due_minor),
+     reason:available?"VERIFIED_CENTER_MERCHANT":"NO_VERIFIED_CENTER_MERCHANT",
+     patientPayableMinor:charge.due_minor,
+     paidMinor:paid.toString(),status:"NOT_STARTED" as const};
+   }
    let keyId="";
    try{
     const proof=await this.merchants.verified(c,a.realmId,charge.center_ref);
     if(proof.binding.id===recorded.binding_ref)keyId=proof.credentials.keyId;
    }catch{}
+   const paid=await this.remaining(c,a.realmId,charge.id);
    return {...display(recorded,keyId),
+    onlineAvailable:!!keyId&&paid<BigInt(charge.due_minor),
     checkoutAvailable:recorded.status==="PENDING"&&!!keyId,
-    paidMinor:(await this.remaining(c,a.realmId,charge.id)).toString()};
+    paidMinor:paid.toString(),patientPayableMinor:charge.due_minor,
+    refundedOrPartial:recorded.status==="CONFIRMED"&&
+      paid<BigInt(recorded.amount_minor)};
   });
  }
  async start(token:string,rawBooking:string,raw:unknown,rawCenter?:string){
