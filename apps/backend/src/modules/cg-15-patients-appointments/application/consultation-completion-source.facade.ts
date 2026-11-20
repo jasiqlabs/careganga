@@ -10,7 +10,7 @@ import type {VerifiedFoundationActor}
 export type OriginalCompletedConsultation=Readonly<{
  appointmentRef:string;centerRef:string;patientRef:string;
  doctorRef:string;associationRef:string;
- termsRevision:number;startAt:Date;endAt:Date;
+ termsRevision:number;startAt:Date;endAt:Date;timeZone:string;
  completionEventRef:string;completedAt:Date;
  completionActorRef:string;completionDigest:string;
  consentRevision:number
@@ -18,7 +18,7 @@ export type OriginalCompletedConsultation=Readonly<{
 type CompletedRow={
  appointment_ref:string;center_ref:string;patient_ref:string;
  doctor_ref:string;association_ref:string;terms_revision:number;
- start_at:Date;end_at:Date;completion_event_ref:string;
+ start_at:Date;end_at:Date;time_zone:string;completion_event_ref:string;
  completed_at:Date;completion_actor_ref:string;
  completion_digest:string;consent_revision:number
 };
@@ -66,7 +66,7 @@ export class ConsultationCompletionSourceFacade{
    "SELECT a.id AS appointment_ref,a.center_id AS center_ref,"+
    "a.patient_id AS patient_ref,a.doctor_id AS doctor_ref,"+
    "a.association_id AS association_ref,a.terms_revision,"+
-   "a.start_at,a.end_at,e.id AS completion_event_ref,"+
+   "a.start_at,a.end_at,a.time_zone,e.id AS completion_event_ref,"+
    "e.created_at AS completed_at,e.actor_account_id AS completion_actor_ref,"+
    "e.request_digest AS completion_digest, "+
    "(SELECT consent.revision_no FROM cg15_patient_consent consent "+
@@ -99,7 +99,7 @@ export class ConsultationCompletionSourceFacade{
   return {appointmentRef:x.appointment_ref,centerRef:x.center_ref,
    patientRef:x.patient_ref,doctorRef:x.doctor_ref,
    associationRef:x.association_ref,termsRevision:x.terms_revision,
-   startAt:x.start_at,endAt:x.end_at,
+   startAt:x.start_at,endAt:x.end_at,timeZone:x.time_zone,
    completionEventRef:x.completion_event_ref,completedAt:x.completed_at,
    completionActorRef:x.completion_actor_ref,
    completionDigest:x.completion_digest,
