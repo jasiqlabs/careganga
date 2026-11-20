@@ -4,13 +4,12 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t}
  from "../../../../../packages/design-tokens/src/index";
-import {identityRequest} from "../identity-access/http-client";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
  grossMinor?:string;foundationSupportMinor?:string;
  patientPayableMinor?:string;feeVersion?:number;
  policyRevisionRef?:string|null;currency?:string};
 type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
- staffToken?:string;canAccept?:boolean;onExpired?:()=>void};
+ canAccept?:boolean;onExpired?:()=>void};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const key="cg_public_patient_only_session";
 const url=process.env.EXPO_PUBLIC_API_URL;
@@ -24,24 +23,15 @@ const valid=(x:Split)=>["grossMinor","foundationSupportMinor",
   Number(x.patientPayableMinor);
 async function remote<T>(path:string,method:"GET"|"POST",
  token:string,body?:object):Promise<T>{
- let res:Response;
- if(path.startsWith("staff/")){
-  res=await identityRequest(
-   "/api/v1/healthcare-assistance/consultation-charges/"+path,{
-    method,cache:"no-store",headers:{Authorization:"Bearer "+token,
-     ...(body?{"Content-Type":"application/json"}:{})},
-    body:body?JSON.stringify(body):undefined});
- }else{
-  if(!url||!/^https?:\/\//.test(url)||
-     (process.env.NODE_ENV==="production"&&!url.startsWith("https://")))
+ if(!url||!/^https?:\\/\\//.test(url)||
+    (process.env.NODE_ENV==="production"&&!url.startsWith("https://")))
    throw Error("Private patient financial service unavailable.");
-  res=await fetch(new URL(
+ const res=await fetch(new URL(
    "/api/v1/healthcare-assistance/consultation-charges/"+path,url),{
     method,cache:"no-store",signal:AbortSignal.timeout(14000),
     headers:{Authorization:"Bearer "+token,
      ...(body?{"Content-Type":"application/json"}:{})},
     body:body?JSON.stringify(body):undefined});
- }
  if(!res.ok)throw Object.assign(new Error(
   res.status===401?"Sign in again to see your consultation.":
   res.status===403?"You do not have access to this appointment contribution.":
@@ -51,24 +41,20 @@ async function remote<T>(path:string,method:"GET"|"POST",
   {status:res.status});
  return res.json() as Promise<T>;
 }
-/** Shared Public Android and Internal Android presentation, one protected
- * backend source. Private doctor/patient details never persist in device store.
- */
-export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
- staffToken,canAccept=true,onExpired}:Props){
+/** Public patient Android consultation charge against the original CG15 source. */
+export function NativeConsultationContribution({holdRef,bookingRef,
+ canAccept=true,onExpired}:Props){
  const [value,setValue]=useState<Split|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
  const originalKey=useRef<string|null>(null),epoch=useRef(0);
  const route=bookingRef&&ID.test(bookingRef)?
-  (centerRef?"staff/centers/"+centerRef+"/appointments/"+bookingRef:
-   "me/appointments/"+bookingRef):
+  "me/appointments/"+bookingRef:
   holdRef&&ID.test(holdRef)?
-   (centerRef?"staff/centers/"+centerRef+"/holds/"+holdRef+"/quote":
-    "me/holds/"+holdRef+"/quote"):"";
- const activeRoute=route&&(!centerRef||ID.test(centerRef));
+   "me/holds/"+holdRef+"/quote":"";
+ const activeRoute=!!route;
  const access=async()=>{
-  const t=staffToken??await SecureStore.getItemAsync(key);
+  const t=await SecureStore.getItemAsync(key);
   if(!t)throw Object.assign(new Error("Sign in to view this private consultation."),
    {status:401});
   return t;
@@ -84,7 +70,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
   if(result.state!=="CANCELLED_NOT_COLLECTIBLE"&&!valid(result))
    throw Error("Original contribution split could not be verified.");
   return result;
- },[activeRoute,route,staffToken]);
+ },[activeRoute,route]);
  useEffect(()=>{
   let active=true;const serial=++epoch.current;
   setLoading(true);setValue(null);setMessage("");setUncertain(false);
