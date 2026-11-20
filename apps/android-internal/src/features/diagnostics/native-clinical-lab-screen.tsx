@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -54,6 +54,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[offers,setOffers]=useState<Offer[]>([]);
  const [orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Detail|null>(null);
+ const [detailCenter,setDetailCenter]=useState("");
  const [chosenPatient,setChosenPatient]=useState(""),[chosenOffer,setChosenOffer]=useState("");
  const [cart,setCart]=useState<Choice[]>([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -95,7 +96,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
  },[token,handleError]);
  useEffect(()=>{
   const stamp=++epoch.current;
-  setSelected(null);setPatients([]);setOffers([]);setOrders([]);
+  setSelected(null);setDetailCenter("");setPatients([]);setOffers([]);setOrders([]);
   setChosenPatient("");setChosenOffer("");setCart([]);
   submission.current=null;custody.current=null;setUncertain(false);
   setCustodyUncertain(false);
@@ -110,8 +111,8 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
    const found=await api<Detail>(token,
     "centers/"+requestedCenter+"/orders/"+id);
    if(stamp!==epoch.current)return;
-   setSelected(found);
-  }catch(e){if(stamp===epoch.current){setSelected(null);handleError(e);}}
+   setDetailCenter(requestedCenter);setSelected(found);
+  }catch(e){if(stamp===epoch.current){setSelected(null);setDetailCenter("");handleError(e);}}
  }
  async function create(retry=false){
   if(busy||!canCreate||(!retry&&uncertain)||!center)return;
@@ -205,8 +206,15 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
      setCart(v=>[...v,{mappingRef:chosenOffer,quantity:1}]);setChosenOffer("");
     },busy||cart.length>=10)}
     {cart.map(c=><View key={c.mappingRef} style={s.line}>
-     <Text style={s.note}>{offers.find(o=>o.mappingRef===c.mappingRef)?.name??"Offer unavailable"}</Text>
-     {button("Remove",()=>setCart(v=>v.filter(a=>a.mappingRef!==c.mappingRef)),busy)}
+     <Text style={s.note}>{offers.find(o=>o.mappingRef===c.mappingRef)?.name??"Offer unavailable"}
+      {" · Quantity "+c.quantity}</Text>
+     <View style={s.row}>
+      {button("−",()=>setCart(v=>v.map(a=>a.mappingRef===c.mappingRef?
+       {...a,quantity:Math.max(1,a.quantity-1)}:a)),busy||c.quantity<=1)}
+      {button("+",()=>setCart(v=>v.map(a=>a.mappingRef===c.mappingRef?
+       {...a,quantity:Math.min(20,a.quantity+1)}:a)),busy||c.quantity>=20)}
+      {button("Remove",()=>setCart(v=>v.filter(a=>a.mappingRef!==c.mappingRef)),busy)}
+     </View>
     </View>)}
     {button("Create clinical lab order",()=>void create(),
      busy||!chosenPatient||cart.length===0)}
@@ -217,7 +225,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
     {orders.map(o=>button(o.displayOrderRef+" · "+money(o.quotedTotalMinor)+
      " · "+o.status.replaceAll("_"," "),()=>void detail(o.orderRef),busy))}
    </View>}
-   {!!selected&&canView&&<View style={s.panel}>
+   {!!selected&&detailCenter===center&&canView&&<View style={s.panel}>
     {button("Close order details",()=>setSelected(null),busy||custodyUncertain)}
     <Text style={s.heading}>{selected.order.displayOrderRef}</Text>
     <Text style={s.note}>Accepted test total: {money(selected.order.quotedTotalMinor)}.
@@ -232,7 +240,11 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       actionFor[sample.status].label,()=>void custodyAction(sample,actionFor[sample.status].id),
       busy||custodyUncertain)}
      {canManageSamples&&["COLLECTED","RECEIVED","PROCESSING"].includes(sample.status)&&
-      button("Reject specimen",()=>void custodyAction(sample,"reject"),busy||custodyUncertain)}
+      button("Reject specimen",()=>Alert.alert("Reject original specimen?",
+       "This preserves the original history and requires a new collection.",[
+        {text:"Cancel",style:"cancel"},
+        {text:"Reject specimen",style:"destructive",onPress:()=>void custodyAction(sample,"reject")}
+       ]),busy||custodyUncertain)}
     </View>)}
     {custodyUncertain&&<View style={s.line}>
      <Text style={s.message}>The custody action might already be recorded.</Text>
@@ -266,6 +278,7 @@ const s=StyleSheet.create({
  panel:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1,
   borderRadius:14,padding:13,gap:10},
  line:{borderColor:t.border,borderWidth:1,borderRadius:10,padding:10,gap:8},
+ row:{flexDirection:"row",flexWrap:"wrap",gap:8},
  button:{padding:12,minHeight:48,borderRadius:10,borderWidth:1,
   borderColor:t.border,justifyContent:"center"},
  buttonText:{color:t.text,fontSize:14,fontWeight:"600"},
