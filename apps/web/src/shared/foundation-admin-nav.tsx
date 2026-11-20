@@ -70,6 +70,7 @@ export type FoundationAdminNavProps = {
   canViewFinanceReports?: boolean;
   canViewCms?: boolean;
   canViewHealthNetwork?: boolean;
+  labERPEnabled?: boolean;
   canViewCenterPortal?: boolean;
   canViewDoctors?: boolean;
   canViewSchedules?: boolean;
@@ -329,6 +330,7 @@ export function FoundationAdminNav({
   canViewFinanceReports = false,
   canViewCms = false,
   canViewHealthNetwork = false,
+  labERPEnabled = false,
   canViewCenterPortal = false,
   canViewDoctors = false,
   canViewSchedules = false,
@@ -682,7 +684,7 @@ export function FoundationAdminNav({
   const diagnosticsAccess = allowed("diagnostics.catalog.view", false);
   const labPricingAccess = allowed("diagnostics.pricing.view", false);
   const labOrderAccess = allowed("lab.orders.view", false)||allowed("lab.orders.create", false);
-  const equipmentAccess = allowed("lab.equipment.view", false);
+  const equipmentAccess = labERPEnabled && allowed("lab.equipment.view", false);
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
