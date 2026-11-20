@@ -42,7 +42,7 @@ assert.match(controller,/@Get\("client-email-templates"\)/);
 assert.match(controller,/@Post\("client-email-templates\/import-drafts"\)/);
 assert.match(proxy,/parts\[0\]==="client-email-templates"/);
 const ui=read("apps/web/src/features/communications/communications-workspace.tsx");
-assert.match(ui,/disabled drafts only/i);
+assert.match(ui,/disabled (?:source )?drafts only/i);
 assert.match(ui,/Email reference templates/);
 const supportSql=read("apps/backend/db/migrations/1445_cg19_client_support_ticket_number.sql");
 assert.match(supportSql,/ADD COLUMN ticket_number text NOT NULL/);
