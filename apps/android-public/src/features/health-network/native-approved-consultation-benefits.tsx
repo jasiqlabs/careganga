@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,Pressable,StyleSheet,Text,View} from "react-n
 import {careGangaTheme as theme}
  from "../../../../../packages/design-tokens/src/index";
 const url=process.env.EXPO_PUBLIC_API_URL;
-const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{12}$/i;
+const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Benefit={centerSlug:string;centerName:string;doctorRef:string|null;
  doctorName:string|null;feeMinor:string|null;currency:"INR";
  mode:"PERCENT"|"FIXED";percentBasisPoints:number|null;
@@ -23,7 +23,7 @@ function valid(v:unknown):v is Benefit{
   /^[a-z0-9][a-z0-9-]{2,79}$/.test(x.centerSlug)&&
   typeof x.centerName==="string"&&x.centerName.length<=160&&
   (x.doctorRef===null||typeof x.doctorRef==="string"&&
-   /^[a-f0-9-]{36}$/i.test(x.doctorRef))&&
+   ID.test(x.doctorRef))&&
   (x.doctorName===null||typeof x.doctorName==="string"&&x.doctorName.length<=150)&&
   (x.feeMinor===null||amount(x.feeMinor))&&x.currency==="INR"&&
   (x.mode==="PERCENT"||x.mode==="FIXED")&&
