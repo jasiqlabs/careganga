@@ -1,11 +1,12 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {VerifiedProviderPayoutPanel} from "./verified-provider-payout-panel";
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  postedLiabilities?:number;approvedFoundationMinor:string;actualPaidMinor:string;
  outstandingMinor:string;currency?:string;independentlyApproved?:boolean;
  paidVerified:boolean;patientCollectionNotFoundationIncome:true};
-type Props={canPropose:boolean;canReview:boolean};
+type Props={canPropose:boolean;canReview:boolean;canPay:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
 const money=(v:string)=>new Intl.NumberFormat("en-IN",{
@@ -33,7 +34,7 @@ function verified(x:Summary){
 /** Uses CG14/CG15/CG17/CG09 originals. Nothing here executes a bank transfer.
  * Approval is explicitly independent from proposal and later actual payout.
  */
-export function MonthlyProviderSettlementWorkspace({canPropose,canReview}:Props){
+export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[month,setMonth]=useState("");
  const [data,setData]=useState<Summary|null>(null);
@@ -163,6 +164,9 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview}:Props)
     <button type="button" className="primary" disabled={busy||uncertain}
      onClick={()=>void execute("review")}>
      Independently approve original claim</button>}
+   {canPay&&["APPROVED","PARTIALLY_SETTLED"].includes(data.state)&&
+    <VerifiedProviderPayoutPanel key={data.settlementRef}
+     centerRef={center} month={month} onApplied={refresh}/>}
    {uncertain&&<p role="alert">
     The last outcome may have succeeded. Refresh the original claim before retrying
     rather than creating a different request.</p>}
