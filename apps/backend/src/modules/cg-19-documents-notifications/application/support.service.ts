@@ -344,7 +344,7 @@ export class SupportService{
       "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND id=$2",[a.realmId,ref]);
     if(!found.rowCount)throw new NotFoundException("Case unavailable");
     const row=found.rows[0],request=open(row.request_encrypted);
-    const [replies,history,reading]=await Promise.all([
+    const [replies,history,reading,notes]=await Promise.all([
       this.db.query<{id:string;author_account_id:string;body_encrypted:Buffer;
         created_at:Date}>(
         "SELECT id,author_account_id,body_encrypted,created_at "+
@@ -357,7 +357,12 @@ export class SupportService{
       this.db.query<{last_seen_inbound_at:Date|null;archived_at:Date|null}>(
         "SELECT last_seen_inbound_at,archived_at FROM cg19_support_read_state "+
         "WHERE realm_id=$1 AND case_id=$2 AND operator_account_id=$3",
-        [a.realmId,ref,a.accountId])
+        [a.realmId,ref,a.accountId]),
+      this.db.query<{case_revision:number;new_status:string;note_encrypted:Buffer;
+        created_at:Date}>(
+        "SELECT case_revision,new_status,note_encrypted,created_at "+
+        "FROM cg19_support_status_note WHERE realm_id=$1 AND case_id=$2 "+
+        "ORDER BY case_revision DESC LIMIT 100",[a.realmId,ref])
     ]);
     const seen=reading.rows[0];
     return {caseRef:row.id,ticketNumber:row.ticket_number,
@@ -370,7 +375,12 @@ export class SupportService{
         replyRef:reply.id,authorAccountRef:reply.author_account_id,
         body:(open(reply.body_encrypted)).message,
         createdAt:reply.created_at.toISOString()
-      })),history:history.rows.map(h=>({kind:h.kind,at:h.occurred_at.toISOString()}))};
+      })),history:history.rows.map(h=>({kind:h.kind,at:h.occurred_at.toISOString()})),
+      statusNotes:notes.rows.map(note=>({
+        revision:note.case_revision,status:note.new_status,
+        summary:open(note.note_encrypted).message,
+        recordedAt:note.created_at.toISOString()
+      }))};
   }
   private async mutate(bearer:string,rawRef:unknown,capability:string,
     payload:unknown,action:"ASSIGN"|"REPLY"|"STATUS"|"READ"|"ARCHIVE"){
@@ -378,7 +388,7 @@ export class SupportService{
     const x=input(payload,action==="ASSIGN"?
       ["expectedRevision","assignedAccountRef"]:
       action==="REPLY"?["expectedRevision","requestKey","body"]:
-      action==="STATUS"?["expectedRevision","status"]:
+      action==="STATUS"?["expectedRevision","status","note"]:
       action==="READ"?[]:["archived"]);
     const expected=action==="READ"||action==="ARCHIVE"?null:revision(x.expectedRevision);
     const client=await this.db.connect();let begun=false;
@@ -429,6 +439,8 @@ export class SupportService{
         throw new ConflictException("This support case changed. Refresh before retrying.");
       }
       if(action==="ASSIGN"){
+        if(["CLOSED","RESOLVED"].includes(c.status))
+          throw new ConflictException("Reopen or resume this case before reassigning it.");
         const target=x.assignedAccountRef===null?null:uuid(x.assignedAccountRef);
         if(target){
           // Selection is a distinct CG-01 permission. Backend enforcement does
@@ -476,11 +488,29 @@ export class SupportService{
           "ESCALATED","RESOLVED","CLOSED"].includes(String(x.status)))
           throw new BadRequestException("Choose a supported case status");
         if(c.status===x.status)throw new ConflictException("Case is already in this state");
+        if(c.status==="CLOSED"&&x.status!=="OPEN")
+          throw new ConflictException("Reopen the closed case before changing its status.");
+        if(c.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(String(x.status)))
+          throw new ConflictException("Reopen a resolved case before continuing work.");
+        if(x.status==="ASSIGNED"&&!c.assigned_account_id)
+          throw new ConflictException("Assign an eligible operator before using Assigned status.");
+        const mustExplain=["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(String(x.status));
+        const explanation=x.note===undefined||x.note===null?null:clean(x.note,8,1200);
+        if(mustExplain&&!explanation)
+          throw new BadRequestException("Enter a case update or resolution summary (8–1200 characters).");
         await client.query(
           "UPDATE cg19_support_case SET status=$3,closed_at="+
           "CASE WHEN $3='CLOSED' THEN now() ELSE NULL END,"+
           "revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",
           [a.realmId,id,x.status]);
+        if(explanation){
+          await client.query(
+            "INSERT INTO cg19_support_status_note("+
+            "realm_id,case_id,actor_account_id,case_revision,new_status,"+
+            "note_digest,note_encrypted) VALUES($1,$2,$3,$4,$5,$6,$7)",
+            [a.realmId,id,a.accountId,c.revision+1,String(x.status),
+              sha(explanation),seal({name:"",contact:"",subject:"",message:explanation})]);
+        }
         await this.event(client,a.realmId,id,a.accountId,
           x.status==="CLOSED"?"CLOSED":
             c.status==="CLOSED"?"REOPENED":"STATUS_UPDATED",
