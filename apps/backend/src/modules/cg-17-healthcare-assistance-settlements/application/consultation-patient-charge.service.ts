@@ -34,7 +34,7 @@ type Charge={id:string;root_realm_id:string;source_kind:string;
  center_ref:string;patient_ref:string;doctor_ref:string;association_ref:string;
  fee_revision_ref:string;fee_version:number;policy_revision_ref:string|null;
  gross_minor:string;support_minor:string;due_minor:string;currency:string;
- collection_state:string;accepted_at:Date;request_digest:string;
+ charge_state:string;accepted_at:Date;request_digest:string;
  accepted_by_account:string;patient_consent_revision:number};
 type Expected={requestKey:string;grossMinor:string;supportMinor:string;
  dueMinor:string;feeVersion:number;sourceVersion:number;policyRevisionRef:string|null};
@@ -62,6 +62,7 @@ const exposed=(c:Charge,source:Cg15ChargeSource)=>({
  feeVersion:c.fee_version,sourceVersion:c.source_version,
  policyRevisionRef:c.policy_revision_ref,
  state:source.bookingState==="CANCELLED"?"SOURCE_CANCELLED":
+  source.bookingState==="NO_SHOW"?"SERVICE_NO_SHOW_REVIEW_REQUIRED":
   source.termsVersion!==c.source_terms_version||
   source.startAt.getTime()!==c.source_start_at.getTime()||
   source.endAt.getTime()!==c.source_end_at.getTime()||
