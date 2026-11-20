@@ -5,6 +5,7 @@ import {ClinicalLabCustodyService} from "../application/clinical-lab-custody.ser
 import {ClinicalLabResultEvidenceService}
  from "../application/clinical-lab-result-evidence.service";
 import {ClinicalLabProfessionalReviewService} from "../application/clinical-lab-professional-review.service";
+import {ClinicalLabPatientReleaseService} from "../application/clinical-lab-patient-release.service";
 
 /** Internal authenticated CG16 clinical operations, NEVER public checkout.
  * Backend CG01 + current center grant + real CG15 care consent are mandatory.
@@ -15,7 +16,8 @@ export class ClinicalLabOrderController{
   private readonly options:ClinicalLabOptionsService,
   private readonly custody:ClinicalLabCustodyService,
   private readonly reports:ClinicalLabResultEvidenceService,
-  private readonly professional:ClinicalLabProfessionalReviewService){}
+  private readonly professional:ClinicalLabProfessionalReviewService,
+  private readonly patientRelease:ClinicalLabPatientReleaseService){}
  @Get("centers/eligible")
  eligible(@Headers("authorization")token:string){
   return this.options.centers(token);
@@ -87,6 +89,19 @@ export class ClinicalLabOrderController{
  review(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("orderRef")order:string,
   @Body()body:unknown){return this.professional.decide(token,center,order,body);}
+ @Get("centers/:centerRef/orders/:orderRef/release")
+ @Header("Cache-Control","private, no-store")
+ releaseState(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string){
+  return this.patientRelease.state(token,center,order);
+ }
+ @Post("centers/:centerRef/orders/:orderRef/release")
+ @Header("Cache-Control","private, no-store")
+ releaseReport(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string,
+  @Body()body:unknown){
+  return this.patientRelease.release(token,center,order,body);
+ }
  @Get("centers/:centerRef/orders/:orderRef")
  detail(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("orderRef")order:string){
