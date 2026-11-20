@@ -14,7 +14,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
 const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
-type CaseRow={id:string;realm_id:string;request_key:string;request_digest:string;
+type CaseRow={id:string;ticket_number:string;realm_id:string;request_key:string;request_digest:string;
   caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
   status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
   latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null;
@@ -202,14 +202,15 @@ export class SupportService{
         if(old.rows[0].request_digest!==digest||old.rows[0].caller_digest!==caller)
           throw new ConflictException("The original request key was already used");
         await client.query("COMMIT");begun=false;
-        return {receipt,expiresAt:old.rows[0].receipt_expires_at.toISOString(),
+        return {receipt,ticketNumber:old.rows[0].ticket_number,
+          expiresAt:old.rows[0].receipt_expires_at.toISOString(),
           status:publicState(old.rows[0].status),result:"PREVIOUSLY_CONFIRMED"};
       }
-      const created=await client.query<{id:string;receipt_expires_at:Date}>(
+      const created=await client.query<{id:string;ticket_number:string;receipt_expires_at:Date}>(
         "INSERT INTO cg19_support_case(realm_id,request_key,request_digest,"+
         "caller_digest,receipt_digest,receipt_expires_at,request_encrypted) "+
         "VALUES($1,$2,$3,$4,$5,now()+interval '30 days',$6) "+
-        "RETURNING id,receipt_expires_at",
+        "RETURNING id,ticket_number,receipt_expires_at",
         [realm,requestKey,digest,caller,receiptDigest,seal({name,contact,subject,message})]);
       const terms=searchTerms([name,contact,subject]);
       if(terms.length){
@@ -220,7 +221,8 @@ export class SupportService{
       }
       await this.event(client,realm,created.rows[0].id,null,"CONTACT_SUBMITTED");
       await client.query("COMMIT");begun=false;
-      return {receipt,expiresAt:created.rows[0].receipt_expires_at.toISOString(),
+      return {receipt,ticketNumber:created.rows[0].ticket_number,
+        expiresAt:created.rows[0].receipt_expires_at.toISOString(),
         status:"SUBMITTED",result:"CONFIRMED"};
     }catch(e){if(begun)try{await client.query("ROLLBACK");}catch{};throw e;}
     finally{client.release();}
@@ -231,15 +233,15 @@ export class SupportService{
     if(typeof x.receipt!=="string"||!TOKEN.test(x.receipt))
       throw new BadRequestException("Enter the original private receipt");
     const candidate=Buffer.from(sha(x.receipt),"hex");
-    const rows=await this.db.query<{receipt_digest:string;status:string}>(
-      "SELECT c.receipt_digest,c.status FROM cg19_support_case c "+
+    const rows=await this.db.query<{receipt_digest:string;ticket_number:string;status:string}>(
+      "SELECT c.receipt_digest,c.ticket_number,c.status FROM cg19_support_case c "+
       "JOIN access_realm r ON r.id=c.realm_id AND r.realm_key='FOUNDATION_ROOT' "+
       "WHERE c.receipt_digest=$1 AND c.receipt_expires_at>now() LIMIT 1",
       [candidate.toString("hex")]);
     const row=rows.rows[0];
     if(!row||!timingSafeEqual(candidate,Buffer.from(row.receipt_digest,"hex")))
       throw new NotFoundException("Original receipt unavailable or expired");
-    return {status:publicState(row.status)};
+    return {status:publicState(row.status),ticketNumber:row.ticket_number};
   }
   async cases(bearer:string,rawLimit:unknown=30,filter:unknown="ALL",
     pageCursor:unknown=null,search:unknown=""){
@@ -319,7 +321,8 @@ export class SupportService{
       "WHERE c.realm_id=$1",[a.realmId,a.accountId]);
     return {nextCursor,items:shown.map(row=>{
       const data=open(row.request_encrypted);
-      return {caseRef:row.id,subject:data.subject,name:data.name,
+      return {caseRef:row.id,ticketNumber:row.ticket_number,
+        subject:data.subject,name:data.name,
         contact:data.contact,status:row.status,revision:row.revision,
         assignedAccountRef:row.assigned_account_id,
         createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),
@@ -349,7 +352,8 @@ export class SupportService{
         [a.realmId,ref,a.accountId])
     ]);
     const seen=reading.rows[0];
-    return {caseRef:row.id,sourceChannel:row.source_channel,...request,status:row.status,
+    return {caseRef:row.id,ticketNumber:row.ticket_number,
+      sourceChannel:row.source_channel,...request,status:row.status,
       unread:!seen?.last_seen_inbound_at||seen.last_seen_inbound_at<row.latest_inbound_at,
       archived:!!seen?.archived_at,
       revision:row.revision,assignedAccountRef:row.assigned_account_id,
@@ -511,16 +515,18 @@ export class SupportService{
           existing.rows[0].caller_digest!==caller)
           throw new ConflictException("This support request key belongs to another message");
         await tx.query("COMMIT");started=false;
-        return {caseRef:existing.rows[0].id,revision:existing.rows[0].revision,
+        return {caseRef:existing.rows[0].id,
+          ticketNumber:existing.rows[0].ticket_number,
+          revision:existing.rows[0].revision,
           status:existing.rows[0].status,replayed:true};
       }
       const receipt=createHmac("sha256",scopedKey("center-receipt"))
         .update(actor.realmId+":"+center+":"+key).digest("base64url");
-      const result=await tx.query<{id:string;revision:number;status:string}>(
+      const result=await tx.query<{id:string;ticket_number:string;revision:number;status:string}>(
         "INSERT INTO cg19_support_case(realm_id,center_id,source_channel,request_key,"+
         "request_digest,caller_digest,receipt_digest,receipt_expires_at,request_encrypted) "+
         "VALUES($1,$2,'CENTER_PORTAL',$3,$4,$5,$6,now()+interval '30 days',$7) "+
-        "RETURNING id,revision,status",
+        "RETURNING id,ticket_number,revision,status",
         [actor.realmId,center,key,digest,caller,sha(receipt),
           seal({name:"Healthcare center representative",contact:"Center Portal",
             subject,message})]);
@@ -531,8 +537,8 @@ export class SupportService{
         [actor.realmId,record.id,searchTerms([subject]).map(v=>hmac("search",v))]);
       await this.event(tx,actor.realmId,record.id,actor.accountId,"CONTACT_SUBMITTED");
       await tx.query("COMMIT");started=false;
-      return {caseRef:record.id,revision:record.revision,
-        status:record.status,replayed:false};
+      return {caseRef:record.id,ticketNumber:record.ticket_number,
+        revision:record.revision,status:record.status,replayed:false};
     }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
     finally{tx.release();}
   }
@@ -543,14 +549,15 @@ export class SupportService{
       await tx.query("BEGIN");started=true;
       await this.centerScope.assertCurrent(tx,actor,center);
       const data=await tx.query<CaseRow>(
-        "SELECT id,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
+        "SELECT id,ticket_number,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
         "receipt_expires_at,request_encrypted,status,revision,assigned_account_id,"+
         "latest_inbound_at,created_at,updated_at,closed_at FROM cg19_support_case "+
         "WHERE realm_id=$1 AND source_channel='CENTER_PORTAL' AND center_id=$2 "+
         "ORDER BY updated_at DESC,id DESC LIMIT 50",[actor.realmId,center]);
       await tx.query("COMMIT");started=false;
       return {cases:data.rows.map(c=>({
-        caseRef:c.id,subject:open(c.request_encrypted).subject,
+        caseRef:c.id,ticketNumber:c.ticket_number,
+        subject:open(c.request_encrypted).subject,
         status:c.status,revision:c.revision,updatedAt:c.updated_at.toISOString()
       }))};
     }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
@@ -574,7 +581,8 @@ export class SupportService{
         "WHERE realm_id=$1 AND case_id=$2 ORDER BY created_at,id LIMIT 100",
         [actor.realmId,ref]);
       await tx.query("COMMIT");started=false;
-      return {caseRef:c.id,subject:open(c.request_encrypted).subject,
+      return {caseRef:c.id,ticketNumber:c.ticket_number,
+        subject:open(c.request_encrypted).subject,
         message:open(c.request_encrypted).message,status:c.status,
         revision:c.revision,replies:messages.rows.map(m=>({
           message:open(m.body_encrypted).message,createdAt:m.created_at.toISOString()
