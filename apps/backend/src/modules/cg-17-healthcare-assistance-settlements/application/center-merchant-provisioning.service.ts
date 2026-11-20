@@ -128,7 +128,7 @@ export class CenterMerchantProvisioningService{
    const q=await c.query<Binding>(
     "INSERT INTO center_merchant_binding(root_realm_id,center_ref,provider,"+
     "provider_merchant_ref,protected_credential_ref,public_key_id,proposed_by) "+
-    "VALUES($1,$2,'RAZORPAY',''||$3,'SERVER_ENV_CENTER_SCOPED',$4,$5) "+
+    "VALUES($1,$2,'RAZORPAY',$3,'SERVER_ENV_CENTER_SCOPED',$4,$5) "+
     "RETURNING *",
     [a.realmId,center,merchantRef,config.keyId,a.accountId]);
    return {...display(q.rows[0]),replayed:false};
@@ -144,6 +144,18 @@ export class CenterMerchantProvisioningService{
   const version=(raw as {expectedRevision:number}).expectedRevision;
   const actor=await this.sessions.requireAction(token,
    "healthcare.assistance.merchant.verify");
+  // Check the exact assigned CG14 center before network or secret retrieval.
+  await this.tx(async c=>{
+   await this.scope.assertCurrent(c,actor,center,
+    "healthcare.assistance.merchant.verify");
+   const proposed=await c.query<{proposed_by:string}>(
+    "SELECT proposed_by FROM center_merchant_binding "+
+    "WHERE root_realm_id=$1 AND center_ref=$2 "+
+    "AND verification_state='PENDING_VERIFICATION'",
+    [actor.realmId,center]);
+   if(!proposed.rows[0]||proposed.rows[0].proposed_by===actor.accountId)
+    throw new ConflictException({code:"CENTER_MERCHANT_INDEPENDENT_REVIEW_REQUIRED"});
+  });
   const config=this.secrets(center);
   if(!config)
    throw new ConflictException({code:"CENTER_MERCHANT_PROVISIONING_NOT_VERIFIED"});
