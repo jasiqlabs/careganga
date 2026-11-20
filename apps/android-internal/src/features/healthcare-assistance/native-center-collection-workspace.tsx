@@ -15,7 +15,8 @@ type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
 type Statement={chargeRef:string;currency:"INR";patientDueMinor:string;
  collectedMinor:string;outstandingMinor:string;pendingElectronicMinor:string;
  refundedOrCorrectedMinor:string;state:string;collections:Payment[];
- adjustments:Adjustment[];foundationIncomeRecorded:false;foundationLiabilityCreated:false};
+ adjustments:Adjustment[];foundationIncomeRecorded:false;foundationLiabilityCreated:false;
+ outstandingSince?:string|null;outstandingAgeDays?:number};
 type Attempt={path:string;body:Record<string,unknown>};
 type Props={token:string;centerRef:string;chargeRef:string;canRecord:boolean;
  canRefund:boolean;onExpired:()=>void};
@@ -252,6 +253,11 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
     {button("Record center payment",record,busy||uncertain||
      (method==="CASH"&&!cashAttested))}
    </View>}
+   {data.outstandingSince&&<Text style={styles.note}>Outstanding since accepted charge {
+    new Date(data.outstandingSince).toLocaleDateString("en-IN")}
+    {typeof data.outstandingAgeDays==="number"?
+     " ("+data.outstandingAgeDays+" days).":""}
+    No unapproved late fee or automatic reminder.</Text>}
    <Text style={styles.heading}>Original collection history</Text>
    {data.collections.length===0&&<Text style={styles.note}>No center collection recorded.</Text>}
    {data.collections.map(item=><View style={styles.history} key={item.collectionRef}>
