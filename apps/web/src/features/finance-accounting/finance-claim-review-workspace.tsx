@@ -102,7 +102,7 @@ export function FinanceClaimReviewWorkspace({canConfigure}:{canConfigure:boolean
   }finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Expense Claim Reviews</h2>
+  <div className="cg-fin-toolbar"><div><h1>Expense Claim Reviews</h1>
    <p>Original protected Foundation reimbursements — independent of payment and posting.</p></div>
    <button type="button" onClick={()=>void refresh()} disabled={loading}>Refresh</button></div>
   {notice&&<p className="cg-fin-notice" role="alert">{notice}</p>}
@@ -115,7 +115,7 @@ export function FinanceClaimReviewWorkspace({canConfigure}:{canConfigure:boolean
     <button type="button" disabled={busy||setupPassword.length<8}
      onClick={()=>void initialize()}>Configure original reviewer process</button></>}
   </section>}
-  {loading&&<p role="status">Checking current review cases…</p>}
+  {loading&&<p className="cg-module-loading" role="status">Checking current review cases…</p>}
   {!loading&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
    <thead><tr><th>Case No.</th><th>Claim category</th><th>Review status</th>
     <th>Action</th></tr></thead><tbody>

@@ -150,7 +150,7 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
   finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Finance Voucher Reviews</h2>
+  <div className="cg-fin-toolbar"><div><h1>Finance Voucher Reviews</h1>
    <p>Original, version-pinned submissions require a different authorized reviewer.
     Approval never equals payment.</p></div>
    <div className="cg-fin-toolbar-actions">
@@ -170,7 +170,7 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
   {info&&<p className="cg-fin-success" role="status">{info}</p>}
   {error&&<div className="cg-fin-notice" role="alert"><p>{error}</p>
    <button type="button" disabled={loading} onClick={()=>void load()}>Refresh cases</button></div>}
-  {(loading||fetching)&&<p role="status">Checking original Finance case and voucher records…</p>}
+  {(loading||fetching)&&<p className="cg-module-loading" role="status">Checking original Finance case and voucher records…</p>}
   {!loading&&!error&&<div className="cg-fin-table-wrap"><table className="cg-fin-table">
    <thead><tr><th>Case</th><th>Voucher</th><th>Submitted</th><th>Review state</th><th>Action</th></tr></thead>
    <tbody>{cases.map(c=><tr key={c.caseRef}>
