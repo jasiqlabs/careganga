@@ -14,6 +14,7 @@ import { SecureAccessFooter } from "./secure-access-footer";
 import { IconPadlockShieldLarge, IconAlertCircle } from "./auth-icons";
 import { InternalDashboardScreen } from "../dashboard/internal-dashboard-screen";
 import type { ModuleActionHandlers } from "../dashboard/dashboard-modules";
+import { AuthenticatedAppShell } from "../dashboard/authenticated-app-shell";
 
 import { RecoveryScreen } from "./recovery-screen";
 import { AuthToast, useAuthToast } from "./auth-toast";
@@ -516,9 +517,8 @@ export function StaffAuthenticationScreen() {
       setState("idle");
     }
   }
-  const handlers: ModuleActionHandlers = useMemo(
-    () => ({
-      openDashboard: () => {
+  // One active business screen ensures CG-01 drawer navigation really changes modules.
+  const closeModuleViews = useCallback(() => {
         setAccountOpen(false);
         setAccountsOpen(false);
         setRolesOpen(false);
@@ -545,35 +545,60 @@ export function StaffAuthenticationScreen() {
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
-      },
-      openAccount: () => setAccountOpen(true),
-      openAccounts: () => setAccountsOpen(true),
-      openRoles: () => setRolesOpen(true),
-      openPolicy: () => setPolicyOpen(true),
-      openApprovals: () => setApprovalsOpen(true),
-      openPatientQueue: () => setPatientQueueOpen(true),
-      openPatientBooking: () => setPatientBookingOpen(true),
-      openDoctorLeaveReviews: () => setDoctorLeaveReviewsOpen(true),
-      openHealthReviews: () => setHealthReviewsOpen(true),
-      openDocuments: () => setDocumentsOpen(true),
-      openNotifications: () => setNotificationsOpen(true),
-      openCommunications: () => setCommunicationsOpen(true),
-      openNoticeAdmin: () => setNoticeAdminOpen(true),
-      openSupport: () => setSupportOpen(true),
-      openFinanceReview: () => setFinanceReviewOpen(true),
-      openVoucherOnly: () => setVoucherOnlyOpen(true),
-      openFinanceClaimReviews: () => setFinanceClaimReviewsOpen(true),
-      openFinanceClaims: () => setFinanceClaimsOpen(true),
-      openInvoice: () => setInvoiceOpen(true),
-      openInvoiceReview: () => setInvoiceReviewOpen(true),
-      openBudget: () => setBudgetOpen(true),
-      openBudgetReview: () => setBudgetReviewOpen(true),
-      openReports: () => setReportsOpen(true),
-      openFinance: () => setFinanceOpen(true),
-      openBranches: () => setBranchesOpen(true),
-      openChangePassword: () => setChangePasswordOpen(true)
+  }, []);
+  const openOnly = useCallback((show: (value: boolean) => void) => {
+    closeModuleViews();
+    show(true);
+  }, [closeModuleViews]);
+  const handlers: ModuleActionHandlers = useMemo(
+    () => ({
+      openDashboard: closeModuleViews,
+      openAccount: () => openOnly(setAccountOpen),
+      openAccounts: () => openOnly(setAccountsOpen),
+      openRoles: () => openOnly(setRolesOpen),
+      openPolicy: () => openOnly(setPolicyOpen),
+      openApprovals: () => openOnly(setApprovalsOpen),
+      openPatientQueue: () => openOnly(setPatientQueueOpen),
+      openPatientBooking: () => openOnly(setPatientBookingOpen),
+      openDoctorLeaveReviews: () => openOnly(setDoctorLeaveReviewsOpen),
+      openHealthReviews: () => openOnly(setHealthReviewsOpen),
+      openDocuments: () => openOnly(setDocumentsOpen),
+      openNotifications: () => openOnly(setNotificationsOpen),
+      openCommunications: () => openOnly(setCommunicationsOpen),
+      openNoticeAdmin: () => openOnly(setNoticeAdminOpen),
+      openSupport: () => openOnly(setSupportOpen),
+      openFinanceReview: () => openOnly(setFinanceReviewOpen),
+      openVoucherOnly: () => openOnly(setVoucherOnlyOpen),
+      openFinanceClaimReviews: () => openOnly(setFinanceClaimReviewsOpen),
+      openFinanceClaims: () => openOnly(setFinanceClaimsOpen),
+      openInvoice: () => openOnly(setInvoiceOpen),
+      openInvoiceReview: () => openOnly(setInvoiceReviewOpen),
+      openBudget: () => openOnly(setBudgetOpen),
+      openBudgetReview: () => openOnly(setBudgetReviewOpen),
+      openReports: () => openOnly(setReportsOpen),
+      openFinance: () => openOnly(setFinanceOpen),
+      openBranches: () => openOnly(setBranchesOpen),
+      openChangePassword: () => openOnly(setChangePasswordOpen)
     }),
-    []
+    [closeModuleViews, openOnly]
+  );
+
+  // Reuse the latest CG-01 shell for source-integrated business screens.
+  // Existing form logic, permissions and screen-specific back actions remain in place.
+  const renderInShell = (
+    screen: React.ReactElement, activeTabId: string, onClose: () => void
+  ): React.ReactElement => (
+    <AuthenticatedAppShell
+      actor={actor!}
+      roleActions={roleActions}
+      handlers={handlers}
+      onSignOut={() => void signOut()}
+      activeTabId={activeTabId}
+      onOpenDashboard={onClose}
+      hideWelcome={true}
+    >
+      <View style={{ flex: 1, paddingBottom: 88 }}>{screen}</View>
+    </AuthenticatedAppShell>
   );
 
   if (recover)
@@ -658,45 +683,45 @@ export function StaffAuthenticationScreen() {
         />
       );
     return (
-      <ScreenErrorBoundary onExit={() => setApprovalsOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setApprovalsOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <ProposalScreen token={token} canConfigure={roleActions.includes("approvals.process.manage")}
             canPropose={roleActions.includes("approvals.propose")}
             canReview={roleActions.includes("approvals.review")}
             onExit={() => setApprovalsOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "approvals", () => setApprovalsOpen(false))
     );
   }
 
   // Preserve CG-14 and CG-15 flows within the new native dashboard navigation.
   if (patientQueueOpen && token && actor && roleActions.includes("health.visits.manage"))
-    return <ScreenErrorBoundary onExit={closePatientQueue}>
+    return renderInShell(<ScreenErrorBoundary onExit={closePatientQueue}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeCenterVisitQueue token={token}
           canCancel={roleActions.includes("health.appointments.cancel")}
           canClinicalManage={roleActions.includes("health.visits.clinical.manage")}
           onExit={closePatientQueue} onExpired={expireSession}/>
       </Suspense>
-    </ScreenErrorBoundary>;
+    </ScreenErrorBoundary>, "healthVisitQueue", closePatientQueue);
   if (patientBookingOpen && token && actor && roleActions.includes("health.patients.intake"))
-    return <ScreenErrorBoundary onExit={closePatientBooking}>
+    return renderInShell(<ScreenErrorBoundary onExit={closePatientBooking}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeCenterAssistedBooking token={token} onExit={closePatientBooking}
           onExpired={expireSession}/>
       </Suspense>
-    </ScreenErrorBoundary>;
+    </ScreenErrorBoundary>, "healthPatientBooking", closePatientBooking);
   if (doctorLeaveReviewsOpen && token && actor &&
     roleActions.includes("approvals.review") && roleActions.includes("health.schedules.view"))
-    return <ScreenErrorBoundary onExit={closeDoctorLeaveReviews}>
+    return renderInShell(<ScreenErrorBoundary onExit={closeDoctorLeaveReviews}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <DoctorLeaveNativeReview token={token}
           onExit={closeDoctorLeaveReviews} onExpired={expireSession}/>
       </Suspense>
-    </ScreenErrorBoundary>;
+    </ScreenErrorBoundary>, "healthDoctorLeave", closeDoctorLeaveReviews);
   if (healthReviewsOpen && token && actor && roleActions.includes("approvals.review") &&
     (roleActions.includes("health.doctors.verify") || roleActions.includes("health.providers.verify")))
-    return <ScreenErrorBoundary onExit={closeHealthReviews}>
+    return renderInShell(<ScreenErrorBoundary onExit={closeHealthReviews}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <HealthcareNativeReview token={token}
           canDoctors={roleActions.includes("health.doctors.verify")}
@@ -705,7 +730,7 @@ export function StaffAuthenticationScreen() {
           canManageProviders={roleActions.includes("health.providers.manage")}
           onExit={closeHealthReviews} onExpired={expireSession}/>
       </Suspense>
-    </ScreenErrorBoundary>;
+    </ScreenErrorBoundary>, "healthReviews", closeHealthReviews);
 
   if (notificationsOpen && token && actor) {
     if (!roleActions.includes("communications.notifications.view"))
@@ -716,12 +741,12 @@ export function StaffAuthenticationScreen() {
         />
       );
     return (
-      <ScreenErrorBoundary onExit={() => setNotificationsOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setNotificationsOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <NotificationsScreen token={token}
             onExit={() => setNotificationsOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "notifications", () => setNotificationsOpen(false))
     );
   }
   if (documentsOpen && token && actor) {
@@ -734,41 +759,41 @@ export function StaffAuthenticationScreen() {
         />
       );
     return (
-      <ScreenErrorBoundary onExit={() => setDocumentsOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setDocumentsOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <PrivateCaseEvidenceScreen token={token}
             canViewLetters={roleActions.includes("documents.letters.issue")}
             onExit={() => setDocumentsOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "documents", () => setDocumentsOpen(false))
     );
   }
   if (invoiceReviewOpen && token && actor &&
     roleActions.includes("approvals.review") && roleActions.includes("finance.invoices.review"))
     return (
-      <ScreenErrorBoundary onExit={closeInvoiceReviews}>
+      renderInShell(<ScreenErrorBoundary onExit={closeInvoiceReviews}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeProtectedReview token={token} kind="INVOICE"
             canConfigure={roleActions.includes("approvals.process.manage")}
             onExit={closeInvoiceReviews} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeInvoiceReviews", closeInvoiceReviews)
     );
   if (budgetReviewOpen && token && actor &&
     roleActions.includes("approvals.review") && roleActions.includes("finance.budgets.review"))
     return (
-      <ScreenErrorBoundary onExit={closeBudgetReviews}>
+      renderInShell(<ScreenErrorBoundary onExit={closeBudgetReviews}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeProtectedReview token={token} kind="BUDGET"
             canConfigure={roleActions.includes("approvals.process.manage")}
             onExit={closeBudgetReviews} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeBudgetReviews", closeBudgetReviews)
     );
   if (invoiceOpen && token && actor &&
     roleActions.includes("finance.invoices.view"))
     return (
-      <ScreenErrorBoundary onExit={closeInvoices}>
+      renderInShell(<ScreenErrorBoundary onExit={closeInvoices}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeInvoices token={token}
             canManage={roleActions.includes("finance.invoices.manage")}
@@ -778,22 +803,22 @@ export function StaffAuthenticationScreen() {
               roleActions.includes("finance.journals.post") && roleActions.includes("approvals.review")}
             onExit={closeInvoices} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeInvoices", closeInvoices)
     );
   if (budgetOpen && token && actor &&
     roleActions.includes("finance.budgets.view"))
     return (
-      <ScreenErrorBoundary onExit={closeBudgets}>
+      renderInShell(<ScreenErrorBoundary onExit={closeBudgets}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeBudgets token={token}
             canManage={roleActions.includes("finance.budgets.manage")}
             onExit={closeBudgets} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeBudgets", closeBudgets)
     );
   if (reportsOpen && token && actor && roleActions.includes("finance.reports.view"))
     return (
-      <ScreenErrorBoundary onExit={closeReports}>
+      renderInShell(<ScreenErrorBoundary onExit={closeReports}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceNativeReports token={token}
             canReconcile={roleActions.includes("finance.reconciliation.manage") && roleActions.includes("documents.files.manage")}
@@ -804,23 +829,23 @@ export function StaffAuthenticationScreen() {
               roleActions.includes("documents.files.view")}
             onExit={closeReports} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeReports", closeReports)
     );
   if (financeClaimReviewsOpen && token && actor &&
     ["finance.claims.review", "approvals.review", "documents.files.view"]
       .every(x => roleActions.includes(x)))
     return (
-      <ScreenErrorBoundary onExit={closeFinanceClaimReviews}>
+      renderInShell(<ScreenErrorBoundary onExit={closeFinanceClaimReviews}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceClaimNativeReviewer token={token}
             onExit={closeFinanceClaimReviews} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeClaimReviews", closeFinanceClaimReviews)
     );
   if (financeClaimsOpen && token && actor &&
     (roleActions.includes("finance.claims.view") || roleActions.includes("finance.claims.create")))
     return (
-      <ScreenErrorBoundary onExit={closeFinanceClaims}>
+      renderInShell(<ScreenErrorBoundary onExit={closeFinanceClaims}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceExpenseClaimsScreen token={token}
             canView={roleActions.includes("finance.claims.view")}
@@ -828,21 +853,21 @@ export function StaffAuthenticationScreen() {
             canUploadBill={roleActions.includes("finance.claims.create") && roleActions.includes("documents.files.manage") && roleActions.includes("documents.files.view")}
             onExit={closeFinanceClaims} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeClaims", closeFinanceClaims)
     );
   if (financeReviewOpen && token && actor && roleActions.includes("approvals.review") &&
     roleActions.includes("finance.vouchers.view") && roleActions.includes("documents.files.view"))
     return (
-      <ScreenErrorBoundary onExit={closeFinanceReview}>
+      renderInShell(<ScreenErrorBoundary onExit={closeFinanceReview}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceVoucherNativeReviewer token={token}
             onExit={closeFinanceReview} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeReviews", closeFinanceReview)
     );
   if (voucherOnlyOpen && token && actor && roleActions.includes("finance.vouchers.view"))
     return (
-      <ScreenErrorBoundary onExit={closeVouchers}>
+      renderInShell(<ScreenErrorBoundary onExit={closeVouchers}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceVoucherOnlyScreen token={token}
             canManage={roleActions.includes("finance.vouchers.manage")}
@@ -852,15 +877,15 @@ export function StaffAuthenticationScreen() {
             canVerifyPayment={roleActions.includes("approvals.review") && roleActions.includes("documents.files.view")}
             onExit={closeVouchers} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "financeVouchers", closeVouchers)
     );
   if (financeOpen && token && actor && roleActions.includes("finance.accounts.view"))
     return (
-      <ScreenErrorBoundary onExit={closeFinance}>
+      renderInShell(<ScreenErrorBoundary onExit={closeFinance}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FinanceAccountsScreen token={token} canManage={roleActions.includes("finance.accounts.manage")} canPost={roleActions.includes("finance.journals.post")} canReverse={roleActions.includes("finance.journals.post") && roleActions.includes("approvals.review")} canViewVouchers={roleActions.includes("finance.vouchers.view")} canManageVouchers={roleActions.includes("finance.vouchers.manage")} canViewEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.manage") && roleActions.includes("documents.files.view")} canVerifyPayment={roleActions.includes("approvals.review") && roleActions.includes("documents.files.view")} onExit={closeFinance} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "finance", closeFinance)
     );
   if (branchesOpen && token && actor) {
     if (!roleActions.includes("foundation.branches.view"))
@@ -871,32 +896,32 @@ export function StaffAuthenticationScreen() {
         />
       );
     return (
-      <ScreenErrorBoundary onExit={() => setBranchesOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setBranchesOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <BranchRegistrationScreen token={token}
             canManage={roleActions.includes("foundation.branches.manage")}
             onExit={() => setBranchesOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "branches", () => setBranchesOpen(false))
     );
   }
   if (communicationsOpen && token && actor &&
     roleActions.includes("communications.notifications.view"))
     return (
-      <ScreenErrorBoundary onExit={() => setCommunicationsOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setCommunicationsOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <SafeAreaView style={{ flex: 1, backgroundColor: careGangaTheme.background }}>
             <RecipientNotifications token={token} makeRequest={communicationRequest}
               onExit={() => setCommunicationsOpen(false)} onExpired={expireSession} />
           </SafeAreaView>
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "communications", () => setCommunicationsOpen(false))
     );
   if (noticeAdminOpen && token && actor &&
     (roleActions.includes("communications.notices.manage") ||
       roleActions.includes("communications.delivery.process")))
     return (
-      <ScreenErrorBoundary onExit={() => setNoticeAdminOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setNoticeAdminOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FoundationNoticeAdminScreen token={token}
             mayManage={roleActions.includes("communications.notices.manage")}
@@ -907,7 +932,7 @@ export function StaffAuthenticationScreen() {
             maySelectRoles={roleActions.includes("roles.select")}
             onExit={() => setNoticeAdminOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "noticeAdmin", () => setNoticeAdminOpen(false))
     );
   if (supportOpen && token && actor) {
     if (!roleActions.includes("support.cases.view") && !roleActions.includes("support.faq.manage"))
@@ -918,7 +943,7 @@ export function StaffAuthenticationScreen() {
         />
       );
     return (
-      <ScreenErrorBoundary onExit={() => setSupportOpen(false)}>
+      renderInShell(<ScreenErrorBoundary onExit={() => setSupportOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <FoundationSupportScreen token={token}
             mayView={roleActions.includes("support.cases.view")}
@@ -928,7 +953,7 @@ export function StaffAuthenticationScreen() {
             mayChooseAccounts={roleActions.includes("accounts.select")}
             onExit={() => setSupportOpen(false)} onExpired={expireSession} />
         </Suspense>
-      </ScreenErrorBoundary>
+      </ScreenErrorBoundary>, "support", () => setSupportOpen(false))
     );
   }
   if (policyOpen && token && actor) {
