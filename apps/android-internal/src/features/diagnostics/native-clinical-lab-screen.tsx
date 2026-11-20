@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeLabResultUpload} from "./native-lab-result-upload";
+import {NativeLabProfessionalReview} from "./native-lab-professional-review";
 
 type Center={centerRef:string;name:string};
 type Patient={patientRef:string;virtualPatientId:string;name:string;
@@ -22,7 +23,7 @@ type Submission={requestKey:string;patientRef:string;
 type Custody={centerRef:string;orderRef:string;sampleRef:string;action:string;
  requestKey:string;expectedVersion:number};
 type Props={token:string;canView:boolean;canCreate:boolean;
- canManageSamples:boolean;canRecordResults:boolean;onExit:()=>void;
+ canManageSamples:boolean;canRecordResults:boolean;canReview:boolean;onExit:()=>void;
  onExpired:()=>void};
 async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:object){
  const response=await identityRequest("/api/v1/diagnostics/clinical/"+path,{
@@ -50,7 +51,7 @@ const actionFor:Record<string,{id:string;label:string}>={
  REJECTED:{id:"recollect",label:"Create recollection label"}
 };
 export function NativeClinicalLabScreen({token,canView,canCreate,canManageSamples,
- canRecordResults,onExit,onExpired}:Props){
+ canRecordResults,canReview,onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[offers,setOffers]=useState<Offer[]>([]);
  const [orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Detail|null>(null);
@@ -253,6 +254,10 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       if(c&&sm)void custodyAction(sm,c.action,true);
      },busy||!custody.current)}
     </View>}
+    {canReview&&selected.report?.state==="RESULT_READY"&&
+     <NativeLabProfessionalReview key={center+":"+selected.order.orderRef}
+      token={token} centerRef={center} orderRef={selected.order.orderRef}
+      onExpired={onExpired}/>} 
     {selected.report?.state==="RESULT_READY"?
      <Text style={s.message}>Original PDF uploaded and scanner-verified.
       Professional review, release and patient delivery are not implemented.</Text>:
