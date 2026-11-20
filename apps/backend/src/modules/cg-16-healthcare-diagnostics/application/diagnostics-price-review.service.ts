@@ -122,7 +122,7 @@ export class DiagnosticsPriceReviewSource{
  }
  async decide(tx:PoolClient,actor:Actor,input:{
   priceRef:string;priceVersion:number;expectedCaseRevision:number;
-  requestKey:string;currentPassword:string
+  requestKey:string;currentPassword:string;action:"APPROVE"|"REJECT"
  }){
   await this.owner.verifyReviewer(tx,actor,"approvals.review",true);
   const p=await this.price(tx,actor.realmId,input.priceRef);
@@ -147,22 +147,24 @@ export class DiagnosticsPriceReviewSource{
    "AND protected_root_required=true FOR SHARE",[c.process_id,c.current_step]);
   if(!step.rowCount)throw new ConflictException({code:"LAB_CATALOG_VERSION_CHANGED"});
   await this.sessions.requireFreshFoundationRootProof(tx,actor,input.currentPassword);
-  const decisionDigest=sha(["CG03_LAB_PRICE_APPROVE_V1",
+  const decisionDigest=sha(["CG03_LAB_PRICE_DECISION_V1",input.action,
    input.priceRef,input.priceVersion,input.expectedCaseRevision]);
-  await tx.query("UPDATE cg03_case SET status='PENDING_OWNER',revision=revision+1,"+
+  const target=input.action==="APPROVE"?"PENDING_OWNER":"REJECTED";
+  await tx.query("UPDATE cg03_case SET status=$4,revision=revision+1,"+
    "updated_at=now() WHERE realm_id=$1 AND id=$2 AND revision=$3",
-   [actor.realmId,c.id,c.revision]);
+   [actor.realmId,c.id,c.revision,target]);
   const result=await tx.query<{id:string}>(
    "INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,"+
    "step_ordinal,expected_case_revision,accepted_case_revision,request_key,"+
    "request_digest,safe_remarks,fresh_password_verified_at) "+
-   "VALUES($1,$2,$3,'APPROVE',1,$4,$5,$6,$7,'',now()) RETURNING id",
-   [actor.realmId,c.id,actor.accountId,c.revision,c.revision+1,
+   "VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,'',now()) RETURNING id",
+   [actor.realmId,c.id,actor.accountId,input.action,c.revision,c.revision+1,
     input.requestKey,decisionDigest]);
   await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,"+
    "action,step_ordinal,correlation_ref) "+
-   "VALUES($1,$2,$3,'FINAL_APPROVED',1,$4)",
-   [actor.realmId,c.id,actor.accountId,randomUUID()]);
+   "VALUES($1,$2,$3,$4,1,$5)",
+   [actor.realmId,c.id,actor.accountId,
+    input.action==="APPROVE"?"FINAL_APPROVED":"REJECTED",randomUUID()]);
   return {caseRef:c.id,caseNumber:c.case_number,decisionRef:result.rows[0].id};
  }
  async finish(tx:PoolClient,actor:Actor,caseRef:string){

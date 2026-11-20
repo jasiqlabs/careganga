@@ -331,9 +331,9 @@ BEGIN
     AND c.cg16_price_id=NEW.id
     AND c.cg16_price_version=NEW.version_no
     AND c.cg16_price_digest ~ '^[a-f0-9]{64}$'
-    AND c.status='PENDING_OWNER'
+    AND c.status=(CASE WHEN NEW.status='APPROVED' THEN 'PENDING_OWNER' ELSE 'REJECTED' END)
     AND d.action=(CASE WHEN NEW.status='APPROVED' THEN 'APPROVE' ELSE 'REJECT' END)
-    AND d.actor_id=NEW.approved_by
+    AND (NEW.status='REJECTED' OR d.actor_id=NEW.approved_by)
     AND d.actor_id<>c.proposer_id
     AND c.proposer_id=NEW.proposed_by
     AND d.fresh_password_verified_at IS NOT NULL

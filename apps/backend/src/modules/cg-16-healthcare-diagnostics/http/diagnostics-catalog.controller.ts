@@ -74,4 +74,7 @@ export class DiagnosticsCatalogController{
  @Post("test-prices/:priceRef/approve")
  approve(@Headers("authorization")token:string,@Param("priceRef")ref:string,
   @Body()body:unknown){return this.catalog.approvePrice(token,ref,body);}
+ @Post("test-prices/:priceRef/reject")
+ reject(@Headers("authorization")token:string,@Param("priceRef")ref:string,
+  @Body()body:unknown){return this.catalog.rejectPrice(token,ref,body);}
 }

@@ -25,7 +25,7 @@ function allowed(p:string[],method:string){
  if(p.length===3&&["centers","my-centers"].includes(p[0])&&ID.test(p[1])&&
   ["tests","test-prices","eligible-items"].includes(p[2]))
   return p[2]==="eligible-items"?method==="GET":method==="GET"||method==="POST";
- if(p.length===3&&p[0]==="test-prices"&&ID.test(p[1])&&p[2]==="approve")
+ if(p.length===3&&p[0]==="test-prices"&&ID.test(p[1])&&["approve","reject"].includes(p[2]))
   return method==="POST";
  return false;
 }

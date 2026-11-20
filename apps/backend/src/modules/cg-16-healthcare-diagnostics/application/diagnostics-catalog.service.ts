@@ -614,7 +614,7 @@ export class DiagnosticsCatalogService{
    // immutable CG03 source-pinned case is approved with fresh password.
    const caseDecision=await this.priceReviews.decide(tx,actor,{
     priceRef,priceVersion:expected,expectedCaseRevision,requestKey,
-    currentPassword:x.currentPassword
+    currentPassword:x.currentPassword,action:"APPROVE"
    });
    const prior=await tx.query<{id:string;effective_from:Date;effective_to:Date|null}>(
     "SELECT id,effective_from,effective_to FROM lab_center_price_version "+
@@ -650,6 +650,43 @@ export class DiagnosticsCatalogService{
    await this.priceReviews.finish(tx,actor,caseDecision.caseRef);
    await this.done(tx,actor,requestKey,priceRef);
    return {priceRef,status:"APPROVED",reviewReference:caseDecision.caseNumber,
+    replayed:false};
+  });
+ }
+ async rejectPrice(bearer:string,rawRef:string,raw:unknown){
+  const priceRef=uuid(rawRef,"priceRef");
+  const x=obj(raw,["requestKey","expectedVersion","expectedCaseRevision",
+   "currentPassword"]);
+  const requestKey=uuid(x.requestKey,"requestKey");
+  const expected=integer(x.expectedVersion,"expectedVersion",1);
+  const expectedCaseRevision=integer(x.expectedCaseRevision,"expectedCaseRevision",1);
+  if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||
+    x.currentPassword.length>1024)
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"currentPassword"});
+  const actor=await this.sessions.requireAction(bearer,"diagnostics.pricing.approve");
+  await this.sessions.requireAction(bearer,"approvals.review");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.run(async tx=>{
+   await this.current(tx,actor,"diagnostics.pricing.approve");
+   await this.current(tx,actor,"approvals.review");
+   const price=await tx.query<{version_no:number;status:string}>(
+    "SELECT version_no,status FROM lab_center_price_version "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,priceRef]);
+   if(!price.rows[0])throw new NotFoundException("This price proposal is unavailable");
+   const cmd=await this.command(tx,actor,"PRICE_REJECT",requestKey,
+    {priceRef,expected,expectedCaseRevision});
+   if(cmd.replay)return {priceRef:cmd.replay,status:"REJECTED",replayed:true};
+   if(price.rows[0].status!=="PROPOSED"||price.rows[0].version_no!==expected)
+    throw new ConflictException({code:"LAB_CATALOG_VERSION_CHANGED"});
+   const review=await this.priceReviews.decide(tx,actor,{
+    priceRef,priceVersion:expected,expectedCaseRevision,requestKey,
+    currentPassword:x.currentPassword,action:"REJECT"
+   });
+   await tx.query("UPDATE lab_center_price_version SET status='REJECTED' "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='PROPOSED'",
+    [actor.realmId,priceRef]);
+   await this.done(tx,actor,requestKey,priceRef);
+   return {priceRef,status:"REJECTED",reviewReference:review.caseNumber,
     replayed:false};
   });
  }
