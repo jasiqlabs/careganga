@@ -351,7 +351,8 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    <h2>Center-Specific Lab Pricing</h2>
    <p>Commercial lab prices require independent approval. No payment is taken when saving a tariff.</p>
    <label className="field">Verified laboratory
-    <select value={centerRef} onChange={e=>setCenterRef(e.target.value)}>
+    <select value={centerRef} disabled={busy||uncertain}
+     onChange={e=>setCenterRef(e.target.value)}>
      <option value="">Select a current lab location</option>
      {centers.map(c=><option key={c.centerRef} value={c.centerRef}>
       {c.name} — {c.providerName} ({c.code})</option>)}
