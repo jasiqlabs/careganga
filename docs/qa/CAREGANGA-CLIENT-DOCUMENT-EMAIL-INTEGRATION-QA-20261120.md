@@ -41,3 +41,22 @@
 - **Next:** Implement missing owner-specific source under separately authorized JASIQ-dev delivery; add precise `file:function` evidence and results to each existing `tasks.md` case, preserve their counts and approval hash history, and validate against actual restricted reference images.
 
 No new client-facing feature, module, workflow, data seed, exposed sample signature, CSS theme, or payment policy was unilaterally enabled by this source alignment.
+
+## Feature-branch actual CG-19 remediation and source tests (2026-11-20)
+
+**Only feature branch:** `feature/careganga-client-document-email-references-20261120`; `main` unchanged. These are code changes inside already-existing CG-19, not full event delivery.
+
+| Existing owning story | New source implementation / manual test case | Source status | Runtime |
+| --- | --- | --- | --- |
+| CG-19 US-003 support | Add migration `1445_cg19_client_support_ticket_number.sql` to issue immutable, unique displayable ticket numbers to public and center cases, preserving guest private receipt and authorized staff/center scope; backfill older cases | CODE_ADDED · review required | NOT_RUN |
+| CG-19 US-003 support | Replay exact guest/center request key returns **same ticket number**; conflicting payload rejected; only possession of private receipt reveals public status, visible ticket number never grants read access | CODE_ADDED · test required | NOT_RUN |
+| CG-19 US-003 Web/mobile | Public Web, Public Android, Foundation Admin Web, Internal Android and center portal display current ticket number without exposing private UUID as business label; staff and center retain original role scope | CODE_ADDED · compare original screenshots and devices | NOT_RUN |
+| CG-19 US-002 email reference | Exact 52 client template IDs, trigger copy, subject, body, placeholders and attachment rules in typed reference source; additive DB migration `1446_cg19_client_email_source_drafts.sql` permanently disables all imported source drafts | CODE_ADDED · source check required | NOT_RUN |
+| CG-19 US-002 access | Foundation Admin with `communications.notices.manage` only can preview/import disabled client reference copies; wrong role and root forbidden; no sending/approval/recipient fabricated | CODE_ADDED · negative test required | NOT_RUN |
+| CG-19 US-002 replay | Concurrent/repeated draft import is unique by root/template/version and detects source digest drift; rollback on import conflict; existing CG03/NOTICE/CG15 outbox and live delivery remain untouched | CODE_ADDED · database race test required | NOT_RUN |
+| CG-19 US-002 integration | For membership, volunteer, donation, refunds, HR, payroll: **do not** mark 52 new emails delivered until true owner source, approved documents and business status exist; draft catalog is not event wiring | DEPENDENT_OWNER | NOT_RUN |
+| CG-19 US-002 security | Verify no sample member/volunteer/employee/donor data is inserted as recipient or financial proof, and no client approval or tax benefit is inferred from a design | CODE_REVIEW_PENDING | NOT_RUN |
+
+**Executable local source check:** `npm run verify:cg19-client-source` validates 52 catalog entries against the client-extracted text, source placeholder tokens, immutability/disabled migration gates, auth wiring, proxy routes and current Web+Android support ID surfaces. **Do not claim this checker has run** until local execution evidence is recorded. After `npm ci` run backend + Web builds, both Expo typechecks, disposable PostgreSQL 17 full migrations/backfill, ticket replay/race/guard testing, password/RBAC/source-isolation regressions, and rendered/visual QA. Provider/send/attachment/QR workflows for undelivered owner modules remain future source-owner tasks and must not be reported as implemented.
+
+**Regression guard:** Public support status continues to require the 43-character private receipt; the readable ticket reference never authenticates. Never send an incomplete 3-PDF approval pack, unverified paid donation receipt, 80G wording or salary-paid message. No CG-01 login, CG-09 accounting, CG-15 healthcare source, or already-enabled CG-19 notification/send path was intentionally changed.
