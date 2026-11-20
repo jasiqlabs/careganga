@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import {ClinicalLabResultUpload} from "./clinical-lab-result-upload";
 type Center={centerRef:string;name:string};
 type Patient={patientRef:string;virtualPatientId:string;name:string;
  careSourceKind:"CENTER_INTAKE"|"CONSULTATION";careSourceRef:string};
@@ -9,7 +10,8 @@ type Order={orderRef:string;displayOrderRef:string;status:string;
  quotedTotalMinor:string;createdAt:string};
 type Detail={order:Order;lines:{name:string;code:string;sampleType:string;
  quantity:number;quotedLineTotalMinor:string}[];
- samples:{sampleRef:string;label:string;sampleType:string;status:string;revision:number}[]};
+ samples:{sampleRef:string;label:string;sampleType:string;status:string;revision:number}[];
+ report:{state:string}|null};
 const money=(n:string)=>/^\d{1,11}$/.test(n)&&Number.isSafeInteger(Number(n))?
  new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
   .format(Number(n)/100):"Price unavailable";
@@ -41,8 +43,8 @@ const nextAction:Partial<Record<string,{action:CustodyAction;label:string}>>={
  RECEIVED:{action:"start-processing",label:"Start processing"},
  REJECTED:{action:"recollect",label:"Create recollection label"}
 };
-export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
- canCreate:boolean;canView:boolean;canManageSamples:boolean
+export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,canRecordResults}:{
+ canCreate:boolean;canView:boolean;canManageSamples:boolean;canRecordResults:boolean
 }){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[catalog,setCatalog]=useState<Item[]>([]);
@@ -338,6 +340,18 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
    <p>Each custody action requires current assigned-center access. Rejected
     specimens need new collection labels. A collected sample does not mean
     a medical report is reviewed or released.</p>
+   {selected.report?.state==="RESULT_READY"?<p className="notice" role="status">
+    The original report PDF was uploaded and scanner-verified. Qualified clinical
+    approval, professional release and patient delivery are not yet available.
+   </p>:canRecordResults&&selected.order.status==="PROCESSING"&&
+     selected.samples.length>0&&selected.samples.every(s=>s.status==="PROCESSING")?
+    <ClinicalLabResultUpload key={center+":"+selected.order.orderRef}
+     centerRef={center} orderRef={selected.order.orderRef}
+     onVerified={async()=>{await show(selected.order.orderRef);}}/>:
+    canRecordResults&&selected.report?.state==="DRAFT"?<p>
+     The existing report is not yet scan-verified. A previously started upload
+     must be checked by its original operator before a new report can be created.
+    </p>:null}
   </section>}
  </section>;
 }
