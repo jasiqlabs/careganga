@@ -80,6 +80,16 @@ export class CenterMerchantProvisioningService{
    throw e;
   }finally{c.release();}
  }
+ async centers(token:string){
+  return this.tx(async c=>{
+   let action="healthcare.assistance.merchant.manage";
+   let actor;
+   try{actor=await this.sessions.requireAction(token,action);}
+   catch{action="healthcare.assistance.merchant.verify";
+    actor=await this.sessions.requireAction(token,action);}
+   return {centers:await this.scope.assignedCenters(c,actor,action)};
+  });
+ }
  async status(token:string,rawCenter:string){
   const center=key(rawCenter);
   return this.tx(async c=>{
