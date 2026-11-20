@@ -30,7 +30,7 @@ const value=(v:unknown)=>{
 };
 type Charge={id:string;due_minor:string;center_ref:string;patient_ref:string;
  source_digest:string;
- charge_state:string;currency:string};
+ charge_state:string;currency:string;accepted_at:Date};
 type Collection={id:string;charge_ref:string;center_ref:string;
  method:"CASH"|"UPI"|"CARD"|"BANK";amount_minor:string;
  verification_state:"VERIFIED_CASH"|"PENDING_EXTERNAL"|"VERIFIED_PROVIDER"|"REJECTED";
@@ -82,7 +82,7 @@ export class CenterPatientCollectionService{
  }
  private async charge(c:PoolClient,realm:string,center:string,ref:string){
   const result=await c.query<Charge>(
-   "SELECT id,center_ref,patient_ref,due_minor::text,source_digest,charge_state,currency "+
+   "SELECT id,center_ref,patient_ref,due_minor::text,source_digest,charge_state,currency,accepted_at "+
    "FROM patient_charge WHERE root_realm_id=$1 AND center_ref=$2 AND id=$3 "+
    "AND charge_state='ACCEPTED' FOR SHARE",
    [realm,center,ref]);
@@ -141,6 +141,9 @@ export class CenterPatientCollectionService{
   const adjustmentsHaveMore=adjustments.rows.length>50;
   return {chargeRef:original.id,centerRef:original.center_ref,currency:"INR" as const,
    patientDueMinor:original.due_minor,
+   outstandingSince:total.collected<due?original.accepted_at.toISOString():null,
+   outstandingAgeDays:total.collected<due?Math.max(0,Math.floor((Date.now()-
+    original.accepted_at.getTime())/86400000)):0,
    collectedMinor:total.collected.toString(),
    outstandingMinor:(due-total.collected).toString(),
    pendingElectronicMinor:total.pending.toString(),
