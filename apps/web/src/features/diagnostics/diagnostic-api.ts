@@ -8,7 +8,8 @@ export type DiagnosticTest={
 };
 export type DiagnosticPackage={
  packageRef:string;code:string;name:string;description:string;
- status:string;revision:number;testCount:number
+ status:string;revision:number;testCount:number;
+ activeFromUtc:string;activeToUtc:string|null
 };
 export type DiagnosticCenter={
  centerRef:string;name:string;code:string;providerName:string;publicationState:string

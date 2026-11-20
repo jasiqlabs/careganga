@@ -39,6 +39,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [description,setDescription]=useState(""),[parameters,setParameters]=useState("");
  const [pkgCode,setPkgCode]=useState(""),[pkgName,setPkgName]=useState("");
  const [pkgDescription,setPkgDescription]=useState("");
+ const [pkgFrom,setPkgFrom]=useState(""),[pkgUntil,setPkgUntil]=useState("");
  const [pkgTests,setPkgTests]=useState<{testRef:string;quantity:number}[]>([]);
  const [addTest,setAddTest]=useState("");
  const [kind,setKind]=useState<"TEST"|"PACKAGE">("TEST"),[itemRef,setItemRef]=useState("");
@@ -135,9 +136,17 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  }
  function savePackage(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
-  void change("package","packages","POST",
-   {packageCode:pkgCode,name:pkgName,description:pkgDescription,tests:pkgTests},
-   "Package created with an immutable version of its included tests.",false);
+  try{
+   const activeFromUtc=pkgFrom?localDateTimeToUtc(pkgFrom,"package start"):null;
+   const activeToUtc=pkgUntil?localDateTimeToUtc(pkgUntil,"package end"):null;
+   if(activeToUtc&&activeFromUtc&&activeToUtc<=activeFromUtc||
+     activeToUtc&&new Date(activeToUtc).getTime()<=Date.now())
+    throw Error("Package end must be after its start and in the future.");
+   void change("package","packages","POST",
+    {packageCode:pkgCode,name:pkgName,description:pkgDescription,
+     tests:pkgTests,activeFromUtc,activeToUtc},
+    "Package created with frozen test versions and a source validity window.",false);
+  }catch(e){setError(e instanceof Error?e.message:"Check the package dates.");}
  }
  function saveMapping(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
@@ -302,6 +311,12 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
        onChange={e=>setPkgName(e.target.value)}/></label>
       <label className="field">Description<input maxLength={2000} value={pkgDescription}
        onChange={e=>setPkgDescription(e.target.value)}/></label>
+      <label className="field">Available from (blank = now)
+       <input type="datetime-local" value={pkgFrom}
+        onChange={e=>setPkgFrom(e.target.value)}/></label>
+      <label className="field">Available until (optional)
+       <input type="datetime-local" value={pkgUntil}
+        onChange={e=>setPkgUntil(e.target.value)}/></label>
      </div>
      <div className="toolbar">
       <label className="field">Include an active test
@@ -326,9 +341,13 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
       Save package</button>
     </form>
     {!packages.length?<p className="cg-module-empty">No diagnostic packages recorded.</p>:
-     <div className="table-wrap"><table><thead><tr><th>Package</th><th>Tests</th><th>Status</th></tr></thead>
+     <div className="table-wrap"><table><thead><tr><th>Package</th><th>Tests</th><th>Availability</th></tr></thead>
       <tbody>{packages.map(p=><tr key={p.packageRef}>
-       <td>{p.name} ({p.code})</td><td>{p.testCount}</td><td>{label(p.status)}</td>
+       <td>{p.name} ({p.code})</td><td>{p.testCount}</td>
+       <td>{p.status!=="ACTIVE"?"Inactive":
+        new Date(p.activeFromUtc).getTime()>Date.now()?"Scheduled":
+        p.activeToUtc&&new Date(p.activeToUtc).getTime()<=Date.now()?"Expired":"Available"}
+       </td>
       </tr>)}</tbody></table></div>}
    </section>
   </div>}
