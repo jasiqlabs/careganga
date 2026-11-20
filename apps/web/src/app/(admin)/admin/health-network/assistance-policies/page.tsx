@@ -34,14 +34,16 @@ export default async function AssistancePoliciesPage(){
    throw Error("Original account permissions unavailable");
   const actions=new Set<string>(role.actions.flatMap((r:unknown)=>
    r&&typeof r==="object"&&"key" in r&&typeof r.key==="string"?[r.key]:[]));
-  if(!actions.has("healthcare.assistance.policies.view"))
+  const canReview=actions.has("healthcare.assistance.policies.review")&&
+    actions.has("approvals.review");
+  if(!actions.has("healthcare.assistance.policies.view")&&!canReview)
    return <AccessDeniedView reason="Your current account is not allowed to view Foundation healthcare assistance policies." accountHref="/admin"/>;
   return <HealthcareAdminShell active="healthAssistancePolicies"
    actor={{displayName:actor.displayName,roleName:actor.roleName}} actions={actions}>
    <HealthcarePolicyWorkspace
+    canView={actions.has("healthcare.assistance.policies.view")}
     canManage={actions.has("healthcare.assistance.policies.manage")}
-    canReview={actions.has("healthcare.assistance.policies.review")&&
-     actions.has("approvals.review")}/>
+    canReview={canReview}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
