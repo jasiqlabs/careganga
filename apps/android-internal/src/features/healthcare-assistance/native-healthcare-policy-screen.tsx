@@ -16,7 +16,7 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  validFrom:string;validUntil:string;mode:"PERCENT"|"FIXED";
  percentBasisPoints:number|null;fixedMinor:string|null;capMinor:string;
  status:string;current:boolean;reviewCaseRef:string|null;reviewStatus:string|null};
-type Props={token:string;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canView:boolean;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 type Attempt={parts:string;body:Record<string,unknown>;success:string};
 const money=(s:string|null)=>s&&/^\d+$/.test(s)?
  "₹"+(Number(s)/100).toFixed(2):"Not configured";
@@ -62,7 +62,7 @@ async function api<T>(token:string,parts:string,
   {status:result.status});
  return result.json() as Promise<T>;
 }
-export function NativeHealthcarePolicyScreen({token,canManage,canReview,
+export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
@@ -90,6 +90,7 @@ export function NativeHealthcarePolicyScreen({token,canManage,canReview,
  },[token]);
  useEffect(()=>{
   let active=true;setLoading(true);
+  if(!canView){setLoading(false);return()=>{active=false};}
   void api<{centers:Center[]}>(token,"centers/eligible").then(v=>{
    if(!active)return;
    if(!Array.isArray(v.centers)||v.centers.length>100)
@@ -98,7 +99,7 @@ export function NativeHealthcarePolicyScreen({token,canManage,canReview,
    if(v.centers.length===1)setCenter(v.centers[0].centerRef);
   }).catch(e=>{if(active)error(e)}).finally(()=>{if(active)setLoading(false)});
   return()=>{active=false;++seq.current};
- },[token,error]);
+ },[token,error,canView]);
  useEffect(()=>{
   ++seq.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;setMessage("");
@@ -191,9 +192,9 @@ export function NativeHealthcarePolicyScreen({token,canManage,canReview,
     No funds are collected here.</Text>
    {!!message&&<Text accessibilityRole="alert" style={s.notice}>{message}</Text>}
    {loading&&<ActivityIndicator accessibilityLabel="Checking policy source"/>}
-   {!loading&&centers.length===0&&<Text style={s.note}>
+   {canView&&!loading&&centers.length===0&&<Text style={s.note}>
     No currently approved provider centers available.</Text>}
-   {centers.map(c=><View key={c.centerRef}>{button(c.name,()=>setCenter(c.centerRef),
+   {canView&&centers.map(c=><View key={c.centerRef}>{button(c.name,()=>setCenter(c.centerRef),
     busy||uncertain,center===c.centerRef)}</View>)}
    {uncertain&&<View style={s.panel}>
     <Text style={s.notice}>The last command might have succeeded. Check the
@@ -203,7 +204,7 @@ export function NativeHealthcarePolicyScreen({token,canManage,canReview,
     },busy||!last.current)}
     {button("Check existing policy history",()=>void refresh(center).catch(error),busy||!center)}
    </View>}
-   {canManage&&!!center&&!uncertain&&<View style={s.panel}>
+   {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
     <Text style={s.note}>Service type</Text>
     {KINDS.map(k=><View key={k}>{button(k,()=>setService(k),
@@ -230,7 +231,7 @@ export function NativeHealthcarePolicyScreen({token,canManage,canReview,
     {button(busy?"Checking original…":"Save policy revision",submit,busy)}
     {revision&&button("Cancel revision",reset,busy)}
    </View>}
-   {!!center&&<View style={s.panel}>
+   {canView&&!!center&&<View style={s.panel}>
     <Text style={s.heading}>Actual policy revisions</Text>
     {button("Refresh history",()=>void refresh(center).catch(error),busy||uncertain)}
     {policies.length===0&&!loading&&<Text style={s.note}>
