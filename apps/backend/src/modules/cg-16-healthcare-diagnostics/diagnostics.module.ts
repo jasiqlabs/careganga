@@ -5,10 +5,11 @@ import {DiagnosticsCatalogService} from "./application/diagnostics-catalog.servi
 import {DiagnosticsCatalogController} from "./http/diagnostics-catalog.controller";
 import {DiagnosticsPublicCatalogService} from "./application/diagnostics-public-catalog.service";
 import {DiagnosticsPublicCatalogController} from "./http/diagnostics-public-catalog.controller";
+import {DiagnosticsPriceReviewSource} from "./application/diagnostics-price-review.service";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService],
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController],
  exports:[DiagnosticsCatalogService]
 })
