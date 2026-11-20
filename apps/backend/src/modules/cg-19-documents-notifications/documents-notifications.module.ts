@@ -44,6 +44,7 @@ import {PrivateEvidenceController} from "./http/private-evidence.controller";
 import {PrivateLetterController} from "./http/private-letter.controller";
 import {PrivateLetterService} from "./application/private-letter.service";
 import {NotificationService} from "./application/notification.service";
+import {ClientEmailTemplateService} from "./application/client-email-template.service";
 import {NoticeService} from "./application/notice.service";
 import {DeliveryService} from "./application/delivery.service";
 import {CommunicationProviders} from "./infrastructure/channel-providers";
@@ -68,7 +69,7 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
   controllers:[PatientPrivateFilesController,PatientClinicalFileSharingController,AppointmentSlipController,SupportAgentAttachmentController,CenterSupportAttachmentController,HealthCenterContentMediaController,HealthDraftEvidenceController,HealthDoctorPrivateEvidenceController,PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,CmsPublicNoticeSourceController,
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
   providers:[PatientPrivateFilesService,PatientClinicalFileSharingService,HealthClinicianIdentityService,HealthPublicRequestThrottleService,AppointmentSlipDocumentService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
-    NotificationService,NoticeService,DeliveryService,
+    NotificationService,NoticeService,DeliveryService,ClientEmailTemplateService,
     CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
     HealthCenterContentMediaService,CenterSupportAttachmentService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],

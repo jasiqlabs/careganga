@@ -124,3 +124,12 @@ Dependencies: US-002 actual CG-09 confirmed posting and original CG-19 issued re
 
 ## 18 November 2026 — original website receiving acceptance — receiving story QA
 For original US-001/002/003 QA, validate **campaign real publication and genuine CTA/payment, verified receipt/duplicate/rejected/refund, correct source-owned original donor artwork** against original first 10 + Batch02 021139–021224 and Campaigns; Donate Now; Upcoming Projects Support; actual donor receipt/certificate. Cross-reference [original screenshot QA contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), then run source owner→Admin permissions/CG-21 error→approval→current Web/native state→withdrawal/denied/unavailable/rollback. No new QA identifier, fake financial/provider action or screenshot-only PASS. **RECEIVING SOURCE OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**
+
+
+## Supplemental client 20-Nov source QA within existing story count
+
+**Reference:** [five designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 original event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). New source material does **not** change old QA outcomes or imply runtime PASS.
+
+Extend current CG-07 QA with unique receipt ID, amount-in-words, donor-consented fields, original donation-to-CG09 one posting, provider pending/failed/duplicate/callback replay, true double charge, duplicate review and refund state transitions, no unsupported 80G; compare rendered landscape layout and test QR/permitted data. Until CG-07 source owner is implemented, mark dependency pending, not PASS.
+
+**Next JASIQ-dev cycle:** implement in real owner source → independent review/fix/re-review → trace existing story QA to code → render and compare original client JPG / provider test / real Web+Android; all actual executions NOT_RUN.

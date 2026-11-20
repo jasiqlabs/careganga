@@ -1,0 +1,1304 @@
+<PARSED TEXT FOR PAGE: 1 / 22>
+                                   CAREGANGA FOUNDATION
+
+           MASTER EMAIL TEMPLATE & WORKFLOW
+                     SPECIFICATION
+                                   Developer Handover | Version 2.0 | 29 October 2026
+
+Purpose: This document defines the key transactional emails, event triggers, required dynamic fields, attachments and
+controls for the CareGanga Foundation website/portal. Templates are written in English for direct implementation.
+Replace every {#VARIABLE#} with a verified database field.
+
+
+
+A. Global developer rules — mandatory
+   Automated transactional sender: noreply@careganga.com. Replies and support conversations must route to an
+    approved, monitored team inbox.
+   Never email a plaintext password. When an employee/member/volunteer is given login access, send the login email
+    and a secure, single-use, time-limited password setup/reset link. Show role, state, district, subdivision/block and
+    branch scope where relevant, but never include a password.
+   Member payment receipt: send only after the payment provider confirms success. Attach the official membership
+    payment receipt PDF and include transaction/reference number.
+   Donation workflow has NO donation approval stage. After successful provider confirmation, record the donation and
+    send the donation slip/receipt PDF immediately. Include donation transaction/reference details. Handle possible
+    duplicate donations through a separate duplicate-payment case and refund workflow.
+   Refund status must distinguish Requested, Under Review, Approved, Processing, Processed, Failed and Rejected.
+    Say 'refund processed' only after the payment provider confirms processing.
+   Member final approval email must include Member ID, member type, issue date, validity/expiry date and attach
+    Member ID Card PDF, Welcome Letter PDF and Membership Certificate PDF.
+   Volunteer final approval email must include Volunteer ID, approval/issue date, validity/expiry if applicable and attach
+    Volunteer ID Card PDF, Welcome Letter PDF and Volunteer Certificate PDF. Volunteer registration is free.
+   Employee documents received is not the same as documents verified or employee approved. Offer, approval,
+    appointment and joining letters must only be attached when approved, generated and issued in the system.
+   Designation/office-bearer approval email must include Designation ID, certificate number, role/designation, state,
+    district, subdivision/block or jurisdiction, issue date and expiry date/N/A, with approved certificate attached.
+   Role, designation, jurisdiction or promotion changes must trigger an audit event. If the change requires a new ID
+    card/certificate/letter, issue the updated approved PDF and mark the old version superseded.
+   Salary slip email is confidential and employee-only. Salary generated/approved and salary disbursed/paid are
+    separate events; send the payment confirmation only after bank/provider confirmation.
+   Support requests must receive a unique Ticket/Service Request ID. Send acknowledgement, status changes and
+    closure email. Verify requester and registered destination before resending personal documents.
+   Use event-based idempotency: a unique event ID + template ID + recipient + document version must not send
+    duplicate logical emails. Delivery retries should be logged.
+   Store delivery log: template ID, trigger event, recipient record, send time, provider status, retry count, attachment
+    names/versions, initiating staff/system and related application/payment/ticket ID.
+   Do not promise 80G/tax benefits unless the Foundation's current legal eligibility and approved receipt wording are
+    verified. Avoid unnecessary sensitive personal information in subject lines.
+
+
+
+B. Membership email templates
+CG-MEM-001 — Application submitted / admin notification
+Trigger: Member application successfully submitted.
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 2 / 22>
+Recipient: Applicant and designated Membership Admin notification address.
+
+Subject: Membership Application Received — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have received your membership application.
+Application ID: {#APPLICATION_ID#}
+Membership type: {#MEMBERSHIP_TYPE#}
+Submission date: {#SUBMISSION_DATE#}
+Current status: {#APPLICATION_STATUS#}
+
+Your application is awaiting review. Track status: {#STATUS_LINK#}.
+
+Regards,
+Membership Team
+CareGanga Foundation
+
+Attachment / developer rule: Applicant confirmation: no attachment. Internal admin notification may include secure
+portal link, not unnecessary personal documents.
+
+CG-MEM-002 — Membership payment successful + receipt
+Trigger: Payment provider confirms success and official receipt PDF is generated.
+
+Recipient: Applicant/member.
+
+Subject: Membership Payment Confirmed — Receipt {#RECEIPT_NUMBER#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your membership payment has been confirmed.
+Application ID: {#APPLICATION_ID#}
+Membership type: {#MEMBERSHIP_TYPE#}
+Amount: {#AMOUNT#}
+Transaction/reference number: {#TRANSACTION_ID#}
+Receipt number: {#RECEIPT_NUMBER#}
+Payment date: {#PAYMENT_DATE#}
+
+Please find your official membership payment receipt attached.
+
+Regards,
+Finance & Accounts Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach: Membership Payment Receipt PDF. Send only after provider-confirmed success.
+
+CG-MEM-003 — Documents received
+Trigger: Member uploads required documents successfully.
+
+Recipient: Applicant.
+
+Subject: Membership Documents Received — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have received the documents submitted for application {#APPLICATION_ID#}.
+Document status: Received — verification pending.
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 3 / 22>
+Receipt of documents does not mean the documents are verified or the membership is approved. We will notify you when
+the status changes.
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment.
+
+CG-MEM-004 — Documents verified
+Trigger: Reviewer saves the document verification result as Verified; final application decision is still pending.
+
+Recipient: Applicant.
+
+Subject: Membership Documents Verified — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+The documents submitted for application {#APPLICATION_ID#} have been verified.
+Current application status: {#APPLICATION_STATUS#}.
+
+This email confirms document verification only. Final membership approval will be communicated separately.
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment. Do not imply final membership approval.
+
+CG-MEM-005 — Documents rejected / correction required
+Trigger: Reviewer rejects one or more documents and saves a recipient-visible reason.
+
+Recipient: Applicant.
+
+Subject: Action Required — Membership Documents — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+One or more documents submitted for application {#APPLICATION_ID#} could not be accepted.
+Document(s): {#DOCUMENT_LIST#}
+Reason: {#REJECTION_REASON#}
+Required action: {#ACTION_REQUIRED#}
+Resubmission link: {#SECURE_UPLOAD_LINK#}
+Deadline, if applicable: {#DUE_DATE#}
+
+Please submit the corrected documents through the official portal.
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment. Use approved, recipient-visible reason only.
+
+CG-MEM-006 — Application sent back
+Trigger: Authorised reviewer changes application status to Sent Back.
+
+Recipient: Applicant.
+
+Subject: Membership Application Sent Back — {#APPLICATION_ID#}
+
+             CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 4 / 22>
+Dear {#RECIPIENT_NAME#},
+
+Your application {#APPLICATION_ID#} has been sent back for additional information or correction.
+Reason: {#REASON#}
+Action required: {#ACTION_REQUIRED#}
+Submit here: {#PORTAL_LINK#}
+
+Your application is not finally approved or rejected. Please resubmit the required information.
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment.
+
+CG-MEM-007 — Final membership approval + full document pack
+Trigger: Final approval is saved, Member ID and all three approved PDFs are generated.
+
+Recipient: Approved member.
+
+Subject: Membership Approved — Member ID {#MEMBER_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Congratulations. Your CareGanga Foundation membership has been approved.
+
+Member ID: {#MEMBER_ID#}
+Membership type: {#MEMBERSHIP_TYPE#}
+Issue date: {#ISSUE_DATE#}
+Validity: {#VALIDITY_PERIOD#}
+Expiry date: {#EXPIRY_DATE_OR_NA#}
+Approval date: {#APPROVAL_DATE#}
+
+Please find these approved documents attached:
+1. Member ID Card
+2. Welcome Letter
+3. Membership Certificate
+
+Please check that the details are correct and contact the Membership Team if any correction is required.
+
+Regards,
+Membership Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach all three PDFs. Lifetime membership: Expiry Date = N/A / No expiry. Do not send
+until all required files exist.
+
+CG-MEM-008 — Application rejected
+Trigger: Authorised final rejection saved.
+
+Recipient: Applicant.
+
+Subject: Membership Application Decision — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We regret to inform you that application {#APPLICATION_ID#} has not been approved.
+Reason: {#REJECTION_REASON#}
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 5 / 22>
+Further action or appeal route, if available: {#NEXT_STEPS#}
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment. Rejection reason must be approved for disclosure.
+
+CG-MEM-009 — General Membership renewal reminder
+Trigger: Configured reminder milestone before expiry; membership not renewed.
+
+Recipient: Active General Member.
+
+Subject: Membership Renewal Reminder — Expires {#EXPIRY_DATE#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your General Membership is due to expire on {#EXPIRY_DATE#}.
+Please renew before expiry using: {#RENEWAL_LINK#}
+
+Member ID: {#MEMBER_ID#}
+
+Regards,
+Membership Team
+
+Attachment / developer rule: Schedule at policy milestones such as 30 days and 7 days. Exclude Lifetime Membership
+and already-renewed members.
+
+CG-MEM-010 — Renewal payment confirmed
+Trigger: Renewal payment confirmed by provider; new validity saved.
+
+Recipient: Member.
+
+Subject: Membership Renewal Confirmed — {#MEMBER_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your membership renewal payment has been confirmed.
+Member ID: {#MEMBER_ID#}
+Amount: {#AMOUNT#}
+Transaction/reference number: {#TRANSACTION_ID#}
+Receipt number: {#RECEIPT_NUMBER#}
+New expiry date: {#NEW_EXPIRY_DATE#}
+
+Your official renewal receipt is attached.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: Attach Renewal Payment Receipt PDF. Cancel any pending expiry reminders.
+
+CG-MEM-011 — Renewal rejected / renewal sent back
+Trigger: Renewal review requires correction or is rejected.
+
+Recipient: Member.
+
+Subject: Membership Renewal Update — {#MEMBER_ID#}
+
+
+             CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 6 / 22>
+Dear {#RECIPIENT_NAME#},
+
+Your renewal request for Member ID {#MEMBER_ID#} needs attention.
+Status: {#RENEWAL_STATUS#}
+Reason: {#REASON#}
+Required action: {#ACTION_REQUIRED#}
+Renewal portal: {#PORTAL_LINK#}
+
+Regards,
+Membership Team
+
+Attachment / developer rule: No attachment unless a specific approved notice is required.
+
+
+
+C. Volunteer email templates
+CG-VOL-001 — Volunteer application submitted
+Trigger: Free volunteer application saved.
+
+Subject: Volunteer Application Received — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Thank you for applying to volunteer with CareGanga Foundation.
+Application ID: {#APPLICATION_ID#}
+Submission date: {#SUBMISSION_DATE#}
+Status: {#APPLICATION_STATUS#}
+
+Volunteer registration is free. We will notify you when the application status changes.
+
+Regards,
+Volunteer Team
+
+Attachment / developer rule: No attachment; do not trigger a payment request.
+
+CG-VOL-002 — Volunteer documents received
+Trigger: Volunteer documents uploaded.
+
+Subject: Volunteer Documents Received — {#APPLICATION_ID#}
+
+We have received the documents submitted for application {#APPLICATION_ID#}. Verification is pending. Document
+receipt does not mean final approval.
+
+Regards,
+Volunteer Team
+
+Attachment / developer rule: No attachment.
+
+CG-VOL-003 — Volunteer documents verified
+Trigger: Required documents verified.
+
+Subject: Volunteer Documents Verified — {#APPLICATION_ID#}
+
+The documents submitted for volunteer application {#APPLICATION_ID#} have been verified. Current application status:
+{#APPLICATION_STATUS#}. Final approval will be communicated separately.
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 7 / 22>
+Regards,
+Volunteer Team
+
+Attachment / developer rule: No attachment.
+
+CG-VOL-004 — Volunteer documents rejected / sent back
+Trigger: Reviewer rejects document or sends application back.
+
+Subject: Action Required — Volunteer Application {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your volunteer application needs correction.
+Reason: {#REASON#}
+Required action: {#ACTION_REQUIRED#}
+Secure upload / portal: {#PORTAL_LINK#}
+
+Please resubmit the requested information. Volunteer registration is free.
+
+Regards,
+Volunteer Team
+
+Attachment / developer rule: No attachment.
+
+CG-VOL-005 — Volunteer application approved + full document pack
+Trigger: Final approval saved and all required PDFs generated.
+
+Subject: Volunteer Application Approved — Volunteer ID {#VOLUNTEER_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your volunteer application has been approved.
+
+Volunteer ID: {#VOLUNTEER_ID#}
+Issue/approval date: {#ISSUE_DATE#}
+Assigned role: {#VOLUNTEER_ROLE#}
+Branch/department: {#BRANCH_NAME#} / {#DEPARTMENT_NAME#}
+Validity/expiry: {#EXPIRY_DATE_OR_NA#}
+
+Attached are your approved:
+1. Volunteer ID Card
+2. Welcome Letter
+3. Volunteer Certificate
+
+Regards,
+Volunteer Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach Volunteer ID Card PDF, Welcome Letter PDF and Volunteer Certificate PDF.
+
+CG-VOL-006 — Volunteer application rejected
+Trigger: Authorised final rejection saved.
+
+Subject: Volunteer Application Decision — {#APPLICATION_ID#}
+
+Your volunteer application {#APPLICATION_ID#} was not approved.
+Reason: {#REJECTION_REASON#}
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 8 / 22>
+Next steps, if applicable: {#NEXT_STEPS#}
+
+Regards,
+Volunteer Team
+
+Attachment / developer rule: No attachment.
+
+CG-VOL-007 — Volunteer renewal reminder
+Trigger: Only if volunteer status/certificate has an expiry date and the Foundation's policy requires renewal.
+
+Subject: Volunteer Status Renewal Reminder — {#VOLUNTEER_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your volunteer registration/certificate is due for renewal by {#EXPIRY_DATE#}.
+Please review the renewal instructions here: {#RENEWAL_LINK#}.
+
+Volunteer ID: {#VOLUNTEER_ID#}
+
+Regards,
+Volunteer Team
+
+Attachment / developer rule: Configure only if a formal volunteer renewal/expiry policy exists; do not invent a renewal
+fee.
+
+
+
+D. Donation, duplicate donation and refund templates
+CG-DON-001 — Donation successful + donation slip
+Trigger: Payment provider confirms successful donation transaction; donation record is created. There is no donation
+approval stage.
+
+Subject: Donation Received — Receipt {#DONATION_RECEIPT_NO#}
+
+Dear {#RECIPIENT_NAME#},
+
+Thank you for supporting CareGanga Foundation.
+Donation ID: {#DONATION_ID#}
+Donor name: {#DONOR_NAME#}
+Amount: {#AMOUNT#}
+Transaction/reference number: {#TRANSACTION_ID#}
+Payment date: {#PAYMENT_DATE#}
+Payment method: {#PAYMENT_METHOD#}
+Donation receipt number: {#DONATION_RECEIPT_NO#}
+Campaign/project, if selected: {#CAMPAIGN_NAME#}
+
+Your donation slip/receipt is attached.
+
+Regards,
+Finance & Accounts Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach Donation Slip/Receipt PDF. No donation approval workflow. Tax wording only if
+legally approved.
+
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 9 / 22>
+CG-DON-002 — Possible duplicate donation/payment detected
+Trigger: System detects duplicate transaction reference or likely duplicate charge; create a case for review.
+
+Subject: Donation Payment Check — Reference {#CASE_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have detected a possible duplicate donation payment and are checking the transaction records.
+Case ID: {#CASE_ID#}
+Donation ID(s): {#DONATION_ID_LIST#}
+Transaction reference(s): {#TRANSACTION_ID_LIST#}
+Current status: {#STATUS#}
+
+Please do not make another payment to resolve this query. We will update you after checking the payment provider's
+records.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: Do not issue a second receipt for the same transaction. If two distinct successful
+transactions exist, create distinct donation records/receipts according to policy.
+
+CG-DON-003 — Duplicate payment confirmed / next steps
+Trigger: Finance confirms whether a duplicate charge exists from provider records.
+
+Subject: Update on Possible Duplicate Donation — {#CASE_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have reviewed the possible duplicate payment report.
+Finding: {#DUPLICATE_FINDING#}
+Transaction reference(s): {#TRANSACTION_ID_LIST#}
+Next step: {#NEXT_ACTION#}
+
+If a refund is applicable, it will be processed through the separate refund workflow and confirmed after provider
+processing.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: No attachment unless a corrected/official receipt or provider confirmation is generated.
+
+CG-REF-001 — Refund request received
+Trigger: Refund request saved against an eligible donation/payment.
+
+Subject: Refund Request Received — {#REFUND_REQUEST_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have received your refund request.
+Refund Request ID: {#REFUND_REQUEST_ID#}
+Original transaction: {#TRANSACTION_ID#}
+Donation ID: {#DONATION_ID#}
+Amount requested: {#AMOUNT#}
+Current status: {#REFUND_STATUS#}
+
+We will review the request and update you.
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 10 / 22>
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: No attachment.
+
+CG-REF-002 — Refund approved / processing
+Trigger: Authorised refund decision saved and provider processing initiated.
+
+Subject: Refund Approved for Processing — {#REFUND_REQUEST_ID#}
+
+Your refund request {#REFUND_REQUEST_ID#} has been approved for processing.
+Amount: {#AMOUNT#}
+Current status: {#REFUND_STATUS#}
+
+Approval does not mean the money has reached your account. We will notify you after the payment provider confirms
+processing.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: No completion receipt yet.
+
+CG-REF-003 — Refund rejected
+Trigger: Authorised refund rejection saved.
+
+Subject: Refund Request Decision — {#REFUND_REQUEST_ID#}
+
+Your refund request {#REFUND_REQUEST_ID#} was not approved.
+Reason: {#REJECTION_REASON#}
+Next steps or review route, if available: {#NEXT_STEPS#}
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: No attachment.
+
+CG-REF-004 — Refund processed
+Trigger: Provider confirms refund status is processed/success.
+
+Subject: Refund Processed — {#REFUND_REQUEST_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+The payment provider has confirmed processing of your refund.
+Refund Request ID: {#REFUND_REQUEST_ID#}
+Original transaction: {#TRANSACTION_ID#}
+Refund amount: {#AMOUNT#}
+Provider refund reference: {#REFUND_PROVIDER_REFERENCE#}
+Processed date: {#REFUND_DATE#}
+
+Please allow your bank/payment provider additional time to reflect the credit.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: Attach Refund Confirmation PDF only if generated from verified provider data.
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 11 / 22>
+CG-REF-005 — Refund failed/delayed
+Trigger: Provider returns failure or refund remains beyond configured SLA.
+
+Subject: Refund Status Update — {#REFUND_REQUEST_ID#}
+
+Your refund request {#REFUND_REQUEST_ID#} has an update.
+Current status: {#REFUND_STATUS#}
+Next action: {#NEXT_ACTION#}
+Expected update: {#EXPECTED_UPDATE#}
+
+We will notify you when the provider confirms the final status.
+
+Regards,
+Finance & Accounts Team
+
+Attachment / developer rule: Do not say completed.
+
+
+
+E. Employee registration, verification, appointment and access
+CG-EMP-001 — Employee registration submitted
+Trigger: HR saves employee registration record.
+
+Subject: Employee Registration Received — {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your employee registration has been received.
+Employee ID: {#EMPLOYEE_ID#}
+Proposed designation: {#DESIGNATION#}
+State: {#STATE#}
+District: {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch: {#BRANCH_NAME#}
+Department: {#DEPARTMENT_NAME#}
+Status: {#EMPLOYEE_STATUS#}
+
+Your submitted documents will be reviewed. Registration alone does not confirm appointment or system access.
+
+Regards,
+HR & Administration Team
+
+Attachment / developer rule: No attachment by default.
+
+CG-EMP-002 — Employee documents submitted/received
+Trigger: Employee uploads or HR records receipt of documents.
+
+Subject: Employee Documents Received — {#EMPLOYEE_ID#}
+
+We have received the following documents for employee record {#EMPLOYEE_ID#}: {#DOCUMENT_LIST#}.
+Status: Received — verification pending.
+Please note that document receipt is not the same as document verification or appointment approval.
+
+Regards,
+HR & Administration Team
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 12 / 22>
+Attachment / developer rule: No attachment; avoid echoing sensitive document numbers.
+
+CG-EMP-003 — Employee documents verified
+Trigger: HR verifies required documents.
+
+Subject: Employee Documents Verified — {#EMPLOYEE_ID#}
+
+The required documents for employee record {#EMPLOYEE_ID#} have been verified.
+Verification date: {#VERIFICATION_DATE#}
+Next step: {#NEXT_STEP#}
+
+Appointment and access will be confirmed separately through the authorised workflow.
+
+Regards,
+HR & Administration Team
+
+Attachment / developer rule: No attachment.
+
+CG-EMP-004 — Employee documents rejected / sent back
+Trigger: HR records rejection or send-back with reason.
+
+Subject: Action Required — Employee Documents — {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+The following document(s) require correction or resubmission: {#DOCUMENT_LIST#}
+Decision: {#DOCUMENT_DECISION#}
+Reason: {#REASON#}
+Required action: {#ACTION_REQUIRED#}
+Secure upload link: {#UPLOAD_LINK#}
+Due date: {#DUE_DATE#}
+
+Regards,
+HR & Administration Team
+
+Attachment / developer rule: No attachment. Use only HR-approved recipient-visible reasons.
+
+CG-EMP-005 — Employee approved + offer/approval/appointment documents
+Trigger: Employment approval saved and the relevant final documents generated.
+
+Subject: Employment Approved — Employee ID {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your employment has been approved.
+Employee ID: {#EMPLOYEE_ID#}
+Designation: {#DESIGNATION#}
+State/district: {#STATE#} / {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch: {#BRANCH_NAME#}
+Department: {#DEPARTMENT_NAME#}
+Reporting manager: {#REPORTING_MANAGER#}
+Joining date: {#JOINING_DATE#}
+Letter/memo number(s): {#LETTER_MEMO_NUMBERS#}
+
+Please find the approved letters attached.
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 13 / 22>
+Regards,
+HR & Administration Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach only the documents actually approved and issued: Offer Letter PDF,
+Employment/Approval Letter PDF, Appointment Letter PDF. Joining Letter is attached only if already issued; otherwise
+send it at joining confirmation.
+
+CG-EMP-006 — Joining confirmed + joining letter
+Trigger: Joining report accepted and HR records joining.
+
+Subject: Joining Confirmed — Employee ID {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your joining has been recorded.
+Employee ID: {#EMPLOYEE_ID#}
+Designation: {#DESIGNATION#}
+Role: {#ROLE_NAME#}
+State: {#STATE#}
+District: {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch: {#BRANCH_NAME#}
+Department: {#DEPARTMENT_NAME#}
+Date of joining: {#JOINING_DATE#}
+Reporting manager: {#REPORTING_MANAGER#}
+
+Your joining letter/confirmation is attached.
+
+Regards,
+HR & Administration Team
+
+Attachment / developer rule: Attach Joining Letter / Joining Confirmation PDF if issued.
+
+CG-EMP-007 — Employee login, role and access assigned
+Trigger: Account is provisioned and authorised role/scope permissions are saved.
+
+Subject: Employee Account Access Ready — {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your CareGanga employee account has been provisioned.
+Employee ID: {#EMPLOYEE_ID#}
+Login email: {#LOGIN_EMAIL#}
+Role: {#ROLE_NAME#}
+Access profile: {#ACCESS_PROFILE#}
+State: {#STATE#}
+District: {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch: {#BRANCH_NAME#}
+Department: {#DEPARTMENT_NAME#}
+Effective date: {#EFFECTIVE_DATE#}
+
+Set your password using this secure, single-use link: {#PASSWORD_SETUP_LINK#}
+Link expiry: {#LINK_EXPIRY#}
+
+Your access is limited to the permissions approved for your role. Your password is not included in this email.
+           CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 14 / 22>
+Regards,
+IT & Administration Team
+
+Attachment / developer rule: No password attachment or plaintext password. Role/scope must be authorised and
+audited.
+
+CG-EMP-008 — Employee account/role access changed
+Trigger: Authorised role, branch, department or jurisdiction change saved.
+
+Subject: Employee Role/Access Updated — {#EMPLOYEE_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your approved employee role/access has been updated.
+Employee ID: {#EMPLOYEE_ID#}
+Previous role: {#OLD_ROLE#}
+New role: {#NEW_ROLE#}
+State/district: {#STATE#} / {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch: {#BRANCH_NAME#}
+Department: {#DEPARTMENT_NAME#}
+Effective date: {#EFFECTIVE_DATE#}
+
+If the displayed access does not match your approved assignment, contact IT Support.
+
+Regards,
+IT & Administration Team
+
+Attachment / developer rule: No attachment unless updated ID card/letter is issued by separate event.
+
+CG-EMP-009 — Employee account suspended/deactivated
+Trigger: Authorised account status transition.
+
+Subject: Employee Account Status Update — {#EMPLOYEE_ID#}
+
+Your CareGanga account status is now {#ACCOUNT_STATUS#}, effective {#EFFECTIVE_DATE#}. If you believe this is
+incorrect, contact {#HR_SUPPORT_EMAIL#} or {#IT_SUPPORT_EMAIL#}.
+
+Regards,
+HR & IT Administration Team
+
+Attachment / developer rule: No attachment. Do not reveal internal security notes.
+
+
+
+F. Designation / office-bearer application and certificate
+CG-DES-001 — Designation application submitted
+Trigger: Office-bearer/designation application saved.
+
+Subject: Designation Application Received — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have received your designation application.
+Application ID: {#APPLICATION_ID#}
+Requested designation/role: {#REQUESTED_DESIGNATION#}
+             CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 15 / 22>
+State: {#STATE#}
+District: {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Status: {#APPLICATION_STATUS#}
+
+Your application is awaiting review.
+
+Regards,
+Administration Team
+
+Attachment / developer rule: No attachment.
+
+CG-DES-002 — Designation documents verified / rejected / sent back
+Trigger: Reviewer saves document verification or correction/rejection decision.
+
+Subject: Designation Application Update — {#APPLICATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your designation application {#APPLICATION_ID#} has been updated.
+Decision: {#DOCUMENT_DECISION#}
+Status: {#APPLICATION_STATUS#}
+Reason / action required: {#REASON_OR_ACTION#}
+Portal: {#PORTAL_LINK#}
+
+Final designation approval will be communicated separately.
+
+Regards,
+Administration Team
+
+Attachment / developer rule: No attachment.
+
+CG-DES-003 — Designation approved + certificate
+Trigger: Authorised designation approval saved; Designation ID, certificate number and approved PDF generated.
+
+Subject: Designation Approved — {#DESIGNATION_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your designation/office-bearer appointment has been approved.
+
+Name: {#RECIPIENT_NAME#}
+Designation/role: {#DESIGNATION#}
+Designation ID: {#DESIGNATION_ID#}
+Certificate number: {#CERTIFICATE_NUMBER#}
+Issue date: {#ISSUE_DATE#}
+Expiry date: {#EXPIRY_DATE_OR_NA#}
+State: {#STATE#}
+District: {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch/office: {#BRANCH_NAME#}
+Role/jurisdiction scope: {#ROLE_SCOPE#}
+
+Please find your approved designation certificate attached.
+
+Regards,
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 16 / 22>
+Administration Team
+CareGanga Foundation
+
+Attachment / developer rule: Attach Designation/Authority Certificate PDF. Ensure certificate number and designation
+ID are unique and dates/jurisdiction match approval.
+
+CG-DES-004 — Designation certificate expiry/renewal reminder
+Trigger: Configured milestone before expiry for certificate with a renewal policy.
+
+Subject: Designation Certificate Renewal Reminder — {#CERTIFICATE_NUMBER#}
+
+Your designation certificate {#CERTIFICATE_NUMBER#} expires on {#EXPIRY_DATE#}. Please start renewal using
+{#RENEWAL_LINK#}. This reminder does not extend the certificate's validity.
+
+Regards,
+Administration Team
+
+Attachment / developer rule: No attachment. Exclude certificates with expiry N/A or no renewal policy.
+
+
+
+G. Promotion, role/ID changes and reissued documents
+CG-PROM-001 — Promotion approved
+Trigger: Promotion approval saved with effective date and memo number.
+
+Subject: Promotion Approved — {#NEW_DESIGNATION#}
+
+Dear {#RECIPIENT_NAME#},
+
+Congratulations. Your promotion has been approved.
+Record ID: {#PERSON_ID#}
+Previous designation/role: {#OLD_DESIGNATION_ROLE#}
+New designation/role: {#NEW_DESIGNATION_ROLE#}
+New Role ID, if assigned: {#NEW_ROLE_ID#}
+State/district: {#STATE#} / {#DISTRICT#}
+Subdivision/block: {#SUBDIVISION_BLOCK#}
+Branch/department: {#BRANCH_NAME#} / {#DEPARTMENT_NAME#}
+Effective date: {#EFFECTIVE_DATE#}
+Promotion memo number: {#MEMO_NUMBER#}
+
+Please find the approved promotion letter attached. System access and ID card updates are completed through their
+respective workflows.
+
+Regards,
+HR / Administration Team
+
+Attachment / developer rule: Attach Promotion Letter PDF. Do not send passwords; send access-change notification
+separately.
+
+CG-PROM-002 — Updated ID card/certificate/letter issued
+Trigger: New ID card/certificate generated and approved after promotion, role change or jurisdiction change.
+
+Subject: Updated Official Documents Issued — {#PERSON_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your updated official document(s) have been issued following the approved change.
+           CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 17 / 22>
+Person/Employee/Member/Volunteer ID: {#PERSON_ID#}
+New role/designation: {#NEW_DESIGNATION_ROLE#}
+Role/Designation ID: {#NEW_ROLE_ID#}
+Certificate number: {#CERTIFICATE_NUMBER_OR_NA#}
+Issue date: {#ISSUE_DATE#}
+Expiry date: {#EXPIRY_DATE_OR_NA#}
+Effective date: {#EFFECTIVE_DATE#}
+
+Please find the approved updated ID card and relevant certificate/letter attached. The previous version is superseded
+where applicable.
+
+Regards,
+{#TEAM_NAME#}
+CareGanga Foundation
+
+Attachment / developer rule: Attach only the relevant approved new ID Card, certificate and/or letter. Mark old
+card/version superseded.
+
+CG-PROM-003 — Renewal approved / new ID card issued
+Trigger: Membership/volunteer/certificate renewal approved and new validity saved.
+
+Subject: Renewal Approved — Updated Document(s) Attached
+
+Dear {#RECIPIENT_NAME#},
+
+Your renewal has been approved.
+Record ID: {#PERSON_ID#}
+Record type: {#RECORD_TYPE#}
+New validity/expiry date: {#NEW_EXPIRY_DATE#}
+Renewal reference: {#RENEWAL_REFERENCE#}
+
+Your updated approved ID card/certificate is attached, where applicable.
+
+Regards,
+{#TEAM_NAME#}
+
+Attachment / developer rule: Attach only documents regenerated after renewal. If payment applies, payment receipt is a
+separate confirmed event.
+
+
+
+H. Salary generation, salary slip and disbursement
+CG-SAL-001 — Salary generated / payroll approved
+Trigger: Payroll calculation completed and payroll approved; payment may not yet be disbursed.
+
+Subject: Salary Generated — {#PAYROLL_PERIOD#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your salary calculation for {#PAYROLL_PERIOD#} has been generated and approved.
+Employee ID: {#EMPLOYEE_ID#}
+Payroll period: {#PAYROLL_PERIOD#}
+Net payable amount: {#NET_AMOUNT#}
+Salary status: Generated/Approved — disbursement pending.
+
+Your confidential salary slip is attached / available through the secure employee portal.
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 18 / 22>
+Regards,
+HR & Payroll Team
+
+Attachment / developer rule: Attach Salary Slip PDF or secure employee portal link. This email does not confirm bank
+payment.
+
+CG-SAL-002 — Salary disbursed / payment confirmed
+Trigger: Bank/payment provider confirms successful salary disbursement.
+
+Subject: Salary Payment Confirmed — {#PAYROLL_PERIOD#}
+
+Dear {#EMPLOYEE_NAME#},
+
+Your salary payment for {#PAYROLL_PERIOD#} has been confirmed as processed.
+Employee ID: {#EMPLOYEE_ID#}
+Net amount: {#NET_AMOUNT#}
+Payment date: {#PAYMENT_DATE#}
+Payment reference: {#PAYMENT_REFERENCE#}
+
+If you have any concern, contact HR & Payroll through the official channel.
+
+Regards,
+HR & Payroll Team
+
+Attachment / developer rule: No attachment required; optional payment advice only if generated. Employee-only
+recipient.
+
+CG-SAL-003 — Salary delayed/failed
+Trigger: Payroll payment fails or exceeds configured payment SLA.
+
+Subject: Salary Payment Status Update — {#PAYROLL_PERIOD#}
+
+Dear {#EMPLOYEE_NAME#},
+
+There is an update regarding your salary payment for {#PAYROLL_PERIOD#}.
+Current status: {#PAYMENT_STATUS#}
+Next action: {#NEXT_ACTION#}
+Expected update: {#EXPECTED_UPDATE#}
+
+We will notify you when the payment provider confirms the final status.
+
+Regards,
+HR & Payroll Team
+
+Attachment / developer rule: Do not state disbursed until confirmed.
+
+CG-SAL-004 — Salary slip resent through support request
+Trigger: Employee identity verified and support request completed.
+
+Subject: Confidential Salary Slip Resent — {#SERVICE_REQUEST_ID#}
+
+Dear {#EMPLOYEE_NAME#},
+
+As requested, your salary slip for {#PAYROLL_PERIOD#} has been resent through the approved secure channel.
+Service Request ID: {#SERVICE_REQUEST_ID#}
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 19 / 22>
+This document is confidential. Do not forward it to unauthorised persons.
+
+Regards,
+HR & Payroll Team
+
+Attachment / developer rule: Attach only the employee's approved salary slip or use a secure expiring link.
+
+
+
+I. Support ticket, document resend and closure
+CG-SUP-001 — Support request received
+Trigger: Ticket created from website, email or authorised manual entry.
+
+Subject: Support Request Received — Ticket {#TICKET_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We have received your support request.
+Ticket ID: {#TICKET_ID#}
+Request category: {#REQUEST_CATEGORY#}
+Requested service/document: {#REQUEST_SUMMARY#}
+Current status: {#TICKET_STATUS#}
+Submitted date: {#SUBMITTED_DATE#}
+
+Please quote this Ticket ID in all follow-up messages.
+
+Regards,
+CareGanga Support Team
+
+Attachment / developer rule: No attachment.
+
+CG-SUP-002 — Ticket status updated
+Trigger: Ticket status changes to In Progress, Waiting for Information, Escalated or another configured state.
+
+Subject: Support Ticket Update — {#TICKET_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your support ticket has been updated.
+Ticket ID: {#TICKET_ID#}
+Current status: {#TICKET_STATUS#}
+Update: {#STATUS_UPDATE#}
+Action required from you: {#ACTION_REQUIRED_OR_NONE#}
+Expected next update: {#EXPECTED_UPDATE#}
+
+Regards,
+CareGanga Support Team
+
+Attachment / developer rule: No attachment. Send only on meaningful status transitions.
+
+CG-SUP-003 — Document resend completed
+Trigger: Requester verified, file status Approved/Available, delivery attempt logged.
+
+Subject: Requested Document Resent — Ticket {#TICKET_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 20 / 22>
+Your document resend request has been completed.
+Ticket ID: {#TICKET_ID#}
+Document: {#DOCUMENT_NAME#}
+Record ID: {#RECORD_ID#}
+Delivery channel: {#DELIVERY_CHANNEL#}
+Delivery date/time: {#DELIVERY_DATETIME#}
+
+The approved document is attached / available through the secure link provided.
+
+Regards,
+{#RESPONSIBLE_TEAM#}
+CareGanga Foundation
+
+Attachment / developer rule: Attach requested approved PDF or use access-controlled expiring link. Verify registered
+recipient first.
+
+CG-SUP-004 — Ticket waiting for information / cannot fulfil yet
+Trigger: Required verification or document generation is pending.
+
+Subject: Action Required — Support Ticket {#TICKET_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+We cannot complete ticket {#TICKET_ID#} yet.
+Current status: {#TICKET_STATUS#}
+Reason: {#REASON#}
+Action required: {#ACTION_REQUIRED#}
+
+We will continue once the required step is completed.
+
+Regards,
+CareGanga Support Team
+
+Attachment / developer rule: No attachment.
+
+CG-SUP-005 — Ticket closed
+Trigger: Ticket closure saved with resolution summary.
+
+Subject: Support Ticket Closed — {#TICKET_ID#}
+
+Dear {#RECIPIENT_NAME#},
+
+Your support ticket has been closed.
+Ticket ID: {#TICKET_ID#}
+Resolution: {#RESOLUTION_SUMMARY#}
+Closed date: {#CLOSED_DATE#}
+
+If the issue remains unresolved, contact us through the official support channel and quote this Ticket ID.
+
+Regards,
+CareGanga Support Team
+
+Attachment / developer rule: No attachment.
+
+CG-SUP-006 — Internal notification: new ticket / assignment
+Trigger: Ticket created or assigned to a team.
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 21 / 22>
+Subject: New Support Ticket — {#TICKET_ID#}
+
+INTERNAL NOTIFICATION
+
+Ticket ID: {#TICKET_ID#}
+Requester record: {#REQUESTER_RECORD_ID#}
+Category: {#REQUEST_CATEGORY#}
+Assigned team: {#ASSIGNED_TEAM#}
+Priority: {#PRIORITY#}
+SLA due: {#SLA_DUE#}
+Secure ticket link: {#ADMIN_TICKET_LINK#}
+
+Review the ticket within the configured service level. Do not forward personal documents outside approved channels.
+
+Attachment / developer rule: Internal only; secure admin link and role-based access.
+
+
+
+J. Master attachment and trigger checklist
+ Module / Event                Trigger                               Required attachment              Important control
+ Member payment                Provider confirms success             Membership Payment Receipt       No receipt before verified
+                                                                     PDF                              payment.
+ Member final approval         Final approval + files                Member ID Card + Welcome         Include Member ID, type,
+                               generated                             Letter + Membership              issue date, validity and
+                                                                     Certificate                      expiry/N/A.
+ Member renewal                Renewal payment confirmed             Renewal Receipt PDF;             Cancel pending expiry
+                                                                     updated ID card if regenerated   reminders after renewal.
+ Volunteer final approval      Final approval + files                Volunteer ID Card + Welcome      Volunteer registration is free.
+                               generated                             Letter + Volunteer Certificate
+ Volunteer renewal             Only if policy defines                Updated ID card/certificate if   Do not invent expiry or fee.
+                               expiry/renewal                        renewed
+ Donation success              Provider confirms success             Donation Slip/Receipt PDF        No donation approval stage;
+                                                                                                      include transaction number.
+ Duplicate donation            Duplicate detector / finance          No automatic second receipt      Investigate distinct successful
+                               check                                                                  transactions; refund
+                                                                                                      separately.
+ Refund processed              Provider confirms processed           Refund confirmation PDF if       Admin approval alone is not
+                                                                     generated                        refund completion.
+ Employee offer/approval       Approved final letter issued          Offer Letter / Employment        Attach only issued and
+                                                                     Approval Letter                  approved documents.
+ Employee appointment          Appointment approved and              Appointment Letter PDF           Unique memo/letter number.
+                               letter issued
+ Employee joining              Joining report accepted               Joining Letter/Confirmation      Send on joining event, not
+                                                                     PDF                              merely on offer.
+ Employee access               Role and permissions                  No password; secure setup        Include role and
+                               approved                              link                             state/district/subdivision/branc
+                                                                                                      h scope.
+ Designation approval          Approved designation +                Designation Certificate PDF      Include Designation ID,
+                               certificate generated                                                  certificate number, role and
+                                                                                                      geographic scope.
+ Promotion/role change         Promotion/role change                 Promotion Letter + updated       New ID card is a separate
+                               approved                              ID/certificate as generated      generated/approved event.
+ Salary generated              Payroll approved                      Salary Slip PDF or secure        Confidential; not proof of
+                                                                     portal link                      disbursement.
+ Salary disbursed              Bank/provider confirms                Optional payment advice          Do not send until payment
+                               success                                                                confirmed.
+ Support document resend       Ticket fulfilled after verification   Requested approved PDF /         Ticket ID and delivery log
+                                                                     secure link                      mandatory.
+ Support ticket closure        Resolution saved                      No attachment by default         Send closure status and ticket
+                                                                                                      ID.
+
+
+
+
+            CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover
+<PARSED TEXT FOR PAGE: 22 / 22>
+K. Developer implementation checklist
+   Create a database-backed Email Template Master with Template ID, version, language, subject, body, enabled flag,
+    recipient type, trigger event, attachment rules and owning team.
+   Create an event/trigger map for every template; trigger only after the relevant status is committed in the database.
+   Create PDF generation and attachment checks. If required PDF generation fails, do not send an incomplete approval
+    email; create an internal alert and retry safely.
+   Generate unique IDs for applications, Member ID, Volunteer ID, Employee ID, Designation ID, certificate number,
+    memo number, transaction reference, refund request and support ticket.
+   Keep member/volunteer application decisions separate from document verification decisions. Keep employee
+    document verification separate from employment approval and joining.
+   Donation has no approval state. Send donation slip after provider-confirmed payment; possible duplicates go to
+    duplicate review/refund flow.
+   Schedule expiry/renewal reminders from saved expiry dates and policy. Cancel queued reminders after renewal;
+    exclude Lifetime and N/A expiry.
+   Role access must be authorised, least-privilege, scoped to state/district/subdivision/block/branch/department and
+    auditable. Never email plaintext passwords.
+   Support ticket states should include at minimum: New, Assigned, In Progress, Waiting for User, Escalated, Resolved
+    and Closed; adapt names to actual portal statuses.
+   Add an admin preview/approval for sensitive or legal letters and certificates; store approved PDF version and issuing
+    authority.
+   Add delivery provider status tracking, bounce handling, safe retries, duplicate suppression and audit logs.
+   Test each template with sandbox payment/refund events, fake recipients, missing attachments, rejected applications,
+    send-back flows, expiry dates and role changes before production.
+
+
+
+L. Placeholder dictionary (common)
+Variable                                                         Meaning / source
+{#RECIPIENT_NAME#}                                               Verified recipient name
+{#APPLICATION_ID#}                                               Application reference
+{#MEMBER_ID#} / {#VOLUNTEER_ID#} /                               Approved record ID
+{#EMPLOYEE_ID#}
+{#MEMBERSHIP_TYPE#}                                              General / Lifetime / other configured type
+{#ISSUE_DATE#} / {#EXPIRY_DATE_OR_NA#}                           Issue date and expiry date or N/A
+{#TRANSACTION_ID#}                                               Payment provider-confirmed transaction/reference
+{#RECEIPT_NUMBER#} /                                             Official receipt/slip number
+{#DONATION_RECEIPT_NO#}
+{#DESIGNATION_ID#} / {#CERTIFICATE_NUMBER#}                      Unique designation and certificate identifiers
+{#STATE#} / {#DISTRICT#} /                                       Approved geographic scope
+{#SUBDIVISION_BLOCK#}
+{#ROLE_NAME#} / {#ACCESS_PROFILE#}                               Authorised role and permissions profile
+{#LETTER_MEMO_NUMBERS#} /                                        Server-generated official letter/memo number
+{#MEMO_NUMBER#}
+{#TICKET_ID#}                                                    Support ticket identifier
+{#DOCUMENT_NAME#} / {#DOCUMENT_LIST#}                            Requested/approved documents
+{#PASSWORD_SETUP_LINK#}                                          Single-use, time-limited secure link; never plaintext
+                                                                 password
+{#STATUS#} / {#REASON#} / {#ACTION_REQUIRED#}                    Current saved status, approved reason and next action
+{#RESPONSIBLE_TEAM#} / {#SUPPORT_EMAIL#}                         Configured owning team and monitored contact
+
+
+
+Final note
+This is a comprehensive implementation specification, not a substitute for the Foundation's approved legal, HR, finance,
+privacy, refund and certificate policies. Before production, confirm the actual validity rules, refund eligibility, official role
+names, sender/domain configuration, monitored support inboxes, and required approvals.
+
+
+
+             CareGanga Foundation | Master Email Template & Workflow Specification | Developer Handover

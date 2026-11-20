@@ -79,3 +79,12 @@ Dependencies: Within CG-21: US-001 (provides the real CG-21 operation-audit sour
 
 ## 18 November 2026 — original website receiving acceptance — existing QA receiving acceptance
 Within original US-001/002, validate **invalid phone/email/PIN/required/age, permissions, password, upload and conflicts with clear Admin-editable messages** from Batch02 021604–021739, Batch03 021809–022004, 167 original Admin screenshots and all original public and Admin forms, including /membership /volunteer /contact; follow [original route QA matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Source Admin → permissions/field-level copy → actual owner API and persisted state → Web and applicable Android → withdrawal/denied/error, with original UI screenshot comparison. Do not change canonical QA counts or fake PASS. **REFERENCE_ALIGNED; SOURCE RECEIVING OPEN; RUNTIME/PIXEL/DEVICE NOT_RUN.**
+
+
+## Supplemental 20-Nov-2026 client acceptance (no new story / QA count)
+
+**Source:** [document examples](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md).
+
+Test current effective legal/80G/office/stamp/signature record is approved and versioned before CG19 renders receipt, certificate or offer; no hardcoded registered office, demo contact or 80G claim; wrong-tenant/root provider secret read denied, stale signatures rejected. Client written approval still needed; source/provider/device tests NOT_RUN.
+
+**Execution:** CLIENT_SOURCE_MAPPED; any missing source implementation is SOURCE_GAP/DEPENDENT_OWNER; actual runtime, migration, rendered PDF and delivery-provider QA NOT_RUN. Reuse existing story QA traces, not a second tracker.

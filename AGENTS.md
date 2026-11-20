@@ -1,5 +1,9 @@
 # CareGanga Foundation — AI Agent and Developer Entry Point (JASIQ Harness v2)
 
+## Client document and 52 transactional email source — 20 November 2026
+
+Before editing CG-01/03/04/07/09/10/11/19/21 document, notification, enrollment, receipt, payroll or HR event flows, read [five new client document designs](docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md), [52 email templates](docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md) and [QA acceptance](docs/qa/CAREGANGA-CLIENT-DOCUMENT-EMAIL-INTEGRATION-QA-20261120.md). The original five JPGs and original 22-page DOCX are in the **private** CareGanga Library archive `/CareGanga/CareGanga-Client-Document-Email-References-20261120.zip` (SHA-256 `3caae2336ab1eedd6bd235069cd7acd72de3bbaabd6c115d4860e912ce43c338`); obtain only with authorized access and check exact hashes. Personal sample data, sample donor receipts, signatures and unverified legal/80G/registered-office details must not enter production code, seeds or public assets. The Git source includes SHA manifest and complete textual email extraction, not unredacted sample images. New acceptance content is **NOT IMPLEMENTATION/NOT_RUNTIME_TESTED**, and no cross-owner new module is auto-authorized.
+
 **Product ID:** `careganga`  
 **Product repository:** `jasiqlabs/careganga`  
 **Central Harness:** `jasiqlabs/jasiq-harness` (private, **not copied** into this repository)  

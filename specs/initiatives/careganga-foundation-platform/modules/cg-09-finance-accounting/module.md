@@ -101,3 +101,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 
 ## 18 November 2026 — original website receiving acceptance
 Original client routes: **/ngo-information/financial-reports; official approved financial reports**. Original captures **Batch01 021020/021040 and Admin U35–U42**. One true owner: CG-09 posted accounts with CG-20 public-safe projection and CG-19 approved PDF; no private journal leak. This requirement is linked to [the 47 public-screen alignment matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Preserve existing US-004/006 (71 QA unchanged) and do not seed screenshot claims as facts.
+
+
+## 20-Nov-2026 client document/email v2 source-owner reconciliation
+
+**Authority:** [five original designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template email master](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). Existing module stories and historic QA status unchanged; this is new client acceptance evidence, not delivered functionality.
+
+Remain source of confirmed posted money, receipts/evidence and reversals, not a second donation or member ID master. CG-MEM-002/010, CG-DON-001–003, CG-REF-001–005 and CG-SAL-002 require real owner+provider confirmed payment/refund/disbursement events, and CG-19 output must not replace CG09's unrelated original general finance invoice. No unverified 80G claims or sample receipt numbers.
+
+**Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.

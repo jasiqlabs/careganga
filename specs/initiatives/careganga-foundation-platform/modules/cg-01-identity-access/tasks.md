@@ -157,3 +157,12 @@ The current code-based review and fix evidence is [the six-owner formal source r
 **Canonical source inventory:** [All 39 Admin/Center Web pages and 21 internal business Android entry points](../../../../../docs/qa/CAREGANGA-CG01-IRFAN-UIUX-PAGE-BY-PAGE-SOURCE-AUDIT-20261120.md). Reviewed latest actual MD IRFAN CG-01 `main@c73b43a3` Web roles/staff/security and Android header/drawer/bottom-nav against committed existing CG-02/03/09/14/15/18/19/21 screens. Source-side admin visual fix `ed874b14d5ccc8cdb2b1608aa83de815fd45ba70` defines missing finance/healthcare card/table styling, common responsive headings/focus in Admin scope only, and corrects duplicate top/bottom Android safe-area insets across 20 direct business screens. Original public website/Public Android must **not** adopt internal Admin design. Related native/CG-01 logic, RBAC and business stories remain unchanged.
 
 **Gate:** Shell and common presentation **SOURCE_ALIGNED**, but many old per-module screens still need individual rendered CG-01 visual comparisons and possibly focused screen redesign for loading/filter/detail/action hierarchy. New manual `npm run verify:cg01-uiux-source` is a lexical source guard, not browser/device QA, not CI. Original 51 CG-01 cases, source approval, human review, Web build, Android visual/device/pixel and production acceptance status remain **unchanged / NOT_RUN**. No main merge.
+
+
+## Supplemental 20-Nov-2026 client acceptance (no new story / QA count)
+
+**Source:** [document examples](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52 event templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md).
+
+Existing CG-01 QA to reconcile client CG-EMP-007–009 with actual account flow: no plaintext password, verified recipient/expiry/single-use if setup link approved, correct effective role/geography, revoked access and replay safety. Do not claim source verified or disturb working current auth.
+
+**Execution:** CLIENT_SOURCE_MAPPED; any missing source implementation is SOURCE_GAP/DEPENDENT_OWNER; actual runtime, migration, rendered PDF and delivery-provider QA NOT_RUN. Reuse existing story QA traces, not a second tracker.

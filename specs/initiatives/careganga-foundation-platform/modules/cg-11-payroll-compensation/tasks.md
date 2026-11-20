@@ -109,3 +109,12 @@ Dependencies: US-002
 - US-001: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; actual CG-01/02/10/03 source implementation NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real SQL/Web/Android/pixel/Play NOT_RUN.
 - US-002: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; prerequisite US-001 real source NOT_VERIFIED, current CG-10 attendance/CG-03 case NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real SQL/Web/Android/finance/visual NOT_RUN.
 - US-003: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; prerequisite US-002 and actual CG-09/CG-19 source NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real bank/CG-09/SQL/Web/Android/Play/visual NOT_RUN.
+
+
+## 20-Nov-2026 new client source acceptance — existing stories, no added QA count
+
+**Evidence:** [new document layouts](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template event catalog](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). 
+
+Existing CG-11 QA must trace employee-only private slip, calculation-approved/paid separation, actual provider confirmation, duplicate/out-of-order provider events, failure and no unauthorized manager/other-employee read. Support resent payslip requires registered destination & ticket verification. Web/Android own-pay state and email subject/attachments follow real source. Runtime/provider QA NOT_RUN.
+
+**Progress status:** CLIENT_SOURCE_MAPPED; nonimplemented owner integrations SOURCE_PENDING; no new executed test or PASS. Reconcile in next Implement → independent review → fix → re-review → existing story QA source trace, then actual Web/Android/PostgreSQL/provider/rendered tests.

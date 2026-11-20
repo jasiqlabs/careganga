@@ -184,3 +184,12 @@ Dependencies: US-001 approved active CG-10 employee **plus genuinely delivered C
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, formal development gate BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, formal development gate BLOCKED.
 - US-005: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/database/native QA NOT_RUN, formal development gate BLOCKED.
+
+
+## 20-Nov-2026 new client source acceptance — existing stories, no added QA count
+
+**Evidence:** [new document layouts](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template event catalog](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). 
+
+Existing CG-10 QA must verify one unique approved offer/appointment/confirmation number, source-backed salary/CTC, approval-vs-joining and access separation, correct CG-03 document verification, multi-scope issuance, subject/attachment triggers for CG-EMP/DES/PROM, exact original portrait sections and accessible versioned PDF. Deny revoked/out-of-scope employee document access, missing approved signature, reissue without audited supersession and leaking private HR or payroll fields. Runtime/source-owner integration pending.
+
+**Progress status:** CLIENT_SOURCE_MAPPED; nonimplemented owner integrations SOURCE_PENDING; no new executed test or PASS. Reconcile in next Implement → independent review → fix → re-review → existing story QA source trace, then actual Web/Android/PostgreSQL/provider/rendered tests.
