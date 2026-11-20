@@ -219,7 +219,7 @@ const styles=StyleSheet.create({
  content:{padding:18,paddingBottom:48,gap:14,width:"100%",maxWidth:720,alignSelf:"center"},
  row:{flexDirection:"row",gap:10,alignItems:"center",flexWrap:"wrap"},
  title:{fontSize:23,fontWeight:"800",color:theme.sidebar,flexShrink:1},
- fieldLabel:{fontSize:14,fontWeight:"650",color:theme.text},
+ fieldLabel:{fontSize:14,fontWeight:"600",color:theme.text},
  input:{minHeight:48,padding:12,borderWidth:1,borderColor:theme.border,
   borderRadius:10,backgroundColor:theme.surface,color:theme.text},
  helper:{fontSize:13,lineHeight:20,color:theme.mutedText},

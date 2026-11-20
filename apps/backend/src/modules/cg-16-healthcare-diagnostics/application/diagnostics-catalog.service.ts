@@ -364,7 +364,8 @@ export class DiagnosticsCatalogService{
    await this.current(tx,actor,own?"diagnostics.pricing.view":"diagnostics.catalog.view");
    const r=await tx.query(
     "SELECT c.id AS \"centerRef\",c.display_name AS name,c.center_code AS code,"+
-    "p.legal_name AS \"providerName\",c.publication_state AS \"publicationState\" "+
+    "p.legal_name AS \"providerName\",c.publication_state AS \"publicationState\", "+
+    "c.public_slug AS \"publicSlug\" "+
     "FROM health_center c JOIN health_provider p ON "+
     "p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
     "JOIN health_center_capability cap ON cap.root_realm_id=c.root_realm_id "+

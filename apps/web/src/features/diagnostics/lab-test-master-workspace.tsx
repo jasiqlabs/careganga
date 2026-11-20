@@ -405,6 +405,17 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      {centers.map(c=><option key={c.centerRef} value={c.centerRef}>
       {c.name} — {c.providerName} ({c.code})</option>)}
     </select></label>
+   {!!centerRef&&(()=>{
+    const current=centers.find(c=>c.centerRef===centerRef);
+    return current?.publicationState==="PUBLISHED"&&current.publicSlug?
+     <p><a href={"/health-network/lab-tests?center="+encodeURIComponent(current.publicSlug)}
+      target="_blank" rel="noopener noreferrer">
+      Preview this lab’s currently published tests and approved prices</a>
+      {" · Live source is rechecked on the public page."}</p>:
+     <p className="cg-diagnostics-note">
+      This lab is not currently published in the public directory.
+      Pricing here remains private until original CG-14 publication is current.</p>;
+   })()}
    {!centerRef&&<p className="cg-module-empty">Select a lab to review mappings and prices.</p>}
    {!!centerRef&&<div className="cg-diagnostics-layout">
     <div><h3>Mapped Tests & Packages</h3>

@@ -12,7 +12,8 @@ export type DiagnosticPackage={
  activeFromUtc:string;activeToUtc:string|null
 };
 export type DiagnosticCenter={
- centerRef:string;name:string;code:string;providerName:string;publicationState:string
+ centerRef:string;name:string;code:string;providerName:string;publicationState:string;
+ publicSlug:string|null
 };
 export type DiagnosticItem={kind:"TEST"|"PACKAGE";itemRef:string;name:string;code:string};
 export type DiagnosticMapping={

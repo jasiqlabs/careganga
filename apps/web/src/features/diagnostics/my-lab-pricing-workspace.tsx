@@ -30,6 +30,15 @@ export function MyLabPricingWorkspace({canManage}:{canManage:boolean}){
      {c.name} — {c.providerName}</option>)}
    </select>
   </label>}
+  {selected&&(()=>{
+   const current=centers.find(c=>c.centerRef===selected);
+   return current?.publicationState==="PUBLISHED"&&current.publicSlug?
+    <p><a href={"/health-network/lab-tests?center="+encodeURIComponent(current.publicSlug)}
+     target="_blank" rel="noopener noreferrer">Preview currently published prices
+     for this assigned lab</a></p>:
+    <p className="cg-diagnostics-note">
+     This lab is not currently published. Private proposals are not public offers.</p>;
+  })()}
   {selected&&<CenterLabPricingPanel key={selected} centerRef={selected}
    canManage={canManage}/>}
  </section>;
