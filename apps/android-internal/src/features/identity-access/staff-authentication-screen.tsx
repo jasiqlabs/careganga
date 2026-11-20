@@ -185,7 +185,7 @@ export function StaffAuthenticationScreen() {
   const expireSession = useCallback(() => {
     hideToast();
     setMessage("");
-    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
+    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
     setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
@@ -235,7 +235,7 @@ export function StaffAuthenticationScreen() {
       setApprovalsOpen(false);
       setHealthReviewsOpen(false);
       setDoctorLeaveReviewsOpen(false);
-      setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
+      setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
       setPatientBookingOpen(false);
       setDocumentsOpen(false);
       setNotificationsOpen(false);
@@ -529,7 +529,7 @@ export function StaffAuthenticationScreen() {
       setMessage("");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
+      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
       setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
@@ -551,7 +551,7 @@ export function StaffAuthenticationScreen() {
         setApprovalsOpen(false);
         setHealthReviewsOpen(false);
         setDoctorLeaveReviewsOpen(false);
-        setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
+        setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
         setPatientBookingOpen(false);
         setDocumentsOpen(false);
         setNotificationsOpen(false);
