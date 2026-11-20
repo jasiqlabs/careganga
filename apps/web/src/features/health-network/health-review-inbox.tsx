@@ -209,6 +209,13 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
       <dt>{statusText(key)}</dt><dd>{safeText(value)}</dd>
      </div>)}
     </dl>
+    {detail.kind==="HEALTH_CENTER_VERIFICATION"&&
+     typeof detail.source.source.diagnosticLicenseValidThrough==="string"&&
+     <p className="cg-diagnostics-note">Diagnostic licence expiry is an
+      applicant declaration, not an automatic verification. Compare the
+      displayed valid-through date with the original protected licence,
+      center identity and date before making the independent Foundation
+      decision. Return or reject mismatched or expired evidence.</p>}
     <p>Private evidence: {statusText(detail.source.proofStatus)}</p>
     <a href={(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"/api/documents/doctor-evidence/reviews/":"/api/documents/health-draft/reviews/")+
       encodeURIComponent(detail.caseRef)+"/download"}>

@@ -144,7 +144,7 @@ export class HealthReviewWorkflowService{
     diagnostic_license_valid_through:string|null;diagnostic_license_current:boolean}>(
     "SELECT c.provider_id,c.version,c.display_name,c.center_code,c.center_type,"+
     "c.address_line,c.state_ref,c.district_ref,c.block_ref,c.pin_code,"+
-    "c.public_phone,c.time_zone,c.diagnostic_license_valid_through::text,"+
+    "c.public_phone,c.time_zone,to_char(c.diagnostic_license_valid_through,'YYYY-MM-DD') AS diagnostic_license_valid_through,"+
     "(c.diagnostic_license_valid_through IS NOT NULL AND "+
     "c.diagnostic_license_valid_through >= "+
     "(now() AT TIME ZONE c.time_zone)::date) AS diagnostic_license_current "+

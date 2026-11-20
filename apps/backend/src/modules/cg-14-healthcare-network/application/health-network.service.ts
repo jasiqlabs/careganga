@@ -396,7 +396,7 @@ export class HealthNetworkService{
     }>(
       "SELECT c.id,c.provider_id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,c.time_zone,"+
-      "c.public_phone,c.diagnostic_license_valid_through::text,c.version,c.status,"+
+      "c.public_phone,to_char(c.diagnostic_license_valid_through,'YYYY-MM-DD') AS diagnostic_license_valid_through,c.version,c.status,"+
       "p.status AS provider_status,"+
       "c.access_state,c.publication_state,c.public_slug FROM health_center c "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
@@ -543,7 +543,7 @@ export class HealthNetworkService{
     const rows=await this.db.query(
       "SELECT c.id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,"+
-      "c.time_zone,c.public_phone,c.diagnostic_license_valid_through::text,"+
+      "c.time_zone,c.public_phone,to_char(c.diagnostic_license_valid_through,'YYYY-MM-DD') AS diagnostic_license_valid_through,"+
       "c.version,c.status "+
       "FROM health_center c "+
       "JOIN health_center_account_affiliation f "+

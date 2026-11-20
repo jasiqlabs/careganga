@@ -819,7 +819,7 @@ export class DiagnosticsCatalogService{
     "AND c.diagnostic_license_valid_through >= "+
     "(now() AT TIME ZONE c.time_zone)::date "+
     "AND rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
-    "c.diagnostic_license_valid_through::text "+
+    "to_char(c.diagnostic_license_valid_through,'YYYY-MM-DD') "+
     "JOIN cg03_case review ON review.id=rev.approval_case_ref "+
     "AND review.realm_id=c.root_realm_id AND review.status='OWNER_COMPLETED' "+
     "AND review.case_kind='HEALTH_CENTER_VERIFICATION' "+

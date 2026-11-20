@@ -39,7 +39,7 @@ export const CG14_CURRENT_LAB_EVIDENCE_SQL=
  "AND c.diagnostic_license_valid_through IS NOT NULL "+
  "AND c.diagnostic_license_valid_through >= (now() AT TIME ZONE c.time_zone)::date "+
  "AND rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
- "c.diagnostic_license_valid_through::text) ";
+ "to_char(c.diagnostic_license_valid_through,'YYYY-MM-DD')) ";
 export type VerifiedLabCenter={
  centerRef:string;name:string;publicSlug:string|null;publicationState:string;
 };
