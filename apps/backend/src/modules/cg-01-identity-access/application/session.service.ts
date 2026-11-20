@@ -256,6 +256,55 @@ export class SessionService implements IdentityAuthorization {
       throw new HttpException("Password confirmation retry limit",HttpStatus.TOO_MANY_REQUESTS);
   }
 
+  /** Clinical professional sign-off requires a fresh password from the
+   * ORIGINAL CG01 account, regardless of whether the clinician's role is
+   * a protected Foundation administration role. The caller additionally
+   * verifies exact clinical action, center and CG14 licensed identity.
+   * Do not reuse broad root-only approval privileges for clinicians.
+   */
+  async limitClinicalProfessionalProof(actor:VerifiedFoundationActor):Promise<void>{
+    const rules=await this.loginRules();
+    const digest=this.throttleKey("clinical-professional-proof",actor.accountId);
+    const row=await this.db.query<{attempt_count:number}>(`
+      INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
+      VALUES($1,now(),1)
+      ON CONFLICT(key_digest) DO UPDATE SET
+        attempt_count=CASE WHEN auth_login_attempt.window_started_at<
+          now()-make_interval(secs=>$2) THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
+        window_started_at=CASE WHEN auth_login_attempt.window_started_at<
+          now()-make_interval(secs=>$2) THEN now() ELSE auth_login_attempt.window_started_at END
+      RETURNING attempt_count`,[digest,rules.failedAttemptWindowSeconds]);
+    if(row.rows[0].attempt_count>rules.maxFailedAttempts)
+      throw new HttpException("Professional password retry limit",HttpStatus.TOO_MANY_REQUESTS);
+  }
+  async requireClinicalProfessionalProof(client:PoolClient,
+    actor:VerifiedFoundationActor,password:string):Promise<void>{
+    if(typeof password!=="string"||password.length<8||
+      Buffer.byteLength(password,"utf8")>1024)
+      throw new ForbiddenException("Confirm your current account password");
+    const q=await client.query<{password_hash:string}>(`
+      SELECT credentials.password_hash FROM auth_session session
+      JOIN account member ON member.id=session.account_id
+        AND member.realm_id=$3 AND member.status='ACTIVE'
+        AND member.access_version=session.account_access_version
+      JOIN identity_credential credentials ON credentials.account_id=member.id
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=member.realm_id
+      WHERE session.id=$1 AND session.account_id=$2
+        AND session.revoked_at IS NULL
+        AND session.password_authenticated_at IS NOT NULL
+        AND session.expires_at>now()
+        AND session.issued_at>now()-make_interval(secs=>COALESCE(
+          policy.max_session_age_seconds,28800))
+        AND session.last_seen_at>now()-make_interval(secs=>COALESCE(
+          policy.idle_timeout_seconds,1800))
+      FOR UPDATE OF session,member,credentials`,
+      [actor.activeSessionId,actor.accountId,actor.realmId]);
+    if(!q.rows[0]||!await verifyPassword(password,q.rows[0].password_hash))
+      throw new ForbiddenException("Current clinical account password is incorrect");
+    await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",
+      [this.throttleKey("clinical-professional-proof",actor.accountId)]);
+  }
+
   /** Signed-in password change for every role; old sessions are invalid immediately. */
   async changePassword(bearer:string,currentPassword:string,newPassword:string,
     correlationRef:string):Promise<{status:"PASSWORD_CHANGED";message:string}>{
