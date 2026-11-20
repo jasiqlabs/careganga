@@ -12,6 +12,10 @@ import {ClinicalLabQualityEvidenceService}
 export class ClinicalLabEquipmentController{
  constructor(private readonly equipment:ClinicalLabEquipmentService,
   private readonly evidence:ClinicalLabQualityEvidenceService){}
+ @Get("foundation/summary")
+ summary(@Headers("authorization")token:string){
+  return this.equipment.foundationSummary(token);
+ }
  @Get("centers/eligible")
  eligible(@Headers("authorization")token:string){
   return this.equipment.eligibleCenters(token);
