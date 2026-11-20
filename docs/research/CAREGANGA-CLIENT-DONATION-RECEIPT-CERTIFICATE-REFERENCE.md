@@ -17,3 +17,8 @@
 **Data hygiene:** the PDFs include a real-looking sample donor name/contact and payment reference. This note intentionally omits those values. Do not put the sample donor's mobile, email, payment ID or company keys in source, fixtures, logs, public PDF templates or UI. Load actual legally approved corporate metadata from the client-configured source.
 
 **Verification:** textual layout/field mapping recorded from provided PDFs; no claim of an exact CSS/PDF pixel match or original PDF binary being committed. A manual side-by-side rendered-document test remains required. Store the two original PDFs in the project's restricted client-reference location and keep them accessible to the responsible local developer.
+
+
+## Additional client source — 20 Nov 2026
+
+The **new donation receipt JPG** `1000017635.jpg` (SHA-256 `d3caabac2f5fffc08ad550d9bbfdd2c3423aba0ccca3fd646367ada98a1306f5`) is a separate newer visual reference, **not** the original 16-Nov PDF described above. See [full five-design/new email reference map](CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [client 52-template catalog](CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). Keep both actual source dates/assets and the genuine CG-07/09/19 owners clear; never infer a completed rendered PDF or approved legal stamp from either image. Actual JPG lives in the restricted private client reference archive, not a public app fixture.
