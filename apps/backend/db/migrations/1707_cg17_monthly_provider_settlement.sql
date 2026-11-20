@@ -103,6 +103,15 @@ BEGIN
    ON effect.root_realm_id=l.root_realm_id
    AND effect.id=line.original_effect_ref
    AND effect.liability_ref=l.id AND effect.effect_kind='LIABILITY_ACCRUAL'
+   AND effect.source_digest=l.source_digest
+   AND effect.amount_minor=l.amount_minor
+  JOIN journal j ON j.id=effect.original_cg09_ref
+   AND j.root_realm_id=effect.root_realm_id
+   AND j.source_owner='CG-09' AND j.posting_kind='GENERAL'
+   AND j.source_ref=effect.id
+   AND j.immutable_source_event_key=effect.idempotency_key
+   AND j.immutable_payload_digest=effect.source_digest
+   AND j.posting_date=l.service_local_date AND j.status='POSTED'
   WHERE line.root_realm_id=NEW.root_realm_id AND line.settlement_ref=NEW.id
    AND line.center_ref=NEW.center_ref
    AND line.amount_minor=l.amount_minor
@@ -136,6 +145,15 @@ BEGIN
    AND effect.id=NEW.original_effect_ref
    AND effect.liability_ref=liability.id
    AND effect.effect_kind='LIABILITY_ACCRUAL'
+   AND effect.amount_minor=liability.amount_minor
+   AND effect.source_digest=liability.source_digest
+  JOIN journal j ON j.id=effect.original_cg09_ref
+   AND j.root_realm_id=effect.root_realm_id
+   AND j.source_owner='CG-09' AND j.posting_kind='GENERAL'
+   AND j.source_ref=effect.id
+   AND j.immutable_source_event_key=effect.idempotency_key
+   AND j.immutable_payload_digest=effect.source_digest
+   AND j.posting_date=liability.service_local_date AND j.status='POSTED'
   WHERE claim.root_realm_id=NEW.root_realm_id
    AND claim.id=NEW.settlement_ref AND claim.center_ref=NEW.center_ref
    AND claim.state='PROPOSED'
