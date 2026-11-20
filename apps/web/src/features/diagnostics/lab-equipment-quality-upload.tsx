@@ -65,6 +65,7 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
   try{
    const v=await api<State>(base+"/"+intent.current+"/status");
    setState(v.status);
+   setCanRestart(v.status==="REJECTED");
    if(v.cleanVerified){
     setMessage("Private PDF uploaded and scanner-verified. Equipment is NOT "+
      "automatically cleared for use; authorize maintenance/readiness separately.");
@@ -103,10 +104,11 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
    if(!transfer.ok)throw Error("PDF transfer not confirmed. Check original upload.");
    const checked=await api<State>(base+"/"+reserved.uploadRef+"/confirm","POST");
    setState(checked.status);
+   setCanRestart(checked.status==="REJECTED");
    if(checked.cleanVerified){
     setMessage("Original quality PDF passed private storage and malware scan. "+
      "Instrument readiness requires its separate maintenance action.");
-    intent.current="";original.current=null;setFile(null);
+    intent.current="";original.current=null;setFile(null);setCanRestart(false);
     try{await onVerified()}catch{setError("Verified, but file list refresh failed.");}
    }else setMessage("Original scan not verified. The equipment is not marked ready.");
   }catch(e){setError(e instanceof Error?e.message:"Original upload outcome uncertain.");}
