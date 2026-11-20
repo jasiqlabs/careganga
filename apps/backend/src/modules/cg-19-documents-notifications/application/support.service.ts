@@ -253,7 +253,8 @@ export class SupportService{
     const a=await this.actor(bearer,"support.cases.view");
     const limit=Number(rawLimit);
     if(!Number.isInteger(limit)||limit<1||limit>30||
-      typeof filter!=="string"||!["ALL","OPEN","REPLIED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
+      typeof filter!=="string"||!["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+      "ESCALATED","REPLIED","RESOLVED","CLOSED","ARCHIVED","UNREAD"].includes(filter)||
       typeof search!=="string"||search.length>100)
       throw new BadRequestException("Choose a supported filter");
     let searchDigests:string[]|null=null;
@@ -314,7 +315,9 @@ export class SupportService{
     })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
       closed:string;unread:string;archived:string;received_today:string}>(
-      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status='OPEN') AS open,"+
+      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status IN(
+      'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',
+      'REPLIED','RESOLVED')) AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
       "count(*) FILTER(WHERE c.status='CLOSED') AS closed,"+
       "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
