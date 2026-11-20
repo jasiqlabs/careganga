@@ -435,7 +435,9 @@ export class DiagnosticsCatalogService{
    "AND (t.active_to IS NULL OR t.active_to>now()) FOR SHARE OF t,c":
    "SELECT p.id FROM diagnostic_package p WHERE p.root_realm_id=$1 "+
    "AND p.id=$2 AND p.status='ACTIVE' AND p.active_from<=now() "+
-   "AND (p.active_to IS NULL OR p.active_to>now()) FOR SHARE OF p";
+   "AND (p.active_to IS NULL OR p.active_to>now()) "+
+   " AND EXISTS(SELECT 1 FROM diagnostic_package_line l WHERE l.root_realm_id=p.root_realm_id AND l.package_ref=p.id AND l.package_revision=p.revision) AND NOT EXISTS(SELECT 1 FROM diagnostic_package_line l LEFT JOIN diagnostic_test t ON t.root_realm_id=l.root_realm_id AND t.id=l.test_ref LEFT JOIN test_category c ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref WHERE l.root_realm_id=p.root_realm_id AND l.package_ref=p.id AND l.package_revision=p.revision AND (t.status IS DISTINCT FROM 'ACTIVE' OR t.active_from>now() OR (t.active_to IS NOT NULL AND t.active_to<=now()) OR c.status IS DISTINCT FROM 'ACTIVE')) "+
+   "FOR SHARE OF p";
   const row=await tx.query(query,[root,itemRef]);
   if(!row.rowCount)throw new BadRequestException({code:"LAB_CATALOG_ITEM_UNAVAILABLE"});
  }
@@ -454,6 +456,7 @@ export class DiagnosticsCatalogService{
     "SELECT 'PACKAGE' AS kind,p.id AS \"itemRef\",p.name,p.unique_package_code AS code "+
     "FROM diagnostic_package p WHERE p.root_realm_id=$1 AND p.status='ACTIVE' "+
     "AND p.active_from<=now() AND (p.active_to IS NULL OR p.active_to>now()) "+
+    " AND EXISTS(SELECT 1 FROM diagnostic_package_line l WHERE l.root_realm_id=p.root_realm_id AND l.package_ref=p.id AND l.package_revision=p.revision) AND NOT EXISTS(SELECT 1 FROM diagnostic_package_line l LEFT JOIN diagnostic_test t ON t.root_realm_id=l.root_realm_id AND t.id=l.test_ref LEFT JOIN test_category c ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref WHERE l.root_realm_id=p.root_realm_id AND l.package_ref=p.id AND l.package_revision=p.revision AND (t.status IS DISTINCT FROM 'ACTIVE' OR t.active_from>now() OR (t.active_to IS NOT NULL AND t.active_to<=now()) OR c.status IS DISTINCT FROM 'ACTIVE')) "+
     "ORDER BY name,\"itemRef\" LIMIT 100",[actor.realmId]);
    return {items:r.rows};
   });
@@ -794,11 +797,14 @@ export class DiagnosticsCatalogService{
     "SELECT 1 FROM diagnostic_test t JOIN test_category cat "+
     "ON cat.root_realm_id=t.root_realm_id AND cat.id=t.category_ref "+
     "WHERE t.root_realm_id=m.root_realm_id AND t.id=m.test_ref "+
-    "AND t.status='ACTIVE' AND cat.status='ACTIVE')) OR "+
+    "AND t.status='ACTIVE' AND cat.status='ACTIVE' "+
+    "AND t.active_from<=now() AND (t.active_to IS NULL OR t.active_to>now()))) OR "+
     "(m.test_or_package_kind='PACKAGE' AND EXISTS("+
     "SELECT 1 FROM diagnostic_package pkg WHERE pkg.root_realm_id=m.root_realm_id "+
     "AND pkg.id=m.package_ref AND pkg.status='ACTIVE' AND pkg.active_from<=now() "+
-    "AND (pkg.active_to IS NULL OR pkg.active_to>now()))))",
+    "AND (pkg.active_to IS NULL OR pkg.active_to>now()) "+
+    " AND EXISTS(SELECT 1 FROM diagnostic_package_line l WHERE l.root_realm_id=pkg.root_realm_id AND l.package_ref=pkg.id AND l.package_revision=pkg.revision) AND NOT EXISTS(SELECT 1 FROM diagnostic_package_line l LEFT JOIN diagnostic_test t ON t.root_realm_id=l.root_realm_id AND t.id=l.test_ref LEFT JOIN test_category c ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref WHERE l.root_realm_id=pkg.root_realm_id AND l.package_ref=pkg.id AND l.package_revision=pkg.revision AND (t.status IS DISTINCT FROM 'ACTIVE' OR t.active_from>now() OR (t.active_to IS NOT NULL AND t.active_to<=now()) OR c.status IS DISTINCT FROM 'ACTIVE')) "+
+    "))",
     [actor.realmId]);
    return {totalTests:Number(stats.total_tests),activeTests:Number(stats.active_tests),
     categories:Number(stats.categories),packages:Number(stats.packages),
