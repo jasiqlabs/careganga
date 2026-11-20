@@ -43,6 +43,7 @@ CREATE TABLE foundation_liability(
  award_ref uuid NOT NULL,
  charge_ref uuid NOT NULL,
  service_completed_at timestamptz NOT NULL,
+ service_local_date date NOT NULL,
  amount_minor bigint NOT NULL CHECK(amount_minor BETWEEN 1 AND 10000000000),
  currency char(3) NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  state text NOT NULL DEFAULT 'APPROVED_LIABILITY'
@@ -155,6 +156,7 @@ BEGIN
    AND award.approved_support_minor=NEW.amount_minor
    AND award.policy_revision_ref=c.policy_revision_ref
    AND date_trunc('milliseconds',e.created_at)=NEW.service_completed_at
+   AND (e.created_at AT TIME ZONE a.time_zone)::date=NEW.service_local_date
  ) THEN
   RAISE EXCEPTION 'Foundation liability requires completed original CG15 service and approved award';
  END IF;
