@@ -3,7 +3,9 @@ import {useCallback,useEffect,useState} from "react";
 type Actual={state:string;patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;
  refundedOrCorrectedMinor?:string;currency?:string;
- foundationIncomeRecorded?:boolean;foundationLiabilityCreated?:boolean};
+ foundationIncomeRecorded?:boolean;foundationLiabilityCreated?:boolean;
+ collections?:Array<{collectionRef:string;method:string;state:string;
+ receiptPdfState:string}>};
 const amount=(v:unknown)=>typeof v==="string"&&
  /^(0|[1-9]\d{0,10})$/.test(v)&&Number.isSafeInteger(Number(v));
 const valid=(v:unknown):v is Actual=>{
@@ -59,6 +61,16 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
     <div><dt>Electronic verification pending (not paid)</dt>
      <dd>{money(data.pendingElectronicMinor!)}</dd></div>
    </dl>}
+  {data?.collections?.some(c=>c.method==="CASH"&&c.state==="VERIFIED_CASH"&&
+   c.receiptPdfState==="ISSUED")&&<section>
+   <h5>Issued private center cash receipts</h5>
+   {data.collections.filter(c=>c.method==="CASH"&&
+    c.state==="VERIFIED_CASH"&&c.receiptPdfState==="ISSUED").map((c,i)=>
+    <p key={c.collectionRef}><a href={
+     "/api/healthcare-assistance/center-receipts/me/appointments/"+
+     bookingRef+"/collections/"+c.collectionRef+"/pdf"}>
+     Download cash receipt {i+1}</a></p>)}
+  </section>}
   <p>Only verified center collections are counted. An entered UPI/card
    reference does not confirm payment; Foundation assistance is separate.</p>
   <button type="button" disabled={checking}
