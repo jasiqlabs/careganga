@@ -125,6 +125,8 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
     </dl>
     <p>{quote.state==="NO_EFFECTIVE_ASSISTANCE"?
      "No approved support policy applies; full consultation fee remains due.":
+     quote.state==="SERVICE_NO_SHOW_REVIEW_REQUIRED"?
+     "Original accepted amount retained. The visit was not completed; center review is required before any financial follow-up.":
      quote.state==="SOURCE_CANCELLED"?
      "This historical split is retained, but the appointment was cancelled.":
      quote.state==="SOURCE_CHANGED_REVIEW_REQUIRED"?
@@ -136,7 +138,7 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
      tax has been estimated. Payment, Foundation liability and settlement are
      distinct later stages, not confirmed by this screen.</p>
     {canAccept&&!!bookingRef&&!quote.accepted&&
-     !["SOURCE_CANCELLED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(quote.state)&&
+     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(quote.state)&&
      <button type="button" disabled={busy||uncertain} onClick={()=>void accept()}>
       {busy?"Checking original amount…":"Accept verified fee and contribution split"}
      </button>}
