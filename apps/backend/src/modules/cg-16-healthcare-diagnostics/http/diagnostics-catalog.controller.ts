@@ -33,6 +33,14 @@ export class DiagnosticsCatalogController{
  centers(@Headers("authorization")token:string){return this.catalog.eligibleCenters(token);}
  @Get("my-centers/eligible")
  myCenters(@Headers("authorization")token:string){return this.catalog.eligibleCenters(token,true);}
+ @Get("centers/:centerRef/eligible-items")
+ items(@Headers("authorization")token:string,@Param("centerRef")center:string){
+  return this.catalog.eligibleItems(token,center);
+ }
+ @Get("my-centers/:centerRef/eligible-items")
+ ownItems(@Headers("authorization")token:string,@Param("centerRef")center:string){
+  return this.catalog.eligibleItems(token,center,true);
+ }
  @Get("centers/:centerRef/tests")
  maps(@Headers("authorization")token:string,@Param("centerRef")center:string){
   return this.catalog.mappings(token,center);

@@ -344,6 +344,23 @@ export class DiagnosticsCatalogService{
    "AND status='ACTIVE' FOR SHARE",[root,itemRef]);
   if(!row.rowCount)throw new BadRequestException({code:"LAB_CATALOG_ITEM_UNAVAILABLE"});
  }
+ async eligibleItems(bearer:string,ref:string,own=false){
+  const centerRef=uuid(ref,"centerRef");
+  const actor=await this.sessions.requireAction(bearer,"diagnostics.pricing.view");
+  return this.run(async tx=>{
+   await this.center(tx,actor,centerRef,own,"diagnostics.pricing.view");
+   const r=await tx.query(
+    "SELECT 'TEST' AS kind,t.id AS \"itemRef\",t.name,t.unique_test_code AS code "+
+    "FROM diagnostic_test t JOIN test_category c ON c.root_realm_id=t.root_realm_id "+
+    "AND c.id=t.category_ref WHERE t.root_realm_id=$1 "+
+    "AND t.status='ACTIVE' AND c.status='ACTIVE' "+
+    "UNION ALL "+
+    "SELECT 'PACKAGE' AS kind,p.id AS \"itemRef\",p.name,p.unique_package_code AS code "+
+    "FROM diagnostic_package p WHERE p.root_realm_id=$1 AND p.status='ACTIVE' "+
+    "ORDER BY name,\"itemRef\" LIMIT 100",[actor.realmId]);
+   return {items:r.rows};
+  });
+ }
  async mappings(bearer:string,ref:string,own=false){
   const centerRef=uuid(ref,"centerRef");
   const actor=await this.sessions.requireAction(bearer,"diagnostics.pricing.view");
