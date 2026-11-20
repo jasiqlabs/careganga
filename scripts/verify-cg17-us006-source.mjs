@@ -82,6 +82,17 @@ must("monthly",/actualPaidMinor:c\.paid_minor/,
  "No invented settled amount");
 must("monthly",/patientCollectionNotFoundationIncome:true/,
  "Center patient collections must stay outside Foundation books");
+must("monthly",/patientCollectedVerifiedMinor/,
+ "H17 actual verified own-center receipts must be separate");
+must("monthly",/patientRefundedMinor/,
+ "H17 center refunds/corrections must not become Foundation revenue");
+must("monthly",/foundationApprovedLiabilityMinor/,
+ "H17 original Foundation liability must remain independent from cash");
+must("web",/centerGrossServicesMinor/,
+ "Web month breakdown must show real completed service gross");
+must("native",/centerGrossServicesMinor/,
+ "Internal Android must show same source financial breakdown");
+
 must("webBff",/cg_staff_session/,"No public mutation");
 must("webPage",/healthcare\.assistance\.settlements\.view/,
  "Current CG01 Web role must gate source access");
