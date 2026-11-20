@@ -109,7 +109,10 @@ CREATE TABLE lab_order_line (
   REFERENCES lab_center_price_version(root_realm_id,id) ON DELETE RESTRICT,
  CHECK((source_package_ref IS NULL AND package_revision IS NULL) OR
   (source_package_ref IS NOT NULL AND package_revision>0)),
- CHECK(accepted_line_total_minor=accepted_unit_minor*qty)
+ CHECK(source_package_ref IS NOT NULL OR
+  accepted_line_total_minor=accepted_unit_minor*qty)
+ -- Package child shares are deterministic allocated totals of ONE actual
+ -- approved package rate. They are not individual test retail tariffs.
 );
 CREATE INDEX ix_cg16_lab_order_line_order
  ON lab_order_line(root_realm_id,order_ref,id);
@@ -350,3 +353,65 @@ BEGIN
 END $cg16$;
 CREATE TRIGGER cg16_lab_order_line_source_guard BEFORE INSERT ON lab_order_line
  FOR EACH ROW EXECUTE FUNCTION cg16_order_line_source_guard();
+
+
+-- Actor-scoped idempotency. The original command row is claimed BEFORE the
+-- clinical order, so a concurrent request with the same key serializes on
+-- this unique row. Only its original transaction may attach the result ref.
+CREATE TABLE lab_order_command (
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ actor_ref uuid NOT NULL,
+ request_key uuid NOT NULL,
+ request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
+ order_ref uuid,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,actor_ref,request_key),
+ FOREIGN KEY(actor_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,order_ref)
+  REFERENCES lab_order(root_realm_id,id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg16_order_command_recent
+ ON lab_order_command(root_realm_id,actor_ref,created_at DESC);
+CREATE FUNCTION cg16_order_command_frozen() RETURNS trigger LANGUAGE plpgsql AS $cg16$
+BEGIN
+ IF TG_OP='DELETE' OR
+  NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR
+  NEW.actor_ref IS DISTINCT FROM OLD.actor_ref OR
+  NEW.request_key IS DISTINCT FROM OLD.request_key OR
+  NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
+  NEW.created_at IS DISTINCT FROM OLD.created_at OR
+  OLD.order_ref IS NOT NULL OR NEW.order_ref IS NULL THEN
+   RAISE EXCEPTION 'Original clinical order command cannot be rewritten';
+ END IF;
+ RETURN NEW;
+END $cg16$;
+CREATE TRIGGER cg16_order_command_immutable BEFORE UPDATE OR DELETE
+ ON lab_order_command FOR EACH ROW EXECUTE FUNCTION cg16_order_command_frozen();
+
+CREATE TABLE lab_order_event (
+ root_realm_id uuid NOT NULL,
+ id uuid NOT NULL DEFAULT gen_random_uuid(),
+ order_ref uuid NOT NULL,
+ source_key uuid NOT NULL,
+ actor_ref uuid NOT NULL,
+ event_type text NOT NULL CHECK(event_type IN
+  ('CREATED','COLLECTION_RECORDED','RECOLLECTION_REQUESTED',
+   'RESULT_FILE_READY','SUBMITTED_FOR_REVIEW','REVIEWED','RELEASED',
+   'CORRECTED','CANCELLED')),
+ prior_revision integer NOT NULL CHECK(prior_revision>=0),
+ new_revision integer NOT NULL CHECK(new_revision>0),
+ recorded_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ UNIQUE(root_realm_id,order_ref,source_key),
+ UNIQUE(root_realm_id,order_ref,new_revision),
+ FOREIGN KEY(root_realm_id,order_ref)
+  REFERENCES lab_order(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ CHECK(new_revision=prior_revision+1)
+);
+CREATE INDEX ix_cg16_order_event_recent
+ ON lab_order_event(root_realm_id,order_ref,recorded_at,id);
+CREATE TRIGGER cg16_order_event_immutable BEFORE UPDATE OR DELETE
+ ON lab_order_event FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
