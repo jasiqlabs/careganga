@@ -144,7 +144,8 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
   setBusy(true);setMessage("");
   try{
    const baseUrl=process.env.EXPO_PUBLIC_API_URL;
-   if(!baseUrl||!/^https?:\\/\\//.test(baseUrl)||
+   if(!baseUrl||(!baseUrl.startsWith("https://")&&
+     !baseUrl.startsWith("http://"))||
      (process.env.NODE_ENV==="production"&&!baseUrl.startsWith("https://")))
     throw Error("Protected receipt service is not configured.");
    const address=new URL("/api/v1/healthcare-assistance/center-receipts/"+
