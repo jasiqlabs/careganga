@@ -8,7 +8,7 @@ import {HealthPublicRequestThrottleService}
 
 const SLUG=/^[a-z0-9][a-z0-9-]{2,79}$/;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-type Original={revisionRef:string;centerRef:string;doctorRef:string|null;
+type Original={revisionRef:string;rootRef:string;centerRef:string;doctorRef:string|null;
  centerSlug:string;centerName:string;candidateDoctor:string|null;
  mode:"PERCENT"|"FIXED";percentBasisPoints:number|null;
  fixedMinor:string|null;capMinor:string;validUntil:Date};
@@ -45,10 +45,11 @@ export class PublicHealthcareAssistanceService{
    await client.query("BEGIN READ ONLY");
    await client.query("SET LOCAL statement_timeout='8s'");
    const q=await client.query<Original>(
-    "SELECT rule.id AS \"revisionRef\",rule.center_ref AS \"centerRef\","+
+    "SELECT rule.id AS \"revisionRef\",rule.root_realm_id AS \"rootRef\","+ 
+    "rule.center_ref AS \"centerRef\","+
     "rule.doctor_ref AS \"doctorRef\",c.public_slug AS \"centerSlug\","+
     "c.display_name AS \"centerName\","+
-    "COALESCE(rule.doctor_ref,one_doctor.doctor_id) AS \"candidateDoctor\","+
+    "COALESCE(rule.doctor_ref,$2::uuid,one_doctor.doctor_id) AS \"candidateDoctor\","+
     "rule.mode,rule.percent_basis_points AS \"percentBasisPoints\","+
     "rule.fixed_minor::text AS \"fixedMinor\","+
     "rule.cap_minor::text AS \"capMinor\",rule.valid_until AS \"validUntil\" "+
@@ -68,7 +69,7 @@ export class PublicHealthcareAssistanceService{
     "AND rule.activated_at IS NOT NULL AND rule.activated_at<=now() "+
     "AND rule.valid_from<=now() AND rule.valid_until>now() "+
     "AND ($1::text='' OR c.public_slug=$1) "+
-    "AND ($2::uuid IS NULL OR rule.doctor_ref=$2) "+
+    "AND ($2::uuid IS NULL OR rule.doctor_ref=$2 OR rule.doctor_ref IS NULL) "+
     "ORDER BY c.display_name,rule.doctor_ref NULLS LAST,rule.id LIMIT 13",
     [center,doctor||null]);
    const result:PublicBenefit[]=[];
@@ -77,12 +78,13 @@ export class PublicHealthcareAssistanceService{
     try{
      const live=await this.directory.eligibleScheduleSource(
       client,row.candidateDoctor,row.centerSlug);
-     const original=live.find(x=>x.root_ref&&x.center_ref===row.centerRef&&
+     const original=live.find(x=>x.root_ref===row.rootRef&&x.center_ref===row.centerRef&&
       x.doctor_ref===row.candidateDoctor&&x.amount_minor!==null);
      if(!original)continue;
      result.push({centerSlug:row.centerSlug,centerName:row.centerName,
-      doctorRef:row.doctorRef,doctorName:row.doctorRef?original.doctor_name:null,
-      feeMinor:row.doctorRef?original.amount_minor:null,
+      doctorRef:row.doctorRef??(doctor?row.candidateDoctor:null),
+      doctorName:row.doctorRef||doctor?original.doctor_name:null,
+      feeMinor:row.doctorRef||doctor?original.amount_minor:null,
       currency:"INR",mode:row.mode,percentBasisPoints:row.percentBasisPoints,
       fixedSupportMinor:row.fixedMinor,maximumSupportMinor:row.capMinor,
       validUntil:row.validUntil.toISOString(),
