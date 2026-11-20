@@ -83,6 +83,37 @@ export class HealthCenterSupportScopeFacade{
   if(!q.rowCount)
    throw new NotFoundException("This verified healthcare center is unavailable");
  }
+ /** Original verified provider settlement destination owned by CG14/CG19.
+  * This is a masked, scanner-verified bank instruction, NOT actual payment.
+  * CG17 must never create a second bank/payee master.
+  */
+ async verifiedFoundationSettlementDestination(tx:PoolClient,
+  actor:VerifiedFoundationActor,center:string,action:string){
+  await this.assertFoundationCenter(tx,actor,center,action,true);
+  const q=await tx.query<{provider_ref:string;file_ref:string;
+   version:number;masked_label:string}>(
+   "SELECT p.id AS provider_ref,ref.protected_file_ref AS file_ref,"+
+   "ref.version,ref.masked_label FROM health_center c "+
+   "JOIN health_provider p ON p.root_realm_id=c.root_realm_id "+
+   "AND p.id=c.provider_id AND p.status='VERIFIED' "+
+   "JOIN health_provider_finance_ref ref ON "+
+   "ref.root_realm_id=p.root_realm_id AND ref.provider_id=p.id "+
+   "JOIN cg19_stored_file file ON file.realm_id=ref.root_realm_id "+
+   "AND file.id=ref.protected_file_ref "+
+   "AND file.health_provider_id=p.id "+
+   "AND file.owner_kind='CG14_DRAFT' "+
+   "AND file.revoked_at IS NULL AND file.scan_status='CLEAN_VERIFIED' "+
+   "JOIN cg19_upload_intent intent ON intent.id=file.upload_intent_id "+
+   "AND intent.realm_id=file.realm_id AND intent.status='VALIDATED' "+
+   "AND intent.classification='HEALTH_BANK_PROOF' "+
+   "WHERE c.root_realm_id=$1 AND c.id=$2 FOR SHARE OF c,p,ref,file,intent",
+   [actor.realmId,center]);
+  const x=q.rows[0];
+  if(!x)throw new NotFoundException(
+   "A currently verified protected provider bank instruction is required");
+  return {providerRef:x.provider_ref,fileRef:x.file_ref,
+   version:x.version,maskedLabel:x.masked_label};
+ }
  /** CG14-owned bounded original eligible center labels for Foundation
   * liability source selection. Nothing about CG17 charges is stored here.
   */
