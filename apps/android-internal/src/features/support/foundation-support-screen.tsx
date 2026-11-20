@@ -285,7 +285,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
           <Pressable style={s.button} disabled={busy||selected.status==="OPEN"}
             onPress={()=>void action("REOPEN")}><Text>Reopen case</Text></Pressable>
         </View>}
-        {mayReply&&selected.status!=="CLOSED"&&<View style={s.card}>
+        {mayReply&&!["CLOSED","RESOLVED"].includes(selected.status)&&<View style={s.card}>
           <Text style={s.heading}>Private reply</Text>
           <TextInput multiline value={reply} onChangeText={setReply}
             accessibilityLabel="Private reply" maxLength={2400} style={[s.input,s.longInput]}/>

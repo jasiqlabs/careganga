@@ -313,7 +313,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
                 onClick={()=>void act("REOPEN")}>Reopen case</button>
             </div>
           </div>}
-          {mayReply&&selected.status!=="CLOSED"&&<div className="field">
+          {mayReply&&!["CLOSED","RESOLVED"].includes(selected.status)&&<div className="field">
             <label htmlFor="support-reply">Private Foundation reply</label>
             <textarea id="support-reply" rows={5} minLength={2} maxLength={2400}
               value={reply} onChange={e=>setReply(e.target.value)}/>

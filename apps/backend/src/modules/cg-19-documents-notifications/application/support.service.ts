@@ -459,7 +459,8 @@ export class SupportService{
         await this.event(client,a.realmId,id,a.accountId,"ASSIGNED",
           {assigned:!!target});
       }else if(action==="REPLY"){
-        if(c.status==="CLOSED")throw new ConflictException("Reopen this case before replying");
+        if(["CLOSED","RESOLVED"].includes(c.status))
+          throw new ConflictException("Reopen this case before replying");
         const body=clean(x.body,2,2400),key=uuid(x.requestKey);
         const hash=sha(body);
         const prior=await client.query<{body_digest:string}>(
@@ -664,8 +665,8 @@ export class SupportService{
       }
       if(c.revision!==expected)
         throw new ConflictException("This case changed. Refresh before replying.");
-      if(c.status==="CLOSED")
-        throw new ConflictException("This case is closed. Contact the Foundation for reopening.");
+      if(["CLOSED","RESOLVED"].includes(c.status))
+        throw new ConflictException("This case is finalized. Contact the Foundation to reopen it.");
       await tx.query(
         "INSERT INTO cg19_support_reply(realm_id,case_id,author_account_id,"+
         "request_key,body_digest,body_encrypted) VALUES($1,$2,$3,$4,$5,$6)",
