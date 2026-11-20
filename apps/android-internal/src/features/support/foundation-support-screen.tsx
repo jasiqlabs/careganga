@@ -7,7 +7,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 import {identityRequest} from "../identity-access/http-client";
 
 type CaseView={caseRef:string;ticketNumber:string;subject:string;name:string;contact:string;
-  status:"OPEN"|"REPLIED"|"CLOSED";revision:number;
+  status:string;revision:number;
   assignedAccountRef:string|null;unread:boolean;archived:boolean;
   createdAt:string;updatedAt:string};
 type Detail=CaseView&{message:string;replies:Array<{replyRef:string;body:string;
@@ -53,6 +53,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   const [selected,setSelected]=useState<Detail|null>(null);
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [agents,setAgents]=useState<Option[]>([]),[assignee,setAssignee]=useState("");
+  const [nextStatus,setNextStatus]=useState("OPEN");
   const [agentSearch,setAgentSearch]=useState("");
   const [appliedAgentSearch,setAppliedAgentSearch]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]),[editing,setEditing]=useState<Faq|null>(null);
@@ -101,6 +102,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     try{
       const item=await api<Detail>(token,"cases/"+ref);
       setSelected(item);setAssignee(item.assignedAccountRef??"");
+      setNextStatus(item.status);
       setReply("");setReplyKey("");
       await api(token,"cases/"+ref+"/read","POST");
       await load();
@@ -109,9 +111,9 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       if(error instanceof Error&&error.message==="EXPIRED")onExpired();
     }finally{setBusy(false)}
   }
-  async function action(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"ARCHIVE"){
+  async function action(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"SET_STATUS"|"ARCHIVE"){
     if(!selected||busy)return;
-    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN"].includes(kind)&&!mayManage)
+    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN","SET_STATUS"].includes(kind)&&!mayManage)
       return;
     setBusy(true);setMessage("");
     try{
@@ -128,10 +130,10 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         await api(token,path+"/archive","POST",{archived:!selected.archived});
       }else{
         await api(token,path+"/status","PATCH",{
-          expectedRevision:selected.revision,status:kind==="CLOSE"?"CLOSED":"OPEN"});
+          expectedRevision:selected.revision,status:kind==="CLOSE"?"CLOSED":kind==="REOPEN"?"OPEN":nextStatus});
       }
       const updated=await api<Detail>(token,path);
-      setSelected(updated);await load();
+      setSelected(updated);setNextStatus(updated.status);await load();
       setMessage(kind==="REPLY"?
         "Reply saved privately. External delivery has not been claimed.":
         "Original case state confirmed.");
@@ -230,6 +232,22 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
             <Pressable style={s.button} disabled={busy}
               onPress={()=>void action("ASSIGN")}><Text>Save assignment</Text></Pressable>
           </>:<Text>Current role cannot open account options.</Text>}
+          <Text style={s.heading}>Update support status</Text>
+          <View style={s.rowWrap}>
+            {["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+              "ESCALATED","RESOLVED","CLOSED"].map(value=>
+              <Pressable key={value} style={s.button}
+                accessibilityRole="button"
+                accessibilityState={{selected:nextStatus===value}}
+                onPress={()=>setNextStatus(value)}>
+                <Text>{value.replaceAll("_"," ")}</Text>
+              </Pressable>)}
+          </View>
+          <Pressable style={s.button}
+            disabled={busy||nextStatus===selected.status}
+            onPress={()=>void action("SET_STATUS")}>
+            <Text>Save status</Text>
+          </Pressable>
           <Pressable style={s.button} disabled={busy||selected.status==="CLOSED"}
             onPress={()=>void action("CLOSE")}><Text>Close case</Text></Pressable>
           <Pressable style={s.button} disabled={busy||selected.status==="OPEN"}
@@ -255,7 +273,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         </View>}
         <View style={s.card}><Text style={s.heading}>Filter messages</Text>
           <View style={s.rowWrap}>
-            {["ALL","OPEN","UNREAD","REPLIED","CLOSED","ARCHIVED"].map(v=>
+            {["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+              "ESCALATED","REPLIED","RESOLVED","CLOSED","UNREAD","ARCHIVED"].map(v=>
               <Pressable key={v} style={s.button} accessibilityRole="button"
                 accessibilityState={{selected:filter===v}} onPress={()=>chooseFilter(v)}>
                 <Text>{v}</Text></Pressable>)}
