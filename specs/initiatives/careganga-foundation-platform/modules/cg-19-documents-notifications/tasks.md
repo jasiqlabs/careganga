@@ -206,3 +206,12 @@ The original QA cases above remain authoritative and unchanged. Execute the rele
 
 ## 18 November 2026 — formal source review finding trace (six owner gates)
 The current code-based review and fix evidence is [the six-owner formal source review](../../../../../docs/qa/CAREGANGA-FOUNDATION-FINANCE-CMS-FORMAL-SOURCE-REVIEW-20261118.md). **Owner finding:** Protected public media/notice rights and CG-19 original source contracts reviewed; object store/scanner/revocation/video byte ranges not runtime tested. This is the same original QA matrix — no new user stories or QA IDs. Corrected source was re-read after commit; the static Finance scope check returned 28/28 current predicates, **not runtime tests**. Independent reviewer/security/DB/Harness final gate, current design SHA signoff, backend/Web/Android build, disposable PostgreSQL migration, original screenshot comparison and positive/negative/error/manual QA remain **NOT_RUN/BLOCKED**. **Module formal SOURCE_COMPLETE: NOT_APPROVED**, original runtime QA outcomes remain NOT_RUN; no merge to main.
+
+
+## 20-Nov-2026 new client source acceptance — existing stories, no added QA count
+
+**Evidence:** [new document layouts](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md) and [52-template event catalog](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). 
+
+Trace all client 52 template IDs against source-owned committed events, version/language/approval/recipient/attachments, 3-PDF pack completeness, 5 layout references, QR revocation, one receipt per verified payment, real refund/salary state and correct issue/supersede. Test retries, callbacks, duplicate logical event, bounces, missing PDF, wrong recipient, plain password never included, private salary or medical/HR fields not leak, support ticket/registered identity for document resend. Explicitly record current schema/owner gaps as SOURCE_PENDING—not SOURCE_VERIFIED. Actual PDF pixel review, sender-domain, provider sandbox, migrations and 2 Android channels NOT_RUN.
+
+**Progress status:** CLIENT_SOURCE_MAPPED; nonimplemented owner integrations SOURCE_PENDING; no new executed test or PASS. Reconcile in next Implement → independent review → fix → re-review → existing story QA source trace, then actual Web/Android/PostgreSQL/provider/rendered tests.
