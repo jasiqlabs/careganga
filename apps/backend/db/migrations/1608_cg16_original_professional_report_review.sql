@@ -62,6 +62,38 @@ BEGIN
    affiliation.root_realm_id=professional.root_realm_id AND
    affiliation.id=NEW.reviewer_affiliation_ref AND
    affiliation.doctor_id=professional.doctor_id
+  JOIN health_doctor_account_link clinician ON
+   clinician.root_realm_id=doctor.root_realm_id AND
+   clinician.doctor_id=doctor.id AND clinician.account_id=NEW.reviewer_account_ref
+   AND clinician.status='ACTIVE' AND clinician.revoked_at IS NULL
+  JOIN cg03_case doctor_review ON
+   doctor_review.realm_id=professional.root_realm_id AND
+   doctor_review.id=professional.approval_case_ref AND
+   doctor_review.case_kind='HEALTH_DOCTOR_VERIFICATION' AND
+   doctor_review.health_doctor_id=doctor.id AND
+   doctor_review.health_doctor_revision_id=professional.id AND
+   doctor_review.health_source_digest=professional.source_digest AND
+   doctor_review.status='OWNER_COMPLETED'
+  JOIN cg03_case_decision original_decision ON
+   original_decision.realm_id=doctor_review.realm_id AND
+   original_decision.case_id=doctor_review.id AND
+   original_decision.action='APPROVE' AND
+   original_decision.actor_id<>doctor_review.proposer_id AND
+   original_decision.fresh_password_verified_at IS NOT NULL
+  JOIN cg19_stored_file original_proof ON
+   original_proof.realm_id=professional.root_realm_id AND
+   original_proof.id=professional.proof_file_ref AND
+   original_proof.owner_kind='CG14_DOCTOR' AND
+   original_proof.health_doctor_id=doctor.id AND
+   original_proof.health_source_version=professional.source_version AND
+   original_proof.scan_status='CLEAN_VERIFIED' AND
+   original_proof.revoked_at IS NULL
+  JOIN cg19_upload_intent original_upload ON
+   original_upload.id=original_proof.upload_intent_id AND
+   original_upload.realm_id=original_proof.realm_id AND
+   original_upload.owner_kind='CG14_DOCTOR' AND
+   original_upload.classification='HEALTH_DOCTOR_LICENSE' AND
+   original_upload.status='VALIDATED'
   JOIN lab_order accepted ON
    accepted.root_realm_id=professional.root_realm_id AND
    accepted.center_ref=affiliation.center_id AND
@@ -76,8 +108,27 @@ BEGIN
    AND doctor.professional_license_valid_through=NEW.reviewer_license_valid_through
    AND doctor.professional_license_valid_through>=
        (now() AT TIME ZONE center.time_zone)::date
+   AND professional.source_snapshot->>'professionalLicenseValidThrough'=
+       to_char(doctor.professional_license_valid_through,'YYYY-MM-DD')
+   AND professional.revision_no=(SELECT max(latest.revision_no)
+       FROM health_doctor_revision latest WHERE
+       latest.root_realm_id=professional.root_realm_id AND
+       latest.doctor_id=professional.doctor_id)
    AND doctor.status='VERIFIED'
+   AND center.status='VERIFIED' AND center.access_state='ENABLED'
    AND affiliation.affiliation_state='APPROVED'
+   AND affiliation.approved_from<=now()
+   AND (affiliation.approved_to IS NULL OR affiliation.approved_to>now())
+   AND EXISTS(
+     SELECT 1 FROM cg15_patient_consent consent
+     WHERE consent.root_realm_id=accepted.root_realm_id AND
+     consent.patient_id=accepted.patient_ref AND
+     consent.purpose='PATIENT_CARE' AND consent.granted=true AND
+     consent.revision_no=(SELECT max(last.revision_no)
+       FROM cg15_patient_consent last WHERE
+       last.root_realm_id=consent.root_realm_id AND
+       last.patient_id=consent.patient_id AND last.purpose='PATIENT_CARE')
+   )
  ) THEN
   RAISE EXCEPTION 'Professional review requires actual currently verified clinician source';
  END IF;
@@ -101,6 +152,16 @@ BEGIN
    result.report_digest=file.sha256 AND
    result.report_digest=NEW.report_digest AND
    result.operator_account_ref=NEW.operator_account_ref
+   AND result.version_no=(SELECT max(latest.version_no)
+     FROM lab_result_revision latest WHERE
+     latest.root_realm_id=result.root_realm_id AND
+     latest.order_ref=result.order_ref)
+   AND EXISTS(SELECT 1 FROM cg16_lab_review_file_access viewed
+     WHERE viewed.root_realm_id=NEW.root_realm_id
+       AND viewed.result_revision_ref=NEW.result_revision_ref
+       AND viewed.original_cg19_file_ref=NEW.original_cg19_file_ref
+       AND viewed.reviewer_account_ref=NEW.reviewer_account_ref
+       AND viewed.report_digest=NEW.report_digest)
  ) THEN
   RAISE EXCEPTION 'Professional decision requires exact original verified lab report';
  END IF;
