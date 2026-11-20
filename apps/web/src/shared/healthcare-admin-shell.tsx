@@ -20,6 +20,7 @@ export function HealthcareAdminShell({
  const names:Partial<Record<FoundationAdminNavProps["active"],string>>={
   healthNetwork:"Healthcare providers",healthDoctors:"Doctor registrations",
   healthDiagnostics:"Lab Test Master & Pricing",
+  healthLabPricing:"My Lab Pricing",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
   healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
  };
