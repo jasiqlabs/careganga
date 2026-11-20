@@ -20,6 +20,7 @@ CREATE TABLE healthcare_policy_revision(
  currency char(3) NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  eligibility text NOT NULL DEFAULT 'VERIFIED_PATIENT_CARE'
    CHECK(eligibility='VERIFIED_PATIENT_CARE'),
+ activated_at timestamptz,
  approval_state text NOT NULL DEFAULT 'PENDING_APPROVAL'
    CHECK(approval_state IN ('PENDING_APPROVAL','ACTIVE','REJECTED',
     'SUPERSEDED','WITHDRAWN')),
@@ -55,6 +56,7 @@ CREATE TABLE healthcare_policy_revision(
    AND percent_basis_points IS NULL)),
  CHECK(approval_state<>'ACTIVE' OR
    service_kind='CONSULTATION'),
+ CHECK(approval_state<>'ACTIVE' OR activated_at IS NOT NULL),
  CHECK(approval_state<>'ACTIVE' OR
    (mode='FIXED' OR percent_basis_points<10000) OR
    (approved_case_ref IS NOT NULL AND approved_decision_ref IS NOT NULL)),
@@ -93,10 +95,10 @@ BEGIN
   RAISE EXCEPTION 'Historical healthcare assistance policy cannot be deleted';
  END IF;
  IF (to_jsonb(NEW)-'approval_state'-'changed_by'-'changed_at'
-   -'approved_case_ref'-'approved_decision_ref')
+   -'approved_case_ref'-'approved_decision_ref'-'activated_at')
   IS DISTINCT FROM
     (to_jsonb(OLD)-'approval_state'-'changed_by'-'changed_at'
-   -'approved_case_ref'-'approved_decision_ref') THEN
+   -'approved_case_ref'-'approved_decision_ref'-'activated_at') THEN
   RAISE EXCEPTION 'Policy terms and original actor must be immutable';
  END IF;
  IF OLD.approval_state IN('WITHDRAWN','SUPERSEDED','REJECTED') OR
@@ -105,6 +107,13 @@ BEGIN
        (OLD.approval_state='PENDING_APPROVAL' AND
        NEW.approval_state IN('ACTIVE','REJECTED'))) THEN
   RAISE EXCEPTION 'Healthcare support state transition denied';
+ END IF;
+ IF OLD.activated_at IS NOT NULL AND NEW.activated_at IS DISTINCT FROM OLD.activated_at THEN
+  RAISE EXCEPTION 'Original policy activation time is immutable';
+ END IF;
+ IF OLD.approval_state='PENDING_APPROVAL' AND NEW.approval_state='ACTIVE' AND
+    NEW.activated_at IS NULL THEN
+  RAISE EXCEPTION 'Protected policy cannot become effective without activation time';
  END IF;
  IF NEW.changed_by IS NULL OR NEW.changed_at IS NULL OR
   (OLD.changed_at IS NOT NULL AND NEW.changed_at<=OLD.changed_at) THEN
