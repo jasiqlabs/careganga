@@ -6,7 +6,7 @@ import {careGangaTheme as t}
 import {identityRequest} from "../identity-access/http-client";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
  grossMinor?:string;foundationSupportMinor?:string;
- patientPayableMinor?:string;feeVersion?:number;
+ patientPayableMinor?:string;feeVersion?:number;sourceVersion?:number;
  policyRevisionRef?:string|null;currency?:string};
 type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
  staffToken?:string;canAccept?:boolean;onExpired?:()=>void};
@@ -86,7 +86,8 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
  }
  async function accept(){
   if(!bookingRef||!ID.test(bookingRef)||!activeRoute||!value||
-   !valid(value)||value.accepted||busy||uncertain||!canAccept)return;
+   !valid(value)||value.accepted||busy||uncertain||!canAccept||
+   !Number.isSafeInteger(value.sourceVersion))return;
   setBusy(true);setMessage("");
   if(!originalKey.current)originalKey.current=Crypto.randomUUID();
   try{
@@ -94,7 +95,8 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
    const saved=await remote<Split>(route+"/accept","POST",token,{
     requestKey:originalKey.current,grossMinor:value.grossMinor,
     supportMinor:value.foundationSupportMinor,dueMinor:value.patientPayableMinor,
-    feeVersion:value.feeVersion,policyRevisionRef:value.policyRevisionRef??null});
+    feeVersion:value.feeVersion,sourceVersion:value.sourceVersion,
+    policyRevisionRef:value.policyRevisionRef??null});
    if(!saved.accepted||!valid(saved))
     throw Error("Original accepted contribution could not be confirmed.");
    originalKey.current=null;setValue(saved);setUncertain(false);
