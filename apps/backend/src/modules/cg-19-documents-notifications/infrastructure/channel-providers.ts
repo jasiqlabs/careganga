@@ -40,7 +40,7 @@ export class CommunicationProviders{
       return {state:"UNAVAILABLE",provider,providerRef:null};
     if(message.channel==="EMAIL"){
       if(!MAIL.test(message.to)||message.subject.length>120||
-        message.body.length>480)
+        message.body.length>12000)
         return {state:"FAILED",provider,providerRef:null};
       const useEu=trimEnv("CG19_SENDGRID_REGION")==="EU";
       const endpoint=useEu?"https://api.eu.sendgrid.com/v3/mail/send":
