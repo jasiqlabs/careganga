@@ -39,7 +39,9 @@ export default async function FoundationHealthcareLiabilitiesPage(){
   return <HealthcareAdminShell active="healthLiabilities" actions={actions}
    actor={{displayName:person.displayName,roleName:person.roleName}}>
    <CompletedConsultationLiabilityWorkspace
-    canManage={actions.has("healthcare.assistance.liabilities.manage")}/>
+    canManage={actions.has("healthcare.assistance.liabilities.manage")}
+    canPost={actions.has("healthcare.assistance.liabilities.manage")&&
+     actions.has("finance.journals.post")&&actions.has("finance.accounts.view")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
