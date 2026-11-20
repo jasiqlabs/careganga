@@ -6,6 +6,8 @@ CREATE SEQUENCE cg19_support_ticket_number_seq AS bigint START WITH 1;
 ALTER TABLE cg19_support_case
   ADD COLUMN ticket_number text NOT NULL DEFAULT
     ('CGF-SUP-' || lpad(nextval('cg19_support_ticket_number_seq')::text,9,'0'));
+ALTER SEQUENCE cg19_support_ticket_number_seq
+  OWNED BY cg19_support_case.ticket_number;
 ALTER TABLE cg19_support_case
   ADD CONSTRAINT uq_cg19_support_ticket_number UNIQUE(ticket_number),
   ADD CONSTRAINT ck_cg19_support_ticket_number
