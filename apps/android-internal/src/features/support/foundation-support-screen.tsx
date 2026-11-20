@@ -13,7 +13,7 @@ type CaseView={caseRef:string;ticketNumber:string;subject:string;name:string;con
 type Detail=CaseView&{message:string;replies:Array<{replyRef:string;body:string;
   authorAccountRef:string;createdAt:string}>;
   history:Array<{kind:string;at:string}>;
-  statusNotes:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
+  statusNotes?:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
 type Counts={total:number;unread:number;open:number;replied:number;
   closed:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
@@ -221,8 +221,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
           <Text style={s.muted}>{new Date(r.createdAt).toLocaleString()}</Text>
         </View>)}
         <Text style={s.heading}>Private status and resolution notes</Text>
-        {selected.statusNotes.length===0&&<Text>No resolution notes have been recorded.</Text>}
-        {selected.statusNotes.map(note=><View key={note.revision} style={s.item}>
+        {(selected.statusNotes?.length??0)===0&&<Text>No resolution notes have been recorded.</Text>}
+        {(selected.statusNotes??[]).map(note=><View key={note.revision} style={s.item}>
           <Text style={s.heading}>{note.status.replaceAll("_"," ")} · revision {note.revision}</Text>
           <Text selectable style={s.message}>{note.summary}</Text>
           <Text style={s.muted}>{new Date(note.recordedAt).toLocaleString()}</Text>

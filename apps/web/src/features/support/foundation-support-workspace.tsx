@@ -7,7 +7,7 @@ type CaseItem={caseRef:string;ticketNumber:string;subject:string;name:string;con
 type CaseDetail=CaseItem&{sourceChannel:string;message:string;replies:Array<{replyRef:string;
   authorAccountRef:string;body:string;createdAt:string}>;
   history:Array<{kind:string;at:string}>;
-  statusNotes:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
+  statusNotes?:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
 type Counts={total:number;open:number;replied:number;closed:number;
   unread:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
@@ -255,9 +255,9 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
             <small>{new Date(r.createdAt).toLocaleString()}</small>
           </article>)}
           <h3>Private status and resolution notes</h3>
-          {selected.statusNotes.length===0&&
+          {(selected.statusNotes?.length??0)===0&&
             <p className="cg-module-empty">No resolution notes have been recorded.</p>}
-          {selected.statusNotes.map(n=>
+          {(selected.statusNotes??[]).map(n=>
             <article key={n.revision} className="permission-group">
               <strong>{n.status.replaceAll("_"," ")} · revision {n.revision}</strong>
               <p style={{whiteSpace:"pre-wrap"}}>{n.summary}</p>
