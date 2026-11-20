@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterCollectionWorkspace} from "./center-collection-workspace";
 import {PatientCenterCollectionSummary} from "./patient-center-collection-summary";
+import {CenterMerchantCheckout} from "./center-merchant-checkout";
 type Contribution={state:string;accepted?:boolean;replayed?:boolean;
  chargeRef?:string;
  bookingRef?:string;holdRef?:string;expiresAt?:string;
@@ -158,6 +159,12 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
     canRecord={canRecordCollections} canRefund={canRefundCollections}/>}
   {bookingRef&&quote?.accepted===true&&!centerRef&&
    <PatientCenterCollectionSummary bookingRef={bookingRef}/>}
+  {bookingRef&&quote?.accepted===true&&
+   !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
+    "SOURCE_CHANGED_REVIEW_REQUIRED"].includes(quote.state)&&
+   <CenterMerchantCheckout key={bookingRef+":"+(centerRef??"patient")}
+    bookingRef={bookingRef} centerRef={centerRef}
+    canInitiate={!centerRef||canRecordCollections}/>}
   {uncertain&&<p role="alert">The previous acceptance may have succeeded.
    Check this same booking before attempting any new request. Retrying retains
    the original request key.</p>}
