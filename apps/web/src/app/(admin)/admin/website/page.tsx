@@ -1,10 +1,10 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {CmsAdminWorkspace} from "../../../../features/cms-public-content/cms-admin-workspace";
 import {CmsExtendedWorkspace} from "../../../../features/cms-public-content/cms-extended-workspace";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 /** Same original CareGanga Admin navigation and CG01 effective capabilities;
  * no independent CMS login or an alternative role configuration page.
@@ -13,8 +13,7 @@ export default async function WebsiteCmsAdmin(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const api=process.env.BACKEND_URL;
- if(!api)return <main className="page main"><h1>Website content unavailable</h1>
-  <p>Current permissions could not be checked. Try again later.</p></main>;
+ if(!api)return <UnavailablePage title="Website content unavailable" description="Current permissions could not be checked. Try again later." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [profile,access]=await Promise.all([
@@ -60,8 +59,6 @@ export default async function WebsiteCmsAdmin(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Website access cannot be confirmed</h1>
-   <p>We cannot verify your current Foundation role. Try again.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Website access cannot be confirmed" description="We cannot verify your current Foundation role. Try again." linkLabel="Return to my account" />;
  }
 }

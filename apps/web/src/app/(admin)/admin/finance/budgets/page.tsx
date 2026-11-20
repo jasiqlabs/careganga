@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceBudgetWorkspace} from "../../../../../features/finance-accounting/finance-budget-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 /** Original B01/B02 Foundation and real CG02 branch budget wizard. */
@@ -10,9 +11,7 @@ export default async function FinanceBudgetsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Budgets temporarily unavailable</h1>
-  <p>Foundation access cannot be verified. Try again when the service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Budgets temporarily unavailable" description="Foundation access cannot be verified. Try again when the service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,right]=await Promise.all([
@@ -33,10 +32,7 @@ export default async function FinanceBudgetsPage(){
   const canCreate=actions.includes("finance.budgets.manage");
   const canView=actions.includes("finance.budgets.view");
   const canManage=canCreate;
-  if(!canView)return <main className="page main">
-   <h1>Budgets access restricted</h1>
-   <p>Your role cannot create or view Foundation budgets. Ask an Administrator for access.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  if(!canView)return <UnavailablePage title="Budgets access restricted" description="Your role cannot create or view Foundation budgets. Ask an Administrator for access." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeBudgets" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
@@ -60,8 +56,6 @@ export default async function FinanceBudgetsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify budget access</h1>
-   <p>The Foundation budget workspace remains protected until current permissions can be verified.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify budget access" description="The Foundation budget workspace remains protected until current permissions can be verified." linkLabel="Return to my account" />;
  }
 }

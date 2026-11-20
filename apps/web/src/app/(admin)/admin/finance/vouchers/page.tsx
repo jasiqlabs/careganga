@@ -3,15 +3,14 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceVoucherDraftWorkspace} from "../../../../../features/finance-accounting/finance-voucher-draft-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function VoucherDraftsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Finance vouchers temporarily unavailable</h1>
-  <p>Cannot confirm your access to Finance vouchers. Retry when the Foundation service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Finance vouchers temporarily unavailable" description="Cannot confirm your access to Finance vouchers. Retry when the Foundation service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [actorRes,accessRes]=await Promise.all([
@@ -30,9 +29,7 @@ export default async function VoucherDraftsPage(){
     Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&
     typeof (x as {key:unknown}).key==="string").map(x=>x.key);
   if(!actions.includes("finance.vouchers.view"))
-   return <main className="page main"><h1>Voucher access restricted</h1>
-    <p>Your current role cannot view Finance voucher drafts. Ask an Administrator for voucher access if needed.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+   return <UnavailablePage title="Voucher access restricted" description="Your current role cannot view Finance voucher drafts. Ask an Administrator for voucher access if needed." linkLabel="Return to my account" />;
   const options=await fetch(new URL("/api/finance-accounting/vouchers/options",backend),{
    headers,cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!options.ok)throw Error("Voucher options unavailable");
@@ -69,8 +66,6 @@ export default async function VoucherDraftsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify voucher access</h1>
-   <p>Voucher records are protected until your current role and permitted financial years can be checked.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify voucher access" description="Voucher records are protected until your current role and permitted financial years can be checked." linkLabel="Return to my account" />;
  }
 }

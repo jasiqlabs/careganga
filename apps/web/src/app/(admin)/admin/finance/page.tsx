@@ -3,15 +3,14 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {FinanceAccountsWorkspace} from "../../../../features/finance-accounting/finance-accounts-workspace";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function FinancePage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Finance temporarily unavailable</h1>
-  <p>Cannot confirm your finance access. Try again when the Foundation service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Finance temporarily unavailable" description="Cannot confirm your finance access. Try again when the Foundation service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,rights]=await Promise.all([
@@ -29,9 +28,7 @@ export default async function FinancePage(){
     Boolean(a)&&typeof a==="object"&&a!==null&&"key" in a&&
     typeof (a as {key:unknown}).key==="string").map(a=>a.key);
   if(!actions.includes("finance.accounts.view"))
-   return <main className="page main"><h1>Finance access restricted</h1>
-    <p>Your role does not allow you to view financial accounts. Ask an Administrator if you need access.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+   return <UnavailablePage title="Finance access restricted" description="Your role does not allow you to view financial accounts. Ask an Administrator if you need access." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="finance" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
@@ -60,8 +57,6 @@ export default async function FinancePage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify finance access</h1>
-   <p>The finance page is protected until your current role can be checked.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify finance access" description="The finance page is protected until your current role can be checked." linkLabel="Return to my account" />;
  }
 }

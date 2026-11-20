@@ -4,14 +4,13 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterVisitQueue} from "../../../../../features/appointments/center-visit-queue";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function CenterQueuePage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main">
-  <h1>Consultation queue unavailable</h1><p>Current permissions cannot be checked.</p>
- </main>;
+ if(!backend)return <UnavailablePage title="Consultation queue unavailable" description="Current permissions cannot be checked." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,access]=await Promise.all([
@@ -39,9 +38,6 @@ export default async function CenterQueuePage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main">
-   <h1>Visit queue unavailable</h1>
-   <p>Current assigned-center permission could not be confirmed.</p>
-   <Link href="/admin">Back to my account</Link></main>;
+  return <UnavailablePage title="Visit queue unavailable" description="Current assigned-center permission could not be confirmed." linkLabel="Back to my account" />;
  }
 }

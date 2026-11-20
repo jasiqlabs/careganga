@@ -1,17 +1,16 @@
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {DoctorOnboarding} from "../../../../../features/health-network/doctor-onboarding";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function HealthcareDoctorsPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Doctor registrations unavailable</h1>
-    <p>Current access could not be verified.</p><Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Doctor registrations unavailable" description="Current access could not be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,effective]=await Promise.all([
@@ -43,8 +42,6 @@ export default async function HealthcareDoctorsPage(){
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-    return <main className="page main"><h1>Doctor registration access cannot be verified</h1>
-      <p>Protected professional records remain hidden until current access is confirmed.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Doctor registration access cannot be verified" description="Protected professional records remain hidden until current access is confirmed." />;
   }
 }

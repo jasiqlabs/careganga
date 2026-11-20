@@ -1,17 +1,16 @@
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {BranchDraftPanel} from "../../../../../features/foundation-structure/branch-draft-panel";
 import {OperatingBranchesPanel} from "../../../../../features/foundation-structure/operating-branches-panel";
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function BranchRegistrationPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Branch registration unavailable</h1>
-    <p>Current permissions cannot be verified.</p><Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Branch registration unavailable" description="Current permissions cannot be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,access]=await Promise.all([
@@ -52,8 +51,6 @@ export default async function BranchRegistrationPage(){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))
       throw error;
-    return <main className="page main"><h1>Branch access cannot be verified</h1>
-      <p>Private drafts stay unavailable until the session and role are confirmed.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Branch access cannot be verified" description="Private drafts stay unavailable until the session and role are confirmed." />;
   }
 }
