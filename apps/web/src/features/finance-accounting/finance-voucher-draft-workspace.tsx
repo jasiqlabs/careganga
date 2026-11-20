@@ -255,13 +255,13 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
   }finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <FinanceVoucherDashboard onRefresh={()=>void refresh()}/>
   <div className="cg-fin-toolbar"><div><h1>Finance Voucher Drafts</h1>
    <p>Drafts are not approved, posted or paid. Verified file and reviewer workflows follow separately.</p></div>
    <div className="cg-fin-toolbar-actions">
     <button type="button" disabled={loading} onClick={()=>void refresh()}>Refresh</button>
     {canManage&&<button className="primary" onClick={start} type="button">+ New Voucher</button>}
    </div></div>
+  <FinanceVoucherDashboard onRefresh={()=>void refresh()}/>
   {success&&<p role="status" className="cg-fin-success">{success}</p>}
   {(error||(!editing&&notice))&&<div className="cg-fin-notice" role="alert">
    <p>{error||notice}</p><button type="button" onClick={()=>void refresh()}>Retry</button></div>}

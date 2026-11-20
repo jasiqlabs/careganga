@@ -12,6 +12,8 @@ export const careGangaTheme = {
   sidebarMuted:"#BBCBE6",
   selectedNavigation:"#1E53DC",
   selectedNavigationText:"#FFFFFF",
+  /** CG-01 selected card/tab background used by authenticated modules. */
+  selectedSurface:"#EEF4FF",
   primary:"#1E53DC",
   primaryPressed:"#1748BE",
   primaryText:"#FFFFFF",

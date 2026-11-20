@@ -14798,3 +14798,133 @@ button:disabled {
     padding: 1rem .9rem;
   }
 }
+
+
+/* CG-01 page-level parity for ALL currently main-integrated Admin modules.
+ * Authenticated workspace only; CG-01 role/user/security compositions and
+ * the client's public/CMS-rendered website retain their own styles.
+ * No fake records, state, or role changes are introduced by these rules. */
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .85rem;
+  padding: 0 0 .4rem;
+  border-bottom: 0;
+  background: transparent;
+}
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar > div:first-child {
+  min-width: 0;
+  flex: 1 1 15rem;
+}
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar h1 {
+  margin: 0;
+  color: var(--cg-text);
+  font-size: var(--cg-heading-lg);
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.22;
+}
+.shell > .workspace .cg-fin-manual > .cg-fin-toolbar h1 + p,
+.shell > .workspace .cg-cms-workspace > .cg-cms-toolbar > div > h2 + p {
+  max-width: 65ch;
+  color: var(--cg-muted);
+  font-size: var(--cg-text-sm);
+  line-height: 1.5;
+}
+.shell > .workspace .cg-cms-workspace > .cg-cms-toolbar > div > h2 {
+  margin: 0;
+  color: var(--cg-text);
+  font-size: var(--cg-heading-md);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+.shell > .workspace :is(.cg-fin-voucher-tile, .cg-cms-card:not(.cg-cms-drawer)) {
+  min-width: 0;
+  border: 1px solid var(--cg-border);
+  border-radius: .875rem;
+  background: var(--cg-surface);
+  box-shadow: 0 3px 16px rgba(15, 23, 42, .045);
+}
+.shell > .workspace .cg-cms-workspace .cg-cms-actions > button.primary:not(:disabled) {
+  color: var(--cg-accent-text);
+  background: var(--cg-accent);
+  border-color: var(--cg-accent);
+}
+.shell > .workspace .cg-cms-workspace .cg-cms-actions > button.primary:not(:disabled):hover {
+  background: var(--cg-accent-hover);
+  border-color: var(--cg-accent-hover);
+}
+.shell > .workspace .cg-module-empty {
+  display: block;
+}
+.shell > .workspace .cg-fin-manual .cg-fin-empty:not(.cg-module-loading) {
+  display: block;
+  min-width: 0;
+  margin: .65rem 0;
+  padding: 1.15rem;
+  text-align: center;
+  color: var(--cg-muted);
+  font-size: var(--cg-text-sm);
+  line-height: 1.55;
+  background: var(--cg-surface);
+  border: 1px solid var(--cg-border);
+  border-radius: .875rem;
+  overflow-wrap: anywhere;
+}
+.shell > .workspace :is(.role-workspace, .cg-fin-manual, .cg-cms-workspace)
+  :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--cg-focus);
+  outline-offset: 2px;
+}
+.shell > .workspace :is(.role-workspace, .cg-fin-manual, .cg-cms-workspace)
+  :is(.role-table, .cg-fin-table, .cg-cms-editorial-table) tbody tr:hover {
+  background: #F8FAFF;
+}
+.shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > button,
+.shell > .workspace .cg-cms-workspace .cg-cms-actions > button,
+.shell > .workspace .cg-fin-paging > button {
+  min-height: 2.75rem;
+  border-radius: .65rem;
+  font-weight: 650;
+}
+.shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > button[aria-current="page"] {
+  color: var(--cg-accent);
+  background: #EEF4FF;
+  border: 1px solid var(--cg-accent);
+}
+.shell > .workspace :is(.cg-fin-filters, .cg-cms-list-controls, .search-row) {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 48rem) {
+  .shell > .workspace .cg-fin-manual > .cg-fin-toolbar h1 {
+    font-size: var(--cg-heading-md);
+  }
+  .shell > .workspace .cg-fin-manual > .cg-fin-toolbar > div:first-child {
+    flex-basis: 100%;
+  }
+  .shell > .workspace .cg-cms-workspace > .cg-cms-toolbar > div > h2 {
+    font-size: var(--cg-heading-sm);
+  }
+  .shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions {
+    width: 100%;
+  }
+  .shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > button {
+    flex: 1 1 auto;
+  }
+}
+@media (max-width: 28rem) {
+  .shell > .workspace .cg-fin-manual .cg-fin-toolbar-actions > button,
+  .shell > .workspace .cg-cms-workspace > .cg-cms-toolbar .cg-cms-actions > button {
+    flex: 1 1 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell > .workspace :is(.cg-fin-voucher-tile, .cg-cms-card:not(.cg-cms-drawer)) {
+    transition: none;
+  }
+}

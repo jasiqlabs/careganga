@@ -64,7 +64,7 @@ export const financeNativeStyles=StyleSheet.create({
   flexWrap:"wrap",gap:6},option:{borderWidth:1,borderColor:t.border,
   backgroundColor:t.surface,padding:9,minHeight:44,borderRadius:10,
   justifyContent:"center"},selected:{borderColor:t.primary,
-  backgroundColor:t.background},optionText:{color:t.mutedText,fontSize:12},
+  backgroundColor:t.selectedSurface},optionText:{color:t.mutedText,fontSize:12},
  selectedText:{color:t.primary,fontWeight:"700"},action:{
   backgroundColor:t.primary,borderRadius:12,minHeight:48,paddingHorizontal:14,
   paddingVertical:12,justifyContent:"center",alignItems:"center"},
