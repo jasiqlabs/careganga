@@ -1,4 +1,7 @@
 import {Module} from "@nestjs/common";
+import {CenterMerchantProvisioningService} from "./application/center-merchant-provisioning.service";
+import {CenterMerchantCheckoutService} from "./application/center-merchant-checkout.service";
+import {CenterMerchantController} from "./http/center-merchant.controller";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {PatientsAppointmentsModule} from "../cg-15-patients-appointments/patients-appointments.module";
 import {HealthNetworkModule} from "../cg-14-healthcare-network/health-network.module";
