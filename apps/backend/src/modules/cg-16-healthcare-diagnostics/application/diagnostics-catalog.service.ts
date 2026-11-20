@@ -531,10 +531,14 @@ export class DiagnosticsCatalogService{
  }
  private async assertPackagePriceWindow(tx:PoolClient,root:string,
   kind:"TEST"|"PACKAGE",ref:string,from:Date,until:Date|null){
-  if(kind!=="PACKAGE")return;
+  // The proposed price must fit the actual source availability window.
+  // A test's or package's expiry must never be converted into a future tariff.
   const p=await tx.query<{active_from:Date;active_to:Date|null}>(
+   kind==="TEST"?
+   "SELECT active_from,active_to FROM diagnostic_test "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE":
    "SELECT active_from,active_to FROM diagnostic_package "+
-   "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
+    "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
    [root,ref]);
   const row=p.rows[0];
   if(!row||from.getTime()<row.active_from.getTime()||
@@ -762,6 +766,20 @@ export class DiagnosticsCatalogService{
     "AND price.center_test_mapping_ref=m.id AND price.status='APPROVED' "+
     "AND price.effective_from<=now() "+
     "AND (price.effective_to IS NULL OR price.effective_to>now()) "+
+    "JOIN cg03_case pricingReview ON pricingReview.realm_id=price.root_realm_id "+
+    "AND pricingReview.case_kind='HEALTH_LAB_PRICE_REVIEW' "+
+    "AND pricingReview.cg16_price_id=price.id "+
+    "AND pricingReview.cg16_price_version=price.version_no "+
+    "AND pricingReview.status='OWNER_COMPLETED' "+
+    "AND pricingReview.proposer_id=price.proposed_by "+
+    "JOIN cg03_case_decision pricingDecision ON "+
+    "pricingDecision.realm_id=pricingReview.realm_id "+
+    "AND pricingDecision.case_id=pricingReview.id "+
+    "AND pricingDecision.action='APPROVE' "+
+    "AND pricingDecision.actor_id=price.approved_by "+
+    "AND pricingDecision.actor_id<>pricingReview.proposer_id "+
+    "AND pricingDecision.fresh_password_verified_at IS NOT NULL "+
+    "AND pricingDecision.accepted_case_revision=pricingReview.revision-1 "+
     "JOIN health_center c ON c.root_realm_id=m.root_realm_id "+
     "AND c.id=m.center_ref AND c.status='VERIFIED' "+
     "AND c.access_state='ENABLED' AND c.publication_state='PUBLISHED' "+
