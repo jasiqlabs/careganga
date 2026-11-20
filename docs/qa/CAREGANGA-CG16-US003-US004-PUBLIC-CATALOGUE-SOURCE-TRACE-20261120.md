@@ -7,7 +7,7 @@ Evidence SHA before this document: 4be8642504e6bfcb030af9c5a3d39b3604376da9. No 
 
 Executor performed source inspection and GitHub SHA-based commits, NOT an independent clinical/security/DB review. Source test scripts committed but NOT EXECUTED in this remote environment. Actual PostgreSQL migration, real test data, authorization misuse, browser/Web/Android rendering, network/ingress, load, accessibility, contact dialing, license-calendar expiry and practical mobile parity all NOT_RUN. ZERO manual/runtime QA cases are PASS. No medical or financial approvals granted.
 
-US-003 has 12 SOURCE_TRACED, 2 SOURCE_GAP, 2 NOT_VERIFIABLE (16 original cases). US-004 has 11 SOURCE_TRACED, 2 SOURCE_GAP, 3 NOT_APPLICABLE (16 original cases). These are source-presence dispositions, NOT QA execution results.
+After current original-source re-review, US-003 has 14 SOURCE_TRACED, 0 SOURCE_GAP, 2 NOT_VERIFIABLE (await US002 lawful patient report source). US-004 has 13 SOURCE_TRACED, 0 SOURCE_GAP, 3 NOT_APPLICABLE (16 original cases). These are source-presence dispositions, NOT QA execution results.
 
 ### Original US-003 acceptance cases
 
@@ -22,12 +22,12 @@ US-003 has 12 SOURCE_TRACED, 2 SOURCE_GAP, 2 NOT_VERIFIABLE (16 original cases).
 | US-003-QA07 | NOT_VERIFIABLE | Actual professionally released CG19/CG15 report integration belongs to US-002 |
 | US-003-QA08 | SOURCE_TRACED | Anonymous controller only GET offers/facets, no order/report ref route or private joins |
 | US-003-QA09 | SOURCE_TRACED | Web lab-tests route and native PublicLabOfferDirectory offer safe filters, source center, tariff, validity, empty/unavailable; actual pixel/device NOT_RUN |
-| US-003-QA10 | SOURCE_GAP | H09 price source totals exist; H08 mapped/popular test overlay is not yet integrated |
+| US-003-QA10 | SOURCE_TRACED | Original `/admin/health-network/page.tsx` includes `FoundationLabOfferOverview` (actual H08 source-backed listed approved lab tests/current prices/CG14 original center), and H09 `/diagnostics` has source totals; no invented popularity ranking or screenshot counts; browser and screenshot QA NOT_RUN |
 | US-003-QA11 | SOURCE_TRACED | Partner commercial discount only; no Foundation assistance/paid/CG09 claims or writes |
 | US-003-QA12 | SOURCE_TRACED | Informational description and contact; no diagnosis/analyzer interpretation |
 | US-003-QA13 | SOURCE_TRACED | CG14 directory/page remains standalone; no CG16 offer creates no catalogue card |
 | US-003-QA14 | SOURCE_TRACED | Protected Foundation/own-center H09 preview links use current CG14 publicSlug and separately rechecked public endpoint |
-| US-003-QA15 | SOURCE_GAP | Public GET rechecks live sources; real accepted internal lab order and frozen-revision recheck await US-002 |
+| US-003-QA15 | SOURCE_TRACED | Public GET rechecks actual CG14/CG16 source each request. Current CG16 `ClinicalLabOrderService.quote/create` rechecks source-approved mapping/price and freezes accepted original price version/line in `lab_order_line` guarded by 1604; SQL race/expired live tests NOT_RUN |
 | US-003-QA16 | SOURCE_TRACED | Controller -> CG14 throttle -> CG16 allowlisted query with original publication/CG03/CG19 and mapped tariff -> Web/native; runtime NOT_RUN |
 
 ### Original US-004 acceptance cases
@@ -36,7 +36,7 @@ US-003 has 12 SOURCE_TRACED, 2 SOURCE_GAP, 2 NOT_VERIFIABLE (16 original cases).
 |---|---|---|
 | US-004-QA01 | SOURCE_TRACED | Original CG14 center page and native center details show test-specific phone/view CTA only after current CG16 offers |
 | US-004-QA02 | SOURCE_TRACED | Existing CG14 center page, doctors and services do not depend on CG16 rows |
-| US-004-QA03 | SOURCE_GAP | Original CG18 CMS healthcare route preserved, but optional editorial live CTA and its absence semantics remain untested |
+| US-004-QA03 | SOURCE_TRACED | `CmsEditorialRoute({slug:'healthcare'})` retains original CG18 published editorial and appends optional current CG16 live-offer CTAs only for READY+nonempty approved CG14/CG03/CG19/CG16 output; unavailable/unpublished offers show NO stale/test CTA and CMS content remains independent; browser/native screenshot QA NOT_RUN |
 | US-004-QA04 | SOURCE_TRACED | CG14 public center slug required; Web filtered URL and native initialCenterSlug preserve exact center contact/price |
 | US-004-QA05 | SOURCE_TRACED | Fresh public offer reader checks CG14 published generation/current price; Web CTA only READY+items, native check first; runtime withdrawal races NOT_RUN |
 | US-004-QA06 | SOURCE_TRACED | Only currently published CG14 contact phone; no persisted order, checkout, payment or booking |
@@ -45,7 +45,7 @@ US-003 has 12 SOURCE_TRACED, 2 SOURCE_GAP, 2 NOT_VERIFIABLE (16 original cases).
 | US-004-QA09 | SOURCE_TRACED | Web c.publicPhone and native centerDetails.publicPhone from current original CG14 public profile |
 | US-004-QA10 | SOURCE_TRACED | Public allowlist projects price/name/contact/center only; no proof file, bank, patients, specimens or reports |
 | US-004-QA11 | SOURCE_TRACED | Web and native center details both navigate live test prices and use direct original phone; pixel/native execution NOT_RUN |
-| US-004-QA12 | SOURCE_GAP | Foundation H08 combined lab detail overlay not yet implemented; protected H09 preview exists |
+| US-004-QA12 | SOURCE_TRACED | Existing CG14 Foundation `/admin/health-network` embeds `FoundationLabOfferOverview` with original provider+center+current CG16 test, commercial tariff and original provider-profile link; H09 live preview separately. It does not clone provider editor or claim patient booking counts; actual H08 pixel/selection UX NOT_RUN |
 | US-004-QA13 | NOT_APPLICABLE | Internal Android public lab enquiry/global Admin controls intentionally not required under D-17 |
 | US-004-QA14 | SOURCE_TRACED | Contact/read endpoints contain no Lab ERP grant dependency and no H10 operation exposed |
 | US-004-QA15 | SOURCE_TRACED | CG14 verified slug and current phone validation, lab query parameter allowlist; no external URL/host or forged sender |
@@ -62,4 +62,4 @@ US-003 has 12 SOURCE_TRACED, 2 SOURCE_GAP, 2 NOT_VERIFIABLE (16 original cases).
 
 ## Remaining development / integration gates
 
-CG-16 US-001 still needs original CG-03 source-pinned price-review case, CG-14 authoritative license-expiration policy and original component expiry scope, plus US-002 actual historical accepted order/reprice trace. US-003 H08 Admin overlay and US-004 H08 combined detail remain open. Public patient released reports are US-002 only, not fabricated by catalog. CG-16 US-002/US-005 optional Lab ERP and quality, all CG-17 stories, independent signoffs and real-device/SQL QA remain incomplete. Owner policy: NO MERGE TO MAIN until BOTH modules' 12 stories, 148 original QA traces, review/runtime gates and final explicit approval are complete.
+CG-16 US001 now has original CG03 source-pinned price review and CG14 real unexpired lab license source, 1603 test-component expiry and US002 actual frozen accepted-order source. US-003 H08 verified offer overlay and US-004 H08 original CG14 provider+CG16 price overlay are source-present. Original CG18 healthcare page has live current-offer optional CTA, not a duplicated catalogue. Two US003 public-own-medical-report cases remain NOT_VERIFIABLE until CG16 US002 qualified medical release and lawful patient reader are developed. Public patient released reports are US-002 only, not fabricated by catalog. CG-16 US-002/US-005 optional Lab ERP and quality, all CG-17 stories, independent signoffs and real-device/SQL QA remain incomplete. Owner policy: NO MERGE TO MAIN until BOTH modules' 12 stories, 148 original QA traces, review/runtime gates and final explicit approval are complete.
