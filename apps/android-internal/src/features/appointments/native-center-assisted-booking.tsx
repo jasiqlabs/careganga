@@ -245,7 +245,7 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired,
    <Text accessibilityRole="header" style={styles.pageTitle}>Authorized Patient Booking</Text>
    <Text style={styles.note}>Use only your assigned center. A signed-in, independently
     verified patient must issue a fresh 15-minute one-time code to authorize
-    one hold. Full consultation fees are due at the center.</Text>
+    one hold. Verify the actual contribution before telling the patient what is due.</Text>
    {loading&&<ActivityIndicator/>}
    {!!message&&<Text accessibilityRole="alert" style={styles.error}>{message}</Text>}
    <Text style={styles.note}>Assigned healthcare center</Text>
