@@ -140,10 +140,15 @@ export class HealthReviewWorkflowService{
    const found=await tx.query<{provider_id:string;version:number;display_name:string;
     center_code:string;center_type:string;address_line:string;state_ref:string;
     district_ref:string;block_ref:string|null;pin_code:string;
-    public_phone:string|null;time_zone:string}>(
+    public_phone:string|null;time_zone:string;
+    diagnostic_license_valid_through:string|null;diagnostic_license_current:boolean}>(
     "SELECT c.provider_id,c.version,c.display_name,c.center_code,c.center_type,"+
     "c.address_line,c.state_ref,c.district_ref,c.block_ref,c.pin_code,"+
-    "c.public_phone,c.time_zone FROM health_center c "+
+    "c.public_phone,c.time_zone,c.diagnostic_license_valid_through::text,"+
+    "(c.diagnostic_license_valid_through IS NOT NULL AND "+
+    "c.diagnostic_license_valid_through >= "+
+    "(now() AT TIME ZONE c.time_zone)::date) AS diagnostic_license_current "+
+    "FROM health_center c "+
     "JOIN health_provider p ON p.id=c.provider_id AND p.root_realm_id=c.root_realm_id "+
     "WHERE c.id=$1 AND c.root_realm_id=$2 AND c.status='PENDING' "+
     "AND p.status='VERIFIED' FOR UPDATE OF c",
@@ -175,10 +180,18 @@ export class HealthReviewWorkflowService{
      "SELECT capability_code FROM health_center_capability "+
      "WHERE root_realm_id=$1 AND center_id=$2 ORDER BY capability_code LIMIT 6",
      [actor.realmId,ref]);
+   if(capabilities.rows.some(c=>c.capability_code==="DIAGNOSTICS")&&
+      !row.diagnostic_license_current)
+    throw new BadRequestException({code:"HEALTH_DIAGNOSTIC_LICENSE_EXPIRED",
+     field:"diagnosticLicenseValidThrough"});
+   // This exact date is declared alongside a scanned CG19 licence and frozen
+   // by the existing independent CG03 center-verification case. It is never
+   // treated as trusted merely because the provider entered it.
    const snapshot={displayName:row.display_name,centerCode:row.center_code,
     centerType:row.center_type,addressLine:row.address_line,
     stateRef:row.state_ref,districtRef:row.district_ref,blockRef:row.block_ref,
     pinCode:row.pin_code,timeZone:row.time_zone,publicPhone:row.public_phone,
+    diagnosticLicenseValidThrough:row.diagnostic_license_valid_through,
     operatingHours:hours.rows.map(h=>({
       weekday:h.weekday,opens:h.open_local.slice(0,5),
       closes:h.close_local.slice(0,5),service:h.service_type
