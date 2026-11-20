@@ -22,7 +22,7 @@ export type Binding={id:string;root_realm_id:string;center_ref:string;
  proposed_by:string;verified_by:string|null;verified_at:Date|null;
  original_proof_ref:string|null;revoked_at:Date|null};
 const display=(m:Binding|null)=>m?{
- bindingRef:m.id,provider:"RAZORPAY" as const,
+ bindingRef:m.id,revision:m.revision,provider:"RAZORPAY" as const,
  merchantRef:m.provider_merchant_ref,verificationState:m.verification_state,
  onlineAvailable:m.verification_state==="VERIFIED"&&m.revoked_at===null,
  verifiedAt:m.verified_at?.toISOString()??null
@@ -83,10 +83,12 @@ export class CenterMerchantProvisioningService{
  async status(token:string,rawCenter:string){
   const center=key(rawCenter);
   return this.tx(async c=>{
-   const a=await this.sessions.requireAction(token,
-    "healthcare.assistance.merchant.manage");
-   await this.scope.assertCurrent(c,a,center,
-    "healthcare.assistance.merchant.manage");
+   let action="healthcare.assistance.merchant.manage";
+   let a;
+   try{a=await this.sessions.requireAction(token,action);}
+   catch{action="healthcare.assistance.merchant.verify";
+    a=await this.sessions.requireAction(token,action);}
+   await this.scope.assertCurrent(c,a,center,action);
    const q=await c.query<Binding>(
     "SELECT * FROM center_merchant_binding WHERE root_realm_id=$1 "+
     "AND center_ref=$2 AND verification_state<>'REVOKED' LIMIT 1",
