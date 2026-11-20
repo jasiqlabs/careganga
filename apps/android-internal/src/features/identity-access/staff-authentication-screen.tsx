@@ -766,6 +766,8 @@ export function StaffAuthenticationScreen() {
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeHealthcarePolicyScreen token={token}
           canManage={roleActions.includes("healthcare.assistance.policies.manage")}
+          canReview={roleActions.includes("healthcare.assistance.policies.review")&&
+            roleActions.includes("approvals.review")}
           onExit={closeHealthcarePolicies} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthAssistancePolicies", closeHealthcarePolicies);
