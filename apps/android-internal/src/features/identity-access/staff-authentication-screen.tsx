@@ -597,7 +597,7 @@ export function StaffAuthenticationScreen() {
       onOpenDashboard={onClose}
       hideWelcome={true}
     >
-      <View style={{ flex: 1, paddingBottom: 88 }}>{screen}</View>
+      <View style={{ flex: 1, paddingBottom: 100 }}>{screen}</View>
     </AuthenticatedAppShell>
   );
 
