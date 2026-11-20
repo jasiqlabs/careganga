@@ -1,12 +1,26 @@
 import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
 import {ClinicalLabOrderService} from "../application/clinical-lab-order.service";
+import {ClinicalLabOptionsService} from "../application/clinical-lab-options.service";
 
 /** Internal authenticated CG16 clinical operations, NEVER public checkout.
  * Backend CG01 + current center grant + real CG15 care consent are mandatory.
  */
 @Controller("api/v1/diagnostics/clinical")
 export class ClinicalLabOrderController{
- constructor(private readonly orders:ClinicalLabOrderService){}
+ constructor(private readonly orders:ClinicalLabOrderService,
+  private readonly options:ClinicalLabOptionsService){}
+ @Get("centers/eligible")
+ eligible(@Headers("authorization")token:string){
+  return this.options.centers(token);
+ }
+ @Get("centers/:centerRef/patients/eligible")
+ patients(@Headers("authorization")token:string,@Param("centerRef")center:string){
+  return this.options.patients(token,center);
+ }
+ @Get("centers/:centerRef/catalog/eligible")
+ catalog(@Headers("authorization")token:string,@Param("centerRef")center:string){
+  return this.options.catalog(token,center);
+ }
  @Get("centers/:centerRef/orders")
  centerOrders(@Headers("authorization")token:string,
   @Param("centerRef")center:string){

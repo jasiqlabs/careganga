@@ -6,6 +6,11 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const error=(status:number,message:string)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"no-store"}});
 function allowed(parts:string[],method:string){
+ if(parts.length===2&&parts[0]==="centers"&&parts[1]==="eligible")
+  return method==="GET";
+ if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    ["patients","catalog"].includes(parts[2])&&parts[3]==="eligible")
+  return method==="GET";
  if(parts.length===3&&parts[0]==="centers"&&
     UUID.test(parts[1])&&parts[2]==="orders")
   return method==="GET"||method==="POST";

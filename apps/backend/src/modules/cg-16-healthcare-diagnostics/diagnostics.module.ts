@@ -9,10 +9,11 @@ import {DiagnosticsPriceReviewSource} from "./application/diagnostics-price-revi
 import {ClinicalLabAdmissionService} from "./application/clinical-lab-admission.service";
 import {ClinicalLabOrderService} from "./application/clinical-lab-order.service";
 import {ClinicalLabOrderController} from "./http/clinical-lab-order.controller";
+import {ClinicalLabOptionsService} from "./application/clinical-lab-options.service";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService],
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,ClinicalLabOrderController],
  exports:[DiagnosticsCatalogService]
 })
