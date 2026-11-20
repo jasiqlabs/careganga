@@ -11,7 +11,8 @@ export type MerchantOrder={
  refundedOrPartial?:boolean;message?:string;provider?:string
 };
 type Props={status:()=>Promise<MerchantOrder>;
- begin:(key:string)=>Promise<MerchantOrder>;onExpired?:()=>void;
+ begin:(key:string)=>Promise<MerchantOrder>;
+ reconcile:()=>Promise<MerchantOrder>;onExpired?:()=>void;
  canInitiate?:boolean;subject:string};
 const key=/^rzp_(?:live|test)_[A-Za-z0-9]+$/;
 const order=/^order_[A-Za-z0-9]{8,60}$/;
@@ -56,7 +57,7 @@ function htmlFor(x:MerchantOrder){
 /** Shared Public/Internal Android presentation. Neither HTML, native bridge,
  * checkout handler nor an untrusted redirect can ever mark patient PAID.
  */
-export function NativeCenterMerchantCheckout({status,begin,onExpired,
+export function NativeCenterMerchantCheckout({status,begin,reconcile,onExpired,
  canInitiate=true,subject}:Props){
  const [state,setState]=useState<MerchantOrder|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -119,7 +120,7 @@ export function NativeCenterMerchantCheckout({status,begin,onExpired,
   </Pressable>;
  return <View style={s.card} accessibilityLabel="Verified center online payment">
   <Text accessibilityRole="header" style={s.title}>Pay your healthcare center</Text>
-  <Text style={s.body}>Only {subject}'s verified center merchant may
+  <Text style={s.body}>Only the {subject} verified center merchant may
    receive online funds. The Foundation account is not used.</Text>
   {loading&&<ActivityIndicator accessibilityLabel="Checking center merchant"/>}
   {!!error&&<Text accessibilityRole="alert" style={s.alert}>{error}</Text>}
@@ -142,6 +143,15 @@ export function NativeCenterMerchantCheckout({status,begin,onExpired,
    void refresh().then(v=>{if(v.state==="CONFIRMED")setUncertain(false);})
     .catch(err).finally(()=>setBusy(false));
   },busy||loading)}
+  {(uncertain||["UNKNOWN","INITIALIZING"].includes(
+    state?.state??state?.status??""))&&button(
+     "Recover only the original provider order",()=>{
+      setBusy(true);setError("");setNotice("");
+      void reconcile().then(v=>{
+       setState(v);setNotice(v.message??"Original order checked.");
+       if(v.checkoutAvailable)setUncertain(false);
+      }).catch(err).finally(()=>setBusy(false));
+     },busy)}
   {uncertain&&<Text style={s.alert}>The last order result is unknown.
    Check this exact order or ask the center before making another payment.</Text>}
   <Text style={s.body}>Closing checkout, a success screen or a returned
