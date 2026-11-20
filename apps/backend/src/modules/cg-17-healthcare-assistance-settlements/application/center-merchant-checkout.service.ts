@@ -215,7 +215,7 @@ export class CenterMerchantCheckoutService{
   });
   if(!setup.pending)return setup.replay;
   const {attempt,credentials}=setup;
-  let result:ProviderOrder|null=null,definitiveFailure=false;
+  let result:ProviderOrder|null=null;
   try{
    const res=await fetch("https://api.razorpay.com/v1/orders",{
     method:"POST",headers:{Authorization:auth(credentials),
@@ -225,7 +225,6 @@ export class CenterMerchantCheckoutService{
      receipt:attempt.order_receipt,
      notes:{cg17_attempt:attempt.id,cg17_center:attempt.center_ref}}),
     signal:AbortSignal.timeout(9000)});
-   if(res.status>=400&&res.status<500)definitiveFailure=true;
    if(res.ok){
     const body:unknown=await res.json();
     if(body&&typeof body==="object"&&!Array.isArray(body)){
@@ -250,8 +249,7 @@ export class CenterMerchantCheckoutService{
     const v=await this.merchants.verified(c,current.root_realm_id,current.center_ref);
     enabled=v.binding.id===current.binding_ref;
    }catch{}
-   const status=result&&enabled?"PENDING":
-    definitiveFailure?"FAILED":"UNKNOWN";
+   const status=result&&enabled?"PENDING":"UNKNOWN";
    const saved=await c.query<Attempt>(
     "UPDATE center_payment_attempt SET status=$3,external_order_ref=$4,"+
     "updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
@@ -301,7 +299,10 @@ export class CenterMerchantCheckoutService{
    throw new BadRequestException({code:"CENTER_PAYMENT_WEBHOOK_INVALID"});
   const payment=await providerGet<ProviderPayment>(
    "payments/"+encodeURIComponent(paymentId),credentials);
-  if(payment.id!==paymentId||payment.status!=="captured"||
+  if(payment.id!==paymentId||
+     !(event==="refund.processed"?
+       ["captured","refunded"].includes(payment.status):
+       payment.status==="captured")||
      payment.captured!==true||!ORDER.test(payment.order_id)||
      payment.currency!=="INR"||!Number.isSafeInteger(payment.amount)||
      payment.amount<=0)
@@ -412,6 +413,18 @@ export class CenterMerchantCheckoutService{
     [m.root_realm_id,current.id,paymentId]);
    if(!capture.rows[0])
     throw new ConflictException({code:"CENTER_PAYMENT_CAPTURE_NOT_RECORDED"});
+   const existingRefund=await c.query<{id:string}>(
+    "SELECT id FROM center_collection_adjustment "+
+    "WHERE root_realm_id=$1 AND provider_refund_ref=$2 "+
+    "AND collection_ref=$3",
+    [m.root_realm_id,refund!.id,capture.rows[0].id]);
+   if(existingRefund.rows[0]){
+    await c.query("INSERT INTO cg17_merchant_event(root_realm_id,binding_ref,"+
+     "attempt_ref,provider_event_ref,event_kind,event_digest,result) "+
+     "VALUES($1,$2,$3,$4,$5,$6,'IGNORED')",
+     [m.root_realm_id,m.id,current.id,eventRaw,event,digest]);
+    return {received:true,recorded:true,confirmed:false,refunded:true,replayed:true};
+   }
    const prior=await c.query<{total:string}>(
     "SELECT COALESCE(SUM(refund_minor),0)::text AS total "+
     "FROM center_collection_adjustment WHERE root_realm_id=$1 "+
