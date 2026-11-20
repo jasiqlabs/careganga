@@ -304,3 +304,47 @@ END
 $cg16$;
 CREATE TRIGGER cg16_cg03_lab_price_frozen BEFORE UPDATE
  ON cg03_case FOR EACH ROW EXECUTE FUNCTION cg16_cg03_lab_price_source_frozen();
+
+
+-- Database-level backstop. A direct SQL UPDATE, a forgotten service guard,
+-- or a second unreviewed API must never turn a proposed commercial price into
+-- an approved one without its original source-pinned CG-03 final decision.
+CREATE FUNCTION cg16_price_requires_cg03_decision() RETURNS trigger
+ LANGUAGE plpgsql AS $cg16$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  IF NEW.status IN ('APPROVED','REJECTED') THEN
+   RAISE EXCEPTION 'Lab price cannot be final at creation without CG03 review';
+  END IF;
+  RETURN NEW;
+ END IF;
+ IF OLD.status IN ('APPROVED','REJECTED') AND
+    NEW.status IS DISTINCT FROM OLD.status THEN
+  RAISE EXCEPTION 'Reviewed lab price cannot be reopened';
+ END IF;
+ IF OLD.status='PROPOSED' AND NEW.status IN ('APPROVED','REJECTED') THEN
+  IF NOT EXISTS(
+   SELECT 1 FROM cg03_case c
+   JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id
+   WHERE c.realm_id=NEW.root_realm_id
+    AND c.case_kind='HEALTH_LAB_PRICE_REVIEW'
+    AND c.cg16_price_id=NEW.id
+    AND c.cg16_price_version=NEW.version_no
+    AND c.cg16_price_digest ~ '^[a-f0-9]{64}$'
+    AND c.status='PENDING_OWNER'
+    AND d.action=(CASE WHEN NEW.status='APPROVED' THEN 'APPROVE' ELSE 'REJECT' END)
+    AND d.actor_id=NEW.approved_by
+    AND d.actor_id<>c.proposer_id
+    AND c.proposer_id=NEW.proposed_by
+    AND d.fresh_password_verified_at IS NOT NULL
+    AND d.accepted_case_revision=c.revision
+  ) THEN
+   RAISE EXCEPTION 'Original CG03 lab price approval is required';
+  END IF;
+ END IF;
+ RETURN NEW;
+END
+$cg16$;
+CREATE TRIGGER cg16_price_cg03_review_guard BEFORE INSERT OR UPDATE
+ ON lab_center_price_version FOR EACH ROW
+ EXECUTE FUNCTION cg16_price_requires_cg03_decision();
