@@ -160,25 +160,8 @@ export class HealthcareAssistancePolicyService{
   const center=uuid(centerRaw),doctor=uuid(doctorRaw);
   return this.tx(async c=>{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
-   await this.verified.center(c,actor.realmId,center);
-   await this.verified.doctor(c,actor.realmId,center,doctor);
-   const assoc=await c.query<{id:string}>(
-    "SELECT id FROM health_doctor_center WHERE root_realm_id=$1 "+
-    "AND center_id=$2 AND doctor_id=$3 AND affiliation_state='APPROVED' "+
-    "AND approved_from<=now() AND "+
-    "(approved_to IS NULL OR approved_to>now())",
-    [actor.realmId,center,doctor]);
-   if(!assoc.rows[0])
-    throw new NotFoundException({code:"ASSISTANCE_DOCTOR_NOT_VERIFIED"});
-   const fee=await c.query<{id:string;version:number;minor:string}>(
-    "SELECT id,version,amount_minor::text AS minor FROM health_center_fee "+
-    "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
-    "AND fee_kind='CONSULTATION' AND consultation_mode='IN_PERSON' "+
-    "AND status='APPROVED' AND effective_from<=now() "+
-    "AND (effective_to IS NULL OR effective_to>now()) "+
-    "ORDER BY effective_from DESC,id DESC LIMIT 1",
-    [actor.realmId,assoc.rows[0].id]);
-   if(!fee.rows[0])return {state:"NO_APPROVED_FEE" as const,
+   const fee=await this.verified.consultationFee(c,actor.realmId,center,doctor);
+   if(!fee)return {state:"NO_APPROVED_FEE" as const,
     eligiblePatientVerified:false};
    const policies=await c.query<Revision>(
     "SELECT * FROM healthcare_policy_revision "+
@@ -189,10 +172,10 @@ export class HealthcareAssistancePolicyService{
     "ORDER BY (doctor_ref IS NOT NULL) DESC,valid_from DESC,id DESC LIMIT 1",
     [actor.realmId,center,doctor]);
    const policy=policies.rows[0];
-   const gross=BigInt(fee.rows[0].minor);
+   const gross=BigInt(fee.minor);
    if(!policy)return {state:"NO_EFFECTIVE_POLICY" as const,
     grossMinor:gross.toString(),currency:"INR" as const,
-    actualFeeRef:fee.rows[0].id,actualFeeVersion:fee.rows[0].version,
+    actualFeeRef:fee.id,actualFeeVersion:fee.version,
     eligiblePatientVerified:false};
    const cap=BigInt(policy.cap_minor);
    const proposed=policy.mode==="PERCENT"&&policy.percent_basis_points!==null?
@@ -203,7 +186,7 @@ export class HealthcareAssistancePolicyService{
    return {state:"POLICY_ESTIMATE_ONLY" as const,
     grossMinor:gross.toString(),estimatedSupportMinor:bounded.toString(),
     estimatedPatientDueMinor:(gross-bounded).toString(),
-    actualFeeRef:fee.rows[0].id,actualFeeVersion:fee.rows[0].version,
+    actualFeeRef:fee.id,actualFeeVersion:fee.version,
     policyRevisionRef:policy.id,policyRevision:policy.revision_no,
     currency:"INR" as const,eligiblePatientVerified:false,
     caution:"Not a confirmed patient entitlement or accepted charge. "+
