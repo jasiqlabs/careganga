@@ -347,6 +347,15 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
  return error("sectionKind");
 }
 
+/** CG18 editorial fields must not assert a financial rate/discount.
+ * Actual current healthcare assistance is a separate CG17-owned public
+ * source, inserted at the app composition level, not CMS author text.
+ * This content-only guard has NO dependency on CG17 tables or services.
+ */
+export function healthcareEditorialClaimsSafe(sections:readonly EditorialSection[]):boolean{
+ const text=JSON.stringify(sections.map(s=>s.fields));
+ return !/(?:\d{1,3}(?:\.\d{1,2})?\s*%|₹\s*[\d,.]+|\b(?:rs\.?|inr)\s*[\d,.]+|\b(?:discount|subsidy|waiver)\s*(?:of|up to)?\s*\d+)/i.test(text);
+}
 export function validateExtendedPage(kind:string,sections:readonly EditorialSection[],
  assets:readonly {role:string;order:number}[],requireMedia=false){
  const types=sections.map(x=>x.kind);
@@ -388,6 +397,8 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   return error("sections");
  if(kind==="HEALTHCARE"&&!types.includes("HEALTHCARE_CATEGORIES"))
   return error("categories");
+ if(kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(sections))
+  return error("healthcareFinancialClaims");
  if(kind==="CONTACT"&&!types.some(v=>v==="RICH_TEXT"))
   return error("sections");
  if(kind==="POLICY"&&(sections.length<1||sections.length>12||
