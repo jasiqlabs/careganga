@@ -16,6 +16,10 @@ type Payload={requestKey:string;policyRef?:string;expectedRevision:number;
  fixedMinor?:string;capMinor:string};
 const kinds:readonly Kind[]=["CONSULTATION","LAB","PHARMACY","NURSING","OT"];
 type Props={canView:boolean;canManage:boolean;canReview:boolean};
+type Estimate={state:"NO_APPROVED_FEE"|"NO_EFFECTIVE_POLICY"|"POLICY_ESTIMATE_ONLY";
+ grossMinor?:string;estimatedSupportMinor?:string;estimatedPatientDueMinor?:string;
+ actualFeeVersion?:number;policyRevisionRef?:string;eligiblePatientVerified:false;
+ caution?:string};
 async function api<T>(parts:string,method:"GET"|"POST"="GET",body?:object){
  const response=await fetch("/api/healthcare-assistance/policies/"+parts,{
   method,credentials:"same-origin",cache:"no-store",
@@ -61,6 +65,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
+ const [estimate,setEstimate]=useState<Estimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[error,setError]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -71,6 +76,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   [until,setUntil]=useState("");
  const [revision,setRevision]=useState<Policy|null>(null);
  const last=useRef<{parts:string;body:Payload;label:string}|null>(null);
+ useEffect(()=>setEstimate(null),[center,doctor]);
  const request=useRef(0);
  const refresh=useCallback(async(c:string)=>{
   const id=++request.current;
@@ -100,6 +106,17 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   ]).catch(e=>setError(e instanceof Error?e.message:"Current center policy unavailable."))
    .finally(()=>setLoading(false));
  },[center,refresh]);
+ async function preview(){
+  if(!center||!doctor||busy||uncertain)return;
+  setBusy(true);setError("");setEstimate(null);
+  try{
+   const value=await api<Estimate>(
+    "centers/"+center+"/doctors/"+doctor+"/estimate");
+   setEstimate(value);
+  }catch(e){setError(e instanceof Error?e.message:
+   "Current fee and assistance source cannot be verified.");}
+  finally{setBusy(false);}
+ }
  function edit(p:Policy){
   if(p.status!=="ACTIVE")return;
   setRevision(p);setMode(p.mode);setService(p.serviceKind);
@@ -208,6 +225,23 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       {doctors.map(v=><option key={v.doctorRef} value={v.doctorRef}>{v.name}</option>)}
      </select>
     </label>
+    {!!doctor&&<div className="cg-diagnostics-card">
+     <h3>Current verified fee estimate</h3>
+     <p>Read-only illustration from the actual CG-14 fee and current approved
+      support policy; never an accepted patient charge.</p>
+     <button type="button" disabled={busy||uncertain}
+      onClick={()=>void preview()}>Check current fee and cap</button>
+     {estimate&&<p role="status">
+      {estimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Actual gross "+money(estimate.grossMinor??null)+
+       " · capped support "+money(estimate.estimatedSupportMinor??null)+
+       " · estimated patient due "+money(estimate.estimatedPatientDueMinor??null)+
+       ". Patient eligibility has NOT been verified.":
+       estimate.state==="NO_EFFECTIVE_POLICY"?
+       "Current approved fee exists, but no effective assistance policy applies.":
+       "No currently approved consultation fee is available."}
+     </p>}
+    </div>}
     <label className="field">Assistance type
      <select value={mode} disabled={busy} onChange={e=>
       setMode(e.target.value as "PERCENT"|"FIXED")}>
