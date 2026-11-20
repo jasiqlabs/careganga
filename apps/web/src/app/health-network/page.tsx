@@ -66,6 +66,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
    <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
     {!canReschedule&&<Link href="/health-network?tab=centers"
      aria-current={tab==="centers"?"page":undefined}>Centers</Link>}
+    {!canReschedule&&<Link href="/health-network/lab-tests">Lab tests & prices</Link>}
     <Link href={"/health-network?tab=doctors"+
      (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
       "&version="+rescheduleVersion:"")} aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
