@@ -13,6 +13,8 @@ import {ClinicalLabOptionsService} from "./application/clinical-lab-options.serv
 import {ClinicalLabCustodyService} from "./application/clinical-lab-custody.service";
 import {ClinicalLabResultEvidenceService} from "./application/clinical-lab-result-evidence.service";
 import {ClinicalLabProfessionalReviewService} from "./application/clinical-lab-professional-review.service";
+import {ClinicalLabPatientReleaseService} from "./application/clinical-lab-patient-release.service";
+import {ClinicalLabPatientReportController} from "./http/clinical-lab-patient-report.controller";
 import {LabResultStorageModule} from "../cg-19-documents-notifications/lab-result-storage.module";
 import {ClinicalLabEquipmentService} from "./application/clinical-lab-equipment.service";
 import {ClinicalLabQualityEvidenceService} from "./application/clinical-lab-quality-evidence.service";
@@ -20,10 +22,10 @@ import {ClinicalLabEquipmentController} from "./http/clinical-lab-equipment.cont
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,LabResultStorageModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService,
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService,ClinicalLabPatientReleaseService,
   ClinicalLabEquipmentService,ClinicalLabQualityEvidenceService],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,
-  ClinicalLabOrderController,ClinicalLabEquipmentController],
+  ClinicalLabOrderController,ClinicalLabPatientReportController,ClinicalLabEquipmentController],
  exports:[DiagnosticsCatalogService]
 })
 export class DiagnosticsModule{}
