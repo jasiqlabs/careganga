@@ -12,8 +12,9 @@ function permitted(p:string[],method:"GET"|"POST"){
   return true;
  if(p.length>=4&&p[0]==="centers"&&ID.test(p[1])&&
   p[2]==="months"&&MONTH.test(p[3])){
-  return method==="GET"?p.length===4:
-   p.length===5&&["propose","review"].includes(p[4]);
+  return method==="GET"?p.length===4||
+   (p.length===5&&p[4]==="payout-options"):
+   p.length===5&&["propose","review","confirm-payout"].includes(p[4]);
  }
  return false;
 }
@@ -32,8 +33,13 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"){
    if(!raw||typeof raw!=="object"||Array.isArray(raw)||
     !("requestKey" in raw)||typeof raw.requestKey!=="string"||
     !ID.test(raw.requestKey))return fail(400,"Invalid original settlement request.");
-   const review=parts[4]==="review";
-   if(Object.keys(raw).length!==(review?2:1)||
+   const review=parts[4]==="review",payout=parts[4]==="confirm-payout";
+   if(payout){
+    if(Object.keys(raw).length!==3||!("bankMatchRef" in raw)||
+     typeof raw.bankMatchRef!=="string"||!ID.test(raw.bankMatchRef)||
+     !("payeeMatched" in raw)||raw.payeeMatched!==true)
+     return fail(400,"Match the actual verified bank payment and protected beneficiary.");
+   }else if(Object.keys(raw).length!==(review?2:1)||
     (review&&(!("expectedRevision" in raw)||
      !Number.isSafeInteger(raw.expectedRevision)||Number(raw.expectedRevision)<1)))
     return fail(400,"Review the original claim and expected revision.");
