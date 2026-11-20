@@ -317,7 +317,7 @@ export class SupportService{
       closed:string;unread:string;archived:string;received_today:string}>(
       "SELECT count(*) AS total,count(*) FILTER(WHERE c.status IN("+
       "'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',"+
-      "'REPLIED','RESOLVED')) AS open,"+
+      "'REPLIED')) AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
       "count(*) FILTER(WHERE c.status IN('RESOLVED','CLOSED')) AS closed,"+
       "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
@@ -509,7 +509,8 @@ export class SupportService{
             "realm_id,case_id,actor_account_id,case_revision,new_status,"+
             "note_digest,note_encrypted) VALUES($1,$2,$3,$4,$5,$6,$7)",
             [a.realmId,id,a.accountId,c.revision+1,String(x.status),
-              sha(explanation),seal({name:"",contact:"",subject:"",message:explanation})]);
+              hmac("status-note",a.realmId+":"+id+":"+explanation),
+              seal({name:"",contact:"",subject:"",message:explanation})]);
         }
         await this.event(client,a.realmId,id,a.accountId,
           x.status==="CLOSED"?"CLOSED":
