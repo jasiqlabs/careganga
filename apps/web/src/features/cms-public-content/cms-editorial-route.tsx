@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type {ReactNode} from "react";
 import {UnavailablePage} from "../../shared/unavailable-page";
 import type {Metadata} from "next";
 import {notFound} from "next/navigation";
@@ -6,7 +7,6 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
-import {ApprovedConsultationBenefits} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -18,7 +18,7 @@ export async function editorialMetadata(slug:string):Promise<Metadata>{
   alternates:{canonical:r.page.canonicalPath},
   robots:{index:true,follow:true}};
 }
-export async function CmsEditorialRoute({slug}:{slug:string}){
+export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
  const [page,navigation,home,labOffers]=await Promise.all([
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
   slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
@@ -39,7 +39,7 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
-  {slug==="healthcare"&&<ApprovedConsultationBenefits/>}
+  {extra??null}
   {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
    <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">
     <h2>Current approved laboratory tests and prices</h2>
