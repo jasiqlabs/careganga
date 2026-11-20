@@ -62,6 +62,31 @@ export class HealthVerifiedCenterDoctorFacade{
   return q.rows[0];
  }
 
+ /** Original CG14 approved fee only. A later assistance policy can
+  * preview this rate without creating a new fee/doctor master or accepting
+  * a patient charge. Caller still decides its own contribution policy.
+  */
+ async consultationFee(c:PoolClient,root:string,center:string,doctor:string){
+  await this.center(c,root,center);
+  await this.doctor(c,root,center,doctor);
+  const result=await c.query<{id:string;version:number;minor:string}>(
+   "SELECT fee.id,fee.version,fee.amount_minor::text AS minor "+
+   "FROM health_doctor_center association "+
+   "JOIN health_center_fee fee ON fee.root_realm_id=association.root_realm_id "+
+   "AND fee.doctor_center_id=association.id "+
+   "WHERE association.root_realm_id=$1 AND association.center_id=$2 "+
+   "AND association.doctor_id=$3 "+
+   "AND association.affiliation_state='APPROVED' "+
+   "AND association.approved_from<=now() "+
+   "AND (association.approved_to IS NULL OR association.approved_to>now()) "+
+   "AND fee.fee_kind='CONSULTATION' "+
+   "AND fee.consultation_mode='IN_PERSON' AND fee.status='APPROVED' "+
+   "AND fee.effective_from<=now() "+
+   "AND (fee.effective_to IS NULL OR fee.effective_to>now()) "+
+   "ORDER BY fee.effective_from DESC,fee.id DESC LIMIT 1 FOR SHARE OF fee",
+   [root,center,doctor]);
+  return result.rows[0]??null;
+ }
  async centers(c:PoolClient,root:string){
   const centers=await c.query<{centerRef:string;name:string}>(
     "SELECT center.id AS \"centerRef\",center.display_name AS name "+
