@@ -116,9 +116,15 @@ export class MonthlyProviderSettlementService{
    state:c.state,
    independentlyApproved:c.state!=="PROPOSED",
    paidVerified:c.state==="SETTLED",
-   destinationMask:c.destination_masked_label,
    patientCollectionNotFoundationIncome:true,
    reviewedAt:c.reviewed_at?.toISOString()??null};
+ }
+ async eligibleCenters(token:string){
+  return this.tx(async c=>{
+   const a=await this.actor(c,token,"healthcare.assistance.settlements.view");
+   return this.centers.eligibleFoundationCenters(c,a,
+    "healthcare.assistance.settlements.view");
+  });
  }
  async statement(token:string,centerRaw:string,monthRaw:string){
   const center=id(centerRaw),period=month(monthRaw);
