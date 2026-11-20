@@ -265,8 +265,8 @@ export class ClinicalLabOrderService{
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,bearer,centerRef,"lab.orders.view");
    const result=await c.query(
-    "SELECT id AS \\"orderRef\\",display_order_ref AS \\"displayOrderRef\\","+
-    "status,accepted_center_total_minor::text AS \\"quotedTotalMinor\\",created_at AS \\"createdAt\\" "+
+    "SELECT id AS \"orderRef\",display_order_ref AS \"displayOrderRef\","+
+    "status,accepted_center_total_minor::text AS \"quotedTotalMinor\",created_at AS \"createdAt\" "+
     "FROM lab_order WHERE root_realm_id=$1 AND center_ref=$2 "+
     "ORDER BY created_at DESC,id DESC LIMIT 30",
     [actor.realmId,centerRef]);
@@ -278,18 +278,18 @@ export class ClinicalLabOrderService{
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,bearer,centerRef,"lab.orders.view");
    const r=await c.query(
-    "SELECT id AS \\"orderRef\\",display_order_ref AS \\"displayOrderRef\\",status,"+
-    "accepted_center_total_minor::text AS \\"quotedTotalMinor\\",created_at AS \\"createdAt\\" "+
+    "SELECT id AS \"orderRef\",display_order_ref AS \"displayOrderRef\",status,"+
+    "accepted_center_total_minor::text AS \"quotedTotalMinor\",created_at AS \"createdAt\" "+
     "FROM lab_order WHERE root_realm_id=$1 AND center_ref=$2 AND id=$3",
     [actor.realmId,centerRef,orderRef]);
    if(!r.rows[0])throw new NotFoundException({code:"LAB_CLINICAL_ORDER_UNAVAILABLE"});
    const [lines,samples]=await Promise.all([
     c.query("SELECT test_name_snapshot AS name,test_code_snapshot AS code,"+
-     "sample_type_snapshot AS \\"sampleType\\",qty AS quantity,"+
-     "accepted_line_total_minor::text AS \\"quotedLineTotalMinor\\" "+
+     "sample_type_snapshot AS \"sampleType\",qty AS quantity,"+
+     "accepted_line_total_minor::text AS \"quotedLineTotalMinor\" "+
      "FROM lab_order_line WHERE root_realm_id=$1 AND order_ref=$2 "+
      "ORDER BY created_at,id",[actor.realmId,orderRef]),
-    c.query("SELECT opaque_sample_label AS label,material_type AS \\"sampleType\\","+
+    c.query("SELECT opaque_sample_label AS label,material_type AS \"sampleType\","+
      "custody_state AS status FROM lab_sample WHERE root_realm_id=$1 "+
      "AND order_ref=$2 ORDER BY created_at,id",[actor.realmId,orderRef])
    ]);

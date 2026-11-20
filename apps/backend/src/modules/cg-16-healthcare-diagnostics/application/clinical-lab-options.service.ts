@@ -34,7 +34,7 @@ export class ClinicalLabOptionsService{
   }
   return this.tx(async c=>{
    const rows=await c.query<{centerRef:string;name:string}>(
-    "SELECT f.center_id AS \\"centerRef\\",hc.display_name AS name "+
+    "SELECT f.center_id AS \"centerRef\",hc.display_name AS name "+
     "FROM health_center_account_affiliation f JOIN health_center hc "+
     "ON hc.root_realm_id=f.root_realm_id AND hc.id=f.center_id "+
     "JOIN account a ON a.realm_id=f.root_realm_id AND a.id=f.account_ref "+
@@ -64,10 +64,10 @@ export class ClinicalLabOptionsService{
     patientRef:string;virtualPatientId:string;name:string;
     careSourceKind:string;careSourceRef:string
    }>(
-    "SELECT source.patient_ref AS \\"patientRef\\","+
-    "p.virtual_display_id AS \\"virtualPatientId\\","+
+    "SELECT source.patient_ref AS \"patientRef\","+
+    "p.virtual_display_id AS \"virtualPatientId\","+
     "p.first_name||' '||p.last_name AS name,"+
-    "source.kind AS \\"careSourceKind\\",source.source_ref AS \\"careSourceRef\\" "+
+    "source.kind AS \"careSourceKind\",source.source_ref AS \"careSourceRef\" "+
     "FROM (SELECT i.patient_id AS patient_ref,i.id AS source_ref,"+
     "'CENTER_INTAKE'::text AS kind,i.created_at "+
     "FROM cg15_patient_center_intake i WHERE i.root_realm_id=$1 "+
@@ -99,10 +99,10 @@ export class ClinicalLabOptionsService{
     mappingRef:string;name:string;code:string;kind:"TEST"|"PACKAGE";
     currentPatientPriceMinor:string;currency:string
    }>(
-    "SELECT m.id AS \\"mappingRef\\",m.test_or_package_kind AS kind,"+
+    "SELECT m.id AS \"mappingRef\",m.test_or_package_kind AS kind,"+
     "COALESCE(t.name,p.name) AS name,"+
     "COALESCE(t.unique_test_code,p.unique_package_code) AS code,"+
-    "price.advertised_patient_price_minor::text AS \\"currentPatientPriceMinor\\","+
+    "price.advertised_patient_price_minor::text AS \"currentPatientPriceMinor\","+
     "price.price_currency AS currency "+
     "FROM lab_center_test_mapping m "+
     "JOIN lab_center_price_version price ON price.root_realm_id=m.root_realm_id "+
