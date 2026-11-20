@@ -56,9 +56,11 @@ const fromInput=(raw:unknown)=>{
   "percentBasisPoints","fixedMinor","capMinor"]);
  const requestKey=uuid(d.requestKey),centerRef=uuid(d.centerRef);
  const policyRef=d.policyRef==null?null:uuid(d.policyRef);
- const expected=d.expectedRevision===undefined?0:Number(d.expectedRevision);
- if(typeof (d.expectedRevision??0)!=="number"||
-   !Number.isSafeInteger(d.expectedRevision??0)||expected<0||
+ const expectedValue=d.expectedRevision??0;
+ if(typeof expectedValue!=="number"||!Number.isSafeInteger(expectedValue))
+  throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
+ const expected=expectedValue;
+ if(expected<0||
    expected>2147483646||Boolean(policyRef)!==(expected>0)||
    !serviceKinds.includes(d.serviceKind as Kind)||
    !["PERCENT","FIXED"].includes(String(d.mode)))
@@ -473,7 +475,8 @@ export class HealthcareAssistancePolicyService{
  async withdraw(bearer:string,rawPolicy:string,raw:unknown){
   const policyRef=uuid(rawPolicy);
   const v=canonical(raw,["expectedRevision"]);
-  if(!Number.isSafeInteger(v.expectedRevision)||Number(v.expectedRevision)<1)
+  if(typeof v.expectedRevision!=="number"||
+     !Number.isSafeInteger(v.expectedRevision)||v.expectedRevision<1)
    throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
   return this.tx(async c=>{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.manage");
