@@ -224,7 +224,7 @@ export function CenterAssistedConsultationBooking({centerRef}:{centerRef:string}
   <h2>Book a consultation for a verified patient</h2>
   <p>Only your assigned center and current verified doctor schedules are available.
    The patient must separately authorize one reservation from their own account.
-   The full consultation fee is payable at the center; no payment is collected here.</p>
+   The patient amount is shown after the actual contribution policy check; no payment is collected here.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
   {booking?<div className="notice" role="status">
    <strong>Confirmed booking: {booking.bookingId}</strong>
