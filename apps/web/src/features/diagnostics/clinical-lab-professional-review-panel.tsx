@@ -25,6 +25,7 @@ async function api<T>(route:string,method:"GET"|"POST"="GET",body?:object):Promi
 export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
  const [current,setCurrent]=useState<Current|null>(null);
  const [fileRead,setFileRead]=useState(false);
+ const [attested,setAttested]=useState(false);
  const [note,setNote]=useState("");
  const [password,setPassword]=useState("");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -54,7 +55,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
  },[base]);
  async function readOriginal(){
   if(!current||busy)return;
-  setBusy(true);setError("");setFileRead(false);
+  setBusy(true);setError("");setFileRead(false);setAttested(false);
   try{
    const response=await fetch("/api/lab-clinical/"+base+"/reports/reviewer-file",{
     method:"GET",credentials:"same-origin",cache:"no-store"
@@ -77,7 +78,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
  }
  async function decide(action:"APPROVE"|"REJECT",retry=false){
   if(!current||busy||current.hasReview||(!retry&&uncertain))return;
-  if(!retry&&(!fileRead||note.trim().length<12||password.length<8)){
+  if(!retry&&(!fileRead||!attested||note.trim().length<12||password.length<8)){
    setError("Read the original PDF and provide a detailed review note and current password.");
    return;
   }
@@ -124,7 +125,11 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
   {current&&!current.hasReview&&<>
    <button type="button" disabled={busy} onClick={()=>void readOriginal()}>
     Read original private report PDF</button>
-   {fileRead&&<p role="status">Original PDF was downloaded for clinical inspection.</p>}
+   {fileRead&&<label className="field">
+    <input type="checkbox" checked={attested} disabled={busy||uncertain}
+     onChange={e=>setAttested(e.target.checked)}/>
+    I have inspected the original PDF, including patient, specimens and test details.
+   </label>
    <label className="field">Clinical assessment and decision rationale
     <textarea value={note} maxLength={1000} disabled={busy||uncertain}
      onChange={e=>setNote(e.target.value)}
@@ -143,9 +148,9 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
      onClick={()=>{if(original.current)void decide(original.current.decision,true);}}>
      Retry exactly the same review request</button>
    </div>:<div className="toolbar">
-    <button type="button" disabled={busy||!fileRead||note.trim().length<12||password.length<8}
+    <button type="button" disabled={busy||!fileRead||!attested||note.trim().length<12||password.length<8}
      onClick={()=>void decide("APPROVE")}>Record professional approval</button>
-    <button type="button" disabled={busy||!fileRead||note.trim().length<12||password.length<8}
+    <button type="button" disabled={busy||!fileRead||!attested||note.trim().length<12||password.length<8}
      onClick={()=>void decide("REJECT")}>Reject report evidence</button>
    </div>}
   </>}
