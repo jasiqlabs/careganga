@@ -21,6 +21,7 @@ const sources=[
  "apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts",
  "apps/backend/src/modules/cg-14-healthcare-network/health-network.module.ts",
  backend+"application/diagnostics-catalog.service.ts",
+ backend+"application/diagnostics-price-review.service.ts",
  backend+"http/diagnostics-catalog.controller.ts",
  backend+"diagnostics.module.ts",
  "apps/backend/src/app.module.ts",
@@ -77,6 +78,40 @@ assert.match(service,/publishedOffers/,"source-backed H09 published KPI missing"
 assert.match(service,/health_center_publication pub/,"actual original public publication missing");
 assert.match(service,/lab_center_price_window_event/,
  "audited supersession of approved tariff missing");
+const caseMigration=read("apps/backend/db/migrations/1602_cg16_original_cg03_lab_price_review.sql");
+const priceCase=read(backend+"application/diagnostics-price-review.service.ts");
+for(const expected of [
+ "HEALTH_LAB_PRICE_REVIEW","cg03_lab_price_only_source",
+ "cg03_case_finance_source_disjoint","cg03_health_process_current_case_kind_check",
+ "fk_cg03_original_lab_price","cg16_cg03_lab_price_frozen",
+ "cg16_price_cg03_review_guard","cg16_price_requires_cg03_decision",
+ "d.fresh_password_verified_at IS NOT NULL",
+ "d.actor_id<>c.proposer_id","d.accepted_case_revision=c.revision"
+])assert.ok(caseMigration.includes(expected),
+ "CG03 real price case DB guard missing: "+expected);
+assert.match(service,/priceReviews\.create\(tx,actor/,
+ "Every price proposal must create original CG03 case in same TX");
+assert.match(service,/priceReviews\.decide\(tx,actor/,
+ "Direct tariff approval must have original CG03 review");
+assert.match(service,/priceReviews\.finish\(tx,actor/,
+ "Original CG03 case must be finished with owner effect");
+assert.match(service,/sessions\.limitFoundationRootProof\(actor\)/,
+ "Fresh root proof attempt rate limit required");
+assert.match(service,/sessions\.requireAction\(bearer,"approvals.review"\)/,
+ "No price review without original CG03 reviewer action");
+assert.match(priceCase,/requireDistinctFinalReviewer/,
+ "Price approval must require other eligible protected reviewer");
+assert.match(priceCase,/verifyReviewer\(tx,actor,"approvals.review",true\)/,
+ "Protected independent CG03 reviewer current role guard missing");
+assert.match(priceCase,/requireFreshFoundationRootProof\(tx,actor,input.currentPassword\)/,
+ "Real credential challenge in review commit missing");
+assert.match(priceCase,/priceSourceDigest\(p\)/,
+ "Unchanged original price revision must be checked at approval");
+assert.match(priceCase,/INSERT INTO cg03_case_decision/,
+ "CG03 original immutable decision/event missing");
+assert.match(priceCase,/OWNER_COMPLETED/,
+ "Approved price must finalize original CG03 case");
+
 assert.match(bff,/get\("cg_staff_session"\)/,"staff session ownership missing");
 assert.match(bff,/req\.headers\.get\("origin"\)!==req\.nextUrl\.origin/,
  "same-origin write guard missing");
@@ -89,7 +124,10 @@ const own=read(frontend+"center-lab-pricing-panel.tsx");
 assert.match(admin,/Average Current Patient Price/,"H09 true commercial-price KPI missing");
 assert.match(admin,/Current Published Offers/,"H09 source published count missing");
 assert.match(admin,/writeUncertain/,"unknown-outcome protection missing");
+assert.match(admin,/reviewPassword/,"CG03 review password field missing");
+assert.match(admin,/expectedCaseRevision/,"CG03 case revision source CAS missing");
+assert.match(admin,/reviewReference/,"Human-readable original case number missing");
 assert.match(own,/my-centers\//,"own-center route missing");
 assert.doesNotMatch(service,/\bINSERT INTO cg09_|\bUPDATE cg09_|\bINSERT INTO cg17_/,
  "catalogue must never infer patient payment or Foundation assistance");
-console.log("CG16 US001 SOURCE/PARSE GUARDS PASS — not runtime QA, not CG03 price-case approval, not clinical validation");
+console.log("CG16 US001 SOURCE/PARSE GUARDS PASS — CG03 source contract exists; no migration, auth, review, browser or clinical runtime QA performed");
