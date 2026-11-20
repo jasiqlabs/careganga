@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import {HealthcarePolicyApprovalPanel} from "./healthcare-policy-approval-panel";
 
 type Center={centerRef:string;name:string};
 type Doctor={doctorRef:string;name:string};
@@ -14,7 +15,7 @@ type Payload={requestKey:string;policyRef?:string;expectedRevision:number;
  validUntil:string;mode:"PERCENT"|"FIXED";percentBasisPoints?:number;
  fixedMinor?:string;capMinor:string};
 const kinds:readonly Kind[]=["CONSULTATION","LAB","PHARMACY","NURSING","OT"];
-type Props={canManage:boolean};
+type Props={canManage:boolean;canReview:boolean};
 async function api<T>(parts:string,method:"GET"|"POST"="GET",body?:object){
  const response=await fetch("/api/healthcare-assistance/policies/"+parts,{
   method,credentials:"same-origin",cache:"no-store",
@@ -56,7 +57,7 @@ const pct=(value:string)=>{
  if(basis<1||basis>10000)throw Error("Percentage outside approved range.");
  return basis;
 };
-export function HealthcarePolicyWorkspace({canManage}:Props){
+export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
@@ -276,5 +277,9 @@ export function HealthcarePolicyWorkspace({canManage}:Props){
     </tr>)}</tbody>
    </table></div>}
   </section>}
+  <HealthcarePolicyApprovalPanel canReview={canReview} canManage={canManage}
+   pendingPolicies={policies} onChanged={async()=>{
+    if(center)await refresh(center);
+   }}/>
  </section>;
 }
