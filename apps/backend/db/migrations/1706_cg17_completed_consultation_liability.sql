@@ -95,8 +95,8 @@ CREATE TABLE cg17_financial_effect(
  UNIQUE(root_realm_id,idempotency_key),
  FOREIGN KEY(root_realm_id,liability_ref)
   REFERENCES foundation_liability(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,original_cg09_ref)
-  REFERENCES journal(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(original_cg09_ref,root_realm_id)
+  REFERENCES journal(id,root_realm_id) ON DELETE RESTRICT,
  CHECK((posting_state='POSTED' AND original_cg09_ref IS NOT NULL) OR
   (posting_state<>'POSTED' AND original_cg09_ref IS NULL))
 );
