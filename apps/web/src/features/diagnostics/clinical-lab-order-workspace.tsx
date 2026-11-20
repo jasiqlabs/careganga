@@ -47,6 +47,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[catalog,setCatalog]=useState<Item[]>([]);
  const [orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Detail|null>(null);
+ const [selectedCenter,setSelectedCenter]=useState("");
  const [patientKey,setPatientKey]=useState(""),[itemKey,setItemKey]=useState("");
  const [quantity,setQuantity]=useState(1),[cart,setCart]=useState<Selection[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -134,9 +135,14 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
   void send(payload);
  }
  async function show(orderRef:string){
-  setError("");setSelected(null);
-  try{const d=await api<Detail>("centers/"+center+"/orders/"+orderRef);
-   setSelected(d);
+  const requestedCenter=center;
+  setError("");setSelected(null);setSelectedCenter("");
+  try{
+   const detail=await api<Detail>("centers/"+requestedCenter+"/orders/"+orderRef);
+   // The UI cannot reuse a previous center's patient/clinical data after
+   // the user switches the selected lab while a private request is pending.
+   setSelectedCenter(requestedCenter);
+   setSelected(detail);
   }catch(e){setError(e instanceof Error?e.message:"This order cannot be viewed.");}
  }
  async function custodySend(original:CustodyRequest){
@@ -170,7 +176,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
   }finally{setCustodyBusy(false);}
  }
  function custodyStart(sample:Detail["samples"][number],action:CustodyAction){
-  if(!selected||custodyUncertain||custodyBusy||busy)return;
+  if(!selected||selectedCenter!==center||custodyUncertain||custodyBusy||busy)return;
   const permitted=(action==="reject"&&["COLLECTED","RECEIVED","PROCESSING"].includes(sample.status))||
    nextAction[sample.status]?.action===action;
   if(!permitted||!Number.isSafeInteger(sample.revision)||sample.revision<1)return;
@@ -299,7 +305,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
      custody action committed.</span>
    </div>
   </div>}
-  {selected&&<section className="form-section">
+  {selected&&selectedCenter===center&&<section className="form-section">
    <h2>{selected.order.displayOrderRef}</h2>
    <p>Accepted lab total: {money(selected.order.quotedTotalMinor)}.
     No verified payment or report delivery has been recorded.</p>
@@ -307,7 +313,9 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
     {line.name} ({line.code}) · Qty {line.quantity} ·
     {" "+money(line.quotedLineTotalMinor)}</p>)}
    <h3>Original Sample Labels</h3>
-   {!selected.samples.length?<p>No sample collection is required for this test.</p>:
+   {!selected.samples.length?<p role="status">No approved specimen custody
+    path exists for these tests. The order cannot be advanced until
+    the required clinical handling policy has been reviewed.</p>:
     selected.samples.map(item=><article className="cg-diagnostics-card" key={item.sampleRef}>
      <p><strong>{item.label}</strong> · {item.sampleType.replaceAll("_"," ")} ·
       {item.status.replaceAll("_"," ").toLowerCase()}</p>

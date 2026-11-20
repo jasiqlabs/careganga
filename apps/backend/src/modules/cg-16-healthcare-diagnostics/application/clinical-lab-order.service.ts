@@ -212,6 +212,11 @@ export class ClinicalLabOrderService{
    }
    if(lines.length===0||lines.length>100)
     throw new BadRequestException({code:"LAB_CLINICAL_QUANTITY_INVALID"});
+   // An entirely specimen-free selection cannot enter the current custody
+   // lifecycle. The approved US-002 clinical no-specimen workflow is absent;
+   // never leave a patient order permanently stuck in COLLECTION_PENDING.
+   if(!lines.some(line=>line.sample!=="NOT_APPLICABLE"))
+    throw new BadRequestException({code:"LAB_CLINICAL_SAMPLE_POLICY_REQUIRED"});
    const display="CGL-"+randomBytes(8).toString("hex").toUpperCase();
    const order=await c.query<{id:string}>(
     "INSERT INTO lab_order(root_realm_id,display_order_ref,center_ref,patient_ref,"+
