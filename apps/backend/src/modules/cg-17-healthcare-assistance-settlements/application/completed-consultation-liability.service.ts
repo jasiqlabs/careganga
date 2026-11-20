@@ -9,6 +9,8 @@ import {FoundationStructureIdentityFacade}
  from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {ConsultationCompletionSourceFacade,type OriginalCompletedConsultation}
  from "../../cg-15-patients-appointments/application/consultation-completion-source.facade";
+import {HealthCenterSupportScopeFacade}
+ from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const id=(raw:unknown)=>{
  if(typeof raw!=="string"||!ID.test(raw))
@@ -41,6 +43,7 @@ export class CompletedConsultationLiabilityService{
  constructor(@Inject(DATABASE)private readonly pool:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
+  private readonly centers:HealthCenterSupportScopeFacade,
   private readonly completed:ConsultationCompletionSourceFacade){}
  private async tx<T>(run:(c:PoolClient)=>Promise<T>):Promise<T>{
   const c=await this.pool.connect();let open=false;
@@ -63,6 +66,41 @@ export class CompletedConsultationLiabilityService{
   const a=await this.sessions.requireAction(token,action);
   await this.identity.assertCurrent(c,a,action);
   return a;
+ }
+ async eligibleCenters(token:string){
+  return this.tx(async c=>{
+   const a=await this.actor(c,token,"healthcare.assistance.liabilities.view");
+   return this.centers.eligibleFoundationCenters(c,a,
+    "healthcare.assistance.liabilities.view");
+  });
+ }
+ async completedOptions(token:string,centerRaw:string){
+  const center=id(centerRaw);
+  return this.tx(async c=>{
+   const a=await this.actor(c,token,"healthcare.assistance.liabilities.view");
+   await this.centers.assertFoundationCenter(c,a,center,
+    "healthcare.assistance.liabilities.view",true);
+   const original=await this.completed.eligibleCompletedOptions(c,a,center);
+   const refs=original.rows.map(x=>x.appointmentRef);
+   if(!refs.length)return {appointments:[],complete:original.complete};
+   const q=await c.query<{source_ref:string;support_minor:string;
+    liability_ref:string|null}>(
+    "SELECT charge.source_ref,charge.support_minor::text,"+
+    "l.id AS liability_ref FROM patient_charge charge "+
+    "LEFT JOIN foundation_liability l ON l.root_realm_id=charge.root_realm_id "+
+    "AND l.charge_ref=charge.id "+
+    "WHERE charge.root_realm_id=$1 AND charge.center_ref=$2 "+
+    "AND charge.source_kind='CG15_CONSULTATION' "+
+    "AND charge.charge_state='ACCEPTED' AND charge.support_minor>0 "+
+    "AND charge.source_ref=ANY($3::uuid[])",
+    [a.realmId,center,refs]);
+   const byRef=new Map(q.rows.map(x=>[x.source_ref,x]));
+   return {appointments:original.rows.filter(x=>byRef.has(x.appointmentRef))
+    .map(x=>({...x,approvedSupportMinor:byRef.get(x.appointmentRef)!.support_minor,
+     state:byRef.get(x.appointmentRef)!.liability_ref?
+      "APPROVED_LIABILITY":"READY_TO_RECOGNIZE"})),
+    complete:original.complete};
+  });
  }
  private async charge(c:PoolClient,root:string,center:string,booking:string){
   const q=await c.query<Charge>(
@@ -140,6 +178,8 @@ export class CompletedConsultationLiabilityService{
   const center=id(centerRaw),booking=id(bookingRaw);
   return this.tx(async c=>{
    const a=await this.actor(c,token,"healthcare.assistance.liabilities.view");
+   await this.centers.assertFoundationCenter(c,a,center,
+    "healthcare.assistance.liabilities.view",false);
    const row=await this.existing(c,a.realmId,center,booking);
    return row?this.view(row):{state:"NOT_RECOGNIZED",
     foundationJournalPosted:false,providerSettled:false};
@@ -157,6 +197,8 @@ export class CompletedConsultationLiabilityService{
   const key=id((raw as {requestKey:unknown}).requestKey);
   return this.tx(async c=>{
    const a=await this.actor(c,token,"healthcare.assistance.liabilities.manage");
+   await this.centers.assertFoundationCenter(c,a,center,
+    "healthcare.assistance.liabilities.manage",true);
    await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [a.realmId+":CG17_LIABILITY:"+booking]);
    const charge=await this.charge(c,a.realmId,center,booking);
