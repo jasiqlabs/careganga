@@ -40,7 +40,8 @@ export default async function LabOrdersPage(){
    <ClinicalLabOrderWorkspace canCreate={actions.has("lab.orders.create")}
     canView={actions.has("lab.orders.view")}
     canManageSamples={actions.has("lab.orders.view")&&actions.has("lab.samples.manage")}
-    canRecordResults={actions.has("lab.orders.view")&&actions.has("lab.results.record")}/>
+    canRecordResults={actions.has("lab.orders.view")&&actions.has("lab.results.record")}
+    canReview={actions.has("lab.orders.view")&&actions.has("lab.report.review")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
