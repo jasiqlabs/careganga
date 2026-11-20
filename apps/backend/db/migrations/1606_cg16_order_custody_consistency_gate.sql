@@ -19,7 +19,9 @@ BEGIN
   RAISE EXCEPTION 'Cancelled clinical order cannot resume';
  END IF;
  IF NEW.status='CANCELLED' THEN expected_event='CANCELLED';
- ELSIF NEW.status='RECOLLECTION_REQUIRED' THEN
+ ELSIF NEW.status='RECOLLECTION_REQUIRED' OR
+  (OLD.status='RECOLLECTION_REQUIRED' AND NEW.status='COLLECTION_PENDING') THEN
+  -- Original rejected sample now has its own new replacement label.
   expected_event='RECOLLECTION_REQUESTED';
  ELSE expected_event='COLLECTION_RECORDED';
  END IF;
