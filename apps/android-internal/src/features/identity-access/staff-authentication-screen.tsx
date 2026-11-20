@@ -807,6 +807,9 @@ export function StaffAuthenticationScreen() {
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeCompletedConsultationLiabilities token={token}
           canManage={roleActions.includes("healthcare.assistance.liabilities.manage")}
+          canPost={roleActions.includes("healthcare.assistance.liabilities.manage")&&
+            roleActions.includes("finance.journals.post")&&
+            roleActions.includes("finance.accounts.view")}
           onExit={closeFoundationLiabilities} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthcareFoundationLiabilities", closeFoundationLiabilities);
