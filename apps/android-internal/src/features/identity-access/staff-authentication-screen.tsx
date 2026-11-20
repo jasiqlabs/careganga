@@ -31,6 +31,8 @@ const DoctorLeaveNativeReview = lazy(() => import("../registration-approvals/doc
 const NativeCenterVisitQueue = lazy(() => import("../appointments/native-center-visit-queue").then(m => ({ default: m.NativeCenterVisitQueue })));
 const NativeCenterAssistedBooking = lazy(() => import("../appointments/native-center-assisted-booking").then(m => ({ default: m.NativeCenterAssistedBooking })));
 const NativeClinicalLabScreen = lazy(() => import("../diagnostics/native-clinical-lab-screen").then(m => ({ default: m.NativeClinicalLabScreen })));
+const NativeLabTestMasterScreen = lazy(() => import("../diagnostics/native-lab-test-master-screen").then(m => ({ default: m.NativeLabTestMasterScreen })));
+const NativeMyLabPricingScreen = lazy(() => import("../diagnostics/native-my-lab-pricing-screen").then(m => ({ default: m.NativeMyLabPricingScreen })));
 const PrivateCaseEvidenceScreen = lazy(() => import("../documents/private-case-evidence-screen").then(m => ({ default: m.PrivateCaseEvidenceScreen })));
 const NotificationsScreen = lazy(() => import("../communications/notifications-screen").then(m => ({ default: m.NotificationsScreen })));
 const FoundationNoticeAdminScreen = lazy(() => import("../communications/foundation-notice-admin-screen").then(m => ({ default: m.FoundationNoticeAdminScreen })));
@@ -132,6 +134,8 @@ export function StaffAuthenticationScreen() {
   const [doctorLeaveReviewsOpen, setDoctorLeaveReviewsOpen] = useState(false);
   const [patientQueueOpen, setPatientQueueOpen] = useState(false);
   const [labOrdersOpen, setLabOrdersOpen] = useState(false);
+  const [labTestMasterOpen, setLabTestMasterOpen] = useState(false);
+  const [myLabPricingOpen, setMyLabPricingOpen] = useState(false);
   const [patientBookingOpen, setPatientBookingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [branchesOpen, setBranchesOpen] = useState(false);
@@ -156,6 +160,8 @@ export function StaffAuthenticationScreen() {
   const closeDoctorLeaveReviews = useCallback(() => setDoctorLeaveReviewsOpen(false), []);
   const closePatientQueue = useCallback(() => setPatientQueueOpen(false), []);
   const closeLabOrders = useCallback(() => setLabOrdersOpen(false), []);
+  const closeLabTestMaster = useCallback(() => setLabTestMasterOpen(false), []);
+  const closeMyLabPricing = useCallback(() => setMyLabPricingOpen(false), []);
   const closePatientBooking = useCallback(() => setPatientBookingOpen(false), []);
   const closePolicy = useCallback(() => setPolicyOpen(false), []);
   const closeAccounts = useCallback(() => setAccountsOpen(false), []);
@@ -173,7 +179,7 @@ export function StaffAuthenticationScreen() {
   const expireSession = useCallback(() => {
     hideToast();
     setMessage("");
-    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
+    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
     setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
@@ -190,6 +196,8 @@ export function StaffAuthenticationScreen() {
       doctorLeaveReviewsOpen ||
       patientQueueOpen ||
       labOrdersOpen ||
+      labTestMasterOpen ||
+      myLabPricingOpen ||
       patientBookingOpen ||
       documentsOpen ||
       notificationsOpen ||
@@ -219,7 +227,7 @@ export function StaffAuthenticationScreen() {
       setApprovalsOpen(false);
       setHealthReviewsOpen(false);
       setDoctorLeaveReviewsOpen(false);
-      setPatientQueueOpen(false); setLabOrdersOpen(false);
+      setPatientQueueOpen(false); setLabOrdersOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
       setPatientBookingOpen(false);
       setDocumentsOpen(false);
       setNotificationsOpen(false);
@@ -253,6 +261,8 @@ export function StaffAuthenticationScreen() {
     doctorLeaveReviewsOpen,
     patientQueueOpen,
     labOrdersOpen,
+    labTestMasterOpen,
+    myLabPricingOpen,
     patientBookingOpen,
     documentsOpen,
     notificationsOpen,
@@ -509,7 +519,7 @@ export function StaffAuthenticationScreen() {
       setMessage("");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
+      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
       setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
@@ -531,7 +541,7 @@ export function StaffAuthenticationScreen() {
         setApprovalsOpen(false);
         setHealthReviewsOpen(false);
         setDoctorLeaveReviewsOpen(false);
-        setPatientQueueOpen(false); setLabOrdersOpen(false);
+        setPatientQueueOpen(false); setLabOrdersOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
         setPatientBookingOpen(false);
         setDocumentsOpen(false);
         setNotificationsOpen(false);
@@ -565,6 +575,8 @@ export function StaffAuthenticationScreen() {
       openApprovals: () => openOnly(setApprovalsOpen),
       openPatientQueue: () => openOnly(setPatientQueueOpen),
       openLabOrders: () => openOnly(setLabOrdersOpen),
+      openLabTestMaster: () => openOnly(setLabTestMasterOpen),
+      openMyLabPricing: () => openOnly(setMyLabPricingOpen),
       openPatientBooking: () => openOnly(setPatientBookingOpen),
       openDoctorLeaveReviews: () => openOnly(setDoctorLeaveReviewsOpen),
       openHealthReviews: () => openOnly(setHealthReviewsOpen),
@@ -707,6 +719,32 @@ export function StaffAuthenticationScreen() {
       </ScreenErrorBoundary>, "approvals", () => setApprovalsOpen(false))
     );
   }
+
+  // CG-16 H09 source and actual assigned-center pricing share Web's
+  // original diagnostics API. Sensitive decisions remain independently
+  // authorized by the backend and a fresh password.
+  if (labTestMasterOpen && token && actor &&
+      roleActions.includes("diagnostics.catalog.view"))
+    return renderInShell(<ScreenErrorBoundary onExit={closeLabTestMaster}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+        <NativeLabTestMasterScreen token={token}
+          canManage={roleActions.includes("diagnostics.catalog.manage")}
+          canViewPricing={roleActions.includes("diagnostics.pricing.view")}
+          canManagePricing={roleActions.includes("diagnostics.pricing.manage")}
+          canApprovePricing={roleActions.includes("diagnostics.pricing.approve") &&
+            roleActions.includes("approvals.review")}
+          onExit={closeLabTestMaster} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>, "healthLabTestMaster", closeLabTestMaster);
+  if (myLabPricingOpen && token && actor &&
+      roleActions.includes("diagnostics.pricing.view"))
+    return renderInShell(<ScreenErrorBoundary onExit={closeMyLabPricing}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+        <NativeMyLabPricingScreen token={token}
+          canManage={roleActions.includes("diagnostics.pricing.manage")}
+          onExit={closeMyLabPricing} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>, "healthMyLabPricing", closeMyLabPricing);
 
   // CG-16 original H10 clinical operations; the backend re-verifies center/role
   // and consent for every action. Public Android receives no private controls.
