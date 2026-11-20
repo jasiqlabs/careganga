@@ -38,6 +38,7 @@
     "verify:cg01-uiux-source": "node scripts/verify-cg01-uiux-source.mjs",
     "verify:cg16-us001-source": "node scripts/verify-cg16-us001-source.mjs",
     "verify:cg16-us002-source": "node scripts/verify-cg16-us002-source.mjs",
+    "verify:cg16-us005-source": "node scripts/verify-cg16-us005-source.mjs",
     "verify:cg16-us003-source": "node scripts/verify-cg16-us003-source.mjs",
     "verify:cg16-us004-source": "node scripts/verify-cg16-us004-source.mjs",
     "verify:cg19-client-source": "node scripts/verify-cg19-client-source.mjs"
