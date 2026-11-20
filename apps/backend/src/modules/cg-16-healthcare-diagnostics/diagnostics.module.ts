@@ -10,10 +10,11 @@ import {ClinicalLabAdmissionService} from "./application/clinical-lab-admission.
 import {ClinicalLabOrderService} from "./application/clinical-lab-order.service";
 import {ClinicalLabOrderController} from "./http/clinical-lab-order.controller";
 import {ClinicalLabOptionsService} from "./application/clinical-lab-options.service";
+import {ClinicalLabCustodyService} from "./application/clinical-lab-custody.service";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService],
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,ClinicalLabOrderController],
  exports:[DiagnosticsCatalogService]
 })

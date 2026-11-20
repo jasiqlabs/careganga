@@ -14,6 +14,10 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="centers"&&
     UUID.test(parts[1])&&parts[2]==="orders")
   return method==="GET"||method==="POST";
+ if(parts.length===7&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="samples"&&
+    UUID.test(parts[5])&&["collect","receive","start-processing","reject","recollect"].includes(parts[6]))
+  return method==="POST";
  if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
     parts[2]==="orders"&&UUID.test(parts[3]))return method==="GET";
  return false;
