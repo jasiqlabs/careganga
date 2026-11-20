@@ -832,6 +832,9 @@ export function StaffAuthenticationScreen() {
           canReview={roleActions.includes("healthcare.assistance.settlements.review")&&
            roleActions.includes("approvals.review")&&
            roleActions.includes("health.providers.finance.view")}
+          canPay={roleActions.includes("healthcare.assistance.settlements.pay")&&
+           roleActions.includes("health.providers.finance.view")&&
+           roleActions.includes("finance.reconciliation.manage")}
           onExit={closeMonthlyProviderSettlements} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthcareProviderSettlements", closeMonthlyProviderSettlements);
