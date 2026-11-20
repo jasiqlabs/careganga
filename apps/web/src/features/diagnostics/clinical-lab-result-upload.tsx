@@ -1,11 +1,14 @@
 "use client";
-import {useRef,useState,type ChangeEvent} from "react";
+import {useEffect,useRef,useState,type ChangeEvent} from "react";
 
 type Prepare={uploadRef:string;status:string;uploadReady:boolean;
  uploadUrl?:string;uploadHeaders?:Record<string,string>;message?:string};
 type Verification={uploadRef:string;status:string;cleanVerified?:boolean;
  professionallyReleased?:boolean};
-type Props={centerRef:string;orderRef:string;onVerified:()=>Promise<void>};
+type Props={centerRef:string;orderRef:string;hasDraft:boolean;onVerified:()=>Promise<void>};
+type Current={exists:boolean;uploadRef?:string;status?:string;
+ cleanVerified:boolean;original?:{requestKey:string;sizeBytes:number;sha256:string;mime:string};
+ expiresAt?:string};
 const MAX_PDF_BYTES=10*1024*1024;
 async function json<T>(path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
  const response=await fetch("/api/lab-clinical/"+path,{
@@ -28,15 +31,36 @@ async function checksum(file:File){
  const hash=await crypto.subtle.digest("SHA-256",bytes);
  return Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,"0")).join("");
 }
-export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
+export function ClinicalLabResultUpload({centerRef,orderRef,hasDraft,onVerified}:Props){
  const [file,setFile]=useState<File|null>(null);
  const [busy,setBusy]=useState(false);
+ const [checkingExisting,setCheckingExisting]=useState(true);
+ const [anotherOperator,setAnotherOperator]=useState(false);
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
  const [state,setState]=useState("NOT_UPLOADED");
  const intent=useRef<string|null>(null);
  const original=useRef<{requestKey:string;sizeBytes:number;sha256:string;mime:string}|null>(null);
  const base="centers/"+centerRef+"/orders/"+orderRef+"/reports";
+ useEffect(()=>{
+  let active=true;
+  setCheckingExisting(true);setAnotherOperator(false);
+  void json<Current>(base+"/current").then(result=>{
+   if(!active)return;
+   if(result.exists&&result.uploadRef&&result.original){
+    intent.current=result.uploadRef;original.current=result.original;
+    setState(result.status??"UNKNOWN");
+    setNotice(result.cleanVerified?
+     "Original PDF scanner-verified; professional approval and release remain pending.":
+     "An existing private report upload was recovered. Select the SAME PDF to retry or check its status.");
+   }else if(hasDraft){
+    setAnotherOperator(true);setNotice("An original private report was started by another operator. The original operator must recover it.");
+   }
+  }).catch(e=>{if(active){setAnotherOperator(true);
+   setError(e instanceof Error?e.message:"Original report state could not be checked.");}}
+  ).finally(()=>{if(active)setCheckingExisting(false)});
+  return()=>{active=false;};
+ },[base,hasDraft]);
  async function check(){
   if(!intent.current)return;
   setBusy(true);setError("");
@@ -51,7 +75,7 @@ export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
   finally{setBusy(false);}
  }
  async function upload(){
-  if(!safePdf(file)||busy)return;
+  if(!safePdf(file)||busy||checkingExisting||anotherOperator)return;
   setBusy(true);setError("");setNotice("");
   try{
    const sha256=await checksum(file);
@@ -90,9 +114,9 @@ export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
  }
  const change=(e:ChangeEvent<HTMLInputElement>)=>{
   const next=e.target.files?.[0]??null;
-  if(original.current||intent.current){
-   setError("An upload was already started. Check its status instead of replacing the file.");
-   return;
+  if(checkingExisting||anotherOperator)return;
+  if(file&&original.current&&file.size!==next?.size){
+   setError("Choose the original PDF for this existing report upload.");return;
   }
   setFile(next);setError(next&&!safePdf(next)?"Choose a PDF smaller than 10 MB.":"");
  };
@@ -103,17 +127,18 @@ export function ClinicalLabResultUpload({centerRef,orderRef,onVerified}:Props){
    released or delivered the medical report.</p>
   <label className="field">Report PDF (up to 10 MB)
    <input type="file" accept="application/pdf,.pdf" onChange={change}
-    disabled={busy||!!intent.current}/>
+    disabled={busy||checkingExisting||anotherOperator||["RESULT_READY","VALIDATED","REJECTED"].includes(state)}/>
   </label>
   <div className="toolbar">
    <button type="button" className="primary"
-    disabled={busy||!safePdf(file)||["RESULT_READY","VALIDATED","REJECTED","UPLOADED_UNVERIFIED","VERIFICATION_UNAVAILABLE"].includes(state)}
+    disabled={busy||checkingExisting||anotherOperator||!safePdf(file)||["RESULT_READY","VALIDATED","REJECTED","UPLOADED_UNVERIFIED","VERIFICATION_UNAVAILABLE"].includes(state)}
     onClick={()=>void upload()}>
     {busy?"Checking secure report…":intent.current?"Retry same original upload":"Upload and verify PDF"}</button>
-   {intent.current&&<button type="button" disabled={busy} onClick={()=>void check()}>
+   {intent.current&&<button type="button" disabled={busy||checkingExisting} onClick={()=>void check()}>
     Check existing upload</button>}
   </div>
-  <p role="status">Report evidence: {state.replaceAll("_"," ").toLowerCase()}.
+  <p role="status">{checkingExisting?"Checking original private report…":
+   "Report evidence: "+state.replaceAll("_"," ").toLowerCase()+"."}
    Clinical approval: not performed. Patient release: not performed.</p>
   {!!notice&&<p className="notice" role="status">{notice}</p>}
   {!!error&&<p className="notice error" role="alert">{error}</p>}
