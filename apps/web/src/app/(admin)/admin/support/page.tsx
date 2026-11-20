@@ -1,16 +1,15 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {FoundationSupportWorkspace} from "../../../../features/support/foundation-support-workspace";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function FoundationSupportPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Helpdesk unavailable</h1>
-    <p>Foundation authorization is not available.</p></main>;
+  if(!backend)return <UnavailablePage title="Helpdesk unavailable" description="Foundation authorization is not available." linkHref={null} />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,rights]=await Promise.all([
@@ -61,8 +60,6 @@ export default async function FoundationSupportPage(){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))
       throw e;
-    return <main className="page main"><h1>Helpdesk unavailable</h1>
-      <p>Your current access could not be verified.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Helpdesk unavailable" description="Your current access could not be verified." />;
   }
 }

@@ -5,6 +5,7 @@ import type {PublicCmsPage} from "./cms-public-page";
 import {CmsPublicShell} from "./cms-public-page";
 import {publishedCmsNavigation,publishedCmsPage} from "./cms-public-source";
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
+import {UnavailablePage} from "../../shared/unavailable-page";
 
 type Child="pan-details"|"registration-certificate"|"annual-reports";
 const allowed=new Set<Child>(["pan-details","registration-certificate","annual-reports"]);
@@ -90,11 +91,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
   publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home")]);
  if(result.state==="NOT_PUBLISHED")notFound();
  if(result.state!=="PUBLISHED"||result.page.kind!=="COMPLIANCE")
-  return <main className="page main">
-   <h1>Foundation disclosure unavailable</h1>
-   <p>The current approved information cannot be verified.</p>
-   <Link href="/ngo-information">NGO Information</Link>
-  </main>;
+  return <UnavailablePage title="Foundation disclosure unavailable" description="The current approved information cannot be verified." linkHref="/ngo-information" linkLabel="NGO Information" />;
  if(!canShow(result.page,key))notFound();
  const {fact}=scope(result.page);
  const docType=key==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION";

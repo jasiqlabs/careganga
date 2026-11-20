@@ -3,14 +3,13 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceVoucherReviewerWorkspace} from "../../../../../features/finance-accounting/finance-voucher-reviewer-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function VoucherApprovalsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Finance reviews unavailable</h1>
-  <p>The Foundation reviewer authority cannot be verified at present.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Finance reviews unavailable" description="The Foundation reviewer authority cannot be verified at present." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [actorResult,rolesResult]=await Promise.all([
@@ -29,9 +28,7 @@ export default async function VoucherApprovalsPage(){
     .map(v=>v.key);
   if(!rights.includes("approvals.review")||!rights.includes("finance.vouchers.view")||
      !rights.includes("documents.files.view"))
-   return <main className="page main"><h1>Finance review restricted</h1>
-    <p>Your current role cannot review Finance vouchers.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+   return <UnavailablePage title="Finance review restricted" description="Your current role cannot review Finance vouchers." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(rights)} active="financeReviews" displayName={actor.displayName}
     roleName={actor.roleName}
@@ -58,8 +55,6 @@ export default async function VoucherApprovalsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify Finance reviewer access</h1>
-   <p>Protected reviewer cases remain unavailable until your current role can be verified.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify Finance reviewer access" description="Protected reviewer cases remain unavailable until your current role can be verified." linkLabel="Return to my account" />;
  }
 }

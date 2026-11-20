@@ -3,6 +3,7 @@ import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../shared/healthcare-admin-shell";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {ProviderOnboarding} from "../../../../features/health-network/provider-onboarding";
 import {FoundationLabOfferOverview} from "../../../../features/diagnostics/foundation-lab-offer-overview";
 import {FoundationLabEquipmentOverview} from "../../../../features/diagnostics/foundation-lab-equipment-overview";
@@ -12,10 +13,7 @@ export default async function HealthNetworkPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main">
-    <h1>Healthcare registration unavailable</h1>
-    <p>Current permissions could not be verified.</p>
-    <Link href="/admin">Return to account</Link></main>;
+  if(!backend)return <UnavailablePage title="Healthcare registration unavailable" description="Current permissions could not be verified." linkLabel="Return to account" />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,effective]=await Promise.all([
@@ -81,8 +79,6 @@ export default async function HealthNetworkPage(){
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
       e.digest.startsWith("NEXT_REDIRECT"))throw e;
-    return <main className="page main"><h1>Healthcare access cannot be verified</h1>
-      <p>Protected healthcare records stay hidden until permissions can be confirmed.</p>
-      <Link href="/admin">Return to account</Link></main>;
+    return <UnavailablePage title="Healthcare access cannot be verified" description="Protected healthcare records stay hidden until permissions can be confirmed." linkLabel="Return to account" />;
   }
 }

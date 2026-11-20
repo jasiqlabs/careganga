@@ -5,15 +5,13 @@ import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {FoundationPatientBookings}
  from "../../../../../features/appointments/foundation-patient-bookings";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function ProtectedH15PatientManagement(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main">
-  <h1>Patient management unavailable</h1>
-  <p>Current protected Foundation access cannot be checked.</p>
- </main>;
+ if(!backend)return <UnavailablePage title="Patient management unavailable" description="Current protected Foundation access cannot be checked." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,rights]=await Promise.all([
@@ -56,8 +54,6 @@ export default async function ProtectedH15PatientManagement(){
  }catch(error){
   if(error&&typeof error==="object"&&"digest" in error&&
    typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-  return <main className="page main"><h1>Patient management unavailable</h1>
-   <p>Protected source data is hidden until permissions can be verified.</p>
-   <Link href="/admin">Back to account</Link></main>;
+  return <UnavailablePage title="Patient management unavailable" description="Protected source data is hidden until permissions can be verified." linkLabel="Back to account" />;
  }
 }

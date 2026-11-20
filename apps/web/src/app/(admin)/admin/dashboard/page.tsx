@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { AuthWelcomeListener } from "../../../../shared/auth-notification";
+import { AccessVerificationView } from "../../../../shared/access-verification-view";
 
 export const dynamic = "force-dynamic";
 
@@ -98,13 +99,7 @@ export default async function AdminDashboardPage() {
 
   if (invalidSession) redirect("/admin/login");
   if (!current) {
-    return (
-      <main className="page main">
-        <h1>Cannot confirm your access</h1>
-        <p>Protected information is unavailable until your session can be verified.</p>
-        <Link href="/admin/login">Sign in</Link>
-      </main>
-    );
+    return <AccessVerificationView mode="unconfirmed-session" />;
   }
 
   return (

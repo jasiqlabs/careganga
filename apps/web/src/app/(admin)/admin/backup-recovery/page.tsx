@@ -1,17 +1,15 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {RecoveryPanel} from "../../../../features/platform-configuration/recovery-panel";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function ProtectedPlatformPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Unavailable</h1>
-    <p>Protected Foundation information cannot be verified.</p>
-    <Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Unavailable" description="Protected Foundation information cannot be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [identity,effective,resource]=await Promise.all([
@@ -55,8 +53,6 @@ export default async function ProtectedPlatformPage(){
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <main className="page main"><h1>Backup & Restore unavailable</h1>
-      <p>We could not verify your current protected session.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Backup & Restore unavailable" />;
   }
 }

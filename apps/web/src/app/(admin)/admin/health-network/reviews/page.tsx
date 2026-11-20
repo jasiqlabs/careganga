@@ -1,16 +1,15 @@
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
-import Link from "next/link";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {HealthReviewInbox} from "../../../../../features/health-network/health-review-inbox";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function HealthcareReviewsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Healthcare reviews unavailable</h1>
-  <p>Current access could not be verified.</p><Link href="/admin">My account</Link></main>;
+ if(!backend)return <UnavailablePage title="Healthcare reviews unavailable" description="Current access could not be verified." />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,access]=await Promise.all([
@@ -40,8 +39,6 @@ export default async function HealthcareReviewsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Review access cannot be verified</h1>
-   <p>Private healthcare evidence remains hidden.</p>
-   <Link href="/admin">My account</Link></main>;
+  return <UnavailablePage title="Review access cannot be verified" description="Private healthcare evidence remains hidden." />;
  }
 }

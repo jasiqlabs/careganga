@@ -1,16 +1,15 @@
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterErpGrantReviews} from "../../../../../features/health-network/center-erp-grant-reviews";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function HealthcareErpGrantsPage(){
  const bearer=(await cookies()).get("cg_staff_session")?.value;
  if(!bearer)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Capability review unavailable</h1>
-  <p>Protected Foundation access cannot be verified.</p></main>;
+ if(!backend)return <UnavailablePage title="Capability review unavailable" description="Protected Foundation access cannot be verified." linkHref={null} />;
  try{
   const [me,permissions]=await Promise.all([
    fetch(new URL("/api/identity/me",backend),{cache:"no-store",
@@ -48,8 +47,6 @@ export default async function HealthcareErpGrantsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
      e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Current permission unavailable</h1>
-   <p>This review stays private until your role and session can be checked.</p>
-   <Link href="/admin">Return to account</Link></main>;
+  return <UnavailablePage title="Current permission unavailable" description="This review stays private until your role and session can be checked." linkLabel="Return to account" />;
  }
 }

@@ -3,15 +3,14 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceClaimReviewWorkspace} from "../../../../../features/finance-accounting/finance-claim-review-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function FinanceClaimReviewsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Claim review unavailable</h1>
-  <p>Cannot confirm Foundation review access. Try again when the service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Claim review unavailable" description="Cannot confirm Foundation review access. Try again when the service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,rights]=await Promise.all([
@@ -33,9 +32,7 @@ export default async function FinanceClaimReviewsPage(){
    .map(v=>v.key);
   const ready=["approvals.review","finance.claims.review","documents.files.view"]
    .every(k=>actions.includes(k));
-  if(!ready)return <main className="page main"><h1>Claim review restricted</h1>
-   <p>Only a separate protected Foundation reviewer may open reimbursement cases.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  if(!ready)return <UnavailablePage title="Claim review restricted" description="Only a separate protected Foundation reviewer may open reimbursement cases." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeClaimReviews" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
@@ -60,8 +57,6 @@ export default async function FinanceClaimReviewsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
     e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify reviewer access</h1>
-   <p>Protected review screens remain inaccessible until your current role can be confirmed.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify reviewer access" description="Protected review screens remain inaccessible until your current role can be confirmed." linkLabel="Return to my account" />;
  }
 }

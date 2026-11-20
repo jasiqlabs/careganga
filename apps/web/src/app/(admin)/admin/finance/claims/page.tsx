@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceExpenseClaimWorkspace} from "../../../../../features/finance-accounting/finance-expense-claim-workspace";
 import {FinanceClaimManagementWorkspace} from "../../../../../features/finance-accounting/finance-claim-management-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 /** Dedicated U41 expense intake for existing CG-01 Foundation users.
@@ -12,9 +13,7 @@ export default async function FinanceExpenseClaimsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Expense claims temporarily unavailable</h1>
-  <p>Foundation access cannot be verified. Try again when the service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Expense claims temporarily unavailable" description="Foundation access cannot be verified. Try again when the service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,right]=await Promise.all([
@@ -35,10 +34,7 @@ export default async function FinanceExpenseClaimsPage(){
   const canCreate=actions.includes("finance.claims.create");
   const canView=actions.includes("finance.claims.view");
   const canManage=actions.includes("finance.claims.manage");
-  if(!canCreate&&!canView&&!canManage)return <main className="page main">
-   <h1>Expense claims access restricted</h1>
-   <p>Your role cannot create or view Foundation expense claims. Ask an Administrator for access.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  if(!canCreate&&!canView&&!canManage)return <UnavailablePage title="Expense claims access restricted" description="Your role cannot create or view Foundation expense claims. Ask an Administrator for access." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeClaims" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
@@ -64,8 +60,6 @@ export default async function FinanceExpenseClaimsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify expense claim access</h1>
-   <p>The claim page remains protected until the current Foundation role can be checked.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify expense claim access" description="The claim page remains protected until the current Foundation role can be checked." linkLabel="Return to my account" />;
  }
 }

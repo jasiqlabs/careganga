@@ -1,18 +1,16 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { FoundationStructurePanel } from "../../../../features/foundation-structure/foundation-structure-panel";
 import { AccessDeniedView } from "../../../../shared/access-denied-view";
+import { UnavailablePage } from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function FoundationStructurePage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Foundation information unavailable</h1>
-    <p>Protected records stay hidden until the service is available.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+  if(!backend)return <UnavailablePage title="Foundation information unavailable" description="Protected records stay hidden until the service is available." linkLabel="Return to my account" />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [actorResult,rightsResult]=await Promise.all([
@@ -45,8 +43,6 @@ export default async function FoundationStructurePage(){
     </div>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-    return <main className="page main"><h1>Foundation access cannot be verified</h1>
-      <p>Protected information stays hidden until your role and session are confirmed.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    return <UnavailablePage title="Foundation access cannot be verified" description="Protected information stays hidden until your role and session are confirmed." linkLabel="Return to my account" />;
   }
 }

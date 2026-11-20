@@ -1,18 +1,16 @@
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterContentReviewInbox} from "../../../../../features/health-network/center-content-review-inbox";
 import {CenterContentPublisherQueue} from "../../../../../features/health-network/center-content-publisher-queue";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function CenterContentReviewPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Reviews unavailable</h1>
-  <p>Current Foundation permission could not be verified.</p>
-  <Link href="/admin">Return to account</Link></main>;
+ if(!backend)return <UnavailablePage title="Reviews unavailable" description="Current Foundation permission could not be verified." linkLabel="Return to account" />;
  try{
   const [me,access]=await Promise.all([
    fetch(new URL("/api/identity/me",backend),{headers:{Authorization:"Bearer "+token},
@@ -50,8 +48,6 @@ export default async function CenterContentReviewPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Review access unavailable</h1>
-   <p>Current Foundation permission could not be confirmed.</p>
-   <Link href="/admin">Return to account</Link></main>;
+  return <UnavailablePage title="Review access unavailable" description="Current Foundation permission could not be confirmed." linkLabel="Return to account" />;
  }
 }

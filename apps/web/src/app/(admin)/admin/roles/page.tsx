@@ -1,17 +1,16 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { RolesPanel } from "../../../../features/identity-access/roles-panel";
 import { AccessDeniedView } from "../../../../shared/access-denied-view";
+import { UnavailablePage } from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function AdminRoles(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Access cannot be verified</h1>
-    <p>Foundation administration is temporarily unavailable.</p><Link href="/admin">Return to my account</Link></main>;
+  if(!backend)return <UnavailablePage title="Access cannot be verified" description="Foundation administration is temporarily unavailable." linkLabel="Return to my account" />;
   try {
     const [profile,access]=await Promise.all([
       fetch(new URL("/api/identity/me",backend),{
@@ -57,8 +56,6 @@ export default async function AdminRoles(){
     // Next.js redirects throw a framework control-flow exception. Re-throw it.
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <main className="page main"><h1>Access cannot be verified</h1>
-      <p>Restricted role information stays hidden until your session is confirmed.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    return <UnavailablePage title="Access cannot be verified" description="Restricted role information stays hidden until your session is confirmed." linkLabel="Return to my account" />;
   }
 }

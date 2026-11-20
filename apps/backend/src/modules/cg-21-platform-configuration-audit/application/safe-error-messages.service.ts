@@ -5,7 +5,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SAFE_MESSAGE_CATALOG,editableErrorKeys} from "../../../core/http/safe-error-copy";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** CG-21 owns copy, not the backend rules which produce these keys. */
 @Injectable()
 export class SafeErrorMessagesService{

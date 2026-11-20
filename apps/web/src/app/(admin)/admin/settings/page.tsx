@@ -1,19 +1,17 @@
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {PlatformSettingsPanel} from "../../../../features/platform-configuration/platform-settings-panel";
 import {SafeErrorMessagesEditor} from "../../../../features/platform-configuration/safe-error-messages-editor";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function FoundationSettings(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Platform settings unavailable</h1>
-    <p>Protected settings remain hidden until the service can verify access.</p>
-    <Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Platform settings unavailable" description="Protected settings remain hidden until the service can verify access." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,rights,settings]=await Promise.all([
@@ -54,13 +52,11 @@ export default async function FoundationSettings(){
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
-      <main className="workspace"><PlatformSettingsPanel/><SafeErrorMessagesEditor canEdit={keys.includes("platform.settings.manage")}/></main>
+      <main className="workspace"><PlatformSettingsPanel canEdit={keys.includes("platform.settings.manage")}/><SafeErrorMessagesEditor canEdit={keys.includes("platform.settings.manage")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <main className="page main"><h1>Cannot confirm platform settings access</h1>
-      <p>Protected configuration is hidden until your session and permissions are verified.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Cannot confirm platform settings access" description="Protected configuration is hidden until your session and permissions are verified." />;
   }
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceReportsWorkspace} from "../../../../../features/finance-accounting/finance-reports-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 /** Original U35-U38 Foundation-only posted finance ledger and reconciliation. */
@@ -10,9 +11,7 @@ export default async function FinanceReportsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Reports temporarily unavailable</h1>
-  <p>Foundation access cannot be verified. Try again when the service is available.</p>
-  <Link href="/admin">Return to my account</Link></main>;
+ if(!backend)return <UnavailablePage title="Reports temporarily unavailable" description="Foundation access cannot be verified. Try again when the service is available." linkLabel="Return to my account" />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,right]=await Promise.all([
@@ -33,10 +32,7 @@ export default async function FinanceReportsPage(){
   const canCreate=actions.includes("finance.reconciliation.manage");
   const canView=actions.includes("finance.reports.view");
   const canManage=canCreate;
-  if(!canView)return <main className="page main">
-   <h1>Reports access restricted</h1>
-   <p>Your role cannot open Foundation financial statements. Ask an Administrator for access.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  if(!canView)return <UnavailablePage title="Reports access restricted" description="Your role cannot open Foundation financial statements. Ask an Administrator for access." linkLabel="Return to my account" />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeReports" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
@@ -63,8 +59,6 @@ export default async function FinanceReportsPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Cannot verify reports access</h1>
-   <p>Financial statements remain inaccessible until the current Foundation role can be verified.</p>
-   <Link href="/admin">Return to my account</Link></main>;
+  return <UnavailablePage title="Cannot verify reports access" description="Financial statements remain inaccessible until the current Foundation role can be verified." linkLabel="Return to my account" />;
  }
 }

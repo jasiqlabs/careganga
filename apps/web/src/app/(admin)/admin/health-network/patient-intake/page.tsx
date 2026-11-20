@@ -5,6 +5,7 @@ import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterPatientIntakeWorkspace}
  from "../../../../../features/patients/center-patient-intake-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 /** A receptionist only needs health.patients.intake, never a CG14 profile
@@ -14,10 +15,7 @@ export default async function ReceptionPatientIntake(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main">
-  <h1>Patient intake unavailable</h1>
-  <p>Current Foundation access cannot be verified.</p>
- </main>;
+ if(!backend)return <UnavailablePage title="Patient intake unavailable" description="Current Foundation access cannot be verified." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,rights]=await Promise.all([
@@ -49,9 +47,6 @@ export default async function ReceptionPatientIntake(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
    typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Patient intake unavailable</h1>
-   <p>Current staff permission could not be confirmed. Patient information stays private.</p>
-   <Link href="/admin">Back to my account</Link>
-  </main>;
+  return <UnavailablePage title="Patient intake unavailable" description="Current staff permission could not be confirmed. Patient information stays private." linkLabel="Back to my account" />;
  }
 }

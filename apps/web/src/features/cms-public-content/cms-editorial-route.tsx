@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {UnavailablePage} from "../../shared/unavailable-page";
 import type {Metadata} from "next";
 import {notFound} from "next/navigation";
 import {CmsPublicPage} from "./cms-public-page";
@@ -21,11 +22,7 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
   slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
  if(page.state==="NOT_PUBLISHED")notFound();
- if(page.state!=="PUBLISHED")return <main className="page main">
-  <h1>Foundation content temporarily unavailable</h1>
-  <p>We could not verify the currently approved public information.</p>
-  <Link href="/">Return to the homepage</Link>
- </main>;
+ if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}>
