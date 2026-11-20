@@ -67,7 +67,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
   if(!activeRoute)throw Error("The consultation reference is invalid.");
   const token=await access();
   const result=await remote<Split>(route,"GET",token);
-  if(result.state!=="CANCELLED_NOT_COLLECTIBLE"&&!valid(result))
+  if(result.state!=="NOT_COLLECTIBLE"&&!valid(result))
    throw Error("Original contribution split could not be verified.");
   return result;
  },[activeRoute,route]);
@@ -119,8 +119,8 @@ export function NativeConsultationContribution({holdRef,bookingRef,
   <Text accessibilityRole="header" style={s.title}>Consultation contribution</Text>
   {loading&&<ActivityIndicator accessibilityLabel="Checking approved contribution"/>}
   {!!message&&<Text accessibilityRole="alert" style={s.note}>{message}</Text>}
-  {value?.state==="CANCELLED_NOT_COLLECTIBLE"&&
-   <Text style={s.note}>Cancelled consultation. No further patient charge.</Text>}
+  {value?.state==="NOT_COLLECTIBLE"&&
+   <Text style={s.note}>No new patient contribution applies to this appointment.</Text>}
   {value&&valid(value)&&<View style={s.rows}>
    <Text style={s.amount}>Actual consultation fee: {money(value.grossMinor!)}</Text>
    <Text style={s.amount}>Applicable Foundation share: {
