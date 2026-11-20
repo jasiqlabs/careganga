@@ -8,7 +8,7 @@ type Split={state:string;accepted?:boolean;replayed?:boolean;
  grossMinor?:string;foundationSupportMinor?:string;
  patientPayableMinor?:string;feeVersion?:number;
  policyRevisionRef?:string|null;currency?:string};
-type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
+type Props={holdRef?:string;bookingRef?:string;
  canAccept?:boolean;onExpired?:()=>void};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const key="cg_public_patient_only_session";
@@ -23,7 +23,7 @@ const valid=(x:Split)=>["grossMinor","foundationSupportMinor",
   Number(x.patientPayableMinor);
 async function remote<T>(path:string,method:"GET"|"POST",
  token:string,body?:object):Promise<T>{
- if(!url||!/^https?:\\/\\//.test(url)||
+ if(!url||!(url.startsWith("https://")||url.startsWith("http://"))||
     (process.env.NODE_ENV==="production"&&!url.startsWith("https://")))
    throw Error("Private patient financial service unavailable.");
  const res=await fetch(new URL(
