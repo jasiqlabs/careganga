@@ -153,8 +153,11 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
    setNotice(result.replacementLabel?
     "Replacement label "+result.replacementLabel+" created. Collect a new sample.":
     "Original specimen custody step recorded.");
+   // The write is already committed. A later read/refresh failure must
+   // never be reported as an uncertain write or send a second new action.
    await show(original.orderRef);
-   await reloadCenter(center);
+   try{await reloadCenter(center);}
+   catch{setError("Custody saved, but the order list could not be refreshed. Check again.");}
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e&&
     typeof e.status==="number"?e.status:503;
@@ -202,7 +205,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
   {!loading&&centers.length===0&&<p className="cg-module-empty">
    No currently approved Lab ERP center is available for your clinical role.</p>}
   {!!centers.length&&<label className="field">Your clinical laboratory
-   <select value={center} disabled={busy||uncertain}
+   <select value={center} disabled={busy||uncertain||custodyBusy||custodyUncertain}
     onChange={e=>setCenter(e.target.value)}>
     <option value="">Select an approved assigned lab</option>
     {centers.map(c=><option key={c.centerRef} value={c.centerRef}>{c.name}</option>)}
@@ -291,9 +294,9 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
     <button type="button" disabled={custodyBusy||!custodyReplay.current}
      onClick={()=>{if(custodyReplay.current)void custodySend(custodyReplay.current);}}>
      Retry the same custody request</button>
-    <button type="button" disabled={custodyBusy}
-     onClick={()=>{if(selected)void show(selected.order.orderRef);}}>
-     Check current specimen status</button>
+    <span>The same request key is reused, so another specimen event
+     will not be created. Refreshing alone does not prove the first
+     custody action committed.</span>
    </div>
   </div>}
   {selected&&<section className="form-section">
