@@ -100,7 +100,7 @@ export function AuthenticatedAppShell({
         ? "more"
         : activeTabId;
 
-  // Has notifications permission
+  // Notification permission is not evidence of unread notifications.
   const canViewNotifications = roleActions.includes("communications.notifications.view");
 
   const handleOpenNotifications = useCallback(() => {
@@ -115,7 +115,8 @@ export function AuthenticatedAppShell({
       <DashboardHeader
         displayName={actor.displayName}
         roleName={actor.roleName}
-        hasNotifications={canViewNotifications}
+        hasNotifications={false}
+        canOpenNotifications={canViewNotifications}
         hideWelcome={hideWelcome}
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenNotifications={handleOpenNotifications}
