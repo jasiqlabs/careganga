@@ -36,27 +36,30 @@ type Charge={id:string;root_realm_id:string;source_kind:string;
  collection_state:string;accepted_at:Date;request_digest:string;
  accepted_by_account:string;patient_consent_revision:number};
 type Expected={requestKey:string;grossMinor:string;supportMinor:string;
- dueMinor:string;feeVersion:number;policyRevisionRef:string|null};
+ dueMinor:string;feeVersion:number;sourceVersion:number;policyRevisionRef:string|null};
 const input=(raw:unknown):Expected=>{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))
   throw new BadRequestException({code:"CONSULTATION_CHARGE_INVALID"});
  const v=raw as Record<string,unknown>;
  if(Object.keys(v).some(k=>!["requestKey","grossMinor","supportMinor",
-   "dueMinor","feeVersion","policyRevisionRef"].includes(k))||
+   "dueMinor","feeVersion","sourceVersion","policyRevisionRef"].includes(k))||
    typeof v.feeVersion!=="number"||
-   !Number.isSafeInteger(v.feeVersion)||v.feeVersion<1)
+   !Number.isSafeInteger(v.feeVersion)||v.feeVersion<1||
+   typeof v.sourceVersion!=="number"||
+   !Number.isSafeInteger(v.sourceVersion)||v.sourceVersion<1)
   throw new BadRequestException({code:"CONSULTATION_CHARGE_INVALID"});
  const policy=v.policyRevisionRef==null?null:id(v.policyRevisionRef);
  return {requestKey:id(v.requestKey),grossMinor:amount(v.grossMinor),
   supportMinor:amount(v.supportMinor),dueMinor:amount(v.dueMinor),
-  feeVersion:v.feeVersion,policyRevisionRef:policy};
+  feeVersion:v.feeVersion,sourceVersion:v.sourceVersion,policyRevisionRef:policy};
 };
 const exposed=(c:Charge,source:Cg15ChargeSource)=>({
  chargeRef:c.id,sourceKind:"CG15_CONSULTATION" as const,
  bookingRef:c.source_ref,centerRef:c.center_ref,
  grossMinor:c.gross_minor,foundationSupportMinor:c.support_minor,
  patientPayableMinor:c.due_minor,currency:"INR" as const,
- feeVersion:c.fee_version,policyRevisionRef:c.policy_revision_ref,
+ feeVersion:c.fee_version,sourceVersion:c.source_version,
+ policyRevisionRef:c.policy_revision_ref,
  state:source.bookingState==="CANCELLED"?"SOURCE_CANCELLED":
   source.sourceVersion!==c.source_version||source.centerRef!==c.center_ref||
   source.doctorRef!==c.doctor_ref||source.feeMinor!==c.gross_minor?
@@ -167,7 +170,7 @@ export class ConsultationPatientChargeService{
    await this.cg15.booking(c,actor,booking,center,false);
    const policy=await this.policy(c,actor.realmId,source,source.bookedAt);
    return {...this.split(source,policy),accepted:false,
-    bookingRef:source.sourceRef,
+    bookingRef:source.sourceRef,sourceVersion:source.sourceVersion,
     message:"Original confirmed appointment amount only. "+
      "Acceptance creates no payment or Foundation payable."};
   });
@@ -210,7 +213,8 @@ export class ConsultationPatientChargeService{
       calculated.foundationSupportMinor!==expected.supportMinor||
       calculated.patientPayableMinor!==expected.dueMinor||
       calculated.policyRevisionRef!==expected.policyRevisionRef||
-      calculated.feeVersion!==expected.feeVersion)
+      calculated.feeVersion!==expected.feeVersion||
+      source.sourceVersion!==expected.sourceVersion)
     throw new ConflictException({code:"CONSULTATION_QUOTE_CHANGED"});
    const sourceHash=sha(["CG15_CONSULTATION",source.sourceRef,
     source.sourceVersion,source.patientRef,source.doctorRef,
