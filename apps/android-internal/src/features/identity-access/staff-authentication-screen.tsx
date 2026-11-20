@@ -819,6 +819,9 @@ export function StaffAuthenticationScreen() {
         <NativeCenterAssistedBooking token={token} onExit={closePatientBooking}
           canViewCharge={roleActions.includes("healthcare.assistance.charges.view")}
           canAcceptCharge={roleActions.includes("healthcare.assistance.charges.accept")}
+          canViewCollections={roleActions.includes("healthcare.assistance.collections.view")}
+          canRecordCollections={roleActions.includes("healthcare.assistance.collections.record")}
+          canRefundCollections={roleActions.includes("healthcare.assistance.collections.refund")}
           onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthPatientBooking", closePatientBooking);
