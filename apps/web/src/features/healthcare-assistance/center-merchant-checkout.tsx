@@ -151,6 +151,17 @@ export function CenterMerchantCheckout({bookingRef,centerRef,canInitiate=true}:P
      current.checkoutAvailable?"Open existing verified checkout":
      "Pay online to this healthcare center"}
    </button>}
+  {(uncertain||["UNKNOWN","INITIALIZING"].includes(state))&&
+   <button type="button" disabled={busy||loading} onClick={()=>{
+    setBusy(true);setError("");setMessage("");
+    void api<Source>(location+"/reconcile",{}).then(v=>{
+     setCurrent(v);
+     if(v.checkoutAvailable)setUncertain(false);
+     setMessage(v.message??"Original provider order checked.");
+    }).catch(e=>setError(e instanceof Error?e.message:
+     "Original provider order cannot be reconciled."))
+     .finally(()=>setBusy(false));
+   }}>Recover the original provider order — do not pay twice</button>}
   {uncertain&&<p role="alert">Your previous provider order may already exist.
    Do not create a new checkout or pay twice. Check the same order, or ask
    the center to reconcile its provider status.</p>}
