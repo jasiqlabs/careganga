@@ -275,6 +275,29 @@ export class HealthReviewWorkflowService{
       [actor.realmId,c.input.providerRef]);
     if(!parent.rowCount)throw new ConflictException({code:"HEALTH_PARENT_NOT_VERIFIED"});
    }
+   if(kind==="HEALTH_CENTER_VERIFICATION"){
+    // A real licence may expire between submission, independent CG03 review
+    // and finalization. Never approve a now-expired diagnostic service.
+    const labSource=await tx.query<{has_diagnostics:boolean;license_current:boolean}>(
+     "SELECT EXISTS(SELECT 1 FROM health_center_capability cap "+
+     "WHERE cap.root_realm_id=center.root_realm_id AND "+
+     "cap.center_id=center.id AND cap.capability_code='DIAGNOSTICS') "+
+     "AS has_diagnostics,"+
+     "(center.diagnostic_license_valid_through IS NOT NULL AND "+
+     "center.diagnostic_license_valid_through >= "+
+     "(now() AT TIME ZONE center.time_zone)::date AND "+
+     "rev.source_snapshot->>'diagnosticLicenseValidThrough' = "+
+     "to_char(center.diagnostic_license_valid_through,'YYYY-MM-DD')) "+
+     "AS license_current "+
+     "FROM health_center center JOIN health_center_revision rev "+
+     "ON rev.root_realm_id=center.root_realm_id AND rev.center_id=center.id "+
+     "AND rev.id=$3 AND rev.source_digest=$4 "+
+     "WHERE center.root_realm_id=$1 AND center.id=$2",
+     [actor.realmId,c.input.centerRef,c.input.revisionRef,c.input.digest]);
+    if(!labSource.rows[0]||
+       labSource.rows[0].has_diagnostics&&!labSource.rows[0].license_current)
+     throw new ConflictException({code:"HEALTH_DIAGNOSTIC_LICENSE_EXPIRED"});
+   }
    await tx.query("UPDATE "+table+" SET status='VERIFIED',version=version+1,"+
      "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
      [actor.realmId,pk]);
