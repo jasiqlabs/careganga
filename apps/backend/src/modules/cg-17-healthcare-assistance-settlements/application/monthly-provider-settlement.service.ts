@@ -126,6 +126,57 @@ export class MonthlyProviderSettlementService{
    patientCollectionNotFoundationIncome:true,
    reviewedAt:c.reviewed_at?.toISOString()??null};
  }
+ /** H17 real source breakdown: services completed in this selected
+  * center/month; center payments are VERIFIED to date for THOSE services
+  * (not necessarily received inside the calendar month). No patient IDs.
+  * Nothing in this read writes a journal or determines provider commission.
+  */
+ private async breakdown(c:PoolClient,root:string,center:string,period:string){
+  const result=await c.query<{
+   gross_minor:string;patient_due_minor:string;
+   foundation_liability_minor:string;verified_center_minor:string;
+   center_refund_minor:string}>(
+   "WITH services AS (SELECT liability.charge_ref,"+
+   "liability.amount_minor,charge.gross_minor,charge.due_minor "+
+   "FROM foundation_liability liability "+
+   "JOIN patient_charge charge ON charge.root_realm_id=liability.root_realm_id "+
+   "AND charge.id=liability.charge_ref AND charge.center_ref=liability.center_ref "+
+   "WHERE liability.root_realm_id=$1 AND liability.center_ref=$2 "+
+   "AND liability.service_local_date >=$3::date "+
+   "AND liability.service_local_date <($3::date+interval '1 month')) "+
+   "SELECT (SELECT coalesce(sum(gross_minor),0) FROM services)::text "+
+   "AS gross_minor,(SELECT coalesce(sum(due_minor),0) FROM services)::text "+
+   "AS patient_due_minor,"+
+   "(SELECT coalesce(sum(amount_minor),0) FROM services)::text "+
+   "AS foundation_liability_minor,"+
+   "(SELECT coalesce(sum(collect.amount_minor),0) FROM center_collection collect "+
+   "JOIN services s ON s.charge_ref=collect.charge_ref "+
+   "WHERE collect.root_realm_id=$1 AND collect.center_ref=$2 "+
+   "AND collect.verification_state IN('VERIFIED_CASH','VERIFIED_PROVIDER'))::text "+
+   "AS verified_center_minor,"+
+   "(SELECT coalesce(sum(adjustment.refund_minor),0) "+
+   "FROM center_collection_adjustment adjustment "+
+   "JOIN center_collection collect ON collect.root_realm_id=adjustment.root_realm_id "+
+   "AND collect.id=adjustment.collection_ref "+
+   "JOIN services s ON s.charge_ref=collect.charge_ref "+
+   "WHERE adjustment.root_realm_id=$1 AND collect.center_ref=$2)::text "+
+   "AS center_refund_minor",
+   [root,center,period]);
+  const v=result.rows[0];
+  if(!v)throw new ConflictException({code:"CG17_SETTLEMENT_BREAKDOWN_UNAVAILABLE"});
+  const verified=BigInt(v.verified_center_minor),
+   refunds=BigInt(v.center_refund_minor);
+  if(verified<refunds||refunds<0n)
+   throw new ConflictException({code:"CG17_SETTLEMENT_CENTER_RECEIPT_CONFLICT"});
+  return {
+   centerGrossServicesMinor:v.gross_minor,
+   patientPayableMinor:v.patient_due_minor,
+   patientCollectedVerifiedMinor:(verified-refunds).toString(),
+   patientRefundedMinor:refunds.toString(),
+   foundationApprovedLiabilityMinor:v.foundation_liability_minor,
+   collectionsScope:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES" as const
+  };
+ }
  async eligibleCenters(token:string){
   return this.tx(async c=>{
    const a=await this.actor(c,token,"healthcare.assistance.settlements.view");
@@ -139,15 +190,17 @@ export class MonthlyProviderSettlementService{
    const a=await this.actor(c,token,"healthcare.assistance.settlements.view");
    await this.centers.assertFoundationCenter(c,a,center,
     "healthcare.assistance.settlements.view",false);
+   const breakdown=await this.breakdown(c,a.realmId,center,period);
    const saved=await this.claim(c,a.realmId,center,period,false);
-   if(saved)return this.view(saved);
+   if(saved)return {...this.view(saved),...breakdown};
    // An unapproved view is a truthful aggregate only; it never creates a due.
    const rows=await this.candidate(c,a.realmId,center,period,false);
    return {month:period.slice(0,7),state:"NOT_PREPARED",
     postedLiabilities:rows.length,approvedFoundationMinor:rows.reduce(
      (sum,x)=>sum+minor(x.amount_minor),0n).toString(),
     actualPaidMinor:"0",outstandingMinor:"0",
-    paidVerified:false,patientCollectionNotFoundationIncome:true};
+    paidVerified:false,patientCollectionNotFoundationIncome:true,
+    ...breakdown};
   });
  }
  async propose(token:string,centerRaw:string,monthRaw:string,raw:unknown){
