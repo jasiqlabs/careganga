@@ -39,7 +39,8 @@ export default async function LabOrdersPage(){
    actor={{displayName:user.displayName,roleName:user.roleName}} actions={actions}>
    <ClinicalLabOrderWorkspace canCreate={actions.has("lab.orders.create")}
     canView={actions.has("lab.orders.view")}
-    canManageSamples={actions.has("lab.orders.view")&&actions.has("lab.samples.manage")}/>
+    canManageSamples={actions.has("lab.orders.view")&&actions.has("lab.samples.manage")}
+    canRecordResults={actions.has("lab.orders.view")&&actions.has("lab.results.record")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
