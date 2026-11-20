@@ -17,7 +17,7 @@ export class HealthcareAssistancePolicyController{
  list(@Headers("authorization")token:string,@Param("centerRef")center:string){
   return this.policies.list(token,center);
  }
- @Post()
+ @Post("submit")
  submit(@Headers("authorization")token:string,@Body()body:unknown){
   return this.policies.submit(token,body);
  }
