@@ -687,7 +687,8 @@ export function FoundationAdminNav({
   const labPricingAccess = allowed("diagnostics.pricing.view", false);
   const labOrderAccess = allowed("lab.orders.view", false)||allowed("lab.orders.create", false);
   const equipmentAccess = labERPEnabled && allowed("lab.equipment.view", false);
-  const assistancePolicyAccess = allowed("healthcare.assistance.policies.view", false);
+  const assistancePolicyAccess = allowed("healthcare.assistance.policies.view", false)||
+    (allowed("healthcare.assistance.policies.review", false)&&allowed("approvals.review", false));
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
