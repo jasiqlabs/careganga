@@ -29,6 +29,7 @@ const value=(v:unknown)=>{
  return v;
 };
 type Charge={id:string;due_minor:string;center_ref:string;patient_ref:string;
+ source_digest:string;
  charge_state:string;currency:string};
 type Collection={id:string;charge_ref:string;center_ref:string;
  method:"CASH"|"UPI"|"CARD"|"BANK";amount_minor:string;
@@ -77,7 +78,7 @@ export class CenterPatientCollectionService{
  }
  private async charge(c:PoolClient,realm:string,center:string,ref:string){
   const result=await c.query<Charge>(
-   "SELECT id,center_ref,patient_ref,due_minor::text,charge_state,currency "+
+   "SELECT id,center_ref,patient_ref,due_minor::text,source_digest,charge_state,currency "+
    "FROM patient_charge WHERE root_realm_id=$1 AND center_ref=$2 AND id=$3 "+
    "AND charge_state='ACCEPTED' FOR SHARE",
    [realm,center,ref]);
@@ -120,16 +121,14 @@ export class CenterPatientCollectionService{
    "request_key,request_digest,source_digest FROM center_collection "+
    "WHERE root_realm_id=$1 AND charge_ref=$2 "+
    "ORDER BY created_at DESC,id DESC LIMIT 51",[realm,original.id]);
-  if(rows.rows.length>50)
-   throw new ConflictException({code:"CENTER_COLLECTION_HISTORY_LIMIT"});
+  const collectionsHaveMore=rows.rows.length>50;
   const adjustments=await c.query<Adjustment>(
    "SELECT id,collection_ref,refund_minor::text,cash_refund_receipt,kind,"+
    "created_at,verified_by_account,request_key,request_digest "+
    "FROM center_collection_adjustment WHERE root_realm_id=$1 "+
    "AND charge_ref=$2 ORDER BY created_at DESC,id DESC LIMIT 51",
    [realm,original.id]);
-  if(adjustments.rows.length>50)
-   throw new ConflictException({code:"CENTER_COLLECTION_HISTORY_LIMIT"});
+  const adjustmentsHaveMore=adjustments.rows.length>50;
   return {chargeRef:original.id,centerRef:original.center_ref,currency:"INR" as const,
    patientDueMinor:original.due_minor,
    collectedMinor:total.collected.toString(),
@@ -138,12 +137,14 @@ export class CenterPatientCollectionService{
    refundedOrCorrectedMinor:total.reversed.toString(),
    state:due===0n?"NOTHING_DUE":total.collected===due?"COLLECTED":
     total.collected>0n?"PARTIALLY_COLLECTED":"DUE",
-   collections:rows.rows.map(view),
-   adjustments:adjustments.rows.map(x=>({
+   collections:rows.rows.slice(0,50).map(view),
+   collectionsHaveMore,
+   adjustments:adjustments.rows.slice(0,50).map(x=>({
     adjustmentRef:x.id,collectionRef:x.collection_ref,
     amountMinor:x.refund_minor,kind:x.kind,
     refundReceiptNumber:x.cash_refund_receipt,
     recordedAt:x.created_at.toISOString()})),
+   adjustmentsHaveMore,
    foundationIncomeRecorded:false,foundationLiabilityCreated:false
   };
  }
@@ -228,7 +229,8 @@ export class CenterPatientCollectionService{
     "RETURNING *",
     [a.realmId,center,ref,method,amountMinor,state,receipt,evidence,cash,
      a.accountId,requestKey,hash,
-     SHA(["CG17_CHARGE_COLLECTION_ORIGINAL",ref,original.due_minor])]);
+     SHA(["CG17_CHARGE_COLLECTION_ORIGINAL",ref,original.source_digest,
+      original.due_minor])]);
    return {...view(saved.rows[0]),replayed:false,
     statement:await this.statement(c,a.realmId,original),
     notice:cash?"Cash attestation recorded. Private receipt issuance "+
