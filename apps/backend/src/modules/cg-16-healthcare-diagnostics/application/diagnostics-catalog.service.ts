@@ -804,7 +804,7 @@ export class DiagnosticsCatalogService{
     "AND pkg.id=m.package_ref AND pkg.status='ACTIVE' AND pkg.active_from<=now() "+
     "AND (pkg.active_to IS NULL OR pkg.active_to>now()) "+
     " AND EXISTS(SELECT 1 FROM diagnostic_package_line l WHERE l.root_realm_id=pkg.root_realm_id AND l.package_ref=pkg.id AND l.package_revision=pkg.revision) AND NOT EXISTS(SELECT 1 FROM diagnostic_package_line l LEFT JOIN diagnostic_test t ON t.root_realm_id=l.root_realm_id AND t.id=l.test_ref LEFT JOIN test_category c ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref WHERE l.root_realm_id=pkg.root_realm_id AND l.package_ref=pkg.id AND l.package_revision=pkg.revision AND (t.status IS DISTINCT FROM 'ACTIVE' OR t.active_from>now() OR (t.active_to IS NOT NULL AND t.active_to<=now()) OR c.status IS DISTINCT FROM 'ACTIVE')) "+
-    "))",
+    ")))",
     [actor.realmId]);
    return {totalTests:Number(stats.total_tests),activeTests:Number(stats.active_tests),
     categories:Number(stats.categories),packages:Number(stats.packages),
