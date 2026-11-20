@@ -253,7 +253,8 @@ ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_finance_source_disjoint CHECK(
  OR
  (case_kind='HEALTH_LAB_PRICE_REVIEW'
   AND cg16_price_id IS NOT NULL AND cg16_price_version>0
-  AND cg16_price_digest ~ '^[0-9a-f]{64}  AND num_nonnulls(
+  AND cg16_price_digest ~ '^[0-9a-f]{64}'
+  AND num_nonnulls(
    health_provider_id,health_center_id,health_provider_revision_id,
    health_center_revision_id,health_doctor_id,health_doctor_revision_id,
    health_content_revision_id,health_erp_revision_id,health_revision_no,
