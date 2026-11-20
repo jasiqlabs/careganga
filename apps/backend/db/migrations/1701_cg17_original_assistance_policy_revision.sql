@@ -128,8 +128,7 @@ CREATE FUNCTION cg17_policy_full_coverage_fail_closed() RETURNS trigger
  LANGUAGE plpgsql AS $cg17$
 BEGIN
  IF NEW.approval_state='ACTIVE' AND
-    ((NEW.mode='PERCENT' AND NEW.percent_basis_points=10000) OR
-     (NEW.mode='FIXED' AND NEW.fixed_minor>=NEW.cap_minor))
+    NEW.mode='PERCENT' AND NEW.percent_basis_points=10000
  THEN
   RAISE EXCEPTION 'Full healthcare assistance requires original protected CG03 approval';
  END IF;
