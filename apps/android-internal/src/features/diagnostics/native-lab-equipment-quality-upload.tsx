@@ -7,6 +7,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 
 type Current={exists:boolean;uploadRef?:string;status?:string;cleanVerified:boolean;
+ expiresAt?:string;
  original?:{requestKey:string;sizeBytes:number;sha256:string;mime:string;documentKind:string}};
 type Reservation={uploadRef:string;status:string;uploadReady:boolean;
  uploadUrl?:string;uploadHeaders?:Record<string,string>;message?:string};
@@ -36,11 +37,12 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
  const [kind,setKind]=useState<(typeof TYPES)[number]>("CALIBRATION");
  const [busy,setBusy]=useState(false),[checking,setChecking]=useState(true);
  const [blocked,setBlocked]=useState(false),[status,setStatus]=useState("NOT_UPLOADED");
+ const [canRestart,setCanRestart]=useState(false);
  const [message,setMessage]=useState("");
  const original=useRef<Original|null>(null),uploadRef=useRef("");
  const base="centers/"+centerRef+"/items/"+equipmentRef+"/evidence";
  useEffect(()=>{
-  let active=true;setChecking(true);setBlocked(false);setStatus("NOT_UPLOADED");
+  let active=true;setChecking(true);setBlocked(false);setCanRestart(false);setStatus("NOT_UPLOADED");
   original.current=null;uploadRef.current="";setMessage("");
   void api<Current>(token,base+"/current").then(v=>{
    if(!active)return;
@@ -49,6 +51,8 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
     if(v.cleanVerified){setMessage("Previous document scanner-verified. "+
      "You can create another original upload.");return;}
     original.current=v.original;uploadRef.current=v.uploadRef;
+    setCanRestart(v.status==="REJECTED"||
+     !!v.expiresAt&&Date.parse(v.expiresAt)<=Date.now());
     setKind(v.original.documentKind as (typeof TYPES)[number]);
     setMessage("An earlier upload is unfinished. Re-select the same PDF "+
      "or check the original scanner status.");
@@ -82,7 +86,7 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
    setStatus(v.status);
    if(v.cleanVerified){
     setMessage("Private evidence scanner-verified. Instrument is not automatically READY.");
-    original.current=null;uploadRef.current="";setSelected(null);
+    original.current=null;uploadRef.current="";setSelected(null);setCanRestart(false);
     try{await onVerified()}catch{setMessage("Verified but history refresh failed.");}
    }else setMessage("Original quality scan is not complete. Do not use it for readiness.");
   }catch(e){
@@ -141,6 +145,12 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
   <Text style={s.body}>CG19 malware-verified original file only.
    This is not lab accreditation or permission to treat patients.</Text>
   {checking?<Text style={s.body}>Checking original upload…</Text>:<>
+   {canRestart&&!!uploadRef.current&&button(
+    "Start a new PDF after rejected/expired original",()=>{
+     original.current=null;uploadRef.current="";setSelected(null);
+     setCanRestart(false);setStatus("NOT_UPLOADED");
+     setMessage("Previous original retained for audit; choose a new PDF.");
+    },busy)}
    <View style={s.row}>{TYPES.map(v=>
     <View key={v}>{button(v.replaceAll("_"," ").toLowerCase(),
      ()=>setKind(v),busy||blocked||!!uploadRef.current,kind===v)}</View>)}</View>
