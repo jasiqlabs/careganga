@@ -4,8 +4,10 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeConsultationContribution} from "../healthcare-assistance/native-consultation-contribution";
 
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;onExit:()=>void;onExpired:()=>void;
+ canViewCharge:boolean;canAcceptCharge:boolean};
 type Center={centerRef:string;centerName:string;providerName:string;timeZone:string};
 type Doctor={doctorRef:string;doctorName:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;bookable:boolean};
@@ -50,7 +52,8 @@ const money=(minor:string)=>"₹"+(Number(minor)/100).toFixed(2);
  * No independent booking master; same original center-scoped staff API,
  * person-specific one-time proof, global doctor hold, and private actor.
  */
-export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
+export function NativeCenterAssistedBooking({token,onExit,onExpired,
+ canViewCharge,canAcceptCharge}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [offset,setOffset]=useState(0),[day,setDay]=useState<Daily|null>(null);
@@ -290,6 +293,9 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
     <Text style={styles.note}>{chosenSlot?.startLocal??"Selected consultation"}.
      Hold expires {new Date(hold.expiresAt).toLocaleTimeString("en-IN")}.
      Consultation: {money(hold.consultationFeeMinor)} — pay at center.</Text>
+    {canViewCharge&&<NativeConsultationContribution
+     key={hold.holdRef} holdRef={hold.holdRef} centerRef={center}
+     staffToken={token} canAccept={false} onExpired={onExpired}/>}
     {button("Confirm this patient-authorized appointment",
      ()=>void confirm(),busy||uncertain||Date.parse(hold.expiresAt)<=Date.now())}
     {!uncertain&&Date.parse(hold.expiresAt)<=Date.now()&&
@@ -301,6 +307,10 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired}:Props){
      {booking.collectionStatus}; consultation {money(booking.consultationFeeMinor)}.</Text>
     <Text style={styles.note}>Your current authorized center may reopen this
      booking in Consultation Check-In to review its original private slip.</Text>
+    {canViewCharge&&<NativeConsultationContribution
+     key={booking.bookingRef} bookingRef={booking.bookingRef}
+     centerRef={center} staffToken={token} canAccept={canAcceptCharge}
+     onExpired={onExpired}/>}
     {button("Book another patient",clear,busy)}
    </View>}
    {uncertain&&<View style={styles.card}>
