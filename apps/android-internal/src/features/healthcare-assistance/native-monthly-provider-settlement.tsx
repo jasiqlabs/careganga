@@ -6,7 +6,8 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-type Props={token:string;canPropose:boolean;canReview:boolean;
+import {NativeVerifiedProviderPayout} from "./native-verified-provider-payout";
+type Props={token:string;canPropose:boolean;canReview:boolean;canPay:boolean;
  onExit:()=>void;onExpired:()=>void};
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
@@ -44,7 +45,7 @@ function valid(v:unknown):v is Summary{
 /** Same original CG17/CG09 source as Admin Web. No direct patient collections,
  * unverified bank transfers or simulated monthly payout state.
  */
-export function NativeMonthlyProviderSettlement({token,canPropose,canReview,
+export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canPay,
  onExit,onExpired}:Props){
  const [centers,setCenters]=useState<Center[]>([]);
  const [center,setCenter]=useState(""),[month,setMonth]=useState("");
@@ -182,6 +183,10 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,
        ]),busy||uncertain)}
     {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
      Last outcome uncertain. Check this original claim before another action.</Text>}
+    {canPay&&["APPROVED","PARTIALLY_SETTLED"].includes(source.state)&&
+     <NativeVerifiedProviderPayout key={source.settlementRef}
+      token={token} centerRef={center} month={month}
+      onExpired={onExpired} onApplied={refresh}/>}
     {button("Refresh original claim state",()=>void refresh(),busy)}
    </View>}
   </ScrollView>
