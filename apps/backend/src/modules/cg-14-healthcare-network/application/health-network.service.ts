@@ -26,6 +26,7 @@ type CenterDraft={
   centerCode:string;displayName:string;centerType:string;addressLine:string;
   stateRef:string;districtRef:string;blockRef:string|null;pinCode:string;
   latitude:number|null;longitude:number|null;timeZone:string;publicPhone:string|null;
+  diagnosticLicenseValidThrough:string|null;
   hours:Hour[];capabilities:string[];
 };
 type ProviderDraft={
@@ -93,7 +94,7 @@ function parseCenter(value:unknown):CenterDraft{
   const x=record(value,"center");
   only(x,["centerCode","displayName","centerType","addressLine","stateRef",
     "districtRef","blockRef","pinCode","latitude","longitude","timeZone",
-    "publicPhone","hours","capabilities"],"center");
+    "publicPhone","diagnosticLicenseValidThrough","hours","capabilities"],"center");
   const pin=str(x.pinCode,"pinCode",6,6);
   if(!PIN.test(pin))throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"pinCode"});
   const latitude=x.latitude===undefined||x.latitude===null||x.latitude===""?null:x.latitude;
@@ -104,6 +105,18 @@ function parseCenter(value:unknown):CenterDraft{
   const zone=str(x.timeZone,"timeZone",3,64);
   try{new Intl.DateTimeFormat("en",{timeZone:zone});}
   catch{throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"timeZone"});}
+  const dateValue=x.diagnosticLicenseValidThrough;
+  let diagnosticLicenseValidThrough:string|null=null;
+  if(dateValue!==undefined&&dateValue!==null&&dateValue!==""){
+    if(typeof dateValue!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue))
+      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",
+       field:"diagnosticLicenseValidThrough"});
+    const parsed=Date.parse(dateValue+"T00:00:00Z");
+    if(!Number.isFinite(parsed)||new Date(parsed).toISOString().slice(0,10)!==dateValue)
+      throw new BadRequestException({code:"HEALTH_FIELD_INVALID",
+       field:"diagnosticLicenseValidThrough"});
+    diagnosticLicenseValidThrough=dateValue;
+  }
   const phone=optional(x.publicPhone,"publicPhone",16);
   if(phone&&!PHONE.test(phone))
     throw new BadRequestException({code:"HEALTH_FIELD_INVALID",field:"publicPhone"});
@@ -136,7 +149,8 @@ function parseCenter(value:unknown):CenterDraft{
     stateRef:uuid(x.stateRef,"stateRef"),districtRef:uuid(x.districtRef,"districtRef"),
     blockRef:x.blockRef?uuid(x.blockRef,"blockRef"):null,pinCode:pin,
     latitude:latitude as number|null,longitude:longitude as number|null,
-    timeZone:zone,publicPhone:phone,hours,capabilities:x.capabilities as string[]};
+    timeZone:zone,publicPhone:phone,diagnosticLicenseValidThrough,
+    hours,capabilities:x.capabilities as string[]};
 }
 type Actor=VerifiedFoundationActor;
 type CommandRow={id:string;request_digest:string;result_ref:string|null;result_version:number|null};
@@ -220,11 +234,13 @@ export class HealthNetworkService{
     await this.validGeo(client,actor,draft);
     const created=await client.query<{id:string;version:number}>(
       "INSERT INTO health_center(root_realm_id,provider_id,center_code,display_name,center_type,"+
-      "address_line,state_ref,district_ref,block_ref,pin_code,latitude,longitude,time_zone,public_phone) "+
-      "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id,version",
+      "address_line,state_ref,district_ref,block_ref,pin_code,latitude,longitude,time_zone,public_phone,"+
+      "diagnostic_license_valid_through) "+
+      "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id,version",
       [actor.realmId,providerId,draft.centerCode,draft.displayName,draft.centerType,
        draft.addressLine,draft.stateRef,draft.districtRef,draft.blockRef,draft.pinCode,
-       draft.latitude,draft.longitude,draft.timeZone,draft.publicPhone]);
+       draft.latitude,draft.longitude,draft.timeZone,draft.publicPhone,
+         draft.diagnosticLicenseValidThrough]);
     const centerId=created.rows[0].id;
     await this.replaceDetails(client,actor,centerId,draft);
     return created.rows[0];
@@ -374,12 +390,14 @@ export class HealthNetworkService{
       id:string;provider_id:string;center_code:string;display_name:string;center_type:string;
       address_line:string;state_ref:string;district_ref:string;block_ref:string|null;
       pin_code:string;latitude:string|null;longitude:string|null;time_zone:string;
-      public_phone:string|null;version:number;status:string;provider_status:string;
+      public_phone:string|null;diagnostic_license_valid_through:string|null;
+      version:number;status:string;provider_status:string;
       access_state:string;publication_state:string;public_slug:string|null
     }>(
       "SELECT c.id,c.provider_id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,c.time_zone,"+
-      "c.public_phone,c.version,c.status,p.status AS provider_status,"+
+      "c.public_phone,c.diagnostic_license_valid_through::text,c.version,c.status,"+
+      "p.status AS provider_status,"+
       "c.access_state,c.publication_state,c.public_slug FROM health_center c "+
       "JOIN health_provider p ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
       (own?"JOIN health_center_account_affiliation f ON f.root_realm_id=c.root_realm_id "+
@@ -407,6 +425,7 @@ export class HealthNetworkService{
         latitude:x.latitude===null?null:Number(x.latitude),
         longitude:x.longitude===null?null:Number(x.longitude),
         timeZone:x.time_zone,publicPhone:x.public_phone,
+        diagnosticLicenseValidThrough:x.diagnostic_license_valid_through,
         hours:hours.rows.map(h=>({weekday:h.weekday,openLocal:h.open_local.slice(0,5),
           closeLocal:h.close_local.slice(0,5),serviceType:h.service_type})),
         capabilities:capabilities.rows.map(s=>s.capability_code)}};
@@ -487,11 +506,13 @@ export class HealthNetworkService{
       await client.query(
         "UPDATE health_center SET center_code=$3,display_name=$4,center_type=$5,address_line=$6,"+
         "state_ref=$7,district_ref=$8,block_ref=$9,pin_code=$10,latitude=$11,longitude=$12,"+
-        "time_zone=$13,public_phone=$14,version=version+1,updated_at=now() "+
+        "time_zone=$13,public_phone=$14,diagnostic_license_valid_through=$15,"+
+        "version=version+1,updated_at=now() "+
         "WHERE root_realm_id=$1 AND id=$2",
         [actor.realmId,ref,draft.centerCode,draft.displayName,draft.centerType,
          draft.addressLine,draft.stateRef,draft.districtRef,draft.blockRef,draft.pinCode,
-         draft.latitude,draft.longitude,draft.timeZone,draft.publicPhone]);
+         draft.latitude,draft.longitude,draft.timeZone,draft.publicPhone,
+         draft.diagnosticLicenseValidThrough]);
       await this.replaceDetails(client,actor,ref,draft);
       await this.done(client,cmd.commandId,actor,"CENTER_UPDATE",
         original.provider_id,ref,ref,expected+1);
@@ -522,7 +543,8 @@ export class HealthNetworkService{
     const rows=await this.db.query(
       "SELECT c.id,c.center_code,c.display_name,c.center_type,c.address_line,"+
       "c.state_ref,c.district_ref,c.block_ref,c.pin_code,c.latitude,c.longitude,"+
-      "c.time_zone,c.public_phone,c.version,c.status "+
+      "c.time_zone,c.public_phone,c.diagnostic_license_valid_through::text,"+
+      "c.version,c.status "+
       "FROM health_center c "+
       "JOIN health_center_account_affiliation f "+
       "ON f.root_realm_id=c.root_realm_id AND f.center_id=c.id "+
