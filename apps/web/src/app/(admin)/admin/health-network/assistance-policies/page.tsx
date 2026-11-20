@@ -39,7 +39,9 @@ export default async function AssistancePoliciesPage(){
   return <HealthcareAdminShell active="healthAssistancePolicies"
    actor={{displayName:actor.displayName,roleName:actor.roleName}} actions={actions}>
    <HealthcarePolicyWorkspace
-    canManage={actions.has("healthcare.assistance.policies.manage")}/>
+    canManage={actions.has("healthcare.assistance.policies.manage")}
+    canReview={actions.has("healthcare.assistance.policies.review")&&
+     actions.has("approvals.review")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
