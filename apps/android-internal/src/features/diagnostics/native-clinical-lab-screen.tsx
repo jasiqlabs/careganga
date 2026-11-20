@@ -256,14 +256,12 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
     {selected.report?.state==="RESULT_READY"?
      <Text style={s.message}>Original PDF uploaded and scanner-verified.
       Professional review, release and patient delivery are not implemented.</Text>:
-     canRecordResults&&ready&&selected.report?.state!=="DRAFT"?
+     canRecordResults&&ready?
       <NativeLabResultUpload key={center+":"+selected.order.orderRef}
        token={token} centerRef={center} orderRef={selected.order.orderRef}
+       hasDraft={selected.report?.state==="DRAFT"}
        onVerified={async()=>{await detail(selected.order.orderRef)}}
-       onExpired={onExpired}/>:
-     canRecordResults&&selected.report?.state==="DRAFT"?
-      <Text style={s.note}>An original report upload already exists but is not yet
-       scanner-verified. The original operator must check that upload.</Text>:null}
+       onExpired={onExpired}/>:null
    </View>}
   </ScrollView>
  </SafeAreaView>;
