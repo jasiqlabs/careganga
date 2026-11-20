@@ -69,8 +69,8 @@ export function NativeFoundationJournalPanel({token,centerRef,liabilityRef,
   try{
    const current=await load();setSource(current);
    if(current.foundationJournalPosted){setUncertain(false);await onPosted();}
-   else setMessage("The original Foundation journal has not been posted.
-    Check the same original request before another attempt.");
+   else setMessage("The original Foundation journal has not been posted. "+
+    "Check the same original request before another attempt.");
   }catch(e){report(e)}finally{setBusy(false)}
  }
  async function post(){
@@ -87,8 +87,8 @@ export function NativeFoundationJournalPanel({token,centerRef,liabilityRef,
     throw Error("Actual original Foundation journal posting is not confirmed.");
    setUncertain(false);
    setSource(await load());await onPosted();
-   setMessage("Original CG09 balanced Foundation expense/payable journal posted.
-    Provider bank payment has not been made.");
+   setMessage("Original CG09 balanced Foundation expense/payable journal posted. "+
+    "Provider bank payment has not been made.");
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e&&
     typeof e.status==="number"?e.status:503;
