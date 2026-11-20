@@ -8,7 +8,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
-import {HealthLabCatalogSourceFacade} from "../../cg-14-healthcare-network/application/health-lab-catalog-source.facade";
+import {HealthLabCatalogSourceFacade,CG14_CURRENT_LAB_EVIDENCE_SQL} from "../../cg-14-healthcare-network/application/health-lab-catalog-source.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
@@ -374,6 +374,7 @@ export class DiagnosticsCatalogService{
      "AND f.account_ref=$2 AND f.status='ACTIVE' ":"")+
     "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' AND "+
     "c.access_state='ENABLED' AND p.status='VERIFIED' "+
+    "AND "+CG14_CURRENT_LAB_EVIDENCE_SQL+
     "ORDER BY c.display_name,c.id LIMIT 50",
     own?[actor.realmId,actor.accountId]:[actor.realmId]);
    return {centers:r.rows};
