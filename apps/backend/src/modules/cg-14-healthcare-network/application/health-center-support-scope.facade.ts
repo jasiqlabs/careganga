@@ -90,6 +90,7 @@ export class HealthCenterSupportScopeFacade{
  async verifiedFoundationSettlementDestination(tx:PoolClient,
   actor:VerifiedFoundationActor,center:string,action:string){
   await this.assertFoundationCenter(tx,actor,center,action,true);
+  await this.identity.assertCurrent(tx,actor,"health.providers.finance.view");
   const q=await tx.query<{provider_ref:string;file_ref:string;
    version:number;masked_label:string}>(
    "SELECT p.id AS provider_ref,ref.protected_file_ref AS file_ref,"+
