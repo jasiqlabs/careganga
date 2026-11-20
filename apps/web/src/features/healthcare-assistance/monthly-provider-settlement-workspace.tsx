@@ -4,6 +4,10 @@ import {VerifiedProviderPayoutPanel} from "./verified-provider-payout-panel";
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  postedLiabilities?:number;approvedFoundationMinor:string;actualPaidMinor:string;
+ centerGrossServicesMinor?:string;patientPayableMinor?:string;
+ patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ foundationApprovedLiabilityMinor?:string;
+ collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES";
  outstandingMinor:string;currency?:string;independentlyApproved?:boolean;
  paidVerified:boolean;patientCollectionNotFoundationIncome:true};
 type Props={canPropose:boolean;canReview:boolean;canPay:boolean};
@@ -112,6 +116,7 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
    if(!verified(v)||v.state!==(kind==="review"?"APPROVED":"PROPOSED"))
     throw Error("The original claim outcome could not be confirmed.");
    setData(v);setUncertain(false);attempt.current=null;
+   try{setData(await load(center,month));}catch{/* Original mutation confirmed; UI can refresh later. */}
    setNotice(kind==="review"?
     "Independent monthly claim approval recorded. No provider bank payment has occurred.":
     "Source-backed monthly claim prepared. Independent approval is required.");
@@ -144,6 +149,26 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
   </label>
   {data&&<section className="cg-diagnostics-card">
    <h2>Real Foundation payable for {data.month}</h2>
+   {data.collectionsScope==="VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"&&
+    data.centerGrossServicesMinor!==undefined&&<section
+     aria-label="Original H17 service and contribution breakdown">
+     <h3>Actual completed services in this month</h3>
+     <dl>
+      <dt>Original center gross service value</dt>
+      <dd>{money(data.centerGrossServicesMinor)}</dd>
+      <dt>Patient payable from original charges</dt>
+      <dd>{money(data.patientPayableMinor??"0")}</dd>
+      <dt>Center patient collections verified to date for these services</dt>
+      <dd>{money(data.patientCollectedVerifiedMinor??"0")}</dd>
+      <dt>Center patient refunds/corrections to date</dt>
+      <dd>{money(data.patientRefundedMinor??"0")}</dd>
+      <dt>Original approved Foundation liability</dt>
+      <dd>{money(data.foundationApprovedLiabilityMinor??"0")}</dd>
+     </dl>
+     <p>Actual center receipts are verified money received by the
+      center, not Foundation income. Collections and refunds can occur
+      after the original service month.</p>
+    </section>}
    <dl>
     <dt>Original monthly claim</dt><dd>{data.state.replaceAll("_"," ")}</dd>
     <dt>Approved or eligible source amount</dt>
