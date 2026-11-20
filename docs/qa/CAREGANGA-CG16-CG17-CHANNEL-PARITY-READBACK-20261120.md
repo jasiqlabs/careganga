@@ -31,3 +31,7 @@ No merge to main. This is an **audit evidence snapshot**, not a new canonical ta
 
 ## Main sync and approvals
 Latest baseline `main` ee29c52c0cc8334aa5e2d675244051c485636970, integrated into feature via genuine two-parent merge `45281e900e177886d431f66095e01c87fa89f138`. Comparison after merge: `behind=0`. Existing 107 approval ledger records report `DELEGATED_APPROVED`, including CG16/17 planning, DLD, UIUX and task definitions. **These are design approvals only**, not runtime QA, clinical signoff or permission to merge to main. Hash verifier was not executed.
+
+## Follow-up source implementation checkpoint — b6b9757a917e
+
+The H10 Web original CG19 staff-report widget, H10 Internal Android original same-center order/custody and private PDF scanner view are now source-authored and reachable through the CG01 permission-filtered native dashboard; patientRef+careSourceRef selection and duplicate unmounted prototype were fixed. Original US002 QA09 is now SOURCE_TRACED, QA10 is SOURCE_PENDING, and 11–16 remain SOURCE_GAP. See `docs/qa/CAREGANGA-CG16-US002-ORIGINAL-QA-SOURCE-TRACE-20261120.md` and the original US002 execution-progress line for living status. **No actual Web/Android/SQL/clinical runtime QA passed; snapshot rows above record the earlier audit only.**
