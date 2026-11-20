@@ -154,6 +154,7 @@ export class ClinicalLabQualityEvidenceService{
     [actor.realmId,v.id]);
    return {exists:true,uploadRef:v.id,status:v.status,
     cleanVerified:v.status==="VALIDATED"&&!!file.rowCount,
+    expiresAt:v.reserved_until.toISOString(),
     original:{requestKey:v.request_key,sizeBytes:Number(v.size_bytes),
      sha256:v.sha256,mime:v.mime,documentKind:v.document_kind}};
   });
@@ -169,6 +170,7 @@ export class ClinicalLabQualityEvidenceService{
     "AND intent_ref=$2 AND revoked_at IS NULL",
     [actor.realmId,upload]);
    return {uploadRef:upload,status:v.status,
+    expiresAt:v.reserved_until.toISOString(),
     cleanVerified:v.status==="VALIDATED"&&!!file.rows[0],
     verifiedFileRef:file.rows[0]?.id??null};
   });
