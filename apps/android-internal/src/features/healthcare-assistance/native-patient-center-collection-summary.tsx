@@ -1,10 +1,15 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {File,Paths} from "expo-file-system";
+import {fetch as expoFetch} from "expo/fetch";
+import * as Crypto from "expo-crypto";
 type Statement={state:string;currency?:"INR";patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;refundedOrCorrectedMinor?:string;
- foundationIncomeRecorded?:false;foundationLiabilityCreated?:false};
+ foundationIncomeRecorded?:false;foundationLiabilityCreated?:false;
+ collections?:Array<{collectionRef:string;method:string;state:string;
+ receiptPdfState:string}>};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const minor=(v:unknown)=>typeof v==="string"&&/^(0|[1-9]\d{0,10})$/.test(v);
 const money=(v:string)=>"₹"+(Number(v)/100).toFixed(2);
@@ -23,6 +28,8 @@ export function NativePatientCenterCollectionSummary({token,bookingRef,onExpired
  token:string;bookingRef:string;onExpired?:()=>void}){
  const [data,setData]=useState<Statement|null>(null);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
+ const privatePreview=useRef<File|null>(null);
+ useEffect(()=>()=>{try{privatePreview.current?.delete()}catch{}},[]);
  const refresh=useCallback(async()=>{
   if(!ID.test(bookingRef))throw Error("Invalid consultation reference.");
   const response=await identityRequest(
@@ -44,6 +51,40 @@ export function NativePatientCenterCollectionSummary({token,bookingRef,onExpired
   }finally{setLoading(false);}
  },[refresh,onExpired]);
  useEffect(()=>{void check();},[check]);
+ async function openOriginalReceipt(collectionRef:string){
+  if(loading||!ID.test(collectionRef))return;
+  setLoading(true);setError("");
+  try{
+   const host=process.env.EXPO_PUBLIC_API_URL;
+   if(!host||(!host.startsWith("https://")&&!host.startsWith("http://"))||
+     (process.env.NODE_ENV==="production"&&!host.startsWith("https://")))
+    throw Error("Private patient receipt service is not available.");
+   const url=new URL("/api/v1/healthcare-assistance/center-receipts/"+
+    "me/appointments/"+bookingRef+"/collections/"+collectionRef+"/pdf",host);
+   const response=await expoFetch(url.toString(),{
+    method:"GET",cache:"no-store",
+    headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(20000)});
+   if(!response.ok){
+    if(response.status===401)onExpired?.();
+    throw Error("The original private receipt cannot be opened.");
+   }
+   if(response.headers.get("Content-Type")?.split(";")[0]!=="application/pdf")
+    throw Error("Private patient receipt type could not be verified.");
+   const bytes=await response.bytes();
+   if(bytes.length<100||bytes.length>10485760||
+     String.fromCharCode(...bytes.subarray(0,4))!=="%PDF")
+    throw Error("The private cash receipt file could not be verified.");
+   try{privatePreview.current?.delete()}catch{}
+   const f=new File(Paths.cache,"careganga-patient-cash-"+Crypto.randomUUID()+".pdf");
+   f.create();await f.write(bytes);privatePreview.current=f;
+   if(!await File.canPreview(f,{mimeType:"application/pdf"}))
+    throw Error("A secure PDF preview is not supported on this device.");
+   await File.preview(f,{title:"Original center cash receipt",
+    mimeType:"application/pdf"});
+  }catch(e){setError(e instanceof Error?e.message:
+    "Private receipt preview is unavailable.");}
+  finally{setLoading(false);}
+ }
  if(!ID.test(bookingRef))return null;
  return <View style={s.panel}>
   <Text accessibilityRole="header" style={s.heading}>Payment at your healthcare center</Text>
@@ -58,6 +99,14 @@ export function NativePatientCenterCollectionSummary({token,bookingRef,onExpired
    <Text style={s.note}>Electronic verification pending (not paid): {
     money(data.pendingElectronicMinor!)}</Text>
   </>}
+  {data?.collections?.filter(c=>c.method==="CASH"&&
+   c.state==="VERIFIED_CASH"&&c.receiptPdfState==="ISSUED"&&
+   ID.test(c.collectionRef)).map((c,i)=>
+   <Pressable key={c.collectionRef} accessibilityRole="button"
+    disabled={loading} accessibilityState={{disabled:loading}}
+    style={s.button} onPress={()=>void openOriginalReceipt(c.collectionRef)}>
+    <Text style={s.value}>Open original cash receipt {i+1}</Text>
+   </Pressable>)}
   <Text style={s.note}>Only original verified center collections count as received.
    Foundation assistance is recorded separately.</Text>
   <Pressable accessibilityRole="button" disabled={loading}
