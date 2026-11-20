@@ -8,6 +8,7 @@ import * as Crypto from "expo-crypto";
 type Statement={state:string;currency?:"INR";patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;refundedOrCorrectedMinor?:string;
  foundationIncomeRecorded?:false;foundationLiabilityCreated?:false;
+ outstandingSince?:string|null;outstandingAgeDays?:number;
  collections?:Array<{collectionRef:string;method:string;state:string;
  receiptPdfState:string}>};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -107,6 +108,8 @@ export function NativePatientCenterCollectionSummary({token,bookingRef,onExpired
     style={s.button} onPress={()=>void openOriginalReceipt(c.collectionRef)}>
     <Text style={s.value}>Open original cash receipt {i+1}</Text>
    </Pressable>)}
+  {data?.outstandingSince&&<Text style={s.note}>Outstanding since accepted charge {
+   new Date(data.outstandingSince).toLocaleDateString("en-IN")}. No late fee assumed.</Text>}
   <Text style={s.note}>Only original verified center collections count as received.
    Foundation assistance is recorded separately.</Text>
   <Pressable accessibilityRole="button" disabled={loading}
