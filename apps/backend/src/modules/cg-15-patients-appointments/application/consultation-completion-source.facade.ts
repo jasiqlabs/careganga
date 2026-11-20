@@ -24,6 +24,42 @@ type CompletedRow={
 };
 @Injectable()
 export class ConsultationCompletionSourceFacade{
+ /** Original CG15 completed appointment labels only; CG17 filters its own
+  * accepted charge and obligations independently. No CG15 -> CG17 import.
+  */
+ async eligibleCompletedOptions(c:PoolClient,actor:VerifiedFoundationActor,
+  center:string){
+  const q=await c.query<{appointment_ref:string;booking_display_id:string;
+   center_name:string;doctor_name:string;completed_at:Date}>(
+   "SELECT a.id AS appointment_ref,a.booking_display_id,a.center_name,"+
+   "a.doctor_name,e.created_at AS completed_at "+
+   "FROM cg15_consultation_appointment a "+
+   "JOIN cg15_visit_queue v ON v.root_realm_id=a.root_realm_id "+
+   "AND v.appointment_id=a.id AND v.center_id=a.center_id "+
+   "JOIN cg15_visit_event e ON e.root_realm_id=v.root_realm_id "+
+   "AND e.visit_id=v.id AND e.appointment_id=a.id "+
+   "AND e.next_state='COMPLETED' "+
+   "JOIN cg15_patient p ON p.root_realm_id=a.root_realm_id "+
+   "AND p.id=a.patient_id AND p.profile_status='VERIFIED' "+
+   "WHERE a.root_realm_id=$1 AND a.center_id=$2 "+
+   "AND a.booking_state='COMPLETED' AND v.state='COMPLETED' "+
+   "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event identity "+
+   "WHERE identity.root_realm_id=p.root_realm_id AND identity.patient_id=p.id) "+
+   "AND EXISTS(SELECT 1 FROM cg15_patient_consent x "+
+   "WHERE x.root_realm_id=a.root_realm_id AND x.patient_id=a.patient_id "+
+   "AND x.purpose='PATIENT_CARE' AND x.granted=true "+
+   "AND x.revision_no=(SELECT max(latest.revision_no) "+
+   "FROM cg15_patient_consent latest "+
+   "WHERE latest.root_realm_id=x.root_realm_id "+
+   "AND latest.patient_id=x.patient_id AND latest.purpose='PATIENT_CARE')) "+
+   "ORDER BY e.created_at DESC,e.id DESC LIMIT 51 FOR SHARE OF a,v,e,p",
+   [actor.realmId,center]);
+  return {rows:q.rows.slice(0,50).map(x=>({
+   appointmentRef:x.appointment_ref,bookingLabel:x.booking_display_id,
+   centerName:x.center_name,doctorName:x.doctor_name,
+   completedAt:x.completed_at.toISOString()})),
+   complete:q.rows.length<=50};
+ }
  async completed(c:PoolClient,actor:VerifiedFoundationActor,
   center:string,booking:string):Promise<OriginalCompletedConsultation>{
   const q=await c.query<CompletedRow>(
