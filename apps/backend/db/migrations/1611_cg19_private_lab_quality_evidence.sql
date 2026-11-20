@@ -28,6 +28,37 @@ CREATE TABLE cg19_lab_quality_intent(
  FOREIGN KEY(requested_by,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
+-- Only the original storage/scanner lifecycle status and reservation marker
+-- may change. Never retarget existing private uploads to a different lab,
+-- equipment, operator, digest, MIME, object key or expiry after creation.
+CREATE FUNCTION cg19_lab_quality_intent_guard() RETURNS trigger
+ LANGUAGE plpgsql AS $cg19$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  RAISE EXCEPTION 'Original quality upload intent cannot be removed';
+ END IF;
+ IF (to_jsonb(NEW)-'status'-'reservation_ref'-'updated_at') IS DISTINCT FROM
+    (to_jsonb(OLD)-'status'-'reservation_ref'-'updated_at') THEN
+  RAISE EXCEPTION 'Original quality upload source is immutable';
+ END IF;
+ IF OLD.status IN('VALIDATED','REJECTED') THEN
+  RAISE EXCEPTION 'Final quality scanner state cannot be revised';
+ END IF;
+ IF NOT ((OLD.status='INITIATED' AND
+   NEW.status IN('INITIATED','UNKNOWN','VALIDATED','REJECTED')) OR
+   (OLD.status='UNKNOWN' AND
+   NEW.status IN('UNKNOWN','INITIATED','VALIDATED','REJECTED')))
+ THEN
+  RAISE EXCEPTION 'Original quality scanner transition is invalid';
+ END IF;
+ IF NEW.updated_at<OLD.updated_at THEN
+  RAISE EXCEPTION 'Quality scanner event time cannot go backwards';
+ END IF;
+ RETURN NEW;
+END $cg19$;
+CREATE TRIGGER cg19_lab_quality_intent_immutable
+ BEFORE UPDATE OR DELETE ON cg19_lab_quality_intent
+ FOR EACH ROW EXECUTE FUNCTION cg19_lab_quality_intent_guard();
 CREATE INDEX ix_cg19_lab_quality_intent_owner
  ON cg19_lab_quality_intent(root_realm_id,center_ref,equipment_ref,
  created_at DESC,id DESC);
