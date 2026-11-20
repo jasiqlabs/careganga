@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {PublicHealthcareDirectory} from "../health-network/public-healthcare-directory";
 import {NativeAppointmentDocuments} from "./native-appointment-documents";
+import {NativeConsultationContribution} from "./native-consultation-contribution";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Booking={bookingRef:string;bookingId:string;doctorRef:string;doctorName:string;
@@ -187,6 +188,7 @@ export function NativeConsultationHistory(){
       {" · "+detail.paymentMode.replaceAll("_"," ")}</Text>
      <Text>CareGanga has not verified a payment or issued a receipt for
       this pay-at-center consultation.</Text>
+     <NativeConsultationContribution bookingRef={detail.bookingRef}/>
      <NativeAppointmentDocuments bookingRef={detail.bookingRef}
       bookingStatus={detail.bookingStatus}/>
      {detail.canPatientChange===true&&<View style={styles.actions}>
