@@ -1,0 +1,273 @@
+import {useCallback,useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {SafeAreaView} from "react-native-safe-area-context";
+import * as Crypto from "expo-crypto";
+import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {identityRequest} from "../identity-access/http-client";
+import {NativeLabResultUpload} from "./native-lab-result-upload";
+
+type Center={centerRef:string;name:string};
+type Patient={patientRef:string;virtualPatientId:string;name:string;
+ careSourceKind:"CENTER_INTAKE"|"CONSULTATION";careSourceRef:string};
+type Offer={mappingRef:string;name:string;kind:string;currentPatientPriceMinor:string};
+type Order={orderRef:string;displayOrderRef:string;status:string;
+ quotedTotalMinor:string};
+type Sample={sampleRef:string;label:string;sampleType:string;status:string;revision:number};
+type Detail={order:Order;lines:{name:string;code:string;sampleType:string;
+ quantity:number;quotedLineTotalMinor:string}[];samples:Sample[];
+ report:{state:string}|null};
+type Choice={mappingRef:string;quantity:number};
+type Submission={requestKey:string;patientRef:string;
+ careSource:{kind:Patient["careSourceKind"];ref:string};selections:Choice[]};
+type Custody={centerRef:string;orderRef:string;sampleRef:string;action:string;
+ requestKey:string;expectedVersion:number};
+type Props={token:string;canView:boolean;canCreate:boolean;
+ canManageSamples:boolean;canRecordResults:boolean;onExit:()=>void;
+ onExpired:()=>void};
+async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:object){
+ const response=await identityRequest("/api/v1/diagnostics/clinical/"+path,{
+  method,cache:"no-store",headers:{Authorization:"Bearer "+token,
+   ...(body?{"Content-Type":"application/json"}:{})},
+  body:body?JSON.stringify(body):undefined
+ });
+ if(!response.ok)throw Object.assign(new Error(
+  response.status===401?"Sign in again to access clinical laboratory records.":
+  response.status===403?"You are not currently authorized for this laboratory or action.":
+  response.status===409?"The original order or specimen changed. Review it before retrying.":
+  response.status===404?"This clinical record is no longer available.":
+  response.status===400?"Check the verified patient, test and clinical action.":
+  "The clinical action cannot be confirmed. Check the original records before retrying."
+ ),{status:response.status});
+ return await response.json() as T;
+}
+const money=(n:string)=>/^\d{1,11}$/.test(n)?
+ "₹"+(Number(n)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}):
+ "Price unavailable";
+const actionFor:Record<string,{id:string;label:string}>={
+ PENDING_COLLECTION:{id:"collect",label:"Record collection"},
+ COLLECTED:{id:"receive",label:"Mark received"},
+ RECEIVED:{id:"start-processing",label:"Start processing"},
+ REJECTED:{id:"recollect",label:"Create recollection label"}
+};
+export function NativeClinicalLabScreen({token,canView,canCreate,canManageSamples,
+ canRecordResults,onExit,onExpired}:Props){
+ const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
+ const [patients,setPatients]=useState<Patient[]>([]),[offers,setOffers]=useState<Offer[]>([]);
+ const [orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Detail|null>(null);
+ const [chosenPatient,setChosenPatient]=useState(""),[chosenOffer,setChosenOffer]=useState("");
+ const [cart,setCart]=useState<Choice[]>([]);
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const [uncertain,setUncertain]=useState(false),[custodyUncertain,setCustodyUncertain]=useState(false);
+ const [message,setMessage]=useState("");
+ const submission=useRef<Submission|null>(null),custody=useRef<Custody|null>(null);
+ const epoch=useRef(0);
+ const handleError=useCallback((e:unknown)=>{
+  if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+  setMessage(e instanceof Error?e.message:"This clinical request cannot be verified.");
+ },[onExpired]);
+ const button=(label:string,action:()=>void,disabled=false)=>(
+  <Pressable accessibilityRole="button" accessibilityState={{disabled}}
+   disabled={disabled} style={[s.button,disabled&&s.disabled]} onPress={action}>
+   <Text style={s.buttonText}>{label}</Text>
+  </Pressable>);
+ const load=useCallback(async(c:string)=>{
+  if(!c)return;
+  const now=++epoch.current;
+  const [p,o,r]=await Promise.all([
+   canCreate?api<{patients:Patient[]}>(token,"centers/"+c+"/patients/eligible"):
+    Promise.resolve({patients:[]}),
+   canCreate?api<{items:Offer[]}>(token,"centers/"+c+"/catalog/eligible"):
+    Promise.resolve({items:[]}),
+   canView?api<{orders:Order[]}>(token,"centers/"+c+"/orders"):
+    Promise.resolve({orders:[]})
+  ]);
+  if(now!==epoch.current)return;
+  setPatients(p.patients);setOffers(o.items);setOrders(r.orders);
+ },[token,canCreate,canView]);
+ useEffect(()=>{
+  let active=true;
+  void api<{centers:Center[]}>(token,"centers/eligible").then(data=>{
+   if(!active)return;
+   setCenters(data.centers);
+   if(data.centers.length===1)setCenter(data.centers[0].centerRef);
+  }).catch(e=>{if(active)handleError(e);}).finally(()=>{if(active)setLoading(false)});
+  return()=>{active=false;++epoch.current;};
+ },[token,handleError]);
+ useEffect(()=>{
+  const stamp=++epoch.current;
+  setSelected(null);setPatients([]);setOffers([]);setOrders([]);
+  setChosenPatient("");setChosenOffer("");setCart([]);
+  submission.current=null;custody.current=null;setUncertain(false);
+  setCustodyUncertain(false);
+  if(!center)return;
+  setLoading(true);setMessage("");
+  void load(center).catch(e=>{if(stamp<=epoch.current)handleError(e)})
+   .finally(()=>setLoading(false));
+ },[center,load,handleError]);
+ async function detail(id:string){
+  const requestedCenter=center,stamp=++epoch.current;
+  try{
+   const found=await api<Detail>(token,
+    "centers/"+requestedCenter+"/orders/"+id);
+   if(stamp!==epoch.current)return;
+   setSelected(found);
+  }catch(e){if(stamp===epoch.current){setSelected(null);handleError(e);}}
+ }
+ async function create(retry=false){
+  if(busy||!canCreate||(!retry&&uncertain)||!center)return;
+  const patient=patients.find(p=>p.patientRef===chosenPatient);
+  if(!retry&&(!patient||cart.length===0)){
+   setMessage("Choose one authorized patient and at least one approved test.");return;
+  }
+  if(!retry){
+   submission.current={requestKey:Crypto.randomUUID(),patientRef:patient!.patientRef,
+    careSource:{kind:patient!.careSourceKind,ref:patient!.careSourceRef},
+    selections:cart};
+  }
+  if(!submission.current)return;
+  setBusy(true);setMessage("");
+  try{
+   const out=await api<{displayOrderRef:string}>(token,
+    "centers/"+center+"/orders","POST",submission.current);
+   setUncertain(false);submission.current=null;setCart([]);setChosenPatient("");
+   setChosenOffer("");
+   setMessage("Original order "+out.displayOrderRef+
+    " confirmed. Payment and medical report are not recorded.");
+   try{await load(center);}catch{
+    setMessage("Order confirmed but the latest list is unavailable. Refresh the order list.");
+   }
+  }catch(e){
+   setUncertain(!(e&&typeof e==="object"&&"status" in e&&
+    typeof e.status==="number"&&e.status<500));
+   handleError(e);
+  }finally{setBusy(false);}
+ }
+ async function custodyAction(sample:Sample,act:string,retry=false){
+  if(!selected||!canManageSamples||!canView||busy||
+    (!retry&&custodyUncertain)||!center)return;
+  if(!retry)custody.current={centerRef:center,orderRef:selected.order.orderRef,
+   sampleRef:sample.sampleRef,action:act,expectedVersion:sample.revision,
+   requestKey:Crypto.randomUUID()};
+  const x=custody.current;
+  if(!x||x.centerRef!==center)return;
+  setBusy(true);setMessage("");
+  try{
+   const response=await api<{replacementLabel?:string}>(token,
+    "centers/"+x.centerRef+"/orders/"+x.orderRef+"/samples/"+x.sampleRef+
+    "/"+x.action,"POST",{requestKey:x.requestKey,expectedVersion:x.expectedVersion});
+   custody.current=null;setCustodyUncertain(false);
+   setMessage(response.replacementLabel?
+    "A replacement specimen label was created. Collect a new sample.":
+    "Original specimen custody step recorded.");
+   await detail(x.orderRef);
+   try{await load(center);}catch{setMessage("Custody saved, but the order list could not be refreshed.");}
+  }catch(e){
+   setCustodyUncertain(!(e&&typeof e==="object"&&"status" in e&&
+    typeof e.status==="number"&&e.status<500));
+   handleError(e);
+  }finally{setBusy(false);}
+ }
+ const ready=selected?.order.status==="PROCESSING"&&selected.samples.length>0&&
+  selected.samples.every(item=>item.status==="PROCESSING");
+ return <SafeAreaView style={s.page} edges={["left","right"]}>
+  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
+   {button("Back to Foundation home",onExit,busy||uncertain||custodyUncertain)}
+   <Text accessibilityRole="header" style={s.title}>Lab Orders & Samples</Text>
+   <Text style={s.note}>Clinical orders belong to your currently authorized laboratory.
+    Patient records remain private. Report upload is not clinical approval or release.</Text>
+   {!!message&&<Text accessibilityRole="alert" style={s.message}>{message}</Text>}
+   {loading&&<ActivityIndicator accessibilityLabel="Checking assigned laboratory"/>}
+   {!loading&&centers.length===0&&<Text style={s.note}>
+    No approved Lab ERP laboratory is assigned to your current role.</Text>}
+   {centers.map(c=>button(c.name,()=>setCenter(c.centerRef),
+    busy||uncertain||custodyUncertain))}
+   {!!center&&<View style={s.panel}>
+    <Text style={s.heading}>Current laboratory</Text>
+    <Text style={s.note}>{centers.find(c=>c.centerRef===center)?.name??"Checking laboratory"}</Text>
+    {button("Refresh current orders",()=>void load(center),busy||uncertain)}
+   </View>}
+   {uncertain&&<View style={s.panel}>
+    <Text style={s.message}>Order creation outcome is uncertain. Do not start a new order.</Text>
+    {button("Retry exact original order safely",()=>void create(true),busy||!submission.current)}
+   </View>}
+   {canCreate&&!!center&&!uncertain&&<View style={s.panel}>
+    <Text style={s.heading}>Create internal lab order</Text>
+    <Text style={s.note}>Select one currently consented patient and approved test.</Text>
+    {patients.map(p=>button(p.name+" · "+p.virtualPatientId+
+      (p.careSourceKind==="CENTER_INTAKE"?" · Center intake":" · Consultation"),
+      ()=>setChosenPatient(p.patientRef),busy))}
+    {!!chosenPatient&&<Text style={s.note}>Patient selected: {
+     patients.find(p=>p.patientRef===chosenPatient)?.name??"Selection unavailable"}</Text>}
+    {offers.filter(o=>!cart.some(c=>c.mappingRef===o.mappingRef)).map(o=>button(
+     o.name+" · "+money(o.currentPatientPriceMinor),
+     ()=>setChosenOffer(o.mappingRef),busy))}
+    {!!chosenOffer&&button("Add selected test",()=>{
+     setCart(v=>[...v,{mappingRef:chosenOffer,quantity:1}]);setChosenOffer("");
+    },busy||cart.length>=10)}
+    {cart.map(c=><View key={c.mappingRef} style={s.line}>
+     <Text style={s.note}>{offers.find(o=>o.mappingRef===c.mappingRef)?.name??"Offer unavailable"}</Text>
+     {button("Remove",()=>setCart(v=>v.filter(a=>a.mappingRef!==c.mappingRef)),busy)}
+    </View>)}
+    {button("Create clinical lab order",()=>void create(),
+     busy||!chosenPatient||cart.length===0)}
+   </View>}
+   {canView&&!!center&&<View style={s.panel}>
+    <Text style={s.heading}>Latest clinical orders</Text>
+    {orders.length===0&&<Text style={s.note}>No clinical lab orders for this center.</Text>}
+    {orders.map(o=>button(o.displayOrderRef+" · "+money(o.quotedTotalMinor)+
+     " · "+o.status.replaceAll("_"," "),()=>void detail(o.orderRef),busy))}
+   </View>}
+   {!!selected&&canView&&<View style={s.panel}>
+    {button("Close order details",()=>setSelected(null),busy||custodyUncertain)}
+    <Text style={s.heading}>{selected.order.displayOrderRef}</Text>
+    <Text style={s.note}>Accepted test total: {money(selected.order.quotedTotalMinor)}.
+     This is not payment evidence.</Text>
+    {selected.lines.map((l,i)=><Text key={i} style={s.note}>
+     {l.name} · Qty {l.quantity} · {money(l.quotedLineTotalMinor)}</Text>)}
+    <Text style={s.heading}>Original specimen custody</Text>
+    {selected.samples.map(sample=><View key={sample.sampleRef} style={s.line}>
+     <Text style={s.note}>{sample.label} · {sample.sampleType.replaceAll("_"," ")}
+      · {sample.status.replaceAll("_"," ")}</Text>
+     {canManageSamples&&actionFor[sample.status]&&button(
+      actionFor[sample.status].label,()=>void custodyAction(sample,actionFor[sample.status].id),
+      busy||custodyUncertain)}
+     {canManageSamples&&["COLLECTED","RECEIVED","PROCESSING"].includes(sample.status)&&
+      button("Reject specimen",()=>void custodyAction(sample,"reject"),busy||custodyUncertain)}
+    </View>)}
+    {custodyUncertain&&<View style={s.line}>
+     <Text style={s.message}>The custody action might already be recorded.</Text>
+     {button("Retry same original custody step",()=>{
+      const c=custody.current,sm=selected.samples.find(x=>x.sampleRef===c?.sampleRef);
+      if(c&&sm)void custodyAction(sm,c.action,true);
+     },busy||!custody.current)}
+    </View>}
+    {selected.report?.state==="RESULT_READY"?
+     <Text style={s.message}>Original PDF uploaded and scanner-verified.
+      Professional review, release and patient delivery are not implemented.</Text>:
+     canRecordResults&&ready&&selected.report?.state!=="DRAFT"?
+      <NativeLabResultUpload key={center+":"+selected.order.orderRef}
+       token={token} centerRef={center} orderRef={selected.order.orderRef}
+       onVerified={async()=>{await detail(selected.order.orderRef)}}
+       onExpired={onExpired}/>:
+     canRecordResults&&selected.report?.state==="DRAFT"?
+      <Text style={s.note}>An original report upload already exists but is not yet
+       scanner-verified. The original operator must check that upload.</Text>:null}
+   </View>}
+  </ScrollView>
+ </SafeAreaView>;
+}
+const s=StyleSheet.create({
+ page:{flex:1,backgroundColor:t.adminCanvas},
+ content:{padding:16,paddingBottom:110,gap:12},
+ title:{fontSize:22,fontWeight:"700",color:t.text},
+ heading:{fontSize:16,fontWeight:"700",color:t.text},
+ note:{fontSize:13,color:t.mutedText,lineHeight:19},
+ message:{fontSize:13,color:t.error,lineHeight:20},
+ panel:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1,
+  borderRadius:14,padding:13,gap:10},
+ line:{borderColor:t.border,borderWidth:1,borderRadius:10,padding:10,gap:8},
+ button:{padding:12,minHeight:48,borderRadius:10,borderWidth:1,
+  borderColor:t.border,justifyContent:"center"},
+ buttonText:{color:t.text,fontSize:14,fontWeight:"600"},
+ disabled:{opacity:0.5}
+});
