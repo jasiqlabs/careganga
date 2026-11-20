@@ -112,9 +112,9 @@ export class ConsultationPatientChargeService{
    "service_kind='CONSULTATION' "+
    "AND (doctor_ref=$3 OR doctor_ref IS NULL) "+
    "AND valid_from<=$4 AND valid_until>$4 "+
+   "AND valid_from<=now() AND valid_until>now() "+
    "AND activated_at IS NOT NULL AND activated_at<=$4 "+
-   "AND (approval_state='ACTIVE' OR "+
-   "(approval_state IN('SUPERSEDED','WITHDRAWN') AND changed_at>$4)) "+
+   "AND approval_state='ACTIVE' "+
    "ORDER BY (doctor_ref IS NOT NULL) DESC,valid_from DESC,id DESC LIMIT 1",
    [realm,source.centerRef,source.doctorRef,at]);
   return q.rows[0]??null;
