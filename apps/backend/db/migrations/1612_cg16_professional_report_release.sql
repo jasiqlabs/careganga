@@ -119,6 +119,24 @@ END $$;
 CREATE TRIGGER cg16_lab_patient_release_source_guard
  BEFORE INSERT OR UPDATE OR DELETE ON cg16_lab_report_release
  FOR EACH ROW EXECUTE FUNCTION cg16_professional_report_release_guard();
+CREATE TABLE cg16_lab_patient_report_access(
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ id uuid NOT NULL DEFAULT gen_random_uuid(),
+ release_ref uuid NOT NULL,
+ patient_account_ref uuid NOT NULL,
+ accessed_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,release_ref)
+  REFERENCES cg16_lab_report_release(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(patient_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg16_lab_patient_report_access
+ ON cg16_lab_patient_report_access(root_realm_id,release_ref,accessed_at DESC);
+CREATE TRIGGER cg16_lab_patient_report_access_frozen
+ BEFORE UPDATE OR DELETE ON cg16_lab_patient_report_access
+ FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
+
 -- Historical released files are read only through current CG15 patient ownership,
 -- no public URL and no automatic notification. Explicit correction creates a
 -- new immutable result revision; no mutation of this release record.
