@@ -594,8 +594,16 @@ export function StaffAuthenticationScreen() {
     return (
       <ScreenErrorBoundary onExit={closeAccounts}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
-          <AccountsScreen token={token} onExit={closeAccounts} onExpired={expireSession}
-            createOnly={!roleActions.includes("accounts.view")} />
+          <AccountsScreen
+            token={token}
+            actor={actor}
+            roleActions={roleActions}
+            handlers={handlers}
+            onSignOut={() => void signOut()}
+            onExit={closeAccounts}
+            onExpired={expireSession}
+            createOnly={!roleActions.includes("accounts.view")}
+          />
         </Suspense>
       </ScreenErrorBoundary>
     );
