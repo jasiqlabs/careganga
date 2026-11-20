@@ -182,6 +182,32 @@ export class ClinicalLabResultEvidenceService{
     message:"Secure laboratory report storage or scanning could not be verified."};
   }
  }
+ /** Recover an original staff upload after app restart or a lost HTTP reply.
+  * Never list another operator's intent or create an alternate report.
+  */
+ async current(token:string,centerRaw:string,orderRaw:string){
+  const center=id(centerRaw),order=id(orderRaw);
+  return this.tx(async c=>{
+   const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
+   await this.check(c,actor,center,order);
+   const found=await c.query<Intent>(
+    "SELECT * FROM cg19_lab_result_intent WHERE root_realm_id=$1 "+
+    "AND order_ref=$2 AND center_ref=$3 AND requested_by=$4 "+
+    "ORDER BY created_at DESC,id DESC LIMIT 1",
+    [actor.realmId,order,center,actor.accountId]);
+   const row=found.rows[0];
+   if(!row)return {exists:false,cleanVerified:false};
+   const files=await c.query<{id:string}>(
+    "SELECT id FROM cg19_lab_result_file WHERE root_realm_id=$1 "+
+    "AND intent_ref=$2 AND order_ref=$3 AND revoked_at IS NULL",
+    [actor.realmId,row.id,order]);
+   return {exists:true,uploadRef:row.id,status:row.status,
+    cleanVerified:row.status==="VALIDATED"&&files.rowCount>0,
+    original:{requestKey:row.request_key,
+     sizeBytes:Number(row.size_bytes),sha256:row.sha256,mime:"application/pdf"},
+    expiresAt:row.reserved_until.toISOString()};
+  });
+ }
  async status(token:string,centerRaw:string,orderRaw:string,uploadRaw:string){
   const center=id(centerRaw),order=id(orderRaw),upload=id(uploadRaw);
   return this.tx(async c=>{
