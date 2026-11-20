@@ -1,7 +1,8 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 type Item={collectionRef:string;method:string;amountMinor:string;state:string;
- cashReceiptNumber:string|null;recordedAt:string;receiptPdfState:string};
+ cashReceiptNumber:string|null;recordedAt:string;receiptPdfState:string;
+ receiptDocumentRef?:string|null};
 type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
  kind:string;refundReceiptNumber:string|null;providerRefundRef?:string|null;
  recordedAt:string};
@@ -66,6 +67,7 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
  const [refundReason,setRefundReason]=useState("");
  const [refundConfirmed,setRefundConfirmed]=useState(false);
  const last=useRef<Command|null>(null),generation=useRef(0);
+ const receiptAttempt=useRef<{collectionRef:string;requestKey:string}|null>(null);
  const root="staff/centers/"+centerRef;
  const refresh=useCallback(async()=>{
   const next=await fetchSource<Statement>(root+"/charges/"+chargeRef);
@@ -75,7 +77,7 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
  useEffect(()=>{
   let live=true;const serial=++generation.current;
   setData(null);setLoading(true);setUncertain(false);
-  setError("");setMessage("");last.current=null;
+  setError("");setMessage("");last.current=null;receiptAttempt.current=null;
   void refresh().catch(e=>{if(live&&serial===generation.current)
    setError(e instanceof Error?e.message:"Current payment source unavailable.");})
    .finally(()=>{if(live&&serial===generation.current)setLoading(false);});
@@ -99,6 +101,38 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
    setUncertain(status>=500);if(status<500)last.current=null;
    setError(e instanceof Error?e.message:"Original payment not confirmed.");
   }finally{setBusy(false)}
+ }
+ async function issueReceipt(collectionRef:string){
+  if(!canRecord||busy||uncertain)return;
+  setBusy(true);setError("");setMessage("");
+  if(receiptAttempt.current?.collectionRef!==collectionRef)
+   receiptAttempt.current={collectionRef,requestKey:crypto.randomUUID()};
+  try{
+   const reply=await fetch("/api/healthcare-assistance/center-receipts/"+
+    root+"/collections/"+collectionRef+"/issue",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({requestKey:receiptAttempt.current.requestKey})});
+   const v:unknown=await reply.json().catch(()=>null);
+   if(!reply.ok)throw Object.assign(new Error(reply.status===401?
+    "Sign in again to issue this original receipt.":
+    reply.status===403?"Your role cannot issue this center's cash receipt.":
+    "Private receipt issuance is uncertain. Retry the same receipt request."),{
+     status:reply.status});
+   if(!v||typeof v!=="object"||!("status" in v))
+    throw Error("The original receipt status cannot be verified.");
+   if(v.status!=="ISSUED"){
+    setMessage("Private PDF receipt is pending or unconfirmed. Retry its original "+
+     "request after checking storage; no verified PDF was issued.");
+   }else{
+    receiptAttempt.current=null;
+    await refresh();
+    setMessage("Original center cash receipt issued and verified in private storage.");
+   }
+  }catch(e){
+   setError(e instanceof Error?e.message:
+    "Receipt status unknown; retry the exact original request.");
+  }finally{setBusy(false);}
  }
  function record(e:FormEvent){
   e.preventDefault();if(!canRecord||!data||busy||uncertain)return;
@@ -221,7 +255,20 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
       <td>{c.state.replaceAll("_"," ")}</td>
       <td>{c.cashReceiptNumber??"—"}</td>
       <td>{c.receiptPdfState==="NOT_ELIGIBLE"?
-       "No receipt for pending evidence":"Not yet issued/verified"}</td>
+       "Not eligible until verified":
+       c.receiptPdfState==="ISSUED"?
+        <a href={"/api/healthcare-assistance/center-receipts/"+
+         root+"/collections/"+c.collectionRef+"/pdf"}>
+         Download original private PDF</a>:
+       c.receiptPdfState==="PENDING"||c.receiptPdfState==="UNKNOWN"?
+        <span>Document not confirmed. {canRecord&&
+         <button type="button" disabled={busy||uncertain}
+          onClick={()=>void issueReceipt(c.collectionRef)}>
+          Retry same receipt request</button>}</span>:
+        c.method==="CASH"&&c.state==="VERIFIED_CASH"&&canRecord?
+         <button type="button" disabled={busy||uncertain}
+          onClick={()=>void issueReceipt(c.collectionRef)}>Issue private PDF</button>:
+         "Not yet issued"}</td>
      </tr>)}</tbody>
     </table></div>}
    {data.adjustments.length>0&&<p role="status">
