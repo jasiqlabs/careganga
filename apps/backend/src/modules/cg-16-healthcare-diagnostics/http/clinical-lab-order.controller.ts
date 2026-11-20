@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post,StreamableFile} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {ClinicalLabOrderService} from "../application/clinical-lab-order.service";
 import {ClinicalLabOptionsService} from "../application/clinical-lab-options.service";
 import {ClinicalLabCustodyService} from "../application/clinical-lab-custody.service";
@@ -74,6 +74,8 @@ export class ClinicalLabOrderController{
   return this.professional.reviewable(token,center,order);
  }
  @Get("centers/:centerRef/orders/:orderRef/reports/reviewer-file")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
  async reviewerPdf(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("orderRef")order:string){
   const bytes=await this.professional.reviewerFile(token,center,order);
