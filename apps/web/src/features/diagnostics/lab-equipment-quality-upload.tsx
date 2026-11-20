@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
 
 type Current={exists:boolean;uploadRef?:string;status?:string;cleanVerified:boolean;
+ expiresAt?:string;
  original?:{requestKey:string;sizeBytes:number;sha256:string;mime:string;
  documentKind:string}};
 type Prepare={uploadRef:string;status:string;uploadReady:boolean;
@@ -34,10 +35,11 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
  const [error,setError]=useState(""),[message,setMessage]=useState("");
  const [state,setState]=useState("NOT_UPLOADED");
  const [blocked,setBlocked]=useState(false);
+ const [canRestart,setCanRestart]=useState(false);
  const intent=useRef(""),original=useRef<Original|null>(null);
  const base="centers/"+centerRef+"/items/"+equipmentRef+"/evidence";
  useEffect(()=>{
-  let active=true;setLoading(true);setBlocked(false);intent.current="";
+  let active=true;setLoading(true);setBlocked(false);setCanRestart(false);intent.current="";
   original.current=null;
   void api<Current>(base+"/current").then(v=>{
    if(!active)return;
@@ -47,6 +49,8 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
      "A new document can be uploaded separately.");return;}
     intent.current=v.uploadRef;original.current=v.original;
     setKind(v.original.documentKind);
+    setCanRestart(v.status==="REJECTED"||
+     !!v.expiresAt&&Date.parse(v.expiresAt)<=Date.now());
     setMessage("An earlier PDF upload is unfinished. Select the exact same PDF "+
      "and verify its scanner status; do not start a duplicate.");
    }
@@ -64,7 +68,7 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
    if(v.cleanVerified){
     setMessage("Private PDF uploaded and scanner-verified. Equipment is NOT "+
      "automatically cleared for use; authorize maintenance/readiness separately.");
-    intent.current="";original.current=null;setFile(null);
+    intent.current="";original.current=null;setFile(null);setCanRestart(false);
     try{await onVerified()}catch{setError("Verified but the file list could not refresh.");}
    }else setMessage("PDF has not passed the original CG19 scan. "+
     "Check or retry only this original upload.");
@@ -118,6 +122,15 @@ export function LabEquipmentQualityUpload({centerRef,equipmentRef,onVerified}:Pr
   <p>CG19 private PDF and malware verification only. A scanned document never
    implies NABL accreditation, clinical qualification or equipment readiness.</p>
   {loading?<p role="status">Checking existing quality upload…</p>:<>
+   {canRestart&&!!intent.current&&<div className="toolbar">
+    <p>The original scan was rejected or its upload reservation expired.
+     No instrument readiness was recorded.</p>
+    <button type="button" disabled={busy} onClick={()=>{
+     intent.current="";original.current=null;setFile(null);
+     setCanRestart(false);setState("NOT_UPLOADED");
+     setMessage("Create a new original quality PDF upload. The previous upload is retained for audit.");
+    }}>Start new quality document</button>
+   </div>}
    <div className="toolbar" role="group" aria-label="Quality document type">
     {(["CALIBRATION","MAINTENANCE","QUALITY_CERTIFICATE"] as const).map(v=>
      <button key={v} type="button" disabled={busy||blocked||!!intent.current}
