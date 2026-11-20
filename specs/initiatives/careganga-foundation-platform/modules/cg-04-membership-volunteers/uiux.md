@@ -68,3 +68,13 @@
 ## 5. Visual/review checklist (60 QA IDs remain in tasks.md)
 
 At independent QA compare original B09/B10/U11–U17/B41/B42/C50/A09/A04 controls and source-supplied high-resolution screenshot/video against actual Admin desktop and tablet/narrow Web, public responsive Next.js and both applicable native Android. Verify header/menu hierarchy, actual selection blue/style, form labels, icon/color/benefit preview, filters/table/status chips, U15 options, ID-card layout, fonts, contrast, hover/focus, reduced motion, accessible touch targets and errors. **Pixel/color/animation speed cannot be inferred or marked PASS from this text.** Current device, native screenshot, original video timing, Play SDK/AAB and runtime QA **NOT_RUN**. Per-story source-trace is performed in Development, and independent visual/DB/live QA belongs to separately authorized QA/Release.
+
+
+## New client document visual acceptance — 20 Nov 2026
+
+2026-11-20 client reference ingestion; see ../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md and ../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md. **Design/source acceptance only, not implemented/render-tested.**
+
+- **Membership certificate PDF:** landscape ornate navy/gold/white trim, central recipient name and title, gold active seal, authoritative member detail panel with type/joined/validity, safe verification QR and approved signature; no literal sample member/photo/stamp.
+- **Welcome letter PDF:** portrait real Foundation masthead, personalized copy, right member-card preview with own QR, small benefits tiles, fee/membership status summary, official links/office; dynamic approved tier/benefit/price and membership validity. The sample is **not** a rule that every plan costs the shown amount or is Lifetime.
+- **Volunteer ID PDF front/back:** portrait front authentic logo, photo, approved location/role/validity, protected QR/signatory and navy/green waves; reverse contains verify, current approved terms/contact/location. Limit publicly verifiable fields; blood group and phone stay private unless explicit release policy.
+- In Admin Web/Internal Android display download/preview/status using existing CG-01 visual system and real CG-19 issued-file states. These ornate gold/green PDFs are **document designs**, not permission to change the global Admin UI palette. Live side-by-side rendered/JPG QA remains NOT_RUN.

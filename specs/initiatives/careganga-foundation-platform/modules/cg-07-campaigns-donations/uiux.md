@@ -82,3 +82,9 @@ Match campaign create/edit wizard, target/date, team, beneficiary cause, media a
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+## New source donation receipt PDF layout — 20 Nov 2026
+
+2026-11-20 client reference ingestion; see ../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md and ../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md. **Design/source acceptance only, not implemented/render-tested.**
+
+Use additional **landscape client donation receipt JPG** (pink rounded border, Foundation logo/masthead, separate receipt number/date/registered details, INR figures and words bar, donor details, transaction/temporary-reference and purpose/payment blocks, approved legal/signatory section, QR and footer). Maintain the earlier client's donor certificate reference as a **different artifact**; this receipt is not CG-09 commercial invoice. Generate every field from real CG-07/09 verified records and CG-21 current legal identity; never copy the sample donor, receipt number, 80G claim or stamp. Preview and authorized download in the existing CG-01 branded app; the pink receipt border is not a global UI theme. Pixel/PDF/runtime QA NOT_RUN.
