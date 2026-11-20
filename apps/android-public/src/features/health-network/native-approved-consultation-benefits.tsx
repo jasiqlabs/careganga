@@ -70,6 +70,16 @@ export function NativeApprovedConsultationBenefits({doctorRef}:Props){
   });
   return()=>listener.remove();
  },[reload]);
+ // Time-based removal is not polling. Nothing is displayed past expiration.
+ useEffect(()=>{
+  if(!items.length)return;
+  const nearest=Math.min(...items.map(x=>Date.parse(x.validUntil)));
+  const delay=Math.max(1,Math.min(nearest-Date.now(),2147483647));
+  const timer=setTimeout(()=>{
+   setItems(current=>current.filter(x=>Date.parse(x.validUntil)>Date.now()));
+  },delay);
+  return()=>clearTimeout(timer);
+ },[items]);
  if(!loading&&status==="EMPTY")return null;
  return <View style={styles.panel}
   accessibilityLabel="Verified Foundation consultation assistance">
