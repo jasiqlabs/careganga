@@ -49,7 +49,7 @@ export const financeNativeStyles=StyleSheet.create({
   flexDirection:"row",alignItems:"center",gap:12,padding:14,
   backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
  back:{color:t.primary,fontSize:15,fontWeight:"700"},title:{
-  color:t.text,fontSize:21,fontWeight:"800"},scroll:{padding:15,gap:14},
+  color:t.text,fontSize:21,fontWeight:"800"},scroll:{padding:15,gap:14,paddingBottom:96},
  card:{padding:16,gap:12,borderRadius:14,backgroundColor:t.surface,
   borderWidth:1,borderColor:t.border,
   shadowColor:t.sidebar,shadowOpacity:0.05,shadowOffset:{width:0,height:2},

@@ -191,7 +191,7 @@ const s=StyleSheet.create({
  back:{minHeight:48,justifyContent:"center"},backText:{fontSize:13,color:t.primary,fontWeight:"700"},
  eyebrow:{fontSize:10,color:t.mutedText},heading:{fontSize:19,color:t.text,fontWeight:"700"},
  title:{fontSize:15,color:t.text,fontWeight:"700"},note:{fontSize:13,color:t.mutedText,lineHeight:20},
- alert:{color:"#B42318",fontSize:13},content:{padding:16,gap:13},
+ alert:{color:"#B42318",fontSize:13},content:{padding:16,gap:13,paddingBottom:96},
  card:{backgroundColor:t.surface,borderWidth:1,borderColor:t.border,
   borderRadius:14,padding:16,gap:14,
     shadowColor:t.sidebar,shadowOpacity:0.045,
@@ -199,9 +199,9 @@ const s=StyleSheet.create({
  row:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:7},
  case:{borderBottomWidth:1,borderBottomColor:t.border,gap:6,paddingVertical:12},
  input:{minHeight:48,borderColor:t.border,borderWidth:1,borderRadius:10,padding:12,color:t.text},
- button:{minHeight:48,backgroundColor:t.primary,borderRadius:8,alignItems:"center",
+ button:{minHeight:48,backgroundColor:t.primary,borderRadius:12,alignItems:"center",
   justifyContent:"center",paddingHorizontal:12},
  buttonText:{color:t.primaryText,fontWeight:"700"},
- tab:{padding:8,borderWidth:1,borderColor:t.border,borderRadius:8,flex:1,alignItems:"center"},
- selected:{backgroundColor:t.background,borderColor:t.primary}
+ tab:{padding:8,borderWidth:1,borderColor:t.border,borderRadius:10,flex:1,alignItems:"center"},
+ selected:{backgroundColor:t.selectedSurface,borderColor:t.primary}
 });

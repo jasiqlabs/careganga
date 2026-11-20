@@ -336,11 +336,11 @@ const s=StyleSheet.create({
     borderWidth:1,borderRadius:14,gap:9,
     shadowColor:theme.sidebar,shadowOpacity:0.045,
     shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
-  item:{padding:11,borderColor:theme.border,borderWidth:1,borderRadius:8,gap:7},
+  item:{padding:11,borderColor:theme.border,borderWidth:1,borderRadius:12,gap:7},
   input:{minHeight:48,backgroundColor:theme.surface,borderColor:theme.border,
     borderWidth:1,borderRadius:10,padding:10,color:theme.text},
   longInput:{minHeight:100,textAlignVertical:"top"},
   message:{fontSize:14,lineHeight:20,color:theme.text},
-  button:{minHeight:46,padding:10,borderColor:theme.border,borderWidth:1,
-    borderRadius:8,justifyContent:"center"}
+  button:{minHeight:48,padding:10,borderColor:theme.border,borderWidth:1,
+    borderRadius:12,justifyContent:"center"}
 });
