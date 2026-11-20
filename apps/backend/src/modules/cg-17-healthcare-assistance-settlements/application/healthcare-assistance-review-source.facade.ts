@@ -74,6 +74,8 @@ export class HealthcareAssistanceReviewSourceFacade{
     "AND d.status='VERIFIED' "+
     "AND d.professional_license_valid_through >= "+
     "(now() AT TIME ZONE center.time_zone)::date "+
+    "AND revision.source_snapshot->>'professionalLicenseValidThrough' = "+
+    "to_char(d.professional_license_valid_through,'YYYY-MM-DD') "+
     "FOR SHARE OF affiliation,d,center,revision,proof",
     [actor.realmId,v.center_ref,v.doctor_ref]);
    if(!doctor.rowCount)
