@@ -426,10 +426,17 @@ export class HealthcareAssistancePolicyService{
     throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
    await this.sessions.requireFreshFoundationRootProof(
     c,actor,data.currentPassword);
+   // Recover a lost response from the actual committed CG03 status, not
+   // an unlocked case snapshot read before another owner's transaction.
+   const latestCase=await c.query<{status:string}>(
+    "SELECT status FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='CG17_POLICY_EXCEPTION'",
+    [actor.realmId,caseRef]);
+   const currentCaseStatus=latestCase.rows[0]?.status;
    if(original.approval_state==="ACTIVE"&&
-      original.approved_case_ref===caseRef&&review.status==="OWNER_COMPLETED")
+      original.approved_case_ref===caseRef&&currentCaseStatus==="OWNER_COMPLETED")
     return {...view(original),replayed:true};
-   if(review.status!=="PENDING_OWNER"||
+   if(currentCaseStatus!=="PENDING_OWNER"||
      original.approval_state!=="PENDING_APPROVAL"||
      original.mode!=="PERCENT"||original.percent_basis_points!==10000||
      original.service_kind!=="CONSULTATION"||
