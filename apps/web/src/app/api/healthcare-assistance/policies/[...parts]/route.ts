@@ -9,6 +9,12 @@ function permitted(parts:string[],method:"GET"|"POST"){
   if(parts.length===2&&ID.test(parts[1]))return true;
   if(parts.length===3&&ID.test(parts[1])&&parts[2]==="doctors")return true;
  }
+ if(parts[0]==="reviews"){
+  if(parts.length===1)return method==="GET";
+  if(parts.length===2&&ID.test(parts[1]))return method==="GET";
+  if(parts.length===3&&ID.test(parts[1])&&
+    ["decision","activate"].includes(parts[2]))return method==="POST";
+ }
  if(method==="POST"&&parts.length===1&&parts[0]==="submit")return true;
  return method==="POST"&&parts.length===2&&
   ID.test(parts[0])&&parts[1]==="withdraw";
@@ -36,8 +42,14 @@ async function relay(req:NextRequest,parts:string[],method:"GET"|"POST"){
   }catch{return fail(400,"Check the assistance policy form.");}
  }
  try{
-  const response=await fetch(new URL(
-   "/api/v1/healthcare-assistance/policies/"+parts.map(encodeURIComponent).join("/"),
+  const target=parts[0]==="reviews"?
+   parts.length===1?"/api/v1/approvals/healthcare-assistance/cases":
+   parts.length===2?"/api/v1/approvals/healthcare-assistance/cases/"+parts[1]:
+   parts[2]==="decision"?
+    "/api/v1/approvals/healthcare-assistance/cases/"+parts[1]+"/decision":
+    "/api/v1/healthcare-assistance/policies/cases/"+parts[1]+"/activate":
+   "/api/v1/healthcare-assistance/policies/"+parts.map(encodeURIComponent).join("/");
+  const response=await fetch(new URL(target,
    endpoint),{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
     headers:{Authorization:"Bearer "+token,
      ...(body?{"Content-Type":"application/json"}:{})}});
