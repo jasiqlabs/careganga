@@ -4,6 +4,8 @@ import Link from "next/link";
 import {notFound} from "next/navigation";
 import {directory,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
 import {publicLabOffers,rupees} from "../../../../features/diagnostics/public-lab-offers";
+import {currentConsultationBenefits,formatRupees}
+ from "../../../../features/healthcare-assistance/public-consultation-benefits";
 export const dynamic="force-dynamic";
 type Params={params:Promise<{slug:string}>};
 type Center={
@@ -53,9 +55,10 @@ export default async function VerifiedCenterPage({params}:Params){
  const c=await current(slug);
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
- const [doctors,labs]=await Promise.all([
+ const [doctors,labs,benefits]=await Promise.all([
   directory<PublicDoctor>("doctors",new URLSearchParams({center:slug})),
-  publicLabOffers(new URLSearchParams({center:slug}))
+  publicLabOffers(new URLSearchParams({center:slug})),
+  currentConsultationBenefits({centerSlug:slug})
  ]);
  return <HealthcarePublicChrome><main className="cg-public-shell">
    <header className="cg-public-header">
@@ -118,6 +121,26 @@ export default async function VerifiedCenterPage({params}:Params){
        {d.fee?" · Current in-person consultation ₹"+(d.fee.amountMinor/100).toLocaleString("en-IN"):" · Fee not currently approved"}
      </li>)}</ul>
    </section>}
+   {benefits.state==="READY"&&benefits.items.length>0&&
+    <section className="cg-public-section"
+     aria-label="Currently approved Foundation consultation assistance at this center">
+     <h2>Approved consultation support at this center</h2>
+     <p>These are conditional, currently active policies; not a patient
+      discount guarantee. Your eligibility, verified consultation fee,
+      consent and accepted contribution are checked when you book.</p>
+     <ul>{benefits.items.slice(0,5).map((item,i)=>
+      <li key={item.centerSlug+":"+(item.doctorRef??"center")+":"+i}>
+       {item.doctorName?item.doctorName+" · ":""}
+       {item.mode==="PERCENT"&&item.percentBasisPoints!==null?
+        (item.percentBasisPoints/100).toFixed(2)+"% possible Foundation share":
+        "Possible fixed Foundation share "+formatRupees(item.fixedSupportMinor??"0")}
+       {" (maximum "+formatRupees(item.maximumSupportMinor)+")"}
+       {item.feeMinor!==null?
+        " · current verified consultation fee "+formatRupees(item.feeMinor):""}
+      </li>)}</ul>
+     <p>Current approved benefits do not imply a collected payment,
+      an appointment, or support for lab, pharmacy, nursing or procedures.</p>
+    </section>}
    {labs.state==="READY"&&labs.items.length>0&&
     <section className="cg-public-section" aria-label="Approved laboratory tests at this center">
      <h2>Approved laboratory tests at this center</h2>
