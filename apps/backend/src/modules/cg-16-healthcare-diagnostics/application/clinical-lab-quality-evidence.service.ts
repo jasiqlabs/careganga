@@ -203,7 +203,9 @@ export class ClinicalLabQualityEvidenceService{
   const timestamp=Date.parse(proof.verifiedAt);
   const clean=proof.state==="CLEAN_VERIFIED"&&proof.sha256===v.sha256&&
    proof.mime===v.mime&&proof.sizeBytes===Number(v.size_bytes)&&
-   !!proof.objectVersion&&proof.objectVersion.length<=160&&
+   typeof proof.objectVersion==="string"&&
+   proof.objectVersion.length>0&&proof.objectVersion.length<=160&&
+   typeof proof.scanProofRef==="string"&&
    proof.scanProofRef.length>=8&&proof.scanProofRef.length<=160&&
    Number.isFinite(timestamp)&&timestamp<=Date.now()+60000&&
    Date.now()-timestamp<900000;
