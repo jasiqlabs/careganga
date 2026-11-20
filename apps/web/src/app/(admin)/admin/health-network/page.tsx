@@ -4,6 +4,7 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../shared/healthcare-admin-shell";
 import {ProviderOnboarding} from "../../../../features/health-network/provider-onboarding";
+import {FoundationLabOfferOverview} from "../../../../features/diagnostics/foundation-lab-offer-overview";
 export const dynamic="force-dynamic";
 
 export default async function HealthNetworkPage(){
@@ -62,7 +63,9 @@ export default async function HealthNetworkPage(){
         actions.has("approvals.review")&&actions.has("health.providers.verify"))&&
         <p><Link href="/admin/health-network/erp-grants">
          Optional center capability approvals</Link></p>}
-        {actions.has("health.providers.view")&&<ProviderOnboarding
+        {actions.has("health.providers.view")&&actions.has("diagnostics.catalog.view")&&
+        <FoundationLabOfferOverview/>}
+      {actions.has("health.providers.view")&&<ProviderOnboarding
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
