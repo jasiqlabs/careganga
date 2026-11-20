@@ -194,7 +194,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
     }catch(e){setNotice(explain(e))}
     finally{setBusy(false)}
   }
-  return <SafeAreaView style={s.page}>
+  return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
         <Pressable style={s.button} accessibilityRole="button" onPress={onExit}>
@@ -322,8 +322,8 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   </SafeAreaView>;
 }
 const s=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:16,paddingBottom:45,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:16,paddingBottom:96,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
   row:{flexDirection:"row",gap:8,alignItems:"center",flexWrap:"wrap"},
   rowWrap:{flexDirection:"row",gap:8,alignItems:"center",flexWrap:"wrap"},
   title:{fontSize:22,fontWeight:"700",flex:1,color:theme.text},
@@ -332,11 +332,13 @@ const s=StyleSheet.create({
   muted:{fontSize:13,color:theme.mutedText},
   error:{fontSize:13,color:theme.error,backgroundColor:theme.surface,padding:11},
   card:{padding:15,borderColor:theme.border,borderWidth:1,
-    borderRadius:12,backgroundColor:theme.surface,gap:10},
+    borderRadius:14,backgroundColor:theme.surface,gap:10,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
   item:{padding:11,borderColor:theme.border,borderWidth:1,borderRadius:8,gap:7},
   input:{minHeight:48,color:theme.text,backgroundColor:theme.surface,
-    borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10},
+    borderWidth:1,borderColor:theme.border,borderRadius:10,padding:10},
   long:{minHeight:100,textAlignVertical:"top"},
   button:{minHeight:48,padding:11,justifyContent:"center",
-    borderWidth:1,borderColor:theme.border,borderRadius:8}
+    borderWidth:1,borderColor:theme.border,borderRadius:12}
 });

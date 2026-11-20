@@ -131,7 +131,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
   submit("/api/finance-accounting/budgets/"+selected.budgetRef+"/events","POST",{
    kind,amount,...(kind==="UTILIZE"?{journalRef:source}:{})});
  }
- return <SafeAreaView style={s.screen} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.screen} edges={["left","right"]}>
   <View style={s.header}><Pressable accessibilityRole="button"
    onPress={()=>selected?setSelected(null):onExit()}><Text style={s.back}>‹ Back</Text></Pressable>
    <Text accessibilityRole="header" style={s.title}>Budgets & Allocations</Text></View>

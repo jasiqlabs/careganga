@@ -181,7 +181,7 @@ export function RecoveryPanel(){
       <div className="role-pane-heading">
         <h2 id="recovery-readiness-title">Secured backup readiness</h2></div>
       <div className="role-detail-content">
-        {loading?<p role="status">Checking verified recovery facility…</p>:
+        {loading?<p className="cg-module-loading" role="status">Checking verified recovery facility…</p>:
           availability?<div className="permission-group">
             <strong>{availability.status==="AVAILABLE"?
               "Secured facility registered":"Backup & restore unavailable"}</strong>
@@ -220,7 +220,7 @@ export function RecoveryPanel(){
       <div className="role-pane-heading"><h2 id="recovery-requests-title">
         Recovery request history</h2></div>
       <div className="role-detail-content">
-        {!loading&&!operations.length?<p>No recovery requests recorded. No restore activity is claimed.</p>:
+        {!loading&&!operations.length?<p className="cg-module-empty" role="status">No recovery requests recorded. No restore activity is claimed.</p>:
         <div className="role-table-wrap"><table className="role-table">
           <thead><tr><th>Requested</th><th>State</th><th>Revision</th>
             <th>Last updated</th><th>Action</th></tr></thead>

@@ -238,7 +238,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
     finally{try{temporary?.delete();}catch{}setBusy(false);}
   }
   const verified=result&&"cleanVerified" in result&&result.cleanVerified;
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined}
       style={styles.page}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -345,20 +345,22 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:18,gap:15,paddingBottom:40,maxWidth:760,width:"100%",alignSelf:"center"},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:18,gap:15,paddingBottom:96,maxWidth:760,width:"100%",alignSelf:"center"},
   row:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:10},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
   heading:{fontWeight:"700",fontSize:16,color:theme.text},
   card:{backgroundColor:theme.surface,borderColor:theme.border,borderWidth:1,
-    borderRadius:12,padding:15,gap:12},
+    borderRadius:14,padding:15,gap:12,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
   option:{padding:12,borderWidth:1,borderRadius:8,borderColor:theme.border,
     minHeight:54,gap:3},
   chosen:{borderColor:theme.selectedNavigation,backgroundColor:theme.surface},
   button:{paddingHorizontal:14,paddingVertical:12,borderColor:theme.border,
-    borderWidth:1,borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderWidth:1,borderRadius:12,minHeight:48,justifyContent:"center"},
   primary:{paddingHorizontal:14,paddingVertical:12,backgroundColor:theme.primary,
-    borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderRadius:12,minHeight:48,justifyContent:"center"},
   primaryText:{fontWeight:"700",color:theme.primaryText},
   muted:{fontSize:13,color:theme.mutedText},
   alert:{color:theme.error,backgroundColor:theme.surface,padding:11,borderRadius:8}

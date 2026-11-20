@@ -177,7 +177,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     setAppliedSearch(search.trim());setCursor(null);setPrevious([]);setNext(null);
     setMessage("");
   }
-  return <SafeAreaView style={s.page}>
+  return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
         <Pressable style={s.button} accessibilityRole="button" onPress={selected?
@@ -324,8 +324,8 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   </SafeAreaView>;
 }
 const s=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:16,paddingBottom:55,gap:14,width:"100%",maxWidth:800,alignSelf:"center"},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:16,paddingBottom:96,gap:14,width:"100%",maxWidth:800,alignSelf:"center"},
   row:{flexDirection:"row",gap:9,alignItems:"center",flexWrap:"wrap"},
   rowWrap:{flexDirection:"row",flexWrap:"wrap",gap:7},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flex:1},
@@ -333,12 +333,14 @@ const s=StyleSheet.create({
   muted:{color:theme.mutedText,fontSize:13},
   error:{color:theme.error,padding:9,backgroundColor:theme.surface},
   card:{padding:15,backgroundColor:theme.surface,borderColor:theme.border,
-    borderWidth:1,borderRadius:12,gap:9},
-  item:{padding:11,borderColor:theme.border,borderWidth:1,borderRadius:8,gap:7},
+    borderWidth:1,borderRadius:14,gap:9,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
+  item:{padding:11,borderColor:theme.border,borderWidth:1,borderRadius:12,gap:7},
   input:{minHeight:48,backgroundColor:theme.surface,borderColor:theme.border,
-    borderWidth:1,borderRadius:7,padding:10,color:theme.text},
+    borderWidth:1,borderRadius:10,padding:10,color:theme.text},
   longInput:{minHeight:100,textAlignVertical:"top"},
   message:{fontSize:14,lineHeight:20,color:theme.text},
-  button:{minHeight:46,padding:10,borderColor:theme.border,borderWidth:1,
-    borderRadius:8,justifyContent:"center"}
+  button:{minHeight:48,padding:10,borderColor:theme.border,borderWidth:1,
+    borderRadius:12,justifyContent:"center"}
 });

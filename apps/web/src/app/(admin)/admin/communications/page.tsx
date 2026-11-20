@@ -40,7 +40,7 @@ export default async function FoundationCommunicationsPage(){
     if(!read&&!manage&&!delivery&&!approve&&!process)
       return <AccessDeniedView reason="Notices are restricted to your current Foundation role." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="communications"
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="communications"
         displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||

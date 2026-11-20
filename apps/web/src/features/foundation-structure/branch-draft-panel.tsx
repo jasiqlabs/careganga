@@ -221,10 +221,10 @@ export function BranchDraftPanel({canManage,canReview}:{canManage:boolean;canRev
     {pending&&<div className="notice" role="alert">The original write may have succeeded.
       <button type="button" disabled={busy} onClick={()=>void confirmPending()}>Check original save</button>
     </div>}
-    {loading?<p role="status">Checking permitted Foundation branches...</p>:
+    {loading?<p role="status" className="cg-module-loading">Checking permitted Foundation branches...</p>:
       <div className="branch-columns">
         <aside className="role-pane"><h2>Registration drafts</h2>
-          {drafts.length===0?<p>No verified branch drafts are available.</p>:
+          {drafts.length===0?<p className="cg-module-empty" role="status">No verified branch drafts are available.</p>:
             <ul className="branch-draft-list">{drafts.map(x=><li key={x.recordRef}>
               <button type="button" aria-current={selected?.recordRef===x.recordRef?"true":undefined}
                 disabled={busy} onClick={()=>void open(x.recordRef)}>

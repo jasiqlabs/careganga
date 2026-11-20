@@ -83,7 +83,7 @@ export function NotificationsScreen({token,onExit,onExpired}:Props){
     finally{setBusy(false);}
   }
   const unread=rows.filter(x=>!x.read).length;
-  return <SafeAreaView style={styles.page}><ScrollView
+  return <SafeAreaView style={styles.page} edges={["left","right"]}><ScrollView
     contentContainerStyle={styles.content}>
     <View style={styles.row}>
       <Pressable accessibilityRole="button" style={styles.button}
@@ -137,17 +137,19 @@ export function NotificationsScreen({token,onExit,onExpired}:Props){
   </ScrollView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:18,paddingBottom:40,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:18,paddingBottom:96,gap:14,width:"100%",maxWidth:760,alignSelf:"center"},
   row:{flexDirection:"row",alignItems:"center",gap:10},
   title:{fontSize:22,fontWeight:"700",color:theme.text,flex:1},
   heading:{fontWeight:"700",fontSize:16,color:theme.text},
   muted:{color:theme.mutedText,fontSize:13},
   error:{color:theme.error,padding:11,backgroundColor:theme.surface,borderRadius:8},
   card:{backgroundColor:theme.surface,borderColor:theme.border,borderWidth:1,
-    borderRadius:12,padding:15,gap:10},
-  item:{padding:13,borderWidth:1,borderColor:theme.border,borderRadius:9,gap:8},
+    borderRadius:14,padding:15,gap:10,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
+  item:{padding:13,borderWidth:1,borderColor:theme.border,borderRadius:12,gap:8},
   button:{minHeight:48,justifyContent:"center",padding:12,
-    borderWidth:1,borderRadius:8,borderColor:theme.border},
-  option:{padding:12,borderWidth:1,borderColor:theme.border,borderRadius:8,minHeight:56}
+    borderWidth:1,borderRadius:12,borderColor:theme.border},
+  option:{padding:12,borderWidth:1,borderColor:theme.border,borderRadius:12,minHeight:56}
 });

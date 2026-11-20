@@ -28,6 +28,25 @@ function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
 @Controller("api/support")
 export class SupportController{
   constructor(private readonly support:SupportService){}
+  @Get("centers/:centerRef/cases")
+  centerCases(@Headers("authorization")token:string,@Param("centerRef")center:string){
+    return this.support.centerCases(token,center);
+  }
+  @Post("centers/:centerRef/cases")
+  createCenterCase(@Headers("authorization")token:string,@Param("centerRef")center:string,
+    @Body()body:unknown){
+    return this.support.createCenterCase(token,center,body);
+  }
+  @Get("centers/:centerRef/cases/:caseRef")
+  centerCase(@Headers("authorization")token:string,@Param("centerRef")center:string,
+    @Param("caseRef")ref:string){
+    return this.support.centerCase(token,center,ref);
+  }
+  @Post("centers/:centerRef/cases/:caseRef/reply")
+  centerReply(@Headers("authorization")token:string,@Param("centerRef")center:string,
+    @Param("caseRef")ref:string,@Body()body:unknown){
+    return this.support.centerReply(token,center,ref,body);
+  }
   @Post("public/contact")
   contact(@Req()req:GuestRequest,@Body()body:unknown,
     @Headers("x-cg19-proxy-client")ip?:string,

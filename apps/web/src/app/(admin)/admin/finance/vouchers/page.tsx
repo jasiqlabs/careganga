@@ -41,7 +41,7 @@ export default async function VoucherDraftsPage(){
     !Array.isArray(data.years)||!Array.isArray(data.branches))
    throw Error("Voucher options could not be verified");
   return <div className="shell">
-   <FoundationAdminNav active="financeVouchers" displayName={profile.displayName}
+   <FoundationAdminNav initialActions={Array.from(actions)} active="financeVouchers" displayName={profile.displayName}
     roleName={profile.roleName} canViewRoles={actions.includes("roles.view")}
     canViewAccounts={actions.includes("accounts.view")}
     canManageSecurityPolicy={actions.includes("identity.security-policy.manage")}

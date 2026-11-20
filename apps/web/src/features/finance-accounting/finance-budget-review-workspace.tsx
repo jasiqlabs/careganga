@@ -81,7 +81,7 @@ export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolea
   finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Protected Budget Reviews</h2>
+  <div className="cg-fin-toolbar"><div><h1>Protected Budget Reviews</h1>
    <p>Different authorized reviewer, frozen source, explicit password confirmation.</p></div>
    <button type="button" onClick={()=>void load()}>Refresh</button></div>
   {error&&<p role="alert" className="cg-fin-notice">{error}</p>}

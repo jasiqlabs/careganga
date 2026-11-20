@@ -33,7 +33,7 @@ export default async function VoucherApprovalsPage(){
     <p>Your current role cannot review Finance vouchers.</p>
     <Link href="/admin">Return to my account</Link></main>;
   return <div className="shell">
-   <FoundationAdminNav active="financeReviews" displayName={actor.displayName}
+   <FoundationAdminNav initialActions={Array.from(rights)} active="financeReviews" displayName={actor.displayName}
     roleName={actor.roleName}
     canViewRoles={rights.includes("roles.view")}
     canViewAccounts={rights.includes("accounts.view")}

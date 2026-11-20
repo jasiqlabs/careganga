@@ -255,18 +255,18 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
   }finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <FinanceVoucherDashboard onRefresh={()=>void refresh()}/>
-  <div className="cg-fin-toolbar"><div><h2>Finance Voucher Drafts</h2>
+  <div className="cg-fin-toolbar"><div><h1>Finance Voucher Drafts</h1>
    <p>Drafts are not approved, posted or paid. Verified file and reviewer workflows follow separately.</p></div>
    <div className="cg-fin-toolbar-actions">
     <button type="button" disabled={loading} onClick={()=>void refresh()}>Refresh</button>
     {canManage&&<button className="primary" onClick={start} type="button">+ New Voucher</button>}
    </div></div>
+  <FinanceVoucherDashboard onRefresh={()=>void refresh()}/>
   {success&&<p role="status" className="cg-fin-success">{success}</p>}
   {(error||(!editing&&notice))&&<div className="cg-fin-notice" role="alert">
    <p>{error||notice}</p><button type="button" onClick={()=>void refresh()}>Retry</button></div>}
-  {loadingDraft&&<p role="status" className="cg-fin-empty">Opening the latest voucher revision…</p>}
-  {loading&&<p role="status" className="cg-fin-empty">Loading real voucher drafts…</p>}
+  {loadingDraft&&<p role="status" className="cg-fin-empty cg-module-loading">Opening the latest voucher revision…</p>}
+  {loading&&<p role="status" className="cg-fin-empty cg-module-loading">Loading real voucher drafts…</p>}
   {!loading&&!error&&<div className="cg-fin-table-wrap">
    <table className="cg-fin-table"><thead><tr>
     <th>Voucher No.</th><th>Type</th><th>Posting Date</th><th>Payee</th>

@@ -325,7 +325,7 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
           "Current route: "+(process.firstReviewer?process.firstReviewer+" → ":"")+
           process.finalReviewer:
           "The verified Foundation route will be created with its first eligible application."}</p>:
-          <p>Checking process authority…</p>}
+          <p className="cg-module-loading" role="status">Checking process authority…</p>}
       </div>
     </section>
     <section className="role-pane" aria-label="Protected access applications">
@@ -334,8 +334,8 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
       <div className="role-table-wrap"><table className="role-table">
         <thead><tr><th>Application</th><th>Account</th><th>Proposed role</th>
           <th>Status</th><th>Submitted</th><th>Review</th></tr></thead>
-        <tbody>{loading?<tr><td colSpan={6}>Verifying applications…</td></tr>:
-          !cases.length?<tr><td colSpan={6}>No protected access applications found.</td></tr>:
+        <tbody aria-busy={loading}>{loading?<tr><td colSpan={6}><span className="cg-module-loading" role="status">Verifying applications…</span></td></tr>:
+          !cases.length?<tr><td colSpan={6}><span className="cg-module-empty" role="status">No protected access applications found.</span></td></tr>:
           cases.map(entry=><tr key={entry.caseRef}>
             <td><strong>{entry.reference}</strong></td>
             <td>{entry.accountName}</td><td>{entry.roleName}</td>
@@ -427,7 +427,7 @@ export function ProposalWorkspace({mayConfigure,mayPropose,mayReview}:{mayConfig
           <p>Frozen account access revision {detail.sourceAccountAccessRevision}
             · Frozen role revision {detail.sourceRoleRevision}</p>
           <h3>Approval history</h3>
-          {!detail.history.length?<p>No decisions have been recorded.</p>:
+          {!detail.history.length?<p className="cg-module-empty" role="status">No decisions have been recorded.</p>:
             <ol>{detail.history.map((e,i)=><li key={i}>
               {e.action} by {e.by} · {new Date(e.at).toLocaleString()}
               {e.remarks?" — "+e.remarks:""}

@@ -10,6 +10,8 @@ import { PublicCmsContent } from "../src/features/cms/public-cms-screen";
 
 const RecipientNotifications = lazy(() => import("../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
 const FoundationContactScreen = lazy(() => import("../src/features/support/foundation-contact-screen").then(m => ({ default: m.FoundationContactScreen })));
+const PublicHealthcareDirectory = lazy(() => import("../src/features/health-network/public-healthcare-directory").then(m => ({ default: m.PublicHealthcareDirectory })));
+const PatientProfileNative = lazy(() => import("../src/features/patients/patient-profile-native").then(m => ({ default: m.PatientProfileNative })));
 
 class PublicScreenErrorBoundary extends Component<
   { onExit: () => void; children: React.ReactNode },
@@ -117,6 +119,8 @@ export default function PublicHome(){
   const [message,setMessage]=useState("");
   const [noticeOpen,setNoticeOpen]=useState(false);
   const [contactOpen,setContactOpen]=useState(false);
+  const [directoryOpen,setDirectoryOpen]=useState(false);
+  const [patientOpen,setPatientOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
@@ -264,6 +268,18 @@ export default function PublicHome(){
         </Suspense>
       </PublicScreenErrorBoundary>
     );
+  if(directoryOpen)
+    return <PublicScreenErrorBoundary onExit={()=>setDirectoryOpen(false)}>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <PublicHealthcareDirectory onExit={()=>setDirectoryOpen(false)}/>
+      </Suspense>
+    </PublicScreenErrorBoundary>;
+  if(patientOpen)
+    return <PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <PatientProfileNative onExit={()=>setPatientOpen(false)}/>
+      </Suspense>
+    </PublicScreenErrorBoundary>;
   return <SafeAreaView style={styles.page}>
     <KeyboardAvoidingView style={styles.page}
       behavior={Platform.OS==="ios"?"padding":undefined}>
@@ -283,6 +299,22 @@ export default function PublicHome(){
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
             onLoginVisibility={setPublicLoginVisible}/>
+          <View style={[styles.card,styles.healthFeatureCard]}>
+            <Text style={styles.heading}>Healthcare Network</Text>
+            <Text>Search current verified CareGanga healthcare centers and doctors.</Text>
+            <Pressable accessibilityRole="button" style={styles.primary}
+              onPress={()=>setDirectoryOpen(true)}>
+              <Text style={styles.primaryText}>Find healthcare centers & doctors</Text>
+            </Pressable>
+          </View>
+          <View style={[styles.card,styles.healthFeatureCard]}>
+            <Text style={styles.heading}>My Patient Profile</Text>
+            <Text>View your own Virtual Patient ID and manage patient-care consent.</Text>
+            <Pressable accessibilityRole="button" style={styles.primary}
+              onPress={()=>setPatientOpen(true)}>
+              <Text style={styles.primaryText}>Open my patient profile</Text>
+            </Pressable>
+          </View>
           <View style={styles.card}>
             <Text style={styles.heading}>Contact & Help</Text>
             <Text>Send a private Foundation request without signing in,
@@ -339,8 +371,9 @@ const styles=StyleSheet.create({
  brandImage:{width:52,height:52,borderRadius:26},
  title:{fontSize:25,fontWeight:"700",color:theme.sidebar,flexShrink:1},
  heading:{fontSize:18,fontWeight:"700",color:theme.text},
- card:{borderRadius:12,backgroundColor:theme.surface,padding:16,gap:12,
+ card:{borderRadius:14,backgroundColor:theme.surface,padding:18,gap:12,
    borderWidth:1,borderColor:theme.border},
+ healthFeatureCard:{borderLeftWidth:3,borderLeftColor:theme.primary},
  label:{fontSize:13,color:theme.mutedText},
  muted:{fontSize:13,color:theme.mutedText},
  input:{borderWidth:1,borderColor:theme.border,borderRadius:8,

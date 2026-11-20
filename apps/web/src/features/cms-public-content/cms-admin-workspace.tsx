@@ -421,16 +421,16 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    src:"/api/cms-image-preview/"+a.fileRef})):[]};
  return <div className="cg-cms-workspace">
   <header className="cg-cms-toolbar"><div>
-   <h2>Website content</h2><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
+   <h1>Website content</h1><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
   </div><div className="cg-cms-actions">
    <button type="button" onClick={()=>void refresh()} disabled={busy}>Refresh</button>
    {canReview&&<button type="button" onClick={()=>void showInbox()} disabled={busy}>
     Review approvals</button>}
-   {canManage&&<button type="button" onClick={()=>{setSelected(null);setReviewing(false);
+   {canManage&&<button className="primary" type="button" onClick={()=>{setSelected(null);setReviewing(false);
     setDraft(blank("HOME"));setPending(null);setPreview(false);}}>New page</button>}
    {canManage&&!selected&&!reviewing&&<button type="button" disabled={busy}
     onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
-    Use client screenshot text in a new editable draft</button>}
+    Start with reference content</button>}
   </div></header>
   {!reviewing&&<section className="cg-cms-dashboard" aria-label="Current website publishing summary">
    <div><span>Website pages</span><strong>{pages.length}</strong></div>

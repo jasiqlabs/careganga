@@ -41,7 +41,7 @@ export function FinanceVoucherOnlyScreen({token,canManage,canViewEvidence,canUpl
   years={ready.years} branches={ready.branches} canManage={canManage} canViewEvidence={canViewEvidence} canUploadEvidence={canUploadEvidence}
    canPost={canPost} canVerifyPayment={canVerifyPayment}
   onClose={onExit} onExpired={onExpired}/>;
- return <SafeAreaView style={styles.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={styles.safe} edges={["left","right"]}>
   <View style={styles.header}>
    <Pressable onPress={onExit} accessibilityRole="button" style={styles.back}>
     <Text style={styles.backText}>‹ Back</Text></Pressable>
@@ -57,7 +57,7 @@ export function FinanceVoucherOnlyScreen({token,canManage,canViewEvidence,canUpl
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({
- safe:{flex:1,backgroundColor:theme.background},
+ safe:{flex:1,backgroundColor:theme.adminCanvas},
  header:{minHeight:64,backgroundColor:theme.surface,paddingHorizontal:14,
   flexDirection:"row",alignItems:"center",gap:15,borderBottomWidth:1,borderBottomColor:theme.border},
  back:{minHeight:48,justifyContent:"center"},backText:{color:theme.primary,fontSize:15,fontWeight:"600"},

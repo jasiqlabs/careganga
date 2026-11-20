@@ -78,7 +78,7 @@ export function FinanceInvoiceReviewWorkspace({canConfigure}:{canConfigure:boole
   finally{setBusy(false);}
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Protected Invoice Reviews</h2>
+  <div className="cg-fin-toolbar"><div><h1>Protected Invoice Reviews</h1>
    <p>Different authorized reviewer, frozen source, explicit password confirmation.</p></div>
    <button type="button" onClick={()=>void load()}>Refresh</button></div>
   {error&&<p role="alert" className="cg-fin-notice">{error}</p>}

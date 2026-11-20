@@ -205,7 +205,7 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
       style={[styles.button,primary&&styles.primary,disabled&&styles.disabled]}>
       <Text style={[styles.buttonText,primary&&styles.primaryText]}>{label}</Text></Pressable>;
   }
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={styles.title}>Branch registration</Text>
@@ -363,16 +363,18 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:18,gap:12,paddingBottom:40},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:18,gap:12,paddingBottom:96},
   title:{fontSize:24,fontWeight:"800",color:theme.sidebar},
   help:{fontSize:13,color:theme.mutedText},
-  card:{padding:16,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,borderRadius:12,gap:12},
+  card:{padding:16,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,borderRadius:14,gap:12,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
   heading:{fontSize:17,fontWeight:"700",color:theme.text},
   field:{gap:5},label:{fontSize:14,fontWeight:"600",color:theme.text},
-  input:{minHeight:48,padding:10,borderWidth:1,borderColor:theme.border,borderRadius:7,
+  input:{minHeight:48,padding:10,borderWidth:1,borderColor:theme.border,borderRadius:10,
     backgroundColor:theme.surface,color:theme.text},
-  button:{minHeight:48,padding:12,borderWidth:1,borderColor:theme.border,borderRadius:7,
+  button:{minHeight:48,padding:12,borderWidth:1,borderColor:theme.border,borderRadius:12,
     alignItems:"center",justifyContent:"center",marginTop:4},
   buttonText:{color:theme.text,fontWeight:"600"},primary:{backgroundColor:theme.primary,borderColor:theme.primary},
   primaryText:{color:theme.primaryText},

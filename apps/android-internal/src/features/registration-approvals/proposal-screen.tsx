@@ -257,7 +257,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
       else setMessage("The reviewer-process result is uncertain. Check the previous version.");
     }finally{setBusy(false);}
   }
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page} edges={["left","right"]}>
     <KeyboardAvoidingView style={styles.page} behavior={Platform.OS==="ios"?"padding":undefined}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.row}>
@@ -438,24 +438,26 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.background},
-  content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:40},
+  page:{flex:1,backgroundColor:theme.adminCanvas},
+  content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:96},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
   heading:{fontSize:15,fontWeight:"700",color:theme.text},
   muted:{color:theme.mutedText,fontSize:13},
   row:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:9},
-  card:{borderRadius:12,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,
-    padding:15,gap:12},
+  card:{borderRadius:14,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,
+    padding:15,gap:12,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
   item:{paddingVertical:12,borderBottomWidth:1,borderBottomColor:theme.border,gap:5},
-  input:{borderWidth:1,borderColor:theme.border,padding:12,borderRadius:8,
+  input:{borderWidth:1,borderColor:theme.border,padding:12,borderRadius:10,
     fontSize:16,color:theme.text,minHeight:48},
   option:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,
     minHeight:48,justifyContent:"center",backgroundColor:theme.surface},
   chosen:{borderColor:theme.primary,backgroundColor:"#EEF4FF"},
   button:{borderWidth:1,borderColor:theme.border,paddingHorizontal:14,paddingVertical:12,
-    borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderRadius:12,minHeight:48,justifyContent:"center"},
   primary:{backgroundColor:theme.primary,paddingHorizontal:15,paddingVertical:12,
-    borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderRadius:12,minHeight:48,justifyContent:"center"},
   primaryText:{color:theme.primaryText,fontWeight:"700"},
   notice:{color:theme.error,backgroundColor:theme.surface,padding:10,borderRadius:7}
 });

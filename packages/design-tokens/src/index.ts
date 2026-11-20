@@ -12,10 +12,14 @@ export const careGangaTheme = {
   sidebarMuted:"#BBCBE6",
   selectedNavigation:"#1E53DC",
   selectedNavigationText:"#FFFFFF",
+  /** CG-01 selected card/tab background used by authenticated modules. */
+  selectedSurface:"#EEF4FF",
   primary:"#1E53DC",
   primaryPressed:"#1748BE",
   primaryText:"#FFFFFF",
   background:"#F4F4F1",
+  /** Authenticated Android CG-01 canvas. Public website/app retain their own visual contract. */
+  adminCanvas:"#F8FAFC",
   surface:"#FFFFFF",
   text:"#16233B",
   mutedText:"#637084",

@@ -36,7 +36,7 @@ export default async function ProtectedPlatformPage(){
     if(!keys.includes("platform.audit.view"))
       return <AccessDeniedView reason="Only authorized Foundation administrators may view Audit Logs." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="audit" displayName={person.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="audit" displayName={person.displayName}
         roleName={person.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||
           (keys.includes("accounts.create")&&keys.includes("roles.assign"))}

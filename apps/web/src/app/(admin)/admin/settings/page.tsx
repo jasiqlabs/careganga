@@ -41,7 +41,7 @@ export default async function FoundationSettings(){
       !keys.includes("platform.integrations.view"))
       return <AccessDeniedView reason="Foundation platform configuration requires privileged access." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="settings" displayName={actor.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="settings" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||
           (keys.includes("accounts.create")&&keys.includes("roles.assign"))}

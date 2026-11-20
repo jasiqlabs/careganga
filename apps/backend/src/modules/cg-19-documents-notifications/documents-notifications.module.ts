@@ -1,4 +1,9 @@
 import {Module} from "@nestjs/common";
+import {ConsultationSlipSourceModule} from "../cg-15-patients-appointments/consultation-slip-source.module";
+import {AppointmentSlipDocumentService} from "./application/appointment-slip-document.service";
+import {AppointmentSlipController} from "./http/appointment-slip.controller";
+import {HealthPublicRequestThrottleService}
+ from "../cg-14-healthcare-network/application/health-public-request-throttle.service";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {BranchPrivateEvidenceService} from "./application/branch-private-evidence.service";
@@ -21,6 +26,15 @@ import {FinanceVoucherEvidenceService} from "./application/finance-voucher-evide
 import {FinanceVoucherEvidenceController} from "./http/finance-voucher-evidence.controller";
 import {PrivateEvidenceService} from "./application/private-evidence.service";
 import {CmsDraftMediaService} from "./application/cms-draft-media.service";
+import {HealthDraftEvidenceService} from "./application/health-draft-evidence.service";
+import {HealthDraftEvidenceController} from "./http/health-draft-evidence.controller";
+import {HealthDoctorPrivateEvidenceService} from "./application/health-doctor-private-evidence.service";
+import {HealthDoctorPrivateEvidenceController} from "./http/health-doctor-private-evidence.controller";
+import {PatientPrivateFilesService} from "./application/patient-private-files.service";
+import {PatientClinicalFileSharingService} from "./application/patient-clinical-file-sharing.service";
+import {PatientClinicalFileSharingController} from "./http/patient-clinical-file-sharing.controller";
+import {HealthClinicianIdentityService} from "../cg-14-healthcare-network/application/health-clinician-identity.service";
+import {PatientPrivateFilesController} from "./http/patient-private-files.controller";
 import {CmsPublicNoticeSource} from "./application/cms-public-notice-source.service";
 import {CmsPublicNoticeSourceController} from "./http/cms-public-notice-source.controller";
 import {CmsDraftMediaController,CmsPublicMediaController} from "./http/cms-draft-media.controller";
@@ -35,6 +49,11 @@ import {DeliveryService} from "./application/delivery.service";
 import {CommunicationProviders} from "./infrastructure/channel-providers";
 import {CommunicationWorker} from "./infrastructure/communication-worker";
 import {SupportService} from "./application/support.service";
+import {HealthCenterSupportScopeFacade} from "../cg-14-healthcare-network/application/health-center-support-scope.facade";
+import {HealthCenterContentMediaService} from "./application/health-center-content-media.service";
+import {HealthCenterContentMediaController} from "./http/health-center-content-media.controller";
+import {CenterSupportAttachmentService} from "./application/center-support-attachment.service";
+import {CenterSupportAttachmentController,SupportAgentAttachmentController} from "./http/center-support-attachment.controller";
 import {SupportController} from "./http/support.controller";
 import {CommunicationsController,CommunicationProviderWebhookController} from
   "./http/communications.controller";
@@ -45,13 +64,14 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
  * Missing secured credentials or a real ClamAV scanner stays unavailable.
  */
 @Module({
-  imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule,FinanceSourceModule],
-  controllers:[PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,CmsPublicNoticeSourceController,
+  imports:[IdentityAccessModule,RegistrationApprovalsModule,FoundationStructureModule,FinanceSourceModule,ConsultationSlipSourceModule],
+  controllers:[PatientPrivateFilesController,PatientClinicalFileSharingController,AppointmentSlipController,SupportAgentAttachmentController,CenterSupportAttachmentController,HealthCenterContentMediaController,HealthDraftEvidenceController,HealthDoctorPrivateEvidenceController,PrivateEvidenceController,PrivateLetterController,BranchPrivateEvidenceController,BranchWorkflowController,ActiveBranchEvidenceController,FinanceVoucherEvidenceController,FinanceClaimEvidenceController,FinanceInvoiceDocumentController,FinanceReceiptDocumentController,FinanceBankStatementEvidenceController,CmsDraftMediaController,CmsPublicMediaController,CmsPublicNoticeSourceController,
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
-  providers:[PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
+  providers:[PatientPrivateFilesService,PatientClinicalFileSharingService,HealthClinicianIdentityService,HealthPublicRequestThrottleService,AppointmentSlipDocumentService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
     NotificationService,NoticeService,DeliveryService,
-    CommunicationProviders,CommunicationWorker,SupportService,
+    CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
+    HealthCenterContentMediaService,CenterSupportAttachmentService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
+  exports:[CenterSupportAttachmentService,HealthCenterContentMediaService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
 })
 export class DocumentsNotificationsModule{}

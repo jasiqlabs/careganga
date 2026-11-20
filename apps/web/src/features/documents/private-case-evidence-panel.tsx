@@ -222,8 +222,8 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     {selected&&<section className="role-pane">
       <div className="role-pane-heading"><h2>Verified case media</h2></div>
       <div className="role-detail-content">
-        {mediaLoading?<p role="status">Verifying private case files…</p>:
-          !media.length?<p>No verified media files for this application.</p>:
+        {mediaLoading?<p role="status" className="cg-module-loading">Verifying private case files…</p>:
+          !media.length?<p className="cg-module-empty" role="status">No verified media files for this application.</p>:
           <div className="role-table-wrap"><table className="role-table">
             <thead><tr><th>Date</th><th>Type</th><th>Size</th>
               <th>Status</th><th>Action</th></tr></thead>

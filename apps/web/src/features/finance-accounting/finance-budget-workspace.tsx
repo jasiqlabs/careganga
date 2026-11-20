@@ -152,7 +152,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  function update(key:keyof Form,value:string){setForm(v=>({...v,[key]:value}));setNotice("");}
  const meter=selected?Math.max(0,Number(selected.ceilingMinor)):1;
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Budgets & Fund Allocation</h2>
+  <div className="cg-fin-toolbar"><div><h1>Budgets & Fund Allocation</h1>
    <p>Original approved ceilings and source-backed commitments. A budget is not cash received.</p></div>
    <button type="button" onClick={()=>void list()}>Refresh</button></div>
   {error&&<p role="alert" className="cg-fin-notice">{error}</p>}

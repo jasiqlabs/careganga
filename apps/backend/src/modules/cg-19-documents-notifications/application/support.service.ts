@@ -8,6 +8,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
+import {HealthCenterSupportScopeFacade} from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -16,7 +17,8 @@ const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
 type CaseRow={id:string;realm_id:string;request_key:string;request_digest:string;
   caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
   status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
-  latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null};
+  latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null;
+  source_channel:string;center_id?:string|null};
 type FaqRow={id:string;question:string;answer:string;state:string;revision:number;
   created_at:Date;updated_at:Date};
 function uuid(value:unknown):string{
@@ -91,7 +93,8 @@ function searchTerms(values:readonly string[]):string[]{
 export class SupportService{
   constructor(@Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
-    private readonly people:CommunicationRecipientSource){}
+    private readonly people:CommunicationRecipientSource,
+    private readonly centerScope:HealthCenterSupportScopeFacade){}
   private async root(client:PoolClient){
     const found=await client.query<{id:string}>(
       "SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT' LIMIT 1");
@@ -346,7 +349,7 @@ export class SupportService{
         [a.realmId,ref,a.accountId])
     ]);
     const seen=reading.rows[0];
-    return {caseRef:row.id,...request,status:row.status,
+    return {caseRef:row.id,sourceChannel:row.source_channel,...request,status:row.status,
       unread:!seen?.last_seen_inbound_at||seen.last_seen_inbound_at<row.latest_inbound_at,
       archived:!!seen?.archived_at,
       revision:row.revision,assignedAccountRef:row.assigned_account_id,
@@ -484,6 +487,146 @@ export class SupportService{
   }
   archive(token:string,ref:unknown,body:unknown){
     return this.mutate(token,ref,"support.cases.view",body,"ARCHIVE");
+  }
+  /** Real CG-19 case owned by a current CG-14 center. All source validation
+   * and case effects share a transaction; the caller cannot choose a root. */
+  async createCenterCase(bearer:string,rawCenter:string,payload:unknown){
+    const center=uuid(rawCenter),actor=await this.actor(bearer,"health.centers.draft.edit");
+    const x=input(payload,["requestKey","subject","message"]);
+    const key=uuid(x.requestKey),subject=clean(x.subject,5,140),
+      message=clean(x.message,10,2000);
+    const digest=sha(JSON.stringify([center,subject,message]));
+    const caller=hmac("center-caller",actor.realmId+":"+center+":"+actor.accountId);
+    const tx=await this.db.connect();let started=false;
+    try{
+      await tx.query("BEGIN");started=true;
+      await tx.query("SET LOCAL lock_timeout='3s'");
+      await this.centerScope.assertCurrent(tx,actor,center);
+      const existing=await tx.query<CaseRow>(
+        "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND source_channel='CENTER_PORTAL' "+
+        "AND center_id=$2 AND request_key=$3 FOR UPDATE",
+        [actor.realmId,center,key]);
+      if(existing.rows[0]){
+        if(existing.rows[0].request_digest!==digest||
+          existing.rows[0].caller_digest!==caller)
+          throw new ConflictException("This support request key belongs to another message");
+        await tx.query("COMMIT");started=false;
+        return {caseRef:existing.rows[0].id,revision:existing.rows[0].revision,
+          status:existing.rows[0].status,replayed:true};
+      }
+      const receipt=createHmac("sha256",scopedKey("center-receipt"))
+        .update(actor.realmId+":"+center+":"+key).digest("base64url");
+      const result=await tx.query<{id:string;revision:number;status:string}>(
+        "INSERT INTO cg19_support_case(realm_id,center_id,source_channel,request_key,"+
+        "request_digest,caller_digest,receipt_digest,receipt_expires_at,request_encrypted) "+
+        "VALUES($1,$2,'CENTER_PORTAL',$3,$4,$5,$6,now()+interval '30 days',$7) "+
+        "RETURNING id,revision,status",
+        [actor.realmId,center,key,digest,caller,sha(receipt),
+          seal({name:"Healthcare center representative",contact:"Center Portal",
+            subject,message})]);
+      const record=result.rows[0];
+      await tx.query(
+        "INSERT INTO cg19_support_search_token(realm_id,case_id,term_digest) "+
+        "SELECT $1,$2,unnest($3::text[]) ON CONFLICT DO NOTHING",
+        [actor.realmId,record.id,searchTerms([subject]).map(v=>hmac("search",v))]);
+      await this.event(tx,actor.realmId,record.id,actor.accountId,"CONTACT_SUBMITTED");
+      await tx.query("COMMIT");started=false;
+      return {caseRef:record.id,revision:record.revision,
+        status:record.status,replayed:false};
+    }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
+    finally{tx.release();}
+  }
+  async centerCases(bearer:string,rawCenter:string){
+    const center=uuid(rawCenter),actor=await this.actor(bearer,"health.centers.draft.edit");
+    const tx=await this.db.connect();let started=false;
+    try{
+      await tx.query("BEGIN");started=true;
+      await this.centerScope.assertCurrent(tx,actor,center);
+      const data=await tx.query<CaseRow>(
+        "SELECT id,realm_id,request_key,request_digest,caller_digest,receipt_digest,"+
+        "receipt_expires_at,request_encrypted,status,revision,assigned_account_id,"+
+        "latest_inbound_at,created_at,updated_at,closed_at FROM cg19_support_case "+
+        "WHERE realm_id=$1 AND source_channel='CENTER_PORTAL' AND center_id=$2 "+
+        "ORDER BY updated_at DESC,id DESC LIMIT 50",[actor.realmId,center]);
+      await tx.query("COMMIT");started=false;
+      return {cases:data.rows.map(c=>({
+        caseRef:c.id,subject:open(c.request_encrypted).subject,
+        status:c.status,revision:c.revision,updatedAt:c.updated_at.toISOString()
+      }))};
+    }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
+    finally{tx.release();}
+  }
+  async centerCase(bearer:string,rawCenter:string,rawCase:string){
+    const center=uuid(rawCenter),ref=uuid(rawCase),
+      actor=await this.actor(bearer,"health.centers.draft.edit");
+    const tx=await this.db.connect();let started=false;
+    try{
+      await tx.query("BEGIN");started=true;
+      await this.centerScope.assertCurrent(tx,actor,center);
+      const data=await tx.query<CaseRow>(
+        "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND center_id=$2 "+
+        "AND source_channel='CENTER_PORTAL' AND id=$3",
+        [actor.realmId,center,ref]);
+      const c=data.rows[0];
+      if(!c)throw new NotFoundException("Center support case unavailable");
+      const messages=await tx.query<{body_encrypted:Buffer;created_at:Date}>(
+        "SELECT body_encrypted,created_at FROM cg19_support_reply "+
+        "WHERE realm_id=$1 AND case_id=$2 ORDER BY created_at,id LIMIT 100",
+        [actor.realmId,ref]);
+      await tx.query("COMMIT");started=false;
+      return {caseRef:c.id,subject:open(c.request_encrypted).subject,
+        message:open(c.request_encrypted).message,status:c.status,
+        revision:c.revision,replies:messages.rows.map(m=>({
+          message:open(m.body_encrypted).message,createdAt:m.created_at.toISOString()
+        }))};
+    }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
+    finally{tx.release();}
+  }
+  async centerReply(bearer:string,rawCenter:string,rawCase:string,payload:unknown){
+    const center=uuid(rawCenter),ref=uuid(rawCase),
+      actor=await this.actor(bearer,"health.centers.draft.edit");
+    const x=input(payload,["requestKey","expectedRevision","message"]);
+    const key=uuid(x.requestKey),expected=revision(x.expectedRevision),
+      message=clean(x.message,2,2400),bodyDigest=sha(message);
+    const tx=await this.db.connect();let started=false;
+    try{
+      await tx.query("BEGIN");started=true;
+      await tx.query("SET LOCAL lock_timeout='3s'");
+      await this.centerScope.assertCurrent(tx,actor,center);
+      const records=await tx.query<CaseRow>(
+        "SELECT * FROM cg19_support_case WHERE realm_id=$1 AND center_id=$2 "+
+        "AND source_channel='CENTER_PORTAL' AND id=$3 FOR UPDATE",
+        [actor.realmId,center,ref]);
+      const c=records.rows[0];
+      if(!c)throw new NotFoundException("Center support case unavailable");
+      const old=await tx.query<{body_digest:string}>(
+        "SELECT body_digest FROM cg19_support_reply WHERE realm_id=$1 AND "+
+        "case_id=$2 AND author_account_id=$3 AND request_key=$4",
+        [actor.realmId,ref,actor.accountId,key]);
+      if(old.rows[0]){
+        if(old.rows[0].body_digest!==bodyDigest)
+          throw new ConflictException("The original support reply key was used for another message");
+        await tx.query("COMMIT");started=false;
+        return {status:"PREVIOUSLY_CONFIRMED",revision:c.revision,replayed:true};
+      }
+      if(c.revision!==expected)
+        throw new ConflictException("This case changed. Refresh before replying.");
+      if(c.status==="CLOSED")
+        throw new ConflictException("This case is closed. Contact the Foundation for reopening.");
+      await tx.query(
+        "INSERT INTO cg19_support_reply(realm_id,case_id,author_account_id,"+
+        "request_key,body_digest,body_encrypted) VALUES($1,$2,$3,$4,$5,$6)",
+        [actor.realmId,ref,actor.accountId,key,bodyDigest,
+          seal({name:"",contact:"",subject:"",message})]);
+      await tx.query(
+        "UPDATE cg19_support_case SET status='REPLIED',revision=revision+1,"+
+        "closed_at=NULL,updated_at=now() WHERE realm_id=$1 AND id=$2",
+        [actor.realmId,ref]);
+      await this.event(tx,actor.realmId,ref,actor.accountId,"REPLIED");
+      await tx.query("COMMIT");started=false;
+      return {status:"CONFIRMED",revision:c.revision+1,replayed:false};
+    }catch(e){if(started)try{await tx.query("ROLLBACK");}catch{};throw e;}
+    finally{tx.release();}
   }
   async publicFaqs(){
     const result=await this.db.query<FaqRow>(

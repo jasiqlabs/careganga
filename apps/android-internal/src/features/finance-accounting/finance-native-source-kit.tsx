@@ -45,26 +45,28 @@ export const minorToRupees=(n:string|null|undefined)=>{
  }catch{return "";}
 };
 export const financeNativeStyles=StyleSheet.create({
- screen:{flex:1,backgroundColor:t.background},header:{
+ screen:{flex:1,backgroundColor:t.adminCanvas},header:{
   flexDirection:"row",alignItems:"center",gap:12,padding:14,
   backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
  back:{color:t.primary,fontSize:15,fontWeight:"700"},title:{
-  color:t.text,fontSize:19,fontWeight:"700"},scroll:{padding:15,gap:14},
- card:{padding:15,gap:10,borderRadius:10,backgroundColor:t.surface,
-  borderWidth:1,borderColor:t.border},heading:{fontSize:16,fontWeight:"700",color:t.text},
+  color:t.text,fontSize:21,fontWeight:"800"},scroll:{padding:15,gap:14,paddingBottom:96},
+ card:{padding:16,gap:12,borderRadius:14,backgroundColor:t.surface,
+  borderWidth:1,borderColor:t.border,
+  shadowColor:t.sidebar,shadowOpacity:0.05,shadowOffset:{width:0,height:2},
+  shadowRadius:8,elevation:1},heading:{fontSize:16,fontWeight:"700",color:t.text},
  text:{color:t.text,fontSize:13,lineHeight:19},
  muted:{color:t.mutedText,fontSize:13,lineHeight:19},
  alert:{fontSize:13,color:t.error,lineHeight:20},field:{gap:5},label:{
-  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:46,
-  borderWidth:1,borderColor:t.border,borderRadius:8,padding:10,
+  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:48,
+  borderWidth:1,borderColor:t.border,borderRadius:10,padding:10,
   backgroundColor:t.surface,color:t.text,fontSize:14},
  area:{minHeight:85,textAlignVertical:"top"},optionList:{flexDirection:"row",
   flexWrap:"wrap",gap:6},option:{borderWidth:1,borderColor:t.border,
-  backgroundColor:t.surface,padding:9,minHeight:42,borderRadius:8,
+  backgroundColor:t.surface,padding:9,minHeight:44,borderRadius:10,
   justifyContent:"center"},selected:{borderColor:t.primary,
-  backgroundColor:t.background},optionText:{color:t.mutedText,fontSize:12},
+  backgroundColor:t.selectedSurface},optionText:{color:t.mutedText,fontSize:12},
  selectedText:{color:t.primary,fontWeight:"700"},action:{
-  backgroundColor:t.primary,borderRadius:9,minHeight:48,paddingHorizontal:14,
+  backgroundColor:t.primary,borderRadius:12,minHeight:48,paddingHorizontal:14,
   paddingVertical:12,justifyContent:"center",alignItems:"center"},
  actionText:{color:t.primaryText,fontSize:13,fontWeight:"700"},
  secondary:{backgroundColor:t.surface,borderColor:t.border,borderWidth:1},

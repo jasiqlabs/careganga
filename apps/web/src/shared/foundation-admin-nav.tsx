@@ -32,7 +32,14 @@ export type FoundationAdminNavProps = {
     | "financeBudgets"
     | "financeBudgetReviews"
     | "financeReports"
-    | "cms";
+    | "cms"
+    | "healthNetwork"
+    | "healthCenter"
+    | "healthDoctors"
+    | "healthSchedules"
+    | "healthPatientIntake"
+    | "healthVisitQueue"
+    | "healthPatientAdmin";
   displayName: string;
   roleName: string;
   canViewRoles: boolean;
@@ -58,6 +65,15 @@ export type FoundationAdminNavProps = {
   canReviewBudgets?: boolean;
   canViewFinanceReports?: boolean;
   canViewCms?: boolean;
+  canViewHealthNetwork?: boolean;
+  canViewCenterPortal?: boolean;
+  canViewDoctors?: boolean;
+  canViewSchedules?: boolean;
+  canViewPatientIntake?: boolean;
+  canViewVisitQueue?: boolean;
+  canViewPatientAdmin?: boolean;
+  /** Source-verified role actions for consistent first-render navigation; revalidated on mount. */
+  initialActions?: readonly string[];
 };
 
 /**
@@ -81,6 +97,18 @@ function getNavIcon(key: string) {
           <circle cx="12" cy="7" r="4" />
         </svg>
       );
+    case "healthNetwork":
+    case "healthCenter":
+    case "healthDoctors":
+    case "healthSchedules":
+    case "healthPatientIntake":
+    case "healthVisitQueue":
+    case "healthPatientAdmin":
+      return <svg width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 21V7l9-4 9 4v14M3 13h18M9 10v7m6-7v7M7 21h10"/>
+      </svg>;
     case "accounts":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -291,7 +319,15 @@ export function FoundationAdminNav({
   canViewBudgets = false,
   canReviewBudgets = false,
   canViewFinanceReports = false,
-  canViewCms = false
+  canViewCms = false,
+  canViewHealthNetwork = false,
+  canViewCenterPortal = false,
+  canViewDoctors = false,
+  canViewSchedules = false,
+  canViewPatientIntake = false,
+  canViewVisitQueue = false,
+  canViewPatientAdmin = false,
+  initialActions
 }: FoundationAdminNavProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -540,7 +576,9 @@ export function FoundationAdminNav({
   }, []);
 
   // Effective actions revalidation
-  const [currentActions, setCurrentActions] = useState<Set<string>|null>(null);
+  const [currentActions, setCurrentActions] = useState<Set<string>|null>(() =>
+    initialActions ? new Set(initialActions) : null
+  );
   useEffect(() => {
     let live = true;
     void fetch("/api/access/effective", { cache: "no-store" })
@@ -615,6 +653,28 @@ export function FoundationAdminNav({
   const invoiceAccess = currentActions ? currentActions.has("finance.invoices.view") : canViewInvoices;
   const reportAccess = currentActions ? currentActions.has("finance.reports.view") : canViewFinanceReports;
   const cmsAccess = allowed("cms.content.view", canViewCms);
+  const healthNetworkAccess = allowed("health.providers.view", canViewHealthNetwork);
+  // Reviewer-only and publisher-only staff must have a visible, authorized
+  // entry point; never send them to the provider directory without view access.
+  const healthReviewerAccess = currentActions
+    ? currentActions.has("approvals.review") &&
+      (currentActions.has("health.providers.verify") || currentActions.has("health.doctors.verify"))
+    : false;
+  const providerReviewerHomeAccess = currentActions
+    ? currentActions.has("approvals.review") && currentActions.has("health.providers.verify")
+    : false;
+  const healthPublisherAccess = currentActions
+    ? currentActions.has("health.centers.publish") : false;
+  const healthHomeHref = healthNetworkAccess || providerReviewerHomeAccess
+    ? "/admin/health-network"
+    : healthReviewerAccess ? "/admin/health-network/reviews"
+    : "/admin/health-network/content-reviews";
+  const healthCenterAccess = allowed("health.centers.draft.edit", canViewCenterPortal);
+  const doctorAccess = allowed("health.doctors.view", canViewDoctors);
+  const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
+  const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
+  const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
+  const patientAdminAccess = allowed("health.patients.admin.view", canViewPatientAdmin);
   const budgetAccess = currentActions ? currentActions.has("finance.budgets.view") : canViewBudgets;
   const budgetReviewAccess = currentActions
     ? ["finance.budgets.review", "approvals.review"].every(k => currentActions.has(k))
@@ -635,6 +695,18 @@ export function FoundationAdminNav({
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
+    ...(healthNetworkAccess || healthReviewerAccess || healthPublisherAccess
+      ? [{ key: "healthNetwork" as const,
+           label: healthNetworkAccess ? "Healthcare Providers"
+             : healthReviewerAccess ? "Healthcare Reviews" : "Center Content Reviews",
+           href: healthHomeHref }]
+      : []),
+    ...(healthCenterAccess ? [{ key: "healthCenter" as const, label: "My Healthcare Center", href: "/center" }] : []),
+    ...(doctorAccess ? [{ key: "healthDoctors" as const, label: "Doctor Registrations", href: "/admin/health-network/doctors" }] : []),
+    ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
+    ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
+    ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
+    ...(patientAdminAccess ? [{ key: "healthPatientAdmin" as const, label: "Patient & Booking Management", href: "/admin/health-network/patients" }] : []),
     ...(financeAccess ? [{ key: "finance" as const, label: "Accounts", href: "/admin/finance" }] : []),
     ...(voucherAccess ? [{ key: "financeVouchers" as const, label: "Voucher Drafts", href: "/admin/finance/vouchers" }] : []),
     ...(claimsAccess ? [{ key: "financeClaims" as const, label: "Expense Claims", href: "/admin/finance/claims" }] : []),
@@ -671,6 +743,13 @@ export function FoundationAdminNav({
     foundation: "Departments / Committees",
     branches: "Branches / Locations",
     cms: "Website CMS",
+    healthNetwork: "Healthcare Providers",
+    healthCenter: "My Healthcare Center",
+    healthDoctors: "Doctor Registrations",
+    healthSchedules: "Doctor Schedule & Availability",
+    healthPatientIntake: "Patient Registration",
+    healthVisitQueue: "Consultation Queue",
+    healthPatientAdmin: "Patient & Booking Management",
     finance: "Finance & Accounting",
     financeReports: "Ledger & Reports",
     financeBudgets: "Budgets",
@@ -825,6 +904,10 @@ export function FoundationAdminNav({
             { name: "DASHBOARD", keys: ["dashboard", "account"] },
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
+            { name: "HEALTHCARE", keys: [
+              "healthNetwork", "healthCenter", "healthDoctors", "healthSchedules", "healthPatientIntake",
+              "healthVisitQueue", "healthPatientAdmin"
+            ] },
             {
               name: "FINANCE & ACCOUNTING",
               keys: [

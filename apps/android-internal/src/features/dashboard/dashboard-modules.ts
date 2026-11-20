@@ -4,6 +4,7 @@ export type ModuleCategory =
   | "DASHBOARD"
   | "USER & ACCESS MANAGEMENT"
   | "ORGANIZATION MANAGEMENT"
+  | "HEALTHCARE ASSISTANCE"
   | "FINANCE & ACCOUNTING"
   | "PLATFORM & COMMUNICATIONS";
 
@@ -53,6 +54,10 @@ export interface ModuleActionHandlers {
   openRoles: () => void;
   openPolicy: () => void;
   openApprovals: () => void;
+  openPatientQueue: () => void;
+  openPatientBooking: () => void;
+  openDoctorLeaveReviews: () => void;
+  openHealthReviews: () => void;
   openDocuments: () => void;
   openNotifications: () => void;
   openCommunications: () => void;
@@ -203,7 +208,63 @@ export function getAuthorizedModules(
   }
 
   // ----------------------------------------------------
-  // SECTION 4: FINANCE & ACCOUNTING
+  if (roleActions.includes("health.visits.manage")) {
+    list.push({
+      key: "healthVisitQueue",
+      title: "My Consultation Queue",
+      shortLabel: "Consultations",
+      description: "Manage authorized visits and check-in for assigned healthcare centers.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openPatientQueue
+    });
+  }
+
+  if (roleActions.includes("health.patients.intake")) {
+    list.push({
+      key: "healthPatientBooking",
+      title: "Book for a Verified Patient",
+      shortLabel: "Patient Booking",
+      description: "Book an existing center consultation with patient authorization.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "user",
+      iconBg: "#DCFCE7",
+      iconColor: "#15803D",
+      onOpen: handlers.openPatientBooking
+    });
+  }
+
+  if (roleActions.includes("approvals.review") && roleActions.includes("health.schedules.view")) {
+    list.push({
+      key: "healthDoctorLeave",
+      title: "Doctor Leave Reviews",
+      shortLabel: "Doctor Leave",
+      description: "Review approved doctor schedule exceptions and leave requests.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "approvals",
+      iconBg: "#FFEDD5",
+      iconColor: "#C2410C",
+      onOpen: handlers.openDoctorLeaveReviews
+    });
+  }
+
+  if (roleActions.includes("approvals.review") && (roleActions.includes("health.doctors.verify") || roleActions.includes("health.providers.verify"))) {
+    list.push({
+      key: "healthReviews",
+      title: "Healthcare Verification Reviews",
+      shortLabel: "Verification",
+      description: "Review verified provider and doctor applications.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "shield",
+      iconBg: "#F3E8FF",
+      iconColor: "#7C3AED",
+      onOpen: handlers.openHealthReviews
+    });
+  }
+
+  // SECTION 5: FINANCE & ACCOUNTING
   // ----------------------------------------------------
 
   // 8. Accounts
@@ -441,6 +502,8 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "account",
   "accounts",
   "approvals",
+  "healthVisitQueue",
+  "healthPatientBooking",
   "finance",
   "branches",
   "financeClaims",
@@ -557,6 +620,7 @@ export function groupModulesByCategory(
     "DASHBOARD",
     "USER & ACCESS MANAGEMENT",
     "ORGANIZATION MANAGEMENT",
+    "HEALTHCARE ASSISTANCE",
     "FINANCE & ACCOUNTING",
     "PLATFORM & COMMUNICATIONS"
   ];

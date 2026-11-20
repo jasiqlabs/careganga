@@ -248,7 +248,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    {},"WORKFLOW");
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Invoices & Receipts</h2>
+  <div className="cg-fin-toolbar"><div><h1>Invoices & Receipts</h1>
    <p>Original Foundation financial invoices. Approved, posted, issued and paid are different states.</p>
   </div><button type="button" disabled={busy} onClick={()=>void load()}>Refresh</button></div>
   {notice&&<p role="status" className="cg-fin-notice">{notice}</p>}

@@ -125,7 +125,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
  if(editor&&data)return <FinanceSetupEditor token={token} data={data}
     kind={editor.kind} target={editor.target} onClose={()=>setEditor(null)}
     onSaved={()=>{const wasManual=editor.kind==="manual";setEditor(null);setOffset(0);void reload();if(wasManual){setCategory("JOURNALS");setManualRefresh(n=>n+1);}}} onExpired={onExpired}/>;
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" accessibilityLabel="Back to Foundation"
     hitSlop={12} style={s.back} onPress={onExit}><Text style={s.backText}>‹ Back</Text></Pressable>
@@ -240,11 +240,11 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
 }
 const s=StyleSheet.create({
  actionRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
- create:{borderWidth:1,borderColor:theme.primary,borderRadius:7,paddingHorizontal:12,
+ create:{borderWidth:1,borderColor:theme.primary,borderRadius:12,paddingHorizontal:12,
   justifyContent:"center",minHeight:48,backgroundColor:theme.surface,alignSelf:"flex-start"},
  createText:{color:theme.primary,fontSize:13,fontWeight:"600"},
 
- safe:{flex:1,backgroundColor:theme.background},
+ safe:{flex:1,backgroundColor:theme.adminCanvas},
  header:{backgroundColor:theme.surface,borderBottomColor:theme.border,borderBottomWidth:1,
   paddingHorizontal:14,paddingVertical:12,flexDirection:"row",alignItems:"center",gap:8},
  headerTitle:{flex:1,minWidth:0},
@@ -257,17 +257,19 @@ const s=StyleSheet.create({
  selectedTab:{borderBottomColor:theme.primary},
  tabText:{fontSize:12,fontWeight:"500",color:theme.mutedText,textAlign:"center"},
  selectedTabText:{color:theme.primary,fontWeight:"700"},
- content:{padding:14,paddingBottom:32,gap:12},
+ content:{padding:14,paddingBottom:96,gap:12},
  subtext:{fontSize:13,lineHeight:19,color:theme.mutedText},
  state:{flexDirection:"row",gap:12,alignItems:"center",padding:14},
  error:{backgroundColor:"#FFF3F3",borderRadius:8,borderWidth:1,borderColor:"#F7CBCB",padding:14,gap:10},
  errorText:{color:theme.error,fontSize:14,lineHeight:21},
- retry:{backgroundColor:theme.primary,alignSelf:"flex-start",paddingVertical:11,paddingHorizontal:15,borderRadius:6},
+ retry:{backgroundColor:theme.primary,alignSelf:"flex-start",paddingVertical:11,paddingHorizontal:15,borderRadius:12},
  retryText:{color:theme.primaryText,fontWeight:"600"},
  empty:{padding:22,backgroundColor:theme.surface,borderRadius:9,borderWidth:1,
   borderColor:theme.border,color:theme.mutedText,textAlign:"center",lineHeight:21},
- card:{padding:15,borderWidth:1,borderColor:theme.border,borderRadius:9,
-  backgroundColor:theme.surface,gap:5},
+ card:{padding:15,borderWidth:1,borderColor:theme.border,borderRadius:14,
+  backgroundColor:theme.surface,gap:5,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
  line:{flexDirection:"row",gap:10,alignItems:"center",justifyContent:"space-between"},
  cardTitle:{fontWeight:"700",fontSize:16,color:theme.text,flexShrink:1},
  meta:{fontSize:12,color:theme.mutedText},

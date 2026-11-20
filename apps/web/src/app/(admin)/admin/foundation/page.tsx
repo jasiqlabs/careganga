@@ -33,7 +33,7 @@ export default async function FoundationStructurePage(){
     if(!canView)
       return <AccessDeniedView reason="You do not have permission to view this Foundation information." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={actions.includes("finance.accounts.view")} canViewVouchers={actions.includes("finance.vouchers.view")} active="foundation" displayName={actor.displayName} roleName={actor.roleName}
+      <FoundationAdminNav initialActions={Array.from(actions)} canViewFinance={actions.includes("finance.accounts.view")} canViewVouchers={actions.includes("finance.vouchers.view")} active="foundation" displayName={actor.displayName} roleName={actor.roleName}
         canViewRoles={actions.includes("roles.view")}
         canViewAccounts={actions.includes("accounts.view")}
         canManageSecurityPolicy={actions.includes("identity.security-policy.manage")}

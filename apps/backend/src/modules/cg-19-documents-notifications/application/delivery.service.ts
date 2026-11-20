@@ -200,6 +200,29 @@ export class DeliveryService{
       to=current?.active?verified??null:null;
       permitted=Boolean(to)&&await this.notifications.hasConsent(client,
         row.realm_id,row.recipient_id,row.channel,row.purpose);
+      // Appointment notices have a SECOND consent check immediately before
+      // any external provider attempt, not just at original outbox capture.
+      if(row.source_kind==="CG15_APPOINTMENT"){
+        const own=await client.query(
+         "SELECT 1 FROM cg19_notification n "+
+         "JOIN cg15_appointment_event e ON e.root_realm_id=n.realm_id "+
+         "AND e.id=n.cg15_appointment_event_id "+
+         "JOIN cg15_consultation_appointment ap ON ap.root_realm_id=e.root_realm_id "+
+         "AND ap.id=e.appointment_id "+
+         "JOIN cg15_patient p ON p.root_realm_id=ap.root_realm_id "+
+         "AND p.id=ap.patient_id "+
+         "JOIN cg15_patient_account_link l ON l.root_realm_id=p.root_realm_id "+
+         "AND l.patient_id=p.id AND l.account_id=n.recipient_id "+
+         "AND l.revoked_at IS NULL "+
+         "WHERE n.realm_id=$1 AND n.id=$2 AND n.recipient_id=$3 "+
+         "AND p.profile_status='VERIFIED' "+
+         "AND (SELECT consent.granted FROM cg15_patient_consent consent "+
+         "WHERE consent.root_realm_id=p.root_realm_id "+
+         "AND consent.patient_id=p.id AND consent.purpose='PATIENT_CARE' "+
+         "ORDER BY consent.revision_no DESC LIMIT 1)=true",
+         [row.realm_id,row.id,row.recipient_id]);
+        if(!own.rowCount)permitted=false;
+      }
       if(row.notice_id){
         const notice=await client.query<{state:string;expires_at:Date}>(`
           SELECT state,expires_at FROM cg19_notice WHERE realm_id=$1 AND id=$2

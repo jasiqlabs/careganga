@@ -288,7 +288,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
    onExit={()=>setCancelSource("")} onDone={()=>{
     setCurrent(v=>v&&v.ref===cancelSource?{...v,status:"REVERSED"}:v);
     setCancelSource("");void load();void loadDashboard();}}/>;
- return <SafeAreaView style={s.screen} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.screen} edges={["left","right"]}>
   <View style={s.header}><Pressable accessibilityRole="button"
    onPress={()=>current?setCurrent(null):onExit()}>
    <Text style={s.back}>‹ Back</Text></Pressable>

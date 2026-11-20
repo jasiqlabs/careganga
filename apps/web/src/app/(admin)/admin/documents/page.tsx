@@ -42,7 +42,7 @@ export default async function PrivateDocumentsPage(){
       (!keys.includes("approvals.view")&&!keys.includes("approvals.propose")))
       return <AccessDeniedView reason="Private documents are available only to authorized case operators." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="documents" displayName={person.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="documents" displayName={person.displayName}
         roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")||

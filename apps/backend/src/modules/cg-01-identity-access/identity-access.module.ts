@@ -1,4 +1,5 @@
 import { FoundationStructureIdentityFacade } from "./application/foundation-structure-identity.facade";
+import { HealthNetworkIdentityFacade } from "./application/health-network-identity.facade";
 import { Module } from "@nestjs/common";
 import { SessionService } from "./application/session.service";
 import { SessionController } from "./http/session.controller";
@@ -18,10 +19,12 @@ import { ProtectedAccessOwnerService } from "./application/protected-access-owne
 import { CommunicationRecipientSource } from "./application/communication-recipient-source.service";
 import { MobileVerificationService } from "./application/mobile-verification.service";
 import { MobileVerificationController } from "./http/mobile-verification.controller";
+import { PublicPatientSignupController } from "./http/public-patient-signup.controller";
+import { PublicPatientSignupService } from "./application/public-patient-signup.service";
 
 @Module({
-  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController],
-  providers:[FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService],
-  exports:[SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
+  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
+  providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
+  exports:[HealthNetworkIdentityFacade,SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}

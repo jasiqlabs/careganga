@@ -271,7 +271,7 @@ export function FinanceReportsWorkspace({canReconcile,canVerify,canUploadStateme
   URL.revokeObjectURL(href);
  }
  return <section className="cg-fin-manual">
-  <div className="cg-fin-toolbar"><div><h2>Financial Statements & Ledger</h2>
+  <div className="cg-fin-toolbar"><div><h1>Financial Statements & Ledger</h1>
    <p>Original posted double-entry lines. No sample amounts or future partner-project masters.</p></div>
    <button type="button" disabled={busy} onClick={()=>void load()}>Refresh</button></div>
   {error&&<p className="cg-fin-notice" role="alert">{error}</p>}

@@ -14,6 +14,8 @@ export interface DashboardHeaderProps {
   displayName: string;
   roleName: string;
   hasNotifications?: boolean;
+  /** Permission to open notifications, independent of unread badge state. */
+  canOpenNotifications?: boolean;
   hideWelcome?: boolean;
   onOpenDrawer: () => void;
   onOpenNotifications: () => void;
@@ -22,7 +24,8 @@ export interface DashboardHeaderProps {
 export function DashboardHeader({
   displayName,
   roleName,
-  hasNotifications = true,
+  hasNotifications = false,
+  canOpenNotifications = true,
   hideWelcome = false,
   onOpenDrawer,
   onOpenNotifications
@@ -31,7 +34,7 @@ export function DashboardHeader({
   const glowAnim = useRef(new Animated.Value(0.75)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 0.98,
@@ -44,7 +47,9 @@ export function DashboardHeader({
           useNativeDriver: true
         })
       ])
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [glowAnim]);
 
   return (
@@ -105,15 +110,17 @@ export function DashboardHeader({
 
         {/* Right: Notifications Button (STRICT: NO Search icon, NO SY Avatar) */}
         <View style={styles.rightActionsRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="View notices and notifications"
-            onPress={onOpenNotifications}
-            style={styles.iconButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <IconBell size={20} color="#FFFFFF" hasBadge={hasNotifications} />
-          </Pressable>
+          {canOpenNotifications && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View notices and notifications"
+              onPress={onOpenNotifications}
+              style={styles.iconButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <IconBell size={20} color="#FFFFFF" hasBadge={hasNotifications} />
+            </Pressable>
+          )}
         </View>
       </View>
 

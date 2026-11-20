@@ -163,7 +163,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
   }catch(e){setError(msg(e));if(e instanceof Error&&e.message==="EXPIRED")onExpired();}
   finally{setBusy(false);}
  }
- return <SafeAreaView style={s.page} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.page} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable style={s.button} disabled={busy||!!pending}
     onPress={()=>{if(selected){setSelected(null);setOriginal(null);}
@@ -235,27 +235,29 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- page:{flex:1,backgroundColor:t.background},
+ page:{flex:1,backgroundColor:t.adminCanvas},
  header:{flexDirection:"row",alignItems:"center",gap:10,padding:12,
   borderBottomWidth:1,borderBottomColor:t.border,backgroundColor:t.surface},
  heading:{flex:1},eyebrow:{fontSize:10,color:t.mutedText},
  title:{fontSize:18,fontWeight:"700",color:t.text},
- body:{padding:14,paddingBottom:50,gap:12},
+ body:{padding:14,paddingBottom:96,gap:12},
  hint:{fontSize:13,lineHeight:20,color:t.mutedText},
  bold:{fontSize:15,fontWeight:"700",color:t.text},
  card:{padding:13,gap:7,borderWidth:1,borderColor:t.border,
-  borderRadius:9,backgroundColor:t.surface},
+  borderRadius:14,backgroundColor:t.surface,
+    shadowColor:t.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
  item:{flexDirection:"row",justifyContent:"space-between",gap:9},
  notice:{padding:13,borderRadius:9,backgroundColor:t.surface,
   borderWidth:1,borderColor:t.border},
  noticeText:{color:t.error,fontSize:14},
  actions:{flexDirection:"row",flexWrap:"wrap",gap:9,justifyContent:"space-between"},
  button:{minHeight:48,borderWidth:1,borderColor:t.border,
-  borderRadius:7,paddingHorizontal:12,justifyContent:"center"},
+  borderRadius:12,paddingHorizontal:12,justifyContent:"center"},
  link:{fontWeight:"600",color:t.primary},
- selected:{borderColor:t.primary,backgroundColor:t.surface},
+ selected:{borderColor:t.primary,backgroundColor:t.selectedSurface},
  primary:{backgroundColor:t.primary,borderColor:t.primary},
  primaryText:{fontWeight:"700",color:t.primaryText},
- input:{borderWidth:1,borderColor:t.border,borderRadius:7,
+ input:{borderWidth:1,borderColor:t.border,borderRadius:10,
   minHeight:48,padding:11,color:t.text,backgroundColor:t.surface}
 });

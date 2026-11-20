@@ -545,8 +545,6 @@ export function RolesScreen({
   const handleOpenNotifications = () => {
     if (canViewNotifications && handlers?.openNotifications) {
       handlers.openNotifications();
-    } else {
-      Alert.alert("Notifications", "No unread notifications at this time.");
     }
   };
 
@@ -565,9 +563,9 @@ export function RolesScreen({
       {activeTab !== "history" && (
         <AuthenticatedScreenHeader
           variant="standard"
-          hasNotifications={canViewNotifications}
+          hasNotifications={false}
           onOpenDrawer={handleOpenDrawer}
-          onOpenNotifications={handleOpenNotifications}
+          onOpenNotifications={canViewNotifications ? handleOpenNotifications : undefined}
         />
       )}
 

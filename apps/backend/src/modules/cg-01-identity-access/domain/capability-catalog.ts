@@ -78,7 +78,27 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"finance.reconciliation.review",businessLabel:"Independently verify protected bank reconciliations",group:"Finance & accounting",assignable:false,sensitive:true},
   {key:"cms.content.view",businessLabel:"View website content and publication status",group:"Website & content",assignable:true,sensitive:false},
   {key:"cms.content.manage",businessLabel:"Write website pages and draft public content",group:"Website & content",assignable:true,sensitive:true},
-  {key:"cms.content.publish",businessLabel:"Publish or withdraw approved website content",group:"Website & content",assignable:true,sensitive:true}
+  {key:"cms.content.publish",businessLabel:"Publish or withdraw approved website content",group:"Website & content",assignable:true,sensitive:true},
+  // CG-14 US-001: permission alone never grants Center A/B access; affiliation is mandatory.
+  {key:"health.patients.admin.view",businessLabel:"View protected Foundation patient and booking operations",group:"Healthcare patients",assignable:false,sensitive:true},
+  {key:"health.visits.manage",businessLabel:"Check in and manage my center's consultation queue",group:"Healthcare visits",assignable:true,sensitive:true},
+  {key:"health.visits.clinical.manage",businessLabel:"Advance consulting and completed visit states at an assigned center",group:"Healthcare visits",assignable:true,sensitive:true},
+  {key:"health.appointments.cancel",businessLabel:"Cancel confirmed appointments at my assigned healthcare center",group:"Healthcare appointments",assignable:true,sensitive:true},
+  {key:"health.appointments.override",businessLabel:"Authorize exceptional cancellation before consultation begins",group:"Healthcare appointments",assignable:false,sensitive:true},
+  {key:"health.patients.intake",businessLabel:"Register provisional patients at my assigned healthcare center",group:"Healthcare patient intake",assignable:true,sensitive:true},
+  {key:"health.schedules.view",businessLabel:"View verified doctor-center schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
+  {key:"health.schedules.manage",businessLabel:"Manage approved doctor-center weekly schedules",group:"Healthcare scheduling",assignable:true,sensitive:true},
+  {key:"health.providers.view",businessLabel:"View healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.providers.manage",businessLabel:"Register and manage healthcare provider drafts",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.doctors.view",businessLabel:"View protected doctor registration drafts",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.doctors.manage",businessLabel:"Create and correct pending doctor registrations and propose associations",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.doctors.verify",businessLabel:"Independently review and apply professional verification decisions",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.centers.draft.edit",businessLabel:"Edit my assigned pending healthcare center",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.providers.finance.view",businessLabel:"View protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.providers.finance.manage",businessLabel:"Manage protected provider settlement references",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.providers.verify",businessLabel:"Review submitted healthcare provider and center registrations",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.centers.activate",businessLabel:"Enable or suspend verified healthcare center access",group:"Healthcare network",assignable:true,sensitive:true},
+  {key:"health.centers.publish",businessLabel:"Publish or withdraw verified healthcare center listing",group:"Healthcare network",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

@@ -96,7 +96,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
   }finally{setSaving(false);}
  }
  return <section className="cg-fin-manual" aria-label="Foundation expense claims">
-  <div className="cg-fin-toolbar"><div><h2>Expense Claims</h2>
+  <div className="cg-fin-toolbar"><div><h1>Expense Claims</h1>
    <p>Your actual Foundation reimbursements. Saving a draft does not create an approved expense, payable or payment.</p>
    </div><button type="button" disabled={loading} onClick={()=>void refresh()}>Refresh</button></div>
   {feedback&&<p role="status" className="cg-fin-notice">{feedback}</p>}
@@ -128,7 +128,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView}:{
   </div>}
   {canView&&<div className="cg-fin-table-wrap">
    <h3>My expense claims</h3>
-   {loading&&<p role="status">Loading current claim records…</p>}
+   {loading&&<p className="cg-module-loading" role="status">Loading current claim records…</p>}
    {!loading&&<table className="cg-fin-table"><thead><tr>
     <th>Claim No.</th><th>Expense date</th><th>Category</th><th>Purpose</th>
     <th>Amount</th><th>Status</th>{canCreate&&<th>Action</th>}</tr></thead><tbody>

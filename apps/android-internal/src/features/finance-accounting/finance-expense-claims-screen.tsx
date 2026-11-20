@@ -109,7 +109,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   ["category","Category","e.g. Travel"],["expenseDate","Expense date","YYYY-MM-DD"],
   ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"]
  ];
- return <SafeAreaView style={s.safe} edges={["top","bottom"]}>
+ return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" onPress={onExit} style={s.back}>
     <Text style={s.backText}>‹ Back</Text></Pressable>
@@ -175,24 +175,26 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
- safe:{flex:1,backgroundColor:theme.background},
+ safe:{flex:1,backgroundColor:theme.adminCanvas},
  header:{backgroundColor:theme.surface,padding:16,flexDirection:"row",alignItems:"center",gap:14,
   borderBottomWidth:1,borderBottomColor:theme.border},
  back:{minHeight:48,justifyContent:"center"},
  backText:{fontSize:15,fontWeight:"700",color:theme.primary},
  eyebrow:{fontSize:10,letterSpacing:1,color:theme.mutedText},
  title:{fontSize:20,fontWeight:"700",color:theme.text},
- content:{padding:16,gap:16},
+ content:{padding:16,gap:16,paddingBottom:96},
  muted:{fontSize:13,color:theme.mutedText,lineHeight:19},
  heading:{fontSize:16,fontWeight:"700",color:theme.text},
  card:{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,
-  borderRadius:12,padding:16,gap:14},
+  borderRadius:14,padding:16,gap:14,
+    shadowColor:theme.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
  label:{fontSize:13,fontWeight:"600",color:theme.text,marginBottom:6},
- input:{minHeight:48,borderWidth:1,borderColor:theme.border,borderRadius:8,
-  backgroundColor:theme.background,color:theme.text,padding:12,fontSize:15},
+ input:{minHeight:48,borderWidth:1,borderColor:theme.border,borderRadius:10,
+  backgroundColor:theme.surface,color:theme.text,padding:12,fontSize:15},
  area:{minHeight:92,textAlignVertical:"top"},
  alert:{fontSize:13,color:"#B42318"},
- action:{backgroundColor:theme.primary,minHeight:48,borderRadius:9,
+ action:{backgroundColor:theme.primary,minHeight:48,borderRadius:12,
   justifyContent:"center",alignItems:"center"},
  actionText:{color:theme.primaryText,fontSize:14,fontWeight:"700"},
  disabled:{opacity:0.55},

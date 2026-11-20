@@ -168,16 +168,18 @@ export function AuthenticatedScreenHeader({
           </View>
         </View>
 
-        {/* Right: Notifications Button */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="View notices and notifications"
-          onPress={onOpenNotifications}
-          style={styles.standardIconButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <IconBell size={20} color="#FFFFFF" hasBadge={hasNotifications} />
-        </Pressable>
+        {/* Hide notification actions unless this screen received an authorized handler. */}
+        {onOpenNotifications && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View notices and notifications"
+            onPress={onOpenNotifications}
+            style={styles.standardIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconBell size={20} color="#FFFFFF" hasBadge={hasNotifications} />
+          </Pressable>
+        )}
       </View>
     </View>
   );

@@ -261,7 +261,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         {key==="profile"?"Foundation Profile":key==="geography"?"Geography":"Departments & Committees"}
       </button>)}
     </div>
-    {loading&&<p role="status">Checking current Foundation records…</p>}
+    {loading&&<p role="status" className="cg-module-loading">Checking current Foundation records…</p>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     {error&&<p className="error" role="alert">{error}</p>}
     {audit&&<section className="role-pane" style={{padding:"1rem"}} aria-label="Foundation change history">
@@ -325,7 +325,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         <td>{areas.find(a=>a.areaRef===x.parentRef)?.name??"Foundation"}</td><td>{x.status}</td>
         <td>{can("foundation.geography.manage")&&<button type="button" onClick={()=>editArea(x)}>Edit</button>} <button type="button" onClick={()=>void showHistory("AREA",x.areaRef,x.name)}>History</button></td>
       </tr>)}</tbody></table>
-      {visibleAreas.length===0&&<p style={{padding:"1rem"}}>No recorded areas match the loaded filter.</p>}
+      {visibleAreas.length===0&&<p className="cg-module-empty" role="status">No recorded areas match the loaded filter.</p>}
       <div className="toolbar" style={{padding:"1rem"}}>
         {areaNextOffset!==null&&<button type="button" disabled={busy}
           onClick={()=>void loadMoreAreas()}>Load more verified areas</button>}
@@ -393,7 +393,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
           <button type="button" onClick={()=>void showHistory("DEPARTMENT",x.departmentRef,x.name)}>History</button>
         </td>
       </tr>)}</tbody></table>
-      {visibleDepartments.length===0&&<p style={{padding:"1rem"}}>No recorded departments match the loaded filter.</p>}
+      {visibleDepartments.length===0&&<p className="cg-module-empty" role="status">No recorded departments match the loaded filter.</p>}
       <div className="toolbar" style={{padding:"1rem"}}>
         {departmentNextOffset!==null&&<button type="button" disabled={busy}
           onClick={()=>void loadMoreDepartments()}>Load more verified departments</button>}

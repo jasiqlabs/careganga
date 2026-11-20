@@ -6,6 +6,32 @@ type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PATCH";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
+  // Protected Center Portal uses the original CG-19 case authority.
+  // Backend rechecks the exact active CG-14 center account on every request.
+  if(parts.length===3&&parts[0]==="cases"&&UUID.test(parts[1])&&
+    parts[2]==="attachments"&&method==="GET")return "STAFF";
+  if(parts.length===5&&parts[0]==="cases"&&UUID.test(parts[1])&&
+    parts[2]==="attachments"&&parts[3]==="files"&&UUID.test(parts[4])&&
+    method==="GET")return "STAFF";
+  if(parts.length>=5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&UUID.test(parts[3])&&parts[4]==="attachments"){
+    if(parts.length===5&&["GET","POST"].includes(method))return "STAFF";
+    if(parts.length===7&&parts[5]==="intents"&&UUID.test(parts[6])&&
+       method==="GET")return "STAFF";
+    if(parts.length===8&&parts[5]==="intents"&&UUID.test(parts[6])&&
+       parts[7]==="confirm"&&method==="POST")return "STAFF";
+    if(parts.length===7&&parts[5]==="files"&&UUID.test(parts[6])&&
+       method==="GET")return "STAFF";
+    if(parts.length===8&&parts[5]==="files"&&UUID.test(parts[6])&&
+       parts[7]==="revoke"&&method==="POST")return "STAFF";
+  }
+  if(parts.length===3&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&["GET","POST"].includes(method))return "STAFF";
+  if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&UUID.test(parts[3])&&method==="GET")return "STAFF";
+  if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+    parts[2]==="cases"&&UUID.test(parts[3])&&parts[4]==="reply"&&
+    method==="POST")return "STAFF";
   if(parts.join("/")==="public/contact"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="receipt/status"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="public/faqs"&&method==="GET")return "PUBLIC";
@@ -105,6 +131,24 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
         status===429?"Too many requests. Try again later.":
         status===400?"Check the entered information.":
         "Outcome unconfirmed. Check the original status before retrying.");
+    }
+    if(access==="STAFF"&&(
+      parts.length===7&&parts[0]==="centers"&&parts[4]==="attachments"&&
+       parts[5]==="files"||
+      parts.length===5&&parts[0]==="cases"&&parts[2]==="attachments"&&
+       parts[3]==="files")){
+      const mime=result.headers.get("content-type");
+      const len=Number(result.headers.get("content-length")??0);
+      if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime??"")||
+        !Number.isFinite(len)||len>10*1024*1024)
+        return fail(503,"The original private attachment could not be verified.");
+      const bytes=await result.arrayBuffer();
+      if(bytes.byteLength<1||bytes.byteLength>10*1024*1024)
+        return fail(503,"The original private attachment could not be verified.");
+      return new NextResponse(bytes,{headers:{"Content-Type":mime!,
+       "Content-Disposition":'attachment; filename="private-support-attachment"',
+       "Cache-Control":"no-store, max-age=0, must-revalidate",
+       "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
     }
     const data:unknown=await result.json();
     return NextResponse.json(data,{headers:{"Cache-Control":"no-store",

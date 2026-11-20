@@ -227,10 +227,10 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
    {!!error&&<p role="alert" className="notice">{error}</p>}
    {unknown&&<div role="alert" className="notice">The original write is uncertain.
      <button type="button" disabled={busy} onClick={()=>void retryOriginal()}>Check original change</button></div>}
-   {loading?<p role="status">Checking current approved branches...</p>:
+   {loading?<p className="cg-module-loading" role="status">Checking current approved branches...</p>:
      <div className="branch-columns">
        <section className="role-pane"><h3>All permitted branches</h3>
-         {rows.length===0?<p>No operating branches match the selected filters.</p>:
+         {rows.length===0?<p className="cg-module-empty" role="status">No operating branches match the selected filters.</p>:
            <div className="branch-directory-scroll"><table className="role-table branch-directory-table">
              <thead><tr><th>Branch code</th><th>Branch name</th>
                <th>Location</th><th>Branch type</th><th>Incharge / Manager</th>
@@ -331,7 +331,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                    Mark {label(nextStatus)}</button>)}
              </div></div>}
            <h3>Branch departments and committees</h3>
-           {departments.length===0?<p>No branch-scoped departments.</p>:
+           {departments.length===0?<p className="cg-module-empty" role="status">No branch-scoped departments.</p>:
              <ul className="branch-draft-list">{departments.map(d=><li key={d.departmentRef}>
                {canManage&&selected.status==="ACTIVE"?<button type="button" onClick={()=>{resetDepartment(d);
                  void loadParticipants(selected.branchRef,d.departmentRef);}} disabled={busy}>
@@ -443,7 +443,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
                  {departmentRef:foundationLink})}>Link selected department</button>
            </div>}
            <h3>Immutable operating revision history</h3>
-           {history.length===0?<p>No changes have been recorded.</p>:
+           {history.length===0?<p className="cg-module-empty" role="status">No changes have been recorded.</p>:
              <ol>{history.map(h=><li key={h.version}>
                Revision {h.version} · {new Date(h.changedAt).toLocaleString()}</li>)}</ol>}
          </>}
@@ -455,13 +455,13 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
          ] as const).map(([status,count])=><div className="branch-summary-row" key={status}>
            <span>{status}</span><strong>{count}</strong>
            <progress aria-label={status+" branches"} max={totals.total} value={count}/>
-         </div>):<p>No approved branch status records yet.</p>}
+         </div>):<p className="cg-module-empty" role="status">No approved branch status records yet.</p>}
          <h3>Branches by type</h3>
          {branchTypes.length?branchTypes.map(type=><div className="branch-summary-row" key={type.name}>
            <span>{type.name}</span><strong>{type.total}</strong>
            <progress aria-label={type.name+" branches"}
              max={Math.max(1,totals?.total??1)} value={type.total}/>
-         </div>):<p>No approved branch types yet.</p>}
+         </div>):<p className="cg-module-empty" role="status">No approved branch types yet.</p>}
          <p className="notice">These summaries use the current permitted records.
            Staff totals and unsupported future-module statistics are not shown.</p>
        </aside>

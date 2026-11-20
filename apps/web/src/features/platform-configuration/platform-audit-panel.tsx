@@ -204,10 +204,10 @@ export function PlatformAuditPanel(){
       <thead><tr><th>Date &amp; time</th><th>Source</th><th>Action</th>
         <th>Actor</th><th>Target</th><th>Outcome</th><th>Details</th></tr></thead>
       <tbody>
-        {loading?<tr><td colSpan={7}>Verifying authorized audit events…</td></tr>:
-        page&&!page.events.length?<tr><td colSpan={7}>
+        {loading?<tr><td colSpan={7}><span className="cg-module-loading" role="status">Verifying authorized audit events…</span></td></tr>:
+        page&&!page.events.length?<tr><td colSpan={7}><span className="cg-module-empty" role="status">
           {page.coverage==="COMPLETE"?"No audit events found for this period.":
-            "Partial source results. Refresh to verify missing history."}</td></tr>:
+            "Partial source results. Refresh to verify missing history."}</span></td></tr>:
         page?.events.map(e=><tr key={e.eventRef}>
           <td>{new Date(e.occurredAt).toLocaleString()}</td>
           <td>{e.source}</td><td>{e.actionLabel}</td>
@@ -232,7 +232,7 @@ export function PlatformAuditPanel(){
           <p>Source-owned, protected event</p></div>
           <button type="button" onClick={()=>{++detailGeneration.current;
             setSelected(null);setDetail(null);}}>Close</button></header>
-        {detailLoading?<p role="status">Verifying event…</p>:detail?
+        {detailLoading?<p className="cg-module-loading" role="status">Verifying event…</p>:detail?
           <dl className="audit-detail">
             <dt>Recorded</dt><dd>{new Date(detail.occurredAt).toLocaleString()}</dd>
             <dt>Source</dt><dd>{detail.source}</dd>
