@@ -39,13 +39,19 @@ function basis(v:string){
  if(n<1||n>10000)throw Error("Percentage outside permitted range.");
  return n;
 }
+const localInput=(value:string)=>{
+ const d=new Date(value);
+ if(!Number.isFinite(d.getTime()))return "";
+ const two=(n:number)=>String(n).padStart(2,"0");
+ return String(d.getFullYear())+"-"+two(d.getMonth()+1)+"-"+
+  two(d.getDate())+"T"+two(d.getHours())+":"+two(d.getMinutes());
+};
 function instant(v:string){
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v))
-  throw Error("Use UTC YYYY-MM-DDTHH:mm for the starting and ending time.");
- const d=new Date(v+":00.000Z");
- if(!Number.isFinite(d.getTime())||
-  d.toISOString().slice(0,16)!==v)
-  throw Error("Enter a real UTC date and time.");
+  throw Error("Use local YYYY-MM-DDTHH:mm for start and end.");
+ const d=new Date(v);
+ if(!Number.isFinite(d.getTime())||localInput(d.toISOString())!==v)
+  throw Error("Enter a genuine local date and time.");
  return d.toISOString();
 }
 async function api<T>(token:string,parts:string,
@@ -138,7 +144,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    (v.percentBasisPoints/100).toFixed(2));
   setFixed(v.fixedMinor?String(Number(v.fixedMinor)/100):"");
   setCap(String(Number(v.capMinor)/100));
-  setFrom(v.validFrom.slice(0,16));setUntil(v.validUntil.slice(0,16));
+  setFrom(localInput(v.validFrom));setUntil(localInput(v.validUntil));
   setMessage("New revision only. Previously accepted amounts stay unchanged.");
  }
  async function preview(){
@@ -252,9 +258,9 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     {mode==="PERCENT"?input("Foundation support percentage (e.g. 50.00)",
      percent,setPercent):input("Foundation fixed support in rupees",fixed,setFixed)}
     {input("Support cap in rupees",cap,setCap)}
-    <Text style={s.note}>Dates in UTC (YYYY-MM-DDTHH:mm), end exclusive.</Text>
-    {input("Valid from UTC",from,setFrom)}
-    {input("Valid until UTC",until,setUntil)}
+    <Text style={s.note}>Dates in your local time (YYYY-MM-DDTHH:mm), end exclusive.</Text>
+    {input("Valid from (local)",from,setFrom)}
+    {input("Valid until (local)",until,setUntil)}
     <Text style={s.note}>Patient-care consent/identity are checked by CG15
      when a service is accepted. 100% requests stay pending until a genuine
      independent CG03 approval. No Lab/Pharmacy/Nursing/OT mock discount
