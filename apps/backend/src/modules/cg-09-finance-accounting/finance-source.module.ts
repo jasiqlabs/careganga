@@ -9,12 +9,13 @@ import {FinanceInvoiceSourceFacade} from "./application/finance-invoice-source.f
 import {FinanceVoucherSourceFacade} from "./application/finance-voucher-source.facade";
 import {FinanceJournalPostingService} from "./application/finance-journal-posting.service";
 import {HealthcareFoundationPostingFacade} from "./application/healthcare-foundation-posting.facade";
+import {HealthcareProviderPayoutProofFacade} from "./application/healthcare-provider-payout-proof.facade";
 /** Source-only edge breaks CG-03/CG-19 <-> CG-09 circular dependency.
  * No finance controllers, voucher mutation or external object storage here.
  */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule],
- providers:[FinanceJournalPostingService,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
- exports:[HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
+ providers:[FinanceJournalPostingService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
+ exports:[HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
 })
 export class FinanceSourceModule{}
