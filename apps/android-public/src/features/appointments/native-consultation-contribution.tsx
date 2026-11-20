@@ -129,6 +129,15 @@ export function NativeConsultationContribution({holdRef,bookingRef,
    "me/appointments/"+bookingRef+"/checkout","POST",token,
    {requestKey},"merchant");
  },[bookingRef]);
+ const paymentRecover=useCallback(async()=>{
+  if(!bookingRef||!ID.test(bookingRef))
+   throw Error("Original consultation is unavailable.");
+  const token=await SecureStore.getItemAsync(key);
+  if(!token)throw Object.assign(new Error("Sign in again."),{status:401});
+  return remote<import("../../../../../packages/native-checkout/src/native-center-merchant-checkout").MerchantOrder>(
+   "me/appointments/"+bookingRef+"/reconcile","POST",token,
+   {},"merchant");
+ },[bookingRef]);
  const btn=(title:string,press:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
    disabled={disabled} onPress={press}
@@ -166,7 +175,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
    !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
      "SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
    <NativeCenterMerchantCheckout key={bookingRef} subject="your"
-    status={paymentStatus} begin={paymentStart}
+    status={paymentStatus} begin={paymentStart} reconcile={paymentRecover}
     onExpired={onExpired} canInitiate/>}
   {bookingRef&&btn("Check original contribution status",()=>void check(),busy)}
   {uncertain&&<Text style={s.note}>Last acceptance may have succeeded.
