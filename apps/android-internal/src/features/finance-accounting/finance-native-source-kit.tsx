@@ -49,7 +49,7 @@ export const financeNativeStyles=StyleSheet.create({
   flexDirection:"row",alignItems:"center",gap:12,padding:14,
   backgroundColor:t.surface,borderBottomWidth:1,borderBottomColor:t.border},
  back:{color:t.primary,fontSize:15,fontWeight:"700"},title:{
-  color:t.text,fontSize:19,fontWeight:"700"},scroll:{padding:15,gap:14},
+  color:t.text,fontSize:21,fontWeight:"800"},scroll:{padding:15,gap:14},
  card:{padding:16,gap:12,borderRadius:14,backgroundColor:t.surface,
   borderWidth:1,borderColor:t.border,
   shadowColor:t.sidebar,shadowOpacity:0.05,shadowOffset:{width:0,height:2},
@@ -57,12 +57,12 @@ export const financeNativeStyles=StyleSheet.create({
  text:{color:t.text,fontSize:13,lineHeight:19},
  muted:{color:t.mutedText,fontSize:13,lineHeight:19},
  alert:{fontSize:13,color:t.error,lineHeight:20},field:{gap:5},label:{
-  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:46,
+  color:t.text,fontSize:13,fontWeight:"600"},input:{minHeight:48,
   borderWidth:1,borderColor:t.border,borderRadius:10,padding:10,
   backgroundColor:t.surface,color:t.text,fontSize:14},
  area:{minHeight:85,textAlignVertical:"top"},optionList:{flexDirection:"row",
   flexWrap:"wrap",gap:6},option:{borderWidth:1,borderColor:t.border,
-  backgroundColor:t.surface,padding:9,minHeight:42,borderRadius:8,
+  backgroundColor:t.surface,padding:9,minHeight:44,borderRadius:10,
   justifyContent:"center"},selected:{borderColor:t.primary,
   backgroundColor:t.background},optionText:{color:t.mutedText,fontSize:12},
  selectedText:{color:t.primary,fontWeight:"700"},action:{

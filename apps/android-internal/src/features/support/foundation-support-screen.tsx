@@ -325,7 +325,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
 }
 const s=StyleSheet.create({
   page:{flex:1,backgroundColor:theme.adminCanvas},
-  content:{padding:16,paddingBottom:55,gap:14,width:"100%",maxWidth:800,alignSelf:"center"},
+  content:{padding:16,paddingBottom:96,gap:14,width:"100%",maxWidth:800,alignSelf:"center"},
   row:{flexDirection:"row",gap:9,alignItems:"center",flexWrap:"wrap"},
   rowWrap:{flexDirection:"row",flexWrap:"wrap",gap:7},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flex:1},
