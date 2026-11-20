@@ -69,6 +69,19 @@ must(sql09,/file.scan_status='CLEAN_VERIFIED'/,"Scanner proof required at databa
 must(report,/status='RESULT_READY',revision=revision\+1/,
  "Report-confirm transaction must update order status and revision");
 must(report,/RESULT_FILE_READY/,"Report must append original result-ready order event");
+must(report,/\["PROCESSING","RESULT_READY"\]/,
+ "Recovery must support both in-progress upload and verified ready order");
+must(report,/if\(current\.status==="PROCESSING"\)\{/,
+ "Only processing order may use specimen upload readiness check");
+must(report,/intent\.status='VALIDATED'/,
+ "Ready-state recovery must require original validated CG19 intent");
+must(report,/file\.scan_status='CLEAN_VERIFIED'/,
+ "Ready-state recovery must reject unverified or revoked report");
+must(report,/consent\.revision_no=\(SELECT max\(last\.revision_no\)/,
+ "Ready-state recovery must check current CG15 patient-care consent");
+must(report,/LAB_RESULT_REPORT_NOT_VERIFIED/,
+ "Ready-state recovery must fail closed without original clean source");
+
 must(report,/this\.objects\.verifyPrivateObject/,"Actual private malware scan required");
 must(sql08,/reviewer_account_ref<>operator_account_ref/,
  "Reviewer cannot be processing operator");
