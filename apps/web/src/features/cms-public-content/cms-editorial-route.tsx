@@ -6,6 +6,7 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
+import {ApprovedConsultationBenefits} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -38,6 +39,7 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {slug==="healthcare"&&<ApprovedConsultationBenefits/>}
   {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
    <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">
     <h2>Current approved laboratory tests and prices</h2>
