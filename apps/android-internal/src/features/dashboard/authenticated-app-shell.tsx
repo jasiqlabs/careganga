@@ -90,6 +90,16 @@ export function AuthenticatedAppShell({
     );
   }, [authorizedModules, handleOpenDashboard]);
 
+  // Keep the current business section visible in bottom navigation even when
+  // its authorized entry is inside More rather than one of the pinned tabs.
+  const highlightedTabId = isMoreOpen
+    ? "more"
+    : bottomTabs.some(tab => tab.id === activeTabId)
+      ? activeTabId
+      : moreModules.some(module => module.key === activeTabId)
+        ? "more"
+        : activeTabId;
+
   // Has notifications permission
   const canViewNotifications = roleActions.includes("communications.notifications.view");
 
@@ -115,7 +125,7 @@ export function AuthenticatedAppShell({
       <View style={styles.contentContainer}>{children}</View>
 
       {/* Reusable Floating Dynamic Bottom Navigation */}
-      <DashboardBottomNav tabs={bottomTabs} activeTabId={activeTabId} />
+      <DashboardBottomNav tabs={bottomTabs} activeTabId={highlightedTabId} />
 
       {/* Reusable Navigation Drawer */}
       <NavigationDrawer
