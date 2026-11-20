@@ -275,7 +275,9 @@ export class HealthcareAssistancePolicyService{
       old.doctor_ref!==v.doctorRef||old.service_kind!==v.serviceKind||
       old.revision_no!==v.expected||old.approval_state!=="ACTIVE")
      throw new ConflictException({code:"ASSISTANCE_POLICY_REVISION_CHANGED"});
-    await c.query(
+    // Pending protected full-support revision never silently withdraws
+    // currently effective assistance before an independent CG03 approval.
+    if(active)await c.query(
      "UPDATE healthcare_policy_revision SET approval_state='SUPERSEDED',"+
      "changed_by=$3,changed_at=now() "+
      "WHERE root_realm_id=$1 AND id=$2 AND approval_state='ACTIVE'",
@@ -372,6 +374,24 @@ export class HealthcareAssistancePolicyService{
     digest:original.source_digest,requestKey:review.request_key,
     centerRef:original.center_ref,caseRef};
    const decision=await this.approval.approved(c,actor,source);
+   // Existing policy remains active until this exact protected case
+   // finalizes. Supersession + activation + CG03 final status are one TX.
+   const previous=await c.query<Revision>(
+    "SELECT * FROM healthcare_policy_revision "+
+    "WHERE root_realm_id=$1 AND policy_ref=$2 "+
+    "AND id<>$3 AND approval_state='ACTIVE' FOR UPDATE",
+    [actor.realmId,original.policy_ref,original.id]);
+   if(previous.rows.length>1)
+    throw new ConflictException({code:"ASSISTANCE_APPROVAL_AMBIGUOUS"});
+   if(previous.rows[0]){
+    if(previous.rows[0].revision_no!==original.revision_no-1)
+     throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
+    await c.query(
+     "UPDATE healthcare_policy_revision SET approval_state='SUPERSEDED',"+
+     "changed_by=$3,changed_at=now() WHERE root_realm_id=$1 "+
+     "AND id=$2 AND approval_state='ACTIVE'",
+     [actor.realmId,previous.rows[0].id,actor.accountId]);
+   }
    const approved=await c.query<Revision>(
     "UPDATE healthcare_policy_revision SET approval_state='ACTIVE',"+
     "approved_case_ref=$3,approved_decision_ref=$4,"+
@@ -394,7 +414,7 @@ export class HealthcareAssistancePolicyService{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.manage");
    const q=await c.query<Revision>(
     "SELECT * FROM healthcare_policy_revision "+
-    "WHERE root_realm_id=$1 AND policy_ref=$2 "+
+    "WHERE root_realm_id=$1 AND policy_ref=$2 AND approval_state='ACTIVE' "+
     "ORDER BY revision_no DESC LIMIT 1",[actor.realmId,policyRef]);
    const old=q.rows[0];
    if(!old||old.revision_no!==v.expectedRevision||old.approval_state!=="ACTIVE")
