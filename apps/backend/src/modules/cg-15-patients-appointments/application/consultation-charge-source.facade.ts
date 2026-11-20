@@ -100,8 +100,9 @@ export class ConsultationChargeSourceFacade{
    "SELECT id,amount_minor::text,version FROM health_center_fee "+
    "WHERE root_realm_id=$1 AND doctor_center_id=$2 "+
    "AND fee_kind='CONSULTATION' AND consultation_mode='IN_PERSON' "+
-   "AND status='APPROVED' AND ($6::boolean OR version=$3) "+
+   "AND status='APPROVED' AND ($6::boolean AND version>=$3 OR version=$3) "+
    "AND amount_minor=$4::bigint AND effective_from<=$5 "+
+   "AND (effective_to IS NULL OR effective_to>$5) "+
    "ORDER BY effective_from DESC,id DESC LIMIT 1 FOR SHARE",
    [a.realmId,association,version,minor,at,historical]);
   if(!verified.rows[0])
@@ -168,7 +169,7 @@ export class ConsultationChargeSourceFacade{
   if(!allowHistorical)await this.eligibleCurrent(
    c,a,x.center_id,x.doctor_id,x.association_id);
   const feeRef=await this.fee(c,a,x.association_id,x.fee_minor,x.fee_version,
-   x.created_at,allowHistorical);
+   x.created_at,true);
   return {sourceRef:x.id,sourceVersion:x.revision,
    termsVersion:x.terms_revision,startAt:x.start_at,endAt:x.end_at,
    patientRef:x.patient_id,
