@@ -5,6 +5,7 @@ import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../shared/healthcare-admin-shell";
 import {ProviderOnboarding} from "../../../../features/health-network/provider-onboarding";
 import {FoundationLabOfferOverview} from "../../../../features/diagnostics/foundation-lab-offer-overview";
+import {FoundationLabEquipmentOverview} from "../../../../features/diagnostics/foundation-lab-equipment-overview";
 export const dynamic="force-dynamic";
 
 export default async function HealthNetworkPage(){
@@ -65,6 +66,9 @@ export default async function HealthNetworkPage(){
          Optional center capability approvals</Link></p>}
         {actions.has("health.providers.view")&&actions.has("diagnostics.catalog.view")&&
         <FoundationLabOfferOverview/>}
+      {process.env.CAREGANGA_ERP_LAB_ENABLED==="true"&&
+       actions.has("health.providers.view")&&actions.has("lab.equipment.view")&&
+       <FoundationLabEquipmentOverview token={token}/>} 
       {actions.has("health.providers.view")&&<ProviderOnboarding
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
