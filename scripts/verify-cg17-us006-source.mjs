@@ -14,6 +14,12 @@ const cg17="apps/backend/src/modules/cg-17-healthcare-assistance-settlements/";
 const cg09="apps/backend/src/modules/cg-09-finance-accounting/";
 const files={
  monthlySql:"apps/backend/db/migrations/1707_cg17_monthly_provider_settlement.sql",
+ payoutSql:"apps/backend/db/migrations/1708_cg17_verified_provider_payout_allocation.sql",
+ payout:cg17+"application/verified-provider-payout.service.ts",
+ bank:cg09+"application/healthcare-provider-payout-proof.facade.ts",
+ cg09Module:cg09+"finance-source.module.ts",
+ webPayout:"apps/web/src/features/healthcare-assistance/verified-provider-payout-panel.tsx",
+ nativePayout:"apps/android-internal/src/features/healthcare-assistance/native-verified-provider-payout.tsx",
  accrualSql:"apps/backend/db/migrations/1706_cg17_completed_consultation_liability.sql",
  monthly:cg17+"application/monthly-provider-settlement.service.ts",
  monthlyApi:cg17+"http/monthly-provider-settlement.controller.ts",
@@ -85,5 +91,47 @@ must("staff",/NativeMonthlyProviderSettlement token=\{token\}/,
  "Internal Android actual staff route required");
 must("dashboard",/healthcare\.assistance\.settlements\.view/,
  "Native menu remains CG01 guarded");
-console.log("CG17 US006 accrued/liability/monthly claim static preflight PASS. "+
- "Real bank payout, linked CG09 disbursement/reversal, device/PG/independent QA NOT_RUN.");
+must("payoutSql",/CREATE TABLE provider_settlement_payment\(/,
+ "Original verified bank link must be CG17-owned, not a duplicate journal");
+must("payoutSql",/UNIQUE\(root_realm_id,bank_reconciliation_ref\)/,
+ "One original CG09 bank item may never pay two provider claims");
+must("payoutSql",/bank\.status='VERIFIED' AND bank\.variance_minor=0/,
+ "Independently verified CG09 statement required");
+must("payoutSql",/count_lines<>2 OR bank_count<>1 OR liability_count<>1/,
+ "Exactly one bank credit and one payable debit");
+must("payoutSql",/file\.scan_status='CLEAN_VERIFIED'/,
+ "Payout must recheck original CG14 bank proof at DB level");
+must("payoutSql",/v_paid<>NEW\.paid_minor/,
+ "Payout status must equal immutable verified allocation sum");
+must("payoutSql",/NEW\.verified_by_account=rec\.proposed_by/,
+ "Payout confirmer may not self-certify proposed provider claim");
+must("payout",/this\.cg09\.verify\(c,a,bankMatch\)/,
+ "Must use existing CG09 bank owner facade");
+must("bank",/finance_bank_reconciliation bank/,
+ "CG09 owns real original independently reviewed statement");
+must("bank",/bank\.statement_amount_minor<0/,
+ "Bank must have actually paid OUT, not received Foundation cash");
+must("bank",/finance\.reconciliation\.manage/,
+ "Reuse existing CG09 protected permission");
+must("payout",/this\.centers\.verifiedFoundationSettlementDestination/,
+ "Payment recipient must use CG14 prior protected owner");
+must("payout",/source_digest,request_key,verified_by_account/,
+ "Every verified payout needs original immutable request and actor");
+must("payout",/claim\.state==="SETTLED"/,
+ "Already settled provider claim cannot be overpaid");
+must("payout",/updatedPaid===BigInt\(claim\.approved_total_minor\)/,
+ "Partial versus fully settled status must use exact amount");
+must("webPayout",/payout-options/,
+ "Web staff must read actual original payout source");
+must("webPayout",/payeeMatched:true/,
+ "Authorized human must attest real beneficiary match");
+must("webPage",/canPay=\{actions\.has\("healthcare\.assistance\.settlements\.pay"\)/,
+ "Actual Web staff payout controls must require current sensitive action");
+must("nativePayout",/payout-options/,
+ "Native staff must read the SAME original CG09 payout source");
+must("nativePayout",/Crypto\.randomUUID\(\)/,
+ "Native unknown-outcome retry uses stable original request key");
+must("staff",/canPay=\{roleActions\.includes\("healthcare\.assistance\.settlements\.pay"\)/,
+ "Native payout action must be hidden without current CG01 grant");
+console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
+ "CG09 bank/PG races, reversal, Web/Android device and independent QA NOT_RUN.");
