@@ -57,6 +57,7 @@ export interface ModuleActionHandlers {
   openPatientQueue: () => void;
   openLabOrders: () => void;
   openLabEquipment: () => void;
+  openHealthcarePolicies: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -255,6 +256,19 @@ export function getAuthorizedModules(
   }
   // CG16 US005 is conditional LAB_ERP + current CG14 center access, but
   // independent of CG15 patient orders and clinical-readiness.
+  if (roleActions.includes("healthcare.assistance.policies.view")) {
+    list.push({
+      key: "healthAssistancePolicies",
+      title: "Foundation Contribution Policies",
+      shortLabel: "Support Policies",
+      description: "Actual approved healthcare assistance rules by center and doctor.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthcarePolicies
+    });
+  }
   if (roleActions.includes("lab.equipment.view")) {
     list.push({
       key: "healthLabEquipment",
