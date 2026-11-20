@@ -104,7 +104,7 @@ Public Android `apps/android-public/app/index.tsx` and the native CG-18 CMS, CG-
 
 - \`09b7597598e91046722f2f28eb30c1443066933e\`: **CG-18 CMS** title semantics and the real **New page** primary action replace incorrect **Refresh** emphasis; **CG-14 providers/doctors** use responsive header action group; **CG-15 queue** gets a real page heading and accessible loading notice, **CG-15 patient details** uses the shared admin card rather than a one-off inline border. Existing handlers and permission conditions remain.
 - \`821fd0dbd6733d28c92318c04b4976f16d90c930\`: 15 existing **internal Android** CG-02/03/09/14/15/19/20/21 screens use consistent rounded card/elevation and input border radius from existing theme. These are source-level presentation updates, **not screenshots verified on devices**.
-- **Current pending loading-state commit:** nine existing CG-02, CG-09, CG-14, CG-15, CG-19 and CG-21 web workspaces retain truthful \`role="status"\` copy while receiving CG-01-like card/spinner presentation. A \`prefers-reduced-motion\` alternative avoids unnecessary animation. Shared \`/admin\` shell styling is scoped and does not affect the public website or Public Android. Source guard adds page-specific UI markers and keeps all QA counts unchanged.
+- **Committed loading-state pass `5eb8982750307648f441e1af4cae983472a63349`:** nine existing CG-02, CG-09, CG-14, CG-15, CG-19 and CG-21 web workspaces retain truthful \`role="status"\` copy while receiving CG-01-like card/spinner presentation. A \`prefers-reduced-motion\` alternative avoids unnecessary animation. Shared \`/admin\` shell styling is scoped and does not affect the public website or Public Android. Source guard adds page-specific UI markers and keeps all QA counts unchanged.
 
 ### Remaining per-module visual deviations (do not mark PASS)
 
@@ -119,3 +119,7 @@ Public Android `apps/android-public/app/index.tsx` and the native CG-18 CMS, CG-
 | Documents, communications, support | Shared fields, notices, web cards and native surfaces | Verify detail drawer, long notices, empty states, compact phone layout, focus and status affordances |
 
 **No complete rendered UI fidelity claimed.** Exact pixel measurements or motion comparison against the client's original snapshots, 1440/1024/768/390/320 browser runs, Android devices, fonts, keyboards, lifecycle and accessibility testing are still \`NOT_RUN\`; source parity remains \`PARTIAL\`, feature-into-\`main\` merge remains \`HOLD\`. The manual \`npm run verify:cg01-uiux-source\` test is a lexical source regression guard, not an implementation or live QA certificate.
+
+### CG-03 approval loading state reconciliation — 20 November 2026
+
+Following the parallel nine-screen loading implementation, the CG-03 protected approval workspace was reviewed separately. Its process-authority and applications-table pending states previously showed plain paragraphs/table text. The owner now uses the shared `cg-module-loading` style and `role="status"`, with `aria-busy` on the applications table body. Existing decision routes, buttons, authorization and server calls remain unchanged. The local lexical UI source guard includes CG-03; it does not validate runtime, table screen readers or client screenshot matching. **Manual browser/device visual QA NOT_RUN; main merge HOLD.**

@@ -151,6 +151,7 @@ for(const path of cg01NativeCardPaths){
 
 
 const cg01LoadingPages=[
+ "registration-approvals/proposal-workspace.tsx",
  "foundation-structure/foundation-structure-panel.tsx",
  "foundation-structure/branch-draft-panel.tsx",
  "health-network/provider-onboarding.tsx",
@@ -166,6 +167,8 @@ for(const path of cg01LoadingPages){
  check(content.includes('className="cg-module-loading"'),
   path+" lost CG-01 accessible loading presentation");
 }
+check(read("apps/web/src/features/registration-approvals/proposal-workspace.tsx").includes("<tbody aria-busy={loading}>"),
+ "CG-03 approvals table must expose its loading state");
 check(css.includes(".cg-module-loading::before")&&css.includes("prefers-reduced-motion"),
  "shared module loading indicator must be reduced-motion accessible");
 
