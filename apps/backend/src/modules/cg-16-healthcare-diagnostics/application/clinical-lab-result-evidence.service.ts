@@ -185,11 +185,57 @@ export class ClinicalLabResultEvidenceService{
  /** Recover an original staff upload after app restart or a lost HTTP reply.
   * Never list another operator's intent or create an alternate report.
   */
+ /** Recover the initiating operator's original scanner-backed upload.
+  * Confirmation moves the order to RESULT_READY, but recovery must never
+  * bypass patient care consent or imply professional patient release.
+  */
  async current(token:string,centerRaw:string,orderRaw:string){
   const center=id(centerRaw),order=id(orderRaw);
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
-   await this.check(c,actor,center,order);
+   const state=await c.query<{status:string;patient_ref:string}>(
+    "SELECT status,patient_ref FROM lab_order WHERE root_realm_id=$1 "+
+    "AND id=$2 AND center_ref=$3 FOR UPDATE",
+    [actor.realmId,order,center]);
+   const current=state.rows[0];
+   if(!current||!["PROCESSING","RESULT_READY"].includes(current.status))
+    throw new NotFoundException({code:"LAB_RESULT_ORDER_NOT_READY"});
+   if(current.status==="PROCESSING"){
+    await this.check(c,actor,center,order);
+   }else{
+    // Accept recovery only for the exact, currently clean CG19 source.
+    // The latest original CG15 patient-care consent must remain granted.
+    const genuine=await c.query(
+     "SELECT 1 FROM lab_result_revision result "+
+     "JOIN cg19_lab_result_file file ON "+
+     "file.root_realm_id=result.root_realm_id AND "+
+     "file.result_revision_ref=result.id AND "+
+     "file.order_ref=result.order_ref AND "+
+     "file.id=result.original_cg19_file_ref "+
+     "JOIN cg19_lab_result_intent intent ON "+
+     "intent.root_realm_id=file.root_realm_id AND "+
+     "intent.id=file.intent_ref AND intent.status='VALIDATED' "+
+     "AND intent.center_ref=$3 AND intent.patient_ref=$4 "+
+     "WHERE result.root_realm_id=$1 AND result.order_ref=$2 "+
+     "AND result.result_state='RESULT_READY' "+
+     "AND result.report_digest=file.sha256 "+
+     "AND file.scan_status='CLEAN_VERIFIED' AND file.revoked_at IS NULL "+
+     "AND result.version_no=(SELECT max(latest.version_no) "+
+     "FROM lab_result_revision latest WHERE "+
+     "latest.root_realm_id=result.root_realm_id "+
+     "AND latest.order_ref=result.order_ref) "+
+     "AND EXISTS(SELECT 1 FROM cg15_patient_consent consent "+
+     "WHERE consent.root_realm_id=$1 AND consent.patient_id=$4 "+
+     "AND consent.purpose='PATIENT_CARE' AND consent.granted=true "+
+     "AND consent.revision_no=(SELECT max(last.revision_no) "+
+     "FROM cg15_patient_consent last WHERE "+
+     "last.root_realm_id=consent.root_realm_id "+
+     "AND last.patient_id=consent.patient_id "+
+     "AND last.purpose='PATIENT_CARE')) LIMIT 1",
+     [actor.realmId,order,center,current.patient_ref]);
+    if(!genuine.rowCount)
+     throw new NotFoundException({code:"LAB_RESULT_REPORT_NOT_VERIFIED"});
+   }
    const found=await c.query<Intent>(
     "SELECT * FROM cg19_lab_result_intent WHERE root_realm_id=$1 "+
     "AND order_ref=$2 AND center_ref=$3 AND requested_by=$4 "+
