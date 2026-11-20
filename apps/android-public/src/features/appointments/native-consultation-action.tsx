@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from "react";
 import {BackHandler,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
+import {NativeConsultationContribution} from "./native-consultation-contribution";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
@@ -272,8 +273,11 @@ export function NativeConsultationAction(p:Props){
    <Text style={style.text}>Stored with your patient-care consent and encryption,
     not printed on the appointment slip or sent in notifications.</Text>
   </View>}
-  {booking?<Text accessibilityRole="header" style={style.heading}>
-   Confirmed booking: {booking.bookingId}. Payment due at center.</Text>:
+  {booking?<View style={{gap:10}}>
+   <Text accessibilityRole="header" style={style.heading}>
+    Confirmed booking: {booking.bookingId}. Payment due at center.</Text>
+   <NativeConsultationContribution bookingRef={booking.bookingRef}/>
+  </View>:
    uncertain?<View style={{gap:8}}>
     <Text style={style.text}>
      The original action may have succeeded. Check it before making another request.
@@ -291,8 +295,10 @@ export function NativeConsultationAction(p:Props){
     <Text style={style.text}>Center: {p.centerName}</Text>
     <Text style={style.text}>Date and time: {new Date(p.startAt).toLocaleString(
      "en-IN",{timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</Text>
-    <Text style={style.text}>Full consultation: ₹{(Number(hold.consultationFeeMinor)/100).toFixed(2)}.
-     Payment will be due at the center; this app has not charged you.</Text>
+    <Text style={style.text}>Approved consultation fee:
+     ₹{(Number(hold.consultationFeeMinor)/100).toFixed(2)}.
+     Your patient share depends on the real assistance policy.</Text>
+    <NativeConsultationContribution holdRef={hold.holdRef}/>
     <Text style={style.text}>Optional private reason:
      {reasonForVisit.trim()?" Included with this consultation":" Not provided"}</Text>
     {label("Confirm reviewed appointment — pay at center",()=>void confirm())}
