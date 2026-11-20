@@ -82,6 +82,20 @@ must(report,/consent\.revision_no=\(SELECT max\(last\.revision_no\)/,
 must(report,/LAB_RESULT_REPORT_NOT_VERIFIED/,
  "Ready-state recovery must fail closed without original clean source");
 
+must(report,/async status\(token:string,centerRaw:string,orderRaw:string,uploadRaw:string\)/,
+ "Original uploader must have an authorized recovery status route");
+must(report,/o\.status IN\('PROCESSING','RESULT_READY'\)/,
+ "Status must be restricted to the two existing clinical stages");
+must(report,/intent\.status='VALIDATED'/,
+ "Status must only accept an original verified CG19 scan intent");
+must(report,/result\.report_digest=file\.sha256/,
+ "Status must bind the exact verified result checksum");
+must(report,/row\.status==="VALIDATED"&&!verified/,
+ "Claimed validated report must fail closed when original source cannot be verified");
+must(report,/requested_by=\$5/,
+ "Original report status must remain scoped to its uploading operator");
+
+
 must(report,/this\.objects\.verifyPrivateObject/,"Actual private malware scan required");
 must(sql08,/reviewer_account_ref<>operator_account_ref/,
  "Reviewer cannot be processing operator");
