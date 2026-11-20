@@ -80,6 +80,13 @@ export class MonthlyProviderSettlementService{
    "JOIN cg17_financial_effect e ON e.root_realm_id=l.root_realm_id "+
    "AND e.liability_ref=l.id AND e.effect_kind='LIABILITY_ACCRUAL' "+
    "AND e.posting_state='POSTED' AND e.original_cg09_ref IS NOT NULL "+
+   "AND e.amount_minor=l.amount_minor AND e.source_digest=l.source_digest "+
+   "JOIN journal j ON j.id=e.original_cg09_ref "+
+   "AND j.root_realm_id=e.root_realm_id AND j.status='POSTED' "+
+   "AND j.source_owner='CG-09' AND j.posting_kind='GENERAL' "+
+   "AND j.source_ref=e.id AND j.immutable_source_event_key=e.idempotency_key "+
+   "AND j.immutable_payload_digest=e.source_digest "+
+   "AND j.posting_date=l.service_local_date "+
    "WHERE l.root_realm_id=$1 AND l.center_ref=$2 "+
    "AND l.source_kind='CG15_CONSULTATION' "+
    "AND l.service_local_date >=$3::date "+
@@ -87,7 +94,7 @@ export class MonthlyProviderSettlementService{
    (forClaim?
     "AND NOT EXISTS(SELECT 1 FROM provider_settlement_line line "+
     "WHERE line.root_realm_id=l.root_realm_id AND line.liability_ref=l.id) ":"")+
-   "ORDER BY l.id LIMIT 101 FOR SHARE OF l,e",
+   "ORDER BY l.id LIMIT 101 FOR SHARE OF l,e,j",
    [root,center,period]);
   if(rows.rows.length>100)
    throw new ConflictException({code:"CG17_SETTLEMENT_MONTH_REQUIRES_BOUNDED_REVIEW"});
@@ -244,10 +251,17 @@ export class MonthlyProviderSettlementService{
     "AND e.id=line.original_effect_ref AND e.liability_ref=l.id "+
     "AND e.effect_kind='LIABILITY_ACCRUAL' AND e.posting_state='POSTED' "+
     "AND e.original_cg09_ref IS NOT NULL "+
+    "AND e.amount_minor=l.amount_minor AND e.source_digest=l.source_digest "+
+    "JOIN journal j ON j.id=e.original_cg09_ref "+
+    "AND j.root_realm_id=e.root_realm_id AND j.status='POSTED' "+
+    "AND j.source_owner='CG-09' AND j.posting_kind='GENERAL' "+
+    "AND j.source_ref=e.id AND j.immutable_source_event_key=e.idempotency_key "+
+    "AND j.immutable_payload_digest=e.source_digest "+
+    "AND j.posting_date=l.service_local_date "+
     "WHERE line.root_realm_id=$1 AND line.settlement_ref=$2 "+
     "AND line.center_ref=$3 AND l.service_local_date >=$4::date "+
     "AND l.service_local_date <($4::date+interval '1 month') "+
-    "ORDER BY line.liability_ref LIMIT 101 FOR SHARE OF line,l,e",
+    "ORDER BY line.liability_ref LIMIT 101 FOR SHARE OF line,l,e,j",
     [a.realmId,saved.id,center,period]);
    if(current.rows.length<1||current.rows.length>100)
     throw new ConflictException({code:"CG17_SETTLEMENT_LINES_CHANGED"});
