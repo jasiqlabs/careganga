@@ -29,6 +29,7 @@ export function HealthcareAdminShell({
  const currentPage=pageLabel??names[active]??"Healthcare";
  return <div className="shell">
   <FoundationAdminNav active={active} initialActions={Array.from(actions)}
+   labERPEnabled={process.env.CAREGANGA_ERP_LAB_ENABLED==="true"}
    displayName={actor.displayName} roleName={actor.roleName}
    canViewRoles={has("roles.view")}
    canViewAccounts={has("accounts.view")||
