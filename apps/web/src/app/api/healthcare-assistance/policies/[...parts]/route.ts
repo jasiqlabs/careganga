@@ -8,6 +8,8 @@ function permitted(parts:string[],method:"GET"|"POST"){
   if(parts.length===2&&parts[1]==="eligible")return true;
   if(parts.length===2&&ID.test(parts[1]))return true;
   if(parts.length===3&&ID.test(parts[1])&&parts[2]==="doctors")return true;
+  if(parts.length===5&&ID.test(parts[1])&&parts[2]==="doctors"&&
+    ID.test(parts[3])&&parts[4]==="estimate")return true;
  }
  if(parts[0]==="reviews"){
   if(parts.length===1)return method==="GET";
