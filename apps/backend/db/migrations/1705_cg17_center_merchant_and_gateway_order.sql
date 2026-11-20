@@ -142,6 +142,31 @@ CREATE TABLE cg17_merchant_event(
  FOREIGN KEY(root_realm_id,attempt_ref)
   REFERENCES center_payment_attempt(root_realm_id,id) ON DELETE RESTRICT
 );
+-- Refund events are genuine provider reconciliations, not cash-attested
+-- corrections. Keep the existing single center_collection_adjustment owner.
+ALTER TABLE center_collection_adjustment
+ ADD COLUMN provider_refund_ref varchar(128),
+ ADD COLUMN provider_verified_at timestamptz;
+ALTER TABLE center_collection_adjustment
+ ALTER COLUMN cash_refund_receipt DROP NOT NULL,
+ ALTER COLUMN verified_by_account DROP NOT NULL;
+ALTER TABLE center_collection_adjustment
+ DROP CONSTRAINT center_collection_adjustment_kind_check;
+ALTER TABLE center_collection_adjustment ADD CONSTRAINT
+ cg17_adjustment_kind CHECK(kind IN(
+  'CASH_REFUND','CASH_CORRECTION','PROVIDER_REFUND'));
+ALTER TABLE center_collection_adjustment ADD CONSTRAINT
+ cg17_adjustment_evidence_provenance CHECK(
+  (kind IN('CASH_REFUND','CASH_CORRECTION') AND
+   cash_refund_receipt IS NOT NULL AND verified_by_account IS NOT NULL
+   AND provider_refund_ref IS NULL AND provider_verified_at IS NULL)
+  OR
+  (kind='PROVIDER_REFUND' AND cash_refund_receipt IS NULL
+   AND verified_by_account IS NULL AND provider_refund_ref IS NOT NULL
+   AND provider_verified_at IS NOT NULL));
+CREATE UNIQUE INDEX ux_cg17_provider_refund_exact
+ ON center_collection_adjustment(root_realm_id,provider_refund_ref)
+ WHERE provider_refund_ref IS NOT NULL;
 CREATE FUNCTION cg17_payment_event_frozen() RETURNS trigger LANGUAGE plpgsql AS $cg17$
 BEGIN
  RAISE EXCEPTION 'Original provider payment evidence cannot be modified or deleted';
