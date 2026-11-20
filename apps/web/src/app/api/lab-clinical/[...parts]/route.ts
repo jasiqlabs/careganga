@@ -20,6 +20,9 @@ function allowed(parts:string[],method:string){
   return method==="POST";
  if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
+   parts[5]==="current")return method==="GET";
+ if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
    parts[5]==="prepare")return method==="POST";
  if(parts.length===7&&parts[0]==="centers"&&UUID.test(parts[1])&&
    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
