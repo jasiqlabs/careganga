@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Contribution={state:string;accepted?:boolean;replayed?:boolean;
  bookingRef?:string;holdRef?:string;expiresAt?:string;
  grossMinor?:string;foundationSupportMinor?:string;patientPayableMinor?:string;
- feeVersion?:number;policyRevisionRef?:string|null;currency?:string;
+ feeVersion?:number;sourceVersion?:number;policyRevisionRef?:string|null;currency?:string;
  collectionVerified?:boolean;foundationLiabilityCreated?:boolean;
  patientCollectionVerified?:boolean;message?:string};
 type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
@@ -71,13 +71,14 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
  }
  async function accept(){
   if(!bookingRef||!ID.test(bookingRef)||!quote||!valid(quote)||
-    quote.accepted||busy||uncertain)return;
+    quote.accepted||busy||uncertain||
+    !Number.isSafeInteger(quote.sourceVersion))return;
   setBusy(true);setError("");setNotice("");
   if(!key.current)key.current=crypto.randomUUID();
   const body={requestKey:key.current,grossMinor:quote.grossMinor!,
    supportMinor:quote.foundationSupportMinor!,
    dueMinor:quote.patientPayableMinor!,
-   feeVersion:quote.feeVersion!,
+   feeVersion:quote.feeVersion!,sourceVersion:quote.sourceVersion!,
    policyRevisionRef:quote.policyRevisionRef??null};
   try{
    const response=await fetch("/api/healthcare-assistance/consultation-charges/"+
