@@ -26,6 +26,29 @@ export class FoundationStructureIdentityFacade {
     if(!current.rowCount||!current.rows.some(row=>row.is_protected||row.has_grant))
       throw new ForbiddenException("This Foundation action is not permitted");
   }
+  /** Public patient SELF actions have no grant-based Foundation admin role.
+   * Current session, account/access version and Foundation-root proof still
+   * must be checked in the same patient financial transaction.
+   */
+  async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
+    const q=await client.query(
+      "SELECT 1 FROM auth_session s "+
+      "JOIN account a ON a.id=s.account_id AND a.realm_id=$3 "+
+      "AND a.status='ACTIVE' AND a.access_version=s.account_access_version "+
+      "JOIN access_realm root ON root.id=a.realm_id AND root.realm_key='FOUNDATION_ROOT' "+
+      "LEFT JOIN auth_security_policy policy ON policy.access_realm_id=a.realm_id "+
+      "WHERE s.id=$1 AND a.id=$2 AND s.revoked_at IS NULL "+
+      "AND s.expires_at>now() AND s.password_authenticated_at IS NOT NULL "+
+      "AND s.issued_at>now()-make_interval(secs=>"+
+      "COALESCE(policy.max_session_age_seconds,28800)) "+
+      "AND s.last_seen_at>now()-make_interval(secs=>"+
+      "COALESCE(policy.idle_timeout_seconds,1800)) "+
+      "FOR SHARE OF s,a",
+      [actor.activeSessionId,actor.accountId,actor.realmId]
+    );
+    if(!q.rowCount)
+      throw new ForbiddenException("Your private patient session has changed");
+  }
   async eligibleOfficeholder(client:PoolClient,actor:VerifiedFoundationActor,accountRef:string):Promise<{accountRef:string;displayName:string}>{
     const found=await client.query<{id:string;display_name:string}>(`
       SELECT a.id,a.display_name FROM account a
