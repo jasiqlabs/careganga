@@ -4,6 +4,7 @@ import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {ClinicalLabAdmissionService} from "./clinical-lab-admission.service";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -55,7 +56,8 @@ const view=(x:Row):Equipment=>({equipmentRef:x.id,centerRef:x.center_ref,
 @Injectable()
 export class ClinicalLabEquipmentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
-  private readonly admission:ClinicalLabAdmissionService){}
+  private readonly admission:ClinicalLabAdmissionService,
+  private readonly sessions:SessionService){}
  private async tx<T>(job:(c:PoolClient)=>Promise<T>){
   const c=await this.db.connect();let opened=false;
   try{
@@ -83,6 +85,36 @@ export class ClinicalLabEquipmentService{
   // Serialize retries of exactly one source command, no global tenant lock.
   await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    [actor.realmId+":"+actor.accountId+":"+key]);
+ }
+ async eligibleCenters(token:string){
+  // No patient/CG15/order dependency. This is visible only to a staff actor
+  // granted the equipment read action, current assigned center and LAB ERP.
+  const actor=await this.sessions.requireAction(token,"lab.equipment.view");
+  return this.tx(async c=>{
+   const rows=await c.query<{centerRef:string;name:string}>(
+    "SELECT f.center_id AS \"centerRef\",center.display_name AS name "+
+    "FROM health_center_account_affiliation f "+
+    "JOIN health_center center ON center.root_realm_id=f.root_realm_id "+
+    "AND center.id=f.center_id JOIN account actor ON "+
+    "actor.realm_id=f.root_realm_id AND actor.id=f.account_ref "+
+    "WHERE f.root_realm_id=$1 AND f.account_ref=$2 AND f.status='ACTIVE' "+
+    "AND actor.status='ACTIVE' ORDER BY center.display_name,center.id LIMIT 31",
+    [actor.realmId,actor.accountId]);
+   if(rows.rows.length>30)throw new ConflictException({code:"LAB_EQUIPMENT_CENTER_LIMIT"});
+   const available:{centerRef:string;name:string}[]=[];
+   for(const row of rows.rows){
+    try{
+     await this.admission.requireEquipmentCurrent(
+      c,token,row.centerRef,"lab.equipment.view");
+     available.push(row);
+    }catch(e){
+     if(e&&typeof e==="object"&&"status" in e&&
+      (e.status===403||e.status===404))continue;
+     throw e;
+    }
+   }
+   return {centers:available};
+  });
  }
  async list(token:string,centerRaw:string){
   const center=id(centerRaw);
@@ -208,7 +240,7 @@ export class ClinicalLabEquipmentService{
      "SELECT to_char((now() AT TIME ZONE time_zone)::date,'YYYY-MM-DD') "+
      "AS today FROM health_center WHERE root_realm_id=$1 AND id=$2",
      [actor.realmId,center]);
-    if(!current.rows[0]||until!<current.rows[0].today)
+    if(!current.rows[0]||until===null||until<current.rows[0].today)
      throw new ConflictException({code:"LAB_EQUIPMENT_CALIBRATION_EXPIRED"});
    }
    const readiness=action==="MAINTENANCE"?"READY":"OUT_OF_SERVICE";
