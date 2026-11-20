@@ -370,7 +370,7 @@ export function FoundationPatientBookings(){
      Reset filters</button>
    </div>
   </section>
-  {loading&&<p role="status">Checking current protected source records…</p>}
+  {loading&&<p role="status" className="cg-module-loading">Checking current protected source records…</p>}
   {!loading&&result&&<div className="cg-health-record-layout">
    <section className="cg-health-records" aria-label="Protected consultations">
     <h2>Consultation records</h2>

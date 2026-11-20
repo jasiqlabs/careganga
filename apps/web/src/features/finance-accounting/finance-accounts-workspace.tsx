@@ -291,7 +291,7 @@ export function FinanceAccountsWorkspace({canManage,canPost,canReverse,canViewVo
   {success&&<p className="cg-fin-success" role="status">{success}</p>}
   {error&&<div className="cg-fin-notice" role="alert"><strong>Finance accounts unavailable.</strong>
    <p>{error}</p><button type="button" onClick={()=>void load()}>Try again</button></div>}
-  {loading&&!data&&<p role="status">Checking current finance records…</p>}
+  {loading&&!data&&<p role="status" className="cg-module-loading">Checking current finance records…</p>}
   {data&&<>
    <div className="cg-fin-kpis" aria-label="Finance setup overview">
     {summary.map(s=><div className="cg-fin-kpi" key={s.label}>

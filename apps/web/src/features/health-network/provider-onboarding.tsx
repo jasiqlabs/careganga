@@ -419,7 +419,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       }}>Add provider</button>}
       </div>
     </header>
-    {loading&&<p role="status">Loading current providers…</p>}
+    {loading&&<p role="status" className="cg-module-loading">Loading current providers…</p>}
     {!!error&&<p role="alert" className="notice error">{error}</p>}
     {!!notice&&<p role="status" className="notice">{notice}</p>}
     {uncertain&&<div role="alert" className="notice">

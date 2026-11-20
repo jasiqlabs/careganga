@@ -175,7 +175,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
       }}>Register doctor</button>}
       </div>
     </header>
-    {loading&&<p role="status">Loading current professional registrations…</p>}
+    {loading&&<p role="status" className="cg-module-loading">Loading current professional registrations…</p>}
     {!!error&&<p role="alert" className="notice error">{error}</p>}
     {!!notice&&<p role="status" className="notice">{notice}</p>}
     {unknown&&<div role="alert" className="notice">

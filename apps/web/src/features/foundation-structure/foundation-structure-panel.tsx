@@ -261,7 +261,7 @@ export function FoundationStructurePanel({actions}:{actions:string[]}){
         {key==="profile"?"Foundation Profile":key==="geography"?"Geography":"Departments & Committees"}
       </button>)}
     </div>
-    {loading&&<p role="status">Checking current Foundation records…</p>}
+    {loading&&<p role="status" className="cg-module-loading">Checking current Foundation records…</p>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     {error&&<p className="error" role="alert">{error}</p>}
     {audit&&<section className="role-pane" style={{padding:"1rem"}} aria-label="Foundation change history">

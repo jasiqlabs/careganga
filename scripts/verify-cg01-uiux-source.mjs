@@ -104,6 +104,71 @@ check(staff.includes("const closeModuleViews = useCallback("),
  "module switching does not clear previous business view");
 check(staff.includes("AuthenticatedAppShell"),
  "protected business screens do not reuse CG-01 header, drawer, bottom nav");
+
+const cg01OwningModuleMarkers=[
+ ["apps/web/src/features/cms-public-content/cms-admin-workspace.tsx",
+  ["<h1>Website content</h1>",'className="primary" type="button" onClick={()=>{setSelected(null);setReviewing(false);']],
+ ["apps/web/src/features/health-network/provider-onboarding.tsx",
+  ['className="toolbar cg-module-header-actions"']],
+ ["apps/web/src/features/health-network/doctor-onboarding.tsx",
+  ['className="toolbar cg-module-header-actions"']],
+ ["apps/web/src/features/appointments/center-visit-queue.tsx",
+  ["<h1>Consultation check-in & queue</h1>"]],
+ ["apps/web/src/features/appointments/foundation-patient-bookings.tsx",
+  ['className="cg15-print-scope cg-health-patient-detail"']]
+];
+for(const [path,markers] of cg01OwningModuleMarkers){
+ const code=read(path);
+ for(const marker of markers)
+  check(code.includes(marker),path+" missing source-reviewed CG-01 page treatment");
+}
+check(css.includes(".cg-cms-actions button.primary:not(:disabled)"),
+ "CG-18 CMS New page no longer styled as primary");
+check(!css.includes(".cg-cms-actions button:first-child:not(:disabled)"),
+ "CG-18 CMS still treats Refresh as primary");
+const cg01NativeCardPaths=[
+ "registration-approvals/proposal-screen.tsx",
+ "appointments/native-center-assisted-booking.tsx",
+ "appointments/native-center-visit-queue.tsx",
+ "registration-approvals/doctor-leave-native-review.tsx",
+ "registration-approvals/healthcare-native-review.tsx",
+ "finance-accounting/finance-accounts-screen.tsx",
+ "finance-accounting/finance-expense-claims-screen.tsx",
+ "finance-accounting/finance-voucher-draft-screen.tsx",
+ "finance-accounting/finance-voucher-native-reviewer.tsx",
+ "finance-accounting/finance-claim-native-reviewer.tsx",
+ "foundation-structure/branch-registration-screen.tsx",
+ "documents/private-case-evidence-screen.tsx",
+ "communications/notifications-screen.tsx",
+ "communications/foundation-notice-admin-screen.tsx",
+ "support/foundation-support-screen.tsx"
+];
+for(const path of cg01NativeCardPaths){
+ const code=read("apps/android-internal/src/features/"+path);
+ check(code.includes("shadowOpacity:0.045")&&code.includes("borderRadius:14"),
+  path+" missing CG-01 card elevation/corners");
+}
+
+
+const cg01LoadingPages=[
+ "foundation-structure/foundation-structure-panel.tsx",
+ "foundation-structure/branch-draft-panel.tsx",
+ "health-network/provider-onboarding.tsx",
+ "health-network/doctor-onboarding.tsx",
+ "documents/private-case-evidence-panel.tsx",
+ "finance-accounting/finance-accounts-workspace.tsx",
+ "appointments/doctor-schedule-workspace.tsx",
+ "appointments/foundation-patient-bookings.tsx",
+ "communications/communications-workspace.tsx"
+];
+for(const path of cg01LoadingPages){
+ const content=read("apps/web/src/features/"+path);
+ check(content.includes('className="cg-module-loading"'),
+  path+" lost CG-01 accessible loading presentation");
+}
+check(css.includes(".cg-module-loading::before")&&css.includes("prefers-reduced-motion"),
+ "shared module loading indicator must be reduced-motion accessible");
+
 console.log("CG-01 UI SOURCE CHECK only: "+web.length+" Web routes ("+
  protectedCount+" protected; "+navCount+" nav + "+healthcareCount+
  " healthcare shell), "+native.length+" native screen inset checks, "+keys.length+

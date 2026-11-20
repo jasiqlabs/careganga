@@ -98,3 +98,24 @@ Public Android `apps/android-public/app/index.tsx` and the native CG-18 CMS, CG-
 **Developer source guard:** after `npm ci`, run `npm run verify:cg01-uiux-source`, then `npm run verify:core-source`, `npm run verify:cg14-source`, `npm run verify:cg15-final-source-gaps`, `npm run build -w apps/backend`, `npm run build -w apps/web`, `npx tsc --noEmit -p apps/android-internal/tsconfig.json` (or exact workspace-compatible equivalent), plus actual Expo runs. **These commands are prescribed, NOT executed by this source reviewer.**
 
 **Gate:** `SOURCE_UI_ALIGNMENT_PARTIAL` / `LIVE_VISUAL_QA_NOT_RUN` / `MAIN_MERGE_HOLD`. No CI/GitHub Actions; no new user stories or QA case statuses were invented.
+## Continued owning-module implementation checkpoint — 20 November 2026
+
+**Baseline is CG-01 in the latest \`main\`, not the reverse.** New functionality was not requested; the work adapts existing other-module presentation only. The following changes are present on the healthcare feature branch:
+
+- \`09b7597598e91046722f2f28eb30c1443066933e\`: **CG-18 CMS** title semantics and the real **New page** primary action replace incorrect **Refresh** emphasis; **CG-14 providers/doctors** use responsive header action group; **CG-15 queue** gets a real page heading and accessible loading notice, **CG-15 patient details** uses the shared admin card rather than a one-off inline border. Existing handlers and permission conditions remain.
+- \`821fd0dbd6733d28c92318c04b4976f16d90c930\`: 15 existing **internal Android** CG-02/03/09/14/15/19/20/21 screens use consistent rounded card/elevation and input border radius from existing theme. These are source-level presentation updates, **not screenshots verified on devices**.
+- **Current pending loading-state commit:** nine existing CG-02, CG-09, CG-14, CG-15, CG-19 and CG-21 web workspaces retain truthful \`role="status"\` copy while receiving CG-01-like card/spinner presentation. A \`prefers-reduced-motion\` alternative avoids unnecessary animation. Shared \`/admin\` shell styling is scoped and does not affect the public website or Public Android. Source guard adds page-specific UI markers and keeps all QA counts unchanged.
+
+### Remaining per-module visual deviations (do not mark PASS)
+
+| Owning module | Screen-level status after source change | Still needed for CG-01 parity |
+|---|---|---|
+| CG-02 Foundation/branches | Shared responsive shell, headings, cards and loading treatment | Verify seven-stage branch form, tab hierarchy, desktop right panels, accessible narrow screen |
+| CG-03 approvals | CG-01 shell and native rounded cards | Compare original approval list, detail drawer, action hierarchy and independent-review confirmation |
+| CG-09 finance | Shared admin panels/table headings, native finance primitives and 15-screen native card pass | Original finance dashboard/list/form detail consistency, double-column fields, keyboard/IME, no horizontal clipping |
+| CG-14 healthcare | Providers and doctors header toolbars, common card and loading styles | Separate healthcare screenshots UI-07/09/23; evidence, approval and suspended/provisional states |
+| CG-15 appointments/patients | H07/H15 client-specific layout retained; queue header and record details visually polished | Original H07/H15 screenshot layout, booking step forms, restricted data and appointment timelines on real web/mobile |
+| CG-18 CMS | Correct primary New page and headline hierarchy | Draft/review/publish panel appearance against real CG-01 forms; leave published public theme unchanged |
+| Documents, communications, support | Shared fields, notices, web cards and native surfaces | Verify detail drawer, long notices, empty states, compact phone layout, focus and status affordances |
+
+**No complete rendered UI fidelity claimed.** Exact pixel measurements or motion comparison against the client's original snapshots, 1440/1024/768/390/320 browser runs, Android devices, fonts, keyboards, lifecycle and accessibility testing are still \`NOT_RUN\`; source parity remains \`PARTIAL\`, feature-into-\`main\` merge remains \`HOLD\`. The manual \`npm run verify:cg01-uiux-source\` test is a lexical source regression guard, not an implementation or live QA certificate.
