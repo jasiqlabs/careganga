@@ -42,6 +42,7 @@ export type FoundationAdminNavProps = {
     | "healthLabEquipment"
     | "healthAssistancePolicies"
     | "healthLiabilities"
+    | "healthSettlements"
     | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
@@ -113,6 +114,7 @@ function getNavIcon(key: string) {
     case "healthLabEquipment":
     case "healthAssistancePolicies":
     case "healthLiabilities":
+    case "healthSettlements":
     case "healthSchedules":
     case "healthPatientIntake":
     case "healthVisitQueue":
@@ -690,6 +692,7 @@ export function FoundationAdminNav({
   const labOrderAccess = allowed("lab.orders.view", false)||allowed("lab.orders.create", false);
   const equipmentAccess = labERPEnabled && allowed("lab.equipment.view", false);
   const liabilityAccess = allowed("healthcare.assistance.liabilities.view",false);
+  const settlementAccess = allowed("healthcare.assistance.settlements.view",false);
   const assistancePolicyAccess = allowed("healthcare.assistance.policies.view", false)||
     (allowed("healthcare.assistance.policies.review", false)&&allowed("approvals.review", false));
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
@@ -730,6 +733,7 @@ export function FoundationAdminNav({
     ...(equipmentAccess ? [{ key: "healthLabEquipment" as const, label: "Lab Equipment & Quality", href: "/admin/health-network/equipment" }] : []),
     ...(assistancePolicyAccess ? [{ key: "healthAssistancePolicies" as const, label: "Foundation Contribution Policies", href: "/admin/health-network/assistance-policies" }] : []),
     ...(liabilityAccess ? [{ key: "healthLiabilities" as const, label: "Foundation Healthcare Obligations", href: "/admin/health-network/liabilities" }] : []),
+    ...(settlementAccess ? [{ key: "healthSettlements" as const, label: "Healthcare Provider Settlements", href: "/admin/health-network/settlements" }] : []),
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
@@ -779,6 +783,7 @@ export function FoundationAdminNav({
     healthLabEquipment: "Lab Equipment & Quality",
     healthAssistancePolicies: "Foundation Contribution Policies",
     healthLiabilities: "Foundation Healthcare Obligations",
+    healthSettlements: "Healthcare Provider Settlements",
     healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
@@ -938,7 +943,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
             { name: "HEALTHCARE", keys: [
-              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSchedules", "healthPatientIntake",
+              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSettlements", "healthSchedules", "healthPatientIntake",
               "healthVisitQueue", "healthPatientAdmin"
             ] },
             {
