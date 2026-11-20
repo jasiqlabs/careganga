@@ -41,7 +41,8 @@ export default async function LabOrdersPage(){
     canView={actions.has("lab.orders.view")}
     canManageSamples={actions.has("lab.orders.view")&&actions.has("lab.samples.manage")}
     canRecordResults={actions.has("lab.orders.view")&&actions.has("lab.results.record")}
-    canReview={actions.has("lab.orders.view")&&actions.has("lab.report.review")}/>
+    canReview={actions.has("lab.orders.view")&&actions.has("lab.report.review")}
+    canRelease={actions.has("lab.orders.view")&&actions.has("lab.report.release")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
