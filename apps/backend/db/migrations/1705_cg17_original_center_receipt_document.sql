@@ -8,6 +8,7 @@ CREATE TABLE cg19_center_patient_receipt_document(
  collection_ref uuid NOT NULL,
  charge_ref uuid NOT NULL,
  center_ref uuid NOT NULL,
+ center_display_name varchar(160) NOT NULL CHECK(length(btrim(center_display_name)) BETWEEN 1 AND 160),
  source_digest char(64) NOT NULL CHECK(source_digest ~ '^[a-f0-9]{64}$'),
  issued_by_account uuid NOT NULL,
  issue_key uuid NOT NULL,
