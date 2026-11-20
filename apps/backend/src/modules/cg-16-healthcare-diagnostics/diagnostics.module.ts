@@ -14,11 +14,16 @@ import {ClinicalLabCustodyService} from "./application/clinical-lab-custody.serv
 import {ClinicalLabResultEvidenceService} from "./application/clinical-lab-result-evidence.service";
 import {ClinicalLabProfessionalReviewService} from "./application/clinical-lab-professional-review.service";
 import {LabResultStorageModule} from "../cg-19-documents-notifications/lab-result-storage.module";
+import {ClinicalLabEquipmentService} from "./application/clinical-lab-equipment.service";
+import {ClinicalLabQualityEvidenceService} from "./application/clinical-lab-quality-evidence.service";
+import {ClinicalLabEquipmentController} from "./http/clinical-lab-equipment.controller";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,LabResultStorageModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService],
- controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,ClinicalLabOrderController],
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService,
+  ClinicalLabEquipmentService,ClinicalLabQualityEvidenceService],
+ controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,
+  ClinicalLabOrderController,ClinicalLabEquipmentController],
  exports:[DiagnosticsCatalogService]
 })
 export class DiagnosticsModule{}
