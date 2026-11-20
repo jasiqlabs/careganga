@@ -146,6 +146,12 @@ export class DiagnosticsCatalogService{
   await tx.query("UPDATE lab_catalog_command SET result_ref=$4 "+
    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
    [actor.realmId,actor.accountId,key,ref]);
+  await tx.query(
+   "INSERT INTO lab_catalog_event(root_realm_id,actor_ref,request_key,"+
+   "action,resource_ref,payload_digest) SELECT root_realm_id,actor_ref,request_key,"+
+   "action,$4,payload_digest FROM lab_catalog_command "+
+   "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
+   [actor.realmId,actor.accountId,key,ref]);
  }
  async categories(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.view");

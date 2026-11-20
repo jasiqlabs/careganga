@@ -202,3 +202,29 @@ END
 $cg16$;
 CREATE TRIGGER cg16_price_immutable BEFORE UPDATE OR DELETE
  ON lab_center_price_version FOR EACH ROW EXECUTE FUNCTION cg16_approved_price_immutable();
+
+
+-- Record one source-backed immutable action per successful command. The event
+-- inserts in the same DB transaction as the owned catalogue/pricing change.
+CREATE TABLE lab_catalog_event (
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ event_id uuid NOT NULL DEFAULT gen_random_uuid(),
+ actor_ref uuid NOT NULL,
+ request_key uuid NOT NULL,
+ action text NOT NULL CHECK(length(action) BETWEEN 3 AND 60),
+ resource_ref uuid NOT NULL,
+ payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
+ recorded_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,event_id),
+ UNIQUE(root_realm_id,actor_ref,request_key),
+ FOREIGN KEY(root_realm_id,actor_ref,request_key)
+  REFERENCES lab_catalog_command(root_realm_id,actor_ref,request_key)
+  ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id)
+  ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg16_event_actor ON lab_catalog_event(
+ root_realm_id,actor_ref,recorded_at DESC,event_id
+);
+CREATE TRIGGER cg16_audit_event_frozen BEFORE UPDATE OR DELETE
+ ON lab_catalog_event FOR EACH ROW EXECUTE FUNCTION cg16_catalog_immutable_snapshot();
