@@ -25,6 +25,7 @@ export function HealthcareAdminShell({
   healthLabEquipment:"Lab Equipment & Quality",
   healthAssistancePolicies:"Foundation Contribution Policies",
   healthLiabilities:"Foundation Healthcare Obligations",
+  healthSettlements:"Healthcare Provider Settlements",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
   healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
  };
