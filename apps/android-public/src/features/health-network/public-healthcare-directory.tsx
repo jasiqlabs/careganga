@@ -6,7 +6,7 @@ import {
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {DoctorSchedulePreview} from "./doctor-schedule-preview";
-import {PublicLabOfferDirectory} from "./public-lab-offer-directory";
+import {PublicLabOfferDirectory,hasCurrentLabOffers} from "./public-lab-offer-directory";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Mode="centers"|"doctors";
@@ -55,7 +55,8 @@ const label=(title:string,onPress:()=>void,active=false)=>(
 export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
- const [labMenu,setLabMenu]=useState(false);
+ const [labMenu,setLabMenu]=useState(false),[labCenterSlug,setLabCenterSlug]=useState("");
+ const [hasCenterLabOffer,setHasCenterLabOffer]=useState(false);
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
  const [service,setService]=useState(""),[day,setDay]=useState("");
@@ -192,7 +193,18 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   });
   return()=>listener.remove();
  },[selection,load,show,onExit,labMenu]);
- if(labMenu)return <PublicLabOfferDirectory onExit={()=>setLabMenu(false)}/>;
+ useEffect(()=>{
+  let active=true;
+  setHasCenterLabOffer(false);
+  if(selection?.kind==="center"&&state.details){
+   void hasCurrentLabOffers(selection.slug).then(v=>{
+    if(active)setHasCenterLabOffer(v);
+   });
+  }
+  return()=>{active=false;};
+ },[selection,state.details]);
+ if(labMenu)return <PublicLabOfferDirectory key={labCenterSlug||"all"}
+   initialCenterSlug={labCenterSlug} onExit={()=>setLabMenu(false)}/>;
  const centerDetails=selection?.kind==="center"?state.details as Details|null:null;
  const doctorDetails=selection?.kind==="doctor"?state.details as DoctorDetails|null:null;
  return <SafeAreaView style={styles.page}>
@@ -204,7 +216,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     <View style={styles.row}>
      {label("Centers",()=>{setSelection(null);setMode("centers");},mode==="centers")}
      {label("Doctors",()=>{setSelection(null);setMode("doctors");},mode==="doctors")}
-     {!reschedule&&label("Lab tests & prices",()=>{setLabMenu(true);})}
+     {!reschedule&&label("Lab tests & prices",()=>{
+      setLabCenterSlug("");setLabMenu(true);})}
     </View>
     <Text style={styles.label}>Search name or qualification</Text>
     <TextInput accessibilityLabel="Search current verified directory" style={styles.input}
@@ -314,6 +327,15 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     <Text accessibilityRole="header" style={styles.cardTitle}>{centerDetails.centerName}</Text>
     <Text>{centerDetails.providerName} · {nice(centerDetails.type)}</Text>
     <Text>{centerDetails.address}, {centerDetails.pinCode}</Text>
+    {hasCenterLabOffer&&selection?.kind==="center"&&<>
+     {label("View this lab's approved test prices",()=>{
+      setLabCenterSlug(selection.slug);setLabMenu(true);
+     })}
+     {centerDetails.publicPhone&&label("Enquire about tests by phone",()=>void Linking.openURL(
+      "tel:"+centerDetails.publicPhone))}
+     <Text style={styles.helper}>Partner commercial prices only. Contact does not
+      create a lab order, collect payment or confirm a booking.</Text>
+    </>}
     {!!centerDetails.publicPhone&&label("Call center",()=>void Linking.openURL(
       "tel:"+centerDetails.publicPhone))}
     {centerDetails.latitude!==null&&centerDetails.longitude!==null&&

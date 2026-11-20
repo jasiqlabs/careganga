@@ -97,6 +97,13 @@ async function facets():Promise<Category[]>{
   return data.categories as Category[];
  }catch{return [];}
 }
+export async function hasCurrentLabOffers(center:string):Promise<boolean>{
+ if(!slug.test(center))return false;
+ try{
+  const current=await read({q:"",category:"",center},"");
+  return current.items.length>0;
+ }catch{return false;}
+}
 function action(title:string,onPress:()=>void,selected=false,disabled=false){
  return <Pressable key={title} accessibilityRole="button"
   accessibilityState={{selected,disabled}} disabled={disabled}
@@ -105,10 +112,13 @@ function action(title:string,onPress:()=>void,selected=false,disabled=false){
  </Pressable>;
 }
 const EMPTY:Filters={q:"",category:"",center:""};
-export function PublicLabOfferDirectory({onExit}:{onExit:()=>void}){
+export function PublicLabOfferDirectory({onExit,initialCenterSlug=""}:{
+ onExit:()=>void;initialCenterSlug?:string
+}){
  const [search,setSearch]=useState("");
  const [categories,setCategories]=useState<Category[]>([]);
- const [filters,setFilters]=useState<Filters>(EMPTY);
+ const [filters,setFilters]=useState<Filters>(()=>({...EMPTY,
+  center:slug.test(initialCenterSlug)?initialCenterSlug:""}));
  const [result,setResult]=useState<Result>({state:"READY",items:[],next:null});
  const [loading,setLoading]=useState(true),[loadingMore,setLoadingMore]=useState(false);
  const [expanded,setExpanded]=useState("");

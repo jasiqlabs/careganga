@@ -3,6 +3,7 @@ import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import {directory,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
+import {publicLabOffers,rupees} from "../../../../features/diagnostics/public-lab-offers";
 export const dynamic="force-dynamic";
 type Params={params:Promise<{slug:string}>};
 type Center={
@@ -52,7 +53,10 @@ export default async function VerifiedCenterPage({params}:Params){
  const c=await current(slug);
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
- const doctors=await directory<PublicDoctor>("doctors",new URLSearchParams({center:slug}));
+ const [doctors,labs]=await Promise.all([
+  directory<PublicDoctor>("doctors",new URLSearchParams({center:slug})),
+  publicLabOffers(new URLSearchParams({center:slug}))
+ ]);
  return <HealthcarePublicChrome><main className="cg-public-shell">
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
@@ -114,6 +118,22 @@ export default async function VerifiedCenterPage({params}:Params){
        {d.fee?" · Current in-person consultation ₹"+(d.fee.amountMinor/100).toLocaleString("en-IN"):" · Fee not currently approved"}
      </li>)}</ul>
    </section>}
+   {labs.state==="READY"&&labs.items.length>0&&
+    <section className="cg-public-section" aria-label="Approved laboratory tests at this center">
+     <h2>Approved laboratory tests at this center</h2>
+     <p>Only current partner-approved commercial test prices are shown;
+      no online lab booking, Foundation benefit or payment is available.</p>
+     <ul>{labs.items.slice(0,5).map(item=><li key={item.offerRef}>
+      <strong>{item.name}</strong> · Current patient price {rupees(item.patientPriceMinor)}
+      {Number(item.patientPriceMinor)<Number(item.basePriceMinor)?
+       " (partner commercial saving included)":""}
+     </li>)}</ul>
+     <p><Link href={"/health-network/lab-tests?center="+encodeURIComponent(slug)}>
+      View all currently approved tests & prices at this lab</Link></p>
+     {c.publicPhone&&<p>Ask this center about a test:
+      {" "}<a href={"tel:"+c.publicPhone}>Call the currently published center contact</a>.
+      Contacting the lab does not create an order or confirm a booking.</p>}
+    </section>}
    {serviceNames.length>0&&<section className="cg-public-section">
      <h2>Services declared by the center</h2>
      <p>Service information does not confirm individual appointment availability.</p>
