@@ -6,7 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
-type CaseView={caseRef:string;subject:string;name:string;contact:string;
+type CaseView={caseRef:string;ticketNumber:string;subject:string;name:string;contact:string;
   status:"OPEN"|"REPLIED"|"CLOSED";revision:number;
   assignedAccountRef:string|null;unread:boolean;archived:boolean;
   createdAt:string;updatedAt:string};
@@ -198,7 +198,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       </View>
       {loading&&<ActivityIndicator accessibilityLabel="Loading current support records"/>}
       {tab==="CASES"&&mayView&&(selected?<View style={s.card}>
-        <Text style={s.heading}>{selected.subject}</Text>
+        <Text style={s.heading}>{selected.ticketNumber} · {selected.subject}</Text>
         <Text>{selected.name} · {selected.contact}</Text>
         <Text style={s.muted}>{selected.status} · Revision {selected.revision}</Text>
         <Text selectable style={s.message}>{selected.message}</Text>
@@ -279,7 +279,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
         {cases.length===0&&!loading&&<Text>No messages match this page.</Text>}
         {cases.map(item=><Pressable key={item.caseRef} style={s.card}
           accessibilityRole="button" disabled={busy} onPress={()=>void show(item.caseRef)}>
-          <Text style={s.heading}>{item.subject}</Text>
+          <Text style={s.heading}>{item.ticketNumber} · {item.subject}</Text>
           <Text>{item.name} · {item.contact}</Text>
           <Text style={s.muted}>{item.status} · {item.unread?"Unread":"Read"}
             {item.archived?" · Archived":""}</Text>

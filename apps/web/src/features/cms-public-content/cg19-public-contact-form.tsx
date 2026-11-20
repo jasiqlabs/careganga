@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 type Faq={faqRef:string;question:string;answer:string};
-type Receipt={receipt:string;expiresAt:string;status:string;result:string};
+type Receipt={receipt:string;ticketNumber:string;expiresAt:string;status:string;result:string};
 class SupportActionError extends Error{
  constructor(readonly category:"LIMIT"|"CONFLICT"|"INVALID"|"UNKNOWN",message:string){
   super(message);this.name="SupportActionError";
@@ -68,8 +68,8 @@ export function Cg19PublicContactForm(){
     if(busy||!proof)return;
     setBusy(true);setError("");
     try{
-      const result=await call<{status:string}>("receipt/status",{receipt:proof.trim()});
-      setProofState(result.status);
+      const result=await call<{status:string;ticketNumber:string}>("receipt/status",{receipt:proof.trim()});
+      setProofState(`${result.ticketNumber} · ${result.status.replaceAll("_"," ")}`);
     }catch(e){
       setError(e instanceof SupportActionError?e.message:
         "This receipt could not be verified. Check the original private code.");
@@ -85,6 +85,7 @@ export function Cg19PublicContactForm(){
       <div className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
         {receipt?<section aria-live="polite">
           <h2>Request received</h2>
+          <p><strong>Ticket number: {receipt.ticketNumber}</strong></p>
           <p>The Foundation recorded your request. This confirms receipt in the support system, not an email or SMS delivery.</p>
           <p>Keep this private receipt. It expires on {new Date(receipt.expiresAt).toLocaleDateString()}.</p>
           <code style={{display:"block",overflowWrap:"anywhere"}}>{receipt.receipt}</code>
@@ -119,7 +120,7 @@ export function Cg19PublicContactForm(){
             maxLength={43} autoComplete="off" spellCheck={false}/></div>
         <button type="button" className="cg-site-contact-button" disabled={busy||!proof}
           onClick={()=>void check()}>Check request status</button>
-        {proofState&&<p role="status">Current status: {proofState.replaceAll("_"," ")}</p>}
+        {proofState&&<p role="status">Current status: {proofState}</p>}
       </div>
       {faqs.length>0&&<section className="cg-site-contact-panel" style={{padding:"1.4rem"}}>
         <h2>Frequently asked questions</h2>

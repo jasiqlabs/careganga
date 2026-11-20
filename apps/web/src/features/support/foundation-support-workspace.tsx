@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {FoundationSupportAttachments} from "./foundation-support-attachments";
-type CaseItem={caseRef:string;subject:string;name:string;contact:string;
+type CaseItem={caseRef:string;ticketNumber:string;subject:string;name:string;contact:string;
   status:string;revision:number;assignedAccountRef:string|null;
   createdAt:string;updatedAt:string;unread:boolean;archived:boolean};
 type CaseDetail=CaseItem&{sourceChannel:string;message:string;replies:Array<{replyRef:string;
@@ -197,9 +197,10 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
         }}>Clear search</button>}
       </div>
       <div className="role-table-wrap"><table className="role-table">
-        <thead><tr><th>Contact</th><th>Subject</th><th>Status</th>
+        <thead><tr><th>Ticket</th><th>Contact</th><th>Subject</th><th>Status</th>
           <th>Received</th><th>Action</th></tr></thead>
         <tbody>{visible.map(x=><tr key={x.caseRef}>
+          <td><strong>{x.ticketNumber}</strong></td>
           <td><strong>{x.name}</strong><p>{x.contact}</p></td>
           <td>{x.subject}{x.unread&&!x.archived&&<strong> · Unread</strong>}
             {x.archived&&<span> · Archived</span>}</td>
@@ -226,7 +227,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       {selected&&<div className="drawer-backdrop" role="presentation">
         <section className="role-drawer" role="dialog" aria-modal="true"
           aria-label="Private Foundation support case">
-          <div className="topbar"><h2>{selected.subject}</h2>
+          <div className="topbar"><h2>{selected.ticketNumber} · {selected.subject}</h2>
             <button type="button" onClick={()=>setSelected(null)}>Close panel</button></div>
           <p><strong>{selected.name}</strong> · {selected.contact}</p>
           <p>Status: {selected.status==="CLOSED"?"RESOLVED":selected.status} · Revision {selected.revision}</p>
