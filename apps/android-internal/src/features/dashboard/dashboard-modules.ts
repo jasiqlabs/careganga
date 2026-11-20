@@ -56,6 +56,7 @@ export interface ModuleActionHandlers {
   openApprovals: () => void;
   openPatientQueue: () => void;
   openLabOrders: () => void;
+  openLabEquipment: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -250,6 +251,21 @@ export function getAuthorizedModules(
       iconBg: "#F1F5F9",
       iconColor: "#475569",
       onOpen: handlers.openMyLabPricing
+    });
+  }
+  // CG16 US005 is conditional LAB_ERP + current CG14 center access, but
+  // independent of CG15 patient orders and clinical-readiness.
+  if (roleActions.includes("lab.equipment.view")) {
+    list.push({
+      key: "healthLabEquipment",
+      title: "Lab Equipment & Quality",
+      shortLabel: "Lab Equipment",
+      description: "Current assigned instruments and verified private maintenance evidence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabEquipment
     });
   }
   if (roleActions.includes("lab.orders.view") || roleActions.includes("lab.orders.create")) {
@@ -550,6 +566,7 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "healthLabTestMaster",
   "healthMyLabPricing",
   "healthLabOrders",
+  "healthLabEquipment",
   "healthPatientBooking",
   "finance",
   "branches",
