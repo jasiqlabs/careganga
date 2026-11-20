@@ -159,9 +159,9 @@ export class ConsultationPatientChargeService{
     [actor.realmId,booking]);
    if(stored.rows[0])
     return {...exposed(stored.rows[0],source),accepted:true};
-   if(source.bookingState==="CANCELLED"||
+   if(source.bookingState==="CANCELLED"||source.bookingState==="NO_SHOW"||
      source.collectionState==="NOT_COLLECTIBLE")
-    return {accepted:false,state:"CANCELLED_NOT_COLLECTIBLE" as const};
+    return {accepted:false,state:"NOT_COLLECTIBLE" as const};
    // A newly quoted charge requires the same current CG14 verification
    // as actual CG15 consultation booking. Historical accepted rows do not.
    await this.cg15.booking(c,actor,booking,center,false);
@@ -200,7 +200,7 @@ export class ConsultationPatientChargeService{
     [actor.realmId,actor.accountId,expected.requestKey]);
    if(retry.rows[0])
     throw new ConflictException({code:"CONSULTATION_REQUEST_KEY_IN_USE"});
-   if(source.bookingState==="CANCELLED"||
+   if(source.bookingState==="CANCELLED"||source.bookingState==="NO_SHOW"||
       source.collectionState==="NOT_COLLECTIBLE")
     throw new ConflictException({code:"CONSULTATION_NOT_COLLECTIBLE"});
    await this.cg15.booking(c,actor,booking,center,false);
