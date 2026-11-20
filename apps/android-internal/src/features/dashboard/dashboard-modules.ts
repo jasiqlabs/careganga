@@ -60,6 +60,7 @@ export interface ModuleActionHandlers {
   openHealthcarePolicies: () => void;
   openCenterMerchant: () => void;
   openFoundationLiabilities: () => void;
+  openMonthlyProviderSettlements: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -299,6 +300,19 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openFoundationLiabilities
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.settlements.view")) {
+    list.push({
+      key: "healthcareProviderSettlements",
+      title: "Healthcare Provider Settlements",
+      shortLabel: "Provider Settlements",
+      description: "Real CG09 posted monthly Foundation obligations and independent claim review.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openMonthlyProviderSettlements
     });
   }
   if (roleActions.includes("lab.equipment.view")) {
