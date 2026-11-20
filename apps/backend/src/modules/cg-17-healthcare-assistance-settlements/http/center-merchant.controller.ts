@@ -11,6 +11,11 @@ import {CenterMerchantCheckoutService}
 export class CenterMerchantController{
  constructor(private readonly binding:CenterMerchantProvisioningService,
   private readonly payment:CenterMerchantCheckoutService){}
+ @Get("staff/centers/eligible")
+ @Header("Cache-Control","private, no-store")
+ eligible(@Headers("authorization")token:string){
+  return this.binding.centers(token);
+ }
  @Get("staff/centers/:centerRef/binding")
  @Header("Cache-Control","private, no-store")
  status(@Headers("authorization")token:string,@Param("centerRef")center:string){
