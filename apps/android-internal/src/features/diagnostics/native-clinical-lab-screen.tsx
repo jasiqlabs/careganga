@@ -260,7 +260,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       onExpired={onExpired}/>} 
     {selected.report?.state==="RESULT_READY"?
      <Text style={s.message}>Original PDF uploaded and scanner-verified.
-      Professional review, release and patient delivery are not implemented.</Text>:
+      An independent review is tracked separately. Signed release and patient delivery are not implemented.</Text>:
      canRecordResults&&ready?
       <NativeLabResultUpload key={center+":"+selected.order.orderRef}
        token={token} centerRef={center} orderRef={selected.order.orderRef}
