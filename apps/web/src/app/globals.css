@@ -14710,3 +14710,70 @@ button:disabled {
     border-top-color: var(--cg-accent);
   }
 }
+
+/* CG-01 parity: existing module metrics, tabs and filter group.
+ * Match Irfan's compact User Management and Role Statistics card anatomy
+ * without replacing real finance, foundation or CMS calculations and data.
+ * Separate H07/H15 reference-specific KPI layouts remain untouched.
+ */
+.shell > .workspace :is(.role-workspace .kpi, .cg-fin-workspace .cg-fin-kpi, .cg-cms-dashboard > div) {
+  min-width: 0;
+  min-height: 5.15rem;
+  border: 1px solid var(--cg-border);
+  border-radius: .75rem;
+  padding: .85rem 1rem;
+  background: var(--cg-surface);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .035);
+  transition: box-shadow .15s ease;
+}
+.shell > .workspace :is(.role-workspace .kpi, .cg-fin-workspace .cg-fin-kpi, .cg-cms-dashboard > div):hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
+}
+.shell > .workspace :is(.role-workspace .kpi, .cg-fin-workspace .cg-fin-kpi, .cg-cms-dashboard > div)
+  :is(strong, .cg-fin-money) {
+  font-variant-numeric: tabular-nums;
+}
+.shell > .workspace .role-workspace .toolbar[role="tablist"] {
+  display: flex;
+  gap: .4rem;
+  padding: .3rem;
+  border-radius: .75rem;
+  border: 1px solid var(--cg-border);
+  background: #F8FAFC;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.shell > .workspace .role-workspace .toolbar[role="tablist"] > [role="tab"] {
+  min-height: 2.65rem;
+  padding: .55rem .85rem;
+  white-space: nowrap;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: .55rem;
+  background: transparent;
+  color: var(--cg-muted);
+  font-weight: 700;
+}
+.shell > .workspace .role-workspace .toolbar[role="tablist"] > [role="tab"][aria-selected="true"] {
+  background: var(--cg-surface);
+  color: var(--cg-accent);
+  border-color: var(--cg-border);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+}
+.shell > .workspace .role-workspace .toolbar[role="tablist"] > [role="tab"]:focus-visible {
+  outline: 2px solid var(--cg-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 48rem) {
+  .shell > .workspace .role-workspace .toolbar[role="tablist"] {
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell > .workspace :is(.role-workspace .kpi, .cg-fin-workspace .cg-fin-kpi, .cg-cms-dashboard > div) {
+    transition: none;
+  }
+}

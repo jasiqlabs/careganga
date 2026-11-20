@@ -172,6 +172,14 @@ check(read("apps/web/src/features/registration-approvals/proposal-workspace.tsx"
 check(css.includes(".cg-module-loading::before")&&css.includes("prefers-reduced-motion"),
  "shared module loading indicator must be reduced-motion accessible");
 
+
+for(const selector of [
+ ".cg-fin-workspace .cg-fin-kpi",
+ ".cg-cms-dashboard > div",
+ '.role-workspace .toolbar[role="tablist"]',
+ '[role="tab"][aria-selected="true"]'
+]) check(css.includes(selector),"CG-01 module statistics/selected-tab source missing: "+selector);
+
 console.log("CG-01 UI SOURCE CHECK only: "+web.length+" Web routes ("+
  protectedCount+" protected; "+navCount+" nav + "+healthcareCount+
  " healthcare shell), "+native.length+" native screen inset checks, "+keys.length+

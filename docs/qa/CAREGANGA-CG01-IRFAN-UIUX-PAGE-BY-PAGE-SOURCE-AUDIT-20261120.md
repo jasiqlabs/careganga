@@ -123,3 +123,8 @@ Public Android `apps/android-public/app/index.tsx` and the native CG-18 CMS, CG-
 ### CG-03 approval loading state reconciliation — 20 November 2026
 
 Following the parallel nine-screen loading implementation, the CG-03 protected approval workspace was reviewed separately. Its process-authority and applications-table pending states previously showed plain paragraphs/table text. The owner now uses the shared `cg-module-loading` style and `role="status"`, with `aria-busy` on the applications table body. Existing decision routes, buttons, authorization and server calls remain unchanged. The local lexical UI source guard includes CG-03; it does not validate runtime, table screen readers or client screenshot matching. **Manual browser/device visual QA NOT_RUN; main merge HOLD.**
+### CG-01 statistics, tabs and reduced-motion source parity — continuation
+
+After the separate CG-03 owner change, this independent source parity pass compares real CG-01 Roles/Users compact statistic cards to *existing* CG-02 Foundation KPIs, CG-09 Finance summary KPIs and CG-18 CMS publication counters. Admin-only styles align surface, spacing, selection and typography; the Foundation tablist also uses a visible and accessible selected state. Independently specified H07/H15 healthcare original KPI layouts, finance metrics, CMS counts and all existing click handlers/data are unchanged. Local CG-01 source guard also checks these styles.
+
+**Actual browser/device and client screenshot QA remains NOT_RUN; main merge HOLD.**
