@@ -5,6 +5,8 @@ import {careGangaTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterCollectionWorkspace} from "./native-center-collection-workspace";
+import {NativeCenterMerchantCheckout}
+ from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
 import {NativePatientCenterCollectionSummary} from "./native-patient-center-collection-summary";
 type Split={state:string;accepted?:boolean;replayed?:boolean;chargeRef?:string;
  grossMinor?:string;foundationSupportMinor?:string;
@@ -23,9 +25,9 @@ const valid=(x:Split)=>["grossMinor","foundationSupportMinor",
  Number(x.grossMinor)===Number(x.foundationSupportMinor)+
   Number(x.patientPayableMinor);
 async function remote<T>(path:string,method:"GET"|"POST",
- token:string,body?:object):Promise<T>{
+ token:string,body?:object,area:"consultation-charges"|"merchant"="consultation-charges"):Promise<T>{
  const res=await identityRequest(
-  "/api/v1/healthcare-assistance/consultation-charges/"+path,{
+  "/api/v1/healthcare-assistance/"+area+"/"+path,{
    method,cache:"no-store",headers:{Authorization:"Bearer "+token,
     ...(body?{"Content-Type":"application/json"}:{})},
    body:body?JSON.stringify(body):undefined});
@@ -112,6 +114,20 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
    setUncertain(st>=500);report(e);
   }finally{setBusy(false)}
  }
+ const merchantStatus=useCallback(async()=>{
+  if(!staffToken||!centerRef||!ID.test(centerRef)||!bookingRef||!ID.test(bookingRef))
+   throw Object.assign(new Error("This center consultation is unavailable."),{status:403});
+  return remote<import("../../../../../packages/native-checkout/src/native-center-merchant-checkout").MerchantOrder>(
+   "staff/centers/"+centerRef+"/appointments/"+bookingRef,
+   "GET",staffToken,undefined,"merchant");
+ },[staffToken,centerRef,bookingRef]);
+ const merchantStart=useCallback(async(requestKey:string)=>{
+  if(!staffToken||!centerRef||!ID.test(centerRef)||!bookingRef||!ID.test(bookingRef))
+   throw Object.assign(new Error("This center consultation is unavailable."),{status:403});
+  return remote<import("../../../../../packages/native-checkout/src/native-center-merchant-checkout").MerchantOrder>(
+   "staff/centers/"+centerRef+"/appointments/"+bookingRef+"/checkout",
+   "POST",staffToken,{requestKey},"merchant");
+ },[staffToken,centerRef,bookingRef]);
  const btn=(title:string,press:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
    disabled={disabled} onPress={press}
@@ -154,6 +170,13 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
   {staffToken&&bookingRef&&ID.test(bookingRef)&&!centerRef&&value?.accepted&&
    <NativePatientCenterCollectionSummary token={staffToken}
     bookingRef={bookingRef} onExpired={onExpired}/>}
+  {bookingRef&&staffToken&&centerRef&&ID.test(centerRef)&&
+   value?.accepted===true&&canViewCollections&&
+   !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
+     "SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
+   <NativeCenterMerchantCheckout key={bookingRef+centerRef}
+    subject="this" status={merchantStatus} begin={merchantStart}
+    canInitiate={canRecordCollections} onExpired={onExpired}/>}
   {bookingRef&&btn("Check original contribution status",()=>void check(),busy)}
   {uncertain&&<Text style={s.note}>Last acceptance may have succeeded.
    Do not generate another request. Checking uses this original appointment.</Text>}
