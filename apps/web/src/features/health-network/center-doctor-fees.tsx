@@ -150,7 +150,7 @@ export function CenterDoctorFees({centerRef}:{centerRef:string}){
           setError("");
         }).catch(e=>setError(e instanceof Error?e.message:"Current records unavailable."));
       }}>Check current records</button>
-    </div>
+    </div>}
     <div className="form">
       <h4>Request a doctor for this center</h4>
       <p>Find a verified professional by name. Their private registration

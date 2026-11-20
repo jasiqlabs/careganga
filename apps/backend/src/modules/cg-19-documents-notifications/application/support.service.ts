@@ -17,7 +17,8 @@ const sha=(text:string)=>createHash("sha256").update(text).digest("hex");
 type CaseRow={id:string;realm_id:string;request_key:string;request_digest:string;
   caller_digest:string;receipt_digest:string;receipt_expires_at:Date;request_encrypted:Buffer;
   status:"OPEN"|"REPLIED"|"CLOSED";revision:number;assigned_account_id:string|null;
-  latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null};
+  latest_inbound_at:Date;created_at:Date;updated_at:Date;closed_at:Date|null;
+  source_channel:string;center_id?:string|null};
 type FaqRow={id:string;question:string;answer:string;state:string;revision:number;
   created_at:Date;updated_at:Date};
 function uuid(value:unknown):string{

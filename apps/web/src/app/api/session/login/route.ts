@@ -108,52 +108,21 @@ export async function POST(request: NextRequest) {
       }
 
       if (result.status === 401) {
-        const allowed401Codes = new Set([
-          "IDENTITY_LOGIN_INVALID",
-          "INVALID_CREDENTIALS",
-          "INVALID_PASSWORD",
-          "IDENTITY_INVALID_PASSWORD",
-          "ACCOUNT_NOT_FOUND",
-          "IDENTITY_ACCOUNT_NOT_FOUND",
-          "ACCOUNT_SUSPENDED",
-          "IDENTITY_ACCOUNT_SUSPENDED",
-          "SUSPENDED",
-          "ACCOUNT_DISABLED",
-          "IDENTITY_ACCOUNT_DISABLED",
-          "ACCOUNT_LOCKED",
-          "IDENTITY_ACCOUNT_LOCKED"
-        ]);
-        const rawCode = typeof obj.code === "string" ? obj.code.trim().toUpperCase() : "";
-        const code = allowed401Codes.has(rawCode) ? rawCode : "IDENTITY_LOGIN_INVALID";
-
-        const rawReason =
-          typeof obj.reason === "string"
-            ? obj.reason
-            : typeof obj.suspensionReason === "string"
-            ? obj.suspensionReason
-            : null;
-
-        const reason =
-          rawReason &&
-          rawReason.trim().length > 0 &&
-          !/error:|exception|at\s+[a-z0-9_.]+|select\s+|insert\s+|update\s+|delete\s+|nullpointer|[<>{}]|p0\d{3}/i.test(
-            rawReason
-          )
-            ? rawReason.replace(/<[^>]*>/g, "").trim().slice(0, 180)
-            : null;
-
-        const isSafeMsg =
-          typeof obj.message === "string" &&
-          obj.message.length >= 16 &&
-          obj.message.length <= 220 &&
-          !/[<>]/.test(obj.message);
+        // Identity failures share one generic server-owned, Admin-editable message.
+        // Never reveal whether the identifier exists or the account is inactive.
+        const payload = obj;
+        const isSafe =
+          payload.code==="IDENTITY_LOGIN_INVALID" &&
+          typeof payload.message === "string" &&
+          payload.message.length >= 16 &&
+          payload.message.length <= 220 &&
+          !/[<>]/.test(payload.message);
 
         return NextResponse.json(
           {
-            code,
-            ...(reason ? { reason } : {}),
-            message: isSafeMsg
-              ? obj.message
+            code: "IDENTITY_LOGIN_INVALID",
+            message: isSafe
+              ? (payload.message as string)
               : "Mobile number, email or password could not be confirmed. Check your details and try again."
           },
           { status: 401, headers: { "Cache-Control": "no-store" } }

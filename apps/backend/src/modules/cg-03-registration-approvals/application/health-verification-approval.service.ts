@@ -275,7 +275,7 @@ export class HealthVerificationApprovalService{
     const c=found.rows[0];
     if(!c)throw new NotFoundException({code:"HEALTH_REVIEW_UNAVAILABLE"});
     await this.requireKind(bearer,c.case_kind);
-    let source:null|Awaited<ReturnType<HealthReviewSourceFacade["reviewSnapshot"]>>=null;
+    let source:null|Awaited<ReturnType<HealthReviewSourceFacade["reviewSnapshot"]>>|Awaited<ReturnType<HealthDoctorReviewSourceFacade["reviewSnapshot"]>>=null;
     if(c.status==="SUBMITTED"||c.status==="IN_REVIEW")
       source=c.case_kind==="HEALTH_DOCTOR_VERIFICATION"?
         await this.doctorSource.reviewSnapshot(tx,actor,this.doctorSubmission(c)):

@@ -421,7 +421,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      {field("First name",first,setFirst)}
      {field("Last name",last,setLast)}
      <NativePatientDatePicker value={dob} onChange={setDob}
-      disabled={busy||uncertain}/>
+      disabled={busy}/>
      {!profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Patient-care consent</Text>
       <Text>{policy.available?policy.text:

@@ -40,7 +40,7 @@ export function NativeCenterConsultationSlip({token,bookingRef,bookingStatus,onE
    (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
    throw Error("Secure private consultation files are unavailable.");
   const response=await expoFetch(new URL(route,base).toString(),{
-   method,cache:"no-store",signal:AbortSignal.timeout(15000),
+   method,signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+token,
     ...(data?{"Content-Type":"application/json"}:{})},
    body:data?JSON.stringify(data):undefined});

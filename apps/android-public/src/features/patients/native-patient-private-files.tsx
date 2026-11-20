@@ -22,7 +22,7 @@ function endpoint(route:string){
 }
 async function source<T>(token:string,route:string,method:"GET"|"POST"="GET",
  input?:object):Promise<T>{
- const r=await expoFetch(endpoint(route),{method,cache:"no-store",
+ const r=await expoFetch(endpoint(route),{method,
   signal:AbortSignal.timeout(16000),
   headers:{Authorization:"Bearer "+token,
    ...(method==="POST"?{"Content-Type":"application/json"}:{})},
@@ -121,7 +121,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
     started.uploadHeaders["Content-Type"]!==selected.type)
     throw Error("The secure upload destination could not be verified.");
    const uploaded=await expoFetch(started.uploadUrl,{method:"PUT",
-    headers:started.uploadHeaders,body:selected,cache:"no-store"});
+    headers:started.uploadHeaders,body:selected});
    if(!uploaded.ok)throw Error("Upload outcome uncertain. Check the original status.");
    const confirmed=await call<Intent>("intents/"+started.uploadRef+"/confirm","POST",{});
    if(!confirmed.cleanVerified||!confirmed.fileRef){
@@ -154,7 +154,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
   try{
    const reply=await expoFetch(endpoint("files/"+encodeURIComponent(row.fileRef)+
     "/download"),{headers:{Authorization:"Bearer "+token},
-    cache:"no-store",signal:AbortSignal.timeout(16000)});
+    signal:AbortSignal.timeout(16000)});
    if(reply.status===401){onExpired();throw Error("Patient session expired.");}
    if(!reply.ok)throw Error("Your current account cannot read this private file.");
    const mime=reply.headers.get("Content-Type")?.split(";")[0]??"";

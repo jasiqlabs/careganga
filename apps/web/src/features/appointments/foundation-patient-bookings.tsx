@@ -444,7 +444,7 @@ export function FoundationPatientBookings(){
        !currentHistory||!!currentHistory.next}
        onClick={()=>void printSelectedBooking()}>
        {printBusy?"Checking protected report…":"Print selected booking report"}</button>
-      {!!printMessage&&<p role="status">{printMessage}</p> 
+      {!!printMessage&&<p role="status">{printMessage}</p>}
       <h3>Booking History</h3>
       {historyBusy&&!currentHistory&&<p role="status">Checking original booking events…</p>}
       {!!historyError&&<p role="alert">{historyError}</p>}

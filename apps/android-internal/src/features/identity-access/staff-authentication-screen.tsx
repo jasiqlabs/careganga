@@ -423,7 +423,7 @@ export function StaffAuthenticationScreen() {
         const codes = new Set(["IDENTITY_IDENTIFIER_REQUIRED", "IDENTITY_IDENTIFIER_INVALID",
           "IDENTITY_PASSWORD_REQUIRED", "IDENTITY_PASSWORD_TOO_LONG"]);
         const isSafe = (response.status === 400 && typeof data.code === "string" && codes.has(data.code)) ||
-          (response.status === 401 && data.code === "IDENTITY_LOGIN_INVALID");
+          (response.status === 401 && data.code==="IDENTITY_LOGIN_INVALID");
         const isInvalidCreds = response.status === 401;
         const field: "identifier" | "password" | "all" | null = isSafe && (data.field === "identifier" || data.field === "password")
           ? data.field

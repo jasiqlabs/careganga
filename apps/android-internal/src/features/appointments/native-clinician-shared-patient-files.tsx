@@ -47,7 +47,7 @@ export function NativeClinicianSharedPatientFiles({
  },[]);
  async function get(path:string){
   const r=await expoFetch(endpoint(path),{method:"GET",
-   cache:"no-store",signal:AbortSignal.timeout(17000),
+   signal:AbortSignal.timeout(17000),
    headers:{Authorization:"Bearer "+token}});
   if(r.status===401){onExpired();throw Error("Clinical session expired.");}
   if(!r.ok)throw Error(r.status===403||r.status===404?

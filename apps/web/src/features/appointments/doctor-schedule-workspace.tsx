@@ -439,7 +439,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   {label:"Today's Working Sessions",value:metrics?.workingSessionsToday??"Loading…"},
   {label:"Total Appointments",value:metrics?.totalAppointments??"Loading…"},
   {label:"Clinics Mapped",value:metrics?.mappedCenters??"Loading…"},
-  {label:"On Leave",value:metrics?.doctorsOnActiveLeave??"Loading…"
+  {label:"On Leave",value:metrics?.doctorsOnActiveLeave??"Loading…"}
  ];
  const matchingPlaces=placeChoices.filter(p=>
   (!stateRef||p.stateRef===stateRef)&&
@@ -906,7 +906,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    </table></div>
    {selected.exceptions.filter(e=>tab==="HOLIDAY"?
     e.kind==="HOLIDAY":e.kind!=="HOLIDAY").length===0&&
-    <p role="status">No saved {tab==="HOLIDAY"?"center holidays":"leave or blocked time"}.</p>
+    <p role="status">No saved {tab==="HOLIDAY"?"center holidays":"leave or blocked time"}.</p>}
    {canManage&&selected.version>0&&<>
     <div className="form-grid">
      <label>Request type

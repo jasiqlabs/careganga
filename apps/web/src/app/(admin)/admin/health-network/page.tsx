@@ -66,7 +66,10 @@ export default async function HealthNetworkPage(){
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
-        canManageFinance={actions.has("health.providers.finance.manage")}/>}
+        canManageFinance={actions.has("health.providers.finance.manage")}
+        canVerify={actions.has("health.providers.verify")}
+        canActivate={actions.has("health.centers.activate")}
+        canPublish={actions.has("health.centers.publish")}/>}
   </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&

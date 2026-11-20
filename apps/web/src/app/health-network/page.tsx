@@ -59,7 +59,8 @@ export default async function HealthcareDirectory({searchParams}:Props){
    <h1>Find verified healthcare centers and doctors</h1>
    <p className="cg-lead">Only currently approved, published partners appear here.
     Consult current doctor schedules to request a pay-at-center appointment.
-    No appointment, payment or financial assistance is guaranteed by a directory listing.</p>
+    Online appointments require a verified doctor schedule and registered patient consent.
+    No appointment, payment or financial assistance is guaranteed by a directory listing alone.</p>
    {canReschedule&&<p role="status">Choose another verified doctor and an available time.
     Your existing appointment remains confirmed until the change succeeds.</p>}
    <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
@@ -71,7 +72,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
    </nav>
    <p><Link href="/patients/me">My private patient profile and consent</Link></p>
   </section>
-  <section className="cg-public-section" aria-label="Search the directory"
+  <section className="cg-public-section" aria-label="Search the directory">
    <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
     <input type="hidden" name="tab" value={tab}/>
     {canReschedule&&<>

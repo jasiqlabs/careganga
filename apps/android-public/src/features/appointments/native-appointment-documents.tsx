@@ -24,7 +24,7 @@ async function authorized(path:string,method:"GET"|"POST"="GET",input?:object){
  const key=await SecureStore.getItemAsync(KEY);
  if(!key)throw Error("Sign in to your CareGanga patient account.");
  const r=await expoFetch(url(path),{
-  method,cache:"no-store",signal:AbortSignal.timeout(15000),
+  method,signal:AbortSignal.timeout(15000),
   headers:{Authorization:"Bearer "+key,...(input?{"Content-Type":"application/json"}:{})},
   body:input?JSON.stringify(input):undefined});
  if(!r.ok){

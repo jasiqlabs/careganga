@@ -90,6 +90,10 @@ export function LoginForm({ onForgotPassword }: LoginFormProps) {
 
       if (!response.ok) {
         setLoading(false);
+        const safe = data && typeof data === "object" && !Array.isArray(data)
+          ? (data as Record<string, unknown>)
+          : {};
+        const isSafeLogin = safe.code==="IDENTITY_LOGIN_INVALID";
         const mapped = mapAuthError(response.status, data);
 
         if (mapped.field === "identifier") {

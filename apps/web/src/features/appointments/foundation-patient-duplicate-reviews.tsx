@@ -192,7 +192,7 @@ export function FoundationPatientDuplicateReviews(){
      <p>Matching name/date alone does not establish identity. Review
       independently verified person-specific evidence outside this screen
       before approving. This page never retrieves clinical records.</p>
-    </>
+    </>}
     <label><input type="checkbox" checked={evidenceReviewed}
      disabled={busy||uncertain}
      onChange={e=>setEvidenceReviewed(e.target.checked)}/>

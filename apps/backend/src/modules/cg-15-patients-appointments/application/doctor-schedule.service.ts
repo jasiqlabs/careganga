@@ -701,8 +701,8 @@ export class DoctorScheduleService{
   const caseRef=uuid(caseRefRaw),raw=field(body);
   allowed(raw,["requestKey","expectedVersion","currentPassword"]);
   const key=uuid(raw.requestKey),expected=vnum(raw.expectedVersion);
-  if(typeof raw.currentPassword!=="string"||raw.currentPassword.length<8||
-    Buffer.byteLength(raw.currentPassword,"utf8")>1024)
+  const currentPassword=typeof raw.currentPassword==="string"?raw.currentPassword:"";
+  if(currentPassword.length<8||Buffer.byteLength(currentPassword,"utf8")>1024)
    throw new BadRequestException({code:"CG15_LEAVE_INVALID"});
   const actor=await this.sessions.requireAction(token,"health.schedules.manage");
   await this.sessions.limitFoundationRootProof(actor);
@@ -771,7 +771,7 @@ export class DoctorScheduleService{
     digest:e.source_digest,requestKey:c.request_key};
    const proof=await this.leaveReview.approved(tx,actor,{...source,caseRef});
    if(!proof)throw new ConflictException({code:"CG15_LEAVE_SOURCE_CHANGED"});
-   await this.sessions.requireFreshFoundationRootProof(tx,actor,raw.currentPassword);
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,currentPassword);
    // Do not silently hide appointments that overlap this approved leave.
    // Doctor lock from source() prevents a new confirmation while applying it.
    const impacted=await tx.query<{booking_display_id:string}>(
