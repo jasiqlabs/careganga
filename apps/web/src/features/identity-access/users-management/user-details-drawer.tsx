@@ -164,6 +164,7 @@ export function UserDetailsDrawer({
   const canAssign = actions.includes("roles.assign");
   const canStatus = actions.includes("accounts.status.manage");
   const canAudit = actions.includes("access.audit.view");
+  const canEdit = canAssign || canStatus;
   const hasContact = Boolean(account.phone || account.email);
 
   const handleCopyContact = () => {
@@ -496,7 +497,7 @@ export function UserDetailsDrawer({
                   <div className="cg-um-section-card">
                     <div className="cg-um-section-card-header">
                       <h3>Account Information</h3>
-                      {!account.roleProtected && (
+                      {!account.roleProtected && canEdit && (
                         <button
                           type="button"
                           className="cg-um-btn-edit-link"
@@ -559,16 +560,18 @@ export function UserDetailsDrawer({
                       <h3>Quick Actions</h3>
                     </div>
                     <div className="cg-um-quick-actions-grid">
-                      <button
-                        type="button"
-                        className="cg-um-qa-btn update-profile"
-                        onClick={() => onEditProfile(account)}
-                        disabled={account.roleProtected || busy}
-                        title={account.roleProtected ? "Protected accounts cannot be modified" : busy ? "Operation in progress…" : "Update user profile details"}
-                      >
-                        {busy ? <Loader2Icon size={14} className="cg-um-rotating" /> : <EditIcon size={14} />}
-                        <span>Update Profile</span>
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="cg-um-qa-btn update-profile"
+                          onClick={() => onEditProfile(account)}
+                          disabled={account.roleProtected || busy}
+                          title={account.roleProtected ? "Protected accounts cannot be modified" : busy ? "Operation in progress…" : "Update user profile details"}
+                        >
+                          {busy ? <Loader2Icon size={14} className="cg-um-rotating" /> : <EditIcon size={14} />}
+                          <span>Update Profile</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -856,7 +859,7 @@ export function UserDetailsDrawer({
                     Identity details recorded in the primary account registry.
                   </p>
                 </div>
-                {!account.roleProtected && (
+                {!account.roleProtected && canEdit && (
                   <button
                     type="button"
                     className="cg-um-btn-edit-link"

@@ -4,12 +4,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type RolesNavTab = "overview" | "roles" | "permissions" | "history";
 
+export interface AuthenticatedBottomNavItem {
+  id: string;
+  label: string;
+  icon: (color: string) => React.ReactNode;
+}
+
 export interface AuthenticatedBottomNavigationProps {
-  activeTab: RolesNavTab;
-  onSelectTab: (tab: RolesNavTab) => void;
+  activeTab: RolesNavTab | string;
+  onSelectTab: (tab: any) => void;
   /** RBAC capability gates — never exposes unauthorized tabs */
   canViewRoles?: boolean;
   canAudit?: boolean;
+  /** Optional custom tabs to render for different authorized modules (e.g. User Management) */
+  customTabs?: AuthenticatedBottomNavItem[];
 }
 
 // -------------------------------------------------------------
@@ -134,38 +142,43 @@ export function AuthenticatedBottomNavigation({
   activeTab,
   onSelectTab,
   canViewRoles = true,
-  canAudit = false
+  canAudit = false,
+  customTabs
 }: AuthenticatedBottomNavigationProps) {
   const insets = useSafeAreaInsets();
 
-  // Compute authorized navigation items according to effective RBAC
-  const tabItems: { id: RolesNavTab; label: string; icon: (color: string) => React.ReactNode }[] = [];
+  // Compute authorized navigation items according to effective RBAC or custom tabs
+  const tabItems: { id: string; label: string; icon: (color: string) => React.ReactNode }[] = [];
 
-  if (canViewRoles) {
-    tabItems.push({
-      id: "overview",
-      label: "Overview",
-      icon: color => <IconNavOverview size={21} color={color} />
-    });
-    tabItems.push({
-      id: "roles",
-      label: "Roles",
-      icon: color => <IconNavRoles size={21} color={color} />
-    });
-    tabItems.push({
-      id: "permissions",
-      label: "Permissions",
-      icon: color => <IconNavPermissions size={21} color={color} />
-    });
-  }
+  if (customTabs && customTabs.length > 0) {
+    tabItems.push(...customTabs);
+  } else {
+    if (canViewRoles) {
+      tabItems.push({
+        id: "overview",
+        label: "Overview",
+        icon: color => <IconNavOverview size={21} color={color} />
+      });
+      tabItems.push({
+        id: "roles",
+        label: "Roles",
+        icon: color => <IconNavRoles size={21} color={color} />
+      });
+      tabItems.push({
+        id: "permissions",
+        label: "Permissions",
+        icon: color => <IconNavPermissions size={21} color={color} />
+      });
+    }
 
-  // History tab requires access.audit.view permission
-  if (canAudit) {
-    tabItems.push({
-      id: "history",
-      label: "History",
-      icon: color => <IconNavHistory size={21} color={color} />
-    });
+    // History tab requires access.audit.view permission
+    if (canAudit) {
+      tabItems.push({
+        id: "history",
+        label: "History",
+        icon: color => <IconNavHistory size={21} color={color} />
+      });
+    }
   }
 
   if (tabItems.length === 0) return null;

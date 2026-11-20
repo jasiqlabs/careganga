@@ -77,6 +77,7 @@ export function EmployeeCardView({
   const canCreate = actions.includes("accounts.create") && actions.includes("roles.assign");
   const canAssign = actions.includes("roles.assign");
   const canStatus = actions.includes("accounts.status.manage");
+  const canEdit = canAssign || canStatus;
 
   const handleSelectRow = (ref: string, checked: boolean) => {
     setSelectedRefs(prev => {
@@ -265,16 +266,18 @@ export function EmployeeCardView({
                       <EyeIcon size={14} />
                     </button>
 
-                    <button
-                      type="button"
-                      className="cg-um-action-icon-btn edit"
-                      onClick={() => onEditAccount(row)}
-                      disabled={row.roleProtected}
-                      title={row.roleProtected ? "Protected Administrator" : "Edit Profile"}
-                      aria-label="Edit Profile"
-                    >
-                      <EditIcon size={14} />
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="cg-um-action-icon-btn edit"
+                        onClick={() => onEditAccount(row)}
+                        disabled={row.roleProtected}
+                        title={row.roleProtected ? "Protected Administrator" : "Edit Profile"}
+                        aria-label="Edit Profile"
+                      >
+                        <EditIcon size={14} />
+                      </button>
+                    )}
 
                     <div className="cg-um-action-menu-wrap">
                       <button

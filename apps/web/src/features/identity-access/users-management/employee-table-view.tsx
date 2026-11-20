@@ -75,6 +75,7 @@ export function EmployeeTableView({
   const canCreate = actions.includes("accounts.create") && actions.includes("roles.assign");
   const canAssign = actions.includes("roles.assign");
   const canStatus = actions.includes("accounts.status.manage");
+  const canEdit = canAssign || canStatus;
 
   // Close popup menu when clicking outside
   useEffect(() => {
@@ -379,16 +380,18 @@ export function EmployeeTableView({
                         </button>
 
                         {/* Edit Button */}
-                        <button
-                          type="button"
-                          className="cg-um-action-icon-btn edit"
-                          onClick={() => onEditAccount(row)}
-                          disabled={row.roleProtected}
-                          title={row.roleProtected ? "Protected Administrator" : "Edit staff account"}
-                          aria-label={`Edit ${row.displayName}`}
-                        >
-                          <EditIcon size={15} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="cg-um-action-icon-btn edit"
+                            onClick={() => onEditAccount(row)}
+                            disabled={row.roleProtected}
+                            title={row.roleProtected ? "Protected Administrator" : "Edit staff account"}
+                            aria-label={`Edit ${row.displayName}`}
+                          >
+                            <EditIcon size={15} />
+                          </button>
+                        )}
 
                         {/* More Actions Menu */}
                         <div className="cg-um-action-menu-wrap" ref={isMenuOpen ? menuContainerRef : null}>

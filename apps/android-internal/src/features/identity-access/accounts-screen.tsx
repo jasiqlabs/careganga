@@ -1,420 +1,1269 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useCallback,useEffect,useRef,useState } from "react";
-import { BackHandler,KeyboardAvoidingView,Platform,Pressable,ScrollView,
-  StyleSheet,Text,TextInput,View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  BackHandler,
+  Modal,
+  ActivityIndicator
+} from "react-native";
 import * as Crypto from "expo-crypto";
-import type { CG01AccountList,CG01AccountView } from "@careganga/api-contracts";
+import type { CG01AccountList, CG01AccountView, CG01SessionView } from "@careganga/api-contracts";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { identityRequest } from "./http-client";
+import { AuthenticatedScreenHeader } from "../dashboard/authenticated-screen-header";
+import {
+  AuthenticatedBottomNavigation,
+  useBottomNavPadding,
+  type AuthenticatedBottomNavItem
+} from "../dashboard/authenticated-bottom-navigation";
+import { NavigationDrawer } from "../dashboard/navigation-drawer";
+import { getAuthorizedModules, type ModuleActionHandlers } from "../dashboard/dashboard-modules";
 
-type Option={value:string;label:string;context:string};
-/** Display business words, never the wire status code. */
-const accountStatusLabel=(status:string):string=>({
-  ACTIVE:"Active",SUSPENDED:"Suspended",DEACTIVATED:"Deactivated"
-} as Record<string,string>)[status]??"Status unavailable";
-const auditOutcomeLabel=(outcome:string):string=>({
-  Confirmed:"Completed",Denied:"Not permitted",Pending:"Awaiting confirmation"
-} as Record<string,string>)[outcome]??"Outcome unavailable";
-type Pending={kind:"assign"|"revoke"|"status";row:CG01AccountView;status?:string};
-async function call(token:string,path:string,method="GET",body?:object):Promise<unknown>{
-  let response:Response;
-  try{
-    response=await identityRequest("/api/access/"+path,{
-      method,headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
-      ...(body?{body:JSON.stringify(body)}:{})
-    });
-  }catch{throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");}
-  if(!response.ok){
-    if(response.status===401)throw new Error("SESSION_EXPIRED");
-    if(response.status===403)throw new Error("PERMISSION_DENIED");
-    if(response.status===409)throw new Error("CONFLICT");
-    if(response.status===429)throw new Error("RETRY_LATER");
-    throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");
-  }
-  try{return await response.json() as unknown;}
-  catch{throw new Error(method==="GET"?"UNAVAILABLE":"UNKNOWN");}
+import {
+  accountStatusLabel,
+  auditOutcomeLabel,
+  type RoleOption,
+  type UserNotice,
+  type PendingUserAction,
+  type UserTab
+} from "./users-management/users-management-types";
+import {
+  IconUsers,
+  IconPlus,
+  IconClock,
+  IconRefreshCw,
+  IconChevronLeft,
+  IconChevronRight,
+  IconAlertTriangle
+} from "./users-management/users-management-icons";
+import {
+  StatsCardsSkeleton,
+  UserCardsSkeleton,
+  UserDetailsSkeleton
+} from "./users-management/users-management-skeletons";
+import { UsersSummaryStats } from "./users-management/users-management-stats";
+import { UsersSearchFilter } from "./users-management/users-management-search-filter";
+import { UserCardItem } from "./users-management/user-card-item";
+import { ScreenUserDetails } from "./users-management/screen-user-details";
+import { EditProfileModal } from "./users-management/edit-profile-modal";
+import { AssignRoleModal } from "./users-management/assign-role-modal";
+import { DeleteConfirmationModal } from "./users-management/delete-confirmation-modal";
+import { ScreenAddStaffModal } from "./users-management/screen-add-staff-modal";
+
+export interface AccountsScreenProps {
+  token: string;
+  onExit: () => void;
+  onExpired: () => void;
+  createOnly?: boolean;
+  actor?: CG01SessionView | null;
+  roleActions?: string[];
+  handlers?: ModuleActionHandlers;
+  onSignOut?: () => void;
 }
-export function AccountsScreen({token,onExit,onExpired,createOnly=false}:{
-  token:string;onExit:()=>void;onExpired:()=>void;createOnly?:boolean
-}){
-  const [list,setList]=useState<CG01AccountList|null>(null);
-  const listGeneration=useRef(0);
-  const optionsGeneration=useRef(0);
-  const historyGeneration=useRef(0);
-  const [actions,setActions]=useState<string[]>([]);
-  const [roles,setRoles]=useState<Option[]>([]);
-  const [search,setSearch]=useState("");
-  const [filter,setFilter]=useState("all");
-  const [offset,setOffset]=useState(0);
-  const [busy,setBusy]=useState(false);
-  const [message,setMessage]=useState("");
-  const [unknown,setUnknown]=useState(false);
-  const [screen,setScreen]=useState<"list"|"create"|"detail">(createOnly?"create":"list");
-  const [selected,setSelected]=useState<CG01AccountView|null>(null);
-  const [pending,setPending]=useState<Pending|null>(null);
-  const [name,setName]=useState("");
-  const [email,setEmail]=useState("");
-  const [phone,setPhone]=useState("");
-  const [newPassword,setNewPassword]=useState("");
-  const [showNewPassword,setShowNewPassword]=useState(false);
-  const [roleRef,setRoleRef]=useState("");
-  const [roleQuery,setRoleQuery]=useState("");
-  const [requestKey,setRequestKey]=useState("");
-  const [history,setHistory]=useState<Array<{eventRef:string;occurredAt:string;actionLabel:string;outcome:string}>|null>(null);
-  const canCreate=actions.includes("accounts.create")&&actions.includes("roles.assign");
-  const canAssign=actions.includes("roles.assign");
-  const canStatus=actions.includes("accounts.status.manage");
-  const canAudit=actions.includes("access.audit.view");
-  const deny=useCallback((kind:string)=>{
-    ++listGeneration.current;++optionsGeneration.current;++historyGeneration.current;
-    setList(null);setActions([]);setRoles([]);setSelected(null);setPending(null);
-    setBusy(false);setHistory(null);setRoleRef("");
-    setScreen("list");setMessage("Your account access cannot be verified. Restricted information was cleared.");
-    if(kind==="SESSION_EXPIRED")onExpired();
-  },[onExpired]);
-  const load=useCallback(async(q="",skip=0,status="all")=>{
-    const generation=++listGeneration.current;
-    setBusy(true);setMessage("");
-    try{
-      if(createOnly){
-        // Use only the effective permission contract; never query the private staff list.
-        const access=await call(token,"effective") as {actions?:{key:string}[]};
-        if(generation!==listGeneration.current)return false;
-        if(!access||!Array.isArray(access.actions)||
-          !access.actions.every(a=>a&&typeof a.key==="string"))throw new Error("UNAVAILABLE");
-        const keys=access.actions.map(a=>a.key);
-        if(!keys.includes("accounts.create")||!keys.includes("roles.assign"))
-          throw new Error("PERMISSION_DENIED");
-        setList(null);setActions(keys);return true;
-      }
-      const params=new URLSearchParams({search:q,limit:"20",offset:String(skip),status});
-      const [listData,access]=await Promise.all([
-        call(token,"accounts?"+params.toString()),
-        call(token,"effective")
-      ]);
-      if(!listData||typeof listData!=="object"||!("accounts" in listData)||
-        !Array.isArray(listData.accounts)||!("summary" in listData))throw new Error("UNAVAILABLE");
-      if(!access||typeof access!=="object"||!("actions" in access)||!Array.isArray(access.actions))
-        throw new Error("UNAVAILABLE");
-      if(generation!==listGeneration.current)return false;
-      setList(listData as CG01AccountList);
-      setActions(access.actions.map((a:{key:string})=>a.key));
-      setOffset(skip);setFilter(status);
-      setSelected(prev=>(listData as CG01AccountList).accounts.find(x=>x.accountRef===prev?.accountRef)??null);
-      return true;
-    }catch(e){
-      if(generation!==listGeneration.current)return false;
-      if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))
-        deny(e.message);
-      else deny("UNAVAILABLE");
-      return false;
-    }finally{if(generation===listGeneration.current)setBusy(false);}
-  },[token,deny,createOnly]);
-  useEffect(()=>{void load();},[load]);
-  useEffect(()=>{
-    const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-      if(pending){setPending(null);return true;}
-      if(createOnly){onExit();return true;}
-      if(screen!=="list"){setScreen("list");return true;}
-      onExit();return true;
+
+async function call(token: string, path: string, method = "GET", body?: object): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await identityRequest("/api/access/" + path, {
+      method,
+      headers: {
+        Authorization: "Bearer " + token,
+        ...(body ? { "Content-Type": "application/json" } : {})
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
     });
-    return()=>sub.remove();
-  },[pending,screen,onExit,createOnly]);
-  async function searchRoles(q=""){
-    const generation=++optionsGeneration.current;
-    setRoleQuery(q);
-    try{
-      const result=await call(token,"roles/options?"+new URLSearchParams({search:q})) as {options:Option[]};
-      if(generation!==optionsGeneration.current)return;
-      if(!Array.isArray(result.options))throw new Error("UNAVAILABLE");
-      setRoles(result.options.filter(x=>x.context==="Foundation"));
-    }catch(e){
-      if(generation!==optionsGeneration.current)return;
+  } catch {
+    throw new Error(method === "GET" ? "UNAVAILABLE" : "UNKNOWN");
+  }
+  if (!response.ok) {
+    if (response.status === 401) throw new Error("SESSION_EXPIRED");
+    if (response.status === 403) throw new Error("PERMISSION_DENIED");
+    if (response.status === 409) throw new Error("CONFLICT");
+    if (response.status === 429) throw new Error("RETRY_LATER");
+    throw new Error(method === "GET" ? "UNAVAILABLE" : "UNKNOWN");
+  }
+  try {
+    return (await response.json()) as unknown;
+  } catch {
+    throw new Error(method === "GET" ? "UNAVAILABLE" : "UNKNOWN");
+  }
+}
+
+export function AccountsScreen({
+  token,
+  onExit,
+  onExpired,
+  createOnly = false,
+  actor,
+  roleActions = [],
+  handlers,
+  onSignOut
+}: AccountsScreenProps) {
+  const bottomPadding = useBottomNavPadding(24);
+
+  // App Shell Navigation
+  const [activeNavTab, setActiveNavTab] = useState<UserTab>(createOnly ? "create" : "users");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Directory Data States
+  const [list, setList] = useState<CG01AccountList | null>(null);
+  const [actions, setActions] = useState<string[]>(roleActions);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [history, setHistory] = useState<Array<{
+    eventRef: string;
+    occurredAt: string;
+    actionLabel: string;
+    outcome: string;
+    actorDisplay?: string;
+  }> | null>(null);
+
+  // Filters & Pagination State
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<UserNotice | null>(null);
+  const [unknown, setUnknown] = useState(false);
+
+  // Active Modals and Selections
+  const [selectedUser, setSelectedUser] = useState<CG01AccountView | null>(null);
+  const [editUser, setEditUser] = useState<CG01AccountView | null>(null);
+  const [assignRoleUser, setAssignRoleUser] = useState<CG01AccountView | null>(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<CG01AccountView | null>(null);
+  const [isAddStaffOpen, setIsAddStaffOpen] = useState(createOnly);
+  const [pendingAction, setPendingAction] = useState<PendingUserAction | null>(null);
+
+  // Edit / Form helper values
+  const [selectedRoleRef, setSelectedRoleRef] = useState("");
+  const [editStatus, setEditStatus] = useState<"ACTIVE" | "SUSPENDED" | "DEACTIVATED">("ACTIVE");
+
+  // Generations for race-condition prevention
+  const listGeneration = useRef(0);
+  const optionsGeneration = useRef(0);
+  const historyGeneration = useRef(0);
+
+  // Effective Permissions
+  const canCreate = actions.includes("accounts.create") && actions.includes("roles.assign");
+  const canAssign = actions.includes("roles.assign");
+  const canStatus = actions.includes("accounts.status.manage");
+  const canAudit = actions.includes("access.audit.view");
+  const canViewNotifications = actions.includes("communications.notifications.view");
+
+  const deny = useCallback(
+    (kind: string) => {
+      ++listGeneration.current;
+      ++optionsGeneration.current;
+      ++historyGeneration.current;
+      setList(null);
+      setActions([]);
       setRoles([]);
-      if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))deny(e.message);
-      else setMessage("Eligible roles are unavailable. Try again later.");
-    }
-  }
-  function beginCreate(){
-    ++optionsGeneration.current;++historyGeneration.current;
-    setName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
-    setPending(null);setScreen("create");setRequestKey(Crypto.randomUUID());void searchRoles();
-  }
-  useEffect(()=>{
-    if(createOnly)beginCreate();
-  },[createOnly]);
-  function beginDetail(row:CG01AccountView){
-    ++optionsGeneration.current;++historyGeneration.current;
-    setSelected(row);setRoleRef(row.roleRef??"");setHistory(null);setRoleQuery("");setRoles([]);setUnknown(false);
-    setPending(null);setScreen("detail");setRequestKey(Crypto.randomUUID());
-    if(canAssign)void searchRoles();
-  }
-  async function commit(){
-    if(busy||unknown)return;
-    const wasCreate=screen==="create";
-    setBusy(true);setMessage("");
-    try{
-      if(screen==="create"){
-        if(!roleRef)throw new Error("SELECT_ROLE");
-        await call(token,"accounts","POST",{displayName:name.trim(),email:email.trim().toLowerCase()||undefined,
-          mobile:phone.trim(),password:newPassword,roleRef,requestKey});
-        setMessage("Staff account created and active.");
-      }else if(pending){
-        const root="accounts/"+pending.row.accountRef;
-        if(pending.kind==="assign"){
-          if(!roleRef)throw new Error("SELECT_ROLE");
-          await call(token,root+"/role","PUT",{roleRef,expectedRevision:pending.row.revision,requestKey});
-        }else if(pending.kind==="revoke"){
-          await call(token,root+"/role","DELETE",{expectedRevision:pending.row.revision,requestKey});
-        }else{
-          await call(token,root+"/status","PATCH",{status:pending.status,
-            expectedRevision:pending.row.revision,requestKey});
+      setSelectedUser(null);
+      setEditUser(null);
+      setAssignRoleUser(null);
+      setDeleteConfirmUser(null);
+      setPendingAction(null);
+      setBusy(false);
+      setHistory(null);
+      setNotice({
+        kind: "error",
+        text: "Your account access cannot be verified. Restricted information was cleared."
+      });
+      if (kind === "SESSION_EXPIRED") onExpired();
+    },
+    [onExpired]
+  );
+
+  // Load account directory
+  const load = useCallback(
+    async (q = "", skip = 0, statusFilter = "all") => {
+      const generation = ++listGeneration.current;
+      setLoading(true);
+      setNotice(null);
+      try {
+        if (createOnly) {
+          const access = (await call(token, "effective")) as { actions?: { key: string }[] };
+          if (generation !== listGeneration.current) return false;
+          if (
+            !access ||
+            !Array.isArray(access.actions) ||
+            !access.actions.every(a => a && typeof a.key === "string")
+          ) {
+            throw new Error("UNAVAILABLE");
+          }
+          const keys = access.actions.map(a => a.key);
+          if (!keys.includes("accounts.create") || !keys.includes("roles.assign")) {
+            throw new Error("PERMISSION_DENIED");
+          }
+          setList(null);
+          setActions(keys);
+          return true;
         }
-        setMessage("Account change confirmed.");
+
+        const params = new URLSearchParams({ search: q, limit: "20", offset: String(skip), status: statusFilter });
+        const [listData, access] = await Promise.all([
+          call(token, "accounts?" + params.toString()),
+          call(token, "effective")
+        ]);
+        if (
+          !listData ||
+          typeof listData !== "object" ||
+          !("accounts" in listData) ||
+          !Array.isArray(listData.accounts) ||
+          !("summary" in listData)
+        ) {
+          throw new Error("UNAVAILABLE");
+        }
+        if (!access || typeof access !== "object" || !("actions" in access) || !Array.isArray(access.actions)) {
+          throw new Error("UNAVAILABLE");
+        }
+        if (generation !== listGeneration.current) return false;
+
+        const typedList = listData as CG01AccountList;
+        setList(typedList);
+        setActions(access.actions.map((a: { key: string }) => a.key));
+        setOffset(skip);
+        setFilter(statusFilter);
+        setSelectedUser(prev => (prev ? typedList.accounts.find(x => x.accountRef === prev.accountRef) ?? null : null));
+        return true;
+      } catch (e) {
+        if (generation !== listGeneration.current) return false;
+        if (e instanceof Error && (e.message === "SESSION_EXPIRED" || e.message === "PERMISSION_DENIED")) {
+          deny(e.message);
+        } else {
+          deny("UNAVAILABLE");
+        }
+        return false;
+      } finally {
+        if (generation === listGeneration.current) setLoading(false);
       }
-      setPending(null);setScreen(createOnly?"create":"list");setRequestKey("");
-      if(createOnly&&wasCreate){
-         setName("");setEmail("");setPhone("");setNewPassword("");setRoleRef("");
-        setRequestKey(Crypto.randomUUID());
+    },
+    [token, deny, createOnly]
+  );
+
+  useEffect(() => {
+    void load("", 0, "all");
+  }, [load]);
+
+  // Search roles from backend
+  const searchRoles = useCallback(
+    async (q = "") => {
+      const generation = ++optionsGeneration.current;
+      setRolesLoading(true);
+      try {
+        const query = new URLSearchParams({ search: q });
+        const result = (await call(token, "roles/options?" + query.toString())) as { options: RoleOption[] };
+        if (generation !== optionsGeneration.current) return;
+        if (!Array.isArray(result.options)) throw new Error("UNAVAILABLE");
+        const filtered = result.options.filter(x => !x.context || x.context.toLowerCase() === "foundation");
+        const unique = Array.from(new Map(filtered.map(r => [r.value, r])).values());
+        setRoles(unique);
+      } catch (e) {
+        if (generation !== optionsGeneration.current) return;
+        setRoles([]);
+        if (e instanceof Error && (e.message === "SESSION_EXPIRED" || e.message === "PERMISSION_DENIED")) {
+          deny(e.message);
+        } else {
+          setNotice({ kind: "error", text: "Eligible roles are temporarily unavailable." });
+        }
+      } finally {
+        if (generation === optionsGeneration.current) setRolesLoading(false);
       }
-      const verified=await load(search,0,filter);
-      if(verified)setMessage(wasCreate?
-        "Staff account created and active.":
-        "Change saved. The latest account state is shown above.");
-    }catch(e){
-      const reason=e instanceof Error?e.message:"UNAVAILABLE";
-      if(reason==="SESSION_EXPIRED"||reason==="PERMISSION_DENIED")deny(reason);
-      else if(reason==="UNKNOWN"){
-        setUnknown(true);setMessage(createOnly&&wasCreate?
-          "The account creation result is uncertain. Refresh or contact support before retrying.":
-          "The result could not be confirmed. Refresh the account status before retrying.");
-      }else if(reason==="CONFLICT")setMessage("The account changed elsewhere. Refresh before saving.");
-      else if(reason==="SELECT_ROLE")setMessage("Choose an eligible role.");
-      else setMessage("The requested account change could not be confirmed.");
-    }finally{setBusy(false);}
-  }
-  async function showAudit(targetRef?:string){
-    const generation=++historyGeneration.current;
-    try{
-      const params=new URLSearchParams({limit:"20",...(targetRef?{targetRef}:{})});
-      const result=await call(token,"audit?"+params.toString()) as {
-        events:{eventRef:string;occurredAt:string;actionLabel:string;outcome:string}[]
-      };
-      if(generation!==historyGeneration.current)return;
-      if(!Array.isArray(result.events))throw new Error("UNAVAILABLE");
-      setHistory(result.events);
-    }catch(e){
-      if(generation!==historyGeneration.current)return;
-      if(e instanceof Error&&(e.message==="SESSION_EXPIRED"||e.message==="PERMISSION_DENIED"))deny(e.message);
-      else setMessage("Security history could not be verified.");
+    },
+    [token, deny]
+  );
+
+  // Load audit history
+  const loadHistory = useCallback(
+    async (targetRef?: string) => {
+      const generation = ++historyGeneration.current;
+      try {
+        const params = new URLSearchParams({ limit: "20", ...(targetRef ? { targetRef } : {}) });
+        const result = (await call(token, "audit?" + params.toString())) as {
+          events: Array<{ eventRef: string; occurredAt: string; actionLabel: string; outcome: string; actorDisplay?: string }>;
+        };
+        if (generation !== historyGeneration.current) return;
+        if (!Array.isArray(result.events)) throw new Error("UNAVAILABLE");
+        setHistory(result.events);
+      } catch (e) {
+        if (generation !== historyGeneration.current) return;
+        if (e instanceof Error && (e.message === "SESSION_EXPIRED" || e.message === "PERMISSION_DENIED")) {
+          deny(e.message);
+        } else {
+          setNotice({ kind: "error", text: "Security history could not be verified." });
+        }
+      }
+    },
+    [token, deny]
+  );
+
+  // Hardware Back Handler
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isDrawerOpen) {
+        setIsDrawerOpen(false);
+        return true;
+      }
+      if (deleteConfirmUser) {
+        setDeleteConfirmUser(null);
+        return true;
+      }
+      if (assignRoleUser) {
+        setAssignRoleUser(null);
+        return true;
+      }
+      if (editUser) {
+        setEditUser(null);
+        return true;
+      }
+      if (isAddStaffOpen) {
+        if (createOnly) {
+          onExit();
+          return true;
+        }
+        setIsAddStaffOpen(false);
+        return true;
+      }
+      if (selectedUser) {
+        setSelectedUser(null);
+        return true;
+      }
+      if (activeNavTab !== "users") {
+        setActiveNavTab("users");
+        return true;
+      }
+      onExit();
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [
+    isDrawerOpen,
+    deleteConfirmUser,
+    assignRoleUser,
+    editUser,
+    isAddStaffOpen,
+    selectedUser,
+    activeNavTab,
+    createOnly,
+    onExit
+  ]);
+
+  // Action: Open Edit Profile Modal
+  const handleOpenEdit = (account: CG01AccountView) => {
+    setEditUser(account);
+    setSelectedRoleRef(account.roleRef ?? "");
+    setEditStatus(account.status);
+    setNotice(null);
+    if (canAssign) void searchRoles("");
+  };
+
+  // Action: Open Assign Role Modal
+  const handleOpenAssignRole = (account: CG01AccountView) => {
+    setAssignRoleUser(account);
+    setSelectedRoleRef(account.roleRef ?? "");
+    setNotice(null);
+    if (canAssign) void searchRoles("");
+  };
+
+  // Action: Save Profile Changes
+  const handleSaveProfile = async () => {
+    if (!editUser || busy || unknown) return;
+    setBusy(true);
+    setNotice(null);
+    const requestKey = Crypto.randomUUID();
+    try {
+      const root = "accounts/" + editUser.accountRef;
+      // 1. If role was changed
+      if (canAssign && selectedRoleRef && selectedRoleRef !== editUser.roleRef) {
+        await call(token, root + "/role", "PUT", {
+          roleRef: selectedRoleRef,
+          expectedRevision: editUser.revision,
+          requestKey
+        });
+      }
+      // 2. If status was changed
+      if (canStatus && editStatus !== editUser.status) {
+        await call(token, root + "/status", "PATCH", {
+          status: editStatus,
+          expectedRevision: editUser.revision,
+          requestKey
+        });
+      }
+      setEditUser(null);
+      setNotice({ kind: "success", text: "Profile changes saved successfully." });
+      await load(search, offset, filter);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "UNAVAILABLE";
+      if (reason === "SESSION_EXPIRED" || reason === "PERMISSION_DENIED") deny(reason);
+      else if (reason === "CONFLICT") {
+        setNotice({ kind: "error", text: "The account changed elsewhere. Refresh before saving." });
+      } else if (reason === "UNKNOWN") {
+        setUnknown(true);
+        setNotice({ kind: "uncertain", text: "The result could not be confirmed. Refresh before retrying." });
+      } else {
+        setNotice({ kind: "error", text: "Profile update could not be confirmed." });
+      }
+    } finally {
+      setBusy(false);
     }
-  }
-  const row=selected;
-  const s=list?.summary;
-  const numbers=[
-    ["Total Accounts",s?.total],["Active",s?.active],
-    ["Suspended",s?.suspended],["Deactivated",s?.deactivated],["Assigned Roles",s?.assigned]
-  ] as const;
-  return <SafeAreaView style={styles.page}><KeyboardAvoidingView style={styles.page}
-    behavior={Platform.OS==="ios"?"padding":undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-      <View style={styles.line}><Pressable accessibilityRole="button" style={styles.button}
-        onPress={()=>{if(pending)setPending(null);else if(createOnly)onExit();else if(screen!=="list")setScreen("list");else onExit();}}>
-        <Text style={styles.buttonText}>{createOnly?"My account":screen==="list"?"My account":"Back"}</Text>
-      </Pressable><Text accessibilityRole="header" style={styles.title}>Users Management</Text></View>
-      {screen==="list"&&!createOnly&&<>
-        <Text>Foundation staff and current access</Text>
-        {busy&&<Text accessibilityRole="text" accessibilityLiveRegion="polite"
-          style={styles.note}>Refreshing staff accounts…</Text>}
-        <View style={styles.stats}>{numbers.map(([label,value])=><View key={label} style={styles.stat}>
-          <Text style={styles.statLabel}>{label}</Text>
-          <Text style={styles.statValue}>{value??"—"}</Text>
-        </View>)}</View>
-        <TextInput style={styles.input} accessibilityLabel="Search staff by name, mobile or email"
-          value={search} onChangeText={setSearch} placeholder="Search name, mobile or email"/>
-        <Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>void load(search,0,filter)}><Text style={styles.buttonText}>Search</Text></Pressable>
-        <View style={styles.line}>{(["all","ACTIVE","SUSPENDED","DEACTIVATED"] as const).map(status=>
-          <Pressable key={status} accessibilityRole="button"
-            accessibilityState={{selected:filter===status}}
-            style={[styles.smallButton,filter===status&&styles.activeButton]}
-            onPress={()=>void load(search,0,status)}>
-            <Text style={filter===status?styles.activeText:styles.buttonText}>
-              {status==="all"?"All":status==="DEACTIVATED"?"Deactivated":
-                status==="SUSPENDED"?"Suspended":"Active"}
+  };
+
+  // Action: Confirm Role Assignment
+  const handleConfirmRoleAssignment = async () => {
+    if (!assignRoleUser || !selectedRoleRef || busy || unknown) return;
+    setBusy(true);
+    setNotice(null);
+    const requestKey = Crypto.randomUUID();
+    try {
+      const root = "accounts/" + assignRoleUser.accountRef;
+      await call(token, root + "/role", "PUT", {
+        roleRef: selectedRoleRef,
+        expectedRevision: assignRoleUser.revision,
+        requestKey
+      });
+      setAssignRoleUser(null);
+      setNotice({ kind: "success", text: "Role assigned successfully." });
+      await load(search, offset, filter);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "UNAVAILABLE";
+      if (reason === "SESSION_EXPIRED" || reason === "PERMISSION_DENIED") deny(reason);
+      else if (reason === "CONFLICT") {
+        setNotice({ kind: "error", text: "The account changed elsewhere. Refresh before saving." });
+      } else {
+        setNotice({ kind: "error", text: "Role assignment could not be confirmed." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Action: Quick Status Change (Suspend / Reactivate)
+  const handleStatusChange = async (
+    account: CG01AccountView,
+    newStatus: "ACTIVE" | "SUSPENDED" | "DEACTIVATED"
+  ) => {
+    if (account.roleProtected || busy || unknown) return;
+    if (newStatus === "DEACTIVATED") {
+      setDeleteConfirmUser(account);
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    const requestKey = Crypto.randomUUID();
+    try {
+      const root = "accounts/" + account.accountRef;
+      await call(token, root + "/status", "PATCH", {
+        status: newStatus,
+        expectedRevision: account.revision,
+        requestKey
+      });
+      setNotice({
+        kind: "success",
+        text: `Account status updated to ${accountStatusLabel(newStatus)}.`
+      });
+      await load(search, offset, filter);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "UNAVAILABLE";
+      if (reason === "SESSION_EXPIRED" || reason === "PERMISSION_DENIED") deny(reason);
+      else if (reason === "CONFLICT") {
+        setNotice({ kind: "error", text: "The account changed elsewhere. Refresh before saving." });
+      } else {
+        setNotice({ kind: "error", text: "Status change could not be confirmed." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Action: Deactivate Account
+  const handleConfirmDeactivation = async () => {
+    if (!deleteConfirmUser || busy || unknown) return;
+    setBusy(true);
+    setNotice(null);
+    const requestKey = Crypto.randomUUID();
+    try {
+      const root = "accounts/" + deleteConfirmUser.accountRef;
+      await call(token, root + "/status", "PATCH", {
+        status: "DEACTIVATED",
+        expectedRevision: deleteConfirmUser.revision,
+        requestKey
+      });
+      setDeleteConfirmUser(null);
+      if (selectedUser?.accountRef === deleteConfirmUser.accountRef) {
+        setSelectedUser(null);
+      }
+      setNotice({ kind: "success", text: "User account deactivated." });
+      await load(search, offset, filter);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "UNAVAILABLE";
+      if (reason === "SESSION_EXPIRED" || reason === "PERMISSION_DENIED") deny(reason);
+      else if (reason === "CONFLICT") {
+        setNotice({ kind: "error", text: "The account changed elsewhere. Refresh before saving." });
+      } else {
+        setNotice({ kind: "error", text: "Account deactivation could not be confirmed." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Action: Add Staff Submission
+  const handleAddStaffSubmit = async (data: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    password: string;
+    roleRef: string;
+  }) => {
+    if (busy || unknown) return;
+    setBusy(true);
+    setNotice(null);
+    const requestKey = Crypto.randomUUID();
+    try {
+      await call(token, "accounts", "POST", {
+        displayName: data.fullName,
+        email: data.email,
+        mobile: data.phone,
+        password: data.password,
+        roleRef: data.roleRef,
+        requestKey
+      });
+      setIsAddStaffOpen(false);
+      setNotice({ kind: "success", text: "Staff account created and active." });
+      await load(search, 0, filter);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "UNAVAILABLE";
+      if (reason === "SESSION_EXPIRED" || reason === "PERMISSION_DENIED") deny(reason);
+      else if (reason === "UNKNOWN") {
+        setUnknown(true);
+        setNotice({
+          kind: "uncertain",
+          text: "Account creation result is uncertain. Refresh the directory before retrying."
+        });
+      } else if (reason === "CONFLICT") {
+        setNotice({ kind: "error", text: "This mobile or email is already registered." });
+      } else {
+        setNotice({ kind: "error", text: "The account could not be created." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Authorized drawer modules
+  const authorizedModules = useMemo(() => {
+    if (actor && handlers) {
+      return getAuthorizedModules(actions, actor, handlers);
+    }
+    return [];
+  }, [actions, actor, handlers]);
+
+  // Custom Bottom Navigation Tabs
+  const bottomTabs: AuthenticatedBottomNavItem[] = useMemo(() => {
+    const items: AuthenticatedBottomNavItem[] = [
+      {
+        id: "users",
+        label: "Staff Directory",
+        icon: color => <IconUsers size={21} color={color} />
+      }
+    ];
+    if (canCreate) {
+      items.push({
+        id: "create",
+        label: "Add Staff",
+        icon: color => <IconPlus size={21} color={color} />
+      });
+    }
+    if (canAudit) {
+      items.push({
+        id: "history",
+        label: "Security Audit",
+        icon: color => <IconClock size={21} color={color} />
+      });
+    }
+    return items;
+  }, [canCreate, canAudit]);
+
+  // Pagination details
+  const total = list?.total ?? 0;
+  const accounts = list?.accounts ?? [];
+  const startItem = total > 0 ? offset + 1 : 0;
+  const endItem = Math.min(offset + 20, total);
+
+  return (
+    <View style={styles.rootContainer}>
+      {/* Reusable Authenticated Screen Header */}
+      <AuthenticatedScreenHeader
+        variant="standard"
+        title="Users Management"
+        hasNotifications={canViewNotifications}
+        onOpenDrawer={() => setIsDrawerOpen(true)}
+        onOpenNotifications={() => handlers?.openNotifications?.()}
+      />
+
+      {/* Main Content Area */}
+      <ScrollView
+        contentContainerStyle={[styles.mainScroll, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Page Subtitle Row */}
+        <View style={styles.pageHeaderRow}>
+          <View>
+            <Text accessibilityRole="header" style={styles.pageTitle}>Users Management</Text>
+            <Text style={styles.pageSubtitle}>
+              Foundation staff directory, assigned roles, and access controls
             </Text>
-          </Pressable>)}</View>
-        {canCreate&&<Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-          onPress={beginCreate}><Text style={styles.primaryText}>Add staff</Text></Pressable>}
-        {list&&!list.accounts.length&&<Text>No matching staff accounts.</Text>}
-        {list?.accounts.map(account=><Pressable key={account.accountRef}
-          accessibilityRole="button" style={styles.card} onPress={()=>beginDetail(account)}>
-          <Text style={styles.heading}>{account.displayName}</Text>
-          <Text>{account.email??account.phone??"Mobile login"}</Text>
-          <Text>{account.roleName??"No role assigned"} · {accountStatusLabel(account.status)}</Text>
-          <Text style={styles.note}>View account details</Text>
-        </Pressable>)}
-        {list&&list.total>20&&<View style={styles.line}>
-          <Pressable accessibilityRole="button" style={styles.button} disabled={offset===0||busy}
-            onPress={()=>void load(search,Math.max(0,offset-20),filter)}><Text>Previous</Text></Pressable>
-          <Text>{offset+1}–{Math.min(offset+20,list.total)} of {list.total}</Text>
-          <Pressable accessibilityRole="button" style={styles.button} disabled={offset+20>=list.total||busy}
-            onPress={()=>void load(search,offset+20,filter)}><Text>Next</Text></Pressable>
-        </View>}
-        {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>void showAudit()}><Text style={styles.buttonText}>View access history</Text></Pressable>}
-        {history&&<View style={styles.card}>
-          <Text style={styles.heading}>Recent security activity</Text>
-          {history.map(item=><View key={item.eventRef} style={styles.group}>
-            <Text>{item.actionLabel} · {auditOutcomeLabel(item.outcome)}</Text>
-            <Text style={styles.note}>{new Date(item.occurredAt).toLocaleString()}</Text>
-          </View>)}
-          {!history.length&&<Text>No accessible security history.</Text>}
-        </View>}
-      </>}
-      {screen==="create"&&<View style={styles.card}>
-        <Text style={styles.heading}>Add New Staff Account</Text>
-        <Text style={styles.label}>Full name</Text>
-        <TextInput accessibilityLabel="Full name" style={styles.input} maxLength={160}
-          value={name} onChangeText={setName}/>
-        <Text style={styles.label}>Mobile number (username)</Text>
-        <TextInput accessibilityLabel="Mobile number" style={styles.input}
-          keyboardType="number-pad" maxLength={10} placeholder="10-digit mobile number"
-          value={phone} onChangeText={x=>setPhone(x.replace(/[^0-9]/g,"").slice(0,10))}/>
-        <Text style={styles.label}>Email (optional)</Text>
-        <TextInput accessibilityLabel="Email (optional)" style={styles.input}
-          maxLength={254} autoCapitalize="none" keyboardType="email-address"
-          value={email} onChangeText={setEmail}/>
-        <Text style={styles.label}>Initial password</Text>
-        <TextInput accessibilityLabel="Initial password" style={styles.input}
-          secureTextEntry={!showNewPassword} autoComplete="new-password"
-          value={newPassword} onChangeText={setNewPassword} maxLength={1024}/>
-        <Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>setShowNewPassword(x=>!x)}>
-          <Text>{showNewPassword?"Hide":"Show"} password</Text></Pressable>
-        <Text style={styles.note}>Applies to: Entire foundation</Text>
-        <Text style={styles.label}>Find eligible roles</Text>
-        <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
-          maxLength={80} value={roleQuery} onChangeText={setRoleQuery}/>
-        <Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>void searchRoles(roleQuery)}><Text>Find roles</Text></Pressable>
-        {roles.map(role=><Pressable key={role.value} style={[styles.option,roleRef===role.value&&styles.selected]}
-          accessibilityRole="radio" accessibilityLabel={role.label}
-          accessibilityState={{checked:roleRef===role.value}} onPress={()=>setRoleRef(role.value)}>
-          <Text>{role.label}{roleRef===role.value?" — selected":""}</Text>
-        </Pressable>)}
-        <Text style={styles.note}>The user can sign in immediately. Account is active immediately.</Text>
-        <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-          disabled={!name.trim()||!roleRef||busy||unknown||phone.length!==10||newPassword.length<8}
-          onPress={()=>void commit()}><Text style={styles.primaryText}>{busy?"Saving…":"Create Staff Account"}</Text></Pressable>
-      </View>}
-      {screen==="detail"&&row&&<View style={styles.card}>
-        <Text style={styles.heading}>{row.displayName}</Text>
-        <Text>{row.email??row.phone??"Mobile login"}</Text>
-        {row.phone&&<Text>Mobile: {row.phone}</Text>}
-        <Text>Account status: {accountStatusLabel(row.status)}</Text>
-        <Text>Current role: {row.roleName??"Not assigned"}</Text>
-        <Text>Applies to: Entire foundation</Text>
-        {canAudit&&<Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>void showAudit(row.accountRef)}><Text>View account access history</Text></Pressable>}
-        {history&&<View style={styles.group}>
-          <Text style={styles.heading}>Recent account access</Text>
-          {history.map(event=><View style={styles.option} key={event.eventRef}>
-            <Text>{event.actionLabel} · {auditOutcomeLabel(event.outcome)}</Text>
-            <Text style={styles.note}>{new Date(event.occurredAt).toLocaleString()}</Text>
-          </View>)}
-          {!history.length&&<Text>No account access events found.</Text>}
-        </View>}
-        {row.roleProtected?<Text>Protected administrator. This account cannot be changed here.</Text>:<>
-          {canAssign&&!pending&&<>
-            <Text style={styles.label}>Search eligible roles</Text>
-            <TextInput accessibilityLabel="Find eligible roles" style={styles.input}
-              value={roleQuery} onChangeText={setRoleQuery}/>
-            <Pressable accessibilityRole="button" style={styles.button}
-              onPress={()=>void searchRoles(roleQuery)}><Text>Find roles</Text></Pressable>
-            {roles.map(role=><Pressable key={role.value}
-              accessibilityRole="radio" accessibilityLabel={role.label}
-              accessibilityState={{checked:roleRef===role.value}}
-              style={[styles.option,roleRef===role.value&&styles.selected]}
-              onPress={()=>setRoleRef(role.value)}><Text>{role.label}</Text>
-            </Pressable>)}
-            <Pressable accessibilityRole="button" style={styles.button}
-              disabled={!roleRef||roleRef===row.roleRef}
-              onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"assign",row});}}>
-              <Text>Assign selected role</Text>
-            </Pressable>
-            {!!row.roleRef&&<Pressable accessibilityRole="button" style={styles.button}
-              onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"revoke",row});}}>
-              <Text>Revoke current role</Text>
-            </Pressable>}
-          </>}
-          {canStatus&&row.status!=="DEACTIVATED"&&!pending&&
-            <View style={styles.group}>
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"status",row,
-                  status:row.status==="ACTIVE"?"SUSPENDED":"ACTIVE"});}}>
-                <Text>{row.status==="ACTIVE"?"Suspend account":"Reactivate account"}</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" style={styles.button}
-                onPress={()=>{setRequestKey(Crypto.randomUUID());setPending({kind:"status",row,status:"DEACTIVATED"});}}>
-                <Text>Deactivate account</Text>
-              </Pressable>
-            </View>}
-        </>}
-        {pending&&<View style={styles.group}>
-          <Text style={styles.heading}>Confirm account change</Text>
-          <Text>{pending.kind==="assign"?"Assign chosen role":pending.kind==="revoke"?"Revoke role":
-            "Change status to "+accountStatusLabel(pending.status??"")} for {row.displayName}?</Text>
-          <Text style={styles.note}>A change to access invalidates existing sessions.</Text>
-          <Pressable accessibilityRole="button" style={[styles.button,styles.primary]}
-            disabled={busy||unknown} onPress={()=>void commit()}>
-            <Text style={styles.primaryText}>{busy?"Saving…":"Confirm change"}</Text>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Refresh directory"
+            onPress={() => void load(search, offset, filter)}
+            disabled={loading || busy}
+            style={styles.refreshBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <IconRefreshCw size={15} color="#475569" />
           </Pressable>
-          <Pressable accessibilityRole="button" style={styles.button}
-            onPress={()=>setPending(null)}><Text>Cancel</Text></Pressable>
-        </View>}
-      </View>}
-      {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
-      {unknown&&(createOnly?
-        <Text accessibilityRole="alert" style={styles.notice}>
-          The account may already exist. Refresh the account directory before retrying.
-        </Text>:
-        <Pressable accessibilityRole="button" style={styles.button} onPress={()=>{
-          setUnknown(false);setPending(null);setScreen("list");void load(search,0,filter);
-        }}><Text>Refresh account status before trying again</Text></Pressable>)}
-    </ScrollView></KeyboardAvoidingView></SafeAreaView>;
+        </View>
+
+        {/* Global Notice Banner */}
+        {notice && (
+          <View
+            style={[
+              styles.noticeBanner,
+              notice.kind === "success"
+                ? styles.noticeBannerSuccess
+                : notice.kind === "uncertain"
+                ? styles.noticeBannerUncertain
+                : styles.noticeBannerError
+            ]}
+          >
+            <Text
+              style={[
+                styles.noticeBannerText,
+                notice.kind === "success"
+                  ? styles.noticeBannerTextSuccess
+                  : notice.kind === "uncertain"
+                  ? styles.noticeBannerTextUncertain
+                  : styles.noticeBannerTextError
+              ]}
+            >
+              {notice.text}
+            </Text>
+          </View>
+        )}
+
+        {/* TAB 1: USERS DIRECTORY VIEW */}
+        {activeNavTab === "users" && (
+          <>
+            {/* Summary Statistics */}
+            {loading && !list ? (
+              <StatsCardsSkeleton />
+            ) : (
+              <UsersSummaryStats summary={list?.summary} />
+            )}
+
+            {/* Search and Filters */}
+            <UsersSearchFilter
+              search={search}
+              onSearchChange={setSearch}
+              onSubmitSearch={() => void load(search, 0, filter)}
+              filter={filter}
+              onFilterChange={newStatus => void load(search, 0, newStatus)}
+              loading={loading}
+            />
+
+            {/* Pagination / Summary Status Bar */}
+            <View style={styles.listToolbar}>
+              <Text style={styles.entriesInfo}>
+                Showing {startItem}–{endItem} of {total} entries
+              </Text>
+              {canCreate && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    void searchRoles("");
+                    setIsAddStaffOpen(true);
+                  }}
+                  style={styles.addStaffHeaderBtn}
+                >
+                  <IconPlus size={14} color="#FFFFFF" />
+                  <Text style={styles.addStaffHeaderBtnText}>Add Staff</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* User Cards List */}
+            {loading && !list ? (
+              <UserCardsSkeleton />
+            ) : accounts.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <IconUsers size={40} color="#CBD5E1" />
+                <Text style={styles.emptyStateTitle}>No staff accounts found</Text>
+                <Text style={styles.emptyStateDesc}>
+                  No accounts matched your search keyword or selected status filter.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setSearch("");
+                    void load("", 0, "all");
+                  }}
+                  style={styles.resetFiltersBtn}
+                >
+                  <Text style={styles.resetFiltersText}>Reset Search &amp; Filters</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.cardsWrap}>
+                {accounts.map(account => (
+                  <UserCardItem
+                    key={account.accountRef}
+                    account={account}
+                    canAssign={canAssign}
+                    canStatus={canStatus}
+                    onViewDetails={acc => setSelectedUser(acc)}
+                    onEditAccount={handleOpenEdit}
+                    onAssignRole={handleOpenAssignRole}
+                    onStatusChange={handleStatusChange}
+                    onDeleteAccount={acc => setDeleteConfirmUser(acc)}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Pagination Controls */}
+            {total > 20 && (
+              <View style={styles.paginationRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={offset === 0 || loading || busy}
+                  onPress={() => void load(search, Math.max(0, offset - 20), filter)}
+                  style={[
+                    styles.pageBtn,
+                    (offset === 0 || loading || busy) && styles.pageBtnDisabled
+                  ]}
+                >
+                  <IconChevronLeft size={16} color={offset === 0 ? "#94A3B8" : "#2563EB"} />
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      offset === 0 && styles.pageBtnTextDisabled
+                    ]}
+                  >
+                    Previous
+                  </Text>
+                </Pressable>
+
+                <Text style={styles.pageCountText}>
+                  Page {Math.floor(offset / 20) + 1} of {Math.max(1, Math.ceil(total / 20))}
+                </Text>
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={offset + 20 >= total || loading || busy}
+                  onPress={() => void load(search, offset + 20, filter)}
+                  style={[
+                    styles.pageBtn,
+                    (offset + 20 >= total || loading || busy) && styles.pageBtnDisabled
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      offset + 20 >= total && styles.pageBtnTextDisabled
+                    ]}
+                  >
+                    Next
+                  </Text>
+                  <IconChevronRight
+                    size={16}
+                    color={offset + 20 >= total ? "#94A3B8" : "#2563EB"}
+                  />
+                </Pressable>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* TAB 2: ADD STAFF VIEW */}
+        {activeNavTab === "create" && (
+          <View style={styles.fullTabWrap}>
+            <ScreenAddStaffModal
+              isOpen
+              onClose={() => {
+                if (createOnly) onExit();
+                else setActiveNavTab("users");
+              }}
+              roles={roles}
+              rolesLoading={rolesLoading}
+              onSearchRoles={searchRoles}
+              busy={busy}
+              uncertain={unknown}
+              notice={notice}
+              onSubmit={handleAddStaffSubmit}
+            />
+          </View>
+        )}
+
+        {/* TAB 3: SECURITY AUDIT VIEW */}
+        {activeNavTab === "history" && canAudit && (
+          <View style={styles.auditTabWrap}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Security Access History</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Verified security actions and account modifications
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void loadHistory()}
+                style={styles.refreshBtn}
+              >
+                <IconRefreshCw size={14} color="#475569" />
+              </Pressable>
+            </View>
+
+            {!history ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" color="#2563EB" />
+                <Text style={styles.loadingText}>Loading verified audit events…</Text>
+              </View>
+            ) : history.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <IconClock size={36} color="#CBD5E1" />
+                <Text style={styles.emptyStateTitle}>No security events recorded</Text>
+              </View>
+            ) : (
+              <View style={styles.historyListCard}>
+                {history.map(item => (
+                  <View key={item.eventRef} style={styles.historyItemRow}>
+                    <View style={styles.historyMarker} />
+                    <View style={styles.historyItemContent}>
+                      <Text style={styles.historyActionTitle}>{item.actionLabel}</Text>
+                      <View style={styles.historyMetaRow}>
+                        <View
+                          style={[
+                            styles.outcomePill,
+                            item.outcome === "Confirmed"
+                              ? styles.outcomeSuccess
+                              : item.outcome === "Denied"
+                              ? styles.outcomeDenied
+                              : styles.outcomePending
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.outcomePillText,
+                              item.outcome === "Confirmed"
+                                ? styles.outcomeTextSuccess
+                                : item.outcome === "Denied"
+                                ? styles.outcomeTextDenied
+                                : styles.outcomeTextPending
+                            ]}
+                          >
+                            {auditOutcomeLabel(item.outcome)}
+                          </Text>
+                        </View>
+                        {!!item.actorDisplay && (
+                          <Text style={styles.historyActor}>by {item.actorDisplay}</Text>
+                        )}
+                        <Text style={styles.historyDate}>
+                          {new Date(item.occurredAt).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Reusable Bottom Navigation */}
+      <AuthenticatedBottomNavigation
+        activeTab={activeNavTab}
+        onSelectTab={tab => {
+          setActiveNavTab(tab as UserTab);
+          if (tab === "history" && !history) void loadHistory();
+          if (tab === "create") void searchRoles("");
+        }}
+        customTabs={bottomTabs}
+      />
+
+      {/* Navigation Drawer */}
+      <NavigationDrawer
+        visible={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        displayName={actor?.displayName ?? "Foundation Admin"}
+        roleName={actor?.roleName ?? "Staff"}
+        scope={actor?.scope ?? "Foundation"}
+        authorizedModules={authorizedModules}
+        activeKey="accounts"
+        onOpenDashboard={onExit}
+        onSignOut={() => onSignOut?.()}
+      />
+
+      {/* User Details Full Screen Modal */}
+      <Modal
+        visible={Boolean(selectedUser)}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setSelectedUser(null)}
+      >
+        {selectedUser && (
+          <ScreenUserDetails
+            account={selectedUser}
+            actions={actions}
+            history={history}
+            onLoadHistory={loadHistory}
+            onEditProfile={handleOpenEdit}
+            onAssignRole={handleOpenAssignRole}
+            onStatusChange={handleStatusChange}
+            onDeleteAccount={acc => setDeleteConfirmUser(acc)}
+            onClose={() => setSelectedUser(null)}
+            busy={busy}
+          />
+        )}
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={Boolean(editUser)}
+        onClose={() => setEditUser(null)}
+        account={editUser}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        roleRef={selectedRoleRef}
+        onRoleRefChange={setSelectedRoleRef}
+        status={editStatus}
+        onStatusChange={setEditStatus}
+        busy={busy}
+        uncertain={unknown}
+        notice={notice}
+        onSave={handleSaveProfile}
+      />
+
+      {/* Assign Role Modal */}
+      <AssignRoleModal
+        isOpen={Boolean(assignRoleUser)}
+        onClose={() => setAssignRoleUser(null)}
+        account={assignRoleUser}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        selectedRoleRef={selectedRoleRef}
+        onSelectRoleRef={setSelectedRoleRef}
+        busy={busy}
+        uncertain={unknown}
+        notice={notice}
+        onConfirm={handleConfirmRoleAssignment}
+      />
+
+      {/* Delete / Deactivate Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(deleteConfirmUser)}
+        onClose={() => setDeleteConfirmUser(null)}
+        account={deleteConfirmUser}
+        busy={busy}
+        uncertain={unknown}
+        notice={notice}
+        onConfirm={handleConfirmDeactivation}
+      />
+
+      {/* Add Staff Modal (when opened from button on list view) */}
+      <ScreenAddStaffModal
+        isOpen={isAddStaffOpen && !createOnly}
+        onClose={() => setIsAddStaffOpen(false)}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        onSearchRoles={searchRoles}
+        busy={busy}
+        uncertain={unknown}
+        notice={notice}
+        onSubmit={handleAddStaffSubmit}
+      />
+    </View>
+  );
 }
-const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:careGangaTheme.background},
-  content:{padding:20,gap:12,paddingBottom:36},
-  title:{fontSize:23,fontWeight:"700",color:careGangaTheme.text,flexShrink:1},
-  heading:{fontSize:18,fontWeight:"700",color:careGangaTheme.text},
-  note:{fontSize:13,color:careGangaTheme.mutedText},
-  label:{fontWeight:"600",color:careGangaTheme.text},
-  line:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:8},
-  group:{gap:8,paddingVertical:10},
-  card:{padding:15,borderWidth:1,borderColor:careGangaTheme.border,
-    backgroundColor:careGangaTheme.surface,borderRadius:10,gap:10},
-  input:{minHeight:48,paddingHorizontal:12,borderWidth:1,borderColor:careGangaTheme.border,
-    backgroundColor:careGangaTheme.surface,color:careGangaTheme.text,borderRadius:7},
-  button:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,
-    borderRadius:7,padding:12,justifyContent:"center",alignItems:"center"},
-  smallButton:{minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,
-    borderRadius:7,paddingHorizontal:11,justifyContent:"center",alignItems:"center"},
-  buttonText:{fontWeight:"600",color:careGangaTheme.text},
-  primary:{backgroundColor:careGangaTheme.primary,borderColor:careGangaTheme.primary},
-  primaryText:{fontWeight:"700",color:careGangaTheme.primaryText},
-  activeButton:{backgroundColor:careGangaTheme.primary},
-  activeText:{fontWeight:"700",color:careGangaTheme.primaryText},
-  option:{padding:12,minHeight:48,borderWidth:1,borderColor:careGangaTheme.border,
-    backgroundColor:careGangaTheme.surface,borderRadius:7},
-  selected:{borderColor:careGangaTheme.primary,borderWidth:2},
-  stats:{flexDirection:"row",flexWrap:"wrap",gap:8},
-  stat:{flexBasis:"47%",flexGrow:1,minWidth:125,padding:12,gap:6,
-    borderWidth:1,borderColor:careGangaTheme.border,borderRadius:8,
-    backgroundColor:careGangaTheme.surface},
-  statLabel:{fontSize:12,fontWeight:"600",color:careGangaTheme.mutedText},
-  statValue:{fontSize:21,fontWeight:"800",color:careGangaTheme.text},
-  notice:{borderLeftWidth:3,borderColor:careGangaTheme.primary,padding:12,
-    backgroundColor:careGangaTheme.surface,color:careGangaTheme.text}
+
+const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC"
+  },
+  mainScroll: {
+    paddingTop: 12,
+    gap: 12
+  },
+  pageHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 4
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.3
+  },
+  pageSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2
+  },
+  refreshBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1
+  },
+  noticeBanner: {
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1
+  },
+  noticeBannerSuccess: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#A7F3D0"
+  },
+  noticeBannerUncertain: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A"
+  },
+  noticeBannerError: {
+    backgroundColor: "#FFF1F2",
+    borderColor: "#FECDD3"
+  },
+  noticeBannerText: {
+    fontSize: 12.5,
+    fontWeight: "600"
+  },
+  noticeBannerTextSuccess: {
+    color: "#059669"
+  },
+  noticeBannerTextUncertain: {
+    color: "#B45309"
+  },
+  noticeBannerTextError: {
+    color: "#E11D48"
+  },
+  listToolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 4
+  },
+  entriesInfo: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B"
+  },
+  addStaffHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: "#2563EB"
+  },
+  addStaffHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF"
+  },
+  cardsWrap: {
+    marginTop: 4
+  },
+  emptyStateContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    gap: 8
+  },
+  emptyStateTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 4
+  },
+  emptyStateDesc: {
+    fontSize: 12.5,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 280
+  },
+  resetFiltersBtn: {
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE"
+  },
+  resetFiltersText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#1D4ED8"
+  },
+  paginationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 4
+  },
+  pageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0"
+  },
+  pageBtnDisabled: {
+    opacity: 0.5
+  },
+  pageBtnText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#2563EB"
+  },
+  pageBtnTextDisabled: {
+    color: "#94A3B8"
+  },
+  pageCountText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B"
+  },
+  fullTabWrap: {
+    flex: 1
+  },
+  auditTabWrap: {
+    paddingHorizontal: 16,
+    gap: 12
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A"
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2
+  },
+  loadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 20
+  },
+  loadingText: {
+    fontSize: 13,
+    color: "#64748B"
+  },
+  historyListCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 14
+  },
+  historyItemRow: {
+    flexDirection: "row",
+    gap: 12
+  },
+  historyMarker: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2563EB",
+    marginTop: 5
+  },
+  historyItemContent: {
+    flex: 1,
+    gap: 4
+  },
+  historyActionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A"
+  },
+  historyMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap"
+  },
+  outcomePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  outcomeSuccess: {
+    backgroundColor: "#ECFDF5"
+  },
+  outcomeDenied: {
+    backgroundColor: "#FFF1F2"
+  },
+  outcomePending: {
+    backgroundColor: "#FFFBEB"
+  },
+  outcomePillText: {
+    fontSize: 10.5,
+    fontWeight: "700"
+  },
+  outcomeTextSuccess: {
+    color: "#059669"
+  },
+  outcomeTextDenied: {
+    color: "#DC2626"
+  },
+  outcomeTextPending: {
+    color: "#D97706"
+  },
+  historyActor: {
+    fontSize: 11,
+    color: "#64748B"
+  },
+  historyDate: {
+    fontSize: 11,
+    color: "#94A3B8"
+  }
 });
