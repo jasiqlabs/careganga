@@ -47,6 +47,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   const [alert,setAlert]=useState("");
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [assignee,setAssignee]=useState("");
+  const [nextStatus,setNextStatus]=useState("OPEN");
   const [agentSearch,setAgentSearch]=useState("");
   const [agents,setAgents]=useState<Option[]>([]);
   const [faqs,setFaqs]=useState<Faq[]>([]);
@@ -86,15 +87,16 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     try{
       const caseData=await request<CaseDetail>("cases/"+encodeURIComponent(ref));
       setSelected(caseData);setAssignee(caseData.assignedAccountRef??"");
+      setNextStatus(caseData.status);
       setReply("");setReplyKey("");
       await request("cases/"+encodeURIComponent(ref)+"/read","POST");
       await load();
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
-  async function act(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"ARCHIVE"){
+  async function act(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"CHANGE_STATUS"|"ARCHIVE"){
     if(!selected||busy)return;
-    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN"].includes(kind)&&!mayManage)
+    if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN","CHANGE_STATUS"].includes(kind)&&!mayManage)
       return;
     setBusy(true);setAlert("");
     const id=encodeURIComponent(selected.caseRef);
@@ -107,16 +109,18 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       }else if(kind==="ASSIGN"){
         await request("cases/"+id+"/assign","POST",
           {expectedRevision:selected.revision,assignedAccountRef:assignee||null});
-      }else if(kind==="CLOSE"||kind==="REOPEN"){
+      }else if(kind==="CLOSE"||kind==="REOPEN"||kind==="CHANGE_STATUS"){
+        const status=kind==="CLOSE"?"CLOSED":
+          kind==="REOPEN"?"OPEN":nextStatus;
         await request("cases/"+id+"/status","PATCH",
-          {expectedRevision:selected.revision,status:kind==="CLOSE"?"CLOSED":"OPEN"});
+          {expectedRevision:selected.revision,status});
       }else{
         await request("cases/"+id+"/archive","POST",{archived:!selected.archived});
       }
       setAlert(kind==="REPLY"?"Reply saved in the private case. No email or SMS delivery is claimed.":
         "Original support record updated.");
       const updated=await request<CaseDetail>("cases/"+id);
-      setSelected(updated);
+      setSelected(updated);setNextStatus(updated.status);
       await load();
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
@@ -183,7 +187,8 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
         <label htmlFor="support-filter">Status</label>
         <select id="support-filter" value={filter} onChange={e=>{setFilter(e.target.value);setCursor(null);
           setPriorCursors([]);setNextCursor(null);}}>
-          {["ALL","OPEN","UNREAD","REPLIED","CLOSED","ARCHIVED"].map(x=>
+          {["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER","ESCALATED",
+            "REPLIED","RESOLVED","CLOSED","UNREAD","ARCHIVED"].map(x=>
             <option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}
         </select>
         <label htmlFor="support-search">Search all permitted messages</label>
@@ -258,6 +263,15 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
             </select></>:<p>Account selector unavailable for this role.</p>}
             <button type="button" disabled={busy||!mayChooseAccounts}
               onClick={()=>void act("ASSIGN")}>Save assignment</button>
+            <label htmlFor="support-status">Current case status</label>
+            <select id="support-status" value={nextStatus}
+              onChange={e=>setNextStatus(e.target.value)}>
+              {["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+                "ESCALATED","RESOLVED","CLOSED"].map(value=>
+                <option key={value} value={value}>{value.replaceAll("_"," ")}</option>)}
+            </select>
+            <button type="button" disabled={busy||nextStatus===selected.status}
+              onClick={()=>void act("CHANGE_STATUS")}>Save status</button>
             <div className="toolbar">
               <button type="button" disabled={busy||selected.status==="CLOSED"}
                 onClick={()=>void act("CLOSE")}>Close case</button>
