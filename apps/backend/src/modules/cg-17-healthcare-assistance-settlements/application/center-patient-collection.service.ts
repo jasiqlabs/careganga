@@ -129,7 +129,7 @@ export class CenterPatientCollectionService{
    "document.root_realm_id=collect.root_realm_id AND "+
    "document.collection_ref=collect.id "+
    "WHERE collect.root_realm_id=$1 AND collect.charge_ref=$2 "+
-   "ORDER BY created_at DESC,id DESC LIMIT 51",[realm,original.id]);
+   "ORDER BY collect.created_at DESC,collect.id DESC LIMIT 51",[realm,original.id]);
   const collectionsHaveMore=rows.rows.length>50;
   const adjustments=await c.query<Adjustment>(
    "SELECT id,collection_ref,refund_minor::text,cash_refund_receipt,kind,"+
