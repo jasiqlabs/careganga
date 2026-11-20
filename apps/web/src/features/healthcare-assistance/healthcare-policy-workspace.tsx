@@ -15,7 +15,7 @@ type Payload={requestKey:string;policyRef?:string;expectedRevision:number;
  validUntil:string;mode:"PERCENT"|"FIXED";percentBasisPoints?:number;
  fixedMinor?:string;capMinor:string};
 const kinds:readonly Kind[]=["CONSULTATION","LAB","PHARMACY","NURSING","OT"];
-type Props={canManage:boolean;canReview:boolean};
+type Props={canView:boolean;canManage:boolean;canReview:boolean};
 async function api<T>(parts:string,method:"GET"|"POST"="GET",body?:object){
  const response=await fetch("/api/healthcare-assistance/policies/"+parts,{
   method,credentials:"same-origin",cache:"no-store",
@@ -57,7 +57,7 @@ const pct=(value:string)=>{
  if(basis<1||basis>10000)throw Error("Percentage outside approved range.");
  return basis;
 };
-export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
+export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
@@ -79,6 +79,7 @@ export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
  },[]);
  useEffect(()=>{
   let active=true;
+  if(!canView){setLoading(false);return()=>{active=false};}
   void api<{centers:Center[]}>("centers/eligible").then(v=>{
    if(!active)return;
    setCenters(v.centers);
@@ -87,7 +88,7 @@ export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
    "Approved healthcare centers are unavailable.");})
    .finally(()=>{if(active)setLoading(false)});
   return()=>{active=false;++request.current};
- },[]);
+ },[canView]);
  useEffect(()=>{
   ++request.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;
@@ -169,14 +170,14 @@ export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
    individual eligibility are verified. No money is collected here.</p>
   {!!message&&<p className="notice" role="status">{message}</p>}
   {!!error&&<p className="notice error" role="alert">{error}</p>}
-  <label className="field">Verified healthcare center
+  {canView&&<label className="field">Verified healthcare center
    <select value={center} disabled={busy||uncertain} onChange={e=>setCenter(e.target.value)}>
     <option value="">Select an approved center</option>
     {centers.map(v=><option key={v.centerRef} value={v.centerRef}>{v.name}</option>)}
    </select>
-  </label>
+  </label>}
   {loading&&<p role="status">Checking original center and policy source…</p>}
-  {!loading&&centers.length===0&&<p className="cg-module-empty">
+  {canView&&!loading&&centers.length===0&&<p className="cg-module-empty">
    No eligible approved healthcare centers are available.</p>}
   {uncertain&&<section className="cg-diagnostics-card" role="alert">
    <p>Last policy command may already have been committed. Do not submit a
@@ -190,7 +191,7 @@ export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
       "Cannot check original policy state."))}>Check existing policy history</button>
    </div>
   </section>}
-  {canManage&&!!center&&!uncertain&&<form className="cg-diagnostics-card"
+  {canManage&&canView&&!!center&&!uncertain&&<form className="cg-diagnostics-card"
    onSubmit={submit} aria-label="Original assistance policy">
    <h2>{revision?"Revise approved policy":"Configure healthcare support"}</h2>
    <div className="form-grid">
@@ -246,7 +247,7 @@ export function HealthcarePolicyWorkspace({canManage,canReview}:Props){
      Cancel revision</button>}
    </div>
   </form>}
-  {!!center&&<section className="form-section">
+  {canView&&!!center&&<section className="form-section">
    <h2>Actual policy revisions</h2>
    <button type="button" disabled={busy||uncertain} onClick={()=>
     void refresh(center).catch(e=>setError(e instanceof Error?e.message:
