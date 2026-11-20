@@ -9,7 +9,7 @@ import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
-import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage} from "./cms-extended-sections";
+import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage,healthcareEditorialClaimsSafe} from "./cms-extended-sections";
 import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -1045,6 +1045,8 @@ export class CmsEditorialService{
   const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
   fields:sec.structured_fields}));
+ if(x.kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(authoredSections))
+  throw new NotFoundException({code:"CMS_HEALTHCARE_FINANCIAL_SOURCE_NOT_VERIFIED"});
  const gallerySource=authoredSections.find(x=>x.kind==="GALLERY_GRID");
  const authoredGallery=Array.isArray(gallerySource?.fields.items)?
   gallerySource.fields.items as Record<string,unknown>[]:[];
