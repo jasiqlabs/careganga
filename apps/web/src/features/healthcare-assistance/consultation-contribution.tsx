@@ -6,7 +6,8 @@ type Contribution={state:string;accepted?:boolean;replayed?:boolean;
  feeVersion?:number;policyRevisionRef?:string|null;currency?:string;
  collectionVerified?:boolean;foundationLiabilityCreated?:boolean;
  patientCollectionVerified?:boolean;message?:string};
-type Props={holdRef?:string;bookingRef?:string;centerRef?:string};
+type Props={holdRef?:string;bookingRef?:string;centerRef?:string;
+ canAccept?:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const pretty=(s:string)=>"₹"+(Number(s)/100).toLocaleString("en-IN",{
  minimumFractionDigits:2,maximumFractionDigits:2});
@@ -20,7 +21,7 @@ function valid(v:Contribution){
 /** Web patient/authorized center copy of original CG15 → CG17 pricing;
  * this does not verify collected payment, award a future liability or tax.
  */
-export function ConsultationContribution({holdRef,bookingRef,centerRef}:Props){
+export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept=true}:Props){
  const [quote,setQuote]=useState<Contribution|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -133,7 +134,7 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef}:Props){
     <p>Only the original approved CG-14 consultation fee is used; no separate
      tax has been estimated. Payment, Foundation liability and settlement are
      distinct later stages, not confirmed by this screen.</p>
-    {!!bookingRef&&!quote.accepted&&
+    {canAccept&&!!bookingRef&&!quote.accepted&&
      !["SOURCE_CANCELLED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(quote.state)&&
      <button type="button" disabled={busy||uncertain} onClick={()=>void accept()}>
       {busy?"Checking original amount…":"Accept verified fee and contribution split"}
