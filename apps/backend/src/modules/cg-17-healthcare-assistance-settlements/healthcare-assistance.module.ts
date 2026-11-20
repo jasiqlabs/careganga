@@ -11,6 +11,7 @@ import {CenterPatientReceiptService} from "./application/center-patient-receipt.
 import {CompletedConsultationLiabilityService} from "./application/completed-consultation-liability.service";
 import {FoundationJournalReconciliationService} from "./application/foundation-journal-reconciliation.service";
 import {MonthlyProviderSettlementService} from "./application/monthly-provider-settlement.service";
+import {VerifiedProviderPayoutService} from "./application/verified-provider-payout.service";
 import {MonthlyProviderSettlementController} from "./http/monthly-provider-settlement.controller";
 import {FoundationJournalReconciliationController} from "./http/foundation-journal-reconciliation.controller";
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
@@ -30,7 +31,7 @@ import {HealthcareAssistancePolicyController}
  from "./http/healthcare-assistance-policy.controller";
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule,LabResultStorageModule,FinanceSourceModule],
- providers:[MonthlyProviderSettlementService,FoundationJournalReconciliationService,CompletedConsultationLiabilityService,CenterMerchantCheckoutService,CenterMerchantProvisioningService,CenterPatientCollectionService,CenterPatientReceiptService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
+ providers:[VerifiedProviderPayoutService,MonthlyProviderSettlementService,FoundationJournalReconciliationService,CompletedConsultationLiabilityService,CenterMerchantCheckoutService,CenterMerchantProvisioningService,CenterPatientCollectionService,CenterPatientReceiptService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
  controllers:[MonthlyProviderSettlementController,FoundationJournalReconciliationController,CompletedConsultationLiabilityController,CenterMerchantController,CenterPatientCollectionController,CenterPatientReceiptController,PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
  exports:[HealthcareAssistancePolicyService,ConsultationPatientChargeService]
 })
