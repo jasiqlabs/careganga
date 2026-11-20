@@ -6,7 +6,7 @@ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function allowed(p:string[],method:"GET"|"POST"){
  if(p[0]==="me"&&p[1]==="appointments"&&ID.test(p[2]??"")){
   if(p.length===3)return method==="GET";
-  if(p.length===4&&p[3]==="checkout")return method==="POST";
+  if(p.length===4&&["checkout","reconcile"].includes(p[3]))return method==="POST";
  }
  if(p[0]==="staff"&&p[1]==="centers"&&ID.test(p[2]??"")){
   if(p.length===4&&p[3]==="binding")return method==="GET";
@@ -16,7 +16,7 @@ function allowed(p:string[],method:"GET"|"POST"){
   if(p.length===5&&p[3]==="appointments"&&ID.test(p[4]))
    return method==="GET";
   if(p.length===6&&p[3]==="appointments"&&ID.test(p[4])&&
-    p[5]==="checkout")return method==="POST";
+    ["checkout","reconcile"].includes(p[5]))return method==="POST";
  }
  return false;
 }
