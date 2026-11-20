@@ -39,10 +39,9 @@ type OriginalDownload=Release&{
  file_sha:string;scan_status:string
 };
 @Injectable()
-/** CG16 US002: original CG19 private PDF is released only AFTER a real
- * independent APPROVE by this verified CG14 clinician, a separate fresh
- * password proof and an immutable source-bound clinical attestation.
- * NOT a PAdES/certificate digital signature or delivery notification.
+/** Simple CG16 US002 release of the same already-approved private PDF.
+ * The earlier licensed reviewer approval already verified the clinician's
+ * password. No second password, signing provider or automatic messaging.
  */
 export class ClinicalLabPatientReleaseService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -118,24 +117,17 @@ export class ClinicalLabPatientReleaseService{
  async release(token:string,centerRaw:string,orderRaw:string,raw:unknown){
   const center=id(centerRaw),order=id(orderRaw);
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
-    Object.keys(raw).length!==5||!("requestKey" in raw)||
-    !("resultRef" in raw)||!("reportDigest" in raw)||
-    !("currentPassword" in raw)||!("clinicianAttested" in raw))
+    Object.keys(raw).length!==3||!("requestKey" in raw)||
+    !("resultRef" in raw)||!("reportDigest" in raw))
    throw new BadRequestException({code:"LAB_RELEASE_INVALID_REQUEST"});
   const o=raw as Record<string,unknown>;
   const key=id(o.requestKey),result=id(o.resultRef);
-  if(o.clinicianAttested!==true||typeof o.reportDigest!=="string"||
-    !SHA.test(o.reportDigest)||typeof o.currentPassword!=="string"||
-    o.currentPassword.length<8||
-    Buffer.byteLength(o.currentPassword,"utf8")>1024)
+  if(typeof o.reportDigest!=="string"||!SHA.test(o.reportDigest))
    throw new BadRequestException({code:"LAB_RELEASE_INVALID_ATTESTATION"});
-  const claimant=await this.sessions.requireAction(token,"lab.report.release");
-  await this.sessions.limitClinicalProfessionalProof(claimant);
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,token,center,"lab.report.release");
    const clinician=await this.professionals.assertCurrent(
     c,actor,center,"lab.report.release");
-   await this.sessions.requireClinicalProfessionalProof(c,actor,o.currentPassword as string);
    // Serialize only the same original laboratory order, not the whole center.
    await c.query("SELECT id FROM lab_order WHERE root_realm_id=$1 "+
     "AND id=$2 AND center_ref=$3 FOR UPDATE",[actor.realmId,order,center]);
@@ -176,9 +168,8 @@ export class ClinicalLabPatientReleaseService{
     "result_revision_ref,professional_review_ref,original_cg19_file_ref,"+
     "report_digest,patient_ref,center_ref,clinician_account_ref,"+
     "clinician_doctor_ref,clinician_revision_ref,release_key,"+
-    "release_digest,electronic_attestation) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,"+
-    "'REVIEWED_EXACT_PDF_AUTHENTICATED_CLINICIAN') RETURNING id",
+    "release_digest) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id",
     [actor.realmId,order,source.result_ref,source.review_ref,
      source.file_ref,source.report_digest,source.patient_ref,center,
      actor.accountId,clinician.doctorRef,clinician.reviewRevisionRef,key,sum]);
@@ -218,12 +209,12 @@ export class ClinicalLabPatientReleaseService{
    const patient=await this.mine(c,actor);
    const rows=await c.query<Release>(
     "SELECT release.id,release.order_ref,release.result_revision_ref,"+
-    "release.released_at,order.display_order_ref,result.version_no "+
+    "release.released_at,original_order.display_order_ref,result.version_no "+
     "FROM cg16_lab_report_release release "+
     "JOIN lab_result_revision result ON result.root_realm_id=release.root_realm_id "+
     "AND result.id=release.result_revision_ref "+
-    "JOIN lab_order order ON order.root_realm_id=release.root_realm_id "+
-    "AND order.id=release.order_ref AND order.patient_ref=release.patient_ref "+
+    "JOIN lab_order original_order ON original_order.root_realm_id=release.root_realm_id "+
+    "AND original_order.id=release.order_ref AND original_order.patient_ref=release.patient_ref "+
     "JOIN cg19_lab_result_file file ON file.root_realm_id=release.root_realm_id "+
     "AND file.id=release.original_cg19_file_ref "+
     "AND file.revoked_at IS NULL AND file.scan_status='CLEAN_VERIFIED' "+
