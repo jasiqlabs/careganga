@@ -277,6 +277,30 @@ export class HealthPublicDirectoryService{
    * CG03/CG19/proof/fee query as public directory, in caller's read snapshot.
    * No internal refs may be serialized directly to client responses.
    */
+  /** One CG14-qualified current clinician+in-person fee for a center.
+   * The caller may be CG17, but CG14 alone owns professional/license/proof
+   * validity. No new center, doctor, fee or patient financial master.
+   */
+  async eligibleConsultationCandidate(tx:PoolClient,
+   rootRef:string,centerSlug:string,doctorRef?:string){
+   if(!UUID.test(rootRef)||!SLUG.test(centerSlug)||
+      doctorRef!==undefined&&!UUID.test(doctorRef))
+    throw new NotFoundException("Current public consultation source unavailable");
+   const q=await tx.query<HealthScheduleEligibleSource>(
+    "SELECT c.root_realm_id AS root_ref,assoc.id AS association_ref,"+
+    "doc.id AS doctor_ref,doc.full_name AS doctor_name,"+
+    "c.id AS center_ref,c.public_slug AS center_slug,"+
+    "c.display_name AS center_name,c.address_line AS address,"+
+    "c.pin_code,c.time_zone,fee.amount_minor,"+
+    "fee.effective_from AS fee_effective_from,"+
+    "fee.effective_to AS fee_effective_to "+
+    this.eligibleCenter+this.eligibleDoctor+this.feeJoin+this.predicates+
+    "AND c.root_realm_id=$1 AND c.public_slug=$2 "+
+    "AND ($3::uuid IS NULL OR doc.id=$3) "+
+    "AND fee.amount_minor IS NOT NULL ORDER BY doc.id LIMIT 1",
+    [rootRef,centerSlug,doctorRef??null]);
+   return q.rows[0]??null;
+  }
   async eligibleScheduleSource(tx:PoolClient,doctorRef:string,centerSlug?:string){
     if(!UUID.test(doctorRef)||centerSlug!==undefined&&!SLUG.test(centerSlug))
       throw new NotFoundException("Current verified doctor unavailable");
