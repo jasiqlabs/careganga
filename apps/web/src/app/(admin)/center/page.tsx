@@ -36,7 +36,9 @@ export default async function CenterHome(){
     return <HealthcareAdminShell active="healthCenter"
       actor={{displayName:person.displayName,roleName:person.roleName}}
       actions={allowed}>
-      <CenterDraftPortal/>
+      <CenterDraftPortal
+       canViewLabPricing={allowed.has("diagnostics.pricing.view")}
+       canManageLabPricing={allowed.has("diagnostics.pricing.manage")}/>
     </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&

@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterDoctorFees} from "./center-doctor-fees";
+import {CenterLabPricingPanel} from "../diagnostics/center-lab-pricing-panel";
 import {CenterSupportDesk} from "./center-support-desk";
 import {CenterContentEditor} from "./center-content-editor";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
@@ -21,7 +22,9 @@ async function get<T>(path:string):Promise<T>{
     typeof result.message==="string"?result.message:"Pending center unavailable");
   return result as T;
 }
-export function CenterDraftPortal(){
+export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=false}:{
+ canViewLabPricing?:boolean;canManageLabPricing?:boolean
+}){
   const [centers,setCenters]=useState<Row[]>([]);
   const [active,setActive]=useState<Detail|null>(null);
   const [draft,setDraft]=useState<CenterDraft|null>(null);
@@ -147,6 +150,10 @@ export function CenterDraftPortal(){
         <CenterContentEditor key={"content:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterSupportDesk key={"support:"+active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       draft.capabilities.includes("DIAGNOSTICS")&&canViewLabPricing&&
+       <CenterLabPricingPanel key={"lab:"+active.centerRef}
+        centerRef={active.centerRef} canManage={canManageLabPricing}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterErpCapabilityPanel key={"erp:"+active.centerRef} centerRef={active.centerRef}/>}
 
