@@ -65,4 +65,21 @@ export class HealthCenterSupportScopeFacade{
   if(!assignment.rowCount)
    throw new NotFoundException("Your healthcare center is unavailable");
  }
+ /** CG14-owned bounded original eligible center labels for Foundation
+  * liability source selection. Nothing about CG17 charges is stored here.
+  */
+ async eligibleFoundationCenters(tx:PoolClient,actor:VerifiedFoundationActor,
+  action:string){
+  await this.identity.assertCurrent(tx,actor,action);
+  const rows=await tx.query<{id:string;display_name:string}>(
+   "SELECT c.id,c.display_name FROM health_center c "+
+   "JOIN health_provider p ON p.root_realm_id=c.root_realm_id "+
+   "AND p.id=c.provider_id "+
+   "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' "+
+   "AND c.access_state='ENABLED' AND p.status='VERIFIED' "+
+   "ORDER BY c.display_name,c.id LIMIT 51",[actor.realmId]);
+  return {centers:rows.rows.slice(0,50).map(x=>({
+   centerRef:x.id,name:x.display_name})),complete:rows.rows.length<=50};
+ }
+
 }
