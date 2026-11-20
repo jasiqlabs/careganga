@@ -16,7 +16,7 @@ export class HealthVerifiedCenterDoctorFacade{
    "AND center.status='VERIFIED' AND center.access_state='ENABLED' "+
    "AND provider.status='VERIFIED' FOR SHARE OF center,provider",
    [root,center]);
-  if(!q.rows[0])throw new NotFoundException({code:"ASSISTANCE_CENTER_NOT_VERIFIED"});
+  if(!q.rows[0])throw new NotFoundException({code:"CG14_CENTER_NOT_VERIFIED"});
   return q.rows[0];
  }
 
@@ -58,7 +58,7 @@ export class HealthVerifiedCenterDoctorFacade{
    "to_char(d.professional_license_valid_through,'YYYY-MM-DD') "+
    "FOR SHARE OF membership,d,center,revision,proof",
    [root,center,doctor]);
-  if(!q.rows[0])throw new NotFoundException({code:"ASSISTANCE_DOCTOR_NOT_VERIFIED"});
+  if(!q.rows[0])throw new NotFoundException({code:"CG14_DOCTOR_NOT_VERIFIED"});
   return q.rows[0];
  }
 
@@ -96,7 +96,7 @@ export class HealthVerifiedCenterDoctorFacade{
     "AND center.access_state='ENABLED' AND p.status='VERIFIED' "+
     "ORDER BY center.display_name,center.id LIMIT 101",[root]);
    if(centers.rows.length>100)
-    throw new ConflictException({code:"ASSISTANCE_CENTER_LIST_LIMIT"});
+    throw new ConflictException({code:"CG14_CENTER_LIST_LIMIT"});
   return centers.rows;
  }
  async doctors(c:PoolClient,root:string,center:string){
@@ -140,7 +140,7 @@ export class HealthVerifiedCenterDoctorFacade{
     "to_char(d.professional_license_valid_through,'YYYY-MM-DD')) "+
     "ORDER BY d.full_name,d.id LIMIT 101",[root,center]);
    if(result.rows.length>100)
-    throw new ConflictException({code:"ASSISTANCE_DOCTOR_LIST_LIMIT"});
+    throw new ConflictException({code:"CG14_DOCTOR_LIST_LIMIT"});
   return result.rows;
  }
 }
