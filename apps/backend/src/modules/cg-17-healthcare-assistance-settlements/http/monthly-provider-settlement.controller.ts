@@ -8,6 +8,11 @@ import {MonthlyProviderSettlementService}
 @Controller("api/v1/healthcare-assistance/provider-settlements")
 export class MonthlyProviderSettlementController{
  constructor(private readonly service:MonthlyProviderSettlementService){}
+ @Get("centers/eligible")
+ @Header("Cache-Control","private, no-store")
+ eligible(@Headers("authorization")token:string){
+  return this.service.eligibleCenters(token);
+ }
  @Get("centers/:centerRef/months/:month")
  @Header("Cache-Control","private, no-store")
  statement(@Headers("authorization")token:string,
