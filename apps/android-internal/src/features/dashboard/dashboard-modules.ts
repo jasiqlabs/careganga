@@ -55,6 +55,7 @@ export interface ModuleActionHandlers {
   openPolicy: () => void;
   openApprovals: () => void;
   openPatientQueue: () => void;
+  openLabOrders: () => void;
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
   openHealthReviews: () => void;
@@ -219,6 +220,20 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openPatientQueue
+    });
+  }
+
+  if (roleActions.includes("lab.orders.view") || roleActions.includes("lab.orders.create")) {
+    list.push({
+      key: "healthLabOrders",
+      title: "Lab Orders & Samples",
+      shortLabel: "Lab Orders",
+      description: "Assigned clinical laboratory orders, specimens and private report evidence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabOrders
     });
   }
 
@@ -503,6 +518,7 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "accounts",
   "approvals",
   "healthVisitQueue",
+  "healthLabOrders",
   "healthPatientBooking",
   "finance",
   "branches",
