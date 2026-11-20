@@ -127,7 +127,7 @@ export class CenterPatientCollectionService{
    "document.id AS receipt_document_ref FROM center_collection collect "+
    "LEFT JOIN cg19_center_patient_receipt_document document ON "+
    "document.root_realm_id=collect.root_realm_id AND "+
-   "document.collection_ref=collect.id +
+   "document.collection_ref=collect.id "+
    "WHERE collect.root_realm_id=$1 AND collect.charge_ref=$2 "+
    "ORDER BY created_at DESC,id DESC LIMIT 51",[realm,original.id]);
   const collectionsHaveMore=rows.rows.length>50;
