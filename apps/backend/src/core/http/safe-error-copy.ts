@@ -326,7 +326,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       LAB_CATALOG_ITEM_UNAVAILABLE:"The selected diagnostic test or package is no longer active.",
       LAB_CATALOG_PRICE_EXPIRED:"That proposed price period has expired. Create a new proposal.",
       LAB_CATALOG_RATE_OVERLAP:"This proposed price overlaps a later approved rate. Choose a future start after the current offer.",
-      LAB_CATALOG_RATE_OUTSIDE_WINDOW:"The commercial price must fall within the selected package availability dates. Enter an end date before the package expires."
+      LAB_CATALOG_RATE_OUTSIDE_WINDOW:"The commercial price must fall within the selected package availability dates. Enter an end date before the package expires.",
+      LAB_CATALOG_TEST_EXPIRED:"Select currently available tests and make sure the package dates do not extend beyond any included test."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();

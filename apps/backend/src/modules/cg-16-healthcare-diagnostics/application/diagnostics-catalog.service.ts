@@ -16,7 +16,8 @@ const CODE=/^[A-Z0-9][A-Z0-9-]{1,23}$/;
 const SAMPLES=["BLOOD","URINE","STOOL","SALIVA","SWAB","TISSUE","OTHER","NOT_APPLICABLE"] as const;
 type Actor=VerifiedFoundationActor;
 type TestDraft={testCode:string;name:string;categoryRef:string;sampleType:string;
- parametersDescription:string;clinicalDescription:string;status:"ACTIVE"|"INACTIVE"};
+ parametersDescription:string;clinicalDescription:string;status:"ACTIVE"|"INACTIVE";
+ activeFromUtc:string|null;activeToUtc:string|null};
 type PackageLine={testRef:string;quantity:number};
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function obj(v:unknown,fields:readonly string[]):Record<string,unknown>{
@@ -61,6 +62,12 @@ function status(v:unknown):"ACTIVE"|"INACTIVE"{
 }
 function parseTest(x:Record<string,unknown>):TestDraft{
  const sampleType=string(x.sampleType,"sampleType",1,32);
+ const activeFromUtc=x.activeFromUtc===undefined||x.activeFromUtc===null?null:
+  iso(x.activeFromUtc,"activeFromUtc").toISOString();
+ const activeToUtc=x.activeToUtc===undefined||x.activeToUtc===null?null:
+  iso(x.activeToUtc,"activeToUtc").toISOString();
+ if(activeToUtc&&activeFromUtc&&activeToUtc<=activeFromUtc)
+  throw new BadRequestException({code:"LAB_CATALOG_TEST_EXPIRED",field:"activeToUtc"});
  if(!SAMPLES.includes(sampleType as typeof SAMPLES[number]))
   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"sampleType"});
  return {
@@ -68,7 +75,8 @@ function parseTest(x:Record<string,unknown>):TestDraft{
   categoryRef:uuid(x.categoryRef,"categoryRef"),sampleType,
   parametersDescription:optional(x.parametersDescription,"parametersDescription",2000),
   clinicalDescription:optional(x.clinicalDescription,"clinicalDescription",2000),
-  status:x.status===undefined?"ACTIVE":status(x.status)
+  status:x.status===undefined?"ACTIVE":status(x.status),
+  activeFromUtc,activeToUtc
  };
 }
 function parts(v:unknown):PackageLine[]{
@@ -194,7 +202,8 @@ export class DiagnosticsCatalogService{
     "SELECT t.id AS \"testRef\",t.unique_test_code AS code,t.name,"+
     "t.category_ref AS \"categoryRef\",c.display_name AS category,"+
     "t.sample_type AS \"sampleType\",t.parameters_description AS \"parametersDescription\","+
-    "t.clinical_description AS \"clinicalDescription\",t.status,t.revision "+
+    "t.clinical_description AS \"clinicalDescription\",t.status,t.revision,"+
+    "t.active_from AS \"activeFromUtc\",t.active_to AS \"activeToUtc\" "+
     "FROM diagnostic_test t JOIN test_category c ON c.root_realm_id=t.root_realm_id "+
     "AND c.id=t.category_ref WHERE t.root_realm_id=$1 "+
     "AND ($2='' OR t.name ILIKE $2 ESCAPE '\\' OR t.unique_test_code ILIKE $2 ESCAPE '\\') "+
@@ -233,7 +242,7 @@ export class DiagnosticsCatalogService{
  }
  async createTest(bearer:string,raw:unknown){
   const x=obj(raw,["requestKey","testCode","name","categoryRef","sampleType",
-   "parametersDescription","clinicalDescription"]);
+   "parametersDescription","clinicalDescription","activeFromUtc","activeToUtc"]);
   const data=parseTest(x);
   const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.manage");
   return this.run(async tx=>{
@@ -244,15 +253,20 @@ export class DiagnosticsCatalogService{
     "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
     [actor.realmId,data.categoryRef]);
    if(!category.rowCount)throw new BadRequestException({code:"LAB_CATALOG_CATEGORY_UNAVAILABLE"});
-   const r=await tx.query<{id:string}>(
+   const r=await tx.query<{id:string;active_from:Date;active_to:Date|null}>(
     "INSERT INTO diagnostic_test(root_realm_id,unique_test_code,name,category_ref,"+
-    "sample_type,parameters_description,clinical_description,created_by) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+    "sample_type,parameters_description,clinical_description,active_from,"+
+    "active_to,created_by) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,COALESCE($8::timestamptz,now()),$9,$10) "+
+    "RETURNING id,active_from,active_to",
     [actor.realmId,data.testCode,data.name,data.categoryRef,data.sampleType,
-     data.parametersDescription,data.clinicalDescription,actor.accountId]);
+     data.parametersDescription,data.clinicalDescription,data.activeFromUtc,
+     data.activeToUtc,actor.accountId]);
    await tx.query("INSERT INTO diagnostic_test_revision(root_realm_id,test_ref,"+
     "revision_no,snapshot,changed_by) VALUES($1,$2,1,$3::jsonb,$4)",
-    [actor.realmId,r.rows[0].id,JSON.stringify(data),actor.accountId]);
+    [actor.realmId,r.rows[0].id,JSON.stringify({...data,
+     activeFromUtc:r.rows[0].active_from.toISOString(),
+     activeToUtc:r.rows[0].active_to?.toISOString()??null}),actor.accountId]);
    await this.done(tx,actor,x.requestKey,r.rows[0].id);
    return {testRef:r.rows[0].id,replayed:false};
   });
@@ -260,7 +274,8 @@ export class DiagnosticsCatalogService{
  async updateTest(bearer:string,rawRef:string,raw:unknown){
   const testRef=uuid(rawRef,"testRef");
   const x=obj(raw,["requestKey","expectedVersion","name","categoryRef",
-   "sampleType","parametersDescription","clinicalDescription","status","testCode"]);
+   "sampleType","parametersDescription","clinicalDescription","status","testCode",
+   "activeFromUtc","activeToUtc"]);
   const expected=integer(x.expectedVersion,"expectedVersion",1,2147483646);
   const data=parseTest(x);
   const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.manage");
@@ -268,8 +283,9 @@ export class DiagnosticsCatalogService{
    await this.current(tx,actor,"diagnostics.catalog.manage");
    const cmd=await this.command(tx,actor,"TEST_UPDATE",x.requestKey,{testRef,expected,data});
    if(cmd.replay)return {testRef:cmd.replay,replayed:true};
-   const before=await tx.query<{revision:number;unique_test_code:string}>(
-    "SELECT revision,unique_test_code FROM diagnostic_test "+
+   const before=await tx.query<{revision:number;unique_test_code:string;
+    active_from:Date;active_to:Date|null}>(
+    "SELECT revision,unique_test_code,active_from,active_to FROM diagnostic_test "+
     "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,testRef]);
    if(!before.rows[0])throw new NotFoundException("Diagnostic test unavailable");
    if(before.rows[0].revision!==expected)
@@ -280,14 +296,24 @@ export class DiagnosticsCatalogService{
     "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
     [actor.realmId,data.categoryRef]);
    if(!category.rowCount)throw new BadRequestException({code:"LAB_CATALOG_CATEGORY_UNAVAILABLE"});
-   await tx.query("UPDATE diagnostic_test SET name=$3,category_ref=$4,sample_type=$5,"+
+   const activeFromUtc=data.activeFromUtc??before.rows[0].active_from.toISOString();
+   const activeToUtc=x.activeToUtc===undefined?
+    before.rows[0].active_to?.toISOString()??null:data.activeToUtc;
+   if(activeToUtc&&activeToUtc<=activeFromUtc)
+    throw new BadRequestException({code:"LAB_CATALOG_TEST_EXPIRED",field:"activeToUtc"});
+   const updated=await tx.query<{active_from:Date;active_to:Date|null}>(
+    "UPDATE diagnostic_test SET name=$3,category_ref=$4,sample_type=$5,"+
     "parameters_description=$6,clinical_description=$7,status=$8,revision=revision+1,"+
-    "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
+    "active_from=$9,active_to=$10,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 RETURNING active_from,active_to",
     [actor.realmId,testRef,data.name,data.categoryRef,data.sampleType,
-     data.parametersDescription,data.clinicalDescription,data.status]);
+     data.parametersDescription,data.clinicalDescription,data.status,
+     activeFromUtc,activeToUtc]);
    await tx.query("INSERT INTO diagnostic_test_revision(root_realm_id,test_ref,"+
     "revision_no,snapshot,changed_by) VALUES($1,$2,$3,$4::jsonb,$5)",
-    [actor.realmId,testRef,expected+1,JSON.stringify(data),actor.accountId]);
+    [actor.realmId,testRef,expected+1,JSON.stringify({...data,
+      activeFromUtc:updated.rows[0].active_from.toISOString(),
+      activeToUtc:updated.rows[0].active_to?.toISOString()??null}),actor.accountId]);
    await this.done(tx,actor,x.requestKey,testRef);
    return {testRef,revision:expected+1,replayed:false};
   });
@@ -325,11 +351,14 @@ export class DiagnosticsCatalogService{
    if(cmd.replay)return {packageRef:cmd.replay,replayed:true};
    if(data.activeToUtc&&new Date(data.activeToUtc).getTime()<=Date.now())
     throw new BadRequestException({code:"LAB_CATALOG_PACKAGE_INVALID",field:"activeToUtc"});
-   const actual=await tx.query<{id:string;revision:number}>(
-    "SELECT t.id,t.revision FROM diagnostic_test t JOIN test_category c "+
+   const actual=await tx.query<{id:string;revision:number;
+    active_from:Date;active_to:Date|null}>(
+    "SELECT t.id,t.revision,t.active_from,t.active_to FROM diagnostic_test t JOIN test_category c "+
     "ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref "+
     "WHERE t.root_realm_id=$1 AND t.id=ANY($2::uuid[]) "+
-    "AND t.status='ACTIVE' AND c.status='ACTIVE' FOR SHARE OF t,c",
+    "AND t.status='ACTIVE' AND c.status='ACTIVE' "+
+    "AND t.active_from<=now() AND (t.active_to IS NULL OR t.active_to>now()) "+
+    "FOR SHARE OF t,c",
     [actor.realmId,data.tests.map(t=>t.testRef)]);
    if(actual.rowCount!==data.tests.length)
     throw new BadRequestException({code:"LAB_CATALOG_PACKAGE_INVALID"});
@@ -342,6 +371,14 @@ export class DiagnosticsCatalogService{
     [actor.realmId,data.packageCode,data.name,data.description,data.activeFromUtc,
      data.activeToUtc,actor.accountId]);
    const ref=pack.rows[0].id;
+   // A scheduled package cannot outlive any of its original approved
+   // components; otherwise it would expose a withdrawn/expired test.
+   for(const component of actual.rows){
+    if(component.active_from.getTime()>pack.rows[0].active_from.getTime()||
+       component.active_to&&(!pack.rows[0].active_to||
+        component.active_to.getTime()<pack.rows[0].active_to.getTime()))
+     throw new BadRequestException({code:"LAB_CATALOG_TEST_EXPIRED",field:"tests"});
+   }
    for(let i=0;i<data.tests.length;i++){
     const line=data.tests[i];
     await tx.query("INSERT INTO diagnostic_package_line(root_realm_id,package_ref,"+
@@ -394,7 +431,8 @@ export class DiagnosticsCatalogService{
    "SELECT t.id FROM diagnostic_test t JOIN test_category c "+
    "ON c.root_realm_id=t.root_realm_id AND c.id=t.category_ref "+
    "WHERE t.root_realm_id=$1 AND t.id=$2 AND t.status='ACTIVE' "+
-   "AND c.status='ACTIVE' FOR SHARE OF t,c":
+   "AND c.status='ACTIVE' AND t.active_from<=now() "+
+   "AND (t.active_to IS NULL OR t.active_to>now()) FOR SHARE OF t,c":
    "SELECT p.id FROM diagnostic_package p WHERE p.root_realm_id=$1 "+
    "AND p.id=$2 AND p.status='ACTIVE' AND p.active_from<=now() "+
    "AND (p.active_to IS NULL OR p.active_to>now()) FOR SHARE OF p";
@@ -411,6 +449,7 @@ export class DiagnosticsCatalogService{
     "FROM diagnostic_test t JOIN test_category c ON c.root_realm_id=t.root_realm_id "+
     "AND c.id=t.category_ref WHERE t.root_realm_id=$1 "+
     "AND t.status='ACTIVE' AND c.status='ACTIVE' "+
+    "AND t.active_from<=now() AND (t.active_to IS NULL OR t.active_to>now()) "+
     "UNION ALL "+
     "SELECT 'PACKAGE' AS kind,p.id AS \"itemRef\",p.name,p.unique_package_code AS code "+
     "FROM diagnostic_package p WHERE p.root_realm_id=$1 AND p.status='ACTIVE' "+
@@ -701,7 +740,8 @@ export class DiagnosticsCatalogService{
     "(SELECT count(*) FROM diagnostic_test t JOIN test_category cat "+
     "ON cat.root_realm_id=t.root_realm_id AND cat.id=t.category_ref "+
     "WHERE t.root_realm_id=$1 AND t.status='ACTIVE' "+
-    "AND cat.status='ACTIVE') AS active_tests,"+
+    "AND cat.status='ACTIVE' AND t.active_from<=now() "+
+    "AND (t.active_to IS NULL OR t.active_to>now())) AS active_tests,"+
     "(SELECT count(*) FROM test_category WHERE root_realm_id=$1 AND status='ACTIVE') AS categories,"+
     "(SELECT count(*) FROM diagnostic_package WHERE root_realm_id=$1 "+
     "AND status='ACTIVE' AND active_from<=now() "+
