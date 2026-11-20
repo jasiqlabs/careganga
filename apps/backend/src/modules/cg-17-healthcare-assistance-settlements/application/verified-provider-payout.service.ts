@@ -91,8 +91,25 @@ export class VerifiedProviderPayoutService{
     bank.fileRef!==claim.destination_file_ref||
     bank.version!==claim.destination_version)
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_DESTINATION_CHANGED"});
+   const prior=await c.query<{amount_minor:string;bank_item_ref:string;
+    verified_at:Date}>(
+    "SELECT payout.amount_minor::text,bank.bank_item_ref,payout.verified_at "+
+    "FROM provider_settlement_payment payout "+
+    "JOIN finance_bank_reconciliation bank ON "+
+    "bank.id=payout.bank_reconciliation_ref "+
+    "AND bank.root_realm_id=payout.root_realm_id "+
+    "WHERE payout.root_realm_id=$1 AND payout.settlement_ref=$2 "+
+    "ORDER BY payout.verified_at DESC,payout.id DESC LIMIT 101",
+    [a.realmId,claim.id]);
+   if(prior.rows.length>100)
+    throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_HISTORY_TOO_LARGE"});
+   const payoutHistory=prior.rows.map(x=>({
+    bankItemLabel:x.bank_item_ref,amountMinor:x.amount_minor,
+    verifiedAt:x.verified_at.toISOString()
+   }));
    if(claim.state==="SETTLED")
-    return {...this.view(claim),bankDisbursements:[],complete:true};
+    return {...this.view(claim),bankDisbursements:[],
+     protectedDestinationLabel:bank.maskedLabel,payoutHistory,complete:true};
    const evidence=await this.cg09.options(c,a);
    const outstanding=BigInt(claim.approved_total_minor)-BigInt(claim.paid_minor);
    const refs=evidence.bankDisbursements.map(x=>x.bankMatchRef);
@@ -102,6 +119,7 @@ export class VerifiedProviderPayoutService{
     [a.realmId,refs]):null;
    const set=new Set((used?.rows??[]).map(x=>x.bank_reconciliation_ref));
    return {...this.view(claim),
+    protectedDestinationLabel:bank.maskedLabel,payoutHistory,
     bankDisbursements:evidence.bankDisbursements.filter(x=>!set.has(x.bankMatchRef)&&
      BigInt(x.amountMinor)>0n&&BigInt(x.amountMinor)<=outstanding),
     complete:evidence.complete};
