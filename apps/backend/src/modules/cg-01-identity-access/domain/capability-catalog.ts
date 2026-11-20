@@ -104,6 +104,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
   {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
   {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true},
+  {key:"healthcare.assistance.policies.view",businessLabel:"View approved healthcare assistance policies",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.policies.manage",businessLabel:"Configure and withdraw approved healthcare support",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"lab.equipment.view",businessLabel:"View my lab equipment and readiness",group:"Laboratory equipment & quality",assignable:true,sensitive:false},
   {key:"lab.equipment.manage",businessLabel:"Record own lab equipment and maintenance",group:"Laboratory equipment & quality",assignable:true,sensitive:true},
   {key:"lab.quality.record",businessLabel:"Upload private lab quality and calibration evidence",group:"Laboratory equipment & quality",assignable:true,sensitive:true},
