@@ -32,7 +32,7 @@ export default async function HealthcareReviewsPage(){
   if(!(keys.has("health.providers.verify")||keys.has("health.doctors.verify"))||!keys.has("approvals.review"))
    return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>;
   return <div className="shell">
-   <FoundationAdminNav active="healthNetwork" displayName={person.displayName}
+   <FoundationAdminNav initialActions={Array.from(keys)} active="healthNetwork" displayName={person.displayName}
     roleName={person.roleName}
     canViewSchedules={keys.has("health.schedules.view")} canViewHealthNetwork={keys.has("health.providers.view")}
     canViewRoles={keys.has("roles.view")}

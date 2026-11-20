@@ -29,6 +29,7 @@ export default async function AdminHome() {
   let canEditOwnCenter=false;
   let canIntakePatients=false;
   let canManageVisits=false;
+  let verifiedActions: string[] | undefined;
   if (backend) {
     try {
       const response=await fetch(new URL("/api/identity/me",backend),{
@@ -42,6 +43,9 @@ export default async function AdminHome() {
         if(permissions.status===401) invalidSession=true;
         if(permissions.ok){
           const effective=await permissions.json() as {actions?:{key?:string}[]};
+          verifiedActions=Array.isArray(effective.actions)
+            ? effective.actions.flatMap(a=>typeof a?.key==="string"?[a.key]:[])
+            : [];
           canViewRoles=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="roles.view");
           canViewHealthcare=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.providers.view");
           canEditOwnCenter=Array.isArray(effective.actions)&&effective.actions.some(x=>x.key==="health.centers.draft.edit");
@@ -80,7 +84,7 @@ export default async function AdminHome() {
   if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
   return <div className="shell">
     <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
-    <FoundationAdminNav active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
+    <FoundationAdminNav initialActions={verifiedActions} active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}
       canViewSettings={canViewSettings} canViewAudit={canViewAudit}
       canViewRecovery={canViewRecovery} canViewApprovals={canViewApprovals}
       canViewDocuments={canViewDocuments} canViewCommunications={canViewCommunications} canViewSupport={canViewSupport} canViewFinance={canViewFinance} canViewVouchers={canViewVouchers}

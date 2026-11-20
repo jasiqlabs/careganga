@@ -33,7 +33,7 @@ export default async function AdminSecurityPolicy(){
       !keys.includes("identity.security-policy.view"))
       return <AccessDeniedView reason="Security Policy is restricted to the Foundation Super Admin." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="policy" displayName={person.displayName} roleName={person.roleName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="policy" displayName={person.displayName} roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")} canViewAccounts={keys.includes("accounts.view")||
           (keys.includes("accounts.create")&&keys.includes("roles.assign"))}
         canManageSecurityPolicy canViewSettings={keys.includes("platform.settings.view")}

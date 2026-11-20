@@ -33,7 +33,7 @@ export default async function WebsiteCmsAdmin(){
   if(!actions.has("cms.content.view"))
    return <AccessDeniedView reason="Your Foundation role cannot view or edit website content." />;
   return <div className="shell">
-   <FoundationAdminNav active="cms" displayName={actor.displayName}
+   <FoundationAdminNav initialActions={Array.from(actions)} active="cms" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.has("roles.view")}
     canViewAccounts={actions.has("accounts.view")} canViewCms
     canViewSettings={actions.has("platform.settings.view")}

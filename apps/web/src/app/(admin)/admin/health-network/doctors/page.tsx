@@ -34,7 +34,7 @@ export default async function HealthcareDoctorsPage(){
     if(!keys.has("health.doctors.view"))
       return <AccessDeniedView reason="Your current role cannot access protected professional registrations." accountHref="/admin"/>;
     return <div className="shell">
-      <FoundationAdminNav active="healthDoctors" displayName={person.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} active="healthDoctors" displayName={person.displayName}
         roleName={person.roleName} canViewDoctors
     canViewSchedules={keys.has("health.schedules.view")}
         canViewHealthNetwork={keys.has("health.providers.view")}

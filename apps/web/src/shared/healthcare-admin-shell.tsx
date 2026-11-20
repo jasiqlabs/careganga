@@ -17,7 +17,7 @@ export function HealthcareAdminShell({
 }){
  const has=(key:string)=>actions.has(key);
  return <div className="shell">
-  <FoundationAdminNav active={active}
+  <FoundationAdminNav active={active} initialActions={Array.from(actions)}
    displayName={actor.displayName} roleName={actor.roleName}
    canViewRoles={has("roles.view")}
    canViewAccounts={has("accounts.view")||

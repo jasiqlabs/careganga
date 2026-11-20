@@ -35,7 +35,7 @@ export default async function ProtectedH15PatientManagement(){
   if(!rightsSet.has("health.patients.admin.view"))
    return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>;
   return <div className="shell">
-   <FoundationAdminNav active="healthPatientAdmin"
+   <FoundationAdminNav initialActions={Array.from(rightsSet)} active="healthPatientAdmin"
     displayName={actor.displayName} roleName={actor.roleName}
     canViewPatientAdmin canViewRoles={rightsSet.has("roles.view")}
     canViewAccounts={rightsSet.has("accounts.view")}

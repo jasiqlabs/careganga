@@ -31,7 +31,7 @@ export default async function BranchRegistrationPage(){
     if(!keys.includes("foundation.branches.view"))
       return <AccessDeniedView reason="Your current role does not permit branch registration." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="branches" displayName={person.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="branches" displayName={person.displayName}
         roleName={person.roleName}
         canViewRoles={keys.includes("roles.view")}
         canViewAccounts={keys.includes("accounts.view")}

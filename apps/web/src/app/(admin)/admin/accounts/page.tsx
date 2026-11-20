@@ -37,7 +37,7 @@ export default async function FoundationAccounts(){
     if(!canViewAccounts&&!canCreateOnly)
       return <AccessDeniedView reason="You cannot view staff accounts." />;
     return <div className="shell">
-      <FoundationAdminNav canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="accounts" displayName={actor.displayName}
+      <FoundationAdminNav initialActions={Array.from(keys)} canViewFinance={keys.includes("finance.accounts.view")} canViewVouchers={keys.includes("finance.vouchers.view")} active="accounts" displayName={actor.displayName}
         roleName={actor.roleName} canViewRoles={keys.includes("roles.view")}
         canViewAccounts={canViewAccounts||canCreateOnly}
         canManageSecurityPolicy={keys.includes("identity.security-policy.manage")}

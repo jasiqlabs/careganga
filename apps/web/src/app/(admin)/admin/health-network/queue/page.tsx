@@ -32,7 +32,7 @@ export default async function CenterQueuePage(){
    i&&typeof i==="object"&&"key" in i&&typeof i.key==="string"?[i.key]:[]));
   if(!allowed.has("health.visits.manage"))return <AccessDeniedView reason="Your current role cannot manage visits at a healthcare center." accountHref="/admin"/>;
   return <div className="shell">
-   <FoundationAdminNav active="healthVisitQueue"
+   <FoundationAdminNav initialActions={Array.from(allowed)} active="healthVisitQueue"
     displayName={person.displayName} roleName={person.roleName}
     canViewRoles={allowed.has("roles.view")}
     canViewAccounts={allowed.has("accounts.view")}

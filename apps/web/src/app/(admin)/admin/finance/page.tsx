@@ -33,7 +33,7 @@ export default async function FinancePage(){
     <p>Your role does not allow you to view financial accounts. Ask an Administrator if you need access.</p>
     <Link href="/admin">Return to my account</Link></main>;
   return <div className="shell">
-   <FoundationAdminNav active="finance" displayName={actor.displayName}
+   <FoundationAdminNav initialActions={Array.from(actions)} active="finance" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
     canViewAccounts={actions.includes("accounts.view")}
     canManageSecurityPolicy={actions.includes("identity.security-policy.manage")}

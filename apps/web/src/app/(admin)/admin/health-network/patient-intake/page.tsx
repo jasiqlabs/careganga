@@ -40,7 +40,7 @@ export default async function ReceptionPatientIntake(){
    typeof item.key==="string"?[item.key]:[]));
   if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>;
   return <div className="shell">
-   <FoundationAdminNav active="healthPatientIntake"
+   <FoundationAdminNav initialActions={Array.from(actions)} active="healthPatientIntake"
     displayName={actor.displayName} roleName={actor.roleName}
     canViewRoles={actions.has("roles.view")}
     canViewAccounts={actions.has("accounts.view")}

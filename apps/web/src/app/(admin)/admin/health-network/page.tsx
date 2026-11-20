@@ -36,7 +36,7 @@ export default async function HealthNetworkPage(){
       !(actions.has("approvals.review")&&actions.has("health.providers.verify")))
       return <AccessDeniedView reason="Your current role cannot read healthcare provider registrations." accountHref="/admin"/>;
     return <div className="shell">
-      <FoundationAdminNav active="healthNetwork"
+      <FoundationAdminNav initialActions={Array.from(actions)} active="healthNetwork"
         displayName={person.displayName} roleName={person.roleName}
         canViewRoles={actions.has("roles.view")}
         canViewAccounts={actions.has("accounts.view")}

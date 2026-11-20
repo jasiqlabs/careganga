@@ -37,7 +37,7 @@ export default async function FinanceClaimReviewsPage(){
    <p>Only a separate protected Foundation reviewer may open reimbursement cases.</p>
    <Link href="/admin">Return to my account</Link></main>;
   return <div className="shell">
-   <FoundationAdminNav active="financeClaimReviews" displayName={actor.displayName}
+   <FoundationAdminNav initialActions={Array.from(actions)} active="financeClaimReviews" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
     canViewAccounts={actions.includes("accounts.view")}
     canManageSecurityPolicy={actions.includes("identity.security-policy.manage")}
