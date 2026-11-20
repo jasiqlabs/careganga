@@ -12,11 +12,12 @@ import {ClinicalLabOrderController} from "./http/clinical-lab-order.controller";
 import {ClinicalLabOptionsService} from "./application/clinical-lab-options.service";
 import {ClinicalLabCustodyService} from "./application/clinical-lab-custody.service";
 import {ClinicalLabResultEvidenceService} from "./application/clinical-lab-result-evidence.service";
+import {ClinicalLabProfessionalReviewService} from "./application/clinical-lab-professional-review.service";
 import {LabResultStorageModule} from "../cg-19-documents-notifications/lab-result-storage.module";
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,LabResultStorageModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService],
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,ClinicalLabOrderController],
  exports:[DiagnosticsCatalogService]
 })
