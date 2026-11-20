@@ -27,8 +27,8 @@ CREATE TABLE patient_charge(
  support_minor bigint NOT NULL CHECK(support_minor BETWEEN 0 AND 10000000000),
  due_minor bigint NOT NULL CHECK(due_minor BETWEEN 0 AND 10000000000),
  currency char(3) NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
- collection_state text NOT NULL DEFAULT 'DUE'
-  CHECK(collection_state='DUE'),
+ charge_state text NOT NULL DEFAULT 'ACCEPTED'
+  CHECK(charge_state='ACCEPTED'),
  accepted_by_account uuid NOT NULL,
  request_key uuid NOT NULL,
  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
