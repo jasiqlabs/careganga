@@ -12,7 +12,8 @@ type CaseView={caseRef:string;ticketNumber:string;subject:string;name:string;con
   createdAt:string;updatedAt:string};
 type Detail=CaseView&{message:string;replies:Array<{replyRef:string;body:string;
   authorAccountRef:string;createdAt:string}>;
-  history:Array<{kind:string;at:string}>};
+  history:Array<{kind:string;at:string}>;
+  statusNotes:Array<{revision:number;status:string;summary:string;recordedAt:string}>};
 type Counts={total:number;unread:number;open:number;replied:number;
   closed:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
@@ -54,6 +55,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
   const [reply,setReply]=useState(""),[replyKey,setReplyKey]=useState("");
   const [agents,setAgents]=useState<Option[]>([]),[assignee,setAssignee]=useState("");
   const [nextStatus,setNextStatus]=useState("OPEN");
+  const [statusNote,setStatusNote]=useState("");
   const [agentSearch,setAgentSearch]=useState("");
   const [appliedAgentSearch,setAppliedAgentSearch]=useState("");
   const [faqs,setFaqs]=useState<Faq[]>([]),[editing,setEditing]=useState<Faq|null>(null);
@@ -102,7 +104,7 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
     try{
       const item=await api<Detail>(token,"cases/"+ref);
       setSelected(item);setAssignee(item.assignedAccountRef??"");
-      setNextStatus(item.status);
+      setNextStatus(item.status);setStatusNote("");
       setReply("");setReplyKey("");
       await api(token,"cases/"+ref+"/read","POST");
       await load();
@@ -129,11 +131,19 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
       }else if(kind==="ARCHIVE"){
         await api(token,path+"/archive","POST",{archived:!selected.archived});
       }else{
+        const status=kind==="CLOSE"?"CLOSED":kind==="REOPEN"?"OPEN":nextStatus;
+        if(["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(status)&&
+          statusNote.trim().length<8){
+          setMessage("Add a private status or resolution summary of at least eight characters.");
+          return;
+        }
         await api(token,path+"/status","PATCH",{
-          expectedRevision:selected.revision,status:kind==="CLOSE"?"CLOSED":kind==="REOPEN"?"OPEN":nextStatus});
+          expectedRevision:selected.revision,status,
+          ...(statusNote.trim()?{note:statusNote.trim()}:{})});
       }
       const updated=await api<Detail>(token,path);
-      setSelected(updated);setNextStatus(updated.status);await load();
+      setSelected(updated);setNextStatus(updated.status);
+      setStatusNote("");await load();
       setMessage(kind==="REPLY"?
         "Reply saved privately. External delivery has not been claimed.":
         "Original case state confirmed.");
@@ -210,6 +220,13 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
           <Text style={s.message}>{r.body}</Text>
           <Text style={s.muted}>{new Date(r.createdAt).toLocaleString()}</Text>
         </View>)}
+        <Text style={s.heading}>Private status and resolution notes</Text>
+        {selected.statusNotes.length===0&&<Text>No resolution notes have been recorded.</Text>}
+        {selected.statusNotes.map(note=><View key={note.revision} style={s.item}>
+          <Text style={s.heading}>{note.status.replaceAll("_"," ")} · revision {note.revision}</Text>
+          <Text selectable style={s.message}>{note.summary}</Text>
+          <Text style={s.muted}>{new Date(note.recordedAt).toLocaleString()}</Text>
+        </View>)}
         {selected.history.map((h,i)=><Text key={i} style={s.muted}>
           {h.kind} · {new Date(h.at).toLocaleString()}</Text>)}
         {mayManage&&<View style={s.card}>
@@ -238,17 +255,32 @@ export function FoundationSupportScreen({token,mayView,mayManage,mayReply,mayFaq
               "ESCALATED","RESOLVED","CLOSED"].map(value=>
               <Pressable key={value} style={s.button}
                 accessibilityRole="button"
-                accessibilityState={{selected:nextStatus===value}}
+                accessibilityState={{selected:nextStatus===value,disabled:
+                  selected.status==="CLOSED"&&value!=="OPEN"||
+                  selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value)||
+                  value==="ASSIGNED"&&!selected.assignedAccountRef}}
+                disabled={selected.status==="CLOSED"&&value!=="OPEN"||
+                  selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value)||
+                  value==="ASSIGNED"&&!selected.assignedAccountRef}
                 onPress={()=>setNextStatus(value)}>
                 <Text>{value.replaceAll("_"," ")}</Text>
               </Pressable>)}
           </View>
+          <Text style={s.heading}>Private status or resolution summary</Text>
+          <TextInput multiline style={[s.input,s.longInput]}
+            maxLength={1200} value={statusNote} onChangeText={setStatusNote}
+            accessibilityLabel="Status or resolution summary"
+            placeholder="Required for Waiting for User, Resolved or Closed"/>
+          <Text style={s.muted}>Visible only to authorized Foundation staff.
+            Saving a note does not claim external email delivery.</Text>
           <Pressable style={s.button}
-            disabled={busy||nextStatus===selected.status}
+            disabled={busy||nextStatus===selected.status||
+              ["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(nextStatus)&&
+              statusNote.trim().length<8}
             onPress={()=>void action("SET_STATUS")}>
             <Text>Save status</Text>
           </Pressable>
-          <Pressable style={s.button} disabled={busy||selected.status==="CLOSED"}
+          <Pressable style={s.button} disabled={busy||selected.status==="CLOSED"||statusNote.trim().length<8}
             onPress={()=>void action("CLOSE")}><Text>Close case</Text></Pressable>
           <Pressable style={s.button} disabled={busy||selected.status==="OPEN"}
             onPress={()=>void action("REOPEN")}><Text>Reopen case</Text></Pressable>
