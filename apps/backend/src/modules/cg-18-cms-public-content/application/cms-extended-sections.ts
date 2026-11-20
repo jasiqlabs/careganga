@@ -352,8 +352,8 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
  * source, inserted at the app composition level, not CMS author text.
  * This content-only guard has NO dependency on CG17 tables or services.
  */
-export function healthcareEditorialClaimsSafe(sections:readonly EditorialSection[]):boolean{
- const text=JSON.stringify(sections.map(s=>s.fields));
+export function healthcareEditorialClaimsSafe(sections:readonly EditorialSection[],metadata:string[]=[]):boolean{
+ const text=JSON.stringify([...metadata,...sections.map(s=>s.fields)]);
  return !/(?:\d{1,3}(?:\.\d{1,2})?\s*%|₹\s*[\d,.]+|\b(?:rs\.?|inr)\s*[\d,.]+|\b(?:discount|subsidy|waiver)\s*(?:of|up to)?\s*\d+)/i.test(text);
 }
 export function validateExtendedPage(kind:string,sections:readonly EditorialSection[],
