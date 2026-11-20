@@ -7,6 +7,9 @@ import {PatientsAppointmentsModule} from "../cg-15-patients-appointments/patient
 import {HealthNetworkModule} from "../cg-14-healthcare-network/health-network.module";
 import {PublicHealthcareAssistanceService} from "./application/public-healthcare-assistance.service";
 import {CenterPatientCollectionService} from "./application/center-patient-collection.service";
+import {CenterPatientReceiptService} from "./application/center-patient-receipt.service";
+import {CenterPatientReceiptController} from "./http/center-patient-receipt.controller";
+import {LabResultStorageModule} from "../cg-19-documents-notifications/lab-result-storage.module";
 import {CenterPatientCollectionController} from "./http/center-patient-collection.controller";
 import {PublicHealthcareAssistanceController} from "./http/public-healthcare-assistance.controller";
 import {HealthcarePolicyApprovalService} from "./application/healthcare-policy-approval.service";
@@ -19,7 +22,7 @@ import {HealthcareAssistancePolicyService}
 import {HealthcareAssistancePolicyController}
  from "./http/healthcare-assistance-policy.controller";
 @Module({
- imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule],
+ imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule,LabResultStorageModule],
  providers:[CenterMerchantCheckoutService,CenterMerchantProvisioningService,CenterPatientCollectionService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
  controllers:[CenterMerchantController,CenterPatientCollectionController,PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
  exports:[HealthcareAssistancePolicyService,ConsultationPatientChargeService]
