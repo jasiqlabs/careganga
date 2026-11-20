@@ -9,7 +9,7 @@ import {HealthPublicRequestThrottleService}
 const SLUG=/^[a-z0-9][a-z0-9-]{2,79}$/;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Original={revisionRef:string;rootRef:string;centerRef:string;doctorRef:string|null;
- centerSlug:string;centerName:string;candidateDoctor:string|null;
+ centerSlug:string;centerName:string;
  mode:"PERCENT"|"FIXED";percentBasisPoints:number|null;
  fixedMinor:string|null;capMinor:string;validUntil:Date};
 type PublicBenefit={centerSlug:string;centerName:string;doctorRef:string|null;
@@ -49,7 +49,7 @@ export class PublicHealthcareAssistanceService{
     "rule.center_ref AS \"centerRef\","+
     "rule.doctor_ref AS \"doctorRef\",c.public_slug AS \"centerSlug\","+
     "c.display_name AS \"centerName\","+
-    "COALESCE(rule.doctor_ref,$2::uuid,one_doctor.doctor_id) AS \"candidateDoctor\","+
+    
     "rule.mode,rule.percent_basis_points AS \"percentBasisPoints\","+
     "rule.fixed_minor::text AS \"fixedMinor\","+
     "rule.cap_minor::text AS \"capMinor\",rule.valid_until AS \"validUntil\" "+
@@ -58,12 +58,7 @@ export class PublicHealthcareAssistanceService{
     "AND root.realm_key='FOUNDATION_ROOT' "+
     "JOIN health_center c ON c.root_realm_id=rule.root_realm_id "+
     "AND c.id=rule.center_ref "+
-    "LEFT JOIN LATERAL(SELECT assoc.doctor_id "+
-    "FROM health_doctor_center assoc "+
-    "WHERE assoc.root_realm_id=c.root_realm_id AND assoc.center_id=c.id "+
-    "AND assoc.affiliation_state='APPROVED' AND assoc.approved_from<=now() "+
-    "AND (assoc.approved_to IS NULL OR assoc.approved_to>now()) "+
-    "ORDER BY assoc.doctor_id LIMIT 1) one_doctor ON rule.doctor_ref IS NULL "+
+
     "WHERE rule.approval_state='ACTIVE' "+
     "AND rule.service_kind='CONSULTATION' "+
     "AND rule.activated_at IS NOT NULL AND rule.activated_at<=now() "+
@@ -74,15 +69,13 @@ export class PublicHealthcareAssistanceService{
     [center,doctor||null]);
    const result:PublicBenefit[]=[];
    for(const row of q.rows.slice(0,12)){
-    if(!row.candidateDoctor)continue;
     try{
-     const live=await this.directory.eligibleScheduleSource(
-      client,row.candidateDoctor,row.centerSlug);
-     const original=live.find(x=>x.root_ref===row.rootRef&&x.center_ref===row.centerRef&&
-      x.doctor_ref===row.candidateDoctor&&x.amount_minor!==null);
-     if(!original)continue;
+     const original=await this.directory.eligibleConsultationCandidate(
+      client,row.rootRef,row.centerSlug,row.doctorRef??(doctor||undefined));
+     if(!original||original.center_ref!==row.centerRef||
+        original.root_ref!==row.rootRef||original.amount_minor===null)continue;
      result.push({centerSlug:row.centerSlug,centerName:row.centerName,
-      doctorRef:row.doctorRef??(doctor?row.candidateDoctor:null),
+      doctorRef:row.doctorRef??(doctor?original.doctor_ref:null),
       doctorName:row.doctorRef||doctor?original.doctor_name:null,
       feeMinor:row.doctorRef||doctor?original.amount_minor:null,
       currency:"INR",mode:row.mode,percentBasisPoints:row.percentBasisPoints,
