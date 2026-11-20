@@ -134,7 +134,7 @@ export class ConsultationPatientChargeService{
     "NO_EFFECTIVE_ASSISTANCE" as const,
    patientCareIdentityAndConsentVerified:true,
    patientCollectionVerified:false,foundationLiabilityCreated:false,
-   sourceAmountIsGstInclusiveOnlyAsApprovedByCG14:true};
+   taxBreakdownUnavailableFromCG14:true};
  }
  async quoteHold(token:string,rawHold:string,rawCenter?:string){
   const hold=id(rawHold),center=rawCenter===undefined?undefined:id(rawCenter);
@@ -162,6 +162,9 @@ export class ConsultationPatientChargeService{
    if(source.bookingState==="CANCELLED"||
      source.collectionState==="NOT_COLLECTIBLE")
     return {accepted:false,state:"CANCELLED_NOT_COLLECTIBLE" as const};
+   // A newly quoted charge requires the same current CG14 verification
+   // as actual CG15 consultation booking. Historical accepted rows do not.
+   await this.cg15.booking(c,actor,booking,center,false);
    const policy=await this.policy(c,actor.realmId,source,source.bookedAt);
    return {...this.split(source,policy),accepted:false,
     bookingRef:source.sourceRef,
@@ -200,6 +203,7 @@ export class ConsultationPatientChargeService{
    if(source.bookingState==="CANCELLED"||
       source.collectionState==="NOT_COLLECTIBLE")
     throw new ConflictException({code:"CONSULTATION_NOT_COLLECTIBLE"});
+   await this.cg15.booking(c,actor,booking,center,false);
    const policy=await this.policy(c,actor.realmId,source,source.bookedAt);
    const calculated=this.split(source,policy);
    if(calculated.grossMinor!==expected.grossMinor||
