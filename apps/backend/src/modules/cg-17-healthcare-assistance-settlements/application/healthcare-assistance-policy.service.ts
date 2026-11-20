@@ -54,7 +54,8 @@ const fromInput=(raw:unknown)=>{
  const requestKey=uuid(d.requestKey),centerRef=uuid(d.centerRef);
  const policyRef=d.policyRef==null?null:uuid(d.policyRef);
  const expected=d.expectedRevision===undefined?0:Number(d.expectedRevision);
- if(!Number.isSafeInteger(d.expectedRevision??0)||expected<0||
+ if(typeof (d.expectedRevision??0)!=="number"||
+   !Number.isSafeInteger(d.expectedRevision??0)||expected<0||
    expected>2147483646||Boolean(policyRef)!==(expected>0)||
    !serviceKinds.includes(d.serviceKind as Kind)||
    !["PERCENT","FIXED"].includes(String(d.mode)))
@@ -64,7 +65,8 @@ const fromInput=(raw:unknown)=>{
  if(until<=from)throw new BadRequestException({code:"ASSISTANCE_POLICY_DATES_INVALID"});
  const mode=d.mode as Mode;
  const bps=mode==="PERCENT"?Number(d.percentBasisPoints):null;
- if(mode==="PERCENT"&&(!Number.isInteger(d.percentBasisPoints)||
+ if(mode==="PERCENT"&&(typeof d.percentBasisPoints!=="number"||
+    !Number.isInteger(d.percentBasisPoints)||
     bps===null||bps<1||bps>10000||d.fixedMinor!==undefined))
   throw new BadRequestException({code:"ASSISTANCE_POLICY_PERCENT_INVALID"});
  if(mode==="FIXED"&&d.percentBasisPoints!==undefined)
