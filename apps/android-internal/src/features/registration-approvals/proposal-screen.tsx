@@ -439,7 +439,7 @@ export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,o
 }
 const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:theme.adminCanvas},
-  content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:40},
+  content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:96},
   title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
   heading:{fontSize:15,fontWeight:"700",color:theme.text},
   muted:{color:theme.mutedText,fontSize:13},
@@ -455,9 +455,9 @@ const styles=StyleSheet.create({
     minHeight:48,justifyContent:"center",backgroundColor:theme.surface},
   chosen:{borderColor:theme.primary,backgroundColor:"#EEF4FF"},
   button:{borderWidth:1,borderColor:theme.border,paddingHorizontal:14,paddingVertical:12,
-    borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderRadius:12,minHeight:48,justifyContent:"center"},
   primary:{backgroundColor:theme.primary,paddingHorizontal:15,paddingVertical:12,
-    borderRadius:8,minHeight:48,justifyContent:"center"},
+    borderRadius:12,minHeight:48,justifyContent:"center"},
   primaryText:{color:theme.primaryText,fontWeight:"700"},
   notice:{color:theme.error,backgroundColor:theme.surface,padding:10,borderRadius:7}
 });

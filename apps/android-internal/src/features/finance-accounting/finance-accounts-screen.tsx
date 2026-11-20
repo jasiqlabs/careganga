@@ -240,7 +240,7 @@ export function FinanceAccountsScreen({token,canManage,canPost,canViewVouchers,c
 }
 const s=StyleSheet.create({
  actionRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
- create:{borderWidth:1,borderColor:theme.primary,borderRadius:7,paddingHorizontal:12,
+ create:{borderWidth:1,borderColor:theme.primary,borderRadius:12,paddingHorizontal:12,
   justifyContent:"center",minHeight:48,backgroundColor:theme.surface,alignSelf:"flex-start"},
  createText:{color:theme.primary,fontSize:13,fontWeight:"600"},
 
@@ -257,12 +257,12 @@ const s=StyleSheet.create({
  selectedTab:{borderBottomColor:theme.primary},
  tabText:{fontSize:12,fontWeight:"500",color:theme.mutedText,textAlign:"center"},
  selectedTabText:{color:theme.primary,fontWeight:"700"},
- content:{padding:14,paddingBottom:32,gap:12},
+ content:{padding:14,paddingBottom:96,gap:12},
  subtext:{fontSize:13,lineHeight:19,color:theme.mutedText},
  state:{flexDirection:"row",gap:12,alignItems:"center",padding:14},
  error:{backgroundColor:"#FFF3F3",borderRadius:8,borderWidth:1,borderColor:"#F7CBCB",padding:14,gap:10},
  errorText:{color:theme.error,fontSize:14,lineHeight:21},
- retry:{backgroundColor:theme.primary,alignSelf:"flex-start",paddingVertical:11,paddingHorizontal:15,borderRadius:6},
+ retry:{backgroundColor:theme.primary,alignSelf:"flex-start",paddingVertical:11,paddingHorizontal:15,borderRadius:12},
  retryText:{color:theme.primaryText,fontWeight:"600"},
  empty:{padding:22,backgroundColor:theme.surface,borderRadius:9,borderWidth:1,
   borderColor:theme.border,color:theme.mutedText,textAlign:"center",lineHeight:21},
