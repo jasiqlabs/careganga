@@ -36,6 +36,7 @@ export type FoundationAdminNavProps = {
     | "healthNetwork"
     | "healthCenter"
     | "healthDoctors"
+    | "healthDiagnostics"
     | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
@@ -100,6 +101,7 @@ function getNavIcon(key: string) {
     case "healthNetwork":
     case "healthCenter":
     case "healthDoctors":
+    case "healthDiagnostics":
     case "healthSchedules":
     case "healthPatientIntake":
     case "healthVisitQueue":
@@ -671,6 +673,7 @@ export function FoundationAdminNav({
     : "/admin/health-network/content-reviews";
   const healthCenterAccess = allowed("health.centers.draft.edit", canViewCenterPortal);
   const doctorAccess = allowed("health.doctors.view", canViewDoctors);
+  const diagnosticsAccess = allowed("diagnostics.catalog.view", false);
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
@@ -703,6 +706,7 @@ export function FoundationAdminNav({
       : []),
     ...(healthCenterAccess ? [{ key: "healthCenter" as const, label: "My Healthcare Center", href: "/center" }] : []),
     ...(doctorAccess ? [{ key: "healthDoctors" as const, label: "Doctor Registrations", href: "/admin/health-network/doctors" }] : []),
+    ...(diagnosticsAccess ? [{ key: "healthDiagnostics" as const, label: "Lab Test Master & Pricing", href: "/admin/health-network/diagnostics" }] : []),
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
@@ -746,6 +750,7 @@ export function FoundationAdminNav({
     healthNetwork: "Healthcare Providers",
     healthCenter: "My Healthcare Center",
     healthDoctors: "Doctor Registrations",
+    healthDiagnostics: "Lab Test Master & Pricing",
     healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
@@ -905,7 +910,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
             { name: "HEALTHCARE", keys: [
-              "healthNetwork", "healthCenter", "healthDoctors", "healthSchedules", "healthPatientIntake",
+              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthSchedules", "healthPatientIntake",
               "healthVisitQueue", "healthPatientAdmin"
             ] },
             {

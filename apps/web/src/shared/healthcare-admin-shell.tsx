@@ -19,6 +19,7 @@ export function HealthcareAdminShell({
  const has=(key:string)=>actions.has(key);
  const names:Partial<Record<FoundationAdminNavProps["active"],string>>={
   healthNetwork:"Healthcare providers",healthDoctors:"Doctor registrations",
+  healthDiagnostics:"Lab Test Master & Pricing",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
   healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
  };
