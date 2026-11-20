@@ -145,7 +145,17 @@ export class ClinicalLabEquipmentService{
     "FROM lab_equipment_event WHERE root_realm_id=$1 AND center_ref=$2 "+
     "AND equipment_ref=$3 ORDER BY occurred_at DESC,id DESC LIMIT 40",
     [actor.realmId,center,equipment]);
-   return {equipment:view(e.rows[0]),events:events.rows};
+   const files=await c.query<{fileRef:string;documentKind:string;scannedAt:Date}>(
+    "SELECT f.id AS \"fileRef\",intent.document_kind AS \"documentKind\","+
+    "f.scanned_at AS \"scannedAt\" FROM cg19_lab_quality_file f "+
+    "JOIN cg19_lab_quality_intent intent ON "+
+    "intent.root_realm_id=f.root_realm_id AND intent.id=f.intent_ref "+
+    "AND intent.status='VALIDATED' "+
+    "WHERE f.root_realm_id=$1 AND f.center_ref=$2 AND "+
+    "f.equipment_ref=$3 AND f.scan_status='CLEAN_VERIFIED' "+
+    "AND f.revoked_at IS NULL ORDER BY f.scanned_at DESC,f.id DESC LIMIT 30",
+    [actor.realmId,center,equipment]);
+   return {equipment:view(e.rows[0]),events:events.rows,files:files.rows};
   });
  }
  async create(token:string,centerRaw:string,raw:unknown){
