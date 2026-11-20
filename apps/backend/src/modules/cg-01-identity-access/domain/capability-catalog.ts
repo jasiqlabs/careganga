@@ -104,6 +104,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
   {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
   {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true},
+  {key:"healthcare.assistance.charges.view",businessLabel:"View verified own-center patient contributions",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.charges.accept",businessLabel:"Accept original own-center patient contribution",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.policies.view",businessLabel:"View approved healthcare assistance policies",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.policies.manage",businessLabel:"Configure and withdraw approved healthcare support",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.policies.review",businessLabel:"Independently review exceptional full healthcare support",group:"Healthcare assistance",assignable:true,sensitive:true},
