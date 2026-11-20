@@ -39,7 +39,10 @@ export default async function FoundationHealthcareSettlementsPage(){
     canPropose={actions.has("healthcare.assistance.settlements.manage")&&
      actions.has("health.providers.finance.view")}
     canReview={actions.has("healthcare.assistance.settlements.review")&&
-     actions.has("approvals.review")&&actions.has("health.providers.finance.view")}/>
+     actions.has("approvals.review")&&actions.has("health.providers.finance.view")}
+    canPay={actions.has("healthcare.assistance.settlements.pay")&&
+     actions.has("health.providers.finance.view")&&
+     actions.has("finance.reconciliation.manage")}/>
   </HealthcareAdminShell>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
