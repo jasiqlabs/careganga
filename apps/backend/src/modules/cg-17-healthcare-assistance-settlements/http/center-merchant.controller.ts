@@ -34,6 +34,17 @@ export class CenterMerchantController{
  @Header("Cache-Control","private, no-store")
  patientStart(@Headers("authorization")token:string,@Param("bookingRef")booking:string,
   @Body()body:unknown){return this.payment.start(token,booking,body);}
+ @Post("me/appointments/:bookingRef/reconcile")
+ @Header("Cache-Control","private, no-store")
+ patientRecover(@Headers("authorization")token:string,@Param("bookingRef")booking:string){
+  return this.payment.reconcile(token,booking);
+ }
+ @Post("staff/centers/:centerRef/appointments/:bookingRef/reconcile")
+ @Header("Cache-Control","private, no-store")
+ staffRecover(@Headers("authorization")token:string,@Param("centerRef")center:string,
+  @Param("bookingRef")booking:string){
+  return this.payment.reconcile(token,booking,center);
+ }
  @Get("staff/centers/:centerRef/appointments/:bookingRef")
  @Header("Cache-Control","private, no-store")
  staff(@Headers("authorization")token:string,@Param("centerRef")center:string,
