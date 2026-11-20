@@ -35,7 +35,8 @@ type Collection={id:string;charge_ref:string;center_ref:string;
  method:"CASH"|"UPI"|"CARD"|"BANK";amount_minor:string;
  verification_state:"VERIFIED_CASH"|"PENDING_EXTERNAL"|"VERIFIED_PROVIDER"|"REJECTED";
  cash_receipt_number:string|null;created_at:Date;accepted_by_account:string;
- request_key:string;request_digest:string;source_digest:string};
+ request_key:string;request_digest:string;source_digest:string;
+ receipt_pdf_state?:string|null;receipt_document_ref?:string|null};
 type Adjustment={id:string;collection_ref:string;refund_minor:string;
  cash_refund_receipt:string;kind:"CASH_REFUND"|"CASH_CORRECTION";created_at:Date;
  verified_by_account:string;request_key:string;request_digest:string};
@@ -45,7 +46,9 @@ const view=(c:Collection)=>({
  cashReceiptNumber:c.method==="CASH"?c.cash_receipt_number:null,
  recordedAt:c.created_at.toISOString(),
  receiptPdfState:c.verification_state==="VERIFIED_CASH"?
-  "NOT_ISSUED_OR_NOT_VERIFIED":"NOT_ELIGIBLE"
+  c.receipt_pdf_state??"NOT_ISSUED":"NOT_ELIGIBLE",
+ receiptDocumentRef:c.verification_state==="VERIFIED_CASH"&&
+  c.receipt_pdf_state==="ISSUED"?c.receipt_document_ref??null:null
 });
 @Injectable()
 export class CenterPatientCollectionService{
@@ -116,10 +119,16 @@ export class CenterPatientCollectionService{
   if(total.collected>due)
    throw new ConflictException({code:"CENTER_COLLECTION_LEDGER_INCONSISTENT"});
   const rows=await c.query<Collection>(
-   "SELECT id,charge_ref,center_ref,method,amount_minor::text,"+
-   "verification_state,cash_receipt_number,created_at,accepted_by_account,"+
-   "request_key,request_digest,source_digest FROM center_collection "+
-   "WHERE root_realm_id=$1 AND charge_ref=$2 "+
+   "SELECT collect.id,collect.charge_ref,collect.center_ref,collect.method,"+
+   "collect.amount_minor::text,collect.verification_state,"+
+   "collect.cash_receipt_number,collect.created_at,collect.accepted_by_account,"+
+   "collect.request_key,collect.request_digest,collect.source_digest,"+
+   "document.status AS receipt_pdf_state,"+
+   "document.id AS receipt_document_ref FROM center_collection collect "+
+   "LEFT JOIN cg19_center_patient_receipt_document document ON "+
+   "document.root_realm_id=collect.root_realm_id AND "+
+   "document.collection_ref=collect.id +
+   "WHERE collect.root_realm_id=$1 AND collect.charge_ref=$2 "+
    "ORDER BY created_at DESC,id DESC LIMIT 51",[realm,original.id]);
   const collectionsHaveMore=rows.rows.length>50;
   const adjustments=await c.query<Adjustment>(
