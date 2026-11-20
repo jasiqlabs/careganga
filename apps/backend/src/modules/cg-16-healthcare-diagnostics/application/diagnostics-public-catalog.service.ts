@@ -36,6 +36,21 @@ type OfferRow={
 @Injectable()
 export class DiagnosticsPublicCatalogService{
  constructor(@Inject(DATABASE)private readonly db:Pool){}
+ async facets(){
+  // Reuse the exact same published CG14 / CG03 / CG19 / CG16 joins as
+  // anonymous offers. Unpublished or expired tariffs never yield a category.
+  const start=PUBLIC_OFFERS_SQL.indexOf("FROM lab_center_test_mapping");
+  const end=PUBLIC_OFFERS_SQL.lastIndexOf("ORDER BY");
+  if(start<0||end<=start)throw Error("Public lab source query unavailable");
+  const predicates=PUBLIC_OFFERS_SQL.slice(start,end);
+  const result=await this.db.query<{code:string;name:string}>(
+   "SELECT DISTINCT category.code,category.display_name AS name "+
+    predicates+
+    " AND m.test_or_package_kind='TEST' AND category.code IS NOT NULL "+
+    "ORDER BY category.display_name,category.code LIMIT 100",
+   ["","",""]);
+  return {categories:result.rows};
+ }
  async offers(raw:Record<string,unknown>){
   const f=parse(raw);
   const term=f.q?"%"+f.q.replace(/[\\%_]/g,"\\$&")+"%":"";
