@@ -7,7 +7,6 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeCenterCollectionWorkspace} from "./native-center-collection-workspace";
 import {NativeCenterMerchantCheckout}
  from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
-import {NativePatientCenterCollectionSummary} from "./native-patient-center-collection-summary";
 type Split={state:string;accepted?:boolean;replayed?:boolean;chargeRef?:string;
  grossMinor?:string;foundationSupportMinor?:string;
  patientPayableMinor?:string;feeVersion?:number;sourceVersion?:number;
@@ -174,9 +173,6 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
     token={staffToken} centerRef={centerRef} chargeRef={value.chargeRef}
     canRecord={canRecordCollections} canRefund={canRefundCollections}
     onExpired={onExpired??(()=>undefined)}/>}
-  {staffToken&&bookingRef&&ID.test(bookingRef)&&!centerRef&&value?.accepted&&
-   <NativePatientCenterCollectionSummary token={staffToken}
-    bookingRef={bookingRef} onExpired={onExpired}/>}
   {bookingRef&&staffToken&&centerRef&&ID.test(centerRef)&&
    value?.accepted===true&&canViewCollections&&
    !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
