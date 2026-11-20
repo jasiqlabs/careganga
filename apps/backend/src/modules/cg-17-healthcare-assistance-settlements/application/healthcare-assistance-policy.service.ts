@@ -206,25 +206,48 @@ export class HealthcareAssistancePolicyService{
   return this.tx(async c=>{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
    await this.requireCenter(c,actor.realmId,center);
-   const q=await c.query<{doctorRef:string;name:string}>(
-    "SELECT d.id AS \"doctorRef\",d.full_name AS name FROM health_doctor_center dc "+
-    "JOIN health_doctor d ON d.root_realm_id=dc.root_realm_id "+
-    "AND d.id=dc.doctor_id JOIN health_center center ON "+
-    "center.root_realm_id=dc.root_realm_id AND center.id=dc.center_id "+
-    "WHERE dc.root_realm_id=$1 AND dc.center_id=$2 "+
-    "AND dc.affiliation_state='APPROVED' AND dc.approved_from<=now() "+
-    "AND (dc.approved_to IS NULL OR dc.approved_to>now()) "+
+   // Single bounded source-backed selector. Do not N+1 private CG14 proof
+   // reads for 100 doctors (or expose unverified/revoked practitioners).
+   const result=await c.query<{doctorRef:string;name:string}>(
+    "SELECT d.id AS \"doctorRef\",d.full_name AS name "+
+    "FROM health_doctor_center affiliation "+
+    "JOIN health_doctor d ON d.root_realm_id=affiliation.root_realm_id "+
+    "AND d.id=affiliation.doctor_id "+
+    "JOIN health_center center ON center.root_realm_id=affiliation.root_realm_id "+
+    "AND center.id=affiliation.center_id "+
+    "WHERE affiliation.root_realm_id=$1 AND affiliation.center_id=$2 "+
+    "AND affiliation.affiliation_state='APPROVED' "+
+    "AND affiliation.approved_from<=now() AND "+
+    "(affiliation.approved_to IS NULL OR affiliation.approved_to>now()) "+
     "AND d.status='VERIFIED' AND d.professional_license_valid_through >= "+
     "(now() AT TIME ZONE center.time_zone)::date "+
+    "AND EXISTS(SELECT 1 FROM health_doctor_revision revision "+
+    "JOIN cg03_case review ON review.realm_id=revision.root_realm_id "+
+    "AND review.id=revision.approval_case_ref "+
+    "AND review.case_kind='HEALTH_DOCTOR_VERIFICATION' "+
+    "AND review.health_doctor_id=d.id "+
+    "AND review.health_doctor_revision_id=revision.id "+
+    "AND review.health_source_digest=revision.source_digest "+
+    "AND review.status='OWNER_COMPLETED' "+
+    "JOIN cg03_case_decision decision ON decision.realm_id=review.realm_id "+
+    "AND decision.case_id=review.id AND decision.action='APPROVE' "+
+    "AND decision.actor_id<>review.proposer_id "+
+    "AND decision.fresh_password_verified_at IS NOT NULL "+
+    "JOIN cg19_stored_file proof ON proof.realm_id=revision.root_realm_id "+
+    "AND proof.id=revision.proof_file_ref "+
+    "AND proof.owner_kind='CG14_DOCTOR' AND proof.health_doctor_id=d.id "+
+    "AND proof.scan_status='CLEAN_VERIFIED' AND proof.revoked_at IS NULL "+
+    "WHERE revision.root_realm_id=d.root_realm_id "+
+    "AND revision.doctor_id=d.id AND "+
+    "revision.revision_no=(SELECT max(latest.revision_no) "+
+    "FROM health_doctor_revision latest "+
+    "WHERE latest.root_realm_id=d.root_realm_id AND latest.doctor_id=d.id) "+
+    "AND revision.source_snapshot->>'professionalLicenseValidThrough' = "+
+    "to_char(d.professional_license_valid_through,'YYYY-MM-DD')) "+
     "ORDER BY d.full_name,d.id LIMIT 101",[actor.realmId,center]);
-   if(q.rows.length>100)
+   if(result.rows.length>100)
     throw new ConflictException({code:"ASSISTANCE_DOCTOR_LIST_LIMIT"});
-   const verified:{doctorRef:string;name:string}[]=[];
-   for(const d of q.rows){
-    try{await this.requireDoctor(c,actor.realmId,center,d.doctorRef);verified.push(d)}
-    catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===404)continue;throw e}
-   }
-   return {doctors:verified};
+   return {doctors:result.rows};
   });
  }
  /** Read-only CG14 consultation fee / actual effective CG17 rule arithmetic.
