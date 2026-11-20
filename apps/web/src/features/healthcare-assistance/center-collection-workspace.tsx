@@ -9,6 +9,7 @@ type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
 type Statement={chargeRef:string;currency:"INR";patientDueMinor:string;
  collectedMinor:string;outstandingMinor:string;pendingElectronicMinor:string;
  refundedOrCorrectedMinor:string;state:string;collections:Item[];
+ outstandingSince?:string|null;outstandingAgeDays?:number;
  adjustments:Adjustment[];foundationIncomeRecorded:false;
  foundationLiabilityCreated:false};
 type Props={centerRef:string;chargeRef:string;canRecord:boolean;canRefund:boolean};
@@ -242,6 +243,11 @@ export function CenterCollectionWorkspace({centerRef,chargeRef,canRecord,canRefu
    </form>}
   {data&&<section className="cg-diagnostics-card">
    <h3>Original payment history</h3>
+   {data.outstandingSince&&<p role="status">Outstanding since the accepted charge on {
+    new Date(data.outstandingSince).toLocaleDateString("en-IN")}
+    {typeof data.outstandingAgeDays==="number"?
+     " ("+data.outstandingAgeDays+" calendar days since acceptance).":""}
+    Follow up only through an authorized center process; no late fee is assumed.</p>}
    {data.collections.length===0?<p>No verified center collection is recorded.</p>:
     <div className="table-wrap"><table className="role-table">
      <thead><tr><th>Method</th><th>Amount</th><th>Verification</th>
