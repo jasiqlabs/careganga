@@ -25,7 +25,7 @@ for(const t of emails){
   [...(t.subject+"\n"+t.body).matchAll(/\{#([A-Z0-9_]+)#\}/g)].map(x=>x[1]))];
  assert.deepEqual(t.placeholders,fields,t.code+" placeholder mismatch");
 }
-const draftSql=read("apps/backend/db/migrations/1446_cg19_client_email_source_drafts.sql");
+const draftSql=read("apps/backend/db/migrations/1902_cg19_client_email_source_drafts.sql");
 assert.match(draftSql,/CHECK\(enabled=false\)/);
 assert.match(draftSql,/CHECK\(status='SOURCE_DRAFT'\)/);
 assert.match(draftSql,/UNIQUE\(realm_id,template_code,version\)/);
@@ -44,7 +44,7 @@ assert.match(proxy,/parts\[0\]==="client-email-templates"/);
 const ui=read("apps/web/src/features/communications/communications-workspace.tsx");
 assert.match(ui,/disabled (?:source )?drafts only/i);
 assert.match(ui,/Email reference templates/);
-const supportSql=read("apps/backend/db/migrations/1445_cg19_client_support_ticket_number.sql");
+const supportSql=read("apps/backend/db/migrations/1901_cg19_client_support_ticket_number.sql");
 assert.match(supportSql,/ADD COLUMN ticket_number text NOT NULL/);
 assert.match(supportSql,/UNIQUE\(ticket_number\)/);
 assert.match(supportSql,/ticket_number IS DISTINCT FROM OLD\.ticket_number/);
