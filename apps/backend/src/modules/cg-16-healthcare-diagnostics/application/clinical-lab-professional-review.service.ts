@@ -153,7 +153,8 @@ export class ClinicalLabProfessionalReviewService{
    throw new ConflictException({code:"LAB_PROFESSIONAL_FILE_INVALID"});
   const bytes=await this.objects.readVerifiedPrivateObject({
    objectKey:f.object_key,objectVersion:f.object_version,maxBytes:10485760});
-  if(bytes.length!==size||digestBytes(bytes)!==f.report_digest)
+  if(bytes.length!==size||bytes.subarray(0,4).toString("ascii")!=="%PDF"||
+    digestBytes(bytes)!==f.report_digest)
    throw new ConflictException({code:"LAB_PROFESSIONAL_FILE_INVALID"});
   await this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,token,center,"lab.report.review");
@@ -223,8 +224,22 @@ export class ClinicalLabProfessionalReviewService{
      doctor.reviewRevisionRef,doctor.proofRef,doctor.centerAffiliationRef,
      doctor.licensedThrough,decision.decision,decision.decisionNote,
      decision.requestKey,sum]);
-   if(!inserted.rows[0])
+   if(!inserted.rows[0]){
+    // Two identical retry requests can race on the unique review key.
+    // Read the actual winner and return an idempotent replay only when its
+    // protected source digest, decision and exact revision all match.
+    const winner=await c.query<Approval>(
+     "SELECT id,request_digest,result_revision_ref,decision,reviewer_account_ref "+
+     "FROM cg16_lab_result_professional_review WHERE root_realm_id=$1 "+
+     "AND reviewer_account_ref=$2 AND request_key=$3",
+     [actor.realmId,actor.accountId,decision.requestKey]);
+    if(winner.rows[0]?.request_digest===sum&&
+       winner.rows[0].result_revision_ref===decision.resultRef&&
+       winner.rows[0].decision===decision.decision)
+     return {reviewRef:winner.rows[0].id,decision:decision.decision,
+      professionallyReviewed:true,patientReleased:false,replayed:true};
     throw new ConflictException({code:"LAB_PROFESSIONAL_REVIEW_ALREADY_DECIDED"});
+   }
    return {reviewRef:inserted.rows[0].id,decision:decision.decision,
     professionallyReviewed:true,patientReleased:false,replayed:false};
   });
