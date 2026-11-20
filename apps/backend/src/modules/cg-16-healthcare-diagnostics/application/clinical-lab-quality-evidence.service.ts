@@ -7,7 +7,7 @@ import {ClinicalLabAdmissionService} from "./clinical-lab-admission.service";
 import {PrivateObjectStorage}
  from "../../cg-19-documents-notifications/infrastructure/private-object-storage";
 
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const id=(v:unknown)=>{
  if(typeof v!=="string"||!UUID.test(v))
