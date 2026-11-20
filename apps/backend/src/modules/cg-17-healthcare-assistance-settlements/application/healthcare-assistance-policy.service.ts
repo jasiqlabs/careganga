@@ -23,7 +23,8 @@ type Revision={
  mode:Mode;percent_basis_points:number|null;fixed_minor:string|null;
  cap_minor:string;eligibility:string;approval_state:string;created_at:Date;
  actor_ref:string;approved_case_ref:string|null;approved_decision_ref:string|null;
- request_digest:string;request_key:string;source_digest:string
+ request_digest:string;request_key:string;source_digest:string;
+ review_case_ref?:string|null;review_status?:string|null
 };
 const uuid=(x:unknown)=>{
  if(typeof x!=="string"||!ID.test(x))
@@ -92,7 +93,8 @@ const view=(r:Revision)=>({
  current:new Date(r.valid_from).getTime()<=Date.now()&&
   new Date(r.valid_until).getTime()>Date.now()&&r.approval_state==="ACTIVE",
  approvedByIndependentReview:!!r.approved_case_ref&&!!r.approved_decision_ref,
- createdAt:new Date(r.created_at).toISOString()
+ createdAt:new Date(r.created_at).toISOString(),
+ reviewCaseRef:r.review_case_ref??null,reviewStatus:r.review_status??null
 });
 
 /** CG17 US001: configure real center/doctor assistance policy WITHOUT
@@ -229,8 +231,13 @@ export class HealthcareAssistancePolicyService{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
    await this.requireCenter(c,actor.realmId,center);
    const q=await c.query<Revision>(
-    "SELECT * FROM healthcare_policy_revision WHERE root_realm_id=$1 "+
-    "AND center_ref=$2 ORDER BY created_at DESC,id DESC LIMIT 101",
+    "SELECT policy.*,review.id AS review_case_ref,review.status AS review_status "+
+    "FROM healthcare_policy_revision policy "+
+    "LEFT JOIN cg03_case review ON review.realm_id=policy.root_realm_id "+
+    "AND review.case_kind='CG17_POLICY_EXCEPTION' "+
+    "AND review.cg17_policy_revision_id=policy.id "+
+    "WHERE policy.root_realm_id=$1 AND policy.center_ref=$2 "+
+    "ORDER BY policy.created_at DESC,policy.id DESC LIMIT 101",
     [actor.realmId,center]);
    if(q.rows.length>100)
     throw new ConflictException({code:"ASSISTANCE_POLICY_LIST_LIMIT"});
