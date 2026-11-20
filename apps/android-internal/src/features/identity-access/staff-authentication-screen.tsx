@@ -757,6 +757,7 @@ export function StaffAuthenticationScreen() {
           canCreate={roleActions.includes("lab.orders.create")}
           canManageSamples={roleActions.includes("lab.orders.view") && roleActions.includes("lab.samples.manage")}
           canRecordResults={roleActions.includes("lab.orders.view") && roleActions.includes("lab.results.record")}
+          canReview={roleActions.includes("lab.orders.view") && roleActions.includes("lab.report.review")}
           onExit={closeLabOrders} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthLabOrders", closeLabOrders);
