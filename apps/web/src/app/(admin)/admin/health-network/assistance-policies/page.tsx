@@ -1,5 +1,5 @@
 import {cookies} from "next/headers";
-import Link from "next/link";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 import {redirect} from "next/navigation";
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
@@ -10,11 +10,8 @@ export default async function AssistancePoliciesPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main">
-  <h1>Healthcare support unavailable</h1>
-  <p>Current staff permissions cannot be verified.</p>
-  <Link href="/admin">Return to account</Link>
- </main>;
+ if(!backend)return <UnavailablePage title="Healthcare support unavailable"
+  description="Current staff permissions cannot be verified." linkLabel="Return to account"/>;
  try{
   const headers={Authorization:"Bearer "+token};
   const [identity,access]=await Promise.all([
@@ -48,10 +45,8 @@ export default async function AssistancePoliciesPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main">
-   <h1>Healthcare assistance access unavailable</h1>
-   <p>Private policy data remains hidden until role permissions are confirmed.</p>
-   <Link href="/admin">Return to account</Link>
-  </main>;
+  return <UnavailablePage title="Healthcare assistance access unavailable"
+   description="Private policy data remains hidden until role permissions are confirmed."
+   linkLabel="Return to account"/>;
  }
 }
