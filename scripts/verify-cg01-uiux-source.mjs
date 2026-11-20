@@ -229,6 +229,162 @@ check(providerLanding.includes('href="/admin/health-network/reviews"')&&
  providerLanding.includes('actions.has("approvals.review")'),
  "healthcare reviewer landing does not expose protected review navigation");
 
+
+/* 20 November: main-integrated CG-01 alignment regression contract.
+ * These are source assertions, never browser/device/pixel acceptance. */
+const mainIntegratedAdminRoutes=[
+ "admin/accounts/page.tsx",
+ "admin/approvals/page.tsx",
+ "admin/audit/page.tsx",
+ "admin/backup-recovery/page.tsx",
+ "admin/communications/page.tsx",
+ "admin/dashboard/page.tsx",
+ "admin/documents/page.tsx",
+ "admin/finance/budget-reviews/page.tsx",
+ "admin/finance/budgets/page.tsx",
+ "admin/finance/claim-reviews/page.tsx",
+ "admin/finance/claims/page.tsx",
+ "admin/finance/invoice-reviews/page.tsx",
+ "admin/finance/invoices/page.tsx",
+ "admin/finance/page.tsx",
+ "admin/finance/reports/page.tsx",
+ "admin/finance/voucher-approvals/page.tsx",
+ "admin/finance/vouchers/page.tsx",
+ "admin/foundation/branches/page.tsx",
+ "admin/foundation/page.tsx",
+ "admin/login/page.tsx",
+ "admin/page.tsx",
+ "admin/password/page.tsx",
+ "admin/recovery/page.tsx",
+ "admin/roles/page.tsx",
+ "admin/security-policy/page.tsx",
+ "admin/settings/page.tsx",
+ "admin/support/page.tsx",
+ "admin/website/page.tsx"
+];
+check(mainIntegratedAdminRoutes.length===28,
+ "the original 28 main-integrated Admin Web routes must be listed");
+for(const p of mainIntegratedAdminRoutes){
+ const code=read("apps/web/src/app/(admin)/"+p);
+ if(p==="admin/login/page.tsx"||p==="admin/password/page.tsx"||p==="admin/recovery/page.tsx")continue;
+ check(code.includes("<FoundationAdminNav")||code.includes("<HealthcareAdminShell"),
+  p+" lost its authenticated CG-01 shell");
+}
+const financePageTitles=[
+ [
+  "finance-voucher-draft-workspace.tsx",
+  "Finance Voucher Drafts"
+ ],
+ [
+  "finance-voucher-reviewer-workspace.tsx",
+  "Finance Voucher Reviews"
+ ],
+ [
+  "finance-expense-claim-workspace.tsx",
+  "Expense Claims"
+ ],
+ [
+  "finance-claim-review-workspace.tsx",
+  "Expense Claim Reviews"
+ ],
+ [
+  "finance-invoice-workspace.tsx",
+  "Invoices & Receipts"
+ ],
+ [
+  "finance-invoice-review-workspace.tsx",
+  "Protected Invoice Reviews"
+ ],
+ [
+  "finance-budget-workspace.tsx",
+  "Budgets & Fund Allocation"
+ ],
+ [
+  "finance-budget-review-workspace.tsx",
+  "Protected Budget Reviews"
+ ],
+ [
+  "finance-reports-workspace.tsx",
+  "Financial Statements & Ledger"
+ ]
+];
+for(const [path,title] of financePageTitles){
+ const code=read("apps/web/src/features/finance-accounting/"+path);
+ check(code.includes("<h1>"+title+"</h1>"),
+  path+" lost the CG-01 standalone Finance page heading");
+}
+const mainStateOwners=[
+ [
+  "foundation-structure/operating-branches-panel.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "registration-approvals/proposal-workspace.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "documents/private-case-evidence-panel.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "communications/communications-workspace.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "support/foundation-support-workspace.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "platform-configuration/platform-audit-panel.tsx",
+  "cg-module-loading"
+ ],
+ [
+  "platform-configuration/recovery-panel.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "platform-configuration/platform-settings-panel.tsx",
+  "cg-module-empty"
+ ],
+ [
+  "cms-public-content/cms-extended-workspace.tsx",
+  "cg-module-empty"
+ ]
+];
+for(const [path,marker] of mainStateOwners){
+ check(read("apps/web/src/features/"+path).includes(marker),
+  path+" lost the CG-01 operational state presentation");
+}
+const extendedCms=read("apps/web/src/features/cms-public-content/cms-extended-workspace.tsx");
+check(extendedCms.includes('className="primary" disabled={busy} onClick={()=>begin(kind)}'),
+ "existing CMS editorial create action lost its primary hierarchy");
+const voucherDraft=read("apps/web/src/features/finance-accounting/finance-voucher-draft-workspace.tsx");
+check(voucherDraft.indexOf("<h1>Finance Voucher Drafts</h1>")<
+ voucherDraft.indexOf("<FinanceVoucherDashboard"),
+ "CG-09 source-backed dashboard must follow the page heading");
+for(const selector of [
+ ".cg-fin-manual > .cg-fin-toolbar h1",
+ ".cg-cms-workspace > .cg-cms-toolbar > div > h2",
+ ".cg-fin-manual .cg-fin-empty:not(.cg-module-loading)",
+ ".cg-module-empty"
+])check(css.includes(selector),
+ "main-integrated CG-01 authenticated styling lost: "+selector);
+const coreTokens=read("packages/design-tokens/src/index.ts");
+check(coreTokens.includes('selectedSurface:"#EEF4FF"'),
+ "CG-01 selected surface token missing for native business controls");
+const nativeKit=read("apps/android-internal/src/features/finance-accounting/finance-native-source-kit.tsx");
+check(nativeKit.includes("backgroundColor:t.selectedSurface")&&
+ nativeKit.includes("minHeight:48"),
+ "CG-09 shared native Finance input/selection parity missing");
+for(const p of [
+ "foundation-structure/branch-registration-screen.tsx",
+ "communications/notifications-screen.tsx",
+ "support/foundation-support-screen.tsx"
+]){
+ check(read("apps/android-internal/src/features/"+p).includes("paddingBottom:96"),
+  p+" lacks CG-01 bottom-navigation scroll clearance");
+}
+
 console.log("CG-01 UI SOURCE CHECK only: "+web.length+" Web routes ("+
  protectedCount+" protected; "+navCount+" nav + "+healthcareCount+
  " healthcare shell), "+native.length+" native screen inset checks, "+keys.length+
