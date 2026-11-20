@@ -244,7 +244,9 @@ const s=StyleSheet.create({
  hint:{fontSize:13,lineHeight:20,color:t.mutedText},
  bold:{fontSize:15,fontWeight:"700",color:t.text},
  card:{padding:13,gap:7,borderWidth:1,borderColor:t.border,
-  borderRadius:9,backgroundColor:t.surface},
+  borderRadius:14,backgroundColor:t.surface,
+    shadowColor:t.sidebar,shadowOpacity:0.045,
+    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
  item:{flexDirection:"row",justifyContent:"space-between",gap:9},
  notice:{padding:13,borderRadius:9,backgroundColor:t.surface,
   borderWidth:1,borderColor:t.border},
@@ -256,6 +258,6 @@ const s=StyleSheet.create({
  selected:{borderColor:t.primary,backgroundColor:t.surface},
  primary:{backgroundColor:t.primary,borderColor:t.primary},
  primaryText:{fontWeight:"700",color:t.primaryText},
- input:{borderWidth:1,borderColor:t.border,borderRadius:7,
+ input:{borderWidth:1,borderColor:t.border,borderRadius:10,
   minHeight:48,padding:11,color:t.text,backgroundColor:t.surface}
 });
