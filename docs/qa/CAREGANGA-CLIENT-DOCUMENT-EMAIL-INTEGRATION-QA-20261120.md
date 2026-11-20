@@ -73,3 +73,6 @@ No new client-facing feature, module, workflow, data seed, exposed sample signat
 | Existing US-002 cases | Additional client copy integration check | Status |
 | --- | --- | --- |
 | US-002-QA12 / QA13 | Additive `1905` email-only body capacity and SendGrid 12000 limit; original short notices and SMS remain bounded; source template drafts stay unsendable | CODE_ADDED / SOURCE_INSPECTED; migration/provider NOT_RUN |
+
+
+**Template-by-template trace:** [52 client email QA source matrix](CAREGANGA-52-EMAIL-TEMPLATE-SOURCE-QA-MATRIX-20261120.md). Each of the 52 templates has original trigger, receiving owner, original attachment rule and relevant negative acceptance under existing story IDs. Copy source matched, but **business event / mail / attachment / device runtime remains NOT_RUN**.
