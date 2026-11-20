@@ -1,3 +1,7 @@
+-- Index the existing immutable service-local date for original monthly H17
+-- service/value/receipt breakdown. No scheduled full-tenant money scan.
+CREATE INDEX ix_cg17_liability_local_month ON foundation_liability
+ (root_realm_id,center_ref,service_local_date,id);
 -- CG17 US006: one evidence-backed monthly provider claim for genuine
 -- POSTED CG09-accrued Foundation liabilities. This is not a money transfer.
 -- Patient center collections remain outside Foundation cash/bank journals.
