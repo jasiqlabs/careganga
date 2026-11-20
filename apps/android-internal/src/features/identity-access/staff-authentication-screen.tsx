@@ -761,10 +761,13 @@ export function StaffAuthenticationScreen() {
   // CG17 US001 policy configuration is Foundation staff only; it creates
   // neither a patient booking nor paid/settled state.
   if (healthcarePoliciesOpen && token && actor &&
-      roleActions.includes("healthcare.assistance.policies.view"))
+      (roleActions.includes("healthcare.assistance.policies.view")||
+       (roleActions.includes("healthcare.assistance.policies.review")&&
+        roleActions.includes("approvals.review"))))
     return renderInShell(<ScreenErrorBoundary onExit={closeHealthcarePolicies}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeHealthcarePolicyScreen token={token}
+          canView={roleActions.includes("healthcare.assistance.policies.view")}
           canManage={roleActions.includes("healthcare.assistance.policies.manage")}
           canReview={roleActions.includes("healthcare.assistance.policies.review")&&
             roleActions.includes("approvals.review")}
