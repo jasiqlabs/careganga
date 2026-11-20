@@ -84,6 +84,7 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
   try{
    const v=await api<Verified>(token,base+"/"+uploadRef.current+"/status");
    setStatus(v.status);
+   setCanRestart(v.status==="REJECTED");
    if(v.cleanVerified){
     setMessage("Private evidence scanner-verified. Instrument is not automatically READY.");
     original.current=null;uploadRef.current="";setSelected(null);setCanRestart(false);
@@ -125,8 +126,9 @@ export function NativeLabEquipmentQualityUpload({token,centerRef,equipmentRef,
     throw Error("Private PDF transfer cannot be confirmed.");
    const done=await api<Verified>(token,base+"/"+reserved.uploadRef+"/confirm","POST");
    setStatus(done.status);
+   setCanRestart(done.status==="REJECTED");
    if(done.cleanVerified){
-    original.current=null;uploadRef.current="";setSelected(null);
+    original.current=null;uploadRef.current="";setSelected(null);setCanRestart(false);
     setMessage("Scanned clean and stored privately. Maintenance readiness is a separate action.");
     try{await onVerified()}catch{setMessage("Scanner verified; file list refresh unavailable.");}
    }else setMessage("Scan is not verified. Equipment readiness unchanged.");
