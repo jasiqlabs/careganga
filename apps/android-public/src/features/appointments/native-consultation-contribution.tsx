@@ -2,6 +2,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
+import {NativeCenterMerchantCheckout}
+ from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
 import {careGangaTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
@@ -22,12 +24,12 @@ const valid=(x:Split)=>["grossMinor","foundationSupportMinor",
  Number(x.grossMinor)===Number(x.foundationSupportMinor)+
   Number(x.patientPayableMinor);
 async function remote<T>(path:string,method:"GET"|"POST",
- token:string,body?:object):Promise<T>{
+ token:string,body?:object,area:"consultation-charges"|"merchant"="consultation-charges"):Promise<T>{
  if(!url||!(url.startsWith("https://")||url.startsWith("http://"))||
     (process.env.NODE_ENV==="production"&&!url.startsWith("https://")))
    throw Error("Private patient financial service unavailable.");
  const res=await fetch(new URL(
-   "/api/v1/healthcare-assistance/consultation-charges/"+path,url),{
+   "/api/v1/healthcare-assistance/"+area+"/"+path,url),{
     method,cache:"no-store",signal:AbortSignal.timeout(14000),
     headers:{Authorization:"Bearer "+token,
      ...(body?{"Content-Type":"application/json"}:{})},
@@ -110,6 +112,23 @@ export function NativeConsultationContribution({holdRef,bookingRef,
    setUncertain(st>=500);report(e);
   }finally{setBusy(false)}
  }
+ const paymentStatus=useCallback(async()=>{
+  if(!bookingRef||!ID.test(bookingRef))
+   throw Error("Confirmed consultation is unavailable.");
+  const token=await SecureStore.getItemAsync(key);
+  if(!token)throw Object.assign(new Error("Please sign in again."),{status:401});
+  return remote<import("../../../../../packages/native-checkout/src/native-center-merchant-checkout").MerchantOrder>(
+   "me/appointments/"+bookingRef,"GET",token,undefined,"merchant");
+ },[bookingRef]);
+ const paymentStart=useCallback(async(requestKey:string)=>{
+  if(!bookingRef||!ID.test(bookingRef))
+   throw Error("Confirmed consultation is unavailable.");
+  const token=await SecureStore.getItemAsync(key);
+  if(!token)throw Object.assign(new Error("Please sign in again."),{status:401});
+  return remote<import("../../../../../packages/native-checkout/src/native-center-merchant-checkout").MerchantOrder>(
+   "me/appointments/"+bookingRef+"/checkout","POST",token,
+   {requestKey},"merchant");
+ },[bookingRef]);
  const btn=(title:string,press:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
    disabled={disabled} onPress={press}
@@ -143,6 +162,12 @@ export function NativeConsultationContribution({holdRef,bookingRef,
     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
   </View>}
+  {bookingRef&&value?.accepted===true&&
+   !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
+     "SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
+   <NativeCenterMerchantCheckout key={bookingRef} subject="your"
+    status={paymentStatus} begin={paymentStart}
+    onExpired={onExpired} canInitiate/>}
   {bookingRef&&btn("Check original contribution status",()=>void check(),busy)}
   {uncertain&&<Text style={s.note}>Last acceptance may have succeeded.
    Do not generate another request. Checking uses this original appointment.</Text>}
