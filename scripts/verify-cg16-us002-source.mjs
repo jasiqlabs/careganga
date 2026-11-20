@@ -17,6 +17,8 @@ const files=[
  d+"application/clinical-lab-order.service.ts",
  d+"application/clinical-lab-result-evidence.service.ts",
  d+"application/clinical-lab-professional-review.service.ts",
+ d+"application/clinical-lab-patient-release.service.ts",
+ d+"http/clinical-lab-patient-report.controller.ts",
  d+"http/clinical-lab-order.controller.ts",
  d+"diagnostics.module.ts",
  "apps/backend/src/modules/cg-14-healthcare-network/application/health-lab-professional-review-source.facade.ts",
@@ -24,10 +26,17 @@ const files=[
  web+"clinical-lab-order-workspace.tsx",
  web+"clinical-lab-result-upload.tsx",
  web+"clinical-lab-professional-review-panel.tsx",
+ web+"clinical-lab-release-panel.tsx",
+ web+"my-lab-reports.tsx",
+ "apps/web/src/app/api/lab-patient-reports/[...parts]/route.ts",
+ "apps/web/src/app/patients/me/page.tsx",
  "apps/web/src/app/api/lab-clinical/[...parts]/route.ts",
  native+"native-clinical-lab-screen.tsx",
  native+"native-lab-result-upload.tsx",
  native+"native-lab-professional-review.tsx",
+ native+"native-lab-report-release.tsx",
+ "apps/android-public/src/features/patients/native-my-lab-reports.tsx",
+ "apps/android-public/src/features/patients/patient-profile-native.tsx",
  "apps/android-internal/src/features/dashboard/dashboard-modules.ts",
  "apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx"
 ];
@@ -133,4 +142,43 @@ must(mobileReviewer,/File\.preview/,"Android must use existing native protected 
 must(mobileReviewer,/attested/,"Native clinical document inspection attestation");
 must(source,/ClinicalLabProfessionalReviewPanel/,"Web H10 review route missing");
 must(mobile,/NativeLabProfessionalReview/,"Native H10 review route missing");
-console.log("CG16 US002 SOURCE/PARSE preflight PASS. Live SQL, clinical, storage, Web, Android, security and load QA NOT_RUN.");
+const releaseSql=read("apps/backend/db/migrations/1612_cg16_professional_report_release.sql");
+const release=read(d+"application/clinical-lab-patient-release.service.ts");
+const patientApi=read("apps/web/src/app/api/lab-patient-reports/[...parts]/route.ts");
+const nativePatient=read("apps/android-public/src/features/patients/native-my-lab-reports.tsx");
+must(releaseSql,/CREATE TABLE cg16_lab_report_release\(/,
+ "One simple clinician-approved report release record");
+must(releaseSql,/review\.decision='APPROVE'/,
+ "Database release must require exact existing independent approval");
+must(releaseSql,/file\.scan_status='CLEAN_VERIFIED'/,
+ "Only existing CG19 clean private PDF can be released");
+must(releaseSql,/UNIQUE\(root_realm_id,result_revision_ref\)/,
+ "Duplicate releases per report are forbidden");
+must(releaseSql,/CREATE TABLE cg16_lab_patient_report_access\(/,
+ "Patient private PDF access must be auditable");
+assert.doesNotMatch(releaseSql,/CREATE TABLE.*digital_signature|signature_provider|signing_key/,
+ "No digital signing system added");
+must(release,/this\.professionals\.assertCurrent/,
+ "Existing CG14 credential and clinical role reused");
+must(release,/source\.reviewer_account_ref!==actor\.accountId/,
+ "No one except original approving reviewer may release");
+must(release,/this\.storage\.readVerifiedPrivateObject/,
+ "Patient download must read original protected CG19 bytes");
+must(release,/this\.mine\(c,actor\)/,
+ "Existing CG15 verified patient and consent required on every read");
+must(release,/digestBytes\(bytes\)!==original\.report_digest/,
+ "Patient PDF checksum validated before delivery");
+must(controller,/orders\/:orderRef\/release/,
+ "Existing lab controller must route release");
+must(patientApi,/cg_patient_session/,
+ "Public Web patient session is not staff session");
+must(patientApi,/application\/pdf/,
+ "Web report download must return protected PDF only");
+must(nativePatient,/File\.preview/,
+ "Public Android must use existing PDF preview");
+must(source,/ClinicalLabReleasePanel/,
+ "Clinician Web release must be reachable in original lab orders");
+must(mobile,/NativeLabReportRelease/,
+ "Internal Android release must be reachable on original lab screen");
+console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
+ "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
