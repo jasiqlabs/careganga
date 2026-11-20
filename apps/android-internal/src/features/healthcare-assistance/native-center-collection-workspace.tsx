@@ -1,12 +1,14 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
+import {File,Paths} from "expo-file-system";
+import {fetch as expoFetch} from "expo/fetch";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
 type Payment={collectionRef:string;method:"CASH"|"UPI"|"CARD"|"BANK";
  amountMinor:string;state:string;cashReceiptNumber:string|null;recordedAt:string;
- receiptPdfState:string};
+ receiptPdfState:string;receiptDocumentRef?:string|null};
 type Adjustment={adjustmentRef:string;collectionRef:string;amountMinor:string;
  kind:string;refundReceiptNumber:string|null;providerRefundRef?:string|null;
  recordedAt:string};
@@ -73,8 +75,10 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
  const [refundReceipt,setRefundReceipt]=useState("");
  const [reason,setReason]=useState(""),[refundAttested,setRefundAttested]=useState(false);
  const last=useRef<Attempt|null>(null),generation=useRef(0);
+ const preview=useRef<File|null>(null);
  const base="staff/centers/"+centerRef+"/";
  const validIds=ID.test(centerRef)&&ID.test(chargeRef);
+ useEffect(()=>()=>{try{preview.current?.delete()}catch{}},[]);
  const report=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"The center's original payment is unavailable.");
@@ -118,6 +122,54 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
    setUncertain(code>=500);if(code<500)last.current=null;
    report(e);
   }finally{setBusy(false);}
+ }
+ async function issueReceipt(item:Payment){
+  if(!canRecord||busy||uncertain||item.method!=="CASH"||
+    item.state!=="VERIFIED_CASH")return;
+  setBusy(true);setMessage("");
+  try{
+   // Collection reference is the original stable issue key. Unlike a new
+   // random request key, it survives process death and same-cashier replay.
+   const raw=await api(token,"staff/centers/"+centerRef+
+    "/collections/"+item.collectionRef+"/issue",{requestKey:item.collectionRef});
+   if(!raw||typeof raw!=="object"||!("status" in raw)||
+      raw.status!=="ISSUED")
+    throw Error("Receipt PDF is pending or unknown. Retry this original receipt.");
+   setData(await refresh());
+   setMessage("Original private cash receipt issued and scanner-verified.");
+  }catch(e){report(e);}finally{setBusy(false);}
+ }
+ async function openReceipt(item:Payment){
+  if(busy||item.method!=="CASH"||item.receiptPdfState!=="ISSUED")return;
+  setBusy(true);setMessage("");
+  try{
+   const baseUrl=process.env.EXPO_PUBLIC_API_URL;
+   if(!baseUrl||!/^https?:\\/\\//.test(baseUrl)||
+     (process.env.NODE_ENV==="production"&&!baseUrl.startsWith("https://")))
+    throw Error("Protected receipt service is not configured.");
+   const address=new URL("/api/v1/healthcare-assistance/center-receipts/"+
+    "staff/centers/"+centerRef+"/collections/"+item.collectionRef+"/pdf",baseUrl);
+   const res=await expoFetch(address.toString(),{
+    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token},
+    signal:AbortSignal.timeout(20000)});
+   if(!res.ok){
+    if(res.status===401)onExpired();
+    throw Error("Your original center receipt could not be opened.");
+   }
+   if(res.headers.get("Content-Type")?.split(";")[0]!=="application/pdf")
+    throw Error("This private receipt is not a verified PDF.");
+   const bytes=await res.bytes();
+   if(bytes.length<100||bytes.length>10485760||
+     String.fromCharCode(...bytes.subarray(0,4))!=="%PDF")
+    throw Error("The private receipt bytes are invalid.");
+   try{preview.current?.delete()}catch{}
+   const file=new File(Paths.cache,"careganga-cash-"+Crypto.randomUUID()+".pdf");
+   file.create();await file.write(bytes);preview.current=file;
+   if(!await File.canPreview(file,{mimeType:"application/pdf"}))
+    throw Error("No private PDF viewer is available on this device.");
+   await File.preview(file,{title:"Verified center cash receipt",
+    mimeType:"application/pdf"});
+  }catch(e){report(e);}finally{setBusy(false);}
  }
  function record(){
   if(!canRecord||!data||busy||uncertain)return;
@@ -206,6 +258,14 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
     <Text style={styles.note}>{item.state.replaceAll("_"," ")}.
      {item.cashReceiptNumber?" Cash receipt: "+item.cashReceiptNumber:""}
      {" Document: "+item.receiptPdfState.replaceAll("_"," ")}</Text>
+    {item.method==="CASH"&&item.state==="VERIFIED_CASH"&&
+     item.receiptPdfState==="ISSUED"&&
+     button("Open verified private cash receipt",()=>void openReceipt(item),
+      busy||uncertain)}
+    {canRecord&&item.method==="CASH"&&item.state==="VERIFIED_CASH"&&
+     item.receiptPdfState!=="ISSUED"&&
+     button("Issue or recover original private PDF receipt",
+      ()=>void issueReceipt(item),busy||uncertain)}
     {canRefund&&item.method==="CASH"&&item.state==="VERIFIED_CASH"&&
      button(refundRef===item.collectionRef?"Selected for refund":"Select cash refund",
       ()=>setRefundRef(item.collectionRef),busy||uncertain)}
