@@ -7,6 +7,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {DoctorSchedulePreview} from "./doctor-schedule-preview";
 import {PublicLabOfferDirectory,hasCurrentLabOffers} from "./public-lab-offer-directory";
+import {NativeApprovedConsultationBenefits} from "./native-approved-consultation-benefits";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Mode="centers"|"doctors";
@@ -388,6 +389,9 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
      {label("View center",()=>void show({kind:"center",slug:c.centerSlug}))}
     </View>)}
     <Text style={styles.helper}>{doctorDetails.notice}</Text>
+    {selection?.kind==="doctor"&&
+     <NativeApprovedConsultationBenefits key={"benefit:"+selection.ref}
+      doctorRef={selection.ref}/>}
     {selection?.kind==="doctor"&&
      <DoctorSchedulePreview key={selection.ref} doctorRef={selection.ref}
       reschedule={reschedule}/>}
