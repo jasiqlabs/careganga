@@ -254,19 +254,54 @@ export class ClinicalLabResultEvidenceService{
     expiresAt:row.reserved_until.toISOString()};
   });
  }
+ /** Original uploader may recover a status, but not after patient-care
+  * consent is withdrawn or from a different center or order stage.
+  * A validated intent is never by itself proof of a released document.
+  */
  async status(token:string,centerRaw:string,orderRaw:string,uploadRaw:string){
   const center=id(centerRaw),order=id(orderRaw),upload=id(uploadRaw);
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
    const row=await this.original(c,actor,center,order,upload);
+   const scope=await c.query<{status:string}>(
+    "SELECT o.status FROM lab_order o WHERE o.root_realm_id=$1 "+
+    "AND o.id=$2 AND o.center_ref=$3 AND o.patient_ref=$4 "+
+    "AND o.status IN('PROCESSING','RESULT_READY') "+
+    "AND EXISTS (SELECT 1 FROM cg15_patient_consent consent "+
+    "WHERE consent.root_realm_id=o.root_realm_id "+
+    "AND consent.patient_id=o.patient_ref AND consent.purpose='PATIENT_CARE' "+
+    "AND consent.granted=true AND consent.revision_no=("+
+    "SELECT max(latest.revision_no) FROM cg15_patient_consent latest "+
+    "WHERE latest.root_realm_id=consent.root_realm_id "+
+    "AND latest.patient_id=consent.patient_id "+
+    "AND latest.purpose='PATIENT_CARE')) FOR SHARE OF o",
+    [actor.realmId,order,center,row.patient_ref]);
+   if(!scope.rows[0])
+    throw new NotFoundException({code:"LAB_RESULT_UPLOAD_UNAVAILABLE"});
    const files=await c.query<{id:string}>(
-    "SELECT id FROM cg19_lab_result_file WHERE root_realm_id=$1 "+
-    "AND intent_ref=$2 AND order_ref=$3 AND revoked_at IS NULL",
-    [actor.realmId,upload,order]);
-   return {uploadRef:row.id,status:row.status,cleanVerified:
-    row.status==="VALIDATED"&&files.rowCount>0,
+    "SELECT file.id FROM cg19_lab_result_file file "+
+    "JOIN lab_result_revision result ON "+
+    "result.root_realm_id=file.root_realm_id "+
+    "AND result.id=file.result_revision_ref "+
+    "AND result.order_ref=file.order_ref "+
+    "AND result.original_cg19_file_ref=file.id "+
+    "JOIN cg19_lab_result_intent intent ON "+
+    "intent.root_realm_id=file.root_realm_id "+
+    "AND intent.id=file.intent_ref AND intent.status='VALIDATED' "+
+    "WHERE file.root_realm_id=$1 AND file.intent_ref=$2 "+
+    "AND file.order_ref=$3 AND file.center_ref=$4 "+
+    "AND file.patient_ref=$5 AND file.revoked_at IS NULL "+
+    "AND file.scan_status='CLEAN_VERIFIED' "+
+    "AND result.result_state='RESULT_READY' "+
+    "AND result.report_digest=file.sha256 LIMIT 1",
+    [actor.realmId,upload,order,center,row.patient_ref]);
+   const verified=row.status==="VALIDATED"&&files.rowCount>0&&
+    scope.rows[0].status==="RESULT_READY";
+   if(row.status==="VALIDATED"&&!verified)
+    throw new ConflictException({code:"LAB_RESULT_REPORT_NOT_VERIFIED"});
+   return {uploadRef:row.id,status:row.status,cleanVerified:verified,
     resultRef:row.result_revision_ref,
-    originalFileRef:row.status==="VALIDATED"?files.rows[0]?.id??null:null};
+    originalFileRef:verified?files.rows[0].id:null};
   });
  }
  async confirm(token:string,centerRaw:string,orderRaw:string,uploadRaw:string){
