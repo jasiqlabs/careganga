@@ -5,10 +5,13 @@ type Ctx={params:Promise<{parts:string[]}>};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:"GET"|"POST"){
   if(parts.length===1){
+    if(parts[0]==="client-email-templates")return method==="GET";
     if(["inbox","notices","preferences"].includes(parts[0]))
       return method==="GET"||method==="POST"&&parts[0]!=="inbox";
     return method==="POST"&&["recover-decisions","process-due"].includes(parts[0]);
   }
+  if(parts.length===2&&parts[0]==="client-email-templates"&&
+    parts[1]==="import-drafts")return method==="POST";
   if(parts.length===2&&parts[0]==="providers"&&parts[1]==="status")
     return method==="GET";
   if(parts.length===3&&parts[0]==="inbox"&&UUID.test(parts[1])&&
