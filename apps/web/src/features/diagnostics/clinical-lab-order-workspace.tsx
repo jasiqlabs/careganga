@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {ClinicalLabResultUpload} from "./clinical-lab-result-upload";
+import {ClinicalLabProfessionalReviewPanel} from "./clinical-lab-professional-review-panel";
 type Center={centerRef:string;name:string};
 type Patient={patientRef:string;virtualPatientId:string;name:string;
  careSourceKind:"CENTER_INTAKE"|"CONSULTATION";careSourceRef:string};
@@ -43,8 +44,9 @@ const nextAction:Partial<Record<string,{action:CustodyAction;label:string}>>={
  RECEIVED:{action:"start-processing",label:"Start processing"},
  REJECTED:{action:"recollect",label:"Create recollection label"}
 };
-export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,canRecordResults}:{
- canCreate:boolean;canView:boolean;canManageSamples:boolean;canRecordResults:boolean
+export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,canRecordResults,canReview}:{
+ canCreate:boolean;canView:boolean;canManageSamples:boolean;canRecordResults:boolean;
+ canReview:boolean
 }){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[catalog,setCatalog]=useState<Item[]>([]);
@@ -340,6 +342,9 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    <p>Each custody action requires current assigned-center access. Rejected
     specimens need new collection labels. A collected sample does not mean
     a medical report is reviewed or released.</p>
+   {canReview&&selected.report?.state==="RESULT_READY"&&
+    <ClinicalLabProfessionalReviewPanel key={center+":"+selected.order.orderRef}
+     centerRef={center} orderRef={selected.order.orderRef}/>}
    {selected.report?.state==="RESULT_READY"?<p className="notice" role="status">
     The original report PDF was uploaded and scanner-verified. Qualified clinical
     approval, professional release and patient delivery are not yet available.
