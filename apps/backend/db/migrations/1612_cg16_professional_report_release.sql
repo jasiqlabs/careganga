@@ -1,7 +1,6 @@
--- CG16 US002: a clinician-authenticated immutable professional report
--- release for the EXACT independently approved CG19 scanner-verified PDF.
--- This records source-bound clinical electronic attestation, NOT a claim of
--- certificate-based PDF digital signing. It never sends a notification.
+-- CG16 US002: simple authenticated release of the EXACT clinician-reviewed,
+-- scanner-verified original CG19 PDF. No digital signature or signing service;
+-- only an explicit authorized release and protected patient download.
 CREATE TABLE cg16_lab_report_release(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -17,8 +16,6 @@ CREATE TABLE cg16_lab_report_release(
  clinician_revision_ref uuid NOT NULL,
  release_key uuid NOT NULL,
  release_digest char(64) NOT NULL CHECK(release_digest~'^[a-f0-9]{64}$'),
- electronic_attestation text NOT NULL
-  CHECK(electronic_attestation='REVIEWED_EXACT_PDF_AUTHENTICATED_CLINICIAN'),
  released_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,result_revision_ref),
