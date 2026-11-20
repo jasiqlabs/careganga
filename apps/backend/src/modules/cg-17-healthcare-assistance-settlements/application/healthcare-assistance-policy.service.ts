@@ -8,6 +8,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade}
  from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {HealthcarePolicyApprovalService}
+ from "../../cg-03-registration-approvals/application/healthcare-policy-approval.service";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -102,7 +104,8 @@ const view=(r:Revision)=>({
 export class HealthcareAssistancePolicyService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly approval:HealthcarePolicyApprovalService){}
  private async tx<T>(job:(c:PoolClient)=>Promise<T>){
   const c=await this.db.connect();let open=false;
   try{
@@ -292,10 +295,94 @@ export class HealthcareAssistancePolicyService{
     [actor.realmId,policyRef,v.centerRef,v.doctorRef,v.serviceKind,version,
      v.from,v.until,v.mode,v.bps,v.fixed,v.cap,v.eligibility,state,
      actor.accountId,v.requestKey,hash,hash]);
-   return {...view(row.rows[0]),replayed:false,
+   let caseRef:string|null=null;
+   if(full){
+    const review=await this.approval.create(c,actor,{
+     kind:"CG17_POLICY_EXCEPTION",policyRevisionRef:row.rows[0].id,
+     revisionNo:version,digest:hash,requestKey:v.requestKey,
+     centerRef:v.centerRef});
+    caseRef=review.caseRef;
+   }
+   return {...view(row.rows[0]),caseRef,replayed:false,
     warning:active?undefined:"This request is not effective or publicly available. "+
      (full?"An original protected CG03 full-coverage approval is required.":
       "This service's original source and eligibility integration is not ready.")};
+  });
+ }
+ /** Owner finalization. A legitimate independent current CG03 decision
+  * is necessary but not sufficient: a fresh Foundation root password and
+  * original CG17 center/doctor source must also be verified atomically.
+  */
+ async activate(bearer:string,caseRaw:string,raw:unknown){
+  const caseRef=uuid(caseRaw),data=canonical(raw,["currentPassword"]);
+  if(typeof data.currentPassword!=="string"||
+     data.currentPassword.length<8||
+     Buffer.byteLength(data.currentPassword,"utf8")>1024)
+   throw new BadRequestException({code:"ASSISTANCE_APPROVAL_INVALID"});
+  const actor=await this.sessions.requireAction(
+   bearer,"healthcare.assistance.policies.manage");
+  await this.sessions.limitFoundationRootProof(actor);
+  return this.tx(async c=>{
+   await this.identity.assertCurrent(c,actor,
+    "healthcare.assistance.policies.manage");
+   const q=await c.query<{status:string;cg17_policy_revision_id:string;
+    cg17_policy_version:number;cg17_policy_digest:string;
+    proposer_id:string;request_key:string}>(
+    "SELECT status,cg17_policy_revision_id,cg17_policy_version,"+
+    "cg17_policy_digest,proposer_id,request_key "+
+    "FROM cg03_case WHERE realm_id=$1 AND id=$2 "+
+    "AND case_kind='CG17_POLICY_EXCEPTION'",
+    [actor.realmId,caseRef]);
+   const review=q.rows[0];
+   if(!review)throw new NotFoundException({code:"ASSISTANCE_APPROVAL_UNAVAILABLE"});
+   const current=await c.query<Revision>(
+    "SELECT * FROM healthcare_policy_revision WHERE root_realm_id=$1 "+
+    "AND id=$2 AND revision_no=$3 AND source_digest=$4",
+    [actor.realmId,review.cg17_policy_revision_id,
+     review.cg17_policy_version,review.cg17_policy_digest]);
+   const proposed=current.rows[0];
+   if(!proposed)throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
+   await this.requireCenter(c,actor.realmId,proposed.center_ref);
+   if(proposed.doctor_ref)
+    await this.requireDoctor(c,actor.realmId,proposed.center_ref,proposed.doctor_ref);
+   await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":"+proposed.center_ref+":"+proposed.service_kind+":"+
+     (proposed.doctor_ref??"CENTER")]);
+   const locked=await c.query<Revision>(
+    "SELECT * FROM healthcare_policy_revision WHERE root_realm_id=$1 "+
+    "AND id=$2 FOR UPDATE",[actor.realmId,proposed.id]);
+   const original=locked.rows[0];
+   if(!original||original.source_digest!==review.cg17_policy_digest||
+     original.revision_no!==review.cg17_policy_version)
+    throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
+   await this.sessions.requireFreshFoundationRootProof(
+    c,actor,data.currentPassword);
+   if(original.approval_state==="ACTIVE"&&
+      original.approved_case_ref===caseRef&&review.status==="OWNER_COMPLETED")
+    return {...view(original),replayed:true};
+   if(review.status!=="PENDING_OWNER"||
+     original.approval_state!=="PENDING_APPROVAL"||
+     original.mode!=="PERCENT"||original.percent_basis_points!==10000||
+     original.service_kind!=="CONSULTATION"||
+     review.proposer_id!==original.actor_ref||
+     new Date(original.valid_until)<=new Date())
+    throw new ConflictException({code:"ASSISTANCE_APPROVAL_NOT_READY"});
+   const source={kind:"CG17_POLICY_EXCEPTION" as const,
+    policyRevisionRef:original.id,revisionNo:original.revision_no,
+    digest:original.source_digest,requestKey:review.request_key,
+    centerRef:original.center_ref,caseRef};
+   const decision=await this.approval.approved(c,actor,source);
+   const approved=await c.query<Revision>(
+    "UPDATE healthcare_policy_revision SET approval_state='ACTIVE',"+
+    "approved_case_ref=$3,approved_decision_ref=$4,"+
+    "changed_by=$5,changed_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND approval_state='PENDING_APPROVAL' "+
+    "RETURNING *",
+    [actor.realmId,original.id,caseRef,decision,actor.accountId]);
+   if(!approved.rows[0])
+    throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
+   await this.approval.finish(c,actor,caseRef);
+   return {...view(approved.rows[0]),replayed:false};
   });
  }
  async withdraw(bearer:string,rawPolicy:string,raw:unknown){
