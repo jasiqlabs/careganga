@@ -48,7 +48,7 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw Error("Current consultation contribution unavailable.");
   const value=raw as Contribution;
-  if(value.state!=="CANCELLED_NOT_COLLECTIBLE"&&!valid(value))
+  if(value.state!=="NOT_COLLECTIBLE"&&!valid(value))
    throw Error("Original fee split cannot be verified.");
   return value;
  },[path,authorized]);
@@ -112,8 +112,8 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
   {loading&&<p role="status">Checking approved consultation fee and policy…</p>}
   {!!error&&<p role="alert">{error}</p>}
   {!!notice&&<p role="status">{notice}</p>}
-  {quote&&quote.state==="CANCELLED_NOT_COLLECTIBLE"?
-   <p>This appointment was cancelled; no new payable can be accepted.</p>:
+  {quote&&quote.state==="NOT_COLLECTIBLE"?
+   <p>This consultation is not eligible for a new payable contribution.</p>:
    quote&&valid(quote)&&<>
     <dl className="cg-diagnostics-summary">
      <div><dt>Actual consultation fee</dt><dd>{pretty(quote.grossMinor!)}</dd></div>
