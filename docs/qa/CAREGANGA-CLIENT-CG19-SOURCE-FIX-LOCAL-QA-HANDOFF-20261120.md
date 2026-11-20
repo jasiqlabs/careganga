@@ -79,3 +79,12 @@ After disallowing silent reply reopening on `RESOLVED`/`CLOSED`, the center Web 
 ### Email length is capacity only (US-002-QA12/13)
 
 `1905` widens the allowed EMAIL body snapshot/template column and SendGrid adapter limit. Existing `cg19_notification.source_kind` and `cg19_message_template.kind` still only support real previous CG03/NOTICE workflows; the 52 `cg19_client_email_template` records remain permanently `SOURCE_DRAFT` and **cannot** be routed or sent from that migration. Per-owner approved dispatch, document attachment generation, event/recipient evidence and new business source integrations are **NOT_IMPLEMENTED**. Do not mistake a 481-char-safe provider adapter for a working CG-MEM/CG-DON/CG-SUP email workflow.
+
+
+### Center attachment API resolved-case security fix — 20 Nov 2026 (CG-19 US-003-QA02/07/09/12)
+
+**Finding:** after center reply/status guards were updated, the original `CenterSupportAttachmentService.own(...editable)` still checked only CLOSED. An authenticated current center representative could attempt new upload initiation or final confirmation against a RESOLVED support case by bypassing the disabled frontend, even though UI now treats that case as finalized.
+
+**Source fix:** in the **existing** CG-19 center support attachment owner, the shared editable `own` guard now rejects both `CLOSED` and `RESOLVED` for initiation and confirmation. The guard is transaction-scoped, uses current CG-14 center membership, case/source FK and expected revision; previous authorized read/download/status and private-file **revocation** remain available to preserve privacy after closure. No second support/storage master or new module.
+
+**QA to actually execute:** (1) initiate while OPEN succeeds only with authorized center + valid clean storage; (2) in-flight upload initiated OPEN, then case RESOLVED before confirm → reject with no new clean stored file; (3) direct forged initiation/confirm while RESOLVED/CLOSED → conflict, no mutation; (4) current center A vs B isolation; (5) after staff explicitly reopens OPEN, valid new upload still requires current case revision and original source version; (6) existing validated files remain visible/downloadable and revocable after resolution; (7) scanner unavailable → never accepted. Source INSPECTED, real DB/storage/Web tests NOT_RUN.

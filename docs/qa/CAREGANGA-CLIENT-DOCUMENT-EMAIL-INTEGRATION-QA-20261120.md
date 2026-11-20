@@ -82,3 +82,12 @@ No new client-facing feature, module, workflow, data seed, exposed sample signat
 
 
 **Critical truth check:** `1905` increases allowed EMAIL-only copy length but does **not** implement a new authorized source event kind/recipient/attachment pipeline. The existing CG03_DECISION/NOTICE `cg19_notification` sources remain unchanged. All 52 client `SOURCE_DRAFT` templates are intentionally unavailable for sending until genuine owner data and CG-19 versioned document integration are explicitly implemented/reviewed. Center portal's `RESOLVED` and `CLOSED` support cases now block both reply and attachment editor; recheck HTTP direct access at runtime. Do not label these dependent event-approval scenarios complete.
+
+
+### Center attachment API resolved-case security fix — 20 Nov 2026 (CG-19 US-003-QA02/07/09/12)
+
+**Finding:** after center reply/status guards were updated, the original `CenterSupportAttachmentService.own(...editable)` still checked only CLOSED. An authenticated current center representative could attempt new upload initiation or final confirmation against a RESOLVED support case by bypassing the disabled frontend, even though UI now treats that case as finalized.
+
+**Source fix:** in the **existing** CG-19 center support attachment owner, the shared editable `own` guard now rejects both `CLOSED` and `RESOLVED` for initiation and confirmation. The guard is transaction-scoped, uses current CG-14 center membership, case/source FK and expected revision; previous authorized read/download/status and private-file **revocation** remain available to preserve privacy after closure. No second support/storage master or new module.
+
+**QA to actually execute:** (1) initiate while OPEN succeeds only with authorized center + valid clean storage; (2) in-flight upload initiated OPEN, then case RESOLVED before confirm → reject with no new clean stored file; (3) direct forged initiation/confirm while RESOLVED/CLOSED → conflict, no mutation; (4) current center A vs B isolation; (5) after staff explicitly reopens OPEN, valid new upload still requires current case revision and original source version; (6) existing validated files remain visible/downloadable and revocable after resolution; (7) scanner unavailable → never accepted. Source INSPECTED, real DB/storage/Web tests NOT_RUN.

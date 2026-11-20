@@ -233,3 +233,6 @@ Trace all client 52 template IDs against source-owned committed events, version/
 **US-003-QA07/QA09 center finalized state check:** `center-support-desk.tsx` now treats `RESOLVED` and `CLOSED` as locked for replies and support attachments (not just reply forms). `SupportService.centerReply` denies both; current real center can only resume after an authorized Foundation staff OPEN transition. Direct API/role/check, stale-revision and runtime UI tests NOT_RUN. 
 
 **US-002-QA12/QA13 email gate:** `1905` is a schema/provider copy *capacity improvement only*. Do not promote disabled `CG-*` client SOURCE_DRAFTs to live mail: original notification source-kind constraints remain CG03_DECISION/NOTICE and source owners/approved documents/verified recipients are absent. Source status DEPENDENT_OWNER; provider/attachment/runtime tests NOT_RUN.
+
+
+**CG-19 US-003-QA02/07/09/12 security regression:** `center-support-attachment.service.ts` original `own(...editable)` now rejects `RESOLVED` as well as `CLOSED` on new upload initiation and confirm, even by direct API. Existing authorized listing, download and revocation remain. Verify case transition race OPEN→RESOLVED while upload is in flight and cross-center attempts in PostgreSQL/storage runtime; source inspected only, NOT_RUN.
