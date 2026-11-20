@@ -114,7 +114,7 @@ export class ConsultationChargeSourceFacade{
    created_at:Date}>(
    "SELECT id,patient_id,doctor_id,center_id,association_id,"+
    "fee_minor::text,fee_version,expires_at,status,created_by_account,created_at "+
-   "FROM cg15_consultation_hold WHERE root_realm_id=$1 AND id=$2",
+   "FROM cg15_consultation_hold WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
    [a.realmId,ref]);
   const x=q.rows[0];
   if(!x||center&&x.center_id!==center)
@@ -141,7 +141,7 @@ export class ConsultationChargeSourceFacade{
    "fee_minor::text,fee_version,booking_state,collection_state,currency,"+
    "booking_display_id,created_at,revision,created_by_account,hold_id "+
    "FROM cg15_consultation_appointment "+
-   "WHERE root_realm_id=$1 AND id=$2",
+   "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
    [a.realmId,ref]);
   const x=q.rows[0];
   if(!x||center&&x.center_id!==center)
