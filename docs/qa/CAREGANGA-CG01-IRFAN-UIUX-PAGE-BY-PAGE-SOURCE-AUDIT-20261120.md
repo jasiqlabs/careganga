@@ -148,3 +148,6 @@ The owning feature branch now computes **role-verified reviewer/publisher destin
 
 ### Re-review correction to JSX wrapper update
 Readback after `7ac0e1e` identified malformed JSX in six route bodies. They have now been rebuilt from their intact `8bc9014` source with edits applied before offset calculations. Independent structural checks confirm one wrapper pair per route, the unchanged owning component and original role gates, and no corrupt fragments. The local source guard now detects duplicate wrappers and known malformed signatures. The interim commit must not be treated as build-ready. Next.js build and device visual QA remain `NOT_RUN` and the main merge stays `HOLD`.
+
+## Scope clarification — all modules in `main`
+The owner clarified that CG-01 parity is required across **every main-integrated module**, not just the CG-14/15 healthcare screens. A separate canonical main-only 28-route Web + 15-native-source owner matrix, actual implementation follow-up and honest NOT_RUN gates are now recorded in [CAREGANGA-MAIN-INTEGRATED-CG01-WEB-ANDROID-UIUX-20261120.md](CAREGANGA-MAIN-INTEGRATED-CG01-WEB-ANDROID-UIUX-20261120.md). The healthcare/UI-07/09/23 and H07/H15 client-reference gates stay separate. No code or QA status on `main` was changed.

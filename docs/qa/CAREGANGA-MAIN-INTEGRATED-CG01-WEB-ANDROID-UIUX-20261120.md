@@ -69,3 +69,34 @@ The previous healthcare-focused audit was incomplete for the owner's request. Th
 5. Preserve **original feature QA outcomes** and run end-to-end business/security/database regression locally before sign-off. Do not merge to `main` on source evidence alone.
 
 **State:** Source parity **PARTIAL**, all live visual/functional gates **NOT_RUN**. This report is not an independent live QA signoff or developer build pass.
+
+## Final expanded internal Android source pass — 20 November 2026
+
+The additional independent source review identified remaining native presentation drift in CG-03 approvals, CG-19 private files, CG-09 Finance accounts/claims/vouchers/reviews, CG-21 notice administration and Support. These owning screens now use 48dp-standard touch controls (where an existing control was shorter), shared 12dp interactive corners, current CG-01 navy/blue/white semantic colors, and **96dp extra scroll clearance** for existing authenticated bottom navigation. Native Finance selected states use `careGangaTheme.selectedSurface`; the shared finance source kit has 48dp fields and 96dp inner scroll clearance. Existing 14dp native card surfaces, role-protected actions and all business handlers remain.
+
+**Source readback of these 15 explicitly listed native owner screens:** each retains left/right-only safe-area edges and current CG-01 admin canvas or its shared Finance source kit. The 10 independently styled scroll screens checked have `paddingBottom:96`; the other four Finance screens use the shared source kit and voucher-only is a small wrapper. **These checks do not prove a physical device's bottom-nav/keyboard interaction.** No code was added to CG-01 core login, roles, or dashboard screen components; original CG-01 look/feel remains the reference.
+
+### Actual main-owned native screen-by-screen source inventory
+| Owner | Code location | Outcome |
+|---|---|---|
+| CG-03 approval | `apps/android-internal/src/features/registration-approvals/proposal-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-19 documents | `apps/android-internal/src/features/documents/private-case-evidence-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 accounts | `apps/android-internal/src/features/finance-accounting/finance-accounts-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 expense claims | `apps/android-internal/src/features/finance-accounting/finance-expense-claims-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 voucher draft | `apps/android-internal/src/features/finance-accounting/finance-voucher-draft-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 voucher entry | `apps/android-internal/src/features/finance-accounting/finance-voucher-only-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 voucher review | `apps/android-internal/src/features/finance-accounting/finance-voucher-native-reviewer.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 claim review | `apps/android-internal/src/features/finance-accounting/finance-claim-native-reviewer.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 invoices | `apps/android-internal/src/features/finance-accounting/finance-native-invoices.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 budgets | `apps/android-internal/src/features/finance-accounting/finance-native-budgets.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 ledger/reports | `apps/android-internal/src/features/finance-accounting/finance-native-reports.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-09 protected reviewer | `apps/android-internal/src/features/finance-accounting/finance-native-protected-review.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-21 notices | `apps/android-internal/src/features/communications/foundation-notice-admin-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| CG-21 notifications | `apps/android-internal/src/features/communications/notifications-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+| Support | `apps/android-internal/src/features/support/foundation-support-screen.tsx` | Authenticated CG-01 shell and one safe-area source; native visual/device pass **NOT_RUN** |
+
+**Main-branch nuance:** `main` had the CG-01 native authenticated dashboard shell but did not directly wrap all nested business screens with `AuthenticatedAppShell`; the authorized development feature branch already added the main business screen `renderInShell` integration before this pass. Do not infer that a protected module screen visually matched CG-01 in `main` just because the dashboard did.
+
+**Not implemented as native admin screens in this `main` baseline:** separate CG-18 CMS editor, CG-20 Audit Logs, and Platform Settings/Recovery editors. Keep them Web-only rather than fabricate Android screenshots or claim mobile screen QA. The separate **public Android** app must follow the client-owned public website design, not the private CG-01 Admin skin.
+
+**Source follow-up commits:** `acfcd553` and `49bcc108` implement the additional screen-level native style corrections. The real QA decision is unchanged: `SOURCE_UI_ALIGNMENT_PARTIAL`, `MAIN_MERGE_HOLD` until Web/Android builds and rendered visual comparison execute.

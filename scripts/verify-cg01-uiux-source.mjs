@@ -355,6 +355,51 @@ for(const [path,marker] of mainStateOwners){
  check(read("apps/web/src/features/"+path).includes(marker),
   path+" lost the CG-01 operational state presentation");
 }
+
+const mainNativeSourceScreenPaths=[
+ "registration-approvals/proposal-screen.tsx",
+ "documents/private-case-evidence-screen.tsx",
+ "finance-accounting/finance-accounts-screen.tsx",
+ "finance-accounting/finance-expense-claims-screen.tsx",
+ "finance-accounting/finance-voucher-draft-screen.tsx",
+ "finance-accounting/finance-voucher-only-screen.tsx",
+ "finance-accounting/finance-voucher-native-reviewer.tsx",
+ "finance-accounting/finance-claim-native-reviewer.tsx",
+ "finance-accounting/finance-native-invoices.tsx",
+ "finance-accounting/finance-native-budgets.tsx",
+ "finance-accounting/finance-native-reports.tsx",
+ "finance-accounting/finance-native-protected-review.tsx",
+ "communications/foundation-notice-admin-screen.tsx",
+ "communications/notifications-screen.tsx",
+ "support/foundation-support-screen.tsx"
+];
+check(mainNativeSourceScreenPaths.length===15,
+ "the 15 existing main-owned Android business screen owners must remain inventoried");
+for(const p of mainNativeSourceScreenPaths){
+ const code=read("apps/android-internal/src/features/"+p);
+ check(code.includes('edges={["left","right"]}'),
+  p+" must not duplicate authenticated header/bottom nav insets");
+ check(code.includes("adminCanvas")||
+  code.includes("financeNativeStyles as"),
+  p+" must reuse the signed-in CG-01 canvas or source-finance kit");
+}
+const mainNativeBottomPaths=[
+ "registration-approvals/proposal-screen.tsx",
+ "documents/private-case-evidence-screen.tsx",
+ "finance-accounting/finance-accounts-screen.tsx",
+ "finance-accounting/finance-expense-claims-screen.tsx",
+ "finance-accounting/finance-voucher-draft-screen.tsx",
+ "finance-accounting/finance-voucher-native-reviewer.tsx",
+ "finance-accounting/finance-claim-native-reviewer.tsx",
+ "communications/foundation-notice-admin-screen.tsx",
+ "communications/notifications-screen.tsx",
+ "support/foundation-support-screen.tsx"
+];
+for(const p of mainNativeBottomPaths){
+ check(read("apps/android-internal/src/features/"+p).includes("paddingBottom:96"),
+  p+" lost authenticated native bottom-nav scroll clearance");
+}
+
 const extendedCms=read("apps/web/src/features/cms-public-content/cms-extended-workspace.tsx");
 check(extendedCms.includes('className="primary" disabled={busy} onClick={()=>begin(kind)}'),
  "existing CMS editorial create action lost its primary hierarchy");
@@ -374,7 +419,7 @@ check(coreTokens.includes('selectedSurface:"#EEF4FF"'),
  "CG-01 selected surface token missing for native business controls");
 const nativeKit=read("apps/android-internal/src/features/finance-accounting/finance-native-source-kit.tsx");
 check(nativeKit.includes("backgroundColor:t.selectedSurface")&&
- nativeKit.includes("minHeight:48"),
+ nativeKit.includes("minHeight:48")&&nativeKit.includes("paddingBottom:96"),
  "CG-09 shared native Finance input/selection parity missing");
 for(const p of [
  "foundation-structure/branch-registration-screen.tsx",
