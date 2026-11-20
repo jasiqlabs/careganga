@@ -35,7 +35,7 @@ export default async function DoctorLeaveAdminPage(){
   const canReview=a.has("approvals.review")&&a.has("health.schedules.view"),
     canManage=a.has("health.schedules.manage");
   if(!canReview&&!canManage)return <AccessDeniedView reason="Your role does not include the current reviewer or schedule management permission." accountHref="/admin/health-network"/>;
-  return <HealthcareAdminShell active="healthSchedules"
+  return <HealthcareAdminShell active="healthSchedules" pageLabel="Doctor leave reviews"
    actor={{displayName:person.displayName,roleName:person.roleName}}
    actions={a}>
    <DoctorLeaveReviewWorkspace canReview={canReview} canManage={canManage}/>

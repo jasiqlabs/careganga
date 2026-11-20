@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {FoundationPatientBookings}
  from "../../../../../features/appointments/foundation-patient-bookings";
 export const dynamic="force-dynamic";
@@ -33,17 +33,9 @@ export default async function ProtectedH15PatientManagement(){
   const rightsSet=new Set<string>(scope.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!rightsSet.has("health.patients.admin.view"))
-   return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>;
-  return <div className="shell">
-   <FoundationAdminNav initialActions={Array.from(rightsSet)} active="healthPatientAdmin"
-    displayName={actor.displayName} roleName={actor.roleName}
-    canViewPatientAdmin canViewRoles={rightsSet.has("roles.view")}
-    canViewAccounts={rightsSet.has("accounts.view")}
-    canViewPatientIntake={rightsSet.has("health.patients.intake")}
-    canViewVisitQueue={rightsSet.has("health.visits.manage")}
-    canViewSchedules={rightsSet.has("health.schedules.view")}
-    canViewHealthNetwork={rightsSet.has("health.providers.view")}/>
-   <main className="workspace cg-health-admin-workspace">
+   return <AccessDeniedView reason="Your current Foundation role cannot view protected patient records." accountHref="/admin"/>return <HealthcareAdminShell active="healthPatientAdmin"
+    actor={{displayName:actor.displayName,roleName:actor.roleName}}
+    actions={rightsSet}>ce">
     <p><Link href="/admin">Back to account</Link></p>
     {rightsSet.has("health.patients.intake")&&
      <section className="form-section cg-health-action-panel" aria-label="Authorized patient registration and new booking">
@@ -57,9 +49,7 @@ export default async function ProtectedH15PatientManagement(){
         Open patient intake
        </Link>
       </section>}
-    <FoundationPatientBookings/>
-   </main>
-  </div>;
+    <FoundationPatientBookings/></HealthcareAdminShell>;iv>;
  }catch(error){
   if(error&&typeof error==="object"&&"digest" in error&&
    typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;

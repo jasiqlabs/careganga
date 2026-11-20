@@ -8,14 +8,21 @@ import {FoundationAdminNav, type FoundationAdminNavProps} from "./foundation-adm
  * rendering this shell. No protected data or permission checks live here.
  */
 export function HealthcareAdminShell({
- actor, actions, active, children
+ actor, actions, active, children, pageLabel
 }:{
  actor:{displayName:string;roleName:string};
  actions:ReadonlySet<string>;
  active:FoundationAdminNavProps["active"];
  children:ReactNode;
+ pageLabel?:string;
 }){
  const has=(key:string)=>actions.has(key);
+ const names:Partial<Record<FoundationAdminNavProps["active"],string>>={
+  healthNetwork:"Healthcare providers",healthDoctors:"Doctor registrations",
+  healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
+  healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
+ };
+ const currentPage=pageLabel??names[active]??"Healthcare";
  return <div className="shell">
   <FoundationAdminNav active={active} initialActions={Array.from(actions)}
    displayName={actor.displayName} roleName={actor.roleName}
@@ -44,9 +51,15 @@ export function HealthcareAdminShell({
     has("communications.notices.manage")}/>
   <main className="workspace cg-health-admin-workspace">
    <nav className="cg-health-breadcrumb" aria-label="Healthcare page location">
-    <Link href="/admin/dashboard">Dashboard</Link>
-    <span aria-hidden="true">/</span>
-    <span>Healthcare</span>
+    {active==="healthCenter"
+     ? <span aria-current="page">My healthcare center</span>
+     : <>
+       <Link href="/admin/dashboard">Dashboard</Link>
+       <span aria-hidden="true">/</span>
+       <span>Healthcare</span>
+       <span aria-hidden="true">/</span>
+       <span aria-current="page">{currentPage}</span>
+      </>}
    </nav>
    {children}
   </main>

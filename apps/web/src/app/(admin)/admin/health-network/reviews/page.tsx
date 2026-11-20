@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import Link from "next/link";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {HealthReviewInbox} from "../../../../../features/health-network/health-review-inbox";
 export const dynamic="force-dynamic";
 export default async function HealthcareReviewsPage(){
@@ -30,22 +30,11 @@ export default async function HealthcareReviewsPage(){
   const keys=new Set<string>(rights.actions.flatMap((a:unknown)=>
    a&&typeof a==="object"&&"key" in a&&typeof a.key==="string"?[a.key]:[]));
   if(!(keys.has("health.providers.verify")||keys.has("health.doctors.verify"))||!keys.has("approvals.review"))
-   return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>;
-  return <div className="shell">
-   <FoundationAdminNav initialActions={Array.from(keys)} active="healthNetwork" displayName={person.displayName}
-    roleName={person.roleName}
-    canViewSchedules={keys.has("health.schedules.view")} canViewHealthNetwork={keys.has("health.providers.view")}
-    canViewRoles={keys.has("roles.view")}
-    canViewAccounts={keys.has("accounts.view")}
-    canViewFoundation={keys.has("foundation.profile.view")}
-    canViewBranches={keys.has("foundation.branches.view")}
-    canViewApprovals={keys.has("approvals.view")}
-    canViewDocuments={keys.has("documents.files.view")}
-    canViewCms={keys.has("cms.content.view")}/>
-   <main className="workspace cg-health-admin-workspace"><HealthReviewInbox
+   return <AccessDeniedView reason="Your current role cannot review healthcare registrations." accountHref="/admin"/>return <HealthcareAdminShell active="healthNetwork" pageLabel="Registration reviews"
+    actor={{displayName:person.displayName,roleName:person.roleName}}
+    actions={keys}>ce"><HealthReviewInbox
       canManageProviders={keys.has("health.providers.manage")}
-      canManageDoctors={keys.has("health.doctors.manage")}/></main>
-  </div>;
+      canManageDoctors={keys.has("health.doctors.manage"</HealthcareAdminShell>;iv>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

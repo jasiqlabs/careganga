@@ -197,6 +197,33 @@ for(const path of cg01EmptyStateOwners){
 check(css.includes(".cg-module-empty"),
  "CG-01 source-matched empty-state style missing from authenticated admin");
 
+// Healthcare routes now reuse the same authorized presentation wrapper, rather
+// than diverging from the CG-01 navigation/heading treatment page by page.
+for(const p of [
+ "admin/health-network/page.tsx",
+ "admin/health-network/doctors/page.tsx",
+ "admin/health-network/reviews/page.tsx",
+ "admin/health-network/patient-intake/page.tsx",
+ "admin/health-network/queue/page.tsx",
+ "admin/health-network/patients/page.tsx"
+]){
+ const code=read("apps/web/src/app/(admin)/"+p);
+ check(code.includes("<HealthcareAdminShell")&&!code.includes("<FoundationAdminNav"),
+  p+" does not reuse the canonical healthcare Admin shell");
+}
+check(nav.includes("healthReviewerAccess")&&nav.includes("healthPublisherAccess")&&
+ nav.includes('"/admin/health-network/reviews"')&&
+ nav.includes('"/admin/health-network/content-reviews"'),
+ "reviewer/publisher-only Healthcare sidebar destinations are missing");
+check(healthcareShell.includes('active==="healthCenter"')&&
+ healthcareShell.includes('aria-current="page"')&&
+ healthcareShell.includes('pageLabel?:string'),
+ "own-center and route-specific breadcrumbs must remain context-aware");
+const providerLanding=read("apps/web/src/app/(admin)/admin/health-network/page.tsx");
+check(providerLanding.includes('href="/admin/health-network/reviews"')&&
+ providerLanding.includes('actions.has("approvals.review")'),
+ "healthcare reviewer landing does not expose protected review navigation");
+
 console.log("CG-01 UI SOURCE CHECK only: "+web.length+" Web routes ("+
  protectedCount+" protected; "+navCount+" nav + "+healthcareCount+
  " healthcare shell), "+native.length+" native screen inset checks, "+keys.length+

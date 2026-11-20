@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterVisitQueue} from "../../../../../features/appointments/center-visit-queue";
 export const dynamic="force-dynamic";
 export default async function CenterQueuePage(){
@@ -30,19 +30,10 @@ export default async function CenterQueuePage(){
    throw Error("Current role unavailable");
   const allowed=new Set<string>(rights.actions.flatMap((i:unknown)=>
    i&&typeof i==="object"&&"key" in i&&typeof i.key==="string"?[i.key]:[]));
-  if(!allowed.has("health.visits.manage"))return <AccessDeniedView reason="Your current role cannot manage visits at a healthcare center." accountHref="/admin"/>;
-  return <div className="shell">
-   <FoundationAdminNav initialActions={Array.from(allowed)} active="healthVisitQueue"
-    displayName={person.displayName} roleName={person.roleName}
-    canViewRoles={allowed.has("roles.view")}
-    canViewAccounts={allowed.has("accounts.view")}
-    canViewSchedules={allowed.has("health.schedules.view")}
-    canViewHealthNetwork={allowed.has("health.providers.view")}
-    canViewPatientIntake={allowed.has("health.patients.intake")}
-    canViewVisitQueue/>
-   <main className="workspace cg-health-admin-workspace"><p><Link href="/admin">Back to my account</Link></p>
-    <CenterVisitQueue/></main>
-  </div>;
+  if(!allowed.has("health.visits.manage"))return <AccessDeniedView reason="Your current role cannot manage visits at a healthcare center." accountHref="/admin"/>return <HealthcareAdminShell active="healthVisitQueue"
+    actor={{displayName:person.displayName,roleName:person.roleName}}
+    actions={allowed}>ce"><p><Link href="/admin">Back to my account</Link></p>
+    <CenterVisitQue</HealthcareAdminShell>;iv>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
    e.digest.startsWith("NEXT_REDIRECT"))throw e;

@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {CenterPatientIntakeWorkspace}
  from "../../../../../features/patients/center-patient-intake-workspace";
 export const dynamic="force-dynamic";
@@ -38,25 +38,11 @@ export default async function ReceptionPatientIntake(){
   const actions=new Set<string>(effective.actions.flatMap((item:unknown)=>
    item&&typeof item==="object"&&"key" in item&&
    typeof item.key==="string"?[item.key]:[]));
-  if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>;
-  return <div className="shell">
-   <FoundationAdminNav initialActions={Array.from(actions)} active="healthPatientIntake"
-    displayName={actor.displayName} roleName={actor.roleName}
-    canViewRoles={actions.has("roles.view")}
-    canViewAccounts={actions.has("accounts.view")}
-    canViewSchedules={actions.has("health.schedules.view")}
-    canViewHealthNetwork={actions.has("health.providers.view")}
-    canViewPatientIntake
-    canViewFoundation={actions.has("foundation.profile.view")}
-    canViewCms={actions.has("cms.content.view")}
-    canViewFinance={actions.has("finance.accounts.view")}
-    canViewApprovals={actions.has("approvals.view")}
-    canViewSupport={actions.has("support.cases.view")}/>
-   <main className="workspace cg-health-admin-workspace">
+  if(!actions.has("health.patients.intake"))return <AccessDeniedView reason="Your current role is not assigned to register patients at a healthcare center." accountHref="/admin"/>return <HealthcareAdminShell active="healthPatientIntake"
+    actor={{displayName:actor.displayName,roleName:actor.roleName}}
+    actions={actions}>ce">
     <p><Link href="/admin">Back to my account</Link></p>
-    <CenterPatientIntakeWorkspace/>
-   </main>
-  </div>;
+    <CenterPatientIntakeWorkspace/></HealthcareAdminShell>;iv>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
    typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

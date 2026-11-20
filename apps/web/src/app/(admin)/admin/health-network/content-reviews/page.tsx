@@ -35,7 +35,7 @@ export default async function CenterContentReviewPage(){
   const canPublish=allowed.has("health.centers.publish");
   if(!canReview&&!canPublish)
    return <AccessDeniedView reason="Your current role cannot independently review center content." accountHref="/admin/health-network"/>;
-  return <HealthcareAdminShell active="healthNetwork"
+  return <HealthcareAdminShell active="healthNetwork" pageLabel="Content reviews"
     actor={{displayName:person.displayName,roleName:person.roleName}}
     actions={allowed}>
      <div className="cg-health-review-layout">

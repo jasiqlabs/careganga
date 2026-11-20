@@ -654,6 +654,21 @@ export function FoundationAdminNav({
   const reportAccess = currentActions ? currentActions.has("finance.reports.view") : canViewFinanceReports;
   const cmsAccess = allowed("cms.content.view", canViewCms);
   const healthNetworkAccess = allowed("health.providers.view", canViewHealthNetwork);
+  // Reviewer-only and publisher-only staff must have a visible, authorized
+  // entry point; never send them to the provider directory without view access.
+  const healthReviewerAccess = currentActions
+    ? currentActions.has("approvals.review") &&
+      (currentActions.has("health.providers.verify") || currentActions.has("health.doctors.verify"))
+    : false;
+  const providerReviewerHomeAccess = currentActions
+    ? currentActions.has("approvals.review") && currentActions.has("health.providers.verify")
+    : false;
+  const healthPublisherAccess = currentActions
+    ? currentActions.has("health.centers.publish") : false;
+  const healthHomeHref = healthNetworkAccess || providerReviewerHomeAccess
+    ? "/admin/health-network"
+    : healthReviewerAccess ? "/admin/health-network/reviews"
+    : "/admin/health-network/content-reviews";
   const healthCenterAccess = allowed("health.centers.draft.edit", canViewCenterPortal);
   const doctorAccess = allowed("health.doctors.view", canViewDoctors);
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
@@ -680,7 +695,12 @@ export function FoundationAdminNav({
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
-    ...(healthNetworkAccess ? [{ key: "healthNetwork" as const, label: "Healthcare Providers", href: "/admin/health-network" }] : []),
+    ...(healthNetworkAccess || healthReviewerAccess || healthPublisherAccess
+      ? [{ key: "healthNetwork" as const,
+           label: healthNetworkAccess ? "Healthcare Providers"
+             : healthReviewerAccess ? "Healthcare Reviews" : "Center Content Reviews",
+           href: healthHomeHref }]
+      : []),
     ...(healthCenterAccess ? [{ key: "healthCenter" as const, label: "My Healthcare Center", href: "/center" }] : []),
     ...(doctorAccess ? [{ key: "healthDoctors" as const, label: "Doctor Registrations", href: "/admin/health-network/doctors" }] : []),
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),

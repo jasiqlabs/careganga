@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {DoctorOnboarding} from "../../../../../features/health-network/doctor-onboarding";
 export const dynamic="force-dynamic";
 
@@ -33,24 +33,12 @@ export default async function HealthcareDoctorsPage(){
       x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
     if(!keys.has("health.doctors.view"))
       return <AccessDeniedView reason="Your current role cannot access protected professional registrations." accountHref="/admin"/>;
-    return <div className="shell">
-      <FoundationAdminNav initialActions={Array.from(keys)} active="healthDoctors" displayName={person.displayName}
-        roleName={person.roleName} canViewDoctors
-    canViewSchedules={keys.has("health.schedules.view")}
-        canViewHealthNetwork={keys.has("health.providers.view")}
-        canViewRoles={keys.has("roles.view")}
-        canViewAccounts={keys.has("accounts.view")}
-        canViewFoundation={keys.has("foundation.profile.view")}
-        canViewBranches={keys.has("foundation.branches.view")}
-        canViewCms={keys.has("cms.content.view")}
-        canViewApprovals={keys.has("approvals.view")}
-        canViewDocuments={keys.has("documents.files.view")}
-        canViewFinance={keys.has("finance.accounts.view")}/>
-      <main className="workspace cg-health-admin-workspace">
+return <HealthcareAdminShell active="healthDoctors"
+    actor={{displayName:person.displayName,roleName:person.roleName}}
+    actions={keys}>ce">
         <DoctorOnboarding canManage={keys.has("health.doctors.manage")}
           canVerify={keys.has("health.doctors.verify")}/>
-      </main>
-    </div>;
+  </HealthcareAdminShell>;iv>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;

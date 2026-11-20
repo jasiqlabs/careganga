@@ -2,7 +2,7 @@ import {AccessDeniedView} from "../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
+import {HealthcareAdminShell} from "../../../../shared/healthcare-admin-shell";
 import {ProviderOnboarding} from "../../../../features/health-network/provider-onboarding";
 export const dynamic="force-dynamic";
 
@@ -35,21 +35,18 @@ export default async function HealthNetworkPage(){
     if(!actions.has("health.providers.view")&&
       !(actions.has("approvals.review")&&actions.has("health.providers.verify")))
       return <AccessDeniedView reason="Your current role cannot read healthcare provider registrations." accountHref="/admin"/>;
-    return <div className="shell">
-      <FoundationAdminNav initialActions={Array.from(actions)} active="healthNetwork"
-        displayName={person.displayName} roleName={person.roleName}
-        canViewRoles={actions.has("roles.view")}
-        canViewAccounts={actions.has("accounts.view")}
-    canViewSchedules={actions.has("health.schedules.view")}
-        canViewHealthNetwork
-        canViewFinance={actions.has("finance.accounts.view")}
-        canViewFoundation={actions.has("foundation.profile.view")}
-        canViewBranches={actions.has("foundation.branches.view")}
-        canViewCms={actions.has("cms.content.view")}
-        canViewApprovals={actions.has("approvals.view")}
-        canViewDocuments={actions.has("documents.files.view")}
-        canViewSupport={actions.has("support.cases.view")}/>
-      <main className="workspace cg-health-admin-workspace">
+return <HealthcareAdminShell active="healthNetwork"
+    actor={{displayName:person.displayName,roleName:person.roleName}}
+    actions={actions}>
+      {!actions.has("health.providers.view")&&
+       <div className="cg-health-route-intro">
+        <h1>Healthcare reviews</h1>
+        <p>Select an authorized review task below.</p>
+       </div>}
+      {actions.has("approvals.review")&&
+       (actions.has("health.providers.verify")||actions.has("health.doctors.verify"))&&
+       <p><Link href="/admin/health-network/reviews">Review healthcare registrations</Link></p>}
+ce">
       {actions.has("health.schedules.view")&&
         <p><Link href="/admin/health-network/schedules">
          Doctor Schedule & Availability</Link></p>}
@@ -69,8 +66,7 @@ export default async function HealthNetworkPage(){
         canManage={actions.has("health.providers.manage")}
         canSelectAccounts={actions.has("health.providers.manage")}
         canViewFinance={actions.has("health.providers.finance.view")}
-        canManageFinance={actions.has("health.providers.finance.manage")}/>}</main>
-    </div>;
+        canManageFinance={actions.has("health.providers.finance.manage")</HealthcareAdminShell>;iv>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
       e.digest.startsWith("NEXT_REDIRECT"))throw e;
