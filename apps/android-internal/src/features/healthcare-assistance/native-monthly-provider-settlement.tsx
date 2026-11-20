@@ -12,7 +12,11 @@ type Props={token:string;canPropose:boolean;canReview:boolean;canPay:boolean;
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  postedLiabilities?:number;approvedFoundationMinor:string;actualPaidMinor:string;
- outstandingMinor:string;patientCollectionNotFoundationIncome:true;paidVerified:boolean};
+ outstandingMinor:string;patientCollectionNotFoundationIncome:true;paidVerified:boolean;
+ centerGrossServicesMinor?:string;patientPayableMinor?:string;
+ patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ foundationApprovedLiabilityMinor?:string;
+ collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
 const money=(minor:string)=>"₹"+(Number(minor)/100).toFixed(2);
@@ -121,6 +125,9 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
    if(!valid(raw)||raw.state!==(kind==="review"?"APPROVED":"PROPOSED"))
     throw Error("The original settlement result could not be verified.");
    setSource(raw);setUncertain(false);attempt.current=null;
+   try{setSource(await load(center,month))}catch{
+    // Original action succeeded; status remains as returned until refresh.
+   }
    setNotice(kind==="review"?"Independent approval confirmed. No bank payment made.":
     "Original source-backed claim prepared; independent review required.");
   }catch(e){
@@ -164,6 +171,23 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
     <Text style={styles.amount}>Claim still due: {
      source.state==="NOT_PREPARED"?"Not yet approved":
      money(source.outstandingMinor)}</Text>
+    {source.collectionsScope==="VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"&&
+     source.centerGrossServicesMinor!==undefined&&<View style={styles.card}>
+     <Text style={styles.heading}>Original completed-service financial breakdown</Text>
+     <Text style={styles.amount}>Gross service value: {
+      money(source.centerGrossServicesMinor)}</Text>
+     <Text style={styles.note}>Patient payable: {
+      money(source.patientPayableMinor??"0")}</Text>
+     <Text style={styles.note}>Center collections verified to date: {
+      money(source.patientCollectedVerifiedMinor??"0")}</Text>
+     <Text style={styles.note}>Center refunds/corrections to date: {
+      money(source.patientRefundedMinor??"0")}</Text>
+     <Text style={styles.amount}>Original Foundation obligation: {
+      money(source.foundationApprovedLiabilityMinor??"0")}</Text>
+     <Text style={styles.note}>These are separate source amounts. Patient
+      receipts and refunds may occur after the service month and are never
+      Foundation bank income.</Text>
+    </View>}
     <Text style={styles.note}>No unverified payment or bank credit is inferred.</Text>
     {source.state==="NOT_PREPARED"&&canPropose&&
      button("Prepare original monthly claim",()=>
