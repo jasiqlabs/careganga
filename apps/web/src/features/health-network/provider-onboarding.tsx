@@ -410,12 +410,14 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
   return <div className="role-workspace">
     <header className="topbar"><div><h1>Healthcare providers</h1>
       <p>Register organizations and centers, review private evidence and publish only independently verified services.</p></div>
+      <div className="toolbar cg-module-header-actions">
       {canVerify&&<Link href="/admin/health-network/reviews">Review submitted registrations</Link>}
       {canManage&&<button className="primary" type="button" onClick={()=>{
         setMode("create");setSelected(null);setCenterEditor(null);
         setProvider(emptyProvider());setCenters([blankCenter()]);
         setError("");setNotice("");setUncertain(false);key.current="";
       }}>Add provider</button>}
+      </div>
     </header>
     {loading&&<p role="status">Loading current providers…</p>}
     {!!error&&<p role="alert" className="notice error">{error}</p>}

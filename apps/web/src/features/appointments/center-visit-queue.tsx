@@ -245,12 +245,12 @@ export function CenterVisitQueue(){
   .sort((a,b)=>a.name.localeCompare(b.name));
  const visible=items.filter(x=>(!doctorFilter||x.doctorRef===doctorFilter)&&
   (!statusFilter||x.bookingStatus===statusFilter));
- return <section className="form-section" aria-label="My healthcare center consultation queue">
-  <h2>Consultation check-in & queue</h2>
+ return <section className="form-section cg-health-queue-page" aria-label="My healthcare center consultation queue">
+  <h1>Consultation check-in & queue</h1>
   <p>Only bookings at the selected assigned center appear here. Queue tokens are
    center-specific; no other center's patient history is shown.</p>
   {!!message&&<p role="alert" aria-live="polite">{message}</p>}
-  {loading?<p>Checking current center permissions…</p>:<>
+  {loading?<p role="status">Checking current center permissions…</p>:<>
    <div className="toolbar">
     <label>Assigned healthcare center
      <select value={center} disabled={busy} onChange={e=>{const next=centers.find(x=>x.centerRef===e.target.value);

@@ -4394,6 +4394,7 @@ button:disabled {
   flex-wrap: wrap
 }
 
+.cg-cms-toolbar h1,
 .cg-cms-toolbar h2,
 .cg-cms-toolbar h3 {
   margin: .1rem 0;
@@ -4426,7 +4427,7 @@ button:disabled {
   font-weight: 600
 }
 
-.cg-cms-actions button:first-child:not(:disabled) {
+.cg-cms-actions button.primary:not(:disabled) {
   background: var(--cg-accent);
   color: white;
   border-color: var(--cg-accent)
@@ -14585,5 +14586,84 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .shell > .workspace :is(.role-pane, .cg-fin-card, .card) {
     transition: none;
+  }
+}
+/* Page-owned refinements after comparing CG-02/09/14/15/18 to Irfan's CG-01. */
+.shell > .workspace .cg-module-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .7rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.shell > .workspace .cg-module-header-actions > :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border-radius: .65rem;
+  padding: .6rem .9rem;
+  font-size: var(--cg-text-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+.shell > .workspace .cg-module-header-actions > a {
+  border: 1px solid var(--cg-border);
+  background: var(--cg-surface);
+  color: var(--cg-text);
+}
+.shell > .workspace .cg-module-header-actions > a:hover {
+  background: #F3F6FC;
+}
+.shell > .workspace .cg-cms-toolbar > div > h1 {
+  margin: 0;
+  color: var(--cg-text);
+  font-size: var(--cg-heading-lg);
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+.shell > .workspace .cg-cms-toolbar {
+  align-items: center;
+  gap: .85rem;
+}
+.shell > .workspace .cg-cms-actions > button {
+  border-radius: .65rem;
+}
+.shell > .workspace .cg-health-queue-page > h1 {
+  margin: 0;
+  color: var(--cg-text);
+  font-size: var(--cg-heading-lg);
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+.shell > .workspace .cg-health-patient-detail {
+  min-width: 0;
+  align-self: start;
+  padding: clamp(.85rem, 1.5vw, 1.15rem);
+  border: 1px solid var(--cg-border);
+  border-radius: .875rem;
+  background: var(--cg-surface);
+  box-shadow: 0 3px 16px rgba(15, 23, 42, .045);
+}
+@media (max-width: 48rem) {
+  .shell > .workspace .cg-module-header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .shell > .workspace .cg-module-header-actions > :is(a, button) {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+  .shell > .workspace .cg-cms-toolbar > div > h1,
+  .shell > .workspace .cg-health-queue-page > h1 {
+    font-size: var(--cg-heading-md);
+  }
+}
+@media (max-width: 28rem) {
+  .shell > .workspace .cg-module-header-actions > :is(a, button) {
+    flex: 1 1 100%;
   }
 }

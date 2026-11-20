@@ -169,9 +169,11 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     <header className="topbar"><div><h1>Doctors and professional registrations</h1>
       <p>One professional identity can be associated with multiple independently approved centers.</p>
     </div>
+      <div className="toolbar cg-module-header-actions">
       {canManage&&<button type="button" className="primary" onClick={()=>{
         setSelected(null);edit();
       }}>Register doctor</button>}
+      </div>
     </header>
     {loading&&<p role="status">Loading current professional registrations…</p>}
     {!!error&&<p role="alert" className="notice error">{error}</p>}

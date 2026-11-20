@@ -385,8 +385,7 @@ export function FoundationPatientBookings(){
     {result.next&&<button type="button" onClick={()=>
      setQuery(q=>({...q,after:result.next!}))}>Next results</button>}
    </section>
-   <section className="cg15-print-scope" aria-label="Selected patient and appointment details"
-    style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12,alignSelf:"start"}}>
+   <section className="cg15-print-scope cg-health-patient-detail" aria-label="Selected patient and appointment details">
     <h2>Patient Details</h2>
     {!selectedBooking?<p>Select an actual consultation to view its limited details.</p>:
      <>
