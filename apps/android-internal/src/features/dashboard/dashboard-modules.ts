@@ -58,6 +58,7 @@ export interface ModuleActionHandlers {
   openLabOrders: () => void;
   openLabEquipment: () => void;
   openHealthcarePolicies: () => void;
+  openCenterMerchant: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -269,6 +270,21 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openHealthcarePolicies
+    });
+  }
+  // CG17 US003: the existing original center-owned merchant verification.
+  if (roleActions.includes("healthcare.assistance.merchant.manage") ||
+      roleActions.includes("healthcare.assistance.merchant.verify")) {
+    list.push({
+      key: "healthCenterMerchant",
+      title: "Center Online Payment Setup",
+      shortLabel: "Center Payments",
+      description: "Verify the assigned healthcare center's own payment account.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openCenterMerchant
     });
   }
   if (roleActions.includes("lab.equipment.view")) {
