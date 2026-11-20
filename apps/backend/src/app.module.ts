@@ -10,6 +10,7 @@ import { FinanceAccountingModule } from "./modules/cg-09-finance-accounting/fina
 import { CmsPublicContentModule } from "./modules/cg-18-cms-public-content/cms-public-content.module";
 import { HealthNetworkModule } from "./modules/cg-14-healthcare-network/health-network.module";
 import { PatientsAppointmentsModule } from "./modules/cg-15-patients-appointments/patients-appointments.module";
+import { DiagnosticsModule } from "./modules/cg-16-healthcare-diagnostics/diagnostics.module";
 
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule], controllers: [HealthController] })
 export class AppModule {}
