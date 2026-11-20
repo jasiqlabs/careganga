@@ -18,6 +18,9 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  status:string;current:boolean;reviewCaseRef:string|null;reviewStatus:string|null};
 type Props={token:string;canView:boolean;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 type Attempt={parts:string;body:Record<string,unknown>;success:string};
+type Estimate={state:string;grossMinor?:string;estimatedSupportMinor?:string;
+ estimatedPatientDueMinor?:string;actualFeeVersion?:number;
+ eligiblePatientVerified:false;caution?:string};
 const money=(s:string|null)=>s&&/^\d+$/.test(s)?
  "₹"+(Number(s)/100).toFixed(2):"Not configured";
 function paise(v:string){
@@ -67,6 +70,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
+ const [estimate,setEstimate]=useState<Estimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [revision,setRevision]=useState<Policy|null>(null);
@@ -76,6 +80,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [cap,setCap]=useState("500");
  const [from,setFrom]=useState(""),[until,setUntil]=useState("");
  const last=useRef<Attempt|null>(null),seq=useRef(0);
+ useEffect(()=>{setEstimate(null)},[center,doctor]);
  const error=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Original healthcare support data unavailable.");
@@ -135,6 +140,14 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
   setCap(String(Number(v.capMinor)/100));
   setFrom(v.validFrom.slice(0,16));setUntil(v.validUntil.slice(0,16));
   setMessage("New revision only. Previously accepted amounts stay unchanged.");
+ }
+ async function preview(){
+  if(!center||!doctor||busy||uncertain)return;
+  setBusy(true);setEstimate(null);
+  try{
+   setEstimate(await api<Estimate>(token,
+    "centers/"+center+"/doctors/"+doctor+"/estimate"));
+  }catch(e){error(e)}finally{setBusy(false);}
  }
  async function submitOriginal(attempt:Attempt,retry=false){
   if(busy||uncertain&&!retry)return;
@@ -215,6 +228,24 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     {doctors.map(d=><View key={d.doctorRef}>
      {button(d.name,()=>setDoctor(d.doctorRef),
       busy||!!revision,doctor===d.doctorRef)}</View>)}
+    {!!doctor&&<View style={s.panel}>
+     <Text style={s.heading}>Current approved fee estimate</Text>
+     <Text style={s.note}>Read-only amount from original CG14 approved
+      consultation fee plus current effective policy. Not a patient award
+      or accepted payment.</Text>
+     {button("Check real fee and capped support",
+      ()=>void preview(),busy||uncertain)}
+     {estimate&&<Text accessibilityRole="alert" style={s.note}>
+      {estimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Gross "+money(estimate.grossMinor??null)+
+       " · estimated Foundation support "+money(estimate.estimatedSupportMinor??null)+
+       " · estimated patient due "+money(estimate.estimatedPatientDueMinor??null)+
+       ". Patient eligibility NOT verified.":
+       estimate.state==="NO_EFFECTIVE_POLICY"?
+       "Approved consultation fee exists but no current support policy.":
+       "No approved current consultation fee is available."}
+     </Text>}
+    </View>}
     <Text style={s.note}>Assistance type</Text>
     {button("Percentage",()=>setMode("PERCENT"),busy,mode==="PERCENT")}
     {button("Fixed rupee support",()=>setMode("FIXED"),busy,mode==="FIXED")}
