@@ -14,7 +14,8 @@ export type VerifiedLabCenter={
 export class HealthLabCatalogSourceFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
  async assertLab(tx:PoolClient,root:string,centerRef:string,
-  actor?:VerifiedFoundationActor,own=false):Promise<VerifiedLabCenter>{
+  actor?:VerifiedFoundationActor,own=false,
+  action:"diagnostics.pricing.view"|"diagnostics.pricing.manage"="diagnostics.pricing.manage"):Promise<VerifiedLabCenter>{
   if(!UUID.test(centerRef))throw new BadRequestException({code:"LAB_CENTER_INVALID"});
   const center=await tx.query<{
    name:string;public_slug:string|null;publication_state:string
@@ -26,12 +27,12 @@ export class HealthLabCatalogSourceFacade{
    "AND cap.center_id=c.id AND cap.capability_code='DIAGNOSTICS' "+
    "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='VERIFIED' "+
    "AND c.access_state='ENABLED' AND p.status='VERIFIED' "+
-   "FOR SHARE OF c,p",[root,centerRef]);
+   "FOR SHARE OF c,p,cap",[root,centerRef]);
   if(!center.rows[0])throw new NotFoundException("The selected approved lab is unavailable");
   if(own){
    if(!actor||actor.realmId!==root)
     throw new NotFoundException("The selected approved lab is unavailable");
-   await this.identity.assertCurrent(tx,actor,"diagnostics.pricing.manage");
+   await this.identity.assertCurrent(tx,actor,action);
    const assigned=await tx.query(
     "SELECT f.id FROM health_center_account_affiliation f "+
     "JOIN account a ON a.realm_id=f.root_realm_id AND a.id=f.account_ref "+

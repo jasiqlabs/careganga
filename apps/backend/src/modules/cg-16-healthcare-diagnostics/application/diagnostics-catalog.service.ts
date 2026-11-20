@@ -334,7 +334,8 @@ export class DiagnosticsCatalogService{
  private async center(tx:PoolClient,actor:Actor,ref:string,own:boolean,
   action:string){
   await this.current(tx,actor,action);
-  return this.lab.assertLab(tx,actor.realmId,ref,own?actor:undefined,own);
+  return this.lab.assertLab(tx,actor.realmId,ref,own?actor:undefined,own,
+   action==="diagnostics.pricing.view"?"diagnostics.pricing.view":"diagnostics.pricing.manage");
  }
  private async eligibleItem(tx:PoolClient,root:string,kind:"TEST"|"PACKAGE",itemRef:string){
   const table=kind==="TEST"?"diagnostic_test":"diagnostic_package";
