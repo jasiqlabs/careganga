@@ -4,6 +4,8 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeCenterMerchantCheckout}
  from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
+import {NativePatientCenterCollectionSummary}
+ from "./native-patient-center-collection-summary";
 import {careGangaTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
@@ -171,6 +173,9 @@ export function NativeConsultationContribution({holdRef,bookingRef,
     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
   </View>}
+  {bookingRef&&ID.test(bookingRef)&&value?.accepted===true&&
+   <NativePatientCenterCollectionSummary bookingRef={bookingRef}
+    onExpired={onExpired}/>}
   {bookingRef&&value?.accepted===true&&
    !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED",
      "SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
