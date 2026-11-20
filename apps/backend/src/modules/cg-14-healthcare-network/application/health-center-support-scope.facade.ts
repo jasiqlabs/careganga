@@ -65,6 +65,24 @@ export class HealthCenterSupportScopeFacade{
   if(!assignment.rowCount)
    throw new NotFoundException("Your healthcare center is unavailable");
  }
+ /** The original center owner must be eligible now for a NEW
+  * approved Foundation liability; historical statements remain durable.
+  */
+ async assertFoundationCenter(tx:PoolClient,actor:VerifiedFoundationActor,
+  center:string,action:string,activeRequired:boolean){
+  if(!UUID.test(center))
+   throw new NotFoundException("This verified healthcare center is unavailable");
+  await this.identity.assertCurrent(tx,actor,action);
+  const q=await tx.query(
+   "SELECT 1 FROM health_center c "+
+   "JOIN health_provider p ON p.root_realm_id=c.root_realm_id "+
+   "AND p.id=c.provider_id WHERE c.root_realm_id=$1 AND c.id=$2 "+
+   "AND ($3::boolean=false OR (c.status='VERIFIED' "+
+   "AND c.access_state='ENABLED' AND p.status='VERIFIED')) "+
+   "FOR SHARE OF c,p",[actor.realmId,center,activeRequired]);
+  if(!q.rowCount)
+   throw new NotFoundException("This verified healthcare center is unavailable");
+ }
  /** CG14-owned bounded original eligible center labels for Foundation
   * liability source selection. Nothing about CG17 charges is stored here.
   */
