@@ -262,6 +262,119 @@ export class CenterMerchantCheckoutService{
     uncertain:status==="UNKNOWN"};
   });
  }
+ /** Recover an UNKNOWN create-order outcome from the original provider
+  * receipt; this never creates a second order, payment, or collection.
+  * Only exact created/unpaid order can safely reopen checkout. Provider-paid
+  * or ambiguous orders remain UNKNOWN awaiting signed capture reconciliation.
+  */
+ async reconcile(token:string,rawBooking:string,rawCenter?:string){
+  const booking=id(rawBooking),center=rawCenter?id(rawCenter):undefined;
+  const setup=await this.tx(async c=>{
+   const actor=await this.actor(c,token,center,"view");
+   const source=await this.cg15.booking(c,actor,booking,center,true);
+   const charge=await this.original(c,actor.realmId,booking);
+   if(source.patientRef!==charge.patient_ref||
+      source.centerRef!==charge.center_ref)
+    throw new ConflictException({code:"CENTER_PAYMENT_SOURCE_CHANGED"});
+   const attempt=await c.query<Attempt>(
+    "SELECT *,amount_minor::text FROM center_payment_attempt "+
+    "WHERE root_realm_id=$1 AND charge_ref=$2 "+
+    "ORDER BY created_at DESC,id DESC LIMIT 1",
+    [actor.realmId,charge.id]);
+   const old=attempt.rows[0];
+   if(!old)return {kind:"NO_ATTEMPT" as const};
+   if(!["UNKNOWN","INITIALIZING"].includes(old.status))
+    return {kind:"ALREADY" as const,old};
+   const merchant=await this.merchants.verified(
+    c,actor.realmId,charge.center_ref);
+   if(merchant.binding.id!==old.binding_ref)
+    throw new ConflictException({code:"CENTER_PAYMENT_MERCHANT_CHANGED"});
+   return {kind:"CHECK" as const,old,credential:merchant.credentials};
+  });
+  if(setup.kind==="NO_ATTEMPT")
+   return {onlineAvailable:false,state:"NOT_STARTED",
+    message:"No original center payment order has been created."};
+  if(setup.kind==="ALREADY"){
+   let key="";
+   try{
+    const active=await this.tx(async c=>
+     this.merchants.verified(c,setup.old.root_realm_id,
+      setup.old.center_ref));
+    if(active.binding.id===setup.old.binding_ref)
+     key=active.credentials.keyId;
+   }catch{}
+   return display(setup.old,key);
+  }
+  const original=setup.old;
+  let results:{items?:ProviderOrder[]}|null=null;
+  try{
+   results=await providerGet<{items?:ProviderOrder[]}>(
+    "orders?receipt="+encodeURIComponent(original.order_receipt)+
+     "&count=100",setup.credential);
+  }catch{
+   return {...display(original,""),state:"UNKNOWN",
+    checkoutAvailable:false,
+    message:"Provider search is unavailable. Do not submit another order."};
+  }
+  if(!Array.isArray(results.items)||results.items.length>=100)
+   return {...display(original,""),state:"UNKNOWN",
+    checkoutAvailable:false,
+    message:"Original provider order search is ambiguous. Contact the center."};
+  const matches=results.items.filter(v=>v&&ORDER.test(v.id)&&
+   v.receipt===original.order_receipt&&v.currency==="INR"&&
+   Number.isSafeInteger(v.amount)&&
+   BigInt(v.amount)===BigInt(original.amount_minor));
+  if(matches.length!==1)
+   return {...display(original,""),state:"UNKNOWN",
+    checkoutAvailable:false,
+    message:"Original center payment order not uniquely verified; "+
+     "no new order was created."};
+  const matched=matches[0];
+  return this.tx(async c=>{
+   const a=await this.actor(c,token,center,"view");
+   const auth=await this.cg15.booking(c,a,booking,center,true);
+   if(auth.centerRef!==original.center_ref)
+    throw new ConflictException({code:"CENTER_PAYMENT_SOURCE_CHANGED"});
+   const merchant=await this.merchants.verified(
+    c,a.realmId,original.center_ref,true);
+   if(merchant.binding.id!==original.binding_ref||
+      merchant.credentials.keyId!==setup.credential.keyId)
+    throw new ConflictException({code:"CENTER_PAYMENT_MERCHANT_CHANGED"});
+   await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [a.realmId+":CG17_CENTER_COLLECTION:"+original.charge_ref]);
+   const q=await c.query<Attempt>(
+    "SELECT *,amount_minor::text FROM center_payment_attempt "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [a.realmId,original.id]);
+   const now=q.rows[0];
+   if(!now||now.binding_ref!==original.binding_ref||
+    now.order_receipt!==matched.receipt||
+    now.amount_minor!==original.amount_minor)
+    throw new ConflictException({code:"CENTER_PAYMENT_SOURCE_CHANGED"});
+   if(!["UNKNOWN","INITIALIZING"].includes(now.status))
+    return display(now,merchant.credentials.keyId);
+   if(now.external_order_ref!==null&&now.external_order_ref!==matched.id)
+    throw new ConflictException({code:"CENTER_PAYMENT_ORDER_MISMATCH"});
+   // Created means no provider-confirmed funds; all other statuses retain
+   // UNKNOWN even if provider says "paid" without original signed event.
+   const safe=matched.status==="created"&&
+    (!matched.amount_paid||matched.amount_paid===0);
+   const updated=await c.query<Attempt>(
+    "UPDATE center_payment_attempt SET external_order_ref=$3,"+
+    "status=$4,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
+    "AND status IN('UNKNOWN','INITIALIZING') "+
+    "RETURNING *,amount_minor::text",
+    [a.realmId,now.id,matched.id,safe?"PENDING":"UNKNOWN"]);
+   if(!updated.rows[0])
+    throw new ConflictException({code:"CENTER_PAYMENT_STATUS_CHANGED"});
+   return {...display(updated.rows[0],
+    safe?merchant.credentials.keyId:""),
+    checkoutAvailable:safe,
+    message:safe?"Original unpaid order recovered. No second order created.":
+     "Provider order requires signed capture reconciliation. "+
+     "No collection has been asserted."};
+  });
+ }
  /** Only a verified provider HMAC and a fresh authenticated server lookup
   * can mark money collected. Browser redirect, checkout signature and typed
   * reference are not proof of captured payment.
