@@ -154,7 +154,7 @@ BEGIN
    AND c.charge_state='ACCEPTED' AND c.support_minor=NEW.amount_minor
    AND award.approved_support_minor=NEW.amount_minor
    AND award.policy_revision_ref=c.policy_revision_ref
-   AND e.created_at=NEW.service_completed_at
+   AND date_trunc('milliseconds',e.created_at)=NEW.service_completed_at
  ) THEN
   RAISE EXCEPTION 'Foundation liability requires completed original CG15 service and approved award';
  END IF;
