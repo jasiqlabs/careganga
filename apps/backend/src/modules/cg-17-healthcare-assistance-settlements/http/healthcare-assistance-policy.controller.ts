@@ -13,6 +13,11 @@ export class HealthcareAssistancePolicyController{
  doctors(@Headers("authorization")token:string,@Param("centerRef")center:string){
   return this.policies.doctors(token,center);
  }
+ @Get("centers/:centerRef/doctors/:doctorRef/estimate")
+ estimate(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("doctorRef")doctor:string){
+  return this.policies.preview(token,center,doctor);
+ }
  @Get("centers/:centerRef")
  list(@Headers("authorization")token:string,@Param("centerRef")center:string){
   return this.policies.list(token,center);
