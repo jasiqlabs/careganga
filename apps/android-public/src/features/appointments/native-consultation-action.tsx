@@ -260,8 +260,9 @@ export function NativeConsultationAction(p:Props){
   <Text style={style.text}>{p.doctorName} · {p.centerName}</Text>
   <Text style={style.text}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</Text>
-  <Text style={style.text}>Consultation ₹{(Number(p.feeMinor)/100).toFixed(2)}.
-   Payment due at center. No online payment.</Text>
+  <Text style={style.text}>Approved consultation fee ₹{(Number(p.feeMinor)/100).toFixed(2)}.
+   Patient due is calculated from an actual assistance policy at review.
+   No online payment is collected.</Text>
   {!!message&&<Text accessibilityRole="alert" style={style.text}>{message}</Text>}
   {!booking&&!uncertain&&!p.reschedule&&!review&&<View style={{gap:4}}>
    <Text style={style.text}>Reason for visit (optional, private)</Text>
