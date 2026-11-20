@@ -1,5 +1,5 @@
 import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
-import {publicLabOffers,labOfferSearch,rupees} from "../../../features/diagnostics/public-lab-offers";
+import {publicLabOffers,publicLabCategories,labOfferSearch,rupees} from "../../../features/diagnostics/public-lab-offers";
 import type {Metadata} from "next";
 import Link from "next/link";
 export const dynamic="force-dynamic";
@@ -12,12 +12,10 @@ export const metadata:Metadata={
 type Props={searchParams:Promise<Record<string,string|string[]|undefined>>};
 export default async function PublicLabTestsPage({searchParams}:Props){
  const raw=await searchParams,query=labOfferSearch(raw);
- const result=await publicLabOffers(query);
+ const [result,categories]=await Promise.all([publicLabOffers(query),publicLabCategories()]);
  const center=typeof raw.center==="string"?raw.center:"";
  const search=typeof raw.q==="string"?raw.q:"";
  const selectedCategory=typeof raw.category==="string"?raw.category:"";
- const categories=[...new Map(result.items.filter(o=>o.categoryCode!==null)
-  .map(o=>[o.categoryCode!,{code:o.categoryCode!,name:o.category}])).values()];
  const next=new URLSearchParams(query);
  if(result.next)next.set("page",result.next);
  else next.delete("page");
@@ -56,8 +54,6 @@ export default async function PublicLabTestsPage({searchParams}:Props){
       "/health-network/lab-tests"}>Clear filters</Link>
     </div>
    </form>
-   <p style={{fontSize:14}}>Category choices reflect the currently loaded published offers.
-    Search by test name to find other categories.</p>
   </section>
   <section className="cg-public-section" aria-live="polite">
    <h2>Currently published test offers</h2>

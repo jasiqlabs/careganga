@@ -76,6 +76,27 @@ export async function publicLabOffers(query:URLSearchParams):Promise<PublicLabOf
  }catch{return {state:"UNAVAILABLE",items:[],next:null,
   notice:"Current lab prices cannot be verified. Please try again. No older prices are shown."};}
 }
+export type PublicLabCategory={code:string;name:string};
+export async function publicLabCategories():Promise<PublicLabCategory[]>{
+ const backend=process.env.BACKEND_URL;
+ if(!backend)return [];
+ try{
+  const res=await fetch(new URL("/api/v1/public/diagnostics/facets",backend),{
+   cache:"no-store",signal:AbortSignal.timeout(9000)
+  });
+  if(!res.ok)return [];
+  const data:unknown=await res.json();
+  if(!data||typeof data!=="object"||Array.isArray(data)||
+   !("categories" in data)||!Array.isArray(data.categories)||
+   data.categories.length>100||
+   !data.categories.every((v:unknown)=>
+    !!v&&typeof v==="object"&&"code" in v&&"name" in v&&
+    typeof v.code==="string"&&/^[A-Z0-9][A-Z0-9-]{1,23}$/.test(v.code)&&
+    typeof v.name==="string"&&v.name.length<=100))
+   return [];
+  return data.categories as PublicLabCategory[];
+ }catch{return [];}
+}
 export function rupees(minor:string){
  return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
   .format(Number(minor)/100);

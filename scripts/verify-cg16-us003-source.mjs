@@ -53,6 +53,8 @@ assert.doesNotMatch(sql,/\b(?:INSERT INTO|DELETE FROM|UPDATE|JOIN cg15_|JOIN cg1
 assert.match(s,/new Set\(\["q","category","center","page"\]\)/,
  "Public query must reject unlisted/unsafe keys");
 assert.match(controller,/@Get\("offers"\)/,"Public route is not GET-only");
+assert.match(controller,/@Get\("facets"\)/,"Source-backed category facets must be available");
+assert.match(s,/SELECT DISTINCT category\.code/,"Category facets must reuse active source");
 assert.match(controller,/throttle\.hit\(request,"centers"\)/,"Original CG14 ingress rate limiter missing");
 assert.doesNotMatch(controller,/@Post|@Patch|@Delete/,"Public route must be read only");
 for(const source of [web,mobile]){

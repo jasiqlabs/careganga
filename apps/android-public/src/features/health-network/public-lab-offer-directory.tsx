@@ -75,6 +75,28 @@ async function read(filters:Filters,page:string):Promise<{items:Offer[];next:str
   throw Error("Current laboratory price verification failed.");
  return {items:value.items,next:value.next};
 }
+type Category={code:string;name:string};
+async function facets():Promise<Category[]>{
+ if(!base||!/^https?:\/\//.test(base)||
+  (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
+  return [];
+ try{
+  const res=await fetch(new URL("/api/v1/public/diagnostics/facets",base),{
+   cache:"no-store",signal:AbortSignal.timeout(10000)
+  });
+  if(!res.ok)return [];
+  const data:unknown=await res.json();
+  if(!data||typeof data!=="object"||Array.isArray(data)||
+   !("categories" in data)||!Array.isArray(data.categories)||
+   data.categories.length>100||
+   !data.categories.every((c:unknown)=>
+    !!c&&typeof c==="object"&&"code" in c&&"name" in c&&
+    typeof c.code==="string"&&/^[A-Z0-9][A-Z0-9-]{1,23}$/.test(c.code)&&
+    typeof c.name==="string"&&c.name.length<=100))
+   return [];
+  return data.categories as Category[];
+ }catch{return [];}
+}
 function action(title:string,onPress:()=>void,selected=false,disabled=false){
  return <Pressable key={title} accessibilityRole="button"
   accessibilityState={{selected,disabled}} disabled={disabled}
@@ -85,6 +107,7 @@ function action(title:string,onPress:()=>void,selected=false,disabled=false){
 const EMPTY:Filters={q:"",category:"",center:""};
 export function PublicLabOfferDirectory({onExit}:{onExit:()=>void}){
  const [search,setSearch]=useState("");
+ const [categories,setCategories]=useState<Category[]>([]);
  const [filters,setFilters]=useState<Filters>(EMPTY);
  const [result,setResult]=useState<Result>({state:"READY",items:[],next:null});
  const [loading,setLoading]=useState(true),[loadingMore,setLoadingMore]=useState(false);
@@ -111,13 +134,19 @@ export function PublicLabOfferDirectory({onExit}:{onExit:()=>void}){
   return()=>{seq.current++;};
  },[fetchCurrent]);
  useEffect(()=>{
+  let active=true;
+  void facets().then(data=>{if(active)setCategories(data);});
+  return()=>{active=false;};
+ },[]);
+ useEffect(()=>{
   const listener=AppState.addEventListener("change",state=>{
-   if(state==="active")void fetchCurrent();
+   if(state==="active"){
+    void fetchCurrent();
+    void facets().then(setCategories);
+   }
   });
   return()=>listener.remove();
  },[fetchCurrent]);
- const categories=[...new Map(result.items.filter(x=>x.categoryCode!==null)
-  .map(x=>[x.categoryCode!,{code:x.categoryCode!,name:x.category}])).values()];
  function apply(){
   const next={...filters,q:search.trim().slice(0,80)};
   setFilters(next);
@@ -157,7 +186,7 @@ export function PublicLabOfferDirectory({onExit}:{onExit:()=>void}){
     <Text>Showing one selected published lab location.</Text>
     {action("Show all labs",()=>narrowCenter(""))}
    </View>:null}
-   <Text style={styles.fieldLabel}>Categories from current loaded offers</Text>
+   <Text style={styles.fieldLabel}>Categories with current published offers</Text>
    <View style={styles.row}>
     {action("All categories",()=>{
      setFilters(prev=>({...prev,category:""}));
