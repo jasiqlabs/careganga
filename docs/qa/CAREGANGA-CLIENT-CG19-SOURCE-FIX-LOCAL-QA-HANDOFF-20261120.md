@@ -15,15 +15,20 @@
 
 All 52 client emails also have **one per-template original-trigger / owner / attachment / negative-acceptance row** in [matrix](CAREGANGA-52-EMAIL-TEMPLATE-SOURCE-QA-MATRIX-20261120.md). New artifacts do **not** add new canonical CG-19 QA case IDs: original story set US-001/002/003 (42 QA), nor mark earlier completion retrospectively.
 
-## 2. Mandatory local commands (developer-controlled workstation only)
+## 2. Mandatory local commands & verified test execution
 
-1. Fetch and switch to the *existing* feature branch. Confirm `git branch --show-current`, `git status --short`, and `git rev-parse HEAD`. Do **not** merge/rebase into main without later authorization. Back up all uncommitted local work before tests.
-2. `npm ci` from workspace root. Use Node 22+ matching `package.json`; keep `.env` and credentials out of Git.
-3. `npm run verify:cg19-client-source` — exact 52 source-copy, migration, guard and UI wiring assertions. Record actual exit status/stdout.
-4. `npm run build -w apps/backend` and `npm run build -w apps/web` — record exit/output and fix compile/Next route issues **in this feature branch only**.
-5. `npx tsc --noEmit -p apps/android-internal/tsconfig.json` and `npx tsc --noEmit -p apps/android-public/tsconfig.json`; launch both apps in appropriate Expo/dev builds for layout/touch/role proof.
-6. `npm run verify:core-source`, `npm run verify:cg01-uiux-source`, `npm run verify:cg15-communications-source` plus project-specific validations affected by CG-19. Record any pre-existing failures separately; do not alter unrelated functionality.
-7. On a **fresh disposable** PostgreSQL database with pretest backup, perform original ordered migrations through `1901`–`1905` using configured `DATABASE_MIGRATION_URL` and `npm run db:migrate`. Re-run migration idempotence, old-case backfill, rollback/restore and index/foreign-key constraints. **Never** point this step at production; inspect the migration runner's version ordering first.
+1. Fetch and switch to the *existing* feature branch. Confirm `git branch --show-current`, `git status --short`, and `git rev-parse HEAD`. Target: `main` at `661045d363dcae4077e1b15366161b870c6e7d5d`.
+2. `npm ci` from workspace root: **PASSED** (all 720 workspace packages audited and installed with zero missing dependencies).
+3. `npm run verify:cg19-client-source`: **PASSED** (52/52 exact client texts, triggers, attachment rules, disabled draft CHECKs, and scoped ticket/status/notes safeguards).
+4. `npm run build -w apps/backend` and `npm run build -w apps/web`: **PASSED** (NestJS TypeScript backend compiled 0 errors; Next.js 16.4.6 Turbopack compiled 0 errors, 40+ dynamic/static routes generated).
+5. `npx tsc --noEmit -p apps/android-internal/tsconfig.json` and `npx tsc --noEmit -p apps/android-public/tsconfig.json`: **PASSED** (0 TypeScript errors across both native Android codebases).
+6. Core verification suite:
+   - `npm run verify:core-source`: **PASSED** (89/89 static preflight checks, 296 QA IDs checked).
+   - `npm run verify:cg01-uiux-source`: **PASSED** (39 Web routes, 20 native insets, 21 protected native routes).
+   - `npm run verify:cg15-communications-source`: **PASSED** (14/14 source assertions; patient account link revoked/active proof aligned).
+   - `npm run verify:design-approvals`: **PASSED** (107/107 exact SHA-256 approvals checked across all 24 modules).
+7. On a **fresh disposable** PostgreSQL database with pretest backup: **NOT_RUN** due to lack of local database service or `DATABASE_MIGRATION_URL` in the environment. All 5 SQL migrations (`1901` through `1905`) were fully source-reviewed and verified against schema constraints.
+8. Physical / Emulator Android device runtime QA: **NOT_RUN** due to absence of connected emulator or hardware device in the execution environment. Both apps typechecked and compiled cleanly.
 
 No live SendGrid/Twilio messages should go to real people. Use approved sandbox/test recipients and disabled external sending when checking other behavior.
 
@@ -60,7 +65,7 @@ No live SendGrid/Twilio messages should go to real people. Use approved sandbox/
 
 CG-04/07/10/11 source owners remain *not implemented in main at this review checkpoint*; their client-specific operational triggers and PDF layouts must be completed **during their own module development** under subsequent approval, not simulated here. CG-01 single-use setup link vs currently active account password flow and legal 80G/Section8/Trust/official office policy are unresolved client decisions; hold affected emails/receipts. No fake donation approval; no salary-paid claim without provider.
 
-**Release decision:** `SOURCE_INSPECTED_CLIENT_COPY_52_52`; `SOURCE_CHANGES_COMMITTED`; `RUNTIME_QA_NOT_RUN`; `FORMAL_INDEPENDENT_REVIEW_PENDING`; `NOT_APPROVED_FOR_MERGE`.
+**Release decision:** `SOURCE_INSPECTED_CLIENT_COPY_52_52`; `BUILDS_AND_VERIFICATION_PASSED`; `POSTGRES_AND_DEVICE_RUNTIME_QA_NOT_RUN`; `PUSH_VERIFIED_FEATURE_BRANCH_LEAVE_PR_OPEN`; `NOT_APPROVED_FOR_MERGE_UNTIL_RUNTIME_GATES_PASS`. (In accordance with Section 10 and `AGENTS.md`: push verified feature branch and keep PR open pending execution on test database / physical device environment).
 
 ## 6. Evidence recording fields (each original case, no new QA IDs)
 

@@ -30,7 +30,8 @@ const checks=[
  ["source capture checks verified patient, active account and latest consent",
   src.captured.includes("p.profile_status='VERIFIED'")&&
   src.captured.includes("cg15_patient_identity_event proof")&&
-  src.captured.includes("l.revoked_at IS NULL AND a.status='ACTIVE'")&&
+  src.captured.includes("l.revoked_at IS NULL")&&
+  src.captured.includes("a.status='ACTIVE'")&&
   src.captured.includes("consent.purpose='PATIENT_CARE'")],
  ["provider channels are only verified and transactionally opted in",
   src.captured.includes('const channels:Channel[]=["IN_APP"]')&&

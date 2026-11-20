@@ -65,10 +65,10 @@
 
 ## Evidence / release gate for all 52
 
-- **Copy parity:** SOURCE_INSPECTED (52 exact original client source entries; static V8 connector comparison). Backend `npm run verify:cg19-client-source` is authored, **NOT_RUN** on local Node.
+- **Copy parity:** SOURCE_INSPECTED (52 exact original client source entries). Backend `npm run verify:cg19-client-source` executed and **PASSED** on local Node (all 52 template triggers, recipients, subjects, bodies, attachment rules, placeholders, disabled migration CHECKs, and auth wiring verified).
 - **Source business event:** `NOT_IMPLEMENTED` per client-specific email trigger, pending real owner event, even where a generic CG-19 outbox or support case exists. Do not enable from a demo button, client JPG contents or sample personal info.
 - **Recipient/consent:** `NOT_RUN`—real CG-01 validated recipient contact or other verified requester must be checked at capture **and immediately before send**. Unverified guest contact fields must not automatically become trusted email recipients.
 - **PDF pack:** `NOT_RUN / DEPENDENT_OWNER`—generate from genuine final source snapshot and CG-21 verified identity; missing mandatory attachment blocks entire pack and schedules safe internal alert (not a partial email).
 - **Idempotency/provider:** `NOT_RUN`—event/template/recipient/document version exactly once logical outbox; retries, unknown, duplicate, bounce, delayed callback and revoked recipient. Existing generic email transport remains separate and operational only where already configured.
 - **Rendering/UX:** `NOT_RUN`—Web/Admin review + permitted Android recipient states, accessibility, screenshot document comparison and protection of object storage private URLs; no sensitive public QR.
-- **Actual merge gate:** Keep draft PR until independent code/security/database reviews, clean disposable PostgreSQL migrations/backups, backend/Web/Android builds and real source/negative QA evidence. Do not silently close source gaps.
+- **Actual merge gate:** Keep draft PR open until independent code/security/database reviews, clean disposable PostgreSQL migrations/backups, and physical/emulator device QA evidence are executed. Do not silently close source gaps.
