@@ -1,4 +1,4 @@
-import React, { Component, Suspense, lazy, useCallback, useEffect, useState, useRef } from "react";
+import React, { Component, Suspense, lazy, useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { careGangaTheme } from "../../../../../packages/design-tokens/src/index";
 import { identityRequest } from "./http-client";
@@ -165,11 +165,14 @@ export function StaffAuthenticationScreen() {
   const closeBudgets = useCallback(() => setBudgetOpen(false), []);
   const closeBudgetReviews = useCallback(() => setBudgetReviewOpen(false), []);
   const closeReports = useCallback(() => setReportsOpen(false), []);
+  const { toast, showToast, hideToast } = useAuthToast();
   const expireSession = useCallback(() => {
+    hideToast();
+    setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
     setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
-  }, []);
+  }, [hideToast]);
 
   // Hardware Back button closes open sub-screens and returns to dashboard
   useEffect(() => {
@@ -306,7 +309,6 @@ export function StaffAuthenticationScreen() {
     return () => { active = false; subscription.remove(); };
   }, [token, expireSession]);
 
-  const { toast, showToast, hideToast } = useAuthToast();
   const cardAnim = useRef(new Animated.Value(24)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -465,11 +467,7 @@ export function StaffAuthenticationScreen() {
       const actions = await currentRoleActions(issuedToken);
       await SecureStore.setItemAsync(STORE_KEY, issuedToken);
       setRoleActions(actions); setToken(issuedToken); setActor(verified); setPassword("");
-      showToast({
-        type: "success",
-        title: "Welcome Back",
-        message: `Signed in successfully as ${verified.displayName || "Staff Member"}.`
-      });
+      hideToast();
     } catch (err: unknown) {
       setRoleActions([]); setActor(null); setToken(null);
       // If a session was issued but later bootstrap steps failed, avoid leaving a
@@ -493,12 +491,16 @@ export function StaffAuthenticationScreen() {
   }
   async function signOut() {
     if (state === "busy" || !token) return;
-    setState("busy"); setMessage("");
+    setState("busy");
+    setMessage("");
+    hideToast();
     try {
       const response = await identityRequest("/api/identity/logout", {
         method: "POST", headers: { Authorization: "Bearer " + token }
       });
       if (!response.ok) throw new Error("Server revocation not confirmed");
+      hideToast();
+      setMessage("");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientQueueOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
@@ -509,8 +511,71 @@ export function StaffAuthenticationScreen() {
         setMessage("Signed out. Local session cleanup could not be confirmed and will be retried.");
       }
     } catch { setMessage("Sign-out could not be confirmed. Please retry."); }
-    finally { setState("idle"); }
+    finally {
+      hideToast();
+      setState("idle");
+    }
   }
+  const handlers: ModuleActionHandlers = useMemo(
+    () => ({
+      openDashboard: () => {
+        setAccountOpen(false);
+        setAccountsOpen(false);
+        setRolesOpen(false);
+        setPolicyOpen(false);
+        setApprovalsOpen(false);
+        setHealthReviewsOpen(false);
+        setDoctorLeaveReviewsOpen(false);
+        setPatientQueueOpen(false);
+        setPatientBookingOpen(false);
+        setDocumentsOpen(false);
+        setNotificationsOpen(false);
+        setCommunicationsOpen(false);
+        setNoticeAdminOpen(false);
+        setSupportOpen(false);
+        setFinanceReviewOpen(false);
+        setVoucherOnlyOpen(false);
+        setFinanceClaimReviewsOpen(false);
+        setFinanceClaimsOpen(false);
+        setInvoiceOpen(false);
+        setInvoiceReviewOpen(false);
+        setBudgetOpen(false);
+        setBudgetReviewOpen(false);
+        setReportsOpen(false);
+        setFinanceOpen(false);
+        setBranchesOpen(false);
+        setChangePasswordOpen(false);
+      },
+      openAccount: () => setAccountOpen(true),
+      openAccounts: () => setAccountsOpen(true),
+      openRoles: () => setRolesOpen(true),
+      openPolicy: () => setPolicyOpen(true),
+      openApprovals: () => setApprovalsOpen(true),
+      openPatientQueue: () => setPatientQueueOpen(true),
+      openPatientBooking: () => setPatientBookingOpen(true),
+      openDoctorLeaveReviews: () => setDoctorLeaveReviewsOpen(true),
+      openHealthReviews: () => setHealthReviewsOpen(true),
+      openDocuments: () => setDocumentsOpen(true),
+      openNotifications: () => setNotificationsOpen(true),
+      openCommunications: () => setCommunicationsOpen(true),
+      openNoticeAdmin: () => setNoticeAdminOpen(true),
+      openSupport: () => setSupportOpen(true),
+      openFinanceReview: () => setFinanceReviewOpen(true),
+      openVoucherOnly: () => setVoucherOnlyOpen(true),
+      openFinanceClaimReviews: () => setFinanceClaimReviewsOpen(true),
+      openFinanceClaims: () => setFinanceClaimsOpen(true),
+      openInvoice: () => setInvoiceOpen(true),
+      openInvoiceReview: () => setInvoiceReviewOpen(true),
+      openBudget: () => setBudgetOpen(true),
+      openBudgetReview: () => setBudgetReviewOpen(true),
+      openReports: () => setReportsOpen(true),
+      openFinance: () => setFinanceOpen(true),
+      openBranches: () => setBranchesOpen(true),
+      openChangePassword: () => setChangePasswordOpen(true)
+    }),
+    []
+  );
+
   if (recover)
     return (
       <ScreenErrorBoundary onExit={() => setRecover(false)}>
@@ -577,7 +642,9 @@ export function StaffAuthenticationScreen() {
     return (
       <ScreenErrorBoundary onExit={closeRoles}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
-          <RolesScreen token={token} onExit={closeRoles} onExpired={expireSession} />
+          <RolesScreen token={token} actor={actor} roleActions={roleActions}
+            handlers={handlers} onSignOut={() => void signOut()}
+            onExit={closeRoles} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
@@ -875,7 +942,9 @@ export function StaffAuthenticationScreen() {
     return (
       <ScreenErrorBoundary onExit={closePolicy}>
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
-          <SecurityPolicyScreen token={token} onExit={closePolicy} onExpired={expireSession} />
+          <SecurityPolicyScreen token={token} actor={actor} roleActions={roleActions}
+            handlers={handlers} onSignOut={() => void signOut()}
+            onExit={closePolicy} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>
     );
@@ -894,62 +963,6 @@ export function StaffAuthenticationScreen() {
   }
 
   if (actor && token) {
-    const handlers: ModuleActionHandlers = {
-      openDashboard: () => {
-        setAccountOpen(false);
-        setAccountsOpen(false);
-        setRolesOpen(false);
-        setPolicyOpen(false);
-        setApprovalsOpen(false);
-        setHealthReviewsOpen(false);
-        setDoctorLeaveReviewsOpen(false);
-        setPatientQueueOpen(false);
-        setPatientBookingOpen(false);
-        setDocumentsOpen(false);
-        setNotificationsOpen(false);
-        setCommunicationsOpen(false);
-        setNoticeAdminOpen(false);
-        setSupportOpen(false);
-        setFinanceReviewOpen(false);
-        setVoucherOnlyOpen(false);
-        setFinanceClaimReviewsOpen(false);
-        setFinanceClaimsOpen(false);
-        setInvoiceOpen(false);
-        setInvoiceReviewOpen(false);
-        setBudgetOpen(false);
-        setBudgetReviewOpen(false);
-        setReportsOpen(false);
-        setFinanceOpen(false);
-        setBranchesOpen(false);
-        setChangePasswordOpen(false);
-      },
-      openAccount: () => setAccountOpen(true),
-      openAccounts: () => setAccountsOpen(true),
-      openRoles: () => setRolesOpen(true),
-      openPolicy: () => setPolicyOpen(true),
-      openApprovals: () => setApprovalsOpen(true),
-      openPatientQueue: () => setPatientQueueOpen(true),
-      openPatientBooking: () => setPatientBookingOpen(true),
-      openDoctorLeaveReviews: () => setDoctorLeaveReviewsOpen(true),
-      openHealthReviews: () => setHealthReviewsOpen(true),
-      openDocuments: () => setDocumentsOpen(true),
-      openNotifications: () => setNotificationsOpen(true),
-      openCommunications: () => setCommunicationsOpen(true),
-      openNoticeAdmin: () => setNoticeAdminOpen(true),
-      openSupport: () => setSupportOpen(true),
-      openFinanceReview: () => setFinanceReviewOpen(true),
-      openVoucherOnly: () => setVoucherOnlyOpen(true),
-      openFinanceClaimReviews: () => setFinanceClaimReviewsOpen(true),
-      openFinanceClaims: () => setFinanceClaimsOpen(true),
-      openInvoice: () => setInvoiceOpen(true),
-      openInvoiceReview: () => setInvoiceReviewOpen(true),
-      openBudget: () => setBudgetOpen(true),
-      openBudgetReview: () => setBudgetReviewOpen(true),
-      openReports: () => setReportsOpen(true),
-      openFinance: () => setFinanceOpen(true),
-      openBranches: () => setBranchesOpen(true),
-      openChangePassword: () => setChangePasswordOpen(true)
-    };
 
     return (
       <InternalDashboardScreen

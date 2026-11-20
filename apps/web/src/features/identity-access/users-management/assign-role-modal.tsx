@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import type { CG01AccountView } from "@careganga/api-contracts";
 import {
   XIcon,
   ShieldIcon,
-  SearchIcon,
   CheckIcon,
   ShieldCheckIcon
 } from "./users-management-icons";
@@ -38,11 +36,9 @@ export function AssignRoleModal({
   notice,
   onConfirm
 }: AssignRoleModalProps) {
-  const [managerQuery, setManagerQuery] = useState("");
-
   if (!isOpen || !account) return null;
 
-  // The 10 standard roles from wireframe
+  // Standard 11 roles from approved wireframe
   const standardRoleNames = [
     "Super Admin",
     "Sub Admin",
@@ -53,11 +49,11 @@ export function AssignRoleModal({
     "HR / Membership",
     "Team Leader",
     "Volunteer",
-    "Staff"
+    "Staff",
+    "Member"
   ];
 
-  // RBAC Filter: map standard roles to backend eligible roles
-  // A role is ONLY active/selectable if present in the backend `roles` response!
+  // RBAC mapping: only roles available from backend `roles` can be selected
   const matchedStandardRoles = standardRoleNames.map(name => {
     const found = roles.find(r =>
       r.label.toLowerCase() === name.toLowerCase() ||
@@ -70,15 +66,19 @@ export function AssignRoleModal({
     };
   });
 
-  // Custom roles: any role returned by the backend that is not in the standard list
+  // Custom roles: any role returned by the backend not in the standard list
   const customRoles = roles.filter(r =>
     !standardRoleNames.some(s => s.toLowerCase() === r.label.toLowerCase())
   );
 
   return (
-    <div className="cg-um-modal-backdrop" role="presentation" onClick={e => {
-      if (e.target === e.currentTarget && !busy) onClose();
-    }}>
+    <div
+      className="cg-um-modal-backdrop"
+      role="presentation"
+      onClick={e => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -117,8 +117,8 @@ export function AssignRoleModal({
             </div>
             <div className="cg-um-assign-current-role">
               <span className="cg-um-assign-current-label">Current:</span>
-              <span className="cg-um-role-chip current">
-                {account.roleName || "Volunteer"}
+              <span className="cg-um-role-chip primary">
+                {account.roleName || "Staff"}
               </span>
             </div>
           </div>
@@ -143,7 +143,7 @@ export function AssignRoleModal({
                       }}
                       title={item.eligible ? `Select ${item.name}` : `Role "${item.name}" not permitted for this assignment`}
                     >
-                      {item.name}
+                      <span>{item.name}</span>
                       {isSelected && <CheckIcon size={12} className="cg-um-chip-check" />}
                     </button>
                   );
@@ -167,7 +167,7 @@ export function AssignRoleModal({
                       className={`cg-um-assign-chip custom ${isSelected ? "is-selected" : ""}`}
                       onClick={() => onSelectRoleRef(r.value)}
                     >
-                      {r.label}
+                      <span>{r.label}</span>
                       {isSelected && <CheckIcon size={12} className="cg-um-chip-check" />}
                     </button>
                   );
@@ -178,21 +178,12 @@ export function AssignRoleModal({
 
           {/* Reporting To (Manager) */}
           <div className="cg-um-assign-section">
-            <label htmlFor="um-assign-manager" className="cg-um-assign-section-title">
-              REPORTING TO (MANAGER)
-            </label>
-            <div className="cg-um-input-with-icon">
-              <SearchIcon size={14} className="cg-um-input-icon" />
-              <input
-                id="um-assign-manager"
-                type="text"
-                value={managerQuery}
-                onChange={e => setManagerQuery(e.target.value)}
-                placeholder="Search by Role Name or Employee ID..."
-                disabled={busy}
-              />
+            <span className="cg-um-assign-section-title">
+              Reporting To (Manager)
+            </span>
+            <div className="cg-um-manager-hint-row">
+              <span className="cg-um-field-hint">Not assigned. User role permissions adhere strictly to server-side RBAC and realm capability catalogs.</span>
             </div>
-            <span className="cg-um-field-hint">Automatic (from role hierarchy)</span>
           </div>
 
           {/* Notice & Uncertain Alerts */}
