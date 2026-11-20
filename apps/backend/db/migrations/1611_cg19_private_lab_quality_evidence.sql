@@ -107,7 +107,9 @@ BEGIN
  IF NEW.readiness='READY' THEN
   IF NEW.status<>'ACTIVE' OR NEW.evidence_file_ref IS NULL OR
      NEW.calibration_due_on IS NULL OR
-     NEW.calibration_due_on<(now() AT TIME ZONE 'Asia/Kolkata')::date OR
+     NEW.calibration_due_on<(SELECT (now() AT TIME ZONE center.time_zone)::date
+        FROM health_center center WHERE
+        center.root_realm_id=NEW.root_realm_id AND center.id=NEW.center_ref) OR
      NOT EXISTS(SELECT 1 FROM cg19_lab_quality_file f
       JOIN cg19_lab_quality_intent intent
        ON intent.root_realm_id=f.root_realm_id AND
