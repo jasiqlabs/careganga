@@ -22,6 +22,7 @@ export function HealthcareAdminShell({
   healthDiagnostics:"Lab Test Master & Pricing",
   healthLabPricing:"My Lab Pricing",
   healthLabOrders:"Lab Orders & Samples",
+  healthLabEquipment:"Lab Equipment & Quality",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
   healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
  };
