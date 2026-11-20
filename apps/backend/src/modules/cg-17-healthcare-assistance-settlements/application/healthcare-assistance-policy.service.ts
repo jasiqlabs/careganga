@@ -9,7 +9,7 @@ import {FoundationStructureIdentityFacade}
  from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthcarePolicyApprovalService}
- from "../../cg-03-registration-approvals/application/healthcare-policy-approval.service";
+ from "./healthcare-policy-approval.service";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
