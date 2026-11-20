@@ -4,6 +4,7 @@ import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterDoctorFees} from "./center-doctor-fees";
 import {CenterLabPricingPanel} from "../diagnostics/center-lab-pricing-panel";
+import {LabEquipmentWorkspace} from "../diagnostics/lab-equipment-workspace";
 import {CenterSupportDesk} from "./center-support-desk";
 import {CenterContentEditor} from "./center-content-editor";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
