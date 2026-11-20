@@ -128,6 +128,8 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
    <Text style={s.amount}>Patient due at center: {money(value.patientPayableMinor!)}</Text>
    <Text style={s.note}>{value.state==="NO_EFFECTIVE_ASSISTANCE"?
     "No active approved assistance; full fee is patient due.":
+    value.state==="SERVICE_NO_SHOW_REVIEW_REQUIRED"?
+     "Original amount retained. Visit was not completed; center review required.":
     value.state==="SOURCE_CANCELLED"?"Original historical split. Booking cancelled.":
     value.state==="SOURCE_CHANGED_REVIEW_REQUIRED"?
      "Original split preserved; booking changed and needs center review.":
@@ -136,7 +138,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,centerRef,
    <Text style={s.note}>No tax amount has been invented. CG17 does not
     collect the patient payment or create a Foundation liability here.</Text>
    {canAccept&&bookingRef&&!value.accepted&&
-    !["SOURCE_CANCELLED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
+    !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
   </View>}
   {bookingRef&&btn("Check original contribution status",()=>void check(),busy)}
