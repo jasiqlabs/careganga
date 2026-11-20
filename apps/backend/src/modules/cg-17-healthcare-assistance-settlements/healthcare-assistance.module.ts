@@ -2,6 +2,8 @@ import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {PatientsAppointmentsModule} from "../cg-15-patients-appointments/patients-appointments.module";
 import {HealthNetworkModule} from "../cg-14-healthcare-network/health-network.module";
+import {PublicHealthcareAssistanceService} from "./application/public-healthcare-assistance.service";
+import {PublicHealthcareAssistanceController} from "./http/public-healthcare-assistance.controller";
 import {HealthcarePolicyApprovalService} from "./application/healthcare-policy-approval.service";
 import {HealthcarePolicyApprovalController} from "./http/healthcare-policy-approval.controller";
 import {HealthcareAssistanceReviewSourceFacade} from "./application/healthcare-assistance-review-source.facade";
@@ -13,8 +15,8 @@ import {HealthcareAssistancePolicyController}
  from "./http/healthcare-assistance-policy.controller";
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule],
- providers:[HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
- controllers:[HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
+ providers:[PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
+ controllers:[PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
  exports:[HealthcareAssistancePolicyService,ConsultationPatientChargeService]
 })
 export class HealthcareAssistanceModule{}
