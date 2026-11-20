@@ -22,8 +22,10 @@ CREATE TABLE lab_order (
  consent_granted_at timestamptz NOT NULL,
  status text NOT NULL DEFAULT 'COLLECTION_PENDING'
   CHECK(status IN('COLLECTION_PENDING','COLLECTED','PROCESSING',
-   'RESULT_READY','AWAITING_REVIEW','PROFESSIONALLY_APPROVED',
-   'RELEASED','RECOLLECTION_REQUIRED','CANCELLED')),
+   'RESULT_READY','AWAITING_REVIEW','RECOLLECTION_REQUIRED','CANCELLED')),
+ -- Independent professional approval/release are intentionally excluded
+ -- until the genuine CG19 protected clinical report + licensed reviewer
+ -- source migrations are delivered and verified.
  accepted_currency char(3) NOT NULL DEFAULT 'INR' CHECK(accepted_currency='INR'),
  accepted_center_total_minor bigint NOT NULL
   CHECK(accepted_center_total_minor BETWEEN 0 AND 9999999999),
@@ -39,6 +41,7 @@ CREATE TABLE lab_order (
  UNIQUE(root_realm_id,display_order_ref),
  UNIQUE(root_realm_id,created_by_account,source_key),
  UNIQUE(root_realm_id,id,center_ref,patient_ref),
+ UNIQUE(root_realm_id,id,center_ref),
  CHECK(
   (care_source_kind='CENTER_INTAKE' AND center_intake_ref IS NOT NULL
     AND consultation_ref IS NULL)
@@ -92,6 +95,7 @@ CREATE TABLE lab_order_line (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,order_ref,source_line_key),
+ UNIQUE(root_realm_id,order_ref,id),
  FOREIGN KEY(root_realm_id,order_ref)
   REFERENCES lab_order(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,test_ref,test_revision)
@@ -131,10 +135,10 @@ CREATE TABLE lab_sample (
  UNIQUE(root_realm_id,opaque_sample_label),
  UNIQUE(root_realm_id,order_ref,id),
  FOREIGN KEY(root_realm_id,order_ref) REFERENCES lab_order(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,collection_location_ref)
-  REFERENCES health_center(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,replacement_for_sample_ref)
-  REFERENCES lab_sample(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,order_ref,collection_location_ref)
+  REFERENCES lab_order(root_realm_id,id,center_ref) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,order_ref,replacement_for_sample_ref)
+  REFERENCES lab_sample(root_realm_id,order_ref,id) ON DELETE RESTRICT,
  CHECK(replacement_for_sample_ref IS NULL OR replacement_for_sample_ref<>id),
  CHECK(received_at IS NULL OR collected_at IS NOT NULL),
  CHECK(received_at IS NULL OR received_at>=collected_at)
@@ -149,16 +153,10 @@ CREATE TABLE lab_sample_line (
  PRIMARY KEY(root_realm_id,sample_ref,order_line_ref),
  FOREIGN KEY(root_realm_id,order_ref,sample_ref)
   REFERENCES lab_sample(root_realm_id,order_ref,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,order_line_ref)
-  REFERENCES lab_order_line(root_realm_id,id) ON DELETE RESTRICT
+ FOREIGN KEY(root_realm_id,order_ref,order_line_ref)
+  REFERENCES lab_order_line(root_realm_id,order_ref,id) ON DELETE RESTRICT
 );
--- Composite reference prevents associating an order's sample to lines from
--- some OTHER order even if all identifiers share the Foundation root.
-ALTER TABLE lab_order_line ADD CONSTRAINT uq_cg16_line_original_order
- UNIQUE(root_realm_id,order_ref,id);
-ALTER TABLE lab_sample_line DROP CONSTRAINT lab_sample_line_root_realm_id_order_line_ref_fkey;
-ALTER TABLE lab_sample_line ADD FOREIGN KEY(root_realm_id,order_ref,order_line_ref)
- REFERENCES lab_order_line(root_realm_id,order_ref,id) ON DELETE RESTRICT;
+-- A collected sample can never reference a line from a different order.
 
 CREATE TABLE lab_sample_custody_event (
  root_realm_id uuid NOT NULL,
@@ -203,7 +201,7 @@ CREATE TABLE lab_result_revision (
  order_ref uuid NOT NULL,
  version_no integer NOT NULL CHECK(version_no>0),
  result_state text NOT NULL DEFAULT 'DRAFT'
-  CHECK(result_state IN('DRAFT','RESULT_READY','AWAITING_REVIEW','REJECTED')),
+  CHECK(result_state='DRAFT'), -- No fake uploaded/reviewed report before CG19 integration.
  operator_account_ref uuid,
  original_cg19_file_ref uuid,
  report_digest char(64) CHECK(report_digest ~ '^[a-f0-9]{64}$'),
@@ -218,11 +216,11 @@ CREATE TABLE lab_result_revision (
   REFERENCES lab_order(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(operator_account_ref,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,corrects_revision_ref)
-  REFERENCES lab_result_revision(root_realm_id,id) ON DELETE RESTRICT,
- CHECK((original_cg19_file_ref IS NULL AND report_digest IS NULL) OR
-  (original_cg19_file_ref IS NOT NULL AND report_digest IS NOT NULL)),
- CHECK(result_state<>'RESULT_READY' OR original_cg19_file_ref IS NOT NULL)
+ FOREIGN KEY(root_realm_id,order_ref,corrects_revision_ref)
+  REFERENCES lab_result_revision(root_realm_id,order_ref,id) ON DELETE RESTRICT,
+ CHECK(original_cg19_file_ref IS NULL AND report_digest IS NULL)
+ -- Clinical CG19 owner adapter must later add a real same-patient,
+ -- scanned-file FK before changing this constraint, never a free UUID.
 );
 CREATE INDEX ix_cg16_result_order_versions
  ON lab_result_revision(root_realm_id,order_ref,version_no DESC,id);
@@ -233,6 +231,8 @@ BEGIN
 END $cg16$;
 CREATE TRIGGER cg16_order_line_frozen BEFORE UPDATE OR DELETE
  ON lab_order_line FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
+CREATE TRIGGER cg16_result_revision_frozen BEFORE UPDATE OR DELETE
+ ON lab_result_revision FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
 CREATE TRIGGER cg16_sample_line_frozen BEFORE UPDATE OR DELETE
  ON lab_sample_line FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
 CREATE TRIGGER cg16_custody_event_frozen BEFORE UPDATE OR DELETE
@@ -283,3 +283,70 @@ BEGIN
 END $cg16$;
 CREATE TRIGGER cg16_lab_sample_source_protection BEFORE UPDATE OR DELETE
  ON lab_sample FOR EACH ROW EXECUTE FUNCTION cg16_sample_source_guard();
+
+
+-- The accepted commercial amount must be the sum of ORIGINAL immutable
+-- order lines. Deferred at COMMIT so the order and its expanded package/test
+-- lines can be inserted in one atomic transaction.
+CREATE FUNCTION cg16_order_accepted_total_guard() RETURNS trigger LANGUAGE plpgsql AS $cg16$
+DECLARE recorded bigint; lines bigint;
+BEGIN
+ SELECT count(*),COALESCE(sum(accepted_line_total_minor),0)
+ INTO lines,recorded FROM lab_order_line
+ WHERE root_realm_id=NEW.root_realm_id AND order_ref=NEW.id;
+ IF lines=0 OR recorded<>NEW.accepted_center_total_minor THEN
+  RAISE EXCEPTION 'Accepted laboratory total must match frozen test lines';
+ END IF;
+ RETURN NULL;
+END $cg16$;
+CREATE CONSTRAINT TRIGGER cg16_order_frozen_total
+ AFTER INSERT ON lab_order DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW EXECUTE FUNCTION cg16_order_accepted_total_guard();
+
+-- Source identity guard: a mapping/price may only belong to the order's
+-- center; the price must actually be an APPROVED version for that mapping,
+-- and a single test line must match the approved mapped kind or its
+-- original package membership. Historical quoted amount stays unchanged.
+CREATE FUNCTION cg16_order_line_source_guard() RETURNS trigger LANGUAGE plpgsql AS $cg16$
+DECLARE m record; amount record;
+BEGIN
+ SELECT m.center_ref,m.test_or_package_kind,m.test_ref,m.package_ref,
+        o.center_ref AS original_center
+ INTO m
+ FROM lab_center_test_mapping m JOIN lab_order o
+ ON o.root_realm_id=m.root_realm_id AND o.id=NEW.order_ref
+ WHERE m.root_realm_id=NEW.root_realm_id AND m.id=NEW.mapping_ref;
+ SELECT p.center_test_mapping_ref,p.version_no,p.status,
+        p.advertised_patient_price_minor
+ INTO amount FROM lab_center_price_version p
+ WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.price_ref;
+ IF m.center_ref IS DISTINCT FROM m.original_center
+   OR m.test_or_package_kind IS NULL
+   OR amount.status IS DISTINCT FROM 'APPROVED'
+   OR amount.center_test_mapping_ref IS DISTINCT FROM NEW.mapping_ref
+   OR amount.version_no IS DISTINCT FROM NEW.accepted_price_version
+   OR (NEW.source_package_ref IS NULL AND
+       (m.test_or_package_kind<>'TEST' OR m.test_ref<>NEW.test_ref))
+   OR (NEW.source_package_ref IS NOT NULL AND
+       (m.test_or_package_kind<>'PACKAGE'
+        OR m.package_ref<>NEW.source_package_ref
+        OR NOT EXISTS(
+          SELECT 1 FROM diagnostic_package_line line
+          WHERE line.root_realm_id=NEW.root_realm_id
+           AND line.package_ref=NEW.source_package_ref
+           AND line.package_revision=NEW.package_revision
+           AND line.test_ref=NEW.test_ref
+           AND line.test_revision_at_approval=NEW.test_revision)))
+ THEN
+  RAISE EXCEPTION 'Original center lab price and test source mismatch';
+ END IF;
+ -- A package is distributed across individual lines by its accepted
+ -- per-test quote allocation; one-to-one direct tests must match price.
+ IF NEW.source_package_ref IS NULL AND
+    NEW.accepted_unit_minor IS DISTINCT FROM amount.advertised_patient_price_minor THEN
+  RAISE EXCEPTION 'Accepted test quote differs from original approved tariff';
+ END IF;
+ RETURN NEW;
+END $cg16$;
+CREATE TRIGGER cg16_lab_order_line_source_guard BEFORE INSERT ON lab_order_line
+ FOR EACH ROW EXECUTE FUNCTION cg16_order_line_source_guard();
