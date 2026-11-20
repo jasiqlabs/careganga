@@ -531,8 +531,8 @@ export class DiagnosticsCatalogService{
  }
  private async assertPackagePriceWindow(tx:PoolClient,root:string,
   kind:"TEST"|"PACKAGE",ref:string,from:Date,until:Date|null){
-  // The proposed price must fit the actual source availability window.
-  // A test's or package's expiry must never be converted into a future tariff.
+  // Price validity never outlives its source test/package or any member test.
+  // All medical/source rows are original CG16, not copied lab inventory.
   const p=await tx.query<{active_from:Date;active_to:Date|null}>(
    kind==="TEST"?
    "SELECT active_from,active_to FROM diagnostic_test "+
@@ -545,6 +545,29 @@ export class DiagnosticsCatalogService{
     row.active_to&&(!until||until.getTime()>row.active_to.getTime()))
    throw new BadRequestException({code:"LAB_CATALOG_RATE_OUTSIDE_WINDOW",
     field:"effectiveToUtc"});
+  if(kind==="PACKAGE"){
+   // Package member dates may have been shortened after this package's
+   // originally frozen revision. Check every ACTUAL current component
+   // against the proposed commercial interval, not only against NOW.
+   const invalid=await tx.query(
+    "SELECT 1 FROM diagnostic_package_line l "+
+    "JOIN diagnostic_package pkg ON pkg.root_realm_id=l.root_realm_id "+
+    "AND pkg.id=l.package_ref AND pkg.revision=l.package_revision "+
+    "LEFT JOIN diagnostic_test t ON t.root_realm_id=l.root_realm_id "+
+    "AND t.id=l.test_ref "+
+    "LEFT JOIN test_category cat ON cat.root_realm_id=t.root_realm_id "+
+    "AND cat.id=t.category_ref "+
+    "WHERE l.root_realm_id=$1 AND l.package_ref=$2 "+
+    "AND (t.status IS DISTINCT FROM 'ACTIVE' OR "+
+    "cat.status IS DISTINCT FROM 'ACTIVE' OR "+
+    "t.active_from>$3::timestamptz OR "+
+    "(t.active_to IS NOT NULL AND "+
+    "($4::timestamptz IS NULL OR t.active_to<$4::timestamptz))) "+
+    "LIMIT 1",[root,ref,from,until]);
+   if(invalid.rowCount)
+    throw new BadRequestException({code:"LAB_CATALOG_RATE_OUTSIDE_WINDOW",
+     field:"effectiveToUtc"});
+  }
  }
  async proposePrice(bearer:string,ref:string,raw:unknown,own=false){
   const centerRef=uuid(ref,"centerRef");

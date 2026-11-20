@@ -93,6 +93,8 @@ assert.match(publicSource,/pricingReview\.status='OWNER_COMPLETED'/,
 assert.match(publicSource,/component\.active_to IS NOT NULL/,
  "Public package offers must hide expired tests");
 assert.match(service,/new Date\(data\.from\)/,"Price validity must follow original source timeline");
+assert.match(service,/Package member dates may have been shortened/,
+ "Package effective price must recheck its constituent test validity");
 
 const caseMigration=read("apps/backend/db/migrations/1602_cg16_original_cg03_lab_price_review.sql");
 const priceCase=read(backend+"application/diagnostics-price-review.service.ts");
