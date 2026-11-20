@@ -43,6 +43,11 @@ export class ClinicalLabOrderController{
   @Body()body:unknown){
   return this.custody.change(token,center,order,sample,action,body);
  }
+ @Get("centers/:centerRef/orders/:orderRef/reports/current")
+ reportCurrent(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string){
+  return this.reports.current(token,center,order);
+ }
  @Post("centers/:centerRef/orders/:orderRef/reports/prepare")
  reportPrepare(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("orderRef")order:string,
