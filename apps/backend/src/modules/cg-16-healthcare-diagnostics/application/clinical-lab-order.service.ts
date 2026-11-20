@@ -289,8 +289,8 @@ export class ClinicalLabOrderService{
      "accepted_line_total_minor::text AS \"quotedLineTotalMinor\" "+
      "FROM lab_order_line WHERE root_realm_id=$1 AND order_ref=$2 "+
      "ORDER BY created_at,id",[actor.realmId,orderRef]),
-    c.query("SELECT opaque_sample_label AS label,material_type AS \"sampleType\","+
-     "custody_state AS status FROM lab_sample WHERE root_realm_id=$1 "+
+    c.query("SELECT id AS \"sampleRef\",opaque_sample_label AS label,material_type AS \"sampleType\","+
+     "custody_state AS status,revision FROM lab_sample WHERE root_realm_id=$1 "+
      "AND order_ref=$2 ORDER BY created_at,id",[actor.realmId,orderRef])
    ]);
    return {order:r.rows[0],lines:lines.rows,samples:samples.rows};

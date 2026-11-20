@@ -9,7 +9,7 @@ type Order={orderRef:string;displayOrderRef:string;status:string;
  quotedTotalMinor:string;createdAt:string};
 type Detail={order:Order;lines:{name:string;code:string;sampleType:string;
  quantity:number;quotedLineTotalMinor:string}[];
- samples:{label:string;sampleType:string;status:string}[]};
+ samples:{sampleRef:string;label:string;sampleType:string;status:string;revision:number}[]};
 const money=(n:string)=>/^\d{1,11}$/.test(n)&&Number.isSafeInteger(Number(n))?
  new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"})
   .format(Number(n)/100):"Price unavailable";
@@ -32,8 +32,17 @@ type Selection={mappingRef:string;quantity:number};
 type Submission={requestKey:string;patientRef:string;
  careSource:{kind:"CENTER_INTAKE"|"CONSULTATION";ref:string};
  selections:Selection[]};
-export function ClinicalLabOrderWorkspace({canCreate,canView}:{
- canCreate:boolean;canView:boolean
+type CustodyAction="collect"|"receive"|"start-processing"|"reject"|"recollect";
+type CustodyRequest={centerRef:string;orderRef:string;sampleRef:string;
+ action:CustodyAction;requestKey:string;expectedVersion:number};
+const nextAction:Partial<Record<string,{action:CustodyAction;label:string}>>={
+ PENDING_COLLECTION:{action:"collect",label:"Record collection"},
+ COLLECTED:{action:"receive",label:"Mark received"},
+ RECEIVED:{action:"start-processing",label:"Start processing"},
+ REJECTED:{action:"recollect",label:"Create recollection label"}
+};
+export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples}:{
+ canCreate:boolean;canView:boolean;canManageSamples:boolean
 }){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [patients,setPatients]=useState<Patient[]>([]),[catalog,setCatalog]=useState<Item[]>([]);
@@ -44,6 +53,10 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
  const replay=useRef<Submission|null>(null);
+ const custodyReplay=useRef<CustodyRequest|null>(null);
+ const [custodyUncertain,setCustodyUncertain]=useState(false);
+ const [rejectSampleRef,setRejectSampleRef]=useState("");
+ const [custodyBusy,setCustodyBusy]=useState(false);
  const epoch=useRef(0);
  const reloadCenters=useCallback(async()=>{
   const result=await api<{centers:Center[]}>("centers/eligible");
@@ -76,6 +89,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
  },[reloadCenters]);
  useEffect(()=>{
   setPatients([]);setCatalog([]);setOrders([]);setSelected(null);
+  custodyReplay.current=null;setCustodyUncertain(false);setRejectSampleRef("");
   setPatientKey("");setCart([]);setItemKey("");
   if(!center)return;
   setLoading(true);setError("");
@@ -124,6 +138,44 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
   try{const d=await api<Detail>("centers/"+center+"/orders/"+orderRef);
    setSelected(d);
   }catch(e){setError(e instanceof Error?e.message:"This order cannot be viewed.");}
+ }
+ async function custodySend(original:CustodyRequest){
+  if(!canManageSamples||!canView||custodyBusy||original.centerRef!==center)return;
+  setCustodyBusy(true);setError("");setNotice("");
+  try{
+   const result=await api<{status:string;revision:number;replayed:boolean;
+    replacementLabel?:string}>("centers/"+original.centerRef+
+    "/orders/"+original.orderRef+"/samples/"+original.sampleRef+
+    "/"+original.action,"POST",{
+     requestKey:original.requestKey,expectedVersion:original.expectedVersion
+    });
+   custodyReplay.current=null;setCustodyUncertain(false);setRejectSampleRef("");
+   setNotice(result.replacementLabel?
+    "Replacement label "+result.replacementLabel+" created. Collect a new sample.":
+    "Original specimen custody step recorded.");
+   await show(original.orderRef);
+   await reloadCenter(center);
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e&&
+    typeof e.status==="number"?e.status:503;
+   setError(e instanceof Error?e.message:"Specimen outcome could not be confirmed.");
+   if(status>=500){custodyReplay.current=original;setCustodyUncertain(true);}
+   else{
+    custodyReplay.current=null;setCustodyUncertain(false);
+    try{await show(original.orderRef);}catch{}
+   }
+  }finally{setCustodyBusy(false);}
+ }
+ function custodyStart(sample:Detail["samples"][number],action:CustodyAction){
+  if(!selected||custodyUncertain||custodyBusy||busy)return;
+  const permitted=(action==="reject"&&["COLLECTED","RECEIVED","PROCESSING"].includes(sample.status))||
+   nextAction[sample.status]?.action===action;
+  if(!permitted||!Number.isSafeInteger(sample.revision)||sample.revision<1)return;
+  const payload:CustodyRequest={centerRef:center,orderRef:selected.order.orderRef,
+   sampleRef:sample.sampleRef,action,expectedVersion:sample.revision,
+   requestKey:crypto.randomUUID()};
+  custodyReplay.current=payload;
+  void custodySend(payload);
  }
  return <section className="cg-health-workspace cg-diagnostics"
   aria-label="Clinical laboratory orders">
@@ -232,6 +284,18 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
    <p className="cg-diagnostics-note">Showing at most 30 current-source orders.
     This screen does not mark payment collected or medical reports delivered.</p>
   </section>}
+  {custodyUncertain&&<div className="notice" role="alert">
+   The specimen action may already be saved. Avoid another action until
+   the original result is confirmed.
+   <div className="toolbar">
+    <button type="button" disabled={custodyBusy||!custodyReplay.current}
+     onClick={()=>{if(custodyReplay.current)void custodySend(custodyReplay.current);}}>
+     Retry the same custody request</button>
+    <button type="button" disabled={custodyBusy}
+     onClick={()=>{if(selected)void show(selected.order.orderRef);}}>
+     Check current specimen status</button>
+   </div>
+  </div>}
   {selected&&<section className="form-section">
    <h2>{selected.order.displayOrderRef}</h2>
    <p>Accepted lab total: {money(selected.order.quotedTotalMinor)}.
@@ -241,11 +305,28 @@ export function ClinicalLabOrderWorkspace({canCreate,canView}:{
     {" "+money(line.quotedLineTotalMinor)}</p>)}
    <h3>Original Sample Labels</h3>
    {!selected.samples.length?<p>No sample collection is required for this test.</p>:
-    selected.samples.map(item=><p key={item.label}>
-     {item.label} · {item.sampleType.replaceAll("_"," ")} ·
-     {item.status.replaceAll("_"," ")}</p>)}
-   <p>Sample custody and professional report release require their
-    separately authorized clinical workflows. A created order is not a released report.</p>
+    selected.samples.map(item=><article className="cg-diagnostics-card" key={item.sampleRef}>
+     <p><strong>{item.label}</strong> · {item.sampleType.replaceAll("_"," ")} ·
+      {item.status.replaceAll("_"," ").toLowerCase()}</p>
+     {canManageSamples&&<div className="toolbar">
+      {nextAction[item.status]&&
+       <button type="button" disabled={busy||custodyBusy||custodyUncertain}
+        onClick={()=>custodyStart(item,nextAction[item.status]!.action)}>
+        {nextAction[item.status]!.label}</button>}
+      {["COLLECTED","RECEIVED","PROCESSING"].includes(item.status)&&
+       (rejectSampleRef===item.sampleRef?<>
+        <span>Reject this sample? Its original custody history will remain.</span>
+        <button type="button" disabled={busy||custodyBusy||custodyUncertain}
+         onClick={()=>custodyStart(item,"reject")}>Confirm rejection</button>
+        <button type="button" disabled={custodyBusy}
+         onClick={()=>setRejectSampleRef("")}>Cancel</button>
+       </>:<button type="button" disabled={busy||custodyBusy||custodyUncertain}
+        onClick={()=>setRejectSampleRef(item.sampleRef)}>Reject sample…</button>)}
+     </div>}
+    </article>)}
+   <p>Each custody action requires current assigned-center access. Rejected
+    specimens need new collection labels. A collected sample does not mean
+    a medical report is reviewed or released.</p>
   </section>}
  </section>;
 }
