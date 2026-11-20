@@ -7,6 +7,16 @@ import {CompletedConsultationLiabilityService}
 @Controller("api/v1/healthcare-assistance/foundation-liabilities")
 export class CompletedConsultationLiabilityController{
  constructor(private readonly source:CompletedConsultationLiabilityService){}
+ @Get("centers/eligible")
+ @Header("Cache-Control","private, no-store")
+ centers(@Headers("authorization")token:string){
+  return this.source.eligibleCenters(token);
+ }
+ @Get("centers/:centerRef/completed-options")
+ @Header("Cache-Control","private, no-store")
+ candidates(@Headers("authorization")token:string,@Param("centerRef")center:string){
+  return this.source.completedOptions(token,center);
+ }
  @Get("centers/:centerRef/appointments/:bookingRef")
  @Header("Cache-Control","private, no-store")
  status(@Headers("authorization")token:string,
