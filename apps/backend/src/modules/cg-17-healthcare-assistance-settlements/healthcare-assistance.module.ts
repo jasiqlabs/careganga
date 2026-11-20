@@ -8,6 +8,8 @@ import {HealthNetworkModule} from "../cg-14-healthcare-network/health-network.mo
 import {PublicHealthcareAssistanceService} from "./application/public-healthcare-assistance.service";
 import {CenterPatientCollectionService} from "./application/center-patient-collection.service";
 import {CenterPatientReceiptService} from "./application/center-patient-receipt.service";
+import {CompletedConsultationLiabilityService} from "./application/completed-consultation-liability.service";
+import {CompletedConsultationLiabilityController} from "./http/completed-consultation-liability.controller";
 import {CenterPatientReceiptController} from "./http/center-patient-receipt.controller";
 import {LabResultStorageModule} from "../cg-19-documents-notifications/lab-result-storage.module";
 import {CenterPatientCollectionController} from "./http/center-patient-collection.controller";
@@ -23,8 +25,8 @@ import {HealthcareAssistancePolicyController}
  from "./http/healthcare-assistance-policy.controller";
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,PatientsAppointmentsModule,LabResultStorageModule],
- providers:[CenterMerchantCheckoutService,CenterMerchantProvisioningService,CenterPatientCollectionService,CenterPatientReceiptService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
- controllers:[CenterMerchantController,CenterPatientCollectionController,CenterPatientReceiptController,PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
+ providers:[CompletedConsultationLiabilityService,CenterMerchantCheckoutService,CenterMerchantProvisioningService,CenterPatientCollectionService,CenterPatientReceiptService,PublicHealthcareAssistanceService,HealthcareAssistanceReviewSourceFacade,HealthcarePolicyApprovalService,HealthcareAssistancePolicyService,ConsultationPatientChargeService],
+ controllers:[CompletedConsultationLiabilityController,CenterMerchantController,CenterPatientCollectionController,CenterPatientReceiptController,PublicHealthcareAssistanceController,HealthcarePolicyApprovalController,HealthcareAssistancePolicyController,ConsultationPatientChargeController],
  exports:[HealthcareAssistancePolicyService,ConsultationPatientChargeService]
 })
 export class HealthcareAssistanceModule{}
