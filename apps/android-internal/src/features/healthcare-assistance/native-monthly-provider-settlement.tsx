@@ -3,6 +3,7 @@ import {
  ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
+import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 type Props={token:string;canPropose:boolean;canReview:boolean;
@@ -108,7 +109,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,
   const rev=kind==="review"?prev.revision!:1;
   if(!attempt.current||attempt.current.kind!==kind||
    attempt.current.center!==center||attempt.current.month!==month)
-   attempt.current={kind,center,month,key:crypto.randomUUID(),revision:rev};
+   attempt.current={kind,center,month,key:Crypto.randomUUID(),revision:rev};
   setBusy(true);setError("");setNotice("");
   try{
    const body=kind==="review"?
