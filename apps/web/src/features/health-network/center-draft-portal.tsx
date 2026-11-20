@@ -22,8 +22,12 @@ async function get<T>(path:string):Promise<T>{
     typeof result.message==="string"?result.message:"Pending center unavailable");
   return result as T;
 }
-export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=false}:{
- canViewLabPricing?:boolean;canManageLabPricing?:boolean
+export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=false,
+ canViewLabEquipment=false,canManageLabEquipment=false,canUploadLabQuality=false,
+ labERPEnabled=false}:{
+ canViewLabPricing?:boolean;canManageLabPricing?:boolean;
+ canViewLabEquipment?:boolean;canManageLabEquipment?:boolean;
+ canUploadLabQuality?:boolean;labERPEnabled?:boolean
 }){
   const [centers,setCenters]=useState<Row[]>([]);
   const [active,setActive]=useState<Detail|null>(null);
@@ -154,6 +158,12 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
        draft.capabilities.includes("DIAGNOSTICS")&&canViewLabPricing&&
        <CenterLabPricingPanel key={"lab:"+active.centerRef}
         centerRef={active.centerRef} canManage={canManageLabPricing}/>}
+      {labERPEnabled&&active.status==="VERIFIED"&&
+       active.accessState==="ENABLED"&&
+       draft.capabilities.includes("DIAGNOSTICS")&&canViewLabEquipment&&
+       <LabEquipmentWorkspace key={"equipment:"+active.centerRef}
+        fixedCenterRef={active.centerRef} canView
+        canManage={canManageLabEquipment} canUpload={canUploadLabQuality}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterErpCapabilityPanel key={"erp:"+active.centerRef} centerRef={active.centerRef}/>}
 
