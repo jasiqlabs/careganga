@@ -65,6 +65,11 @@ const service=read(backend+"application/diagnostics-catalog.service.ts");
 const publicSource=read(backend+"application/diagnostics-public-catalog.service.ts");
 const validity=read("apps/backend/db/migrations/1603_cg16_test_master_validity.sql");
 const cg14=read(sources[0]);
+const cg14Center=read("apps/backend/src/modules/cg-14-healthcare-network/application/health-network.service.ts");
+const cg14Review=read("apps/backend/src/modules/cg-14-healthcare-network/application/health-review-workflow.service.ts");
+const cg14Expiry=read("apps/backend/db/migrations/1422_cg14_diagnostic_center_license_validity.sql");
+const cg14Editor=read("apps/web/src/features/health-network/center-editor.tsx");
+const cg14ReviewInbox=read("apps/web/src/features/health-network/health-review-inbox.tsx");
 const bff=read("apps/web/src/app/api/diagnostics/[...parts]/route.ts");
 const permissions=read("apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts");
 assert.match(service,/this\.identity\.assertCurrent/,"current CG01 grant guard missing");
@@ -72,6 +77,28 @@ assert.match(service,/CG14_CURRENT_LAB_EVIDENCE_SQL/,"CG14 validated lab evidenc
 assert.match(cg14,/HEALTH_CENTER_VERIFICATION/,"original CG03 center review missing");
 assert.match(cg14,/CLEAN_VERIFIED/,"CG19 scan/clean proof missing");
 assert.match(cg14,/HEALTH_CENTER_LICENSE/,"CG19 original license classification missing");
+
+assert.match(cg14Expiry,/diagnostic_license_valid_through date/,
+ "CG14 source-owned real diagnostic license expiry column missing");
+assert.match(cg14Center,/diagnosticLicenseValidThrough/,
+ "CG14 pending draft and calendar validator must retain original date");
+assert.match(cg14Review,/diagnostic_license_current/,
+ "CG14 original submit and CG03 final apply must recheck actual expiry");
+assert.match(cg14Review,/source_snapshot->>'diagnosticLicenseValidThrough'/,
+ "Original approved source date must be rechecked before finalization");
+assert.match(cg14,/rev\.revision_no=\(SELECT MAX\(latest\.revision_no\)/,
+ "Do not accept older CG14 license proof after latest center revision");
+assert.match(cg14,/diagnostic_license_valid_through >=/,
+ "Protected center lab finder must reject expired licence");
+assert.match(publicSource,/diagnostic_license_valid_through >=/,
+ "Public lab offers must not leak revoked or expired license prices");
+assert.match(service,/diagnostic_license_valid_through >=/,
+ "Published KPI must exclude expired or unknown lab certificate");
+assert.match(cg14Editor,/Diagnostic licence valid through/,
+ "Real source expiry field missing from original CG14 Web form");
+assert.match(cg14ReviewInbox,/Compare the/,
+ "Reviewers must inspect declared expiry against protected original proof");
+
 assert.match(service,/this\.lab\.assertLab/,"scoped lab source reader missing");
 assert.match(service,/this\.command\(tx,actor/,"idempotent source command missing");
 assert.match(service,/this\.done\(tx,actor/,"immutable command result/audit missing");
