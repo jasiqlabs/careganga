@@ -104,6 +104,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
   {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
   {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true},
+  {key:"healthcare.assistance.merchant.manage",businessLabel:"Request own-center online merchant configuration",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.merchant.verify",businessLabel:"Independently verify and revoke own-center merchant",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.collections.view",businessLabel:"View verified own-center patient collections",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.collections.record",businessLabel:"Attest actual own-center cash or submit pending electronic proof",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.collections.refund",businessLabel:"Refund or correct verified own-center cash receipts",group:"Healthcare assistance",assignable:true,sensitive:true},
