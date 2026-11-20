@@ -315,9 +315,9 @@ export class SupportService{
     })).toString("base64url"):null;
     const counter=await this.db.query<{total:string;open:string;replied:string;
       closed:string;unread:string;archived:string;received_today:string}>(
-      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status IN(
-      'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',
-      'REPLIED','RESOLVED')) AS open,"+
+      "SELECT count(*) AS total,count(*) FILTER(WHERE c.status IN("+
+      "'OPEN','ASSIGNED','IN_PROGRESS','WAITING_FOR_USER','ESCALATED',"+
+      "'REPLIED','RESOLVED')) AS open,"+
       "count(*) FILTER(WHERE c.status='REPLIED') AS replied,"+
       "count(*) FILTER(WHERE c.status='CLOSED') AS closed,"+
       "count(*) FILTER(WHERE c.created_at>=date_trunc('day',now())) AS received_today,"+
