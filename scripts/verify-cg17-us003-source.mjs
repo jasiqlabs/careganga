@@ -22,6 +22,9 @@ const urls={
  nativeCheckout:"packages/native-checkout/src/native-center-merchant-checkout.tsx",
  nativeBinding:"apps/android-internal/src/features/healthcare-assistance/native-center-merchant-screen.tsx",
  patient:"apps/android-public/src/features/appointments/native-consultation-contribution.tsx",
+ staffShell:"apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+ staffMenu:"apps/android-internal/src/features/dashboard/dashboard-modules.ts",
+ centerPortal:"apps/web/src/features/health-network/center-draft-portal.tsx",
  public:"apps/web/src/features/healthcare-assistance/consultation-contribution.tsx",
  main:"apps/backend/src/main.ts"
 };
@@ -62,6 +65,9 @@ check("Binding staff-only API","controller",/staff\/centers/);
 check("Public Web uses original checkout","public",/CenterMerchantCheckout/);
 check("Public Android uses original checkout","patient",/NativeCenterMerchantCheckout/);
 check("Private staff internal Android verification","nativeBinding",/NativeCenterMerchantScreen/);
+check("Internal Android merchant UI actually routed","staffShell",/NativeCenterMerchantScreen token=\{token\}/);
+check("Native merchant staff menu is CG01 permission-gated","staffMenu",/healthcare\.assistance\.merchant\.verify/);
+check("Web merchant original center owner UI is reachable","centerPortal",/CenterMerchantBinding/);
 check("Web verifies source checkout status","webCheckout",/CENTER|center/);
 console.log("CG17 US003 source/parse preflight PASS; provider sandbox, "+
  "migration, real webhook, Web/Android device/independent security QA NOT_RUN.");
