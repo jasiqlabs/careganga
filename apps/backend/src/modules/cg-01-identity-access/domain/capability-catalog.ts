@@ -103,7 +103,13 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"diagnostics.catalog.manage",businessLabel:"Maintain diagnostic tests and packages",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
   {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
   {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
-  {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true}
+  {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true},
+  {key:"lab.orders.create",businessLabel:"Create clinical lab orders at my assigned lab",group:"Laboratory clinical operations",assignable:true,sensitive:true},
+  {key:"lab.orders.view",businessLabel:"View assigned clinical lab orders",group:"Laboratory clinical operations",assignable:true,sensitive:true},
+  {key:"lab.samples.manage",businessLabel:"Record lab specimen custody",group:"Laboratory clinical operations",assignable:true,sensitive:true},
+  {key:"lab.results.record",businessLabel:"Record protected lab result evidence",group:"Laboratory clinical operations",assignable:true,sensitive:true},
+  {key:"lab.report.review",businessLabel:"Independently review clinical laboratory reports",group:"Laboratory professional review",assignable:true,sensitive:true},
+  {key:"lab.report.release",businessLabel:"Professionally release signed laboratory reports",group:"Laboratory professional review",assignable:true,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

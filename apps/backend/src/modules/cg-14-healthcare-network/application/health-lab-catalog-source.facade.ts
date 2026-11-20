@@ -51,7 +51,10 @@ export class HealthLabCatalogSourceFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
  async assertLab(tx:PoolClient,root:string,centerRef:string,
   actor?:VerifiedFoundationActor,own=false,
-  action:"diagnostics.pricing.view"|"diagnostics.pricing.manage"="diagnostics.pricing.manage"):Promise<VerifiedLabCenter>{
+  action:"diagnostics.pricing.view"|"diagnostics.pricing.manage"|
+   "lab.orders.create"|"lab.orders.view"|"lab.samples.manage"|
+   "lab.results.record"|"lab.report.review"|"lab.report.release"=
+   "diagnostics.pricing.manage"):Promise<VerifiedLabCenter>{
   if(!UUID.test(centerRef))throw new BadRequestException({code:"LAB_CENTER_INVALID"});
   const center=await tx.query<{
    name:string;public_slug:string|null;publication_state:string
