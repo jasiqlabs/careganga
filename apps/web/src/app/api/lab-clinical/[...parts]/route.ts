@@ -30,6 +30,15 @@ function allowed(parts:string[],method:string){
  if(parts.length===7&&parts[0]==="centers"&&UUID.test(parts[1])&&
    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
    UUID.test(parts[5])&&parts[6]==="status")return method==="GET";
+ if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reviews"&&
+   parts[5]==="current")return method==="GET";
+ if(parts.length===5&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reviews")
+  return method==="POST";
+ if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
+   parts[5]==="reviewer-file")return method==="GET";
  if(parts.length===4&&parts[0]==="centers"&&UUID.test(parts[1])&&
     parts[2]==="orders"&&UUID.test(parts[3]))return method==="GET";
  return false;
@@ -59,6 +68,21 @@ async function request(req:NextRequest,parts:string[],method:"GET"|"POST"){
     headers:{Authorization:"Bearer "+session,
      ...(body?{"Content-Type":"application/json"}:{})}
    });
+  const isReviewerFile=parts.length===6&&parts[4]==="reports"&&
+   parts[5]==="reviewer-file";
+  if(response.ok&&isReviewerFile){
+   if(response.headers.get("content-type")?.split(";")[0]!=="application/pdf")
+    return error(503,"Original private review PDF type cannot be confirmed.");
+   const content=await response.arrayBuffer();
+   if(content.byteLength<5||content.byteLength>10485760||
+      new TextDecoder().decode(content.slice(0,4))!=="%PDF")
+    return error(503,"The original protected report could not be verified.");
+   return new NextResponse(content,{headers:{
+    "Content-Type":"application/pdf","Cache-Control":"private, no-store",
+    "X-Content-Type-Options":"nosniff",
+    "Content-Disposition":'attachment; filename="careganga-private-review.pdf"'
+   }});
+  }
   const raw:unknown=await response.json().catch(()=>null);
   if(!response.ok){
    const status=[400,401,403,404,409,429].includes(response.status)?
