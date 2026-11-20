@@ -49,6 +49,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
  const [discountReason,setDiscountReason]=useState("");
  const [reviewPassword,setReviewPassword]=useState("");
+ const [rejectReviewRef,setRejectReviewRef]=useState("");
 
  const reload=useCallback(async()=>{
   const [overview,cat,t,p,lab]=await Promise.all([
@@ -180,22 +181,24 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
     "Commercial price proposed. Another authorized reviewer must approve it.");
   }catch(e){setError(e instanceof Error?e.message:"Check the proposed price.");}
  }
- function approve(p:DiagnosticPrice){
+ function reviewPrice(p:DiagnosticPrice,action:"APPROVE"|"REJECT"){
   if(!p.reviewCaseRef||!p.reviewCaseRevision||
     !["SUBMITTED","IN_REVIEW"].includes(p.reviewStatus??"")){
-   setError("The original price review cannot be confirmed. Refresh before approving.");
+   setError("The original price review cannot be confirmed. Refresh before deciding.");
    return;
   }
   if(reviewPassword.length<8){
-   setError("Enter your current Foundation password to approve the proposed price.");
+   setError("Enter your current Foundation password to review this proposed price.");
    return;
   }
   const currentPassword=reviewPassword;
-  setReviewPassword("");
-  void change("approval:"+p.priceRef,
-   "test-prices/"+encodeURIComponent(p.priceRef)+"/approve","POST",
+  setReviewPassword("");setRejectReviewRef("");
+  const approved=action==="APPROVE";
+  void change((approved?"approval:":"rejection:")+p.priceRef,
+   "test-prices/"+encodeURIComponent(p.priceRef)+(approved?"/approve":"/reject"),"POST",
    {expectedVersion:p.version,expectedCaseRevision:p.reviewCaseRevision,currentPassword},
-   "Original Foundation approval completed. No patient payment or assistance was recorded.");
+   approved?"Original Foundation approval completed. No payment was collected.":
+    "Price proposal rejected through the original Foundation review. No published price was created.");
  }
  function deactivate(){
   if(!selected||busy||uncertain||selected.status!=="ACTIVE")return;
@@ -507,8 +510,17 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
         </td><td>
          {canApprovePricing&&p.status==="PROPOSED"&&p.reviewCaseRevision&&
           ["SUBMITTED","IN_REVIEW"].includes(p.reviewStatus??"")?
-          <button type="button" disabled={busy||uncertain||reviewPassword.length<8}
-           onClick={()=>approve(p)}>Approve with current password</button>:"—"}</td>
+          <div className="toolbar">
+           <button type="button" disabled={busy||uncertain||reviewPassword.length<8}
+            onClick={()=>reviewPrice(p,"APPROVE")}>Approve with current password</button>
+           {rejectReviewRef===p.priceRef?<>
+            <span>Reject this commercial price proposal?</span>
+            <button type="button" disabled={busy||uncertain||reviewPassword.length<8}
+             onClick={()=>reviewPrice(p,"REJECT")}>Confirm rejection</button>
+            <button type="button" onClick={()=>setRejectReviewRef("")}>Cancel</button>
+           </>:<button type="button" disabled={busy||uncertain}
+            onClick={()=>setRejectReviewRef(p.priceRef)}>Reject proposal…</button>}
+          </div>:"—"}</td>
        </tr>)}</tbody></table></div>}
     </div>
    </div>}
