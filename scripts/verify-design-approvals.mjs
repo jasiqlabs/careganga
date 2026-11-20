@@ -19,7 +19,27 @@ for(const [key,record] of Object.entries(ledger.records)){
     ?record.artifact:join(base,record.artifact??"");
   const path=join(root,relative);
   if(!existsSync(path)){failures.push(key+": document missing");continue;}
-  const hash=digest(readFileSync(path,"utf8"));
+  const content=readFileSync(path,"utf8");
+  const progressMarker="## Execution progress";
+  const isHealthcareDevelopmentProgress=
+    key==="tasks/cg-16-healthcare-diagnostics"||
+    key==="tasks/cg-17-healthcare-assistance-settlements";
+  // The user-approved story definitions are an immutable design artifact.
+  // Implementation/QA progress must be updated over time without falsely
+  // re-approving planning content or changing its original full-file SHA.
+  // Verify the approved definitions prefix at its EXACT pinned SHA instead.
+  if(isHealthcareDevelopmentProgress && content.includes(progressMarker)){
+    const definitionsHash=digest(content.slice(0,content.indexOf(progressMarker)));
+    if(record.task_definitions_sha256!==definitionsHash ||
+      (record.current_task_definitions_sha256 &&
+        record.current_task_definitions_sha256!==definitionsHash) ||
+      (record.quality_review?.task_definitions_sha256 &&
+        record.quality_review.task_definitions_sha256!==definitionsHash))
+      failures.push(key+": approved story definitions changed; approval needed");
+    else verified++;
+    continue;
+  }
+  const hash=digest(content);
   if(record.sha256!==hash || (record.current_artifact_sha256 &&
       record.current_artifact_sha256!==hash))
     failures.push(key+": SHA-256 mismatch, review and refresh approval");
