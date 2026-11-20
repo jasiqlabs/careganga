@@ -74,3 +74,12 @@ Read [DLD](dld.md) for exact table/index/transaction/facade, [UI/UX](uiux.md) fo
 
 ## 18 November 2026 — original website receiving acceptance
 **Original visitor routes:** /membership; /volunteer; consented Team Directory. **Evidence:** Batch02 021604–021739 and Batch01 020435–020504. **Owned source:** actual CG-04 plans/fees/benefits/application/verification and private CG-19 documents; CG-09 verified payment; no CMS member master. This [original 47-screen acceptance contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md) is mandatory for existing US-001/002/003, without changing business owners, adding phantom records or accepting screenshot values as verified production facts.
+
+
+## 20-Nov-2026 client five-document / email-v2 acceptance (source mapped; not yet executed)
+
+**New client authority:** [Five source designs](../../../../../docs/research/CAREGANGA-CLIENT-DOCUMENTS-REFERENCE-20261120.md); [52 client email templates](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md). This is acceptance refinement of existing stories, **not** an extra module or completed code/QA. Re-check approval hashes before formal stage promotion.
+
+CG-04 owns genuine, unique member/volunteer numbers, membership tier/version, status, fee, term, consent, approved geographic role and final source events. The client's member certificate, welcome letter and volunteer two-sided ID designs require CG-19 generated approved three-document packs (Member ID Card + Welcome Letter + Membership Certificate; Volunteer ID Card + Welcome Letter + Volunteer Certificate). CG-MEM-007 / CG-VOL-005 send only after final approval and all three PDFs exist. Volunteer registration is free. Keep membership type versus ACTIVE status versus Lifetime duration distinct. Original sample ₹ fee and personal/contact details are **never** default rules. Public QR displays only policy-approved verification status, not optional phone/blood-group.
+
+**Status:** Owner integration and PDF/provider/runtime checks remain PENDING/NOT_RUN where absent; historical source-review evidence is unchanged.
