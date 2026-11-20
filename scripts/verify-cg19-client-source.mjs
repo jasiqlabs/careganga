@@ -47,6 +47,15 @@ for(const [i,m] of markers.entries()){
    .map(x=>x[1]))];
  assert.deepEqual(source.placeholders,fields,"Placeholder list: "+m.code);
 }
+const mailCapacitySql=read("apps/backend/db/migrations/1905_cg19_email_body_channel_limit.sql");
+assert.match(mailCapacitySql,/channel='EMAIL' AND length\(body\) BETWEEN 8 AND 12000/);
+assert.match(mailCapacitySql,/channel IN\('IN_APP','SMS'\) AND length\(body\) BETWEEN 8 AND 480/);
+assert.match(mailCapacitySql,/channel='EMAIL' AND length\(body_snapshot\) BETWEEN 8 AND 12000/);
+const existingChannelProvider=read(dir+"infrastructure/channel-providers.ts");
+assert.match(existingChannelProvider,/message\.body\.length>12000/);
+assert.match(existingChannelProvider,/message\.body\.length>160/);
+assert.ok(emails.some(t=>t.body.length>480),"At least one original client email exceeds former 480 cap");
+assert.ok(emails.every(t=>t.body.length<=12000),"All original client email bodies within EMAIL-only limit");
 const draftSql=read("apps/backend/db/migrations/1902_cg19_client_email_source_drafts.sql");
 assert.match(draftSql,/CHECK\(enabled=false\)/);
 assert.match(draftSql,/CHECK\(status='SOURCE_DRAFT'\)/);
