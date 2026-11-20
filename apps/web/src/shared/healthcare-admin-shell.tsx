@@ -23,6 +23,7 @@ export function HealthcareAdminShell({
   healthLabPricing:"My Lab Pricing",
   healthLabOrders:"Lab Orders & Samples",
   healthLabEquipment:"Lab Equipment & Quality",
+  healthAssistancePolicies:"Foundation Contribution Policies",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
   healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
  };
