@@ -162,11 +162,14 @@ export class ClinicalLabResultEvidenceService{
      ["Content-Type","x-goog-if-generation-match","x-amz-checksum-sha256",
       "If-None-Match"].includes(key)&&typeof value==="string"&&value.length<=160))
     throw Error("Original private storage reservation invalid");
-   await this.db.query(
+   const applied=await this.db.query(
     "UPDATE cg19_lab_result_intent SET status='INITIATED',"+
     "reservation_ref=$3,updated_at=now() WHERE root_realm_id=$1 "+
-    "AND id=$2 AND status IN('INITIATED','UNKNOWN') AND reserved_until>now()",
+    "AND id=$2 AND status IN('INITIATED','UNKNOWN') AND reserved_until>now() "+
+    "RETURNING id",
     [actor.actor.realmId,row.id,reserved.reservationRef]);
+   if(!applied.rowCount)
+    throw new ConflictException({code:"LAB_RESULT_UPLOAD_EXPIRED"});
    return {uploadRef:row.id,status:"UPLOAD_READY",uploadReady:true,
     uploadUrl:reserved.url,uploadHeaders:reserved.headers,
     expiresAt:reserved.expiresAt};

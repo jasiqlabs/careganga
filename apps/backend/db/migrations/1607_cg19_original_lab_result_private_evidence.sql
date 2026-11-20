@@ -69,6 +69,30 @@ CREATE TABLE cg19_lab_result_file(
   REFERENCES lab_result_revision(root_realm_id,order_ref,id) ON DELETE RESTRICT,
  CHECK(revoked_at IS NULL OR revoked_at>=created_at)
 );
+
+-- Original CG19 lab report metadata must be tied to the SAME verified
+-- original upload claim before any CG16 result can be marked RESULT_READY.
+CREATE FUNCTION cg19_lab_result_file_source_guard() RETURNS trigger
+ LANGUAGE plpgsql AS $cg19$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM cg19_lab_result_intent intent
+  WHERE intent.root_realm_id=NEW.root_realm_id
+   AND intent.id=NEW.intent_ref AND intent.status='VALIDATED'
+   AND intent.order_ref=NEW.order_ref AND intent.center_ref=NEW.center_ref
+   AND intent.patient_ref=NEW.patient_ref
+   AND intent.result_revision_ref=NEW.result_revision_ref
+   AND intent.mime=NEW.mime AND intent.size_bytes=NEW.size_bytes
+   AND intent.sha256=NEW.sha256 AND intent.object_key=NEW.object_key
+ ) THEN
+  RAISE EXCEPTION 'Verified laboratory file requires original matching upload';
+ END IF;
+ RETURN NEW;
+END $cg19$;
+CREATE TRIGGER cg19_lab_result_file_original_source
+ BEFORE INSERT ON cg19_lab_result_file FOR EACH ROW
+ EXECUTE FUNCTION cg19_lab_result_file_source_guard();
+
 CREATE INDEX ix_cg19_lab_result_protected
  ON cg19_lab_result_file(root_realm_id,order_ref,result_revision_ref,id)
  WHERE revoked_at IS NULL;
@@ -125,7 +149,10 @@ CREATE FUNCTION cg19_lab_result_intent_identity_frozen() RETURNS trigger
 BEGIN
  IF TG_OP='DELETE' OR
   (to_jsonb(NEW)-'status'-'reservation_ref'-'updated_at') IS DISTINCT FROM
-  (to_jsonb(OLD)-'status'-'reservation_ref'-'updated_at') THEN
+  (to_jsonb(OLD)-'status'-'reservation_ref'-'updated_at') OR
+  (OLD.status IN('VALIDATED','REJECTED') AND
+   (NEW.status IS DISTINCT FROM OLD.status OR
+    NEW.reservation_ref IS DISTINCT FROM OLD.reservation_ref)) THEN
   RAISE EXCEPTION 'Original lab report upload intent cannot be rewritten';
  END IF;
  RETURN NEW;
