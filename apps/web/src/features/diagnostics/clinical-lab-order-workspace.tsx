@@ -346,8 +346,8 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     <ClinicalLabProfessionalReviewPanel key={center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}/>}
    {selected.report?.state==="RESULT_READY"?<p className="notice" role="status">
-    The original report PDF was uploaded and scanner-verified. Qualified clinical
-    approval, professional release and patient delivery are not yet available.
+    The original report PDF was uploaded and scanner-verified. Review the separate
+    professional decision below. This alone does not issue or deliver a signed result.
    </p>:canRecordResults&&selected.order.status==="PROCESSING"&&
      selected.samples.length>0&&selected.samples.every(s=>s.status==="PROCESSING")?
     <ClinicalLabResultUpload key={center+":"+selected.order.orderRef}
