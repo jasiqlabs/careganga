@@ -114,6 +114,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"healthcare.assistance.settlements.view",businessLabel:"View source-backed monthly healthcare provider obligations",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.settlements.manage",businessLabel:"Prepare real CG09-accrued monthly provider settlement claims",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.settlements.review",businessLabel:"Independently approve protected healthcare provider settlement claims",group:"Healthcare assistance",assignable:true,sensitive:true},
+  {key:"healthcare.assistance.settlements.pay",businessLabel:"Confirm independently reconciled original provider bank payment against approved Foundation obligation",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.charges.view",businessLabel:"View verified own-center patient contributions",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.charges.accept",businessLabel:"Accept original own-center patient contribution",group:"Healthcare assistance",assignable:true,sensitive:true},
   {key:"healthcare.assistance.policies.view",businessLabel:"View approved healthcare assistance policies",group:"Healthcare assistance",assignable:true,sensitive:true},
