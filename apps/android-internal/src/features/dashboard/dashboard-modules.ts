@@ -256,7 +256,9 @@ export function getAuthorizedModules(
   }
   // CG16 US005 is conditional LAB_ERP + current CG14 center access, but
   // independent of CG15 patient orders and clinical-readiness.
-  if (roleActions.includes("healthcare.assistance.policies.view")) {
+  if (roleActions.includes("healthcare.assistance.policies.view") ||
+      roleActions.includes("healthcare.assistance.policies.review") &&
+      roleActions.includes("approvals.review")) {
     list.push({
       key: "healthAssistancePolicies",
       title: "Foundation Contribution Policies",
