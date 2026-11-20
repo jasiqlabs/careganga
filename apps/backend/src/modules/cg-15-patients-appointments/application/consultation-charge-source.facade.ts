@@ -3,6 +3,8 @@ import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
+import {HealthPublicDirectoryService}
+ from "../../cg-14-healthcare-network/application/health-public-directory.service";
 
 /** Only CG15 can assert appointment identity, patient consent, center,
  * authentic reservation and accepted original consultation fee snapshot.
@@ -23,18 +25,31 @@ export type Cg15HoldQuoteSource=Readonly<{
 const eligible=["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED","NO_SHOW"];
 @Injectable()
 export class ConsultationChargeSourceFacade{
- constructor(private readonly scope:HealthCenterSupportScopeFacade){}
+ constructor(private readonly scope:HealthCenterSupportScopeFacade,
+  private readonly directory:HealthPublicDirectoryService){}
  private async patient(c:PoolClient,a:VerifiedFoundationActor,
   patientRef:string,center:string,staff:boolean){
   if(staff){
    await this.scope.assertCurrent(c,a,center,"health.patients.intake");
+   const current=await c.query(
+    "SELECT 1 FROM cg15_patient_account_link l "+
+    "JOIN account owner ON owner.id=l.account_id "+
+    "AND owner.realm_id=l.root_realm_id "+
+    "WHERE l.root_realm_id=$1 AND l.patient_id=$2 "+
+    "AND l.revoked_at IS NULL AND owner.status='ACTIVE' "+
+    "AND owner.contact_phone_verified_at IS NOT NULL "+
+    "LIMIT 1 FOR SHARE OF l,owner",
+    [a.realmId,patientRef]);
+   if(!current.rowCount)
+    throw new NotFoundException({code:"CONSULTATION_PATIENT_NOT_READY"});
   }else{
    const owned=await c.query(
     "SELECT p.id FROM cg15_patient_account_link l "+
     "JOIN cg15_patient p ON p.root_realm_id=l.root_realm_id AND p.id=l.patient_id "+
     "JOIN account owner ON owner.id=l.account_id AND owner.realm_id=l.root_realm_id "+
     "WHERE l.root_realm_id=$1 AND l.account_id=$2 AND l.patient_id=$3 "+
-    "AND l.revoked_at IS NULL AND owner.status='ACTIVE' FOR SHARE OF p,l,owner",
+    "AND l.revoked_at IS NULL AND owner.status='ACTIVE' "+
+    "AND owner.contact_phone_verified_at IS NOT NULL FOR SHARE OF p,l,owner",
     [a.realmId,a.accountId,patientRef]);
    if(!owned.rowCount)throw new NotFoundException({code:"CONSULTATION_SOURCE_UNAVAILABLE"});
   }
@@ -59,6 +74,23 @@ export class ConsultationChargeSourceFacade{
      !x.consent_granted||!Number.isSafeInteger(x.revision_no))
    throw new ForbiddenException({code:"CONSULTATION_PATIENT_NOT_READY"});
   return x.revision_no!;
+ }
+ /** Reuse the actual CG14 currently published and verified clinical source
+  * before a new patient quote/acceptance. Historical completed acceptance
+  * remains readable without claiming present provider eligibility.
+  */
+ private async eligibleCurrent(c:PoolClient,a:VerifiedFoundationActor,
+  center:string,doctor:string,association:string){
+  const q=await c.query<{public_slug:string}>(
+   "SELECT public_slug FROM health_center "+
+   "WHERE root_realm_id=$1 AND id=$2",[a.realmId,center]);
+  if(!q.rows[0]?.public_slug)
+   throw new ConflictException({code:"CONSULTATION_CENTER_NO_LONGER_VERIFIED"});
+  const list=await this.directory.eligibleScheduleSource(
+   c,doctor,q.rows[0].public_slug);
+  if(!list.some(x=>x.root_ref===a.realmId&&x.center_ref===center&&
+    x.association_ref===association))
+   throw new ConflictException({code:"CONSULTATION_PROVIDER_NO_LONGER_VERIFIED"});
  }
  private async fee(c:PoolClient,a:VerifiedFoundationActor,
   association:string,minor:string,version:number,at:Date){
@@ -92,6 +124,7 @@ export class ConsultationChargeSourceFacade{
    throw new ForbiddenException({code:"CONSULTATION_NOT_YOUR_RESERVATION"});
   if(x.status!=="HELD"||x.expires_at<=new Date())
    throw new ConflictException({code:"CONSULTATION_HOLD_EXPIRED"});
+  await this.eligibleCurrent(c,a,x.center_id,x.doctor_id,x.association_id);
   const feeRef=await this.fee(c,a,x.association_id,x.fee_minor,x.fee_version,x.created_at);
   return {holdRef:x.id,centerRef:x.center_id,doctorRef:x.doctor_id,
    patientRef:x.patient_id,feeMinor:x.fee_minor,feeVersion:x.fee_version,
@@ -128,6 +161,8 @@ export class ConsultationChargeSourceFacade{
    [a.realmId,x.id,x.patient_id,consentRevision]);
   if(!proof.rowCount)
    throw new ConflictException({code:"CONSULTATION_ORIGINAL_CARE_UNAVAILABLE"});
+  if(!allowHistorical)await this.eligibleCurrent(
+   c,a,x.center_id,x.doctor_id,x.association_id);
   const feeRef=await this.fee(c,a,x.association_id,x.fee_minor,x.fee_version,x.created_at);
   return {sourceRef:x.id,sourceVersion:x.revision,patientRef:x.patient_id,
    doctorRef:x.doctor_id,centerRef:x.center_id,associationRef:x.association_id,
