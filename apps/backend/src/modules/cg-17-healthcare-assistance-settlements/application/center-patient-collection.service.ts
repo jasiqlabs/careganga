@@ -38,7 +38,8 @@ type Collection={id:string;charge_ref:string;center_ref:string;
  request_key:string;request_digest:string;source_digest:string;
  receipt_pdf_state?:string|null;receipt_document_ref?:string|null};
 type Adjustment={id:string;collection_ref:string;refund_minor:string;
- cash_refund_receipt:string;kind:"CASH_REFUND"|"CASH_CORRECTION";created_at:Date;
+ cash_refund_receipt:string|null;provider_refund_ref:string|null;
+ kind:"CASH_REFUND"|"CASH_CORRECTION"|"PROVIDER_REFUND";created_at:Date;
  verified_by_account:string;request_key:string;request_digest:string};
 const view=(c:Collection)=>({
  collectionRef:c.id,method:c.method,amountMinor:c.amount_minor,
@@ -132,8 +133,8 @@ export class CenterPatientCollectionService{
    "ORDER BY collect.created_at DESC,collect.id DESC LIMIT 51",[realm,original.id]);
   const collectionsHaveMore=rows.rows.length>50;
   const adjustments=await c.query<Adjustment>(
-   "SELECT id,collection_ref,refund_minor::text,cash_refund_receipt,kind,"+
-   "created_at,verified_by_account,request_key,request_digest "+
+   "SELECT id,collection_ref,refund_minor::text,cash_refund_receipt,"+
+   "provider_refund_ref,kind,created_at,verified_by_account,request_key,request_digest "+
    "FROM center_collection_adjustment WHERE root_realm_id=$1 "+
    "AND charge_ref=$2 ORDER BY created_at DESC,id DESC LIMIT 51",
    [realm,original.id]);
@@ -152,6 +153,7 @@ export class CenterPatientCollectionService{
     adjustmentRef:x.id,collectionRef:x.collection_ref,
     amountMinor:x.refund_minor,kind:x.kind,
     refundReceiptNumber:x.cash_refund_receipt,
+    providerRefundRef:x.provider_refund_ref,
     recordedAt:x.created_at.toISOString()})),
    adjustmentsHaveMore,
    foundationIncomeRecorded:false,foundationLiabilityCreated:false
@@ -215,6 +217,16 @@ export class CenterPatientCollectionService{
     return {...view(prior.rows[0]),replayed:true,
      statement:await this.statement(c,a.realmId,original)};
    }
+   // Never attest cash while an authenticated online order remains
+   // unresolved: an authentic capture might still arrive from the provider.
+   // Offline cash stays independent when no gateway attempt exists.
+   const gateway=await c.query(
+    "SELECT id FROM center_payment_attempt "+
+    "WHERE root_realm_id=$1 AND charge_ref=$2 "+
+    "AND status IN('INITIALIZING','PENDING','UNKNOWN') LIMIT 1",
+    [a.realmId,ref]);
+   if(gateway.rowCount)
+    throw new ConflictException({code:"CENTER_COLLECTION_GATEWAY_PENDING_RECONCILIATION"});
    const totals=await this.totals(c,a.realmId,ref);
    const due=BigInt(original.due_minor);
    if(totals.collected+BigInt(amountMinor)>due)
