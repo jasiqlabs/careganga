@@ -7,7 +7,8 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeConsultationContribution} from "../healthcare-assistance/native-consultation-contribution";
 
 type Props={token:string;onExit:()=>void;onExpired:()=>void;
- canViewCharge:boolean;canAcceptCharge:boolean};
+ canViewCharge:boolean;canAcceptCharge:boolean;
+ canViewCollections:boolean;canRecordCollections:boolean;canRefundCollections:boolean};
 type Center={centerRef:string;centerName:string;providerName:string;timeZone:string};
 type Doctor={doctorRef:string;doctorName:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;bookable:boolean};
@@ -53,7 +54,8 @@ const money=(minor:string)=>"₹"+(Number(minor)/100).toFixed(2);
  * person-specific one-time proof, global doctor hold, and private actor.
  */
 export function NativeCenterAssistedBooking({token,onExit,onExpired,
- canViewCharge,canAcceptCharge}:Props){
+ canViewCharge,canAcceptCharge,canViewCollections,
+ canRecordCollections,canRefundCollections}:Props){
  const [centers,setCenters]=useState<Center[]>([]),[center,setCenter]=useState("");
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [offset,setOffset]=useState(0),[day,setDay]=useState<Daily|null>(null);
@@ -310,7 +312,8 @@ export function NativeCenterAssistedBooking({token,onExit,onExpired,
     {canViewCharge&&<NativeConsultationContribution
      key={booking.bookingRef} bookingRef={booking.bookingRef}
      centerRef={center} staffToken={token} canAccept={canAcceptCharge}
-     onExpired={onExpired}/>}
+     canViewCollections={canViewCollections} canRecordCollections={canRecordCollections}
+     canRefundCollections={canRefundCollections} onExpired={onExpired}/>}
     {button("Book another patient",clear,busy)}
    </View>}
    {uncertain&&<View style={styles.card}>
