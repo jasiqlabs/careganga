@@ -42,7 +42,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
   if(data.hasReview){
    setNotice("Independent professional review recorded: "+
     (data.reviewDecision==="APPROVE"?"approved":"rejected")+
-    ". A medical document is NOT issued or delivered.");
+    (data.patientRelease==="RELEASED"?". The approved PDF has been released to the patient.":". The PDF awaits a separate Release action."));
    setUncertain(false);original.current=null;setPassword("");
   }
  }
@@ -155,6 +155,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
    </div>}
   </>}
   {current?.hasReview&&<p role="status">Independent review: {current.reviewDecision}.
-   Patient report release: not issued. Delivery: not sent.</p>}
+   Patient report: {current.patientRelease==="RELEASED"?"Released privately":"Awaiting release"}.
+   No notification was sent.</p>}
  </section>;
 }
