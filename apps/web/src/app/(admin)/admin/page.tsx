@@ -6,6 +6,7 @@ import { AdminProfileWorkspace } from "../../../features/identity-access/admin-p
 import { FoundationAdminNav } from "../../../shared/foundation-admin-nav";
 import { AuthWelcomeListener } from "../../../shared/auth-notification";
 import { ClinicianAccountAcceptance } from "../../../features/health-network/clinician-account-link";
+import { AccessVerificationView } from "../../../shared/access-verification-view";
 export const dynamic="force-dynamic";
 export default async function AdminHome() {
   const token=(await cookies()).get("cg_staff_session")?.value;
@@ -81,7 +82,7 @@ export default async function AdminHome() {
     }catch { /* Offline is not permission to show protected data. */ }
   }
   if (invalidSession) redirect("/admin/login");
-  if (!current) return <main className="page main"><h1>Cannot confirm your access</h1><p>Protected information is unavailable until your session can be verified.</p><Link href="/admin/login">Sign in</Link></main>;
+  if (!current) return <AccessVerificationView mode="unconfirmed-session" />;
   return <div className="shell">
     <AuthWelcomeListener displayName={current.displayName} roleName={current.roleName} />
     <FoundationAdminNav initialActions={verifiedActions} active="account" displayName={current.displayName} roleName={current.roleName} canViewRoles={canViewRoles} canViewAccounts={canViewAccounts} canManageSecurityPolicy={canManageSecurityPolicy}

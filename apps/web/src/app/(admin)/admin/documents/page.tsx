@@ -1,17 +1,15 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {PrivateCaseEvidencePanel} from "../../../../features/documents/private-case-evidence-panel";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function PrivateDocumentsPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Private documents unavailable</h1>
-    <p>Your current Foundation permissions could not be verified.</p>
-    <Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Private documents unavailable" description="Your current Foundation permissions could not be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,access,eligibility]=await Promise.all([
@@ -64,8 +62,6 @@ export default async function PrivateDocumentsPage(){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))
       throw error;
-    return <main className="page main"><h1>Private documents unavailable</h1>
-      <p>The protected session could not be verified.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Private documents unavailable" description="The protected session could not be verified." />;
   }
 }

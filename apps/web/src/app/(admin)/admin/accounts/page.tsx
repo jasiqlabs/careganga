@@ -4,14 +4,13 @@ import Link from "next/link";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { AccountsPanel } from "../../../../features/identity-access/accounts-panel";
 import { AccessDeniedView } from "../../../../shared/access-denied-view";
+import { AccessVerificationView } from "../../../../shared/access-verification-view";
 export const dynamic="force-dynamic";
 export default async function FoundationAccounts(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Access unavailable</h1>
-    <p>Staff information remains hidden until the service can verify your access.</p>
-    <Link href="/admin">Return to my account</Link></main>;
+  if(!backend)return <AccessVerificationView mode="unverified-access" title="Access unavailable" description="Staff information remains hidden until the service can verify your access." />;
   try{
     const [me,rights]=await Promise.all([
       fetch(new URL("/api/identity/me",backend),{
@@ -55,8 +54,6 @@ export default async function FoundationAccounts(){
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <main className="page main"><h1>Access cannot be verified</h1>
-      <p>Staff information is hidden until your current permissions are confirmed.</p>
-      <Link href="/admin">Return to my account</Link></main>;
+    return <AccessVerificationView mode="unverified-access" />;
   }
 }

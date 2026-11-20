@@ -1,17 +1,15 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {CommunicationsWorkspace} from "../../../../features/communications/communications-workspace";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function FoundationCommunicationsPage(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Communications unavailable</h1>
-    <p>Current Foundation authorization could not be verified.</p>
-    <Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Communications unavailable" description="Current Foundation authorization could not be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,rights]=await Promise.all([
@@ -65,8 +63,6 @@ export default async function FoundationCommunicationsPage(){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))
       throw error;
-    return <main className="page main"><h1>Communications unavailable</h1>
-      <p>Current role access could not be verified.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Communications unavailable" description="Current role access could not be verified." />;
   }
 }

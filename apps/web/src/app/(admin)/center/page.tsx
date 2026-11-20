@@ -1,17 +1,16 @@
 import {AccessDeniedView} from "../../../shared/access-denied-view";
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {CenterDraftPortal} from "../../../features/health-network/center-draft-portal";
 import {HealthcareAdminShell} from "../../../shared/healthcare-admin-shell";
+import {UnavailablePage} from "../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function CenterHome(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Center portal unavailable</h1>
-    <p>Current access could not be verified.</p><Link href="/admin">My account</Link></main>;
+  if(!backend)return <UnavailablePage title="Center portal unavailable" description="Current access could not be verified." />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [me,access]=await Promise.all([
@@ -41,8 +40,6 @@ export default async function CenterHome(){
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&
       typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-    return <main className="page main"><h1>Center access cannot be verified</h1>
-      <p>Your private center data remains unavailable until the session can be verified.</p>
-      <Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Center access cannot be verified" description="Your private center data remains unavailable until the session can be verified." />;
   }
 }

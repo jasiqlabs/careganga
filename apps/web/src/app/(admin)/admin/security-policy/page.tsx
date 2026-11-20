@@ -1,16 +1,15 @@
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
-import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {SecurityPolicyPanel} from "../../../../features/identity-access/security-policy-panel";
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
+import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function AdminSecurityPolicy(){
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
-  if(!backend)return <main className="page main"><h1>Access unavailable</h1>
-    <p>Protected policy remains hidden.</p></main>;
+  if(!backend)return <UnavailablePage title="Access unavailable" description="Protected policy remains hidden." linkHref={null} />;
   try{
     const headers={Authorization:"Bearer "+token};
     const [profile,access,policy]=await Promise.all([
@@ -50,7 +49,6 @@ export default async function AdminSecurityPolicy(){
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <main className="page main"><h1>Security policy unavailable</h1>
-      <p>We could not verify your current protected session.</p><Link href="/admin">My account</Link></main>;
+    return <UnavailablePage title="Security policy unavailable" />;
   }
 }

@@ -14,6 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { IconUserRound, IconArrowRight } from "./auth-icons";
+export {
+  AccessVerificationScreen,
+  type AccessVerificationScreenProps,
+  type NativeAccessVerificationMode
+} from "./access-verification-screen";
 
 export interface AccessDeniedScreenProps {
   title?: string;

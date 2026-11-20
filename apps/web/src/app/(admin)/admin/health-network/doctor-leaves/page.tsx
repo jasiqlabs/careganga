@@ -1,17 +1,16 @@
 import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 import {cookies} from "next/headers";
-import Link from "next/link";
 import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {DoctorLeaveReviewWorkspace}
  from "../../../../../features/appointments/doctor-leave-review-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 export default async function DoctorLeaveAdminPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main"><h1>Review unavailable</h1>
-  <p>Current Foundation access could not be verified.</p></main>;
+ if(!backend)return <UnavailablePage title="Review unavailable" description="Current Foundation access could not be verified." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,access]=await Promise.all([
@@ -43,8 +42,6 @@ export default async function DoctorLeaveAdminPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Current permissions unavailable</h1>
-   <p>Doctor leave reviews stay protected until permissions can be verified.</p>
-  </main>;
+  return <UnavailablePage title="Current permissions unavailable" description="Doctor leave reviews stay protected until permissions can be verified." linkHref={null} />;
  }
 }

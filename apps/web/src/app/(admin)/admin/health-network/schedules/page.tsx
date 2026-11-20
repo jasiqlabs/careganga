@@ -5,16 +5,14 @@ import {redirect} from "next/navigation";
 import {HealthcareAdminShell} from "../../../../../shared/healthcare-admin-shell";
 import {DoctorScheduleWorkspace}
  from "../../../../../features/appointments/doctor-schedule-workspace";
+import {UnavailablePage} from "../../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
 
 export default async function DoctorScheduleAdminPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)redirect("/admin/login");
  const backend=process.env.BACKEND_URL;
- if(!backend)return <main className="page main">
-  <h1>Doctor schedules unavailable</h1>
-  <p>Foundation permissions could not be confirmed.</p>
- </main>;
+ if(!backend)return <UnavailablePage title="Doctor schedules unavailable" description="Foundation permissions could not be confirmed." linkHref={null} />;
  try{
   const headers={Authorization:"Bearer "+token};
   const [me,access]=await Promise.all([
@@ -46,9 +44,6 @@ export default async function DoctorScheduleAdminPage(){
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&
     typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
-  return <main className="page main"><h1>Schedules unavailable</h1>
-   <p>Your current permission could not be confirmed. Try again shortly.</p>
-   <Link href="/admin/health-network">Back to healthcare management</Link>
-  </main>;
+  return <UnavailablePage title="Schedules unavailable" description="Your current permission could not be confirmed. Try again shortly." linkHref="/admin/health-network" linkLabel="Back to healthcare management" />;
  }
 }
