@@ -27,7 +27,7 @@ function verified(x:Summary){
  return typeof x.month==="string"&&typeof x.state==="string"&&
   typeof x.approvedFoundationMinor==="string"&&
   typeof x.actualPaidMinor==="string"&&
-  typeof x.outstandingMinor==="string"&&x.paidVerified===false&&
+  typeof x.outstandingMinor==="string"&&typeof x.paidVerified==="boolean"&&
   x.patientCollectionNotFoundationIncome===true;
 }
 /** Uses CG14/CG15/CG17/CG09 originals. Nothing here executes a bank transfer.
