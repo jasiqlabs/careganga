@@ -103,7 +103,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"diagnostics.catalog.manage",businessLabel:"Maintain diagnostic tests and packages",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
   {key:"diagnostics.pricing.view",businessLabel:"View eligible center test pricing",group:"Diagnostic tests & pricing",assignable:true,sensitive:false},
   {key:"diagnostics.pricing.manage",businessLabel:"Propose test pricing at an assigned lab",group:"Diagnostic tests & pricing",assignable:true,sensitive:true},
-  {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:true,sensitive:true}
+  {key:"diagnostics.pricing.approve",businessLabel:"Independently approve lab test prices",group:"Diagnostic tests & pricing",assignable:false,sensitive:true}
 ]);
 export function capabilitiesInUse():readonly Capability[]{return capabilities;}
 export function implementedCapability(key:string):Capability|undefined{

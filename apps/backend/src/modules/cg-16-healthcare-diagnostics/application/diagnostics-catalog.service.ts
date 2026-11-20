@@ -479,6 +479,19 @@ export class DiagnosticsCatalogService{
    return {prices:r.rows};
   });
  }
+ private async assertPackagePriceWindow(tx:PoolClient,root:string,
+  kind:"TEST"|"PACKAGE",ref:string,from:Date,until:Date|null){
+  if(kind!=="PACKAGE")return;
+  const p=await tx.query<{active_from:Date;active_to:Date|null}>(
+   "SELECT active_from,active_to FROM diagnostic_package "+
+   "WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
+   [root,ref]);
+  const row=p.rows[0];
+  if(!row||from.getTime()<row.active_from.getTime()||
+    row.active_to&&(!until||until.getTime()>row.active_to.getTime()))
+   throw new BadRequestException({code:"LAB_CATALOG_RATE_OUTSIDE_WINDOW",
+    field:"effectiveToUtc"});
+ }
  async proposePrice(bearer:string,ref:string,raw:unknown,own=false){
   const centerRef=uuid(ref,"centerRef");
   const x=obj(raw,["requestKey","mappingRef","expectedMappingVersion",
@@ -515,6 +528,9 @@ export class DiagnosticsCatalogService{
     throw new ConflictException({code:"LAB_CATALOG_VERSION_CHANGED"});
    await this.eligibleItem(tx,actor.realmId,m.rows[0].test_or_package_kind,
     (m.rows[0].test_ref??m.rows[0].package_ref)!);
+   await this.assertPackagePriceWindow(tx,actor.realmId,
+    m.rows[0].test_or_package_kind,(m.rows[0].test_ref??m.rows[0].package_ref)!,
+    new Date(data.from),data.to?new Date(data.to):null);
    const p=await tx.query<{id:string}>(
     "INSERT INTO lab_center_price_version(root_realm_id,center_test_mapping_ref,"+
     "version_no,effective_from,effective_to,base_price_minor,"+
@@ -566,6 +582,10 @@ export class DiagnosticsCatalogService{
     throw new ConflictException({code:"LAB_CATALOG_VERSION_CHANGED"});
    if(proposal.rows[0].proposed_by===actor.accountId)
     throw new ForbiddenException("A different authorized reviewer must approve this price");
+   await this.assertPackagePriceWindow(tx,actor.realmId,
+    mapping.rows[0].test_or_package_kind,
+    (mapping.rows[0].test_ref??mapping.rows[0].package_ref)!,
+    proposal.rows[0].effective_from,proposal.rows[0].effective_to);
    if(proposal.rows[0].effective_to&&
      proposal.rows[0].effective_to.getTime()<=Date.now())
     throw new ConflictException({code:"LAB_CATALOG_PRICE_EXPIRED"});
