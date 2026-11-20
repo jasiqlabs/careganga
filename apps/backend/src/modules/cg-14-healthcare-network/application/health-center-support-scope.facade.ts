@@ -11,6 +11,29 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 @Injectable()
 export class HealthCenterSupportScopeFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
+ /** Reuse the original CG14 current center+representative affiliation for
+  * later healthcare merchant settings, no shadow center master or CG17 import.
+  */
+ async assignedCenters(tx:PoolClient,actor:VerifiedFoundationActor,action:string){
+  await this.identity.assertCurrent(tx,actor,action);
+  const rows=await tx.query<{centerRef:string;centerName:string}>(
+   "SELECT center.id AS \"centerRef\",center.display_name AS \"centerName\" "+
+   "FROM health_center_account_affiliation affiliation "+
+   "JOIN health_center center ON center.root_realm_id=affiliation.root_realm_id "+
+   "AND center.id=affiliation.center_id "+
+   "JOIN health_provider provider ON provider.root_realm_id=center.root_realm_id "+
+   "AND provider.id=center.provider_id "+
+   "JOIN account a ON a.id=affiliation.account_ref "+
+   "AND a.realm_id=affiliation.root_realm_id "+
+   "WHERE affiliation.root_realm_id=$1 AND affiliation.account_ref=$2 "+
+   "AND affiliation.status='ACTIVE' AND a.status='ACTIVE' "+
+   "AND center.status='VERIFIED' AND center.access_state='ENABLED' "+
+   "AND provider.status='VERIFIED' ORDER BY center.display_name,center.id "+
+   "LIMIT 51",[actor.realmId,actor.accountId]);
+  if(rows.rows.length>50)
+   throw new NotFoundException("Assigned healthcare center list is too large");
+  return rows.rows;
+ }
  async assertCurrent(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string,
   action:string="health.centers.draft.edit"){
   if(!UUID.test(centerRef))
