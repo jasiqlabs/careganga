@@ -55,6 +55,10 @@ export function NativeLabPricingPanel({token,centerRef,own,canMap,canPropose,
    await diagnosticRequest(token,command.route,"POST",{...command.body,
     requestKey:command.key});
    attempt.current=null;setUncertain(false);
+   if(command.route===prefix+"/tests")setItemRef("");
+   if(command.route===prefix+"/test-prices"){
+    setMappingRef("");setBase("");setPatient("");setStart("");setEnd("");setReason("");
+   }
    setPassword("");
    setMessage(command.label);
    try{await refresh()}catch{
