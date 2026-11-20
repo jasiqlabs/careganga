@@ -1,9 +1,10 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {ClinicalLabOrderService} from "../application/clinical-lab-order.service";
 import {ClinicalLabOptionsService} from "../application/clinical-lab-options.service";
 import {ClinicalLabCustodyService} from "../application/clinical-lab-custody.service";
 import {ClinicalLabResultEvidenceService}
  from "../application/clinical-lab-result-evidence.service";
+import {ClinicalLabProfessionalReviewService} from "../application/clinical-lab-professional-review.service";
 
 /** Internal authenticated CG16 clinical operations, NEVER public checkout.
  * Backend CG01 + current center grant + real CG15 care consent are mandatory.
@@ -13,7 +14,8 @@ export class ClinicalLabOrderController{
  constructor(private readonly orders:ClinicalLabOrderService,
   private readonly options:ClinicalLabOptionsService,
   private readonly custody:ClinicalLabCustodyService,
-  private readonly reports:ClinicalLabResultEvidenceService){}
+  private readonly reports:ClinicalLabResultEvidenceService,
+  private readonly professional:ClinicalLabProfessionalReviewService){}
  @Get("centers/eligible")
  eligible(@Headers("authorization")token:string){
   return this.options.centers(token);
@@ -66,6 +68,23 @@ export class ClinicalLabOrderController{
   @Param("uploadRef")upload:string){
   return this.reports.confirm(token,center,order,upload);
  }
+ @Get("centers/:centerRef/orders/:orderRef/reviews/current")
+ currentReview(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string){
+  return this.professional.reviewable(token,center,order);
+ }
+ @Get("centers/:centerRef/orders/:orderRef/reports/reviewer-file")
+ async reviewerPdf(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string){
+  const bytes=await this.professional.reviewerFile(token,center,order);
+  return new StreamableFile(bytes,{type:"application/pdf",
+   disposition:'attachment; filename="careganga-private-review.pdf"',
+   length:bytes.length});
+ }
+ @Post("centers/:centerRef/orders/:orderRef/reviews")
+ review(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string,
+  @Body()body:unknown){return this.professional.decide(token,center,order,body);}
  @Get("centers/:centerRef/orders/:orderRef")
  detail(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("orderRef")order:string){
