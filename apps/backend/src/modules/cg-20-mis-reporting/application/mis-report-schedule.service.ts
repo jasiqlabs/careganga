@@ -81,6 +81,55 @@ export function zonedLocalDate(date:string,time:string,zone:string){
    message:"That local time does not exist on this date. Choose another time."});
  return new Date(guess);
 }
+/** Recompute future recurrence from the local wall calendar, never by adding
+ * 24h UTC (DST) or scanning account data. Existing recurrence anchor remains
+ * exact across restarts/claims; nonexistent DST times are skipped, not shifted
+ * to a different hour. Max 24 candidates and no unbounded iteration.
+ */
+export function nextScheduleOccurrence(input:{
+ cadence:string;timezone:string;local_time:string;
+ weekday:number|null;monthday:number|null;annual_month:number|null
+},after:Date):Date{
+ const zone=input.timezone;
+ const fmt=new Intl.DateTimeFormat("en-GB",{timeZone:zone,
+  year:"numeric",month:"2-digit",day:"2-digit"});
+ const parts=Object.fromEntries(
+  fmt.formatToParts(after).map(p=>[p.type,p.value]));
+ const y=Number(parts.year),m=Number(parts.month),d=Number(parts.day);
+ const time=input.local_time.slice(0,5);
+ const base=new Date(Date.UTC(y,m-1,d));
+ const possible:(Date|null)[]=[];
+ if(input.cadence==="DAILY"){
+  for(let n=0;n<4;n++)possible.push(new Date(base.getTime()+n*86400000));
+ }else if(input.cadence==="WEEKLY"&&input.weekday!==null){
+  for(let n=0;n<22;n++){
+   const day=new Date(base.getTime()+n*86400000);
+   if(day.getUTCDay()===input.weekday)possible.push(day);
+  }
+ }else if(input.cadence==="MONTHLY"&&input.monthday!==null){
+  for(let n=0;n<15;n++){
+   possible.push(new Date(Date.UTC(y,m-1+n,input.monthday)));
+  }
+ }else if(input.cadence==="YEARLY"&&
+   input.monthday!==null&&input.annual_month!==null){
+  for(let n=0;n<5;n++){
+   possible.push(new Date(Date.UTC(y+n,input.annual_month-1,input.monthday)));
+  }
+ }
+ for(const x of possible){
+  if(!x)continue;
+  const day=x.toISOString().slice(0,10);
+  try{
+   const candidate=zonedLocalDate(day,time,zone);
+   if(candidate.getTime()>after.getTime()+1000)return candidate;
+  }catch(e){
+   if(!(e instanceof BadRequestException))throw e;
+  }
+ }
+ throw new ConflictException({code:"MIS_SCHEDULE_DATE_INVALID",
+  message:"A future occurrence cannot be calculated. Review the schedule."});
+}
+
 const summary=(row:Schedule)=>({
  ref:row.id,state:row.state,cadence:row.cadence,
  savedReportName:row.saved_report_name??"Saved report",
