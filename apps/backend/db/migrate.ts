@@ -11,6 +11,18 @@ try { dns.setDefaultResultOrder?.("ipv4first"); } catch {}
 try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
 try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../.env"); } catch {}
 
+// A duplicate table-creation migration was accidentally committed to main
+// after the canonical original CG19 1438 migration. Preserve its historical
+// bytes/checksum: deployed schema_migration ledgers may already contain it.
+// On a fresh database the canonical first 1438 has already created the tables.
+// Record this *exact* legacy file as a documented no-op, never execute its
+// duplicate CREATE TABLE statements or accept an arbitrary modified checksum.
+// A forward-only 1445 migration carries the needed supplemental constraints.
+const legacyDuplicate1438 = {
+  filename: "1438_cg19_patient_owned_private_files.sql",
+  sha256: "4d6fdea87c43adf79248d610978512f10e2b3f2017f23912e3fad93500ac8579"
+} as const;
+
 async function migrate(): Promise<void> {
   const url = process.env.DATABASE_MIGRATION_URL;
   if (!url) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
@@ -57,6 +69,38 @@ async function migrate(): Promise<void> {
         );
         if (prior.rowCount) {
           if (prior.rows[0].sha256 !== digest) throw new Error("Applied migration changed: " + name);
+          continue;
+        }
+        if (name === legacyDuplicate1438.filename) {
+          if (digest !== legacyDuplicate1438.sha256)
+            throw new Error("Known legacy CG19 migration checksum changed: " + name);
+          // Running the duplicate migration would fail CREATE TABLE on clean
+          // installs. Require the canonical original patient tables and event
+          // timestamp so an incomplete/unexpected DB cannot be treated as good.
+          const proof = await client.query<{
+            intent: boolean; file: boolean; event: boolean; event_created_at: boolean
+          }>(`SELECT
+            to_regclass('cg19_patient_file_intent') IS NOT NULL AS intent,
+            to_regclass('cg19_patient_private_file') IS NOT NULL AS file,
+            to_regclass('cg19_patient_file_event') IS NOT NULL AS event,
+            EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema=current_schema()
+                AND table_name='cg19_patient_file_event'
+                AND column_name='created_at') AS event_created_at`);
+          if (!proof.rows[0]?.intent || !proof.rows[0]?.file ||
+              !proof.rows[0]?.event || !proof.rows[0]?.event_created_at)
+            throw new Error("Canonical CG19 1438 schema absent; requires DBA reconciliation");
+          await client.query("BEGIN");
+          try {
+            await client.query(
+              "INSERT INTO schema_migration (filename,sha256) VALUES ($1,$2)",
+              [name,digest]
+            );
+            await client.query("COMMIT");
+          } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+          }
           continue;
         }
         await client.query("BEGIN");
