@@ -941,6 +941,7 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={closeOwnCenter}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeOwnCenterPortal token={token}
+          canViewSettlements={roleActions.includes("healthcare.assistance.settlements.view")}
           onExit={closeOwnCenter} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthOwnCenterPortal", closeOwnCenter);
