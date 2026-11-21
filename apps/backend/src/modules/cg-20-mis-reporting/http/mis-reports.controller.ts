@@ -87,9 +87,13 @@ export class MisReportsController{
   @Body()body:unknown){return this.schedule.pause(token,ref,body);}
  @Post("schedules/:scheduleRef/resume")
  @Header("Cache-Control","private, no-store")
- scheduleResume(@Headers("authorization")token:string,@Param("scheduleRef")ref:string){
-  return this.schedule.resume(token,ref);
- }
+ scheduleResume(@Headers("authorization")token:string,@Param("scheduleRef")ref:string,
+  @Body()body:unknown){return this.schedule.resume(token,ref,body);}
+ @Post("schedules/:scheduleRef/edit")
+ @Header("Cache-Control","private, no-store")
+ scheduleEdit(@Headers("authorization")token:string,@Param("scheduleRef")ref:string,
+  @Body()body:unknown){return this.schedule.edit(token,ref,body);}
+
  @Get("schedules/:scheduleRef/history")
  @Header("Cache-Control","private, no-store")
  scheduleHistory(@Headers("authorization")token:string,@Param("scheduleRef")ref:string){
