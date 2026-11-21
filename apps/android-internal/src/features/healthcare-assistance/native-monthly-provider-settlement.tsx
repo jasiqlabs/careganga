@@ -11,7 +11,8 @@ type Props={token:string;canPropose:boolean;canReview:boolean;canPay:boolean;
  onExit:()=>void;onExpired:()=>void};
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
- postedLiabilities?:number;approvedFoundationMinor:string;actualPaidMinor:string;
+ postedLiabilities?:number;eligibleAccruedMinor?:string;proposedClaimMinor?:string;
+ approvedFoundationMinor:string;actualPaidMinor:string;
  outstandingMinor:string;patientCollectionNotFoundationIncome:true;paidVerified:boolean;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
@@ -164,13 +165,17 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
    {source&&<View style={styles.card}>
     <Text style={styles.heading}>Month {source.month}</Text>
     <Text style={styles.note}>Claim: {source.state.replaceAll("_"," ")}</Text>
-    <Text style={styles.amount}>Foundation eligible or approved: {
-     money(source.approvedFoundationMinor)}</Text>
+    <Text style={styles.amount}>{source.state==="NOT_PREPARED"?
+     "Eligible posted Foundation liabilities":source.state==="PROPOSED"?
+     "Prepared claim awaiting approval":"Approved monthly Foundation claim"}: {
+     money(source.state==="NOT_PREPARED"?source.eligibleAccruedMinor??"0":
+      source.state==="PROPOSED"?source.proposedClaimMinor??"0":
+      source.approvedFoundationMinor)}</Text>
     <Text style={styles.amount}>Actual verified provider payout: {
      money(source.actualPaidMinor)}</Text>
     <Text style={styles.amount}>Claim still due: {
-     source.state==="NOT_PREPARED"?"Not yet approved":
-     money(source.outstandingMinor)}</Text>
+     ["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(source.state)?
+      money(source.outstandingMinor):"Not yet approved"}</Text>
     {source.collectionsScope==="VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"&&
      source.centerGrossServicesMinor!==undefined&&<View style={styles.card}>
      <Text style={styles.heading}>Original completed-service financial breakdown</Text>
