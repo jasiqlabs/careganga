@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 type Report={releaseRef:string;orderLabel:string;reportVersion:number;
- releasedAt:string};
+ releasedAt:string;superseded?:boolean};
 type Response={reports:Report[];complete:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function MyLabReports(){
@@ -55,6 +55,7 @@ export function MyLabReports(){
   {items.map(x=><article key={x.releaseRef}>
    <strong>{x.orderLabel}</strong> · Report version {x.reportVersion}
    <span> · Released {new Date(x.releasedAt).toLocaleDateString("en-IN")}</span>
+   {x.superseded&&<strong> · Earlier version — corrected report available</strong>}
    <button type="button" disabled={busy}
     onClick={()=>void download(x)}>Download PDF</button>
   </article>)}
