@@ -41,6 +41,11 @@ export class MisReportsController{
  sharedWithMe(@Headers("authorization")token:string){
   return this.saved.sharedWithMe(token);
  }
+ @Get("saved/:reportRef/grants")
+ @Header("Cache-Control","private, no-store")
+ ownedGrants(@Headers("authorization")token:string,@Param("reportRef")ref:string){
+  return this.saved.ownedGrants(token,ref);
+ }
  @Post("saved/:reportRef/share")
  @Header("Cache-Control","private, no-store")
  shareDefinition(@Headers("authorization")token:string,@Param("reportRef")ref:string,
