@@ -46,6 +46,7 @@ export type FoundationAdminNavProps = {
     | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
+    | "healthClinicianActivity"
     | "healthPatientAdmin";
   displayName: string;
   roleName: string;
@@ -698,6 +699,7 @@ export function FoundationAdminNav({
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
+  const clinicianActivityAccess = allowed("health.visits.clinical.manage",false);
   const patientAdminAccess = allowed("health.patients.admin.view", canViewPatientAdmin);
   const budgetAccess = currentActions ? currentActions.has("finance.budgets.view") : canViewBudgets;
   const budgetReviewAccess = currentActions
@@ -737,6 +739,7 @@ export function FoundationAdminNav({
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
+    ...(clinicianActivityAccess ? [{ key: "healthClinicianActivity" as const, label: "My Consultations", href: "/admin/health-network/my-clinical-activity" }] : []),
     ...(patientAdminAccess ? [{ key: "healthPatientAdmin" as const, label: "Patient & Booking Management", href: "/admin/health-network/patients" }] : []),
     ...(financeAccess ? [{ key: "finance" as const, label: "Accounts", href: "/admin/finance" }] : []),
     ...(voucherAccess ? [{ key: "financeVouchers" as const, label: "Voucher Drafts", href: "/admin/finance/vouchers" }] : []),
