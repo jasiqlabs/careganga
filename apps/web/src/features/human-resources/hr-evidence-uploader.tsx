@@ -57,6 +57,22 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
   setSelected(null);setProblem("");setMessage("");
   activeUpload.current=null;
  },[applicationRef,revision]);
+ const revoke=async(file:Verified)=>{
+  if(!canManage||busy||!file.cleanVerified||file.sourceVersion!==revision)return;
+  setBusy(true);setProblem("");setMessage("");
+  try{
+   const outcome=await json("files/"+file.fileRef+"/revoke",{
+    method:"POST",body:JSON.stringify({expectedRevision:file.fileVersion})});
+   if(!outcome||typeof outcome!=="object"||!("revoked" in outcome)||
+    outcome.revoked!==true)
+    throw Error("Original evidence revocation was not confirmed.");
+   await refresh();
+   setMessage("Private evidence revoked. Original audit history is retained.");
+  }catch(e){
+   setProblem(e instanceof Error?e.message:
+    "Revocation outcome is uncertain. Refresh before taking another action.");
+  }finally{setBusy(false);}
+ };
  const upload=async()=>{
   if(!canManage||!selected||busy)return;
   if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(selected.type)||
@@ -126,6 +142,11 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
       {types.find(x=>x.value===file.classification)?.label??"Private evidence"}:
       {" "}{file.cleanVerified?"Verified":file.status.replaceAll("_"," ")}
       {file.sourceVersion!==revision?" (prior draft version)":""}
+      {canManage&&file.cleanVerified&&file.sourceVersion===revision&&
+       <button type="button" onClick={()=>void revoke(file)} disabled={busy}
+        style={{marginLeft:10,border:"1px solid #CBD5E1",background:"#fff",
+         color:"#991B1B",borderRadius:8,padding:"5px 9px",cursor:"pointer"}}>
+        Revoke unused proof</button>}
      </li>)}</ul>:<p style={{margin:0}}>No verified files for this application.</p>}
   {canManage&&<div style={{display:"grid",gap:10}}>
     <label style={{display:"grid",gap:5,fontWeight:600}}>Evidence category
