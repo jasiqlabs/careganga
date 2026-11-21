@@ -370,6 +370,22 @@ checks.push(["Native gallery photo/video/PDF picker follows authored mediaType",
  internalMedia.includes('else if(type==="PUBLICATION")add("GALLERY",i,["application/pdf"])')&&
  internalMedia.includes('!mime.includes(picked.mime)')&&
  files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
+checks.push(["Web and Internal Android keep confirmed CMS writes confirmed when later read fails",
+ internalCms.includes("The server has definitively committed THIS command")&&
+ internalCms.includes("}catch(refreshError){")&&
+ internalCms.includes("setSelected(null);setDraft(null);")&&
+ internalCms.includes("A list GET is not proof that an earlier uncertain write was ours.")&&
+ internalCms.includes("void open(p.pageRef).catch(readFailure)")&&
+ files.adminExtended.includes("A positively acknowledged original write is never made uncertain")&&
+ files.adminExtended.includes('setPending(null);setNotice("Confirmed: "')&&
+ files.adminExtended.includes("setSelected(null);")&&
+ files.adminExtended.includes("if(busy||pending)")]);
+checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
+ internalMedia.includes("positions.map((position,i)=>")&&
+ internalMedia.includes('"Placement "+(i+1)')&&
+ internalMedia.includes('selectedChoice?.order===position.order')&&
+ internalMedia.includes('const first=choices.find(c=>c.role===role)??choices[0]')&&
+ !internalMedia.includes('accessibilityLabel="Editorial placement order"')]);
 checks.push(["Original Web CMS article, policy and other supported page kinds can be created on Internal Android",
  internalCms.includes("const initialKind=(kind:NewKind):NewPage=>")&&
  internalCms.includes('perform("create","POST","pages"')&&
