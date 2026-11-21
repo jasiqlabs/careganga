@@ -103,6 +103,10 @@ CREATE INDEX ix_cg20_runs_actor_recent ON cg20_report_run
  (root_realm_id,requester_ref,created_at DESC,id DESC);
 CREATE INDEX ix_cg20_runs_expiry ON cg20_report_run(expires_at,id)
  WHERE state IN('READY','EMPTY','FAILED','REVOKED');
+CREATE INDEX ix_cg20_scheduled_queued ON cg20_report_run(created_at,id)
+ WHERE run_origin='SCHEDULED' AND state='QUEUED';
+CREATE INDEX ix_cg20_scheduled_stale ON cg20_report_run(updated_at,id)
+ WHERE run_origin='SCHEDULED' AND state='RUNNING';
 
 -- US-005 schedule metadata. ACTIVE only after a separately authorized worker
 -- exists. Current service deliberately creates PAUSED schedules.
@@ -119,6 +123,7 @@ CREATE TABLE cg20_report_schedule(
  local_time time NOT NULL,
  weekday smallint CHECK(weekday IS NULL OR weekday BETWEEN 0 AND 6),
  monthday smallint CHECK(monthday IS NULL OR monthday BETWEEN 1 AND 28),
+ annual_month smallint CHECK(annual_month IS NULL OR annual_month BETWEEN 1 AND 12),
  next_due_utc timestamptz NOT NULL,
  state text NOT NULL DEFAULT 'PAUSED'
   CHECK(state IN('ACTIVE','PAUSED','DISABLED')),
