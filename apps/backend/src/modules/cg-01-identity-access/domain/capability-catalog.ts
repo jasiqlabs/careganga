@@ -77,6 +77,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"mis.dashboard.view",businessLabel:"View permitted Foundation dashboards and reporting",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"mis.reports.view",businessLabel:"Run authorized source-backed reports",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"mis.reports.manage",businessLabel:"Create and manage my saved report definitions",group:"Reports & MIS",assignable:true,sensitive:true},
+  {key:"mis.reports.share",businessLabel:"Grant individual colleagues permission to copy private report definitions",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"mis.reports.export",businessLabel:"Export authorized protected report files",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"mis.reports.schedule",businessLabel:"Schedule protected reports for eligible recipients",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"finance.reconciliation.manage",businessLabel:"Record actual original bank statement matches",group:"Finance & accounting",assignable:true,sensitive:true},
