@@ -227,7 +227,7 @@ export class HealthcareAssistancePolicyService{
    v.until.toISOString(),v.mode,v.bps,v.fixed,v.cap,v.eligibility]);
   return this.tx(async c=>{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.manage");
-   await this.verified.center(c,actor.realmId,v.centerRef);
+   await this.verified.eligibleService(c,actor.realmId,v.centerRef,v.serviceKind);
    if(v.doctorRef)await this.verified.doctor(c,actor.realmId,v.centerRef,v.doctorRef);
    const unique=v.centerRef+":"+v.serviceKind+":"+(v.doctorRef??"CENTER");
    // One source scope lock and one request lock, no global Foundation lock.
@@ -323,7 +323,7 @@ export class HealthcareAssistancePolicyService{
      review.cg17_policy_version,review.cg17_policy_digest]);
    const proposed=current.rows[0];
    if(!proposed)throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
-   await this.verified.center(c,actor.realmId,proposed.center_ref);
+   await this.verified.eligibleService(c,actor.realmId,proposed.center_ref,proposed.service_kind);
    if(proposed.doctor_ref)
     await this.verified.doctor(c,actor.realmId,proposed.center_ref,proposed.doctor_ref);
    await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
