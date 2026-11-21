@@ -8,13 +8,14 @@ import {identityRequest} from "../identity-access/http-client";
 
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
- managerRef:string|null;accountRef:string|null;
+ managerRef:string|null;roleRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
 type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
+type RoleOption={value:string;label:string};
 type Draft={name:string;designation:string;employmentType:string;
- branchRef:string;departmentRef:string;managerRef:string;accountRef:string;hireDate:string};
+ branchRef:string;departmentRef:string;managerRef:string;roleRef:string;accountRef:string;hireDate:string};
 const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
- branchRef:"",departmentRef:"",managerRef:"",accountRef:"",hireDate:""});
+ branchRef:"",departmentRef:"",managerRef:"",roleRef:"",accountRef:"",hireDate:""});
 const types=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
 const title=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
 async function api(token:string,path:string,method="GET",body?:object){
@@ -29,9 +30,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canViewPrivate:boolean;canManagePrivate:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -39,6 +40,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [departments,setDepartments]=useState<Option[]>([]);
  const [managers,setManagers]=useState<Option[]>([]);
  const [accounts,setAccounts]=useState<Option[]>([]);
+ const [roles,setRoles]=useState<RoleOption[]>([]);
  const [selected,setSelected]=useState<Application|null>(null);
  const [draft,setDraft]=useState<Draft>(blank);
  const [key,setKey]=useState<string|null>(null);
@@ -120,6 +122,16 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   }).catch(e=>{if(live){setAccounts([]);failure(e);}});
   return()=>{live=false;};
  },[token,canManage,canSelectAccounts,failure]);
+ useEffect(()=>{
+  if(!canManage||!canSelectRoles)return;
+  let active=true;
+  void api(token,"role-options?search=").then(value=>{
+   if(active&&value&&typeof value==="object"&&"options" in value&&
+      Array.isArray(value.options))
+    setRoles(value.options as RoleOption[]);
+  }).catch(e=>{if(active){setRoles([]);failure(e);}});
+  return()=>{active=false;};
+ },[token,canManage,canSelectRoles,failure]);
  const change=(field:keyof Draft,value:string)=>{
   setDraft(old=>({...old,[field]:value,
    ...(field==="branchRef"?{departmentRef:"",managerRef:""}:{})}));
@@ -130,7 +142,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   setSelected(item);
   setDraft({name:item.name,designation:item.designation,employmentType:item.employmentType,
    branchRef:item.branchRef,departmentRef:item.departmentRef??"",
-   managerRef:item.managerRef??"",accountRef:item.accountRef??"",hireDate:item.hireDate});
+   managerRef:item.managerRef??"",roleRef:item.roleRef??"",
+   accountRef:item.accountRef??"",hireDate:item.hireDate});
   setKey(null);setStatus("");setError("");
  };
  const reset=()=>{
@@ -149,6 +162,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    employmentType:draft.employmentType,branchRef:draft.branchRef,
    departmentRef:draft.departmentRef||null,managerRef:draft.managerRef||null,
    hireDate:draft.hireDate,accountRef:draft.accountRef||null,
+   roleRef:draft.roleRef||null,
    ...(selected?{expectedRevision:selected.revision}:{})};
   try{
    await api(token,selected?"applications/"+selected.applicationRef:"applications",
@@ -367,6 +381,19 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
         style={[styles.chip,draft.accountRef===x.accountRef&&styles.selected]}>
         <Text style={draft.accountRef===x.accountRef?styles.selectedText:styles.chipText}>
          {x.label}</Text></Pressable>)}
+      </View></>}
+    {canSelectRoles&&<><Text style={styles.label}>Proposed CG-01 role (does not grant login)</Text>
+      <View style={styles.choices}>
+       <Pressable accessibilityRole="button" style={[styles.chip,!draft.roleRef&&styles.selected]}
+        onPress={()=>change("roleRef","")}>
+        <Text style={!draft.roleRef?styles.selectedText:styles.chipText}>No role proposed</Text>
+       </Pressable>
+       {roles.map(r=><Pressable key={r.value} accessibilityRole="button"
+        accessibilityState={{selected:draft.roleRef===r.value}}
+        onPress={()=>change("roleRef",r.value)}
+        style={[styles.chip,draft.roleRef===r.value&&styles.selected]}>
+        <Text style={draft.roleRef===r.value?styles.selectedText:styles.chipText}>
+         {r.label}</Text></Pressable>)}
       </View></>}
     {field("Joining date",draft.hireDate,v=>change("hireDate",v),"YYYY-MM-DD")}
     <Pressable accessibilityRole="button" disabled={saving}
