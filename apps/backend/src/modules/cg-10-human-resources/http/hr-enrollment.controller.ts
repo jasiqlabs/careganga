@@ -29,6 +29,10 @@ export class HrEnrollmentController{
  create(@Headers("authorization")token:string,@Body()body:unknown){
   return this.hr.create(token,body);
  }
+ @Get("applications/:applicationRef/review")
+ review(@Headers("authorization")token:string,@Param("applicationRef")ref:string){
+  return this.hr.reviewStatus(token,ref);
+ }
  @Post("applications/:applicationRef/submit")
  submit(@Headers("authorization")token:string,@Param("applicationRef")ref:string,
   @Body()body:unknown){return this.hr.submit(token,ref,body);}
