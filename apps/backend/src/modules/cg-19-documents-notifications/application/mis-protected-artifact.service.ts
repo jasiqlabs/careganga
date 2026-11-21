@@ -37,6 +37,24 @@ export class MisProtectedArtifactService{
  async issue(token:string,runInput:string,format:ReportFormat,bytes:Buffer){
   const actor=await this.sessions.requireAction(token,"mis.reports.export");
   await this.sessions.requireAction(token,"mis.reports.view");
+  return this.issueForAuthorizedActor(actor.realmId,actor.accountId,
+   runInput,format,bytes);
+ }
+ /** CG20 internal worker entry: only the original current CG01 account and
+  * CG09 grant may receive an owner-created protected scheduled file. No
+  * synthesized login, bypass bearer, public route or alternate file store.
+  */
+ async issueScheduledFinance(root:string,account:string,runRef:string,
+  format:ReportFormat,data:ReportData){
+  await this.sessions.requireScheduledMisAction(root,account,"mis.reports.view");
+  await this.sessions.requireScheduledMisAction(root,account,"mis.reports.export");
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  const bytes=await renderMisReport(format,data);
+  return this.issueForAuthorizedActor(root,account,runRef,format,bytes);
+ }
+ private async issueForAuthorizedActor(root:string,account:string,
+  runInput:string,format:ReportFormat,bytes:Buffer){
+  const actor={realmId:root,accountId:account};
   const runRef=valid(runInput),mime=reportMime(format);
   if(!Buffer.isBuffer(bytes)||bytes.length>5242880||bytes.length<10)
    throw new BadRequestException({code:"MIS_ARTIFACT_LIMIT"});
