@@ -11,6 +11,10 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  percentBasisPoints:number|null;fixedMinor:string|null;capMinor:string;
  status:string;current:boolean;eligibility:string;createdAt:string;
  reviewCaseRef:string|null;reviewStatus:string|null};
+type ServiceEstimate={state:"NO_APPROVED_SERVICE_POLICY"|"POLICY_ESTIMATE_ONLY";
+ grossMinor:string;estimatedSupportMinor:string;estimatedPatientDueMinor:string;
+ centerName:string;serviceKind:Kind;estimateOnly:true;
+ caution:string;eligiblePatientVerified:false;invoiceVerified:false};
 type Payload={requestKey:string;policyRef?:string;expectedRevision:number;
  centerRef:string;doctorRef:string|null;serviceKind:Kind;validFrom:string;
  validUntil:string;mode:"PERCENT"|"FIXED";percentBasisPoints?:number;
@@ -75,6 +79,8 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
  const [estimate,setEstimate]=useState<Estimate|null>(null);
+ const [quotedGross,setQuotedGross]=useState(""),
+  [serviceEstimate,setServiceEstimate]=useState<ServiceEstimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[error,setError]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -86,6 +92,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [revision,setRevision]=useState<Policy|null>(null);
  const last=useRef<{parts:string;body:Payload;label:string}|null>(null);
  useEffect(()=>setEstimate(null),[center,doctor]);
+ useEffect(()=>setServiceEstimate(null),[center,service,quotedGross]);
  const request=useRef(0);
  const refresh=useCallback(async(c:string)=>{
   const id=++request.current;
@@ -124,6 +131,20 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
    setEstimate(value);
   }catch(e){setError(e instanceof Error?e.message:
    "Current fee and assistance source cannot be verified.");}
+  finally{setBusy(false);}
+ }
+ async function previewPartnerService(){
+  if(!center||service==="CONSULTATION"||busy||uncertain)return;
+  setBusy(true);setError("");setServiceEstimate(null);
+  try{
+   const grossMinor=rupees(quotedGross);
+   const result=await api<ServiceEstimate>(
+    "centers/"+center+"/services/"+service+"/estimate?grossMinor="+grossMinor);
+   if(result.estimateOnly!==true||result.serviceKind!==service)
+    throw Error("The original partner estimate could not be verified.");
+   setServiceEstimate(result);
+  }catch(e){setError(e instanceof Error?e.message:
+   "The verified partner policy estimate is unavailable.");}
   finally{setBusy(false);}
  }
  function edit(p:Policy){
@@ -252,6 +273,28 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
        "No currently approved consultation fee is available."}
      </p>}
     </div>}
+    {service!=="CONSULTATION"&&<section className="cg-diagnostics-card">
+     <h3>Estimated partner service contribution</h3>
+     <p>Enter the partner's quoted gross total for an illustrative calculation.
+      No retail invoice, patient consent, performed care, patient payment
+      or Foundation liability has been verified by this estimate.</p>
+     <label className="field">Partner-quoted gross amount (₹)
+      <input inputMode="decimal" value={quotedGross} disabled={busy}
+       onChange={e=>setQuotedGross(e.target.value)} placeholder="1000.00"/>
+     </label>
+     <button type="button" disabled={busy||uncertain||!quotedGross}
+      onClick={()=>void previewPartnerService()}>
+      Calculate provisional Foundation share</button>
+     {serviceEstimate&&<p role="status">
+      {serviceEstimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Quoted gross "+money(serviceEstimate.grossMinor)+
+       " · estimated Foundation contribution "+money(serviceEstimate.estimatedSupportMinor)+
+       " · estimated patient payable "+money(serviceEstimate.estimatedPatientDueMinor):
+       "No current approved contribution; patient-quoted total "+
+        money(serviceEstimate.grossMinor)}.
+      {" "}{serviceEstimate.caution}
+     </p>}
+    </section>}
     <label className="field">Assistance type
      <select value={mode} disabled={busy} onChange={e=>
       setMode(e.target.value as "PERCENT"|"FIXED")}>
