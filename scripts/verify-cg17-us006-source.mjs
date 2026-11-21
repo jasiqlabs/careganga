@@ -62,6 +62,12 @@ must("accrualSql",/CREATE TABLE cg17_financial_effect/,"CG17 original accrual ef
 must("cg09",/this\.posting\.postBalanced/,"CG09 owns original balanced journal");
 must("journal",/INSERT INTO journal\(/,"Original journal ownership");
 must("accrual",/this\.cg09\.postAccrual/,"Accrual must use original CG09");
+must("accrual",/j\.reversal_of_id IS NULL/,
+ "A reversal journal cannot satisfy the original CG17 accrual replay");
+must("accrual",/SELECT count\(\*\) FROM journal_line exact/,
+ "Original accrual replay must inspect every actual CG09 journal line");
+must("accrual",/exact\.journal_id=j\.id\)=2/,
+ "Replay must reject extra balanced legs rather than a matching debit/credit pair");
 must("monthlySql",/CREATE TABLE provider_settlement\(/,"Original provider settlement schema");
 must("monthlySql",/CREATE TABLE provider_settlement_line\(/,"Immutable source lines");
 must("monthlySql",/UNIQUE\(root_realm_id,liability_ref\)/,"No double inclusion");
