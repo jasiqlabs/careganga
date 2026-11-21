@@ -7,7 +7,7 @@ import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Saved={ref:string;name:string;state:string};
-type Schedule={ref:string;state:string;cadence:string;timezone:string;
+type Schedule={ref:string;state:string;cadence:string;savedReportName:string;timezone:string;
  localTime:string;nextDueAt:string;revision:number;canActivate:boolean};
 async function api<T>(token:string,path:string,body?:object):Promise<T>{
  const r=await identityRequest("/api/v1/mis/reports/"+path,{
@@ -74,6 +74,17 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
    await load();
   }catch(e){fail(e)}finally{setLoading(false);}
  }
+ async function pause(item:Schedule){
+  if(loading||item.state!=="ACTIVE")return;
+  setLoading(true);setError("");setNotice("");
+  try{
+   await api(token,"schedules/"+encodeURIComponent(item.ref)+"/pause",{
+    expectedRevision:item.revision
+   });
+   setNotice("This schedule is paused. Automatic delivery remains disabled.");
+   await load();
+  }catch(e){fail(e);}finally{setLoading(false);}
+ }
  async function openHistory(ref:string){
   setLoading(true);setError("");setHistory([]);
   try{
@@ -109,12 +120,14 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
   </>}
   {!saved.length&&<Text style={s.text}>No eligible private saved report is available.</Text>}
   {rows.map(row=><View key={row.ref} style={s.card}>
-   <Text style={s.title}>{row.cadence[0]+row.cadence.slice(1).toLowerCase()}</Text>
+   <Text style={s.title}>{row.savedReportName} · {row.cadence[0]+row.cadence.slice(1).toLowerCase()}</Text>
    <Text style={s.text}>Status: {row.state==="PAUSED"?"Paused — not sending":
-    row.state==="ACTIVE"?"Scheduled — current permissions required":
+    row.state==="ACTIVE"?"Needs review — delivery is not enabled":
     row.state==="DISABLED"?"Disabled":"Status unavailable — refresh"}</Text>
    <Text style={s.text}>Timezone: {row.timezone}</Text>
    <Text style={s.text}>Planned: {new Date(row.nextDueAt).toLocaleString("en-IN")}</Text>
+   {row.state==="ACTIVE"&&<NativeFinanceAction label="Pause this schedule"
+    secondary disabled={loading} onPress={()=>void pause(row)}/>}
    <NativeFinanceAction label="View actual run history" secondary disabled={loading}
     onPress={()=>void openHistory(row.ref)}/>
   </View>)}
