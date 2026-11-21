@@ -110,7 +110,9 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
   {!saved.length&&<Text style={s.text}>No eligible private saved report is available.</Text>}
   {rows.map(row=><View key={row.ref} style={s.card}>
    <Text style={s.title}>{row.cadence[0]+row.cadence.slice(1).toLowerCase()}</Text>
-   <Text style={s.text}>Status: {row.state==="PAUSED"?"Paused — not sending":row.state}</Text>
+   <Text style={s.text}>Status: {row.state==="PAUSED"?"Paused — not sending":
+    row.state==="ACTIVE"?"Scheduled — current permissions required":
+    row.state==="DISABLED"?"Disabled":"Status unavailable — refresh"}</Text>
    <Text style={s.text}>Timezone: {row.timezone}</Text>
    <Text style={s.text}>Planned: {new Date(row.nextDueAt).toLocaleString("en-IN")}</Text>
    <NativeFinanceAction label="View actual run history" secondary disabled={loading}
