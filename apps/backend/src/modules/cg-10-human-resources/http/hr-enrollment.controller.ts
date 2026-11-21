@@ -22,6 +22,14 @@ export class HrEnrollmentController{
  departments(@Headers("authorization")token:string,@Query("branch")branch:string){
   return this.hr.departmentOptions(token,branch);
  }
+ @Get("managers")
+ managers(@Headers("authorization")token:string,@Query("branch")branch:string){
+  return this.hr.managerOptions(token,branch);
+ }
+ @Get("account-options")
+ accounts(@Headers("authorization")token:string,@Query("search")search?:string){
+  return this.hr.accountOptions(token,search??"");
+ }
  @Get("applications")
  list(@Headers("authorization")token:string,@Query("offset")offset?:string,
   @Query("branch")branch?:string){return this.hr.list(token,offset,branch);}
