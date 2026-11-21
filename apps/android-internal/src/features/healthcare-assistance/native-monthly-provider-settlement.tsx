@@ -17,6 +17,8 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
+ originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
@@ -171,6 +173,16 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
      money(source.state==="NOT_PREPARED"?source.eligibleAccruedMinor??"0":
       source.state==="PROPOSED"?source.proposedClaimMinor??"0":
       source.approvedFoundationMinor)}</Text>
+    {source.adjustedFoundationMinor&&BigInt(source.adjustedFoundationMinor)>0n&&<>
+     <Text style={styles.note}>Original approved claim: {
+      money(source.originalApprovedFoundationMinor??"0")}</Text>
+     <Text style={styles.note}>Verified liability correction: {
+      money(source.adjustedFoundationMinor)}</Text>
+     <Text style={styles.note}>Original gross bank payout: {
+      money(source.grossFoundationPaidMinor??"0")}</Text>
+     <Text style={styles.note}>Actually recovered incoming bank money: {
+      money(source.verifiedProviderRecoveryMinor??"0")}</Text>
+    </>}
     <Text style={styles.amount}>Actual verified provider payout: {
      money(source.actualPaidMinor)}</Text>
     <Text style={styles.amount}>Claim still due: {
