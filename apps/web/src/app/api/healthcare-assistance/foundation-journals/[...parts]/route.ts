@@ -39,7 +39,7 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
       .every(k=>k in v)||
      typeof v.requestKey!=="string"||!ID.test(v.requestKey)||
      typeof v.financialYearRef!=="string"||!ID.test(v.financialYearRef)||
-     typeof v.postingDate!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(v.postingDate)||
+     typeof v.postingDate!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v.postingDate)||
      typeof v.reason!=="string"||v.reason.trim().length<12||
      v.reason.trim().length>300||
      typeof v.currentPassword!=="string"||v.currentPassword.length<8||
