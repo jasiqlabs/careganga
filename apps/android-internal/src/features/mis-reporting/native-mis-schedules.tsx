@@ -9,7 +9,8 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 type Saved={ref:string;name:string;state:string;sourceKey?:string|null};
 type Schedule={ref:string;state:string;cadence:string;savedReportName:string;
  timezone:string;localTime:string;nextDueAt:string;revision:number;canActivate:boolean};
-type History={state:string;createdAt:string;deliveryState:string;dueAt:string};
+type History={state:string;createdAt:string;deliveryState:string;dueAt:string;
+ sourceAsOf:string|null;rowCount:number|null;format:string|null};
 async function api<T>(token:string,path:string,body?:object):Promise<T>{
  const response=await identityRequest("/api/v1/mis/reports/"+path,{
   method:body?"POST":"GET",cache:"no-store",
@@ -188,9 +189,14 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
   </View>)}
   {!history.length&&<Text style={s.text}>No selected schedule runs to display.</Text>}
   {history.map((item,index)=><Text key={index} style={s.text}>
-   {item.state.replaceAll("_"," ")} · In-app delivery:
+   {item.state.replaceAll("_"," ")} · In-app notice:
    {" "}{item.deliveryState.replaceAll("_"," ")} ·
    {" "}{new Date(item.createdAt).toLocaleString("en-IN")}
+   {item.sourceAsOf&&" · Source snapshot: "+
+     new Date(item.sourceAsOf).toLocaleString("en-IN")}
+   {item.rowCount!==null&&item.rowCount!==undefined&&
+    " · Verified rows: "+item.rowCount}
+   {item.format&&" · "+item.format}
   </Text>)}
  </View>;
 }
