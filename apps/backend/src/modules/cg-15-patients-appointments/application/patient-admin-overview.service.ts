@@ -1,6 +1,8 @@
 import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool} from "pg";
+import {HealthCenterSupportScopeFacade}
+ from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,7 +22,8 @@ type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
 @Injectable()
 export class PatientAdminOverviewService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
-  private readonly sessions:SessionService){}
+  private readonly sessions:SessionService,
+  private readonly centers:HealthCenterSupportScopeFacade){}
 
  /** A request to print H15 data must be a fresh, exact selected-source
   * authorization, not an unscoped report/export or public bearer URL.
@@ -61,27 +64,69 @@ export class PatientAdminOverviewService{
   finally{c.release();}
  }
 
- /** CG-20 receiving-owner projection: authenticated Foundation-wide status
-  * counts only. Do NOT export the existing overview() rows/PII/consent,
-  * or count across patients/centers for a branch-only actor.
+ /** Original CG-15 Foundation MIS filter catalogue. No patient row,
+  * medical detail, contact or center DB key is exposed as a metric.
+  * CG-14 alone authorizes currently eligible center choices.
   */
- async readMisTotals(bearer:string){
+ async readMisOptions(bearer:string){
   const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
   await this.sessions.requireAction(bearer,"foundation.branches.admin");
-  const result=await this.db.query<{
-   bookings:string;completed:string;waiting:string;cancelled:string
-  }>(
-   "SELECT count(*)::text AS bookings,"+
-   "count(*) FILTER (WHERE booking_state='COMPLETED')::text AS completed,"+
-   "count(*) FILTER (WHERE booking_state IN('CONFIRMED','ARRIVED','WAITING',"+
-   "'IN_CONSULTATION'))::text AS waiting,"+
-   "count(*) FILTER (WHERE booking_state='CANCELLED')::text AS cancelled "+
-   "FROM cg15_consultation_appointment WHERE root_realm_id=$1",
-   [actor.realmId]);
-  return result.rows[0]??{
-   bookings:"0",completed:"0",waiting:"0",cancelled:"0"};
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   const eligible=await this.centers.eligibleFoundationCenters(
+    tx,actor,"health.patients.admin.view");
+   await tx.query("COMMIT");open=false;
+   return eligible;
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
  }
-  /** H15 restricted review queue, bounded and rooted; never a public patient
+
+ /** Current authenticated Foundation-only status aggregate. Center/date/status
+  * filters are applied inside original CG-15 SQL, after CG-14 and current
+  * identity verification. No patient row or clinically identifying group.
+  */
+ async readMisTotals(bearer:string,filters:{
+  centerRef?:string;fromDay?:string;untilDay?:string;status?:string}={}){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  await this.sessions.requireAction(bearer,"foundation.branches.admin");
+  const center=filters.centerRef??"",from=filters.fromDay??"",
+   until=filters.untilDay??"",status=filters.status??"";
+  const fromMillis=from?Date.parse(from+"T00:00:00Z"):0,
+   untilMillis=until?Date.parse(until+"T00:00:00Z"):0;
+  if(center!==""&&!ID.test(center)||!validDay(from)||!validDay(until)||
+     Boolean(from)!==Boolean(until)||
+     from!==""&&(from>until||untilMillis-fromMillis>366*86400000)||
+     status!==""&&!STATE.has(status))
+   throw new BadRequestException({code:"CG15_MIS_FILTER_INVALID",
+    message:"Choose a permitted center, valid date range and appointment status."});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   if(center)await this.centers.assertFoundationCenter(
+    tx,actor,center,"health.patients.admin.view",true);
+   const q=await tx.query<{
+    bookings:string;completed:string;waiting:string;cancelled:string
+   }>(
+    "SELECT count(*)::text AS bookings,"+
+    "count(*) FILTER (WHERE booking_state='COMPLETED')::text AS completed,"+
+    "count(*) FILTER (WHERE booking_state IN('CONFIRMED','ARRIVED','WAITING',"+
+    "'IN_CONSULTATION'))::text AS waiting,"+
+    "count(*) FILTER (WHERE booking_state='CANCELLED')::text AS cancelled "+
+    "FROM cg15_consultation_appointment a WHERE a.root_realm_id=$1 "+
+    "AND ($2::uuid IS NULL OR a.center_id=$2) "+
+    "AND ($3::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date >= $3) "+
+    "AND ($4::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date <= $4) "+
+    "AND ($5::text='' OR a.booking_state=$5)",
+    [actor.realmId,center||null,from||null,until||null,status]);
+   await tx.query("COMMIT");open=false;
+   return q.rows[0]??{bookings:"0",completed:"0",waiting:"0",cancelled:"0"};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+ }
+ /** H15 restricted review queue, bounded and rooted; never a public patient
   * search or an authorization to read source clinical files.
   */
  async duplicateReviews(bearer:string){
