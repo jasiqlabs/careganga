@@ -5,6 +5,7 @@ import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {identityRequest} from "../identity-access/http-client";
 import {nativeMisProblem} from "./native-mis-problem";
+import {NativeMisSharedDefinitions} from "./native-mis-shared-definitions";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Request={kind:string;view:string;yearRef?:string;branchRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
@@ -20,8 +21,8 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
  if(!r.ok)throw await nativeMisProblem(r,"The private report status could not be confirmed. Refresh before retrying.");
  return r.json() as Promise<T>;
 }
-export function NativeMisSaved({token,onExpired,canManage,current,onRestore}:{
- token:string;onExpired:()=>void;canManage:boolean;
+export function NativeMisSaved({token,onExpired,canManage,canShare,current,onRestore}:{
+ token:string;onExpired:()=>void;canManage:boolean;canShare:boolean;
  current:Request|null;onRestore:(request:Request)=>void}){
  const [rows,setRows]=useState<Row[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -126,6 +127,9 @@ export function NativeMisSaved({token,onExpired,canManage,current,onRestore}:{
     </Pressable>
    </>}
   </>}
+  <NativeMisSharedDefinitions token={token} onExpired={onExpired}
+   selected={selected?{ref:selected.ref,name:selected.name,version:selected.version}:null}
+   canManage={canManage} canShare={canShare} onChanged={()=>void reload()}/>
  </View>;
 }
 const s=StyleSheet.create({
