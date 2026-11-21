@@ -4,6 +4,13 @@ type Ctx={params:Promise<{action:string}>};
 const json=(message:string,status:number)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"no-store"}
 });
+const publicSafeCodes=new Set([
+ "PARTNER_FIELD_INVALID","PARTNER_CONSENT_REQUIRED","PARTNER_RECEIPT_INVALID",
+ "PARTNER_RECEIPT_UNAVAILABLE","PARTNER_REQUEST_CONFLICT","HEALTH_PUBLIC_RATE_LIMIT"
+]);
+const publicFields=new Set(["partnerType","applicantName","contactName",
+ "contactPhone","contactEmail","registrationNumber","addressLine",
+ "districtName","stateName","pinCode","consentAccepted","receipt"]);
 /** Only public applicant intake/status; NEVER forward staff credentials or
  * an arbitrary backend path. Origin check stops CSRF through this website. */
 export async function POST(req:NextRequest,ctx:Ctx){
@@ -31,6 +38,17 @@ export async function POST(req:NextRequest,ctx:Ctx){
   if(!response.ok){
    const status=[400,404,409,429].includes(response.status)?
     response.status:503;
+   const raw:unknown=await response.json().catch(()=>null);
+   const rec=raw&&typeof raw==="object"&&!Array.isArray(raw)?
+     raw as Record<string,unknown>:null;
+   if(status<500&&rec&&typeof rec.code==="string"&&
+      publicSafeCodes.has(rec.code)&&typeof rec.message==="string"&&
+      rec.message.length>=16&&rec.message.length<=220&&!/[<>\\r\\n]/.test(rec.message)){
+    const field=typeof rec.field==="string"&&publicFields.has(rec.field)?
+      rec.field:null;
+    return NextResponse.json({message:rec.message,code:rec.code,
+     ...(field?{field}:{})},{status,headers:{"Cache-Control":"no-store"}});
+   }
    const message=status===429?"Too many attempts. Please try later.":
     status===409?"An earlier submission was changed. Refresh your original request.":
     status===404?"That private tracking code could not be verified.":
