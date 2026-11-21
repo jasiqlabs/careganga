@@ -17,11 +17,11 @@ check(backend+"modules/cg-20-mis-reporting/mis-reporting.module.ts",[
 check(backend+"modules/cg-20-mis-reporting/http/mis-dashboard.controller.ts",[
  '@Get("dashboard")','@Get("options")']);
 const service=check(backend+"modules/cg-20-mis-reporting/application/mis-dashboard.service.ts",[
- '"mis.dashboard.view"','finance.summary','diagnostics.summary','patients.readMisTotals',
+ '"mis.dashboard.view"','diagnostics.summary','patients.readMisTotals',
  '"NO_AUTHORIZED_SOURCES"','"PARTIAL"','"FAILED"','"CG09_POSTED_FINANCE"',
  '"CG16_FOUNDATION_DIAGNOSTICS"','"CG15_APPOINTMENT_STATES"',
  "if(filters.branchRef)throw error"]);
-assert.match(service,/this\\.finance\\s*\\.summary\\(/);
+assert.ok(service.includes(".summary(bearer,filters.yearRef,filters.branchRef)"),"CG09 summary owner call missing");
 assert.ok(!/\bSELECT\b|\bFROM\s+journal\b/i.test(service),
  "CG20 must not directly query original owner tables");
 check(backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
