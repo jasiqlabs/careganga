@@ -129,7 +129,7 @@ export class MonthlyProviderSettlementService{
    patientCollectionNotFoundationIncome:true,
    reviewedAt:c.reviewed_at?.toISOString()??null};
  }
- /** H17 real source breakdown: services completed in this selected
+ /** H17 real source breakdown: eligible services completed in this selected
   * center/month; center payments are VERIFIED to date for THOSE services
   * (not necessarily received inside the calendar month). No patient IDs.
   * Nothing in this read writes a journal or determines provider commission.
