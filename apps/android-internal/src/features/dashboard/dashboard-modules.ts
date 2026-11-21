@@ -62,6 +62,7 @@ export interface ModuleActionHandlers {
   openCenterMerchant: () => void;
   openFoundationLiabilities: () => void;
   openMonthlyProviderSettlements: () => void;
+  openPartnerSettlements: () => void;
   openLabTestMaster: () => void;
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
@@ -316,7 +317,22 @@ export function getAuthorizedModules(
       onOpen: handlers.openFoundationLiabilities
     });
   }
-  if (roleActions.includes("healthcare.assistance.settlements.view")) {
+  if (roleActions.includes("healthcare.assistance.settlements.view") &&
+      roleActions.includes("health.centers.draft.edit")) {
+    list.push({
+      key: "healthcarePartnerSettlements",
+      title: "My Center Foundation Settlement",
+      shortLabel: "My Settlement",
+      description: "My center's real Foundation contribution, verified payouts and outstanding balance.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openPartnerSettlements
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.settlements.view") &&
+      roleActions.includes("health.providers.finance.view")) {
     list.push({
       key: "healthcareProviderSettlements",
       title: "Healthcare Provider Settlements",
@@ -637,6 +653,7 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "accounts",
   "approvals",
   "healthClinicianActivity",
+  "healthcarePartnerSettlements",
   "healthVisitQueue",
   "healthLabTestMaster",
   "healthMyLabPricing",
