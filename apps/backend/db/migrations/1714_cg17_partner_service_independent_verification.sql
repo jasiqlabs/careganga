@@ -73,7 +73,8 @@ CREATE TABLE cg17_partner_invoice_decision(
   ON DELETE RESTRICT,
  FOREIGN KEY(reviewed_by_account,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- CHECK(accepted_gross_minor=accepted_patient_paid_minor+approved_support_minor),
+ CHECK(outcome='REJECTED' OR
+       accepted_gross_minor=accepted_patient_paid_minor+approved_support_minor),
  CHECK(outcome='APPROVED' OR approved_support_minor=0)
 );
 CREATE INDEX ix_cg17_partner_decision_center
