@@ -353,8 +353,10 @@ export class MisReportScheduleService{
    [actor.realmId,ref,actor.accountId]);
   if(!own.rowCount)throw new NotFoundException({code:"MIS_SCHEDULE_NOT_FOUND"});
   const runs=await this.db.query<{state:string;created_at:Date;
-   occurrence_due_utc:Date;delivery_state:string|null}>(
+   occurrence_due_utc:Date;source_as_of:Date|null;result_row_count:number|null;
+   format:string|null;delivery_state:string|null}>(
    "SELECT run.state,run.created_at,run.occurrence_due_utc,"+
+   "run.source_as_of,run.result_row_count,run.format,"+
    "attempt.state AS delivery_state FROM cg20_report_run run "+
    "LEFT JOIN cg20_report_delivery_attempt attempt "+
    "ON attempt.root_realm_id=run.root_realm_id AND attempt.run_ref=run.id "+
@@ -364,7 +366,9 @@ export class MisReportScheduleService{
    "ORDER BY run.created_at DESC,run.id DESC LIMIT 30",
    [actor.realmId,ref,actor.accountId]);
   return {runs:runs.rows.map(r=>({state:r.state,createdAt:r.created_at,
-   dueAt:r.occurrence_due_utc,deliveryState:r.delivery_state??"NOT_SENT"})),
-   message:"Only genuine report and original CG-19 notice states are shown; READY is not proof of delivery."};
+   dueAt:r.occurrence_due_utc,sourceAsOf:r.source_as_of,
+   rowCount:r.result_row_count,format:r.format,
+   deliveryState:r.delivery_state??"NOT_SENT"})),
+   message:"Source snapshot, private file status and actual original CG-19 notice state are distinct; READY is not proof of delivery."};
  }
 }
