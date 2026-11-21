@@ -19,7 +19,8 @@ type Claim={
  id:string;public_code:string;center_ref:string;service_kind:Kind;
  invoice_number:string;service_local_date:string;
  quoted_gross_minor:string;estimated_support_minor:string;
- estimated_patient_due_minor:string;state:string;submitted_at:Date;
+ estimated_patient_due_minor:string;payment_file_ref:string|null;
+ state:string;submitted_at:Date;
  source_digest:string
 };
 const sha=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
@@ -33,7 +34,7 @@ const form=(raw:unknown)=>{
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_INVALID"});
  const v=raw as Record<string,unknown>;
  const keys=["requestKey","centerRef","serviceKind","invoiceNumber",
-  "serviceDate","invoiceFileRef","completionFileRef","grossMinor"];
+  "serviceDate","invoiceFileRef","completionFileRef","paymentFileRef","grossMinor"];
  if(Object.keys(v).length<7||Object.keys(v).some(k=>!keys.includes(k)))
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_INVALID"});
  const key=ref(v.requestKey),center=ref(v.centerRef),
@@ -46,6 +47,10 @@ const form=(raw:unknown)=>{
  if((kind==="PHARMACY"&&proof!==null)||
     (kind!=="PHARMACY"&&(proof===null||proof===invoiceFile)))
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_PROOF_REQUIRED"});
+ const paymentFile=v.paymentFileRef===undefined||v.paymentFileRef===null?
+  null:ref(v.paymentFileRef);
+ if(paymentFile===invoiceFile||(proof!==null&&paymentFile===proof))
+  throw new BadRequestException({code:"CG17_PARTNER_CLAIM_PROOF_REQUIRED"});
  const invoice=typeof v.invoiceNumber==="string"?v.invoiceNumber.trim():"";
  if(!INVOICE.test(invoice)||typeof v.serviceDate!=="string"||
    !DATE.test(v.serviceDate)||!Number.isFinite(Date.parse(v.serviceDate+"T00:00:00Z"))||
@@ -54,7 +59,7 @@ const form=(raw:unknown)=>{
    BigInt(v.grossMinor)>10000000000n)
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_INVALID"});
  return {key,center,kind,invoice,serviceDate:v.serviceDate,
-  invoiceFile,proof,gross:v.grossMinor};
+  invoiceFile,proof,paymentFile,gross:v.grossMinor};
 };
 const present=(row:Claim)=>({
  claimCode:row.public_code,centerRef:row.center_ref,
@@ -62,7 +67,8 @@ const present=(row:Claim)=>({
  serviceDate:row.service_local_date,quotedGrossMinor:row.quoted_gross_minor,
  estimatedFoundationMinor:row.estimated_support_minor,
  estimatedPatientPayableMinor:row.estimated_patient_due_minor,
- state:"PENDING_VERIFICATION" as const,invoiceVerified:false,
+ state:"PENDING_VERIFICATION" as const,
+ paymentEvidenceSubmitted:!!row.payment_file_ref,invoiceVerified:false,
  serviceCompletionVerified:false,patientPaymentVerified:false,
  foundationLiabilityPosted:false,foundationSettled:false,
  submittedAt:new Date(row.submitted_at).toISOString(),
@@ -170,7 +176,7 @@ export class PartnerServiceClaimService{
   const result=await c.query<Claim>(
    "SELECT public_code,center_ref,service_kind,invoice_number,"+
    "service_local_date::text,quoted_gross_minor::text,"+
-   "estimated_support_minor::text,estimated_patient_due_minor::text,"+
+   "estimated_support_minor::text,estimated_patient_due_minor::text,payment_file_ref,"+
    "state,submitted_at,source_digest FROM cg17_partner_service_claim "+
    "WHERE root_realm_id=$1 AND center_ref=$2 "+
    "ORDER BY submitted_at DESC,id DESC LIMIT 51",
@@ -212,7 +218,7 @@ export class PartnerServiceClaimService{
     "SELECT claim.public_code,claim.center_ref,claim.service_kind,"+
     "claim.invoice_number,claim.service_local_date::text,"+
     "claim.quoted_gross_minor::text,claim.estimated_support_minor::text,"+
-    "claim.estimated_patient_due_minor::text,claim.state,claim.submitted_at,"+
+    "claim.estimated_patient_due_minor::text,claim.payment_file_ref,claim.state,claim.submitted_at,"+
     "claim.source_digest FROM cg17_partner_service_claim claim "+
     "WHERE claim.root_realm_id=$1 AND claim.patient_ref=$2 "+
     "ORDER BY claim.submitted_at DESC,claim.id DESC LIMIT 51",
@@ -231,7 +237,7 @@ export class PartnerServiceClaimService{
     [actor.realmId+":PARTNER_CLAIM:"+actor.accountId+":"+v.key]);
    const sourceDigest=sha(["CG17_ERP_OFF_PATIENT_CLAIM_V1",actor.realmId,patient,
     v.center,v.kind,v.invoice.toLowerCase(),v.serviceDate,
-    v.invoiceFile,v.proof,v.gross]);
+    v.invoiceFile,v.proof,v.paymentFile,v.gross]);
    const previous=await c.query<Claim>(
     "SELECT *,service_local_date::text,quoted_gross_minor::text,"+
     "estimated_support_minor::text,estimated_patient_due_minor::text "+
@@ -250,12 +256,15 @@ export class PartnerServiceClaimService{
     "WHERE f.realm_id=$1 AND f.patient_id=$2 "+
     "AND f.id=ANY($3::uuid[]) AND f.revoked_at IS NULL "+
     "AND f.scan_status='CLEAN_VERIFIED' FOR SHARE OF f,intent",
-    [actor.realmId,patient,[v.invoiceFile,...(v.proof?[v.proof]:[])]]);
-   if(files.rows.length!==(v.proof?2:1)||
+    [actor.realmId,patient,[v.invoiceFile,...(v.proof?[v.proof]:[]),
+     ...(v.paymentFile?[v.paymentFile]:[])]]);
+   if(files.rows.length!==1+(v.proof?1:0)+(v.paymentFile?1:0)||
     !files.rows.some(f=>f.id===v.invoiceFile&&
      f.classification==="PATIENT_PARTNER_INVOICE")||
     v.proof&&!files.rows.some(f=>f.id===v.proof&&
-     f.classification==="PATIENT_PARTNER_SERVICE_PROOF"))
+     f.classification==="PATIENT_PARTNER_SERVICE_PROOF")||
+    v.paymentFile&&!files.rows.some(f=>f.id===v.paymentFile&&
+     f.classification==="PATIENT_PARTNER_PAYMENT_PROOF"))
     throw new BadRequestException({code:"CG17_PARTNER_CLAIM_PROOF_REQUIRED"});
    const policy=await c.query<{
     id:string;mode:string;percent_basis_points:number|null;
@@ -286,16 +295,16 @@ export class PartnerServiceClaimService{
    const inserted=await c.query<Claim>(
     "INSERT INTO cg17_partner_service_claim(root_realm_id,center_ref,"+
     "patient_ref,service_kind,invoice_number,service_local_date,"+
-    "invoice_file_ref,completion_file_ref,policy_revision_ref,"+
+    "invoice_file_ref,completion_file_ref,payment_file_ref,policy_revision_ref,"+
     "quoted_gross_minor,estimated_support_minor,estimated_patient_due_minor,"+
     "source_digest,requested_by_account,request_key) "+
-    "VALUES($1,$2,$3,$4,$5,$6::date,$7,$8,$9,$10,$11,$12,$13,$14,$15) "+
+    "VALUES($1,$2,$3,$4,$5,$6::date,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) "+
     "RETURNING public_code,center_ref,service_kind,invoice_number,"+
     "service_local_date::text,quoted_gross_minor::text,"+
-    "estimated_support_minor::text,estimated_patient_due_minor::text,"+
+    "estimated_support_minor::text,estimated_patient_due_minor::text,payment_file_ref,"+
     "state,submitted_at,source_digest",
     [actor.realmId,v.center,patient,v.kind,v.invoice,v.serviceDate,
-     v.invoiceFile,v.proof,p.id,gross.toString(),support.toString(),
+     v.invoiceFile,v.proof,v.paymentFile,p.id,gross.toString(),support.toString(),
      (gross-support).toString(),sourceDigest,actor.accountId,v.key]);
    return {...present(inserted.rows[0]),replayed:false};
   });
