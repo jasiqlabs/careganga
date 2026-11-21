@@ -21,6 +21,8 @@ export class HrEnrollmentController{
  employeeDepartments(@Headers("authorization")token:string,@Query("branch")branch:string){
   return this.hr.employeeDepartmentOptions(token,branch);
  }
+ @Get("summary")
+ summary(@Headers("authorization")token:string){return this.hr.employeeSummary(token);}
  @Get("employees")
  employees(@Headers("authorization")token:string,@Query("offset")offset?:string,
    @Query("branch")branch?:string,@Query("status")status?:string,
