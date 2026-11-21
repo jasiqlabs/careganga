@@ -37,3 +37,10 @@ CG22 **US001** light approved medicine/price catalogue and CG24 **US001** CG14-s
 6. **No merge to main** until all selected source tasks, CG17 financed services and runtime/SQL/device gates are complete and approved. No CI/GH Actions.
 
 **Do not report source complete yet:** Gate A committed but untested; Gate B not implemented; Gate C optional not implemented.
+
+## Follow-up source-review corrections (21 November 2026; active branch)
+
+- **Public Android import:** corrected the newly added partner form design-token import from four to five parent directory levels (809d07d), with actual file-existence check in the existing source verifier (3a6c14f). Before fix: source import bug. Current real Expo/TypeScript build remains NOT_RUN.
+- **Native Back:** hardware Back now returns form -> Partnerships choice -> home, preserving in-component original request key (eed9fa6). App-process death recovery requires physical-device testing, not guaranteed by this UI.
+- **Matching original partner:** Web and Internal Android selectors now use the actual source-supported q search before matching (7773bef, efa5afb), and the CG14 server independently checks root, name, type and phone or original medical license. This link does not approve or activate partner.
+- **QA truth:** committed source only. Developer must run local source checks, backend and both Android builds, disposable DB migration and real Web/native scenarios. CG17 pharmacy/nursing/OT invoice evidence, approved discount and genuine monthly Foundation reimbursement remain NOT_IMPLEMENTED, so overall partner-first release is not merge-ready.
