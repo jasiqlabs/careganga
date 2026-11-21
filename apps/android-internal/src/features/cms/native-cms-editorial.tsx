@@ -133,7 +133,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
  const content=(v:Detail)=>({
   kind:v.kind,slug:v.slug,title:v.title,seoTitle:v.seoTitle,
   seoDescription:v.seoDescription,canonicalPath:v.canonicalPath,
-  sections:v.sections,assets:v.assets,navigation:v.navigation
+  sections:v.sections,assets:v.assets,
+  ...(v.kind==="HOME"&&v.navigation?{navigation:v.navigation}:{})
  });
  function modified(){
   return !!selected&&!!draft&&JSON.stringify(content(selected))!==
