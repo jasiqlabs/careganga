@@ -138,7 +138,7 @@ export class HrPrivateDetailService{
    if(current!==expected)throw new ConflictException(
      "Protected employee information changed. Refresh before saving.");
    const next=current+1,encrypted=encrypt(data,actor.realmId,ref,next);
-   await tx.query(
+   const updated=await tx.query(
     "INSERT INTO hr_application_private(application_id,root_realm_id,"+
     "payload_ciphertext,payload_nonce,payload_tag,payload_digest,record_version,"+
     "updated_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) "+
@@ -146,9 +146,12 @@ export class HrPrivateDetailService{
     "payload_ciphertext=EXCLUDED.payload_ciphertext,"+
     "payload_nonce=EXCLUDED.payload_nonce,payload_tag=EXCLUDED.payload_tag,"+
     "payload_digest=EXCLUDED.payload_digest,record_version=EXCLUDED.record_version,"+
-    "updated_by=EXCLUDED.updated_by,updated_at=now()",
+    "updated_by=EXCLUDED.updated_by,updated_at=now() "+
+    "WHERE hr_application_private.record_version=$9",
     [ref,actor.realmId,encrypted.ciphertext,encrypted.nonce,encrypted.tag,
-     encrypted.hash,next,actor.accountId]);
+     encrypted.hash,next,actor.accountId,expected]);
+   if(!updated.rowCount)
+    throw new ConflictException("Protected employee details were changed. Refresh before retrying.");
    await tx.query(
     "INSERT INTO hr_private_access_audit(root_realm_id,application_id,actor_ref,"+
     "event_type,record_version) VALUES($1,$2,$3,'PRIVATE_WRITE',$4)",
