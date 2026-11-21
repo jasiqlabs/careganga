@@ -116,7 +116,8 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     <dd>{money(data.foundationApprovedLiabilityMinor)}</dd>
     {approved?<><dt>Approved monthly Foundation claim</dt>
      <dd>{money(data.approvedFoundationMinor)}</dd>
-     {data.adjustedFoundationMinor&&BigInt(data.adjustedFoundationMinor)>0n&&<>
+     {data.adjustedFoundationMinor&&/^[0-9]{1,14}$/.test(data.adjustedFoundationMinor)&&
+     BigInt(data.adjustedFoundationMinor)>0n&&<>
       <dt>Original Foundation claim before correction</dt>
       <dd>{money(data.originalApprovedFoundationMinor)}</dd>
       <dt>Verified original claim adjustments</dt>
