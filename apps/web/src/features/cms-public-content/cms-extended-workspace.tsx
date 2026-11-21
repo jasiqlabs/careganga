@@ -136,7 +136,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  },[]);
  useEffect(()=>{void refresh().catch(e=>setError(e.message));},[refresh]);
  const open=async(p:Item)=>{
-  if(pending){
+  if(pending||mediaAttempt.current){
    setError("Your last original CMS action may have committed. "+
     "Retry the same request before opening another page.");
    return;
@@ -159,7 +159,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   finally{setBusy(false);}
  };
  const begin=(k:Kind)=>{
-  if(pending){
+  if(pending||mediaAttempt.current){
    setError("Resolve the original uncertain CMS request before a new page.");
    return;
   }
@@ -238,7 +238,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   }finally{setBusy(false);}
  }
  const act=(path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
-  if(busy||pending){
+  if(busy||pending||mediaAttempt.current){
    setError("Resolve the previous original request before another change.");
    return;
   }
@@ -369,7 +369,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const inReview=pages.filter(p=>p.draftStatus==="SUBMITTED").length;
  const close=useCallback(()=>{
   if(busy)return;
-  if(pending||dirty){setClosePrompt(true);return;}
+  if(pending||dirty||mediaAttempt.current){setClosePrompt(true);return;}
   setEditorOpen(false);
  },[busy,pending,dirty]);
  useEffect(()=>{
@@ -463,7 +463,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      "This draft contains unsaved changes. Closing will discard only edits on this screen; the published version is unchanged."}</p>
     <div className="cg-cms-actions"><button type="button"
      onClick={()=>setClosePrompt(false)}>Keep editing</button>
-     <button type="button" onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
+     <button type="button" disabled={!!mediaAttempt.current}
+     onClick={()=>{setClosePrompt(false);setEditorOpen(false);setPending(null);}}>
       Discard edits and close</button></div>
    </div>}
    {preview?<div className="cg-cms-preview">
