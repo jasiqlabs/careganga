@@ -11,7 +11,8 @@ type FinanceTrend={type:"MONTHLY_FINANCE";windowLabel:string;
  state:"AVAILABLE"|"EMPTY"|"FAILED";
  points:{month:string;incomeMinor:string;expenseMinor:string}[]};
 type Source={sourceKey:string;state:"AVAILABLE"|"EMPTY"|"SUPPRESSED"|"FAILED";sourceLabel:string;
- readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string;
+ readAt?:string;sourceAsOf?:string;cutoffKind?:string;
+ metrics:Metric[];drilldown?:string;explanation?:string;
  trend?:FinanceTrend};
 
 /**
@@ -110,7 +111,8 @@ export class MisDashboardService{
     return {sourceKey:"CG09_POSTED_FINANCE",
      state:source.sourceRecordState==="NO_ROWS"?"EMPTY" as const:"AVAILABLE" as const,
      sourceLabel:"Foundation Finance · Posted journals",
-     readAt:new Date().toISOString(),
+     readAt:new Date().toISOString(),sourceAsOf:source.sourceAsOf,
+     cutoffKind:source.sourceCutoffKind,
      metrics:source.sourceRecordState==="NO_ROWS"?[]:[
       {key:"income",label:"Posted income",unit:"INR_MINOR" as const,value:source.incomeMinor},
       {key:"expense",label:"Posted expenses",unit:"INR_MINOR" as const,value:source.expenseMinor},
@@ -169,7 +171,8 @@ export class MisDashboardService{
     state:restricted?"SUPPRESSED" as const:
      x.bookings==="0"?"EMPTY" as const:"AVAILABLE" as const,
     sourceLabel:"Foundation Appointments · Current state totals",
-    readAt:new Date().toISOString(),
+    readAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    cutoffKind:x.sourceCutoffKind,
     metrics:restricted||x.bookings==="0"?[]:[
      {key:"bookings",label:"Total appointments",unit:"COUNT" as const,value:x.bookings},
      {key:"completed",label:"Completed appointments",unit:"COUNT" as const,value:x.completed},
