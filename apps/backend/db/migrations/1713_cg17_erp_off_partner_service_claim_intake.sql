@@ -2,6 +2,7 @@
 -- reviewable scanned partner invoice and performed service source.
 -- A claim is NEVER an accepted charge, patient payment, Foundation liability,
 -- CG09 journal, settlement, or medical determination. No optional ERP tables.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE cg17_partner_service_claim(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
