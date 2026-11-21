@@ -7,7 +7,7 @@ import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/app
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Filters={yearRef?:string;branchRef?:string};
 type Metric={key:string;label:string;unit:"INR_MINOR"|"COUNT";value:string};
-type Source={sourceKey:string;state:"AVAILABLE"|"FAILED";sourceLabel:string;
+type Source={sourceKey:string;state:"AVAILABLE"|"EMPTY"|"FAILED";sourceLabel:string;
  readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string};
 
 /**
@@ -53,9 +53,10 @@ export class MisDashboardService{
   let failures=0;
   const financeSource:Promise<Source|null>=this.finance
    .summary(bearer,filters.yearRef,filters.branchRef)
-   .then(source=>({sourceKey:"CG09_POSTED_FINANCE",state:"AVAILABLE" as const,
+   .then(source=>({sourceKey:"CG09_POSTED_FINANCE",
+    state:source.sourceRecordState==="NO_ROWS"?"EMPTY" as const:"AVAILABLE" as const,
     sourceLabel:"Foundation Finance · Posted journals",readAt:new Date().toISOString(),
-    metrics:[
+    metrics:source.sourceRecordState==="NO_ROWS"?[]:[
      {key:"income",label:"Posted income",unit:"INR_MINOR" as const,value:source.incomeMinor},
      {key:"expense",label:"Posted expenses",unit:"INR_MINOR" as const,value:source.expenseMinor},
      {key:"surplus",label:"Posted surplus",unit:"INR_MINOR" as const,value:source.surplusMinor},
@@ -115,7 +116,9 @@ export class MisDashboardService{
   const results=await Promise.all([financeSource,diagnosticSource,patientSource]);
   const sources:Source[]=results.filter((x):x is Source=>x!==null);
   const available=sources.filter(s=>s.state==="AVAILABLE").length;
+  const empty=sources.filter(s=>s.state==="EMPTY").length;
   return {state:available?(failures?"PARTIAL":"AVAILABLE"):
+   empty?(failures?"PARTIAL":"NO_DATA"):
    failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
    scopeLabel:filters.branchRef?"Permitted selected branch":"Current original-owner scope",
    periodLabel:filters.yearRef?"Selected financial year":"All permitted posted financial years",
