@@ -3,7 +3,7 @@
  * Static source assertions only: NOT PG execution, independent financial
  * audit, real scanner, Android device, or payment provider verification.
  */
-import {readFileSync} from "node:fs";
+import {readFileSync,readdirSync} from "node:fs";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
@@ -32,7 +32,26 @@ const s={
  safe:file("apps/backend/src/core/http/safe-error-copy.ts")
 };
 const count=(v,x)=>v.split(x).length-1;
+const migrationFiles=readdirSync(resolve(root,"apps/backend/db/migrations"))
+ .filter(name=>name.endsWith(".sql")).sort();
+const migrationRunnerFilter=/^\\d+_cg\\d+_[a-z0-9_-]+\\.sql$/;
+const selectedMigrations=migrationFiles.filter(name=>migrationRunnerFilter.test(name));
+const requiredMigrations=[
+ "1713_cg17_erp_off_partner_service_claim_intake.sql",
+ "1713_cg19_a_partner_payment_proof_classification.sql",
+ "1713_cg19_b_cg17_partner_claim_patient_payment_evidence.sql",
+ "1713_cg19_c_protected_partner_invoice_read_audit.sql",
+ "1714_cg17_partner_service_independent_verification.sql",
+ "1715_cg17_partner_liability_existing_finance_extension.sql"
+];
 const tests=[
+ ["All ERP-OFF original finance migrations match the ACTUAL local migration runner's selector",
+  requiredMigrations.every(name=>selectedMigrations.includes(name)) &&
+  !migrationFiles.some(name=>/^\\d+[a-z]+_cg\\d+_/.test(name))],
+ ["Original patient source and scanned payment classification migrate BEFORE guarded review and liability",
+  requiredMigrations.every((name,i)=>i===0||
+   selectedMigrations.indexOf(requiredMigrations[i-1])<selectedMigrations.indexOf(name))],
+
  ["Stable human tracking code is syntactically valid and unique",
   s.base.includes("'^CG-[A-F0-9]{14}$'")&&
   s.base.includes("center_ref uuid NOT NULL")&&
