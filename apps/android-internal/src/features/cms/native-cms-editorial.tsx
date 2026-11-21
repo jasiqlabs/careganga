@@ -216,6 +216,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const [withdrawReason,setWithdrawReason]=useState("");
  const [schedule,setSchedule]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
+ const [mediaActive,setMediaActive]=useState(false);
  const turn=useRef(0);
  const fail=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -238,6 +239,9 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
   setPages(response.pages);
  },[token]);
  const open=useCallback(async(ref:string)=>{
+  if(mediaActive)
+   throw Error("An original CG19 media upload is unresolved. "+
+    "Verify or retry that source before opening another CMS page.");
   const page=await api<Detail>(token,"pages/"+encodeURIComponent(ref));
   if(!page||!Array.isArray(page.sections)||!Array.isArray(page.assets)||
    !page.pageRef||!Number.isSafeInteger(page.version))
@@ -245,7 +249,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
   setNewPage(null);
   setSelected(page);setDraft(JSON.parse(JSON.stringify(page)) as Detail);
   setUncertain(false);setPending(null);setSchedule("");
- },[token]);
+ },[token,mediaActive]);
  useEffect(()=>{
   const rev=++turn.current;setLoading(true);
   void list().catch(e=>{if(turn.current===rev)readFailure(e)})
@@ -307,7 +311,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
   ...(p.kind==="HOME"&&p.navigation?{navigation:p.navigation}:{})
  });
  const create=()=>{
-  if(!canManage||!newPage||busy||uncertain)return;
+  if(!canManage||!newPage||busy||uncertain||mediaActive)return;
   if(newPage.title.trim().length<3||
    !/^[a-z0-9][a-z0-9-]{0,69}$/.test(newPage.slug)){
    setError("Enter a page title and a valid original page slug.");return;
@@ -333,7 +337,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    <Text style={styles.note}>Original CG18 pages and revisions. Drafts are not
     public until independent approval and actual publication.</Text>
    {button("Back to dashboard",()=>{
-    if(pending||uncertain){
+    if(pending||uncertain||mediaActive){
      Alert.alert("Original CMS action not confirmed",
       "The last request may have committed. Leaving now loses its "+
       "same-key retry on this screen. Check or retry the original request first.",[
@@ -365,12 +369,12 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      " · Public "+title(p.publicStatus??"Not published"),()=>{
       if(busy)return;
       setError("");void open(p.pageRef).catch(readFailure);
-     },busy||uncertain)}
+     },busy||uncertain||mediaActive)}
    </View>)}
    {canManage&&!newPage&&button("Create a new original Foundation page",()=>{
     setSelected(null);setDraft(null);setError("");
     setNewPage(initialKind("ARTICLE"));
-   },busy||uncertain)}
+   },busy||uncertain||mediaActive)}
    {canManage&&newPage&&<View style={styles.panel}>
     <Text style={styles.heading}>Create an unpublished original CMS draft</Text>
     <Text style={styles.note}>Uses the original Web CMS page kinds and strict
@@ -439,6 +443,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
     {canManage&&selected.status==="DRAFT"&&
      <NativeCmsMediaUploader token={token} kind={selected.kind}
+      onAttemptChange={setMediaActive}
       sections={draft.sections}
       pageRef={selected.pageRef} revisionRef={selected.revisionRef}
       assets={draft.assets} onExpired={onExpired} disabled={locked}
