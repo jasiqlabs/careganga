@@ -19,10 +19,10 @@ type Detail={pageRef:string;kind:string;slug:string;version:number;
 // Same existing CMS editorial page types, slugs and initial section shapes as
 // the original Web CmsExtendedWorkspace. These are draft defaults, not a
 // second publication or independent CMS module.
-type NewKind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY";
+type NewKind="HOME"|"ABOUT"|"IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY";
 type NewPage={kind:NewKind;slug:string;title:string;seoTitle:string;
- seoDescription:string;sections:Section[];assets:Asset[]};
-const newKinds:NewKind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE",
+ seoDescription:string;sections:Section[];assets:Asset[];navigation?:Navigation};
+const newKinds:NewKind[]=["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE",
  "CONTACT","HEALTHCARE","POLICY"];
 const legalPages=[["terms-and-conditions","Terms & Conditions"],
  ["privacy-policy","Privacy Policy"],["cookie-policy","Cookie Policy"],
@@ -33,7 +33,13 @@ const impactGroups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY",
  "BREAKDOWN","FOCUS","STORIES","UPDATES","CTA"];
 const day=()=>new Date().toISOString().slice(0,10);
 const initialKind=(kind:NewKind):NewPage=>{
- const sections:Section[]=kind==="IMPACT"?
+ const sections:Section[]=kind==="HOME"?[{kind:"HERO",order:0,fields:{
+  heading:"",subtitle:"",description:"",eyebrow:"",visible:true,
+  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
+  headingColor:"#FFE34A",subtitleColor:"#8CF442",tags:[]}}]:
+ kind==="ABOUT"?[{kind:"RICH_TEXT",order:20,fields:{
+  heading:"About the Foundation",body:"",variant:"STANDARD"}}]:
+ kind==="IMPACT"?
   impactGroups.map((group,order)=>({kind:"IMPACT_GROUP",order,fields:{
    group,heading:"",intro:"",source:"",asOfDate:day(),items:[]}})):
  kind==="COMPLIANCE"?[{kind:"COMPLIANCE_FACTS",order:0,fields:{
@@ -69,12 +75,15 @@ const initialKind=(kind:NewKind):NewPage=>{
    headingSize:"LARGE",headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
   {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
    heading:"",intro:"",categories:[]}}];
- const slug=kind==="IMPACT"?"our-impact":kind==="COMPLIANCE"?"80g":
+ const slug=kind==="HOME"?"home":kind==="ABOUT"?"about":kind==="IMPACT"?"our-impact":kind==="COMPLIANCE"?"80g":
   kind==="POLICY"?legalPages[0][0]:kind.toLowerCase();
  return {kind,slug,title:kind==="POLICY"?legalPages[0][1]:"",
-  seoTitle:"",seoDescription:"",sections,assets:[]};
+  seoTitle:"",seoDescription:"",sections,assets:[],
+  ...(kind==="HOME"?{navigation:{loginDesired:true,
+   memberJoinDesired:false,volunteerJoinDesired:false}}:{})};
 };
-const canonicalFor=(kind:NewKind,slug:string)=>kind==="COMPLIANCE"?
+const canonicalFor=(kind:NewKind,slug:string)=>kind==="HOME"?"/":
+ kind==="ABOUT"?"/about":kind==="COMPLIANCE"?
  "/ngo-information":kind==="ARTICLE"?"/blog/"+slug:
  kind==="POLICY"?"/policies/"+slug:"/"+slug;
 type Props={token:string;canManage:boolean;canPublish:boolean;
@@ -232,7 +241,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
   kind:p.kind,slug:p.slug,title:p.title,
   seoTitle:p.seoTitle.trim()||p.title,
   seoDescription:p.seoDescription,canonicalPath:canonicalFor(p.kind,p.slug),
-  sections:p.sections,assets:p.assets
+  sections:p.sections,assets:p.assets,
+  ...(p.kind==="HOME"&&p.navigation?{navigation:p.navigation}:{})
  });
  const create=()=>{
   if(!canManage||!newPage||busy||uncertain)return;
@@ -310,6 +320,9 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
      onChange={v=>changeNew({seoTitle:String(v)})}/>
     <EditField name="Search description" value={newPage.seoDescription}
      locked={locked} onChange={v=>changeNew({seoDescription:String(v)})}/>
+    {newPage.kind==="HOME"&&newPage.navigation&&
+     <EditField name="Approved original navigation choices" value={newPage.navigation}
+      locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
     {newPage.sections.map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
      <EditField name="Source content" value={sec.fields} locked={locked}
