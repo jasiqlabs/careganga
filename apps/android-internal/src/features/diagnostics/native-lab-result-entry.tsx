@@ -6,7 +6,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 type Value={lineRef:string;value:string;unit:string;observation:string};
 type Source={canEnter:boolean;canCorrect?:boolean;
- previousReleaseRef?:string|null;
+ previousReleaseRef?:string|null;correctionDraft?:Value[]|null;
  resumeCorrection?:{previousReleaseRef:string;reason:string}|null;
  reportReady:boolean;resume:{
  requestKey:string;results:Value[]}|null;tests:{lineRef:string;name:string}[]};
@@ -52,7 +52,8 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
     throw Error("Original ordered test list cannot be verified.");
    setSource(x);key.current=x.resume?.requestKey??null;
    setCorrectionReason(x.resumeCorrection?.reason??"");
-   const prior=new Map((x.resume?.results??[]).map(v=>[v.lineRef,v]));
+   const prior=new Map((x.resume?.results??x.correctionDraft??[])
+    .map(v=>[v.lineRef,v]));
    setValues(x.tests.map(item=>prior.get(item.lineRef)??{
     lineRef:item.lineRef,value:"",unit:"",observation:""
    }));
