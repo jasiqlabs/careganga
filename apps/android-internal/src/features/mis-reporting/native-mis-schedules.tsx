@@ -6,133 +6,192 @@ import {nativeMisProblem} from "./native-mis-problem";
 import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
-type Saved={ref:string;name:string;state:string};
-type Schedule={ref:string;state:string;cadence:string;savedReportName:string;timezone:string;
- localTime:string;nextDueAt:string;revision:number;canActivate:boolean};
+type Saved={ref:string;name:string;state:string;sourceKey?:string|null};
+type Schedule={ref:string;state:string;cadence:string;savedReportName:string;
+ timezone:string;localTime:string;nextDueAt:string;revision:number;canActivate:boolean};
+type History={state:string;createdAt:string;deliveryState:string;dueAt:string};
 async function api<T>(token:string,path:string,body?:object):Promise<T>{
- const r=await identityRequest("/api/v1/mis/reports/"+path,{
+ const response=await identityRequest("/api/v1/mis/reports/"+path,{
   method:body?"POST":"GET",cache:"no-store",
-  headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
+  headers:{Authorization:"Bearer "+token,
+   ...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw await nativeMisProblem(r,"This schedule outcome is unconfirmed. Refresh its current status.");
- return r.json() as Promise<T>;
+ if(!response.ok)throw await nativeMisProblem(response,
+  "The schedule status could not be confirmed. Refresh before retrying.");
+ return response.json() as Promise<T>;
 }
-/** Paused-only native schedule management: no fake successful sending or
- * unauthorized background access to patient/finance reports.
+const localDate=(when:string,zone:string)=>{
+ try{
+  const fmt=new Intl.DateTimeFormat("en-GB",{timeZone:zone,
+   year:"numeric",month:"2-digit",day:"2-digit"});
+  const p=Object.fromEntries(fmt.formatToParts(new Date(when))
+   .map(x=>[x.type,x.value]));
+  return p.year+"-"+p.month+"-"+p.day;
+ }catch{return "";}
+};
+/** Original C49 native schedule controls for real CG09 posted summaries.
+ * Only in-app notice after verified CG19 PDF; never a fake email or sent
+ * acknowledgement. Same staff role and original CG20 API as Admin Web.
  */
 export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=>void}){
- const [saved,setSaved]=useState<Saved[]>([]),[rows,setRows]=useState<Schedule[]>([]);
+ const [saved,setSaved]=useState<Saved[]>([]);
+ const [rows,setRows]=useState<Schedule[]>([]);
  const [selected,setSelected]=useState("");
  const [cadence,setCadence]=useState("MONTHLY");
- const [zone,setZone]=useState("Asia/Kolkata"),[day,setDay]=useState("");
+ const [zone,setZone]=useState("Asia/Kolkata");
+ const [day,setDay]=useState("");
  const [time,setTime]=useState("09:00");
+ const [editing,setEditing]=useState<Schedule|null>(null);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState("");
- const [history,setHistory]=useState<{state:string;createdAt:string}[]>([]);
- const seq=useRef(0);
- const pending=useRef<{payload:string;key:string}|null>(null);
- const fail=useCallback((e:unknown)=>{
-  if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
-  setError(e instanceof Error?e.message:"Private schedules are unavailable.");
+ const [history,setHistory]=useState<History[]>([]);
+ const seq=useRef(0),pending=useRef<{payload:string;key:string}|null>(null);
+ const fail=useCallback((err:unknown)=>{
+  if(err&&typeof err==="object"&&"status" in err&&err.status===401)onExpired();
+  setError(err instanceof Error?err.message:"This schedule cannot be checked.");
  },[onExpired]);
  const load=useCallback(async()=>{
   const rev=++seq.current;setLoading(true);setError("");
   try{
-   const [a,b]=await Promise.all([
+   const [savedReports,schedules]=await Promise.all([
     api<{items:Saved[]}>(token,"saved"),
     api<{schedules:Schedule[]}>(token,"schedules")]);
-   if(!Array.isArray(a.items)||!Array.isArray(b.schedules))
-    throw Error("The saved report and schedule list cannot be verified.");
+   if(!Array.isArray(savedReports.items)||!Array.isArray(schedules.schedules))
+    throw Error("Current schedule and saved report information is unavailable.");
    if(rev===seq.current){
-    setSaved(a.items.filter(x=>x.state==="ACTIVE"));
-    setRows(b.schedules);
+    setSaved(savedReports.items.filter(x=>x.state==="ACTIVE"&&
+     x.sourceKey==="FINANCE_POSTED_SUMMARY"));
+    setRows(schedules.schedules);
    }
-  }catch(e){if(rev===seq.current){setSaved([]);setRows([]);fail(e)}}
+  }catch(e){if(rev===seq.current){setSaved([]);setRows([]);fail(e);}}
   finally{if(rev===seq.current)setLoading(false);}
  },[token,fail]);
  useEffect(()=>{void load();return()=>{seq.current++;};},[load]);
  useEffect(()=>{
-  const sub=AppState.addEventListener("change",status=>{
+  const sub=AppState.addEventListener("change",state=>{
    seq.current++;setSaved([]);setRows([]);setHistory([]);
-   if(status==="active"){pending.current=null;void load();}
+   if(state==="active"){
+    pending.current=null;setEditing(null);void load();
+   }
   });
   return()=>sub.remove();
  },[load]);
- async function create(){
-  if(loading||!selected)return;
-  const body={savedRef:selected,cadence,timezone:zone,
-   firstDate:day,localTime:time};
-  const payload=JSON.stringify(body);
-  if(pending.current?.payload!==payload)
+ function reset(){
+  setEditing(null);setDay("");pending.current=null;
+ }
+ async function save(){
+  if(loading||!day||!editing&&!selected)return;
+  const fields={cadence,timezone:zone,firstDate:day,localTime:time};
+  const payload=JSON.stringify({savedRef:selected,...fields});
+  if(!editing&&pending.current?.payload!==payload)
    pending.current={payload,key:Crypto.randomUUID()};
   setLoading(true);setError("");setNotice("");
   try{
-   const result=await api<{message:string}>(token,"schedules",{
-    ...body,requestKey:pending.current.key});
-   pending.current=null;
-   setNotice(result.message??"Schedule saved as paused. Automatic delivery is not active.");
-   await load();
-  }catch(e){fail(e)}finally{setLoading(false);}
+   const result=editing?
+    await api<{message:string}>(token,
+     "schedules/"+encodeURIComponent(editing.ref)+"/edit",{
+      expectedRevision:editing.revision,...fields}):
+    await api<{message:string}>(token,"schedules",{
+     savedRef:selected,...fields,requestKey:pending.current!.key});
+   setNotice(result.message||
+    "Schedule active for verified private in-app reports.");
+   reset();await load();
+  }catch(e){fail(e);}finally{setLoading(false);}
  }
  async function pause(item:Schedule){
   if(loading||item.state!=="ACTIVE")return;
   setLoading(true);setError("");setNotice("");
   try{
    await api(token,"schedules/"+encodeURIComponent(item.ref)+"/pause",{
-    expectedRevision:item.revision
-   });
-   setNotice("This schedule is paused. Automatic delivery remains disabled.");
+    expectedRevision:item.revision});
+   setNotice("Schedule paused. No new report occurrence will be created.");
    await load();
   }catch(e){fail(e);}finally{setLoading(false);}
  }
- async function openHistory(ref:string){
+ async function resume(item:Schedule){
+  if(loading||item.state!=="PAUSED")return;
+  setLoading(true);setError("");setNotice("");
+  try{
+   const result=await api<{message:string}>(token,
+    "schedules/"+encodeURIComponent(item.ref)+"/resume",{
+     expectedRevision:item.revision});
+   setNotice(result.message||"Schedule resumed with current permissions.");
+   await load();
+  }catch(e){fail(e);}finally{setLoading(false);}
+ }
+ function edit(item:Schedule){
+  setEditing(item);setCadence(item.cadence);
+  setZone(item.timezone);setTime(item.localTime.slice(0,5));
+  setDay(localDate(item.nextDueAt,item.timezone));
+  setHistory([]);setError("");setNotice("");pending.current=null;
+ }
+ async function openHistory(item:Schedule){
+  if(loading)return;
   setLoading(true);setError("");setHistory([]);
   try{
-   const result=await api<{runs:{state:string;createdAt:string}[]}>(
-    token,"schedules/"+encodeURIComponent(ref)+"/history");
+   const result=await api<{runs:History[]}>(token,
+    "schedules/"+encodeURIComponent(item.ref)+"/history");
    setHistory(Array.isArray(result.runs)?result.runs:[]);
-  }catch(e){fail(e)}finally{setLoading(false);}
+  }catch(e){fail(e);}finally{setLoading(false);}
  }
  return <View style={s.root}>
   <Text accessibilityRole="header" style={s.title}>My report schedules</Text>
-  <Text style={s.text}>Automatic delivery is not enabled yet. New schedules
-   remain paused until current recipient permission and original CG-19
-   delivery can be verified. No reports are sent in this mode.</Text>
+  <Text style={s.text}>Your authorized posted-finance summaries can run
+   automatically at a selected local time. CareGanga stores the protected PDF
+   with CG-19 and records a private in-app notice only after confirmation.
+   The recipient is your current account. Other report sources, email and SMS
+   are not enabled.</Text>
   {!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}
   {!!notice&&<Text style={s.text}>{notice}</Text>}
-  <NativeFinanceAction label="Refresh saved schedules" disabled={loading}
-   secondary onPress={()=>void load()}/>
-  {!!saved.length&&<>
-   <NativeFinanceOptions label="My saved report" value={selected}
-    options={[{ref:"",label:"Choose a private report"},
-     ...saved.map(x=>({ref:x.ref,label:x.name}))]} onChange={setSelected}/>
+  <NativeFinanceAction label="Refresh current schedules"
+   disabled={loading} secondary onPress={()=>void load()}/>
+  {(!!saved.length||editing!==null)&&<>
+   {editing?<Text style={s.title}>Editing: {editing.savedReportName}</Text>:
+    <NativeFinanceOptions label="My saved finance summary" value={selected}
+     options={[{ref:"",label:"Choose a private finance summary"},...saved.map(x=>({
+      ref:x.ref,label:x.name}))]} onChange={setSelected}/>}
    <NativeFinanceOptions label="Recurrence" value={cadence}
-    options={["DAILY","WEEKLY","MONTHLY","YEARLY"].map(x=>({
-     ref:x,label:x[0]+x.slice(1).toLowerCase()}))} onChange={setCadence}/>
-   <NativeFinanceField label="Timezone (IANA)" value={zone} onChange={setZone}
-    placeholder="Asia/Kolkata"/>
+    options={["DAILY","WEEKLY","MONTHLY","YEARLY"].map(value=>({
+     ref:value,label:value[0]+value.slice(1).toLowerCase()}))}
+    onChange={setCadence}/>
+   <NativeFinanceField label="Timezone" value={zone}
+    onChange={setZone} placeholder="Asia/Kolkata"/>
    <NativeFinanceField label="First local date (YYYY-MM-DD)" value={day}
     onChange={setDay} placeholder="2026-11-25"/>
-   <NativeFinanceField label="Local time (HH:MM)" value={time} onChange={setTime}
-    placeholder="09:00"/>
-   <NativeFinanceAction label="Save as paused schedule"
-    disabled={loading||!selected||!day} onPress={()=>void create()}/>
+   <NativeFinanceField label="Local time (HH:MM)" value={time}
+    onChange={setTime} placeholder="09:00"/>
+   <NativeFinanceAction
+    label={editing?"Save changes and activate":"Create active in-app schedule"}
+    disabled={loading||!day||!editing&&!selected}
+    onPress={()=>void save()}/>
+   {!!editing&&<NativeFinanceAction label="Cancel schedule edit" secondary
+    disabled={loading} onPress={reset}/>}
   </>}
-  {!saved.length&&<Text style={s.text}>No eligible private saved report is available.</Text>}
-  {rows.map(row=><View key={row.ref} style={s.card}>
-   <Text style={s.title}>{row.savedReportName} · {row.cadence[0]+row.cadence.slice(1).toLowerCase()}</Text>
-   <Text style={s.text}>Status: {row.state==="PAUSED"?"Paused — not sending":
-    row.state==="ACTIVE"?"Needs review — delivery is not enabled":
-    row.state==="DISABLED"?"Disabled":"Status unavailable — refresh"}</Text>
-   <Text style={s.text}>Timezone: {row.timezone}</Text>
-   <Text style={s.text}>Planned: {new Date(row.nextDueAt).toLocaleString("en-IN")}</Text>
-   {row.state==="ACTIVE"&&<NativeFinanceAction label="Pause this schedule"
-    secondary disabled={loading} onPress={()=>void pause(row)}/>}
-   <NativeFinanceAction label="View actual run history" secondary disabled={loading}
-    onPress={()=>void openHistory(row.ref)}/>
+  {!saved.length&&!editing&&<Text style={s.text}>
+   No eligible private posted-finance summary is available for new schedules.</Text>}
+  {rows.map(item=><View key={item.ref} style={s.card}>
+   <Text style={s.title}>{item.savedReportName} · {item.cadence[0]+
+    item.cadence.slice(1).toLowerCase()}</Text>
+   <Text style={s.text}>Status: {item.state==="ACTIVE"?"Active · in-app only":
+    item.state==="PAUSED"?"Paused · not sending":item.state}</Text>
+   <Text style={s.text}>Timezone: {item.timezone}</Text>
+   <Text style={s.text}>Next planned: {new Date(item.nextDueAt).toLocaleString(
+    "en-IN",{timeZone:item.timezone})}</Text>
+   {item.state==="ACTIVE"&&<NativeFinanceAction label="Pause this schedule"
+    disabled={loading} secondary onPress={()=>void pause(item)}/>}
+   {item.state==="PAUSED"&&<NativeFinanceAction label="Resume with current permissions"
+    disabled={loading} secondary onPress={()=>void resume(item)}/>}
+   {item.state!=="DISABLED"&&<NativeFinanceAction label="Edit schedule"
+    disabled={loading} secondary onPress={()=>edit(item)}/>}
+   <NativeFinanceAction label="View actual report and delivery history"
+    secondary disabled={loading} onPress={()=>void openHistory(item)}/>
   </View>)}
-  {history.map((row,i)=><Text key={i} style={s.text}>
-   {row.state.replaceAll("_"," ")} · {new Date(row.createdAt).toLocaleString("en-IN")}</Text>)}
+  {!history.length&&<Text style={s.text}>No selected schedule runs to display.</Text>}
+  {history.map((item,index)=><Text key={index} style={s.text}>
+   {item.state.replaceAll("_"," ")} · In-app delivery:
+   {" "}{item.deliveryState.replaceAll("_"," ")} ·
+   {" "}{new Date(item.createdAt).toLocaleString("en-IN")}
+  </Text>)}
  </View>;
 }
 const s=StyleSheet.create({
