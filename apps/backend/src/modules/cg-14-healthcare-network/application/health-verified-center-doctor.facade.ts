@@ -27,6 +27,9 @@ export class HealthVerifiedCenterDoctorFacade{
  async eligibleService(c:PoolClient,root:string,center:string,
   kind:"CONSULTATION"|"LAB"|"PHARMACY"|"NURSING"|"OT"){
   const original=await this.center(c,root,center);
+  // Do not tighten the already approved CG15/CG17 consultation source
+  // contract retroactively: it verifies the actual associated doctor/fee.
+  if(kind==="CONSULTATION")return original;
   const capability=kind==="LAB"?"DIAGNOSTICS":
    kind==="OT"?"SURGERY":kind;
   const ok=await c.query(
