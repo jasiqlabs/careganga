@@ -61,7 +61,27 @@ export class PatientAdminOverviewService{
   finally{c.release();}
  }
 
- /** H15 restricted review queue, bounded and rooted; never a public patient
+ /** CG-20 receiving-owner projection: authenticated Foundation-wide status
+  * counts only. Do NOT export the existing overview() rows/PII/consent,
+  * or count across patients/centers for a branch-only actor.
+  */
+ async readMisTotals(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  await this.sessions.requireAction(bearer,"foundation.branches.admin");
+  const result=await this.db.query<{
+   bookings:string;completed:string;waiting:string;cancelled:string
+  }>(
+   "SELECT count(*)::text AS bookings,"+
+   "count(*) FILTER (WHERE booking_state='COMPLETED')::text AS completed,"+
+   "count(*) FILTER (WHERE booking_state IN('CONFIRMED','ARRIVED','WAITING',"+
+   "'IN_CONSULTATION'))::text AS waiting,"+
+   "count(*) FILTER (WHERE booking_state='CANCELLED')::text AS cancelled "+
+   "FROM cg15_consultation_appointment WHERE root_realm_id=$1",
+   [actor.realmId]);
+  return result.rows[0]??{
+   bookings:"0",completed:"0",waiting:"0",cancelled:"0"};
+ }
+  /** H15 restricted review queue, bounded and rooted; never a public patient
   * search or an authorization to read source clinical files.
   */
  async duplicateReviews(bearer:string){
