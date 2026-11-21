@@ -354,9 +354,11 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   }
   void send({label,path,method,body:{requestKey:crypto.randomUUID(),...body}});
  };
- async function showInbox(){
-  if(busy)return;
-  if(pending){
+ async function showInbox(afterConfirmedDecision=false){
+  // The only allowed busy caller is our own already-confirmed reviewer
+  // decision, whose list refresh is a READ, not a second CG03 mutation.
+  if(busy&&!afterConfirmedDecision)return;
+  if(pending&&!afterConfirmedDecision){
    setError("Resolve the original uncertain CMS request before switching to reviews.");
    return;
   }
@@ -390,7 +392,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    setPending(null);setReview(null);setReviewPassword("");
    setNotice(action==="APPROVE"?"The page is approved. A publisher must still publish it.":
     "The author can now correct or review this page.");
-   await showInbox();await refresh();
+   await showInbox(true);await refresh();
   }catch(e){
    if(e instanceof CmsRequestRejected)setPending(null);
    setError(e instanceof Error?e.message:"Review was not confirmed.");
