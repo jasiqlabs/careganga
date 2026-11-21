@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
-import {resolve} from "node:path";
+import {resolve,dirname} from "node:path";
 const root=process.cwd();
 const file=(p)=>{
  const full=resolve(root,p);
@@ -183,6 +183,94 @@ for(const p of [
  const x=file(p);
  assert.ok(!x.includes("/api/v1/mis/")&&!x.includes("MisReportsWorkspace"),
   "Do not expose private MIS to public users: "+p);
+}
+// US-001–005 Web and Internal Android parity means actual source components,
+// endpoints and allowed interactions exist on both staff channels, not that
+// they visually rendered or compiled in this script.
+const pairedScreens=[
+ [web+"features/mis-reporting/mis-dashboard-panel.tsx",
+  native+"features/mis-reporting/native-mis-dashboard.tsx",
+  ["sourceAsOf","mis"],["sourceAsOf","NativeMisFinanceTrend"]],
+ [web+"features/mis-reporting/mis-reports-workspace.tsx",
+  native+"features/mis-reporting/native-mis-reports.tsx",
+  ["MisSavedReports","MisReportExports","MisReportSchedules","SOURCE_UNAVAILABLE"],
+  ["NativeMisSaved","NativeMisExports","NativeMisSchedules","SOURCE_UNAVAILABLE"]],
+ [web+"features/mis-reporting/mis-saved-reports.tsx",
+  native+"features/mis-reporting/native-mis-saved.tsx",
+  ["CREATE","REVISE","COPY","RETIRE"],
+  ["CREATE","REVISE","COPY","RETIRE"]],
+ [web+"features/mis-reporting/mis-report-exports.tsx",
+  native+"features/mis-reporting/native-mis-exports.tsx",
+  ["PDF","XLSX","CSV","runs"],
+  ["PDF","XLSX","CSV","runs"]],
+ [web+"features/mis-reporting/mis-report-schedules.tsx",
+  native+"features/mis-reporting/native-mis-schedules.tsx",
+  ["Save schedule as paused","Pause this schedule","history"],
+  ["Save as paused schedule","Pause this schedule","history"]]
+];
+for(const [webPath,nativePath,webTerms,nativeTerms] of pairedScreens){
+ contains(webPath,webTerms);
+ contains(nativePath,nativeTerms);
+}
+// CG-20 account/center reporting cross-channel: same original CG17 source,
+// not a duplicate report-derived financial master.
+contains(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
+ ["centerRef"]);
+contains(native+"features/mis-reporting/native-own-center-mis.tsx",
+ ["centerRef","ownCenterStatement"]);
+contains(web+"features/health-network/center-draft-portal.tsx",
+ ["CenterMonthlySettlementSummary"]);
+contains(native+"features/health-network/native-own-center-portal.tsx",
+ ["NativeOwnCenterMis"]);
+
+// Statical import-target check for the new owner. It does not substitute for
+// an independent TypeScript compiler or actual Android/Next runtime.
+const imports=[
+ mis+"application/mis-dashboard.service.ts",
+ mis+"application/mis-report-source.service.ts",
+ mis+"application/mis-saved-report.service.ts",
+ mis+"application/mis-report-run.service.ts",
+ mis+"application/mis-report-schedule.service.ts",
+ mis+"http/mis-dashboard.controller.ts",
+ mis+"http/mis-reports.controller.ts",
+ mis+"mis-reporting.module.ts",
+ cg19+"application/mis-protected-artifact.service.ts",
+ ...pairedScreens.flatMap(pair=>pair.slice(0,2)),
+ web+"app/(admin)/admin/mis/page.tsx",
+ native+"features/mis-reporting/native-mis-workspace-screen.tsx",
+ web+"app/api/mis/reports/private-mis-proxy.ts",
+ web+"app/api/mis/reports/safe-mis-bff-error.ts",
+ native+"features/mis-reporting/native-mis-problem.ts"
+];
+for(const path of imports){
+ const src=file(path);
+ for(const match of src.matchAll(/\bfrom\s+["'](\.[^"']+)["']/g)){
+  const target=resolve(root,dirname(path),match[1]);
+  const variants=[target,target+".ts",target+".tsx",target+".js",
+   target+".jsx",target+".json",resolve(target,"index.ts"),
+   resolve(target,"index.tsx")];
+  assert.ok(variants.some(existsSync),path+": missing relative source import "+match[1]);
+ }
+}
+// The official 81 QA cases have exactly one active progress status each.
+// A status records review disposition, NOT test execution.
+const tasks=file("specs/initiatives/careganga-foundation-platform/modules/cg-20-mis-reporting/tasks.md");
+const marker="## Execution progress";
+assert.ok(tasks.includes(marker),"Canonical CG20 QA progress marker is required");
+const progress=tasks.split(marker).slice(1).join(marker);
+const byStory=[16,16,15,17,17];
+for(let index=0;index<byStory.length;index++){
+ const story="US-00"+(index+1);
+ const match=progress.split("\n").find(line=>line.startsWith("- "+story+" |"));
+ assert.ok(match,"Missing original "+story+" progress entry");
+ for(let caseNumber=1;caseNumber<=byStory[index];caseNumber++){
+  const id="QA"+String(caseNumber).padStart(2,"0");
+  const trace=new RegExp("\\b"+id+"=(SOURCE_VERIFIED|SOURCE_GAP|NOT_APPLICABLE\\(FUTURE_OWNER_ABSENT\\)|NOT_VERIFIABLE\\(RUNTIME_DATABASE_QA_NOT_RUN\\))\\b?");
+  // Match by explicit token and expected next boundary, not a subsection
+  // with a similar suffix; no invented PASS for future owners.
+  assert.ok(match.includes(id+"="),story+" missing "+id+" progress status");
+  assert.ok(tasks.includes("**"+story+"-"+id+" —"),story+" missing original "+id+" case");
+ }
 }
 console.log("CG-20 structural contracts reviewed. "+stage+
  " — TypeScript, SQL, original screenshots, DB and Android device QA NOT_RUN.");
