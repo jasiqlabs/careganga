@@ -169,19 +169,21 @@ export class CompletedConsultationLiabilityService{
   return p;
  }
  private async existing(c:PoolClient,root:string,center:string,booking:string){
-  const q=await c.query<Liability&{effect_state:string;original_cg09_ref:string|null}>(
+  const q=await c.query<Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref:string|null}>(
    "SELECT l.id,l.center_ref,l.source_ref,l.charge_ref,l.award_ref,"+
    "l.completion_event_ref,l.amount_minor::text,l.service_completed_at,"+
    "l.source_digest,l.created_at,e.posting_state AS effect_state,"+
-   "e.original_cg09_ref FROM foundation_liability l "+
+   "e.original_cg09_ref,correction.id AS correction_ref FROM foundation_liability l "+
    "JOIN cg17_financial_effect e ON e.root_realm_id=l.root_realm_id "+
    "AND e.liability_ref=l.id AND e.effect_kind='LIABILITY_ACCRUAL' "+
+   "LEFT JOIN cg17_liability_correction correction ON correction.root_realm_id=l.root_realm_id "+
+   "AND correction.liability_ref=l.id "+
    "WHERE l.root_realm_id=$1 AND l.center_ref=$2 "+
    "AND l.source_kind='CG15_CONSULTATION' AND l.source_ref=$3",
    [root,center,booking]);
   return q.rows[0]??null;
  }
- private view(liability:Liability&{effect_state:string;original_cg09_ref:string|null}){
+ private view(liability:Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref?:string|null}){
   return {state:"APPROVED_LIABILITY" as const,
    centerRef:liability.center_ref,liabilityRef:liability.id,
    amountMinor:liability.amount_minor,currency:"INR" as const,
@@ -189,7 +191,9 @@ export class CompletedConsultationLiabilityService{
    postingState:liability.effect_state,
    foundationJournalPosted:liability.effect_state==="POSTED"&&
     liability.original_cg09_ref!==null,
-   providerSettled:false,centerPatientCollectionNotUsed:true};
+   providerSettled:false,centerPatientCollectionNotUsed:true,
+   correctedByOriginalReversal:!!liability.correction_ref,
+   effectiveFoundationPayableMinor:liability.correction_ref?"0":liability.amount_minor};
  }
  async status(token:string,centerRaw:string,bookingRaw:string){
   const center=id(centerRaw),booking=id(bookingRaw);
