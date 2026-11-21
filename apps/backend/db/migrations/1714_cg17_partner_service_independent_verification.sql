@@ -213,6 +213,36 @@ BEGIN
   RAISE EXCEPTION 'Original patient care consent is not current'
    USING ERRCODE='P1742';
  END IF;
+ IF NEW.outcome='APPROVED' AND (
+  NOT EXISTS(
+   SELECT 1 FROM cg19_patient_private_file f
+   JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
+   WHERE f.realm_id=claim.root_realm_id AND f.id=claim.invoice_file_ref
+    AND f.patient_id=claim.patient_ref
+    AND f.classification='PATIENT_PARTNER_INVOICE'
+    AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+    AND i.status='VALIDATED')
+  OR (claim.service_kind IN('NURSING','OT') AND NOT EXISTS(
+   SELECT 1 FROM cg19_patient_private_file f
+   JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
+   WHERE f.realm_id=claim.root_realm_id AND f.id=claim.completion_file_ref
+    AND f.patient_id=claim.patient_ref
+    AND f.classification='PATIENT_PARTNER_SERVICE_PROOF'
+    AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+    AND i.status='VALIDATED'))
+  OR (attest.payment_method='ELECTRONIC_EVIDENCE' AND
+    NOT EXISTS(
+     SELECT 1 FROM cg19_patient_private_file f
+     JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
+     WHERE f.realm_id=claim.root_realm_id
+      AND f.id=claim.payment_file_ref AND f.patient_id=claim.patient_ref
+      AND f.classification='PATIENT_PARTNER_PAYMENT_PROOF'
+      AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+      AND i.status='VALIDATED'))
+ ) THEN
+  RAISE EXCEPTION 'Financial reviewer requires original current clean evidence'
+   USING ERRCODE='P1745';
+ END IF;
  IF NEW.outcome='APPROVED' AND
    (claim.estimated_support_minor=0 OR
    NOT EXISTS(SELECT 1 FROM healthcare_policy_revision pol
