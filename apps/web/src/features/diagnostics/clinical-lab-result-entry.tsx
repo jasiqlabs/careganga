@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 type Entry={lineRef:string;value:string;unit:string;observation:string};
 type Data={canEnter:boolean;canCorrect?:boolean;
- previousReleaseRef?:string|null;resumeCorrection?:{
+ previousReleaseRef?:string|null;correctionDraft?:Entry[]|null;resumeCorrection?:{
  previousReleaseRef:string;reason:string}|null;
  reportReady:boolean;resume:null|{
  requestKey:string;results:Entry[]};tests:{lineRef:string;name:string}[]};
@@ -41,7 +41,8 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
    setSource(v);
    setCorrectionReason(v.resumeCorrection?.reason??"");
    key.current=v.resume?.requestKey??null;
-   const known=new Map((v.resume?.results??[]).map(x=>[x.lineRef,x]));
+   const known=new Map((v.resume?.results??v.correctionDraft??[])
+    .map(x=>[x.lineRef,x]));
    setRows(v.tests.map(t=>known.get(t.lineRef)??{
     lineRef:t.lineRef,value:"",unit:"",observation:""
    }));
