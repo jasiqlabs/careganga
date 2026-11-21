@@ -119,8 +119,8 @@ must("monthly",/this\.identity\.assertCurrent\(c,a,"approvals\.review"\)/,
  "Independent privileged review is required");
 must("monthly",/saved\.proposed_by===a\.accountId/,
  "Approver cannot be proposer");
-must("monthly",/actualPaidMinor:c\.paid_minor/,
- "No invented settled amount");
+must("monthly",/actualPaidMinor:netPaid\.toString\(\)/,
+ "Actual paid must net real bank recoveries, never invent new money");
 must("monthly",/if\(saved\.state==="PROPOSED"\)return/,
  "Foundation Admin must handle proposed claim separately from approved settlement");
 must("monthly",/proposedClaimMinor:view\.approvedFoundationMinor/,
