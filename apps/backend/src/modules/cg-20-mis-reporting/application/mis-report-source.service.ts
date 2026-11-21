@@ -57,7 +57,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
    message:"The selected report does not support that view."});
- const fields=["yearRef","branchRef","centerRef","fromDay","untilDay","status"] as const;
+ const fields=["yearRef","branchRef","centerRef","fromDay","untilDay","status",
+  "groupBy","sortBy","sortDirection"] as const;
  for(const f of fields){
   if(o[f]!==undefined&&(typeof o[f]!=="string"||o[f].length>80))
    throw new BadRequestException({code:"MIS_REPORT_INVALID",message:"Choose valid filters."});
