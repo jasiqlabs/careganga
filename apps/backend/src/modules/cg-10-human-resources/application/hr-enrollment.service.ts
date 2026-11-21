@@ -127,6 +127,13 @@ export class HrEnrollmentService{
  }
  async branchOptions(token:string){
   const a=await this.actor(token,"hr.applications.view");
+  return this.availableBranches(a);
+ }
+ async employeeBranchOptions(token:string){
+  const a=await this.sessions.requireAction(token,"hr.employees.view");
+  return this.availableBranches(a);
+ }
+ private async availableBranches(a:VerifiedFoundationActor){
   const q=await this.db.query<{id:string;name:string}>(
    "SELECT b.id,b.name FROM branch b WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
    "AND (b.manager_account_ref=$2 OR EXISTS("+
@@ -197,6 +204,21 @@ export class HrEnrollmentService{
    const linked=new Set(used.rows.map(x=>x.account_ref));
    return {items:options.filter(x=>!linked.has(x.value)).map(x=>({
     accountRef:x.value,label:x.label}))};
+  }finally{tx.release();}
+ }
+
+ async employeeDepartmentOptions(token:string,branchInput:string){
+  const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  const branch=uuid(branchInput,"branch"),tx=await this.db.connect();
+  try{
+   await this.branch(tx,actor,branch);
+   const rows=await tx.query<{id:string;name:string}>(
+    "SELECT id,name FROM department WHERE root_realm_id=$1 AND active "+
+    "AND (branch_id=$2 OR branch_id IS NULL) ORDER BY name,id LIMIT 101",
+    [actor.realmId,branch]);
+   if(rows.rows.length>100)
+    throw new ConflictException("Choose a smaller department scope");
+   return {items:rows.rows.map(x=>({departmentRef:x.id,label:x.name}))};
   }finally{tx.release();}
  }
 
