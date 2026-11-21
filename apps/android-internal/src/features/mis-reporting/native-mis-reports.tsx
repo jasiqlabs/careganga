@@ -91,6 +91,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   }finally{if(rev===seq.current)setBusy(false);}
  },[token,onExpired]);
  useEffect(()=>{void load();return()=>{seq.current++};},[load]);
+ useEffect(()=>{seq.current++;setPreview(null);},
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    seq.current++;setPreview(null);
