@@ -228,6 +228,8 @@ must("correction",/this\.claimed\(c,a\.realmId,liability\)/,
  "Correction must check existing immutable provider claim");
 must("correction",/this\.cg09\.reverseAccrual\(c,a,/,
  "Only original CG09 posting owner can reverse accrual");
+must("cg09",/code:"CG17_CORRECTION_YEAR_NOT_OPEN"/,
+ "Healthcare journal correction must enforce actual open CG09 financial year");
 must("cg09",/async reverseAccrual\(/,
  "CG09 existing posting facade must own exact balanced opposite journal");
 must("correctionApi",/correction-options/,
