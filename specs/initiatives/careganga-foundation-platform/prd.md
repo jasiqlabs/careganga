@@ -5,7 +5,7 @@
 **Initiative:** careganga-foundation-platform  
 **Project:** CareGanga Foundation  
 **Mode:** GREENFIELD (new integrated platform; no implemented product assumed)  
-**Harness:** JASIQ Harness v2, verified GitHub main HEAD on 15 Nov 2026: `26371c78da3a6d94717d65d24f159f03127a2a8a` (current reviewed product/Harness pin). Authenticated local stage resolver/checkout NOT_RUN; recheck before the next stage, source comparison is not resolver PASS.  
+**Harness:** JASIQ Harness v2; the 15 Nov 2026 reviewed baseline was `26371c78da3a6d94717d65d24f159f03127a2a8a`. **The current verified main pin (21 Nov 2026) is `96cd95d57acd9b0267d83f8c9d91c8994ac29927`**, matching root AGENTS.md and `scripts/resolve-jasiq-harness.py`. Authenticated local stage resolver/checkout NOT_RUN; recheck before the next stage, source comparison is not resolver PASS.  
 **Document status:** CG-24 expert source re-review completed for **CURRENT_SHA_BOUND OWNER_DELEGATED_DESIGN_CONTENT** as recorded in initiative `approvals.json`. Authenticated local Harness resolver, independent clinical/financial/CRITICAL database reviewer, actual source implementation, rendered Web/Android and source H14/H15 pixel/motion QA remain NOT_RUN; this is not client/human QA/release approval.  
 **Baseline:** CareGanga main at the start of this initiative (documentation and repository configuration only)  
 **Product owner:** CareGanga Foundation (client business sign-off required)  
