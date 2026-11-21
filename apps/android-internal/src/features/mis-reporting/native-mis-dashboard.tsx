@@ -76,7 +76,6 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
   </>}
  </View>;
 }
-const t=careGangaTheme;
 const styles=StyleSheet.create({
  container:{marginHorizontal:18,marginTop:18,gap:9},
  header:{flexDirection:"row",alignItems:"center",gap:10},
