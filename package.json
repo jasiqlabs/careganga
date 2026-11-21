@@ -61,7 +61,9 @@
     "postinstall": "node scripts/patch-typescript-runtime.mjs",
     "verify:healthcare-safe-errors-source": "node scripts/verify-healthcare-safe-error-coverage.mjs",
     "verify:cg17-erp-off-policy-source": "node scripts/verify-cg17-erp-off-policy-source.mjs",
-    "verify:cg17-erp-off-claim-source": "node scripts/verify-cg17-erp-off-claim-source.mjs"
+    "verify:cg17-erp-off-claim-source": "node scripts/verify-cg17-erp-off-claim-source.mjs",
+    "verify:cg17-verified-partner-finance-source": "node scripts/verify-cg17-verified-partner-finance-source.mjs",
+    "verify:cg14-erp-off-partner-catalog-source": "node scripts/verify-cg14-erp-off-partner-catalog-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
