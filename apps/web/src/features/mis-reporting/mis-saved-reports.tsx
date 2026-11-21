@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {safeClientProblem} from "./mis-safe-error";
 import type {ReportRequest} from "./mis-reports-workspace";
 type Row={ref:string;name:string;version:number;revision:number;
  state:"ACTIVE"|"RETIRED";visibility:"PRIVATE";updatedAt:string};
@@ -11,12 +12,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
   method,cache:"no-store",credentials:"same-origin",
   headers:body?{"Content-Type":"application/json"}:undefined,
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw Error(r.status===401?"Sign in again to see saved reports.":
-  r.status===403?"Your current source or report permission has changed.":
-  r.status===404?"This saved report is unavailable to you.":
-  r.status===409?"This report has changed. Refresh before trying again.":
-  r.status===400?"Choose a valid name and a permitted report.":
-  "The last request may have been received. Refresh the saved list before retrying.");
+ if(!r.ok)throw new Error(await safeClientProblem(r,"This saved-report operation is unconfirmed. Refresh its current status."));
  return r.json() as Promise<T>;
 }
 export function MisSavedReports({canManage,currentRequest,onRestore}:Props){
