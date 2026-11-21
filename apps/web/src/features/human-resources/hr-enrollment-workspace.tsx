@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {HrEvidenceUploader} from "./hr-evidence-uploader";
+import {HrPrivateDetails} from "./hr-private-details";
 
 type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
@@ -36,8 +37,9 @@ function isChoices(x:unknown):x is {items:Choice[]} {
  return Boolean(x)&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
-export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccounts}:{
-  canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean}){
+export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate}:{
+  canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
+  canViewPrivate:boolean;canManagePrivate:boolean}){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Choice[]>([]);
  const [departments,setDepartments]=useState<Choice[]>([]);
@@ -325,6 +327,9 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
     <button type="button" onClick={()=>{setFileApplication(null);setCaseStatus(null);}}
      style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Close</button>
    </header>
+   {canViewPrivate&&<HrPrivateDetails key={fileApplication.applicationRef}
+     applicationRef={fileApplication.applicationRef} canView={canViewPrivate}
+     canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(fileApplication.status)}/>}
    {caseStatus&&<p role="status">Review state: {caseStatus.status.replaceAll("_"," ")}
     {caseStatus.reference?" · "+caseStatus.reference:""}</p>}
    {["DRAFT","RETURNED"].includes(fileApplication.status)&&<>
