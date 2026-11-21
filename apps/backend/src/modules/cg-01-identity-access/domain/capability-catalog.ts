@@ -49,6 +49,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"hr.applications.manage",businessLabel:"Create and correct permitted employee drafts",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.employees.view",businessLabel:"View permitted active staff directory",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.employees.private.view",businessLabel:"Read separately authorized employee private details",group:"Human resources",assignable:false,sensitive:true},
+  {key:"hr.employees.private.manage",businessLabel:"Maintain separately authorized encrypted employee personal details",group:"Human resources",assignable:false,sensitive:true},
   {key:"hr.employees.review",businessLabel:"Review protected employee enrollment decisions",group:"Human resources",assignable:false,sensitive:true},
   {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.files.manage",businessLabel:"Upload protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
