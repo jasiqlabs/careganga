@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {identityRequest} from "../identity-access/http-client";
+import {nativeMisProblem} from "./native-mis-problem";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Request={kind:string;view:string;yearRef?:string;branchRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
@@ -15,13 +16,7 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
   method,cache:"no-store",
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw Object.assign(Error(r.status===401?"Sign in again to access reports.":
-  r.status===403?"Your current source permission no longer permits this change.":
-  r.status===404?"The saved report is not available.":
-  r.status===409?"The report changed. Reload before saving it.":
-  r.status===400?"Choose a permitted report and a valid name.":
-  "The change cannot be confirmed yet. Refresh your saved list before retrying."),{
-   status:r.status});
+ if(!r.ok)throw await nativeMisProblem(r,"The private report status could not be confirmed. Refresh before retrying.");
  return r.json() as Promise<T>;
 }
 export function NativeMisSaved({token,onExpired,canManage,current,onRestore}:{
