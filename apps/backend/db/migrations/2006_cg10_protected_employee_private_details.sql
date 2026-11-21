@@ -34,4 +34,4 @@ CREATE INDEX ix_hr_private_access_audit
  ON hr_private_access_audit(root_realm_id,application_id,happened_at DESC,id DESC);
 CREATE TRIGGER cg10_private_access_event_frozen
  BEFORE UPDATE OR DELETE ON hr_private_access_audit
- FOR EACH ROW EXECUTE FUNCTION cg10_revision_immutable();
+ FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
