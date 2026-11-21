@@ -7,6 +7,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 import {NativeDoctorEvidenceUploader} from "./native-doctor-evidence-uploader";
 import {NativeDoctorCenterFees} from "./native-doctor-center-fees";
+import {NativeClinicianAccountLinkReviewer} from "./native-clinician-account-link";
 type Form={fullName:string;registrationJurisdiction:string;registrationNumber:string;
  qualifications:string[];specialties:string[];experienceYears:number;
  publicBio:string;portraitRightsStatus:"NONE"|"CONSENT_PENDING";
@@ -240,6 +241,9 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
        {text:"Submit",onPress:()=>void submit()}
       ]),busy||uncertain||!proof)}
     </>}
+    {selected.status==="VERIFIED"&&canVerify&&
+     <NativeClinicianAccountLinkReviewer token={token} doctorRef={selected.doctorRef}
+      onExpired={onExpired}/>}
     {selected.status==="VERIFIED"&&<NativeDoctorCenterFees token={token}
      doctorRef={selected.doctorRef} canManage={canManage} canVerify={canVerify}
      onExpired={onExpired}/>}
