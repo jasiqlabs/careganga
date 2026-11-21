@@ -29,6 +29,7 @@ const ProposalScreen = lazy(() => import("../registration-approvals/proposal-scr
 const HealthcareNativeReview = lazy(() => import("../registration-approvals/healthcare-native-review").then(m => ({ default: m.HealthcareNativeReview })));
 const DoctorLeaveNativeReview = lazy(() => import("../registration-approvals/doctor-leave-native-review").then(m => ({ default: m.DoctorLeaveNativeReview })));
 const NativeCenterVisitQueue = lazy(() => import("../appointments/native-center-visit-queue").then(m => ({ default: m.NativeCenterVisitQueue })));
+const NativeMyClinicianActivity = lazy(() => import("../appointments/native-my-clinician-activity").then(m => ({ default: m.NativeMyClinicianActivity })));
 const NativeCenterAssistedBooking = lazy(() => import("../appointments/native-center-assisted-booking").then(m => ({ default: m.NativeCenterAssistedBooking })));
 const NativeClinicalLabScreen = lazy(() => import("../diagnostics/native-clinical-lab-screen").then(m => ({ default: m.NativeClinicalLabScreen })));
 const NativeLabEquipmentScreen = lazy(() => import("../diagnostics/native-lab-equipment-screen").then(m => ({ default: m.NativeLabEquipmentScreen })));
@@ -138,6 +139,7 @@ export function StaffAuthenticationScreen() {
   const [healthReviewsOpen, setHealthReviewsOpen] = useState(false);
   const [doctorLeaveReviewsOpen, setDoctorLeaveReviewsOpen] = useState(false);
   const [patientQueueOpen, setPatientQueueOpen] = useState(false);
+  const [clinicianActivityOpen, setClinicianActivityOpen] = useState(false);
   const [labOrdersOpen, setLabOrdersOpen] = useState(false);
   const [labEquipmentOpen, setLabEquipmentOpen] = useState(false);
   const [healthcarePoliciesOpen, setHealthcarePoliciesOpen] = useState(false);
@@ -169,6 +171,7 @@ export function StaffAuthenticationScreen() {
   const closeHealthReviews = useCallback(() => setHealthReviewsOpen(false), []);
   const closeDoctorLeaveReviews = useCallback(() => setDoctorLeaveReviewsOpen(false), []);
   const closePatientQueue = useCallback(() => setPatientQueueOpen(false), []);
+  const closeClinicianActivity = useCallback(() => setClinicianActivityOpen(false), []);
   const closeLabOrders = useCallback(() => setLabOrdersOpen(false), []);
   const closeLabEquipment = useCallback(() => setLabEquipmentOpen(false), []);
   const closeHealthcarePolicies = useCallback(() => setHealthcarePoliciesOpen(false), []);
@@ -566,7 +569,7 @@ export function StaffAuthenticationScreen() {
         setApprovalsOpen(false);
         setHealthReviewsOpen(false);
         setDoctorLeaveReviewsOpen(false);
-        setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
+        setPatientQueueOpen(false); setClinicianActivityOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
         setPatientBookingOpen(false);
         setDocumentsOpen(false);
         setNotificationsOpen(false);
@@ -599,6 +602,7 @@ export function StaffAuthenticationScreen() {
       openPolicy: () => openOnly(setPolicyOpen),
       openApprovals: () => openOnly(setApprovalsOpen),
       openPatientQueue: () => openOnly(setPatientQueueOpen),
+      openClinicianActivity: () => openOnly(setClinicianActivityOpen),
       openLabOrders: () => openOnly(setLabOrdersOpen),
       openLabEquipment: () => openOnly(setLabEquipmentOpen),
       openHealthcarePolicies: () => openOnly(setHealthcarePoliciesOpen),
@@ -869,6 +873,14 @@ export function StaffAuthenticationScreen() {
     </ScreenErrorBoundary>, "healthLabOrders", closeLabOrders);
 
   // Preserve CG-14 and CG-15 flows within the new native dashboard navigation.
+  if (clinicianActivityOpen && token && actor &&
+    roleActions.includes("health.visits.clinical.manage"))
+    return renderInShell(<ScreenErrorBoundary onExit={closeClinicianActivity}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+        <NativeMyClinicianActivity token={token}
+          onExit={closeClinicianActivity} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>, "healthClinicianActivity", closeClinicianActivity);
   if (patientQueueOpen && token && actor && roleActions.includes("health.visits.manage"))
     return renderInShell(<ScreenErrorBoundary onExit={closePatientQueue}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
