@@ -259,6 +259,65 @@ export class FinanceReportsService{
   return {months:rows.rows,windowLabel:"Last six calendar months",
    explanation:"Net posted finance income and expenses by posting month. Missing months have no original qualifying journal lines."};
  }
+ /** Typed CG20 C49 grouping is computed ONLY by the original CG09
+  * posted-ledger owner. No CG20 SQL, arbitrary columns or client-side totals
+  * from a truncated 50-row ledger preview.
+  */
+ async groupedMis(bearer:string,raw:{
+  yearRef?:string;branchRef?:string;fromDay?:string;untilDay?:string;
+  groupBy:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
+  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC"
+ }){
+  const actor=await this.actor(bearer),v=this.filters({
+   yearRef:raw.yearRef,branchRef:raw.branchRef,
+   from:raw.fromDay,to:raw.untilDay
+  });
+  await this.verifyFilterScope(bearer,actor.realmId,v);
+  const group=({
+   CATEGORY:"g.category",POSTING_KIND:"j.posting_kind",
+   ACCOUNT_NAME:"a.name"
+  } as const)[raw.groupBy];
+  const order=({
+   NAME:"group_label",DEBIT:"debit_amount",CREDIT:"credit_amount"
+  } as const)[raw.sortBy??"NAME"];
+  const direction=raw.sortDirection==="DESC"?"DESC":"ASC";
+  if(!group||!order||raw.sortDirection&&
+     raw.sortDirection!=="ASC"&&raw.sortDirection!=="DESC")
+   throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",
+    message:"Choose a permitted grouping and sort."});
+  const c=await this.db.connect();let active=false;
+  try{
+   await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");active=true;
+   await c.query("SET LOCAL statement_timeout='8s'");
+   const cutoff=await c.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   // group/order expressions come ONLY from static server-side maps.
+   const rows=await c.query<{groupLabel:string;debitMinor:string;creditMinor:string}>(
+    "SELECT "+group+" AS \"groupLabel\","+
+    "COALESCE(SUM(l.debit_minor),0)::text AS \"debitMinor\","+
+    "COALESCE(SUM(l.credit_minor),0)::text AS \"creditMinor\" "+
+    "FROM journal j JOIN journal_line l ON l.journal_id=j.id "+
+    "AND l.root_realm_id=j.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id "+
+    "AND a.root_realm_id=l.root_realm_id "+
+    "JOIN account_group g ON g.id=a.group_id "+
+    "AND g.root_realm_id=a.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+    "AND ($4::date IS NULL OR j.posting_date>=$4) "+
+    "AND ($5::date IS NULL OR j.posting_date<=$5) "+
+    "GROUP BY "+group+" "+
+    "ORDER BY "+order+" "+direction+",group_label ASC LIMIT 51",
+    [actor.realmId,v.fy,v.branch,v.from,v.to]);
+   await c.query("COMMIT");active=false;
+   return {groups:rows.rows.slice(0,50),partial:rows.rows.length>50,
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),
+    sourceCutoffKind:"POSTGRES_READ_SNAPSHOT" as const,
+    explanation:"Net finance amounts are aggregated across only immutable posted journal lines by the original finance owner."};
+  }catch(e){if(active)await c.query("ROLLBACK").catch(()=>undefined);
+   throw e;}finally{c.release();}
+ }
  /** Invoice receivables are a projection of original POSTED/ISSUED accruals
   * minus the source-linked verified CG-09 receipt. No sample supplier or
   * future donor/client master and no shadow balance table.
