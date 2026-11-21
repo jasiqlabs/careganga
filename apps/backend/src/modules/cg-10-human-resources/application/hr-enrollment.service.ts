@@ -26,7 +26,7 @@ const clean=(v:unknown,max:number):string=>{
   throw new BadRequestException("Check the employee details");
  return x;
 };
-function parse(value:unknown,update=false):Command{
+export function parseHrDraft(value:unknown,update=false):Command{
  if(!value||typeof value!=="object"||Array.isArray(value))
   throw new BadRequestException("Check the employee application");
  const x=value as Record<string,unknown>;
@@ -128,7 +128,7 @@ export class HrEnrollmentService{
   }finally{tx.release();}
  }
  async create(token:string,input:unknown){
-  const a=await this.actor(token,"hr.applications.manage"),x=parse(input);
+  const a=await this.actor(token,"hr.applications.manage"),x=parseHrDraft(input);
   const digest=hash(["CREATE",a.accountId,x]),tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
@@ -187,7 +187,7 @@ export class HrEnrollmentService{
  }
  async update(token:string,applicationInput:string,input:unknown){
   const a=await this.actor(token,"hr.applications.manage");
-  const ref=uuid(applicationInput,"application"),x=parse(input,true);
+  const ref=uuid(applicationInput,"application"),x=parseHrDraft(input,true);
   const digest=hash(["UPDATE",a.accountId,ref,x]),tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
