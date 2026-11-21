@@ -71,6 +71,7 @@ export interface ModuleActionHandlers {
   openOwnCenterPortal: () => void;
   openWebsiteCms: () => void;
   openHealthDoctorManagement: () => void;
+  openCenterContentPublisher: () => void;
   openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
   openDocuments: () => void;
@@ -443,6 +444,22 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openHealthDoctorManagement
+    });
+  }
+  // CG14 publication-only Foundation staff must not need provider-master access.
+  // Reuse the same existing approved content queue; do not duplicate data.
+  if (roleActions.includes("health.centers.publish") &&
+      !roleActions.includes("health.providers.view")) {
+    list.push({
+      key: "centerContentPublisher",
+      title: "Approved Center Content",
+      shortLabel: "Publish Centers",
+      description: "Publish or withdraw independently reviewed center presentations.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openCenterContentPublisher
     });
   }
   if (roleActions.includes("health.providers.view")) {
