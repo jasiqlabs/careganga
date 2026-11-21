@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
-  ActivityIndicator,BackHandler,KeyboardAvoidingView,Platform,Pressable,
+  ActivityIndicator,Alert,BackHandler,KeyboardAvoidingView,Platform,Pressable,
   ScrollView,StyleSheet,Text,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -62,6 +62,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
   const [picked,setPicked]=useState<Selected|null>(null);
   const [media,setMedia]=useState<Media[]>([]);
   const [mediaBusy,setMediaBusy]=useState(false);
+  const [revokeUncertain,setRevokeUncertain]=useState<string|null>(null);
   const mediaRequest=useRef(0);
   const [requestKey,setRequestKey]=useState("");
   const [intentRef,setIntentRef]=useState("");
@@ -98,6 +99,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
         throw Error("OFFLINE");
       if(seq!==mediaRequest.current)return;
       setMedia(files.files);
+      setRevokeUncertain(old=>old&&files.files.some(v=>v.fileRef===old&&v.revoked)?null:old);
 
     }catch(e){
       if(seq===mediaRequest.current){
@@ -199,6 +201,26 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
       if(e instanceof Error&&e.message==="EXPIRED")onExpired();
     }finally{setBusy(false);}
   }
+  async function revokeMedia(item:Media){
+    if(item.revoked||!selected||busy||mediaBusy||uncertain||
+       revokeUncertain||!item.fileRef||!Number.isInteger(item.revision))return;
+    setBusy(true);setMessage("");
+    try{
+      const outcome=await api<{revoked:boolean;revision:number}>(
+        token,"/api/documents/files/"+encodeURIComponent(item.fileRef)+
+        "/revoke","POST",{expectedRevision:item.revision});
+      if(outcome.revoked!==true)throw Error("UNCERTAIN");
+      setMessage("Verified private file revoked; original audit history retained.");
+      await loadMedia();
+    }catch(e){
+      if(e instanceof Error&&(e.message==="UNCERTAIN"||e.message==="OFFLINE")){
+        setRevokeUncertain(item.fileRef);
+        setMessage("Revocation outcome is uncertain. Refresh the original file "+
+          "record before any further action. Do not send another revoke request.");
+      }else setMessage(explain(e));
+      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+    }finally{setBusy(false);}
+  }
   async function previewVerified(ref:string,kind:"file"|"letter"="file"){
     if(!ref||busy)return;
     setBusy(true);setMessage("");
@@ -251,7 +273,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
             list.map(c=><Pressable key={c.caseRef} accessibilityRole="button"
               accessibilityState={{selected:selected?.caseRef===c.caseRef}}
               disabled={busy||uncertain}
-              onPress={()=>{setSelected(c);clearFile();}}
+              onPress={()=>{setSelected(c);setRevokeUncertain(null);clearFile();}}
               style={[styles.option,selected?.caseRef===c.caseRef&&styles.chosen]}>
               <Text style={styles.heading}>{c.reference}</Text>
               <Text>{c.accountName}</Text>
@@ -313,10 +335,26 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
                 disabled={busy} onPress={()=>void previewVerified(item.fileRef)}>
                 <Text>Preview private file</Text>
               </Pressable>}
+              {!item.revoked&&<Pressable accessibilityRole="button"
+                style={styles.button} disabled={busy||uncertain||!!revokeUncertain}
+                onPress={()=>Alert.alert("Revoke original private file",
+                 "Future authorized downloads will be blocked. "+
+                 "Original evidence history stays in the case.",[
+                   {text:"Cancel",style:"cancel"},
+                   {text:"Revoke",style:"destructive",
+                    onPress:()=>void revokeMedia(item)}
+                 ])}>
+                <Text>Review and revoke private file</Text>
+              </Pressable>}
             </View>)}
+          {!!revokeUncertain&&<Text accessibilityRole="alert" style={styles.alert}>
+            An original revocation is unconfirmed. Refresh current verified
+            files. If still not revoked, contact Foundation operations before
+            another attempt; never infer success from an uncertain response.
+          </Text>}
           <Pressable accessibilityRole="button" style={styles.button}
             disabled={busy||mediaBusy} onPress={()=>void loadMedia()}>
-            <Text>Refresh verified files</Text>
+            <Text>Refresh verified files and revocation status</Text>
           </Pressable>
         </View>}
         {selected&&canViewLetters&&
