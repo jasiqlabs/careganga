@@ -115,10 +115,10 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
       ["Patient due for eligible consultations",summary.patientPayableMinor],
       ["Verified center collections",summary.patientCollectedVerifiedMinor],
       ["Foundation liability",summary.foundationApprovedLiabilityMinor],
-      [approved?"Approved monthly Foundation claim":"Proposed / accruing",
-       approved?summary.approvedFoundationMinor:
-        summary.state==="PROPOSED"?summary.approvedFoundationMinor:
-         summary.eligibleAccruedMinor],
+      [approved?"Approved monthly Foundation claim":
+        summary.state==="PROPOSED"?"Proposed claim (not approved)":
+         "Posted accrual before monthly claim",
+       approved?summary.approvedFoundationMinor:summary.eligibleAccruedMinor],
       ["Verified Foundation payout",summary.actualPaidMinor],
       ["Foundation payout outstanding",summary.outstandingMinor]
      ] as const).map(([label,value])=><View key={label} style={styles.amount}>
