@@ -137,7 +137,15 @@ export class MisReportSourceService{
     label:"Appointment status summary",views:["SUMMARY","CHART"],
     description:"Protected aggregate status counts without patient details"}]:[])
   ];
-  return {templates,finance,appointments,sourceReadAt:new Date().toISOString()};
+  const permission=async(action:string)=>{
+   try{await this.sessions.requireAction(token,action);return true;}
+   catch(error){if(error instanceof UnauthorizedException)throw error;return false;}
+  };
+  const [manage,exportAllowed,schedule]=await Promise.all([
+   permission("mis.reports.manage"),permission("mis.reports.export"),
+   permission("mis.reports.schedule")]);
+  return {templates,finance,appointments,capabilities:{
+   manage,export:exportAllowed,schedule},sourceReadAt:new Date().toISOString()};
  }
  async preview(token:string,raw:unknown):Promise<ReportPreview>{
   await this.sessions.requireAction(token,"mis.reports.view");
