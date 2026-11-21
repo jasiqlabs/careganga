@@ -14,7 +14,7 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
 const INVOICE=/^[A-Za-z0-9][A-Za-z0-9 /._-]{1,59}$/;
 const MONEY=/^[1-9][0-9]{0,10}$/;
-type Kind="PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
+type Kind="PHARMACY"|"NURSING"|"OT"|"LAB";
 type Claim={
  id:string;public_code:string;center_ref:string;service_kind:Kind;
  invoice_number:string;service_local_date:string;
@@ -42,7 +42,7 @@ const form=(raw:unknown)=>{
  const key=ref(v.requestKey),center=ref(v.centerRef),
   invoiceFile=ref(v.invoiceFileRef);
  const kind=v.serviceKind;
- if(kind!=="PHARMACY"&&kind!=="NURSING"&&kind!=="OT"&&kind!=="DIAGNOSTICS")
+ if(kind!=="PHARMACY"&&kind!=="NURSING"&&kind!=="OT"&&kind!=="LAB")
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_INVALID"});
  const proof=v.completionFileRef===undefined||v.completionFileRef===null?
   null:ref(v.completionFileRef);
@@ -171,7 +171,7 @@ export class PartnerServiceClaimService{
     "AND cap.center_id=center.id AND cap.capability_code=CASE policy.service_kind "+
     "WHEN 'OT' THEN 'SURGERY' ELSE policy.service_kind END "+
     "WHERE policy.root_realm_id=$1 "+
-    "AND policy.service_kind IN('PHARMACY','NURSING','OT','DIAGNOSTICS') "+
+    "AND policy.service_kind IN('PHARMACY','NURSING','OT','LAB') "+
     "AND policy.doctor_ref IS NULL AND policy.approval_state='ACTIVE' "+
     "AND policy.activated_at IS NOT NULL AND policy.activated_at<=now() "+
     "AND policy.valid_from<=now() AND policy.valid_until>now() "+
