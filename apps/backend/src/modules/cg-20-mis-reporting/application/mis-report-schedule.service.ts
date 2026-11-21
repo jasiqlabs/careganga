@@ -21,7 +21,7 @@ const cadenceSet=new Set(["DAILY","WEEKLY","MONTHLY","YEARLY"]);
 type Input={savedRef:string;cadence:"DAILY"|"WEEKLY"|"MONTHLY"|"YEARLY";
  timezone:string;localTime:string;firstDate:string;requestKey:string};
 type Schedule={
- id:string;owner_account_ref:string;saved_ref:string;
+ id:string;owner_account_ref:string;saved_ref:string;saved_report_name?:string;
  cadence:string;timezone:string;local_time:string;
  weekday:number|null;monthday:number|null;
  next_due_utc:Date;state:string;revision:number;
@@ -83,6 +83,7 @@ export function zonedLocalDate(date:string,time:string,zone:string){
 }
 const summary=(row:Schedule)=>({
  ref:row.id,state:row.state,cadence:row.cadence,
+ savedReportName:row.saved_report_name??"Saved report",
  timezone:row.timezone,localTime:row.local_time,
  nextDueAt:row.next_due_utc,revision:row.revision,
  updatedAt:row.updated_at,canActivate:false
@@ -105,8 +106,10 @@ export class MisReportScheduleService{
  async list(token:string){
   const actor=await this.actor(token);
   const q=await this.db.query<Schedule>(
-   "SELECT * FROM cg20_report_schedule WHERE root_realm_id=$1 "+
-   "AND owner_account_ref=$2 ORDER BY updated_at DESC,id DESC LIMIT 51",
+   "SELECT s.*,r.display_name AS saved_report_name FROM cg20_report_schedule s "+
+   "JOIN cg20_saved_report r ON r.root_realm_id=s.root_realm_id "+
+   "AND r.id=s.saved_ref WHERE s.root_realm_id=$1 "+
+   "AND s.owner_account_ref=$2 ORDER BY s.updated_at DESC,s.id DESC LIMIT 51",
    [actor.realmId,actor.accountId]);
   return {schedules:q.rows.slice(0,50).map(summary),
    hasMore:q.rows.length>50,
