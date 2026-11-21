@@ -238,14 +238,21 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   }
   void command({path,method,body:{requestKey:crypto.randomUUID(),...body}});
  };
+ const allowedForCurrentPlacement=()=>{
+  const image=["image/jpeg","image/png","image/webp"];
+  if(uploadRole==="GALLERY"){
+   const media=items(draft.sections.find(s=>s.kind==="GALLERY_GRID")?.fields.items)
+    [uploadOrder]?.mediaType;
+   return media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]:
+    media==="PUBLICATION"?["application/pdf"]:[];
+  }
+  return uploadRole==="DOCUMENT"?[...image,"application/pdf"]:image;
+ };
  async function upload(file:File){
   if(!selected||selected.status!=="DRAFT"||busy)return;
   if(!rights||uploadAlt.trim().length<3){setError("Confirm publication rights and image description.");return;}
   const cap=file.type==="video/mp4"?26214400:10485760;
-  const allowed=uploadRole==="GALLERY"?["image/jpeg","image/png","image/webp",
-   "video/mp4","application/pdf"]:
-   uploadRole==="DOCUMENT"?["image/jpeg","image/png","image/webp","application/pdf"]:
-   ["image/jpeg","image/png","image/webp"];
+  const allowed=allowedForCurrentPlacement();
   if(!allowed.includes(file.type)||
      file.size<1||file.size>cap){setError("Select an allowed image/PDF (10 MB) or video (25 MB).");return;}
   setBusy(true);setError("");
@@ -809,11 +816,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <label className="cg-cms-consent"><input type="checkbox" checked={rights}
        onChange={e=>setRights(e.target.checked)}/>The Foundation owns the public-use rights</label>
       <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
+         allowedForCurrentPlacement().length===0||
          (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
          (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
-       draft.kind==="GALLERY"?"image/jpeg,image/png,image/webp,video/mp4,application/pdf":
-       draft.kind==="COMPLIANCE"?"application/pdf,image/png,image/jpeg,image/webp":
-       "image/jpeg,image/png,image/webp"}
+       allowedForCurrentPlacement().join(",")}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
         e.currentTarget.value="";}}/>
       {draft.assets.map(a=><div className="cg-cms-asset" key={a.fileRef}>
