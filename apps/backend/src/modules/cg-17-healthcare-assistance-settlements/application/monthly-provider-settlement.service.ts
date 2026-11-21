@@ -277,6 +277,11 @@ export class MonthlyProviderSettlementService{
      approvedFoundationMinor:approved?view.approvedFoundationMinor:"0",
      actualPaidMinor:approved?view.actualPaidMinor:"0",
      outstandingMinor:approved?view.outstandingMinor:"0",
+     originalApprovedFoundationMinor:approved?view.originalApprovedFoundationMinor:"0",
+     adjustedFoundationMinor:approved?view.adjustedFoundationMinor:"0",
+     grossFoundationPaidMinor:approved?view.grossFoundationPaidMinor:"0",
+     verifiedProviderRecoveryMinor:approved?view.verifiedProviderRecoveryMinor:"0",
+     effectiveState:approved?view.effectiveState:"PROPOSED",
      paidVerified:approved&&view.paidVerified,
      ...breakdown,patientCollectionNotFoundationIncome:true};
    }
