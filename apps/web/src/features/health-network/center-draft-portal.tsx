@@ -6,6 +6,7 @@ import {CenterDoctorFees} from "./center-doctor-fees";
 import {CenterLabPricingPanel} from "../diagnostics/center-lab-pricing-panel";
 import {LabEquipmentWorkspace} from "../diagnostics/lab-equipment-workspace";
 import {CenterMerchantBinding} from "../healthcare-assistance/center-merchant-binding";
+import {CenterMonthlySettlementSummary} from "../healthcare-assistance/center-monthly-settlement-summary";
 import {CenterSupportDesk} from "./center-support-desk";
 import {CenterContentEditor} from "./center-content-editor";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
@@ -26,12 +27,13 @@ async function get<T>(path:string):Promise<T>{
 }
 export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=false,
  canViewLabEquipment=false,canManageLabEquipment=false,canUploadLabQuality=false,
- canProposeMerchant=false,canVerifyMerchant=false,
+ canProposeMerchant=false,canVerifyMerchant=false,canViewSettlements=false,
  labERPEnabled=false}:{
  canViewLabPricing?:boolean;canManageLabPricing?:boolean;
  canViewLabEquipment?:boolean;canManageLabEquipment?:boolean;
  canUploadLabQuality?:boolean;labERPEnabled?:boolean;
- canProposeMerchant?:boolean;canVerifyMerchant?:boolean
+ canProposeMerchant?:boolean;canVerifyMerchant?:boolean;
+ canViewSettlements?:boolean
 }){
   const [centers,setCenters]=useState<Row[]>([]);
   const [active,setActive]=useState<Detail|null>(null);
@@ -143,6 +145,9 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
         <p><a href={"/healthcare/centers/"+encodeURIComponent(active.publicSlug)}>
           View approved public page</a></p>}
       <p>Only the Foundation may approve, activate or publish this center.</p>
+      {canViewSettlements&&active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       <CenterMonthlySettlementSummary key={"settlement:"+active.centerRef}
+        centerRef={active.centerRef}/>}
       {active.status==="PENDING"&&<CenterEditor value={draft} identityLocked
         disabled={saving} onChange={setDraft}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
