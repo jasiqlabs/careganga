@@ -115,9 +115,39 @@ const button=(label:string,run:()=>void,disabled=false)=>
   style={[styles.button,disabled&&styles.disabled]}>
   <Text style={styles.text}>{label}</Text>
  </Pressable>;
+/** Native first-item defaults mirror current CG18 validated extended sections.
+ * Real-person consent is NEVER pre-confirmed and no future module is created.
+ */
+const listLimit=(name:string,section?:string)=>name==="faqs"?8:
+ name==="socialLinks"||name==="inquiries"?3:name==="categories"?12:
+ name==="documents"?6:name==="tags"?8:name==="items"?
+ section==="GALLERY_GRID"?12:16:24;
+const initialListItem=(name:string,section?:string,group?:string):
+ Record<string,unknown>|null=>{
+ if(name==="faqs")return {question:"",answer:""};
+ if(name==="socialLinks")return {network:"Facebook",url:""};
+ if(name==="inquiries")return {title:"",description:""};
+ if(name==="categories"&&section==="HEALTHCARE_CATEGORIES")
+  return {title:"",description:""};
+ if(name==="documents"&&section==="COMPLIANCE_FACTS")
+  return {type:"OTHER",title:"",asOfDate:day()};
+ if(name==="items"&&section==="GALLERY_GRID")
+  return {title:"",caption:"",category:"",mediaType:"PHOTO",source:"",
+   asOfDate:day(),visible:true};
+ if(name==="items"&&section==="IMPACT_GROUP"){
+  const v:Record<string,unknown>={title:"",description:""};
+  if(group==="STATS")v.value=0;
+  if(group==="GROWTH"){v.value=0;v.year=new Date().getUTCFullYear()}
+  if(group==="BREAKDOWN")v.percentage=0;
+  if(group==="STORIES")v.consentConfirmed=false;
+  return v;
+ }
+ return null;
+};
 type FieldProps={name:string;value:unknown;onChange:(value:unknown)=>void;
- locked:boolean;depth?:number};
-function EditField({name,value,onChange,locked,depth=0}:FieldProps){
+ locked:boolean;depth?:number;sectionKind?:string;impactGroup?:string};
+function EditField({name,value,onChange,locked,depth=0,
+ sectionKind,impactGroup}:FieldProps){
  if(depth>4)return <Text style={styles.note}>Additional protected content is preserved.</Text>;
  if(typeof value==="boolean")return button((value?"✓ ":"")+title(name),
   ()=>onChange(!value),locked);
@@ -136,30 +166,39 @@ function EditField({name,value,onChange,locked,depth=0}:FieldProps){
    multiline={value.length>160||["body","description","bio","summary"].includes(name)}
    maxLength={name.toLowerCase().includes("description")?3000:5000}/>
  </View>;
- if(Array.isArray(value))return <View style={styles.nested}>
-  <Text style={styles.heading}>{title(name)}</Text>
-  {value.map((v,i)=><View style={styles.nested} key={i}>
-   <Text style={styles.note}>Item {i+1}</Text>
-   <EditField name={Array.isArray(v)?"List":name.slice(0,-1)||"Item"}
-    value={v} locked={locked} depth={depth+1}
-    onChange={next=>onChange(value.map((x,j)=>j===i?next:x))}/>
-   {button("Remove item "+(i+1),()=>onChange(value.filter((_,j)=>i!==j)),locked)}
-  </View>)}
-  {value.length<24&&value.every(x=>typeof x==="string")&&
-   button("Add list item",()=>onChange([...value,""]),locked)}
-  {value.length>0&&value.length<24&&value.every(x=>
-   x&&typeof x==="object"&&!Array.isArray(x))&&
-   button("Add another "+title(name),()=>onChange([...value,
-    Object.fromEntries(Object.entries(value[value.length-1] as Record<string,unknown>)
-     .map(([k,x])=>[k,typeof x==="string"?"":typeof x==="number"?0:
-       typeof x==="boolean"?false:Array.isArray(x)?[]:x]))]),locked)}
- </View>;
+ if(Array.isArray(value)){
+  const initial=initialListItem(name,sectionKind,impactGroup);
+  const cap=listLimit(name,sectionKind);
+  const allText=!initial&&value.every(x=>typeof x==="string");
+  const allObjects=value.every(x=>x&&typeof x==="object"&&!Array.isArray(x));
+  return <View style={styles.nested}>
+   <Text style={styles.heading}>{title(name)} ({value.length}/{cap})</Text>
+   {value.map((v,i)=><View style={styles.nested} key={i}>
+    <Text style={styles.note}>Item {i+1}</Text>
+    <EditField name={Array.isArray(v)?"List":name.slice(0,-1)||"Item"}
+     value={v} locked={locked} depth={depth+1}
+     sectionKind={sectionKind} impactGroup={impactGroup}
+     onChange={next=>onChange(value.map((x,j)=>j===i?next:x))}/>
+    {button("Remove item "+(i+1),()=>onChange(value.filter((_,j)=>i!==j)),locked)}
+   </View>)}
+   {value.length<cap&&allText&&
+    button("Add list item",()=>onChange([...value,""]),locked)}
+   {value.length===0&&initial&&
+    button("Add "+title(name)+" item",()=>onChange([initial]),locked)}
+   {value.length>0&&value.length<cap&&allObjects&&
+    button("Add another "+title(name),()=>onChange([...value,
+     Object.fromEntries(Object.entries(value[value.length-1] as Record<string,unknown>)
+      .map(([k,x])=>[k,typeof x==="string"?"":typeof x==="number"?0:
+        typeof x==="boolean"?false:Array.isArray(x)?[]:x]))]),locked)}
+  </View>;
+ }
  if(value&&typeof value==="object"){
   const fields=value as Record<string,unknown>;
   return <View style={styles.nested}>
    <Text style={styles.heading}>{title(name)}</Text>
    {Object.entries(fields).map(([k,v])=>
     <EditField key={k} name={k} value={v} locked={locked} depth={depth+1}
+     sectionKind={sectionKind} impactGroup={impactGroup}
      onChange={next=>onChange({...fields,[k]:next})}/>)}
   </View>;
  }
@@ -359,6 +398,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
       <EditField name="Original section fields" value={section.fields}
+       sectionKind={section.kind}
+       impactGroup={typeof section.fields.group==="string"?section.fields.group:""}
        onChange={v=>replaceSection(i,v as Record<string,unknown>)}
        locked={locked}/>
     </View>)}
