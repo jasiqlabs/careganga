@@ -28,13 +28,14 @@ export function MisSharedDefinitions({selected,canShare,canManage,onChanged}:{
  const pending=useRef<{payload:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
   const i=++sharedSeq.current;
+  if(!canManage){setShared([]);return;}
   try{
    const page=await call<{items:Shared[]}>("shared-with-me");
    if(i===sharedSeq.current)setShared(page.items??[]);
   }catch(e){if(i===sharedSeq.current){
    setShared([]);setProblem(e instanceof Error?e.message:"Shared definitions unavailable.");
   }}
- },[]);
+ },[canManage]);
  const grantList=useCallback(async()=>{
   if(!selected||!canShare){setGrants([]);return;}
   const i=++grantsSeq.current;
