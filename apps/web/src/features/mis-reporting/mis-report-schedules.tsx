@@ -4,7 +4,8 @@ import {safeClientProblem} from "./mis-safe-error";
 type Saved={ref:string;name:string;state:string;sourceKey?:string|null};
 type Schedule={ref:string;state:string;cadence:string;savedReportName:string;
  timezone:string;localTime:string;nextDueAt:string;revision:number;canActivate:boolean};
-type History={state:string;createdAt:string;deliveryState:string;dueAt:string};
+type History={state:string;createdAt:string;deliveryState:string;dueAt:string;
+ sourceAsOf:string|null;rowCount:number|null;format:string|null};
 const call=async<T,>(path:string,body?:object):Promise<T>=>{
  const response=await fetch("/api/mis/reports/"+path,{
   method:body?"POST":"GET",cache:"no-store",credentials:"same-origin",
@@ -201,7 +202,10 @@ export function MisReportSchedules(){
   {history.length===0?<p style={{fontSize:".82rem"}}>
    No selected schedule runs to display.</p>:
    <ul>{history.map((item,i)=><li key={i}>
-    {item.state.replaceAll("_"," ")} · In-app delivery: {item.deliveryState.replaceAll("_"," ")}
-    {" · "}{new Date(item.createdAt).toLocaleString("en-IN")}</li>)}</ul>}
+    {item.state.replaceAll("_"," ")} · In-app notice: {item.deliveryState.replaceAll("_"," ")}
+    {" · "}{new Date(item.createdAt).toLocaleString("en-IN")}
+    {item.sourceAsOf&&<> · Source snapshot: {new Date(item.sourceAsOf).toLocaleString("en-IN")}</>}
+    {item.rowCount!==null&&item.rowCount!==undefined&&<> · Verified rows: {item.rowCount}</>}
+    {item.format&&<> · {item.format}</>}</li>)}</ul>}
  </section>;
 }
