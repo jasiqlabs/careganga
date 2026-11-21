@@ -111,7 +111,8 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
    {!!center&&<View style={styles.panel}>
     <Text style={styles.label}>Settlement month {month}</Text>
     <View style={styles.horizontal}>
-     {button("Previous month",()=>setMonth(shift(month,-1)),busy)}
+     {button("Previous month",()=>setMonth(shift(month,-1)),
+      busy||month<="2020-01")}
      {button("Next month",()=>setMonth(shift(month,1)),
       busy||month>=monthNow())}
     </View>
