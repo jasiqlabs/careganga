@@ -69,7 +69,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
  const chosen=choices.find(c=>c.centerRef+"|"+c.kind===selected);
  const invoices=files.filter(f=>f.classification==="PATIENT_PARTNER_INVOICE"&&!f.revoked);
  const proofs=files.filter(f=>f.classification==="PATIENT_PARTNER_SERVICE_PROOF"&&!f.revoked);
- function resetReplay(){request.current=null;setUncertain(false);setNotice("");setError("");}
+ function resetReplay(){if(uncertain)return;request.current=null;setNotice("");setError("");}
  async function loadOlder(){
   if(!next||busy)return;
   setBusy(true);setError("");
@@ -119,7 +119,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
   {!!notice&&<p role="status" className="notice">{notice}</p>}
   {consentGranted?<div className="form-grid">
    <label>Verified partner and service
-    <select value={selected} disabled={busy} onChange={e=>{
+    <select value={selected} disabled={busy||uncertain} onChange={e=>{
      setSelected(e.target.value);resetReplay();}}>
      <option value="">Choose a currently approved partner</option>
      {choices.map(o=><option key={o.centerRef+"|"+o.kind}
@@ -127,18 +127,18 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
     </select>
    </label>
    <label>Partner invoice number
-    <input value={invoice} maxLength={60} disabled={busy}
+    <input value={invoice} maxLength={60} disabled={busy||uncertain}
      onChange={e=>{setInvoice(e.target.value);resetReplay();}}
      placeholder="Printed on your original invoice"/></label>
    <label>Actual service/purchase date
-    <input type="date" value={date} disabled={busy}
+    <input type="date" value={date} disabled={busy||uncertain}
      onChange={e=>{setDate(e.target.value);resetReplay();}}/></label>
    <label>Invoice total before assistance (₹)
     <input inputMode="decimal" value={gross} maxLength={12}
-     disabled={busy} onChange={e=>{setGross(e.target.value);resetReplay();}}
+     disabled={busy||uncertain} onChange={e=>{setGross(e.target.value);resetReplay();}}
      placeholder="1000.00"/></label>
    <label>My verified scanned invoice
-    <select value={invoiceFile} disabled={busy} onChange={e=>{
+    <select value={invoiceFile} disabled={busy||uncertain} onChange={e=>{
      setInvoiceFile(e.target.value);resetReplay();}}>
      <option value="">Choose my verified invoice</option>
      {invoices.map((f,i)=><option value={f.fileRef} key={f.fileRef}>
@@ -146,7 +146,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
     </select>
    </label>
    {chosen?.kind!=="PHARMACY"&&<label>Verified scanned evidence of completed care
-    <select value={proofFile} disabled={busy} onChange={e=>{
+    <select value={proofFile} disabled={busy||uncertain} onChange={e=>{
      setProofFile(e.target.value);resetReplay();}}>
      <option value="">Choose completed-service evidence</option>
      {proofs.map((f,i)=><option key={f.fileRef} value={f.fileRef}>
