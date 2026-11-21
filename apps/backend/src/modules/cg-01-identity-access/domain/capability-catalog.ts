@@ -44,6 +44,12 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"foundation.branches.view",businessLabel:"View permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:false},
   {key:"foundation.branches.manage",businessLabel:"Create and edit permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:true},
   {key:"foundation.branches.admin",businessLabel:"Administrate all Foundation branch drafts",group:"Foundation structure",assignable:false,sensitive:true},
+  // CG-10 US-001: a protected HR draft is not an approved employee or login.
+  {key:"hr.applications.view",businessLabel:"View permitted employee applications",group:"Human resources",assignable:true,sensitive:true},
+  {key:"hr.applications.manage",businessLabel:"Create and correct permitted employee drafts",group:"Human resources",assignable:true,sensitive:true},
+  {key:"hr.employees.view",businessLabel:"View permitted active staff directory",group:"Human resources",assignable:true,sensitive:true},
+  {key:"hr.employees.private.view",businessLabel:"Read separately authorized employee private details",group:"Human resources",assignable:false,sensitive:true},
+  {key:"hr.employees.review",businessLabel:"Review protected employee enrollment decisions",group:"Human resources",assignable:false,sensitive:true},
   {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.files.manage",businessLabel:"Upload protected case evidence",group:"Documents & files",assignable:true,sensitive:true},
   {key:"documents.letters.issue",businessLabel:"Issue private access confirmation letters",group:"Documents & files",assignable:false,sensitive:true},
