@@ -959,6 +959,7 @@ export function StaffAuthenticationScreen() {
         <NativeCmsEditorial token={token}
           canManage={roleActions.includes("cms.content.manage")}
           canPublish={roleActions.includes("cms.content.publish")}
+          canReview={roleActions.includes("approvals.review")}
           onExit={closeWebsiteCms} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "foundationWebsiteCms", closeWebsiteCms);
