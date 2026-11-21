@@ -32,8 +32,8 @@ CREATE TABLE cg17_partner_invoice_attestation(
   ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,patient_ref)
   REFERENCES cg15_patient(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(payment_file_ref,root_realm_id)
-  REFERENCES cg19_patient_private_file(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,payment_file_ref)
+  REFERENCES cg19_patient_private_file(realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(attested_by_account,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  CHECK(payment_method<>'ELECTRONIC_EVIDENCE' OR payment_file_ref IS NOT NULL),
