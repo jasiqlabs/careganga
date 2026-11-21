@@ -8,13 +8,16 @@ import {PlatformAuditService} from "../../cg-21-platform-configuration-audit/app
 
 export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
- "FINANCE_POSTED_TREND","APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY"
+ "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
+ "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
-export type ReportView="TABLE"|"SUMMARY"|"CHART";
+export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
  kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
+ groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
+ sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";
  offset:number
 };
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,10 +31,11 @@ const day=(v:string)=>{
  return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;
 };
 const allowedFields=new Set(["kind","view","yearRef","branchRef",
- "centerRef","fromDay","untilDay","status","offset"]);
+ "centerRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset"]);
 const text=(v:unknown)=>typeof v==="string"?v.trim():"";
 export const FINANCE_KINDS:readonly ReportKind[]=[
- "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND"
+ "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND",
+ "FINANCE_POSTED_GROUPED"
 ];
 export function parseSafeReport(raw:unknown):SafeReportRequest{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))
@@ -40,10 +44,11 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  if(Object.keys(o).some(k=>!allowedFields.has(k)))
   throw new BadRequestException({code:"MIS_REPORT_INVALID",message:"This report option is unavailable."});
  const kind=text(o.kind),view=text(o.view);
- if(!kindSet.has(kind)||!["TABLE","SUMMARY","CHART"].includes(view))
+ if(!kindSet.has(kind)||!["TABLE","SUMMARY","CHART","PIVOT"].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_INVALID",message:"Choose a supported report and view."});
  const legalViews:Record<ReportKind,readonly string[]>={
   FINANCE_POSTED_LEDGER:["TABLE"],
+  FINANCE_POSTED_GROUPED:["TABLE","SUMMARY","CHART","PIVOT"],
   FINANCE_POSTED_SUMMARY:["SUMMARY"],
   FINANCE_POSTED_TREND:["CHART"],
   APPOINTMENT_STATUS:["SUMMARY","CHART"],
@@ -57,18 +62,28 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   if(o[f]!==undefined&&(typeof o[f]!=="string"||o[f].length>80))
    throw new BadRequestException({code:"MIS_REPORT_INVALID",message:"Choose valid filters."});
  }
- const yearRef=text(o.yearRef),branchRef=text(o.branchRef),
+ const groupBy=text(o.groupBy),sortBy=text(o.sortBy),
+  sortDirection=text(o.sortDirection),
+  yearRef=text(o.yearRef),branchRef=text(o.branchRef),
   centerRef=text(o.centerRef),fromDay=text(o.fromDay),
   untilDay=text(o.untilDay),status=text(o.status);
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
  if([yearRef,branchRef,centerRef].some(v=>v!==""&&!UUID.test(v))||
   isFinance&&(centerRef!==""||status!=="")||
+  kind==="PLATFORM_AUDIT_ACTIVITY"&&(centerRef!==""||status!=="")||
+  kind!=="FINANCE_POSTED_GROUPED"&&(groupBy!==""||sortBy!==""||sortDirection!=="")||
+  kind==="FINANCE_POSTED_GROUPED"&&(
+   groupBy!==""&&!["CATEGORY","POSTING_KIND","ACCOUNT_NAME"].includes(groupBy)||
+   sortBy!==""&&!["NAME","DEBIT","CREDIT"].includes(sortBy)||
+   sortDirection!==""&&!["ASC","DESC"].includes(sortDirection)
+  )||
   !isFinance&&(yearRef!==""||branchRef!=="")||
   status!==""&&!statusSet.has(status)||
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
    Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>366*86400000)||
-  fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&kind!=="APPOINTMENT_STATUS"&&
+  fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
+   kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="PLATFORM_AUDIT_ACTIVITY")
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
@@ -81,7 +96,12 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  return {kind:kind as ReportKind,view:view as ReportView,
   ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),
   ...(centerRef?{centerRef}:{}),...(fromDay?{fromDay,untilDay}:{}),
-  ...(status?{status}:{}),offset};
+  ...(status?{status}:{}),
+  ...(kind==="FINANCE_POSTED_GROUPED"?{
+   groupBy:(groupBy||"CATEGORY") as "CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME",
+   sortBy:(sortBy||"NAME") as "NAME"|"DEBIT"|"CREDIT",
+   sortDirection:(sortDirection||"ASC") as "ASC"|"DESC"
+  }:{}),offset};
 }
 export function suppressAppointmentCells(rows:{
  bookings:string;completed:string;waiting:string;cancelled:string
@@ -140,6 +160,9 @@ export class MisReportSourceService{
      views:["TABLE"],description:"Only posted journal lines (up to 50 per page)"},
     {kind:"FINANCE_POSTED_SUMMARY",label:"Posted finance summary",
      views:["SUMMARY"],description:"Income, expenses, surplus and cash/bank balances"},
+    {kind:"FINANCE_POSTED_GROUPED",label:"Grouped posted finance",
+     views:["TABLE","SUMMARY","CHART","PIVOT"],
+     description:"Actual posted ledger grouped by category, entry type or account"},
     {kind:"FINANCE_POSTED_TREND",label:"Finance trend",
      views:["CHART"],description:"Actual posted income and expenses by month"}
    ]:[]),
