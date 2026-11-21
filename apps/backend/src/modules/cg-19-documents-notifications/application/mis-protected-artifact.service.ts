@@ -8,7 +8,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import {reportMime,renderMisReport,type ReportFormat,type ReportData} from "./mis-report-renderer";
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const valid=(v:string)=>{if(!UUID.test(v))
  throw new BadRequestException({code:"MIS_ARTIFACT_UNAVAILABLE"});
  return v;};
