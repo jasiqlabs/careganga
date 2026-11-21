@@ -111,7 +111,10 @@ export function InternalDashboardScreen({
         {/* Private MIS on the staff dashboard only; no private Public Android mirror. */}
         {roleActions.includes("mis.dashboard.view")&&
           <NativeMisDashboard token={token} onExpired={onExpired}
-            onOpenFinance={roleActions.includes("finance.reports.view")?handlers.openReports:undefined}/>}
+            onOpenFinance={roleActions.includes("finance.reports.view")?handlers.openReports:undefined}
+            onOpenPatientAdmin={roleActions.includes("health.patients.admin.view")&&
+             roleActions.includes("foundation.branches.admin")?
+             handlers.openPatientAdmin:undefined}/>}
 
         {/* Authorized Modules Section (Featured Quick Access matching Web Dashboard) */}
         <View style={styles.modulesSection}>
