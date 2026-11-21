@@ -1,15 +1,17 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {NativeMisSaved} from "./native-mis-saved";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
 type Option={ref:string;name:string};
 type Catalog={templates:Template[];finance:{ready:boolean;years:Option[];branches:Option[];
- allBranches:boolean};appointments:{ready:boolean;centers:Option[];complete:boolean}};
+ allBranches:boolean};appointments:{ready:boolean;centers:Option[];complete:boolean};
+ capabilities:{manage:boolean;export:boolean;schedule:boolean}};
 type Preview={state:string;kind:Kind;label:string;
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
  nextOffset:number|null;sourceAsOf?:string;sourceReadAt:string;
@@ -65,17 +67,32 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   }finally{if(rev===seq.current)setBusy(false);}
  },[token,onExpired]);
  useEffect(()=>{void load();return()=>{seq.current++};},[load]);
+ useEffect(()=>{
+  const sub=AppState.addEventListener("change",status=>{
+   seq.current++;setPreview(null);
+   if(status==="active"){
+    setCatalog(null);setKind(null);setYear("");setBranch("");
+    setCenter("");setFrom("");setUntil("");setStatus("");
+    void load();
+   }
+  });
+  return()=>sub.remove();
+ },[load]);
  const chosen=catalog?.templates.find(x=>x.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
+ function request(offset=0){
+  if(!kind||!chosen)return null;
+  return {kind,view:chosen.views[0],
+   ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
+    ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
+   ...((kind==="FINANCE_POSTED_LEDGER"||!finance)&&from?
+    {fromDay:from,untilDay:until}:{}),offset};
+ }
  async function run(offset=0){
   if(!kind||!chosen||busy)return;
   const rev=++seq.current;setBusy(true);setPreview(null);setProblem("");
   try{
-   const q={kind,view:chosen.views[0],
-    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
-     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
-    ...((kind==="FINANCE_POSTED_LEDGER"||!finance)&&from?
-     {fromDay:from,untilDay:until}:{}),offset};
+   const q=request(offset)!;
    const result=await fetchSource<Preview>(token,"preview",q);
    if(!Array.isArray(result.rows)||!Array.isArray(result.columns))
     throw Error("The original report is unavailable.");
@@ -142,6 +159,15 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    </>:<Text style={s.hint}>{preview.state==="SUPPRESSED"?
     "Private results are hidden for this small group.":"No matching original records."}</Text>}
   </View>}
+  {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
+   canManage={catalog.capabilities?.manage===true}
+   current={request(0)}
+   onRestore={value=>{
+    setKind(value.kind as Kind);setYear(value.yearRef??"");
+    setBranch(value.branchRef??"");setCenter(value.centerRef??"");
+    setFrom(value.fromDay??"");setUntil(value.untilDay??"");
+    setStatus(value.status??"");setPreview(null);setProblem("");
+   }}/>} 
  </View>;
 }
 const s=StyleSheet.create({
