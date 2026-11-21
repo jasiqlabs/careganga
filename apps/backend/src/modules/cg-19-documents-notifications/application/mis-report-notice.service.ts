@@ -5,6 +5,7 @@ import {
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 
 /** Original CG-19 in-app notification producer for one actual CG-20 READY
  * scheduled run. No report rows/amounts/recipient bank data or raw file URLs
@@ -14,7 +15,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 @Injectable()
 export class MisReportNoticeService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
-  private readonly sessions:SessionService){}
+  private readonly sessions:SessionService,
+  private readonly branches:BranchSourceFacade){}
 
  async publishReady(root:string,account:string,runRef:string){
   await this.sessions.requireScheduledMisAction(root,account,"mis.reports.view");
@@ -26,8 +28,8 @@ export class MisReportNoticeService{
    await tx.query("BEGIN");active=true;
    await tx.query("SET LOCAL statement_timeout='8s'");
    await tx.query("SET LOCAL lock_timeout='3s'");
-   const actual=await tx.query<{id:string;expires_at:Date}>(
-    "SELECT r.id,r.expires_at FROM cg20_report_run r "+
+   const actual=await tx.query<{id:string;expires_at:Date;safe_request:unknown}>(
+    "SELECT r.id,r.expires_at,r.safe_request FROM cg20_report_run r "+
     "JOIN cg20_report_schedule schedule ON schedule.root_realm_id=r.root_realm_id "+
     "AND schedule.id=r.schedule_ref AND schedule.owner_account_ref=r.requester_ref "+
     "AND schedule.recipient_account_ref=r.requester_ref "+
@@ -47,6 +49,9 @@ export class MisReportNoticeService{
     throw new NotFoundException({
      code:"MIS_SCHEDULE_REPORT_UNAVAILABLE",
      message:"The protected scheduled report is unavailable for delivery."});
+   const request=actual.rows[0].safe_request as {branchRef?:unknown};
+   await this.branches.requireScheduledFinanceReportBranch(root,account,
+    typeof request?.branchRef==="string"?request.branchRef:null);
    const text={
     subject:"Your CareGanga Foundation report is ready",
     body:"A scheduled Foundation report is available. Sign in to your private account to check current permissions and download it."
