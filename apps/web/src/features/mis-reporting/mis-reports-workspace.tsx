@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MisSavedReports} from "./mis-saved-reports";
+import {MisReportExports} from "./mis-report-exports";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type View="TABLE"|"SUMMARY"|"CHART";
@@ -213,6 +214,8 @@ export function MisReportsWorkspace(){
    {result.state==="SUPPRESSED"&&<p role="status">
     The result contains too few people to display safely.</p>}
   </div>}
+  {catalog?.capabilities?.export===true&&
+   <MisReportExports allowed request={input(0)}/>}
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
    currentRequest={input(0)}
    onRestore={q=>{
