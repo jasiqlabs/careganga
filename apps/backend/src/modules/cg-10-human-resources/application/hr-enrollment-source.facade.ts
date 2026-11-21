@@ -61,7 +61,7 @@ export class HrEnrollmentSourceFacade{
    [realm,revisionRef,revisionNo,digest]);
   const source=q.rows[0];
   if(!source||source.app_revision_no!==revisionNo||
-    !["SUBMITTED","IN_REVIEW","FINAL_APPROVED_PENDING_ACTIVATION",
+    !["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW","FINAL_APPROVED_PENDING_ACTIVATION",
       "PENDING_ACCESS","ACTIVE"].includes(source.app_state)||
     !Array.isArray(source.private_file_versions)||
     sourceHash(source.source_snapshot)!==digest)
