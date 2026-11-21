@@ -7,16 +7,54 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 export type CmsPlacement={fileRef:string;version:number;role:string;
  altText:string;order:number};
+type CmsSection={kind:string;order:number;fields:Record<string,unknown>};
 type Props={token:string;pageRef:string;revisionRef:string;kind:string;
- assets:CmsPlacement[];onChange:(items:CmsPlacement[])=>void;
+ sections:CmsSection[];assets:CmsPlacement[];onChange:(items:CmsPlacement[])=>void;
  onExpired:()=>void;disabled?:boolean};
 type Selected={uri:string;name:string;size:number;mime:string};
 type Intent={status:string;uploadRef:string;uploadUrl?:string;
  uploadHeaders?:Record<string,string>};
 type Verified={cleanVerified:boolean;fileRef:string|null;
  validatedVersion:number|null;status:string};
-const roles=["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
- "GALLERY","ARTICLE","DOCUMENT","IMPACT","CONTACT"];
+// Follow the CG18 server's authored-section and media placement rules.
+ // Do not offer roles/positions that the existing CMS will reject or hide.
+const images=["image/jpeg","image/png","image/webp"];
+type Choice={role:string;order:number;mime:string[]};
+function placementChoices(sections:CmsSection[]):Choice[]{
+ const found:Choice[]=[];
+ const add=(role:string,order:number,mime=images)=>{
+  if(Number.isSafeInteger(order)&&order>=0&&order<=100&&
+   !found.some(c=>c.role===role&&c.order===order))
+   found.push({role,order,mime});
+ };
+ for(const section of sections){
+  const f=section.fields;
+  if(section.kind==="HERO"){
+   add("HERO",section.order);add("MOBILE_HERO",section.order);
+  }else if(section.kind==="RICH_TEXT"&&f.variant==="SPLIT")
+   add("ABOUT",section.order);
+  else if(section.kind==="CTA")add("PROMO",section.order);
+  else if(section.kind==="FEATURE_CARDS"&&Array.isArray(f.cards))
+   f.cards.slice(0,30).forEach((_,i)=>add("FEATURE",i));
+  else if(section.kind==="GALLERY_GRID"&&Array.isArray(f.items))
+   f.items.slice(0,30).forEach((item,i)=>{
+    const type=item&&typeof item==="object"&&"mediaType" in item?
+     item.mediaType:null;
+    if(type==="PHOTO")add("GALLERY",i,images);
+    else if(type==="VIDEO")add("GALLERY",i,["video/mp4"]);
+    else if(type==="PUBLICATION")add("GALLERY",i,["application/pdf"]);
+   });
+  else if(section.kind==="ARTICLE_BODY")add("ARTICLE",0);
+  else if(section.kind==="IMPACT_GROUP")add("IMPACT",section.order);
+  else if(section.kind==="CONTACT_INFO")
+   [0,1,2].forEach(i=>add("CONTACT",i));
+  else if(section.kind==="COMPLIANCE_FACTS"&&Array.isArray(f.documents))
+   f.documents.slice(0,30).forEach((_,i)=>add("DOCUMENT",i,
+    [...images,"application/pdf"]));
+  // TEAM images require an approved real-person source, not manual CMS input.
+ }
+ return found;
+}
 const label=(v:string)=>v.replaceAll("_"," ").toLowerCase()
  .replace(/\b\w/g,c=>c.toUpperCase());
 async function cms<T>(token:string,path:string,method:"GET"|"POST"="GET",
@@ -33,7 +71,7 @@ async function cms<T>(token:string,path:string,method:"GET"|"POST"="GET",
  ),{status:response.status});
  return response.json() as Promise<T>;
 }
-export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
+export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,assets,
  onChange,onExpired,disabled=false}:Props){
  const [picked,setPicked]=useState<Selected|null>(null);
  const [role,setRole]=useState(kind==="ARTICLE"?"ARTICLE":
@@ -49,11 +87,17 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
   setPicked(null);setIntent("");setUncertain(false);setRights(false);
   setAlt("");key.current="";original.current=null;
  },[pageRef,revisionRef]);
- const mime=role==="GALLERY"?
-  ["image/jpeg","image/png","image/webp","video/mp4","application/pdf"]:
-  role==="DOCUMENT"?
-  ["image/jpeg","image/png","image/webp","application/pdf"]:
-  ["image/jpeg","image/png","image/webp"];
+ const choices=placementChoices(sections);
+ const availableRoles=[...new Set(choices.map(c=>c.role))];
+ const selectedChoice=choices.find(c=>c.role===role&&c.order===Number(order));
+ const mime=selectedChoice?.mime??[];
+ useEffect(()=>{
+  if(!choices.some(c=>c.role===role)){
+   setRole(choices[0]?.role??"");
+   setOrder(String(choices[0]?.order??0));
+   setPicked(null);setIntent("");setUncertain(false);key.current="";
+  }
+ },[sections,role]);
  const action=(title:string,fn:()=>void,blocked=false)=>
   <Pressable accessibilityRole="button" disabled={disabled||blocked}
    accessibilityState={{disabled:disabled||blocked}}
@@ -65,7 +109,10 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
   setNotice(e instanceof Error?e.message:"Original media outcome is uncertain.");
  }
  const attach=(ref:string,version:number)=>{
-  const sequence=Number(order),index=role==="ABOUT"?20:role==="PROMO"?30:sequence;
+  if(!selectedChoice){
+   setNotice("The original media section changed. Refresh before attaching.");return;
+  }
+  const index=selectedChoice.order;
   const placement={fileRef:ref,version,role,order:index,altText:alt.trim()};
   onChange([...assets.filter(x=>x.role!==role||x.order!==index),placement]);
   setIntent("");setPicked(null);setRights(false);setAlt("");
@@ -73,7 +120,7 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
   setNotice("Scanned CG19 original attached to unsaved CMS revision. Save before submitting.");
  };
  async function pick(){
-  if(disabled||busy||uncertain)return;
+  if(disabled||busy||uncertain||!selectedChoice)return;
   try{
    const selected=await DocumentPicker.getDocumentAsync({
     type:mime,multiple:false,copyToCacheDirectory:true});
@@ -105,7 +152,8 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
   finally{setBusy(false)}
  }
  async function upload(){
-  if(busy||uncertain||disabled||!picked||!rights||alt.trim().length<3||
+  if(busy||uncertain||disabled||!picked||!rights||!selectedChoice||
+   !mime.includes(picked.mime)||alt.trim().length<3||
    !/^(0|[1-9]\d{0,2})$/.test(order))return;
   setBusy(true);setNotice("");
   try{
@@ -165,12 +213,20 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
    clean, authorized private file. No upload automatically publishes a page.</Text>
   {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
   <Text style={styles.heading}>Image or document role</Text>
-  <View style={styles.row}>{roles.map(x=><View key={x}>
-   {action((role===x?"✓ ":"")+label(x),()=>{setRole(x);setPicked(null);
-    setIntent("");setUncertain(false);key.current="";},busy)}
+  <View style={styles.row}>{availableRoles.map(x=><View key={x}>
+   {action((role===x?"✓ ":"")+label(x),()=>{
+    setRole(x);setOrder(String(choices.find(c=>c.role===x)?.order??0));
+    setPicked(null);setIntent("");setUncertain(false);key.current="";
+   },busy||uncertain)}
   </View>)}</View>
+  {!choices.length&&<Text style={styles.note}>
+   Add a supported original media section/item before attaching files.</Text>}
+  {!!choices.length&&<Text style={styles.note}>
+   Valid positions for {label(role)}: {choices.filter(c=>c.role===role)
+    .map(c=>c.order).join(", ")||"None"}.
+   Gallery media type follows the selected authored item.</Text>}
   {action(picked?"Chosen: "+picked.name:"Choose original file",()=>void pick(),
-   busy||uncertain)}
+   busy||uncertain||!selectedChoice)}
   <TextInput accessibilityLabel="Media accessibility description"
    style={styles.input} value={alt} onChangeText={setAlt}
    maxLength={180} editable={!disabled&&!busy}
@@ -182,7 +238,8 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,assets,
   {action((rights?"✓ ":"")+"Foundation has original publication rights",
    ()=>setRights(x=>!x),busy)}
   {action("Upload, scan and attach to unsaved draft",()=>void upload(),
-   busy||uncertain||!picked||!rights||alt.trim().length<3)}
+   busy||uncertain||!selectedChoice||!picked||!rights||
+    !mime.includes(picked.mime)||alt.trim().length<3)}
   {!!intent&&action("Check the same original upload",()=>void status(),busy)}
   {!!uncertain&&<Text style={styles.warning}>
    Original upload outcome is uncertain. Check its original intent before retrying.</Text>}
