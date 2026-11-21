@@ -4741,8 +4741,8 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner explicitly authorized continue to next canonical CG13 expert planning review and delegate approval on 15 November 2026, stop before CG15",
-      "sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
-      "current_artifact_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+      "sha256": "3bbcc6d135beb28441f959cb4d25c149f1e92b873ca082f1eafe3860dfce2d55",
+      "current_artifact_sha256": "3bbcc6d135beb28441f959cb4d25c149f1e92b873ca082f1eafe3860dfce2d55",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-13-referrals-rewards/module.md",
@@ -4803,17 +4803,29 @@
       "current_task_definitions_sha256": "b84b644613fe984ca975aded7a67c41c3b3027e92783de75367b7313fc7f8a40",
       "qa_cases": 60,
       "stories": 3,
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "review_evidence": "OWNER_DELEGATED_REVIEWED_21NOV_WEB_ANDROID_SAME_ROLE_PARITY_SOURCE_ONLY_SHA_REPIN",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
-        "file_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+        "method": "OWNER_DELEGATED_EXACT_PATCH_DESIGN_REVIEW_NOT_INDEPENDENT",
+        "scope": "Superseded outdated D-17 Web-only policy/catalogue exception for the same authorized operator; no new points, referral or stock scope.",
+        "file_sha256": "3bbcc6d135beb28441f959cb4d25c149f1e92b873ca082f1eafe3860dfce2d55",
         "actual_web_android_qa": "NOT_RUN",
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
-      }
+        "source_complete": "NOT_APPROVED",
+        "reviewed_commit": "51c9d3fa36af5d1081ff7c07067424647e3f6760",
+        "source_implementation": "NOT_IMPLEMENTED_FUTURE_OWNER"
+      },
+      "approval_history": [
+        {
+          "prior_current_artifact_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+          "prior_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+          "prior_review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+          "prior_approved_at": "2026-11-21",
+          "baseline_commit": "d24851f7791591882975bd956d2d63544a5117f2",
+          "superseded_reason": "21NOV owner-authorized same-actor Web/Android parity correction; original approval retained for audit"
+        }
+      ]
     },
     "dld/cg-13-referrals-rewards": {
       "artifact": "modules/cg-13-referrals-rewards/dld.md",
@@ -6413,8 +6425,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly authorized next canonical CG22 full expert review and SHA-bound delegated design approval on 15 Nov 2026, stopping before CG23",
       "artifact": "modules/cg-22-pharmacy-operations/uiux.md",
-      "sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
-      "current_artifact_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+      "sha256": "529c0d0406c31d61577b71036626b702b612ec2ab586e7adcc7d35f352248b99",
+      "current_artifact_sha256": "529c0d0406c31d61577b71036626b702b612ec2ab586e7adcc7d35f352248b99",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-22-pharmacy-operations/uiux.md",
@@ -6452,17 +6464,29 @@
       "development_authority": "DESIGN_ONLY_NOT_SOURCE_IMPL_OR_PRODUCTION_ACTIVATION",
       "story_count": 5,
       "qa_count": 90,
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "review_evidence": "OWNER_DELEGATED_REVIEWED_21NOV_WEB_ANDROID_SAME_ROLE_PARITY_SOURCE_ONLY_SHA_REPIN",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
-        "file_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+        "method": "OWNER_DELEGATED_EXACT_PATCH_DESIGN_REVIEW_NOT_INDEPENDENT",
+        "scope": "Native assigned-center pharmacy operations align with currently authorized Center Web actions only when ERP ON; public scope remains catalogue/enquiry.",
+        "file_sha256": "529c0d0406c31d61577b71036626b702b612ec2ab586e7adcc7d35f352248b99",
         "actual_web_android_qa": "NOT_RUN",
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
-      }
+        "source_complete": "NOT_APPROVED",
+        "reviewed_commit": "9829c022b5185fa73fbc5eebd0c9fb7d66018f4b",
+        "source_implementation": "NOT_IMPLEMENTED_FUTURE_OWNER"
+      },
+      "approval_history": [
+        {
+          "prior_current_artifact_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+          "prior_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+          "prior_review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+          "prior_approved_at": "2026-11-21",
+          "baseline_commit": "d24851f7791591882975bd956d2d63544a5117f2",
+          "superseded_reason": "21NOV owner-authorized same-actor Web/Android parity correction; original approval retained for audit"
+        }
+      ]
     },
     "dld/cg-22-pharmacy-operations": {
       "status": "DELEGATED_APPROVED",
@@ -6656,8 +6680,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "User explicitly approved CG23 canonical full expert BR/PRD/HLD/DLD/UIUX/Web/native/backend/DB/NFR/QA source review and delegated SHA-bound approvals on 15 Nov 2026, and instructed to stop before CG24.",
       "artifact": "modules/cg-23-nursing-operations/uiux.md",
-      "sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
-      "current_artifact_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+      "sha256": "e9dca25c6d854a703f25facbb907646c39144e459bf4b33475e6ff8ec00e4fb5",
+      "current_artifact_sha256": "e9dca25c6d854a703f25facbb907646c39144e459bf4b33475e6ff8ec00e4fb5",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/uiux.md",
@@ -6694,17 +6718,29 @@
       "development_authority": "DELEGATED_SOURCE_DESIGN_ONLY_NO_CODE_COMPLETION_OR_PRODUCTION_OPERATION_AUTHORITY",
       "story_count": 5,
       "qa_count": 90,
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "review_evidence": "OWNER_DELEGATED_REVIEWED_21NOV_WEB_ANDROID_SAME_ROLE_PARITY_SOURCE_ONLY_SHA_REPIN",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
-        "file_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+        "method": "OWNER_DELEGATED_EXACT_PATCH_DESIGN_REVIEW_NOT_INDEPENDENT",
+        "scope": "Native staff/center nursing permissions now reflect Web clinical/shift workflows with ERP and patient consent boundaries; no public clinical release.",
+        "file_sha256": "e9dca25c6d854a703f25facbb907646c39144e459bf4b33475e6ff8ec00e4fb5",
         "actual_web_android_qa": "NOT_RUN",
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
-      }
+        "source_complete": "NOT_APPROVED",
+        "reviewed_commit": "3ffff8fb24b55b1a0832e9b117d21286b4e6ed2f",
+        "source_implementation": "NOT_IMPLEMENTED_FUTURE_OWNER"
+      },
+      "approval_history": [
+        {
+          "prior_current_artifact_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+          "prior_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+          "prior_review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+          "prior_approved_at": "2026-11-21",
+          "baseline_commit": "d24851f7791591882975bd956d2d63544a5117f2",
+          "superseded_reason": "21NOV owner-authorized same-actor Web/Android parity correction; original approval retained for audit"
+        }
+      ]
     },
     "dld/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
@@ -6898,8 +6934,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG24 as final canonical module, required expert BR/PRD/HLD/DLD/UIUX/Web/Center/Public Android/Internal Android/backend/PostgreSQL/NFR/each-story QA review, scoped ownership corrections and final 24/24, on 15 Nov 2026; explicitly prohibited implementation/other unnecessary modules.",
       "artifact": "modules/cg-24-ot-procedures/uiux.md",
-      "sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
-      "current_artifact_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+      "sha256": "afdf3e5c9f1926ba62c428b258fb75f2a33766660cc6377888e5f0eca15749c5",
+      "current_artifact_sha256": "afdf3e5c9f1926ba62c428b258fb75f2a33766660cc6377888e5f0eca15749c5",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-24-ot-procedures/uiux.md",
@@ -6938,17 +6974,29 @@
       "development_authority": "SHA_BOUND_OWNER_DELEGATED_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTATION_OR_RUNTIME_RELEASE_APPROVAL",
       "story_count": 5,
       "qa_count": 90,
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "review_evidence": "OWNER_DELEGATED_REVIEWED_21NOV_WEB_ANDROID_SAME_ROLE_PARITY_SOURCE_ONLY_SHA_REPIN",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
-        "file_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+        "method": "OWNER_DELEGATED_EXACT_PATCH_DESIGN_REVIEW_NOT_INDEPENDENT",
+        "scope": "Native same-role OT readiness/scheduling/clinical handover follows existing Web scope and ERP ON, not a new app/checkout.",
+        "file_sha256": "afdf3e5c9f1926ba62c428b258fb75f2a33766660cc6377888e5f0eca15749c5",
         "actual_web_android_qa": "NOT_RUN",
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
-      }
+        "source_complete": "NOT_APPROVED",
+        "reviewed_commit": "82a577b69f5b2cb18dee6012a15277b84985e071",
+        "source_implementation": "NOT_IMPLEMENTED_FUTURE_OWNER"
+      },
+      "approval_history": [
+        {
+          "prior_current_artifact_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+          "prior_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+          "prior_review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+          "prior_approved_at": "2026-11-21",
+          "baseline_commit": "d24851f7791591882975bd956d2d63544a5117f2",
+          "superseded_reason": "21NOV owner-authorized same-actor Web/Android parity correction; original approval retained for audit"
+        }
+      ]
     },
     "dld/cg-24-ot-procedures": {
       "status": "DELEGATED_APPROVED",
