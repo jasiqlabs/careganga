@@ -1,5 +1,6 @@
 "use client";
-import {useCallback,useEffect,useState,type FormEvent} from "react";
+import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import {HrEvidenceUploader} from "./hr-evidence-uploader";
 
 type Choice={label:string;branchRef?:string;departmentRef?:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
@@ -34,7 +35,8 @@ function isChoices(x:unknown):x is {items:Choice[]} {
  return Boolean(x)&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
-export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
+export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
+  canManage:boolean;canViewEmployees:boolean}){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Choice[]>([]);
  const [departments,setDepartments]=useState<Choice[]>([]);
@@ -47,6 +49,12 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
  const [hasMore,setHasMore]=useState(false);
  const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID());
  const [attempt,setAttempt]=useState<string|null>(null);
+ const [fileApplication,setFileApplication]=useState<Application|null>(null);
+ const [caseStatus,setCaseStatus]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
+ const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
+  branch:string;status:string}>>([]);
+ const [staffError,setStaffError]=useState("");
+ const enrollmentKeys=useRef(new Map<string,string>());
  const load=useCallback(async(page=0)=>{
   setLoading(true);
   try{
@@ -72,6 +80,87 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
    .catch(()=>{if(active)setStatus({message:"Department options are unavailable.",error:true});});
   return()=>{active=false;};
  },[form.branchRef]);
+ const review=useCallback(async(app:Application)=>{
+  setFileApplication(app);setCaseStatus(null);setStatus(null);
+  try{
+   const current=await request("applications/"+app.applicationRef+"/review");
+   if(!current||typeof current!=="object"||!("status" in current)||
+    typeof current.status!=="string")
+    throw Error("Original enrollment status could not be confirmed.");
+   setCaseStatus(current as {status:string;caseRef:string|null;reference:string|null});
+  }catch(e){
+   setStatus({error:true,message:e instanceof Error?e.message:
+    "Original enrollment status is unavailable."});
+  }
+ },[]);
+ const submit=async(app:Application)=>{
+  if(busy||!canManage)return;
+  setBusy(true);setStatus(null);
+  const key=enrollmentKeys.current.get(app.applicationRef)??crypto.randomUUID();
+  enrollmentKeys.current.set(app.applicationRef,key);
+  try{
+   const list=await fetch("/api/hr-evidence/applications/"+app.applicationRef,{
+    credentials:"same-origin",cache:"no-store"}).then(async r=>{
+     if(!r.ok)throw Error("Original private evidence cannot be verified.");
+     return r.json() as Promise<unknown>;
+    });
+   const items=list&&typeof list==="object"&&"files" in list&&Array.isArray(list.files)?
+    list.files as Array<{fileRef:string;fileVersion:number;classification:string;
+      sourceVersion:number;cleanVerified:boolean}>:[];
+   const proof=items.filter(x=>x.cleanVerified&&x.sourceVersion===app.revision);
+   if(proof.filter(x=>x.classification==="HR_IDENTITY_PROOF").length!==1)
+    throw Error("Exactly one original clean identity proof is required.");
+   const result=await request("applications/"+app.applicationRef+"/submit",{
+    method:"POST",body:JSON.stringify({requestKey:key,expectedRevision:app.revision,
+     files:proof.map(x=>({fileRef:x.fileRef,fileVersion:x.fileVersion,
+       classification:x.classification}))})});
+   if(!result||typeof result!=="object"||!("reference" in result)||
+    typeof result.reference!=="string")
+    throw Error("Enrollment submission could not be confirmed.");
+   enrollmentKeys.current.delete(app.applicationRef);
+   setStatus({error:false,message:"Original enrollment submitted for independent "+
+    "Foundation approval — "+result.reference+". Not yet an active employee."});
+   await load(0);await review(app);
+  }catch(e){
+   setStatus({error:true,message:e instanceof Error?e.message:
+    "Submission result is uncertain. Refresh the original review before retrying."});
+  }finally{setBusy(false);}
+ };
+ const finalize=async(app:Application)=>{
+  if(busy||!canManage)return;
+  setBusy(true);setStatus(null);
+  try{
+   const current=await request("applications/"+app.applicationRef+"/review");
+   if(!current||typeof current!=="object"||!("status" in current)||
+     current.status!=="PENDING_OWNER"||!("caseRef" in current)||
+     typeof current.caseRef!=="string")
+    throw Error("An independent final approval has not been confirmed.");
+   const result=await request("applications/"+app.applicationRef+"/finalize",{
+    method:"POST",body:JSON.stringify({caseRef:current.caseRef})});
+   if(!result||typeof result!=="object"||!("reference" in result)||
+    typeof result.reference!=="string")
+    throw Error("Approved employee activation is not confirmed.");
+   setStatus({error:false,message:"Employment confirmed — "+result.reference+
+    ". Account access is separate and never auto-granted."});
+   await load(0);setFileApplication(null);setCaseStatus(null);
+  }catch(e){setStatus({error:true,message:e instanceof Error?e.message:
+   "Employee activation result is uncertain. Check the original employee directory."});}
+  finally{setBusy(false);}
+ };
+ const loadEmployees=async()=>{
+  if(!canViewEmployees)return;
+  setStaffError("");
+  try{
+   const res=await request("employees?offset=0");
+   if(!res||typeof res!=="object"||!("items" in res)||!Array.isArray(res.items))
+    throw Error("The approved employee directory is unavailable");
+   setStaff(res.items as typeof staff);
+  }catch(e){
+   setStaff([]);setStaffError(e instanceof Error?e.message:
+    "Employee directory cannot be verified.");
+  }
+ };
+
  const change=(field:keyof Draft,value:string)=>{
   setForm(v=>({...v,[field]:value,...(field==="branchRef"?{departmentRef:""}:{})}));
   setAttempt(null);setRequestKey(crypto.randomUUID());
@@ -183,6 +272,11 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
         <small style={{display:"block",color:"#64748B"}}>{app.reference}</small></span>
        <span style={{fontWeight:600,color:"#475569"}}>{app.status.replaceAll("_"," ")}</span>
       </div>
+      {canManage&&<button type="button" onClick={()=>void review(app)}
+       style={{marginTop:8,marginRight:8,...buttonStyle,padding:".45rem .7rem",
+        background:"#EFF6FF",color:"#1D4ED8"}}>
+        {["DRAFT","RETURNED"].includes(app.status)?"Manage private evidence":"Review status"}
+       </button>}
       {canManage&&["DRAFT","RETURNED"].includes(app.status)&&
        <button type="button" onClick={()=>beginEdit(app)}
         style={{marginTop:8,...buttonStyle,padding:".45rem .7rem"}}>Edit draft</button>}
@@ -195,5 +289,44 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
       onClick={()=>void load(offset+25)}>Next</button>}
    </div>
   </section>
+  {fileApplication&&canManage&&<section style={{border:"1px solid #CBD5E1",
+   padding:16,borderRadius:14,background:"#fff",display:"grid",gap:14}}>
+   <header style={{display:"flex",justifyContent:"space-between",gap:8}}>
+    <h2 style={{margin:0,fontSize:"1.1rem"}}>Original enrollment — {fileApplication.name}</h2>
+    <button type="button" onClick={()=>{setFileApplication(null);setCaseStatus(null);}}
+     style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Close</button>
+   </header>
+   {caseStatus&&<p role="status">Review state: {caseStatus.status.replaceAll("_"," ")}
+    {caseStatus.reference?" · "+caseStatus.reference:""}</p>}
+   {["DRAFT","RETURNED"].includes(fileApplication.status)&&<>
+    <HrEvidenceUploader applicationRef={fileApplication.applicationRef}
+      revision={fileApplication.revision} canManage={canManage}/>
+    <button type="button" onClick={()=>void submit(fileApplication)} disabled={busy}
+      style={buttonStyle}>Submit original verified enrollment</button>
+   </>}
+   {fileApplication.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
+    <button type="button" onClick={()=>void finalize(fileApplication)} disabled={busy}
+      style={buttonStyle}>Complete approved enrollment</button>}
+   <p style={{color:"#64748B",fontSize:13,margin:0}}>
+    Only an original CG-03 independent decision and current CG-19 clean scan can activate employment.
+   </p>
+  </section>}
+  {canViewEmployees&&<section style={{padding:16,border:"1px solid #E2E8F0",
+    borderRadius:14,background:"#fff"}}>
+    <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
+      <h2 style={{margin:0,fontSize:"1.1rem"}}>Approved employee directory</h2>
+      <button type="button" onClick={()=>void loadEmployees()}
+       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Refresh directory</button>
+    </div>
+    {staffError&&<p role="alert" style={{color:"#991B1B"}}>{staffError}</p>}
+    <ul style={{paddingLeft:18}}>
+     {staff.map(row=><li key={row.reference} style={{padding:6}}>
+       <strong>{row.name}</strong> — {row.designation} · {row.branch}
+       <small style={{display:"block",color:"#64748B"}}>
+        {row.reference} · {row.status.replaceAll("_"," ")}
+       </small>
+      </li>)}
+    </ul>
+  </section>}
  </div>;
 }
