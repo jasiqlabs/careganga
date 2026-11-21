@@ -23,6 +23,17 @@ type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";labe
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
  nextOffset:number|null;sourceAsOf?:string;sourceReadAt:string;
  explanation:string;scopeLabel:string};
+type Period="CUSTOM"|"DAY"|"WEEK"|"MONTH"|"YEAR";
+const reportLocalDate=(date:Date)=>String(date.getFullYear())+"-"+
+ String(date.getMonth()+1).padStart(2,"0")+"-"+
+ String(date.getDate()).padStart(2,"0");
+function localReportPeriod(period:Exclude<Period,"CUSTOM">){
+ const today=new Date(),start=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+ if(period==="WEEK")start.setDate(start.getDate()-((start.getDay()+6)%7));
+ else if(period==="MONTH")start.setDate(1);
+ else if(period==="YEAR"){start.setMonth(0);start.setDate(1);}
+ return {from:reportLocalDate(start),until:reportLocalDate(today)};
+}
 const states=[
  {ref:"",label:"All statuses"},{ref:"CONFIRMED",label:"Confirmed"},
  {ref:"ARRIVED",label:"Arrived"},{ref:"WAITING",label:"Waiting"},
@@ -54,6 +65,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
+ const [period,setPeriod]=useState<Period>("CUSTOM");
  const [groupBy,setGroupBy]=useState<"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME">("CATEGORY");
  const [sortBy,setSortBy]=useState<"NAME"|"DEBIT"|"CREDIT">("NAME");
  const [sortDirection,setSortDirection]=useState<"ASC"|"DESC">("ASC");
@@ -81,7 +93,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    seq.current++;setPreview(null);
    if(status==="active"){
     setCatalog(null);setKind(null);setYear("");setBranch("");
-    setCenter("");setFrom("");setUntil("");setStatus("");
+    setCenter("");setFrom("");setUntil("");setStatus("");setPeriod("CUSTOM");
     void load();
    }
   });
@@ -91,6 +103,12 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const finance=kind?.startsWith("FINANCE_");
  const health=kind==="APPOINTMENT_STATUS";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
+ const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
+ function setPreset(next:Period){
+  setPeriod(next);setPreview(null);
+  if(next==="CUSTOM"){setFrom("");setUntil("");return;}
+  const dates=localReportPeriod(next);setFrom(dates.from);setUntil(dates.until);
+ }
  function request(offset=0){
   if(!kind||!chosen)return null;
   return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
@@ -168,9 +186,17 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
      options={[{ref:"ASC",label:"Ascending"},{ref:"DESC",label:"Descending"}]}
      onChange={v=>setSortDirection(v as typeof sortDirection)}/>
    </>}
-   {(kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&<>
-    <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from} onChange={setFrom}/>
-    <NativeFinanceField label="End date (YYYY-MM-DD)" value={until} onChange={setUntil}/>
+   {dated&&<>
+    <NativeFinanceOptions label="Reporting period" value={period}
+     options={[{ref:"CUSTOM",label:"Custom date range"},
+      {ref:"DAY",label:"Today"},
+      {ref:"WEEK",label:"This week (Monday onward)"},
+      {ref:"MONTH",label:"This month"},{ref:"YEAR",label:"This calendar year"}]}
+     onChange={value=>setPreset(value as Period)}/>
+    <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from}
+     onChange={value=>{setFrom(value);setPeriod("CUSTOM");setPreview(null);}}/>
+    <NativeFinanceField label="End date (YYYY-MM-DD)" value={until}
+     onChange={value=>{setUntil(value);setPeriod("CUSTOM");setPreview(null);}}/>
    </>}
    <NativeFinanceAction disabled={busy} label={busy?"Checking report…":"Run permitted report"}
     onPress={()=>void run()}/>
