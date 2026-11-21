@@ -47,6 +47,35 @@ CREATE UNIQUE INDEX ux_cg20_saved_active_name ON cg20_saved_report
 CREATE INDEX ix_cg20_saved_owner_recent ON cg20_saved_report
  (root_realm_id,owner_account_ref,updated_at DESC,id DESC);
 
+-- Explicit per-recipient read-only definition grants for US-003.
+-- A grant NEVER conveys CG09/CG15/21 source permission or CG19 file rights.
+-- No role-wide shares, public report links, or copied notification recipients.
+CREATE TABLE cg20_saved_report_grant(
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ saved_ref uuid NOT NULL,
+ owner_account_ref uuid NOT NULL,
+ recipient_account_ref uuid NOT NULL,
+ state text NOT NULL DEFAULT 'ACTIVE' CHECK(state IN('ACTIVE','REVOKED')),
+ revision integer NOT NULL DEFAULT 1 CHECK(revision BETWEEN 1 AND 1000000),
+ created_by uuid NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ revoked_at timestamptz,
+ PRIMARY KEY(root_realm_id,saved_ref,recipient_account_ref),
+ FOREIGN KEY(root_realm_id,saved_ref,owner_account_ref)
+  REFERENCES cg20_saved_report(root_realm_id,id,owner_account_ref) ON DELETE RESTRICT,
+ FOREIGN KEY(recipient_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ CHECK(recipient_account_ref<>owner_account_ref),
+ CHECK((state='ACTIVE' AND revoked_at IS NULL) OR
+  (state='REVOKED' AND revoked_at IS NOT NULL))
+);
+CREATE INDEX ix_cg20_saved_shared_recipient ON cg20_saved_report_grant
+ (root_realm_id,recipient_account_ref,updated_at DESC)
+ WHERE state='ACTIVE';
+
 -- Source-only retry identity: one request key per account+root, payload digest
 -- and immutable outcome. No duplicate revisions on ambiguous network retries.
 CREATE TABLE cg20_saved_request(
