@@ -58,6 +58,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
  const [empBranches,setEmpBranches]=useState<Option[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
  const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
@@ -257,6 +258,17 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    await load(0);
    setStatus("Your existing staff account is now linked to your approved employment.");
   }catch(e){failure(e);}finally{setSaving(false);}
+ };
+ const loadHeadcounts=async()=>{
+  if(!canViewEmployees)return;
+  setStaffError("");
+  try{
+   const value=await api(token,"summary");
+   if(!value||typeof value!=="object"||!("statuses" in value)||
+    !("total" in value)||typeof value.total!=="number")
+    throw Error("Original employee summary unavailable.");
+   setHeadcounts(value as {total:number;statuses:Record<string,number>});
+  }catch(e){setHeadcounts(null);failure(e);}
  };
  const loadStaff=async(page=0)=>{
   if(!canViewEmployees)return;
@@ -470,6 +482,14 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>}
    {canViewEmployees&&<View style={styles.card}>
     <Text style={styles.h2}>Approved employee directory</Text>
+    <Pressable accessibilityRole="button" onPress={()=>void loadHeadcounts()}
+      style={styles.outline}><Text style={styles.outlineText}>
+       Refresh actual employee headcount</Text></Pressable>
+    {headcounts&&<View style={styles.choices}>
+     {Object.entries(headcounts.statuses).map(([key,value])=>
+       <Text key={key} style={styles.muted}>{title(key)}: {value}</Text>)}
+     <Text style={styles.label}>Total: {headcounts.total}</Text>
+    </View>}
     {field("Search employees",empFilter.q,
       v=>setEmpFilter(x=>({...x,q:v.slice(0,80)})),"Name or designation")}
     <Text style={styles.label}>Employee status</Text>
