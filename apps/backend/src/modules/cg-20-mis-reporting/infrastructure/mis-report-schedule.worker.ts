@@ -22,7 +22,7 @@ type Schedule={
 type ReadyRun={
  root_realm_id:string;id:string;requester_ref:string;
  saved_ref:string;definition_revision:number;safe_request:unknown;
- occurrence_due_utc:Date;state:string;format:"PDF"|"XLSX"|"CSV";
+ occurrence_due_utc:Date;state:string;retry_count:number;format:"PDF"|"XLSX"|"CSV";
  artifact_ref:string|null
 };
 type Delivery={
@@ -135,13 +135,17 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    await tx.query("SET LOCAL statement_timeout='7s'");
    const found=await tx.query<ReadyRun>(
     "SELECT r.* FROM cg20_report_run r "+
-    "WHERE r.run_origin='SCHEDULED' AND r.state='QUEUED' "+
+    "WHERE r.run_origin='SCHEDULED' "+
+    "AND r.state IN('QUEUED','UNKNOWN') AND r.retry_count<3 "+
+    "AND r.expires_at>now() "+
     "ORDER BY r.created_at,r.id LIMIT 1 FOR UPDATE SKIP LOCKED");
    const row=found.rows[0];
    if(!row){await tx.query("COMMIT");open=false;return null;}
    await tx.query(
-    "UPDATE cg20_report_run SET state='RUNNING',updated_at=now() "+
-    "WHERE root_realm_id=$1 AND id=$2 AND state='QUEUED'",
+    "UPDATE cg20_report_run SET state='RUNNING',"+
+    "retry_count=retry_count+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 "+
+    "AND state IN('QUEUED','UNKNOWN') AND retry_count<3",
     [row.root_realm_id,row.id]);
    await tx.query("COMMIT");open=false;
    return {...row,state:"RUNNING"};
