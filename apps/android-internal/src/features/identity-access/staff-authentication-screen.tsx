@@ -1296,6 +1296,7 @@ export function StaffAuthenticationScreen() {
         roleActions={roleActions}
         handlers={handlers}
         onSignOut={() => void signOut()}
+        onExpired={expireSession}
         message={message}
       />
     );
