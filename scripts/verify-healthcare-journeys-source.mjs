@@ -108,8 +108,8 @@ must(cg17+"application/consultation-patient-charge.service.ts",
  /foundationSupportMinor/,
  "Original patient quote remains policy-derived, no blanket 50%");
 must(cg17+"application/verified-provider-payout.service.ts",
- /bank\.status==='VERIFIED'|bank\.status==="VERIFIED"/,
- "Only original verified bank payment may be allocated");
+ /this\.cg09\.verify\(c,a,bankMatch\)/,
+ "Original CG09 bank payment must be independently verified");
 must("apps/backend/db/migrations/1441_cg14_professional_license_validity.sql",
  /ADD COLUMN professional_license_valid_through/,
  "Current clinician report license schema exists before CG16 migration");
