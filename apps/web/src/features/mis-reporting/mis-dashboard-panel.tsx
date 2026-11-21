@@ -167,7 +167,9 @@ export function MisDashboardPanel(){
       {source.sourceKey==="CG15_APPOINTMENT_STATES"&&
        <MisAppointmentDistribution metrics={source.metrics}/>}
      </>:<p role="status">{source.state==="EMPTY"?
-      "No posted financial entries for the selected permitted scope.":
+      "No records were found in this permitted reporting scope.":
+      source.state==="SUPPRESSED"?
+      "The group is too small to display safely. No private appointment counts are shown.":
       "Source currently unavailable. No estimates or sample totals are displayed."}</p>}
    </div>)}
    {data.sources.length===0&&<p role="status">No reporting source is permitted for your current role.</p>}
