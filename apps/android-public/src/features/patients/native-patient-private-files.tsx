@@ -6,7 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativePatientClinicalFileShares} from "./native-patient-clinical-file-shares";
 
-type Kind="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF";
+type Kind="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF"|"PATIENT_PARTNER_PAYMENT_PROOF";
 type PatientFileItem={fileRef:string;classification:Kind;mime:string;
  sizeBytes:number;version:number;revoked:boolean;createdAt:string};
 type Page={files:PatientFileItem[];next:string|null};
@@ -196,7 +196,8 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
   {consentGranted?<View style={styles.group}>
    <Text style={styles.note}>Document type</Text>
    {(["PATIENT_MEDICAL_REPORT","PATIENT_UPLOADED_PRESCRIPTION","PATIENT_PHOTO",
-    "PATIENT_PARTNER_INVOICE","PATIENT_PARTNER_SERVICE_PROOF"] as Kind[]).
+    "PATIENT_PARTNER_INVOICE","PATIENT_PARTNER_SERVICE_PROOF",
+    "PATIENT_PARTNER_PAYMENT_PROOF"] as Kind[]).
     map(k=><Pressable key={k} accessibilityRole="radio"
      accessibilityState={{checked:kind===k}} onPress={()=>{if(!busy&&!uncertain){
       setKind(k);setSelected(null);uploadKey.current=null;}}}
@@ -205,6 +206,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
       k==="PATIENT_MEDICAL_REPORT"?"My scanned medical report":
       k==="PATIENT_PARTNER_INVOICE"?"My partner invoice (unverified)":
       k==="PATIENT_PARTNER_SERVICE_PROOF"?"My completed-service document":
+      k==="PATIENT_PARTNER_PAYMENT_PROOF"?"My unverified partner payment receipt":
       "My earlier prescription copy"}</Text>
     </Pressable>)}
    {button(selected?"Change selected private file":"Choose a private document",()=>void choose(),uncertain)}
@@ -221,12 +223,14 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
     row.classification==="PATIENT_MEDICAL_REPORT"?"Scanned medical report":
     row.classification==="PATIENT_PARTNER_INVOICE"?"Partner invoice (unverified)":
     row.classification==="PATIENT_PARTNER_SERVICE_PROOF"?"Completed-service evidence":
+    row.classification==="PATIENT_PARTNER_PAYMENT_PROOF"?"Partner payment receipt (unverified)":
     "Patient-supplied prescription copy"} · {Math.ceil(row.sizeBytes/1024)} KB</Text>
    <Text style={styles.note}>{row.revoked?"Revoked":"Verified"} ·
     {" "+new Date(row.createdAt).toLocaleDateString("en-IN")}</Text>
    {!row.revoked&&<>
     {row.classification!=="PATIENT_PARTNER_INVOICE"&&
      row.classification!=="PATIENT_PARTNER_SERVICE_PROOF"&&
+     row.classification!=="PATIENT_PARTNER_PAYMENT_PROOF"&&
      <NativePatientClinicalFileShares token={token} fileRef={row.fileRef}
      consentGranted={consentGranted} onExpired={onExpired}/>
     {button("View my private file",()=>void readFile(row))}
