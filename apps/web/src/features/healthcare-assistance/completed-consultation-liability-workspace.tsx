@@ -8,6 +8,7 @@ type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
 type Options={appointments:Appointment[];complete:boolean};
 type Status={state:string;liabilityRef?:string;amountMinor?:string;currency?:string;
  postingState?:string;foundationJournalPosted:boolean;providerSettled:boolean;
+ providerSettlementState?:string;
  originalServiceCompletedAt?:string;correctedByOriginalReversal?:boolean;
  effectiveFoundationPayableMinor?:string};
 type Props={canManage:boolean;canPost:boolean};
@@ -185,7 +186,11 @@ export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Prop
     status.state.replaceAll("_"," ").toLowerCase()}.
     CG09 journal: {status.correctedByOriginalReversal?"Offset by independently verified correction":
      status.foundationJournalPosted?"Posted":"Not confirmed posted"}.
-    Provider settlement: {status.providerSettled?"Verified":"Not completed"}.
+    Provider settlement: {status.providerSettled?"Verified settled":
+     status.providerSettlementState==="PARTIALLY_SETTLED"?"Partially settled":
+     status.providerSettlementState==="APPROVED"?"Approved, not yet paid":
+     status.providerSettlementState==="PROPOSED"?"Proposed, not approved":
+     "Not yet claimed"}.
     {status.correctedByOriginalReversal&&
      <strong> Effective Foundation payable: {money(status.effectiveFoundationPayableMinor??"0")}.</strong>}</p>}
    {canManage&&status?.state==="NOT_RECOGNIZED"&&
