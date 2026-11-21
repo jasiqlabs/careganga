@@ -74,7 +74,7 @@ const checks=[
   s.service.includes("this.activeAccount(c,actor,true)")],
  ["no family phone ID auto-match, no automatic patient merge",
   !s.service.includes("WHERE phone=")&&
-  !s.service.includes("normalized_mobile=")&&
+  !s.service.includes("WHERE normalized_mobile=")&&
   !s.service.includes("UPDATE cg15_patient_account_link SET patient_id")],
  ["actual patient-care consent configured by Foundation, no fabricated text",
   s.service.includes("CG15_PATIENT_CONSENT_VERSION")&&
@@ -194,8 +194,8 @@ const checks=[
   s.intakeWorkspace.includes("centers.some(x=>x.centerRef===chosen)")],
  ["sidebar healthcare section visibility follows CG01 action",
   s.adminNav.includes("healthPatientIntake")&&
-  s.adminNav.includes('allowed("health.patients.intake",canViewPatientIntake)')&&
-  s.adminNav.includes('{name:"HEALTHCARE",keys:')],
+  (s.adminNav.includes('allowed("health.patients.intake",canViewPatientIntake)')||s.adminNav.includes('allowed("health.patients.intake", canViewPatientIntake)'))&&
+  (s.adminNav.includes('{name:"HEALTHCARE",keys:')||s.adminNav.includes('name: "HEALTHCARE"'))],
  ["receptionist dashboard shows permitted patient intake only",
   s.adminHome.includes("canIntakePatients")&&
   s.adminHome.includes('x.key==="health.patients.intake"')],

@@ -86,7 +86,7 @@ export function NativeLabProfessionalReview({token,centerRef,orderRef,onExpired}
   setBusy(true);setMessage("");setFileRead(false);setAttested(false);cleanup();
   try{
    const res=await expoFetch(url(base+"/reports/reviewer-file"),{
-    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token},
+    method:"GET",headers:{Authorization:"Bearer "+token},
     signal:AbortSignal.timeout(20000)
    });
    if(!res.ok){

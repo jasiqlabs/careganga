@@ -49,7 +49,7 @@ export function NativeMyLabReports({token,onExpired}:Props){
   setBusy(true);setMessage("");
   try{
    const response=await expoFetch(endpoint("me/"+x.releaseRef+"/pdf"),{
-    method:"GET",cache:"no-store",signal:AbortSignal.timeout(20000),
+    method:"GET",signal:AbortSignal.timeout(20000),
     headers:{Authorization:"Bearer "+token}});
    if(response.status===401){onExpired();throw Error("Please sign in again.");}
    if(!response.ok||

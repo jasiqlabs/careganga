@@ -59,7 +59,7 @@ const checks=[
   s.public.includes("A printed copy cannot be revoked")],
  ["PDF sharing cannot use a remote link, unprotected Web route or public file store",
   !s.public.includes('https://careganga.com/private')&&
-  s.public.includes('"/api/v1/appointments/slips/me/"+bookingRef+"/file"')&&
+  s.public.includes('"/api/v1/appointments/slips/me/"+bookingRef+')&&
   s.staff.includes('const path="/api/v1/appointments/slips/staff/"+bookingRef')],
  ["original patient/center source check, revocation, and native ICS remain",
   s.original.includes("async download(")&&

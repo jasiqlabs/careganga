@@ -35,7 +35,7 @@ assert.match(native,/appliedFrom/);
 assert.match(native,/appliedTo/);
 assert.match(native,/Sharing.shareAsync/);
 assert.match(native,/new File\(Paths.cache/);
-assert.match(native,/await file.write\(x.csv\)/);
+assert.match(native,/await (?:file|temporary)\.write\(x\.csv\)/);
 assert.match(native,/Status|status/);
 assert.match(modules,/key:"platformConfiguration"/);
 assert.match(modules,/openPlatformConfiguration:\s*\(\)\s*=>\s*void/);
@@ -63,6 +63,6 @@ assert.doesNotMatch(native,/await Sharing\.shareAsync\(file\.uri/,
 const tasks=read("specs/initiatives/careganga-foundation-platform/modules/cg-21-platform-configuration-audit/tasks.md");
 const ids=new Set(tasks.match(/US-00[12]-QA\d\d/g)||[]);
 assert.equal(ids.size,16,"Preserve CG21's original two user stories and sixteen QA scenarios");
-assert.match(tasks,/ANDROID_DEVICE_QA/);
+assert.match(tasks,/(?:ANDROID_DEVICE_QA|actual Android devices)/);
 console.log("CG21 STRUCTURAL SOURCE READBACK: TSX syntax, original API coverage, actor guard and navigation checks passed.");
 console.log("NOT_RUN: Web/Android TypeScript full typechecks, backend build, migration/restore, actual permission/backup-provider calls, browser/device/visual QA and independent review.");

@@ -74,7 +74,7 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
   try{
    const res=await expoFetch(target("center-receipts/me/appointments/"+bookingRef+
     "/collections/"+collectionRef+"/pdf"),{
-    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+await token()},
+    method:"GET",headers:{Authorization:"Bearer "+await token()},
     signal:AbortSignal.timeout(20000)});
    if(!res.ok)throw Object.assign(new Error(
     "Your verified private center receipt could not be opened."),{status:res.status});

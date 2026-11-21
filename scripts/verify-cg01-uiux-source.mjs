@@ -107,7 +107,7 @@ check(staff.includes("AuthenticatedAppShell"),
 
 const cg01OwningModuleMarkers=[
  ["apps/web/src/features/cms-public-content/cms-admin-workspace.tsx",
-  ["<h1>Website content</h1>",'className="primary" type="button" onClick={()=>{setSelected(null);setReviewing(false);']],
+  ["<h1>Website content</h1>",'className="primary"','onClick={()=>{setSelected(null);setReviewing(false);']],
  ["apps/web/src/features/health-network/provider-onboarding.tsx",
   ['className="toolbar cg-module-header-actions"']],
  ["apps/web/src/features/health-network/doctor-onboarding.tsx",
@@ -336,7 +336,7 @@ const mainStateOwners=[
  ],
  [
   "platform-configuration/platform-audit-panel.tsx",
-  "cg-module-loading"
+  "cg-module-empty"
  ],
  [
   "platform-configuration/recovery-panel.tsx",

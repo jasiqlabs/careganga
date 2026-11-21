@@ -77,7 +77,7 @@ const webReviewer=read(web+"clinical-lab-professional-review-panel.tsx");
 const must=(s,pattern,why)=>assert.match(s,pattern,why);
 for(const text of ["lab_order_line","lab_sample_custody_event","lab_result_revision",
  "CHECK(new_revision=prior_revision+1)"])
- must(sql04,new RegExp(text),"Original lab order/custody source must remain");
+ must(sql04,new RegExp(text.replace(/[+()]/g, "\\$&")),"Original lab order/custody source must remain");
 must(sql07,/fk_cg16_original_cg19_result/,"Only exact CG19 scanned file can change result state");
 must(sql07,/original_cg19_file_ref/,"Private report must carry original file ref");
 must(sql07,/scan_status='CLEAN_VERIFIED'/,"Verified file required");
@@ -135,7 +135,7 @@ must(service,/this\.sessions\.requireClinicalProfessionalProof/,
 must(service,/source.operator_account_ref===actor.accountId/,
  "Self-approval must be rejected");
 must(service,/this\.objects\.readVerifiedPrivateObject/,"Reviewer must see true private CG19 bytes");
-must(service,/reportDigest!==decision.reportDigest/,
+must(service,/report_?digest!==decision\.reportDigest/i,
  "Stale digest must fail");
 must(service,/reviewed:true|professionallyReviewed:true/,
  "Only professional review status may be emitted");

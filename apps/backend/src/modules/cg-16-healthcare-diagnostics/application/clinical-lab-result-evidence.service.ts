@@ -255,7 +255,7 @@ export class ClinicalLabResultEvidenceService{
     "AND intent_ref=$2 AND order_ref=$3 AND revoked_at IS NULL",
     [actor.realmId,row.id,order]);
    return {exists:true,uploadRef:row.id,status:row.status,
-    cleanVerified:row.status==="VALIDATED"&&files.rowCount>0,
+    cleanVerified:row.status==="VALIDATED"&&(files.rowCount??0)>0,
     original:{requestKey:row.request_key,
      sizeBytes:Number(row.size_bytes),sha256:row.sha256,mime:"application/pdf"},
     expiresAt:row.reserved_until.toISOString()};
@@ -302,7 +302,7 @@ export class ClinicalLabResultEvidenceService{
     "AND result.result_state='RESULT_READY' "+
     "AND result.report_digest=file.sha256 LIMIT 1",
     [actor.realmId,upload,order,center,row.patient_ref]);
-   const verified=row.status==="VALIDATED"&&files.rowCount>0&&
+   const verified=row.status==="VALIDATED"&&(files.rowCount??0)>0&&
     scope.rows[0].status==="RESULT_READY";
    if(row.status==="VALIDATED"&&!verified)
     throw new ConflictException({code:"LAB_RESULT_REPORT_NOT_VERIFIED"});

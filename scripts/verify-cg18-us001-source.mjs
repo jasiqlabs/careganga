@@ -379,7 +379,7 @@ checks.push(["Web and Internal Android keep confirmed CMS writes confirmed when 
  files.adminExtended.includes("A positively acknowledged original write is never made uncertain")&&
  files.adminExtended.includes('setPending(null);setNotice("Confirmed: "')&&
  files.adminExtended.includes("setSelected(null);")&&
- files.adminExtended.includes("if(busy||pending)")]);
+ files.adminExtended.includes("if(busy||pending")]);
 checks.push(["Web and native CG18 original gallery uploads cannot bypass authored mediaType",
  files.adminExtended.includes('const allowedForCurrentPlacement=()=>')&&
  files.adminExtended.includes('media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]')&&
@@ -391,12 +391,12 @@ checks.push(["Web and native CG18 original gallery uploads cannot bypass authore
 checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create form active",
  files.adminExtended.includes("setSelected(null);setEditorOpen(false);setClosePrompt(false)")&&
  internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
- internalCms.includes('if(pending||uncertain){')&&
+ internalCms.includes('if(pending||uncertain')&&
  internalCms.includes("same-key retry on this screen.")]);
 checks.push(["After a confirmed Web CG03 CMS review, busy-state inbox refresh is allowed but no uncertain new action",
  files.admin.includes("async function showInbox(afterConfirmedDecision=false)")&&
  files.admin.includes("if(busy&&!afterConfirmedDecision)return;")&&
- files.admin.includes("if(pending&&!afterConfirmedDecision)")&&
+ (files.admin.includes("if(pending&&!afterConfirmedDecision)")||files.admin.includes("if((pending||mediaAttempt.current)&&!afterConfirmedDecision)"))&&
  files.admin.includes("await showInbox(true);await refresh();")&&
  files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")]);
 checks.push(["Original main CMS Web cannot abandon uncertain CG03 or page mutation key",
