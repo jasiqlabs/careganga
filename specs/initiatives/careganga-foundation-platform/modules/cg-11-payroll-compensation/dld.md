@@ -64,3 +64,12 @@ Original C04 five-stage flow **Select Payroll Period → Validate & Calculate �
 ## Client salary email event integration — 20 Nov 2026
 
 Use real approved CG-11 payroll run/employee line revision and issued CG-19 private payslip for **CG-SAL-001**. CG-09 bank/provider **confirmed disbursement** is distinct event for **CG-SAL-002**, idempotently keyed by payroll line/settled reference. Fail/delay emits CG-SAL-003 without marking paid; employee-identity-verified CG-19 service ticket and approved document version alone permit CG-SAL-004 private resend. Use one CG-19 outbox, least privilege, stable versioned event keys and no duplicate payroll ledger. See [52-template source](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md); implementation owner/source and runtime tests remain pending.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-11-payroll-compensation. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for payroll definition/run, reviewer approval, employee own payslip, salary/payment confirmation and approved reports. Public Web **↔ Public Android** only if the original owner permits no public payroll/employee bank details; only role-scoped Internal Android. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**Technical QA:** Trace every approved field/action Web↔native to one typed backend owner, real PostgreSQL unique/access/scope, consent/employee/approval controls and revision/idempotency; no second native data model or local-only RBAC check. Provider, sensitive payment and private CG19 document evidence must never be fabricated when another approved predecessor is not delivered.

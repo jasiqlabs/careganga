@@ -54,3 +54,12 @@ Every screen/task must design true Loading / Empty / Disabled source / Authoriza
 ## Client-approved salary email / private slip presentation — 20 Nov 2026
 
 Client email master [52-template inventory](../../../../../docs/research/CAREGANGA-CLIENT-MASTER-EMAIL-V2-COVERAGE-20261120.md) supplies CG-SAL-001–004 trigger/attachment copy (not an additional public payslip image). Payroll Web and employee-only authorized Android status distinguish **calculated/approved** from **paid/confirmed**. Approved confidential slip can be downloaded only by the specific employee (or permitted HR); no colleague amounts/status exposed in public/other roles. A payment update must never say paid from approval or provider submission. Exact issue and device/provider QA NOT_RUN; this is added design acceptance, not test execution.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-11-payroll-compensation. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for payroll definition/run, reviewer approval, employee own payslip, salary/payment confirmation and approved reports. Public Web **↔ Public Android** only if the original owner permits no public payroll/employee bank details; only role-scoped Internal Android. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**Visual/action QA:** Compare the original relevant Admin references with actual responsive Web and Internal Android pages, not filenames. Preserve approved list, filtering, details, forms, selections, attendance/leave/approval/history/financial status when originally scoped, safe errors, unknown writes, role-hidden actions, refresh and Android Back, accessible screen sizes/keyboard. Same product identity, native layout acceptable. Real device and browser pixel/motion evidence `NOT_RUN`.
