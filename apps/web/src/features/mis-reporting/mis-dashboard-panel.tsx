@@ -24,6 +24,8 @@ export function MisDashboardPanel(){
  const [problem,setProblem]=useState("");
  const seq=useRef(0);
  const [ready,setReady]=useState(false);
+ const [financeAvailable,setFinanceAvailable]=useState(false);
+ const [optionsError,setOptionsError]=useState("");
  const [years,setYears]=useState<Choice[]>([]),[branches,setBranches]=useState<Choice[]>([]);
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [allBranches,setAllBranches]=useState(false);
@@ -41,12 +43,13 @@ export function MisDashboardPanel(){
    if(!Array.isArray(options.years)||!Array.isArray(options.branches))
     throw Error("Current report filters unavailable.");
    if(live){setYears(options.years);setBranches(options.branches);
+    setFinanceAvailable(options.state==="AVAILABLE");
     setAllBranches(options.allBranches===true);
     setBranch(options.allBranches===true?"":options.branches[0]?.ref??"");
     setHealthAvailable(options.healthAvailable===true);
     setCenters(Array.isArray(options.centers)?options.centers:[]);
     setCentersComplete(options.centersComplete!==false);setReady(true);}
-  }catch{if(live){setProblem("Some report filters are unavailable. The current overview may still be accessible.");
+  }catch{if(live){setOptionsError("Some report filters could not be checked. The overview may still work.");
     setReady(true);}}
  })();return()=>{live=false;};},[]);
  const load=useCallback(async()=>{
@@ -98,7 +101,7 @@ export function MisDashboardPanel(){
   {ready&&<div style={{display:"grid",gap:12,margin:"1rem 0"}}>
    <div role="group" aria-label="Dashboard data category" style={{display:"flex",
     flexWrap:"wrap",gap:8}}>
-    {(["OVERVIEW",...(years.length||branches.length||allBranches?["FINANCE"]:[]),
+    {(["OVERVIEW",...(financeAvailable?["FINANCE"]:[]),
       ...(healthAvailable?["HEALTH"]:[])] as Mode[]).map(v=><button key={v}
      type="button" aria-pressed={mode===v} onClick={()=>setMode(v)}
      style={{padding:".45rem .9rem",borderRadius:8,border:"1px solid var(--cg-border)",
@@ -143,6 +146,7 @@ export function MisDashboardPanel(){
      Healthcare filters apply only to appointment statistics, not Foundation finance.</p>
    </div>}
   </div>}
+  {!!optionsError&&<p role="status">{optionsError}</p>}
   {busy&&ready&&<p role="status">Loading permitted business reports…</p>}
   {!!problem&&<p role="alert">{problem}</p>}
   {data&&<>
