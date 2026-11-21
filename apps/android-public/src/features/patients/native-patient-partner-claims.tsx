@@ -3,7 +3,7 @@ import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
-type Kind="PHARMACY"|"NURSING"|"OT";
+type Kind="PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
 type Choice={centerRef:string;centerName:string;kind:Kind};
 type PrivateFile={fileRef:string;classification:string;revoked:boolean;createdAt:string};
 type Page={files:PrivateFile[];next:string|null};
@@ -148,10 +148,10 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
   }finally{setBusy(false);}
  }
  return <View style={styles.panel}>
-  <Text style={styles.heading}>My partner-service benefit claims</Text>
+  <Text style={styles.heading}>My pharmacy, lab, nursing and procedure claims</Text>
   <Text style={styles.note}>After an actual purchase or completed nursing/procedure
    service, upload the scanned invoice under My private health documents.
-   Nursing/procedures also need scanned completed-service evidence.
+   Lab tests, nursing and procedures also need scanned completed-service evidence.
    A submitted quote is not payment or approved Foundation assistance.</Text>
   {!!error&&<Text accessibilityRole="alert" style={styles.note}>{error}</Text>}
   {!!notice&&<Text accessibilityLiveRegion="polite" style={styles.note}>{notice}</Text>}
@@ -163,7 +163,7 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
    {choices.filter(c=>c.centerName.toLowerCase().includes(search.toLowerCase()))
     .slice(0,20).map(c=>{
      const key=c.centerRef+"|"+c.kind;
-     return <View key={key}>{button(c.centerName+" · "+(c.kind==="OT"?"Procedure":c.kind),
+     return <View key={key}>{button(c.centerName+" · "+(c.kind==="OT"?"Procedure":c.kind==="DIAGNOSTICS"?"Lab / diagnostics":c.kind),
       ()=>changed(setSelected,key),uncertain,selected===key)}</View>;
     })}
    <Text style={styles.label}>Original invoice number</Text>
