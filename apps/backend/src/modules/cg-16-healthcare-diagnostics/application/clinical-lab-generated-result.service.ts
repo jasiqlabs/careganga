@@ -219,8 +219,12 @@ export class ClinicalLabGeneratedResultService{
  private async prepare(c:PoolClient,token:string,center:string,
   order:string,key:string,values:Entry[],correction:Correction|null):Promise<Generated>{
   const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
-  const requestDigest=hash(["CG16_GENERATED_LAB_RESULT_V2",actor.realmId,
-   center,order,values,correction]);
+  // Preserve the byte/digest contract of earlier generated reports on retry.
+  // Corrections have their own explicitly different idempotency source.
+  const requestDigest=correction?
+   hash(["CG16_GENERATED_LAB_CORRECTION_V1",actor.realmId,
+    center,order,values,correction]):
+   hash(["CG16_GENERATED_LAB_RESULT_V1",actor.realmId,center,order,values]);
   const prior=await c.query<Intent&{created_at:Date}>(
    "SELECT intent.*,result.created_at FROM cg19_lab_result_intent intent "+
    "JOIN lab_result_revision result ON result.root_realm_id=intent.root_realm_id "+
