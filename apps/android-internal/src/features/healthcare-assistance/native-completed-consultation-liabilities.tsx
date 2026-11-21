@@ -11,6 +11,7 @@ type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
  doctorName:string;completedAt:string;approvedSupportMinor:string;state:string};
 type Status={state:string;liabilityRef?:string;amountMinor?:string;postingState?:string;
  foundationJournalPosted:boolean;providerSettled:boolean;
+ providerSettlementState?:string;
  correctedByOriginalReversal?:boolean;effectiveFoundationPayableMinor?:string};
 type Options={appointments:Appointment[];complete:boolean};
 type Props={token:string;canManage:boolean;canPost:boolean;onExit:()=>void;onExpired:()=>void};
@@ -188,7 +189,11 @@ export function NativeCompletedConsultationLiabilities({token,canManage,canPost,
     {status&&<Text style={styles.note}>Liability: {status.state.replaceAll("_"," ")}.
      CG09 posting: {status.correctedByOriginalReversal?"Corrected by offset journal":
       status.foundationJournalPosted?"Posted":"Not confirmed"}.
-     Provider settlement: {status.providerSettled?"Settled":"Not settled"}.
+     Provider settlement: {status.providerSettled?"Verified settled":
+      status.providerSettlementState==="PARTIALLY_SETTLED"?"Partially settled":
+      status.providerSettlementState==="APPROVED"?"Approved, not paid":
+      status.providerSettlementState==="PROPOSED"?"Proposed, not approved":
+      "Not yet claimed"}.
      {status.correctedByOriginalReversal?
       " Effective Foundation payable: "+money(status.effectiveFoundationPayableMinor??"0")+".":""}</Text>}
     {canManage&&status?.state==="NOT_RECOGNIZED"&&
