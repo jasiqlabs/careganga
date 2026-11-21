@@ -480,3 +480,11 @@ The single [39-web/21-internal-screen source audit](../../../../../docs/qa/CAREG
 - Local-only `npm run verify:cg14-partner-first-source` added to full `verify:all-source` script suite (parse/source assertions), **not executed** here
 
 **Pending source/QA:** integrated genuine CG19 proof capture/qualified verification finalizer as needed, Foundation row-level security/PII/storage and throughput security review, actual CMS original screenshot-authored /collaboration content-editing parity, live Web/native and disposable PG migration+upgrade tests, duplicate/race/receipt replay and wrong-root/role negatives, genuine original verified directory and CG17 benefit checks. All original **94** CG14 QA IDs stay intact, no fabricated verification success.
+
+### 21 Nov 2026 — Public Android build-path and Web/Internal Android linking source re-review
+
+Source-only follow-up on the same authorized partner-first branch; original CG14 US001/US002 and the existing 94 QA cases remain authoritative. New public Android partner application design-token relative import wrongly used four parent levels instead of five. Corrected in apps/android-public/src/features/health-network/public-partner-application.tsx (809d07d) and added on-disk resolution assertion to the original verification script (3a6c14f). This was a confirmed source import defect, NOT an executed build failure.
+
+- US001: Public Android hardware Back now goes from application to Partnerships, then to home. Existing request-key state survives while component remains mounted; process death replay remains NOT_VERIFIED. Commit eed9fa6.
+- US002: Both Foundation Web and Internal Android now use the actual original CG14 providers q query by applicant name rather than only scanning 50 unrelated first-page providers; the backend still enforces exact original source match, same root, phone and type / doctor registration. Commits 7773bef, efa5afb.
+- The original CG14 partner-first verifier now asserts native import path, Android Back and Web/Internal Android filtered lookup. Source authored/committed; script execution, TypeScript, Node, SQL migration, real Web and Android device, accessibility, role and race QA NOT_RUN. No QA PASS or merge claim.
