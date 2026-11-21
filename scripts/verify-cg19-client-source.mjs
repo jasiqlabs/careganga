@@ -130,5 +130,42 @@ const sourceCodes=new Set(emails.map(t=>t.code));
 for(const id of ["CG-MEM-007","CG-VOL-005","CG-DON-001","CG-REF-004",
  "CG-EMP-005","CG-SAL-002","CG-SUP-001","CG-SUP-006"])
  assert.ok(sourceCodes.has(id),"Missing high-risk source event "+id);
+// CG19 US001-QA02/03/05/08/11: staff Android MUST perform the
+// existing protected Web letter actions, not send the user back to Web.
+const letterWeb=read("apps/web/src/features/documents/private-letter-panel.tsx");
+const letterNative=read("apps/android-internal/src/features/documents/native-private-letter-panel.tsx");
+const nativeEvidence=read("apps/android-internal/src/features/documents/private-case-evidence-screen.tsx");
+const nativeShell=read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
+const letterRoutes=read(dir+"http/private-letter.controller.ts");
+for(const action of ["template/approve","issue","requests/","/reconcile","/revoke"]){
+ assert.ok(letterNative.includes(action),"Staff Android missing original CG19 letter action: "+action);
+ assert.ok(letterWeb.includes(action),"Existing staff Web action changed unexpectedly: "+action);
+}
+for(const route of ['@Get("template")','@Post("template/approve")',
+ '@Get("case/:caseRef")','@Post("issue")','@Get("requests/:requestKey")',
+ '@Post(":documentRef/reconcile")','@Post(":documentRef/revoke")']){
+ assert.ok(letterRoutes.includes(route),"Original CG19 backend API is required: "+route);
+}
+assert.match(letterNative,/canIssue:boolean;canRevoke:boolean/,
+ "Per-action current CG01 permission needed on native letters");
+assert.match(letterNative,/requestKey:issueKey\.current/,
+ "Lost-response native issue retries must use original idempotency key");
+assert.match(letterNative,/if\(busy\|\|uncertain\|\|/,
+ "Uncertain original letter outcome blocks unsafe new writes");
+assert.match(letterNative,/onPreview\(item\.documentRef\)/,
+ "Native private PDF must reuse actual original authorized byte preview");
+assert.match(nativeEvidence,/<NativePrivateLetterPanel/,
+ "Existing staff evidence screen mounts original private letter actions");
+assert.match(nativeEvidence,/onPreview=\{async ref=>\{await previewVerified\(ref,"letter"\)\}\}/,
+ "Native private letter preview uses original authenticated, bounded PDF reader");
+assert.doesNotMatch(nativeEvidence,/require\s+privileged\s+confirmation\s+in\s+the\s+Foundation\s+Web/,
+ "Do not direct same-authorized staff to Web for already implemented letter actions");
+assert.match(nativeShell,/canViewLetters=\{roleActions\.includes\("documents\.letters\.issue"\)\}/,
+ "Native letter issue must use current original CG01 permission");
+assert.match(nativeShell,/canRevokeLetters=\{roleActions\.includes\("documents\.letters\.revoke"\)\}/,
+ "Native letter revoke must use separate current CG01 permission");
+assert.match(letterNative,/sourceRevision,requestKey:issueKey\.current/,
+ "Native issued private PDF is pinned to original approved case revision");
+
 console.log("CG19 SOURCE checks: 52 exact client texts/triggers/attachment rules; disabled drafts, scoped ticket/status/notes safeguards.");
 console.log("Not a Postgres migration, provider, PDF, Web build or Android device test.");
