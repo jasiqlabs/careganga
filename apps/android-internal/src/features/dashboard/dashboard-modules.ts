@@ -68,6 +68,7 @@ export interface ModuleActionHandlers {
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
+  openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
   openDocuments: () => void;
   openNotifications: () => void;
@@ -415,6 +416,19 @@ export function getAuthorizedModules(
     });
   }
 
+  if (roleActions.includes("health.providers.view")) {
+    list.push({
+      key: "healthProviderManagement",
+      title: "Healthcare Providers & Centers",
+      shortLabel: "Providers",
+      description: "Original provider and center drafts, geography, licence evidence, and review.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthProviderManagement
+    });
+  }
   if (roleActions.includes("approvals.review") && (roleActions.includes("health.doctors.verify") || roleActions.includes("health.providers.verify"))) {
     list.push({
       key: "healthReviews",
