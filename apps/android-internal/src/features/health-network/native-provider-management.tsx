@@ -23,7 +23,8 @@ type CenterDetail={centerRef:string;version:number;center:CenterDraft};
 type Representative={affiliationRef:string;name:string;status:string;version:number};
 type AccountOption={value:string;label:string};
 type Props={token:string;onExpired:()=>void;onExit:()=>void;
- canManage:boolean;canVerify:boolean;canActivate:boolean;canPublish:boolean};
+ canManage:boolean;canVerify:boolean;canActivate:boolean;canPublish:boolean;
+ canViewFinance:boolean;canManageFinance:boolean};
 const types=["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"];
 const statuses=["ALL","PENDING","SUBMITTED","RETURNED","REJECTED","VERIFIED","SUSPENDED"];
 const blank=():Provider=>({providerCode:"",legalName:"",providerType:"CLINIC",
@@ -44,7 +45,7 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
  return r.json() as Promise<T>;
 }
 export function NativeProviderManagement({token,onExpired,onExit,canManage,
- canVerify,canActivate,canPublish}:Props){
+ canVerify,canActivate,canPublish,canViewFinance,canManageFinance}:Props){
  const [rows,setRows]=useState<Row[]>([]);
  const [status,setStatus]=useState("ALL"),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
@@ -58,6 +59,10 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const [centerProofs,setCenterProofs]=useState<Record<string,string>>({});
  const [currentPassword,setCurrentPassword]=useState("");
  const [publicSlug,setPublicSlug]=useState("");
+ const [bankProof,setBankProof]=useState("");
+ const [bankVersion,setBankVersion]=useState(0);
+ const [existingBankProof,setExistingBankProof]=useState("");
+ const [maskedBank,setMaskedBank]=useState("");
  const [representatives,setRepresentatives]=useState<Representative[]>([]);
  const [staffChoices,setStaffChoices]=useState<AccountOption[]>([]);
  const [representativeCenter,setRepresentativeCenter]=useState("");
@@ -124,10 +129,19 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
   contactName:s.contactName,contactPhone:s.contactPhone,
   contactEmail:s.contactEmail??"",registrationRef:s.registrationRef??""
  });
+ async function finance(ref:string){
+  if(!canViewFinance)return;
+  const data=await api<{reference:{fileRef:string;version:number;
+   maskedLabel:string}|null}>(token,"providers/"+encodeURIComponent(ref)+"/finance-reference");
+  setBankVersion(data.reference?.version??0);
+  setExistingBankProof(data.reference?.fileRef??"");
+  setMaskedBank(data.reference?.maskedLabel??"");
+  setBankProof("");
+ }
  async function open(ref:string){
   setBusy(true);setError("");setNotice("");setEditing("none");
   setProviderProof("");setCenterProofs({});setCurrentPassword("");
-  try{await detail(ref);setUncertain(false);command.current=null;}
+  try{await detail(ref);await finance(ref);setUncertain(false);command.current=null;}
   catch(e){failure(e)}
   finally{setBusy(false)}
  }
@@ -287,6 +301,18 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
     setNotice("Original center edit access revoked.");
    });
  }
+ async function saveBank(){
+  if(!selected||!canManageFinance||!bankProof||busy||uncertain||
+   maskedBank.trim().length<4)return;
+  const providerRef=selected.provider.providerRef;
+  await write("bank:"+providerRef,"providers/"+
+   encodeURIComponent(providerRef)+"/finance-reference","POST",
+   requestKey=>({requestKey,expectedVersion:bankVersion,
+    fileRef:bankProof,maskedLabel:maskedBank.trim()}),async()=>{
+    await finance(providerRef);
+    setNotice("Only a masked reference was recorded; actual bank proof remains private.");
+   });
+ }
  const selectedProvider=selected?.provider;
  return <SafeAreaView style={styles.page}>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -366,6 +392,24 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
          selectedProvider.status==="SUSPENDED"?"reopen":"suspend")}
        ]),busy||uncertain||currentPassword.length<8)}
     </>}
+    {canViewFinance&&<View style={styles.panel}>
+      <Text style={styles.heading}>Protected provider settlement destination</Text>
+      <Text style={styles.note}>Only the original scanner-verified bank
+       document is accepted. A masked label is not proof of actual payment.</Text>
+      {!!existingBankProof&&<Text style={styles.note}>
+       Current protected bank instruction: {maskedBank}</Text>}
+      {canManageFinance&&<>
+       <NativeHealthEvidenceUploader token={token}
+        providerRef={selectedProvider.providerRef}
+        sourceVersion={selectedProvider.version}
+        classification="HEALTH_BANK_PROOF"
+        onVerified={ref=>setBankProof(ref)} onExpired={onExpired}/>
+       {input("Masked bank account label (e.g. Bank ****1234)",
+        maskedBank,setMaskedBank,60)}
+       {button("Save protected verified provider bank destination",()=>void saveBank(),
+        busy||uncertain||!bankProof||maskedBank.trim().length<4)}
+      </>}
+     </View>}
     <Text style={styles.heading}>Original healthcare centers</Text>
     {canManage&&button("Add pending center",()=>{
      setCenterEdit({ref:null,version:selectedProvider.version,value:blankCenter()});
