@@ -115,7 +115,7 @@ BEGIN
    AND f.patient_id=source.patient_ref AND f.scan_status='CLEAN_VERIFIED'
    AND f.classification='PATIENT_PARTNER_INVOICE'
    AND f.revoked_at IS NULL AND i.status='VALIDATED')
- OR (source.service_kind IN('NURSING','OT','DIAGNOSTICS') AND NOT EXISTS(
+ OR (source.service_kind IN('NURSING','OT','LAB') AND NOT EXISTS(
   SELECT 1 FROM cg19_patient_private_file f
   JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
   WHERE f.realm_id=source.root_realm_id AND f.id=source.completion_file_ref
@@ -196,7 +196,7 @@ BEGIN
   WHERE c.root_realm_id=claim.root_realm_id AND c.id=claim.center_ref
    AND c.status='VERIFIED' AND c.access_state='ENABLED'
    AND p.status='VERIFIED' AND cap.capability_code=CASE claim.service_kind
-    WHEN 'OT' THEN 'SURGERY' ELSE claim.service_kind END)
+    WHEN 'OT' THEN 'SURGERY' WHEN 'LAB' THEN 'DIAGNOSTICS' ELSE claim.service_kind END)
  THEN
   RAISE EXCEPTION 'Verified partner service is no longer available'
    USING ERRCODE='P1741';
@@ -221,7 +221,7 @@ BEGIN
     AND ev.actor_account_id=NEW.reviewed_by_account
     AND ev.action='PARTNER_CLAIM_REVIEW_READ'
     AND ev.created_at>=attest.attested_at)
-  OR (claim.service_kind IN('NURSING','OT','DIAGNOSTICS') AND NOT EXISTS(
+  OR (claim.service_kind IN('NURSING','OT','LAB') AND NOT EXISTS(
    SELECT 1 FROM cg19_patient_file_event ev
    WHERE ev.realm_id=claim.root_realm_id AND ev.patient_id=claim.patient_ref
     AND ev.file_id=claim.completion_file_ref
@@ -248,7 +248,7 @@ BEGIN
     AND f.classification='PATIENT_PARTNER_INVOICE'
     AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
     AND i.status='VALIDATED')
-  OR (claim.service_kind IN('NURSING','OT','DIAGNOSTICS') AND NOT EXISTS(
+  OR (claim.service_kind IN('NURSING','OT','LAB') AND NOT EXISTS(
    SELECT 1 FROM cg19_patient_private_file f
    JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
    WHERE f.realm_id=claim.root_realm_id AND f.id=claim.completion_file_ref
