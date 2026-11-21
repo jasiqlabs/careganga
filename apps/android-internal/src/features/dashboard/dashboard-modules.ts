@@ -89,6 +89,7 @@ export interface ModuleActionHandlers {
   openBudget: () => void;
   openBudgetReview: () => void;
   openReports: () => void;
+  openMis: () => void;
   openFinance: () => void;
   openBranches: () => void;
   openChangePassword: () => void;
@@ -667,6 +668,23 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openReports
+    });
+  }
+
+  // CG-20 — Foundation MIS. The native report workspace mirrors the dedicated
+  // Web /admin/mis screen, independent of the original CG-09 finance ledger.
+  if (roleActions.includes("mis.dashboard.view") ||
+      roleActions.includes("mis.reports.view")) {
+    list.push({
+      key: "mis",
+      title: "Reports & MIS",
+      shortLabel: "MIS",
+      description: "Verified Foundation dashboards, standard and saved reports, private exports.",
+      category: "FINANCE & ACCOUNTING",
+      iconName: "bar-chart",
+      iconBg: "#E0F2FE",
+      iconColor: "#0369A1",
+      onOpen: handlers.openMis
     });
   }
 
