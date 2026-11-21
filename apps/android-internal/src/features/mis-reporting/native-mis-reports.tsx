@@ -7,6 +7,8 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {NativeMisSaved} from "./native-mis-saved";
 import {NativeMisExports} from "./native-mis-exports";
 import {NativeMisSchedules} from "./native-mis-schedules";
+import {NativeMisFinanceTrend,NativeMisAppointmentDistribution}
+ from "./native-mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
@@ -48,6 +50,7 @@ async function fetchSource<T>(token:string,path:string,body?:object):Promise<T>{
 export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>void}){
  const [catalog,setCatalog]=useState<Catalog|null>(null);
  const [kind,setKind]=useState<Kind|null>(null);
+ const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART">("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
@@ -61,7 +64,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    if(!Array.isArray(result.templates))throw Error("Report source options could not be verified.");
    if(rev===seq.current){setCatalog(result);
     setBranch(result.finance.allBranches?"":result.finance.branches[0]?.ref??"");
-    setKind(result.templates[0]?.kind??null);}
+    setKind(result.templates[0]?.kind??null);
+    setView(result.templates[0]?.views[0]??"TABLE");}
   }catch(e){
    if(rev===seq.current){if(e&&typeof e==="object"&&"status" in e&&e.status===401)
     onExpired();
@@ -84,7 +88,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const finance=kind?.startsWith("FINANCE_");
  function request(offset=0){
   if(!kind||!chosen)return null;
-  return {kind,view:chosen.views[0],
+  return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
    ...((kind==="FINANCE_POSTED_LEDGER"||!finance)&&from?
@@ -116,9 +120,15 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   {catalog&&catalog.templates.length>0&&<>
    <NativeFinanceOptions label="Report source" value={kind??""}
     options={catalog.templates.map(x=>({ref:x.kind,label:x.label}))}
-    onChange={v=>{setKind(v as Kind);setPreview(null);
+    onChange={v=>{setKind(v as Kind);
+     setView(catalog.templates.find(t=>t.kind===v)?.views[0]??"TABLE");
+     setPreview(null);
      setYear("");setBranch("");setCenter("");setFrom("");setUntil("");setStatus("");}}/>
    {!!chosen&&<Text style={s.hint}>{chosen.description}. Output: {chosen.views.join(" or ")}</Text>}
+   {!!chosen&&chosen.views.length>1&&<NativeFinanceOptions label="Report view"
+    value={view} options={chosen.views.map(v=>({ref:v,label:v==="CHART"?"Chart":
+     v==="SUMMARY"?"Summary":"Table"}))} onChange={v=>{setView(v as typeof view);
+      setPreview(null);}}/>}
    {finance&&<>
     <NativeFinanceOptions label="Financial year" value={year}
      options={[{ref:"",label:"All permitted years"},...catalog.finance.years.map(x=>({
@@ -149,6 +159,15 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     {new Date(preview.sourceAsOf??preview.sourceReadAt).toLocaleString("en-IN")}</Text>
    <Text style={s.hint}>{preview.explanation}</Text>
    {preview.state==="READY"?<>
+    {preview.kind==="FINANCE_POSTED_TREND"&&
+     <NativeMisFinanceTrend trend={{type:"MONTHLY_FINANCE",
+      state:"AVAILABLE",windowLabel:"Last six calendar months",
+      points:preview.rows.map(r=>({month:r.month??"",
+       incomeMinor:r.incomeMinor??"0",expenseMinor:r.expenseMinor??"0"}))}}/>}
+    {preview.kind==="APPOINTMENT_STATUS"&&
+     <NativeMisAppointmentDistribution metrics={preview.columns.map(c=>({
+      key:c.key,label:c.label,unit:c.unit??"COUNT",
+      value:preview.rows[0]?.[c.key]??"0"}))}/>} 
     {preview.rows.map((row,i)=><View key={i} style={s.row}>
      {preview.columns.map(c=><View key={c.key} style={s.cell}>
       <Text style={s.hint}>{c.label}</Text>
@@ -169,7 +188,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    canManage={catalog.capabilities?.manage===true}
    current={request(0)}
    onRestore={value=>{
-    setKind(value.kind as Kind);setYear(value.yearRef??"");
+    setKind(value.kind as Kind);setView(value.view as typeof view);
+    setYear(value.yearRef??"");
     setBranch(value.branchRef??"");setCenter(value.centerRef??"");
     setFrom(value.fromDay??"");setUntil(value.untilDay??"");
     setStatus(value.status??"");setPreview(null);setProblem("");
