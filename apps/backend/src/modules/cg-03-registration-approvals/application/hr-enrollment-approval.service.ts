@@ -66,6 +66,61 @@ export class HrEnrollmentApprovalService{
    throw new ConflictException("Verified identity evidence is required before review");
   return frozen;
  }
+ async processStatus(token:string){
+  const actor=await this.sessions.requireAction(token,"hr.applications.view");
+  const r=await this.db.query(
+   "SELECT 1 FROM cg03_hr_process_current c JOIN cg03_process p "+
+   "ON p.id=c.process_id AND p.realm_id=c.realm_id "+
+   "WHERE c.realm_id=$1 AND p.process_kind='EMPLOYEE_ENROLLMENT'",
+   [actor.realmId]);
+  return {configured:!!r.rowCount};
+ }
+ /** Only original protected process-manager authority can establish the
+  * Foundation reviewer workflow, with fresh authentication evidence.
+  */
+ async initializeProcess(token:string,body:unknown){
+  const actor=await this.sessions.requireAction(token,"approvals.process.manage");
+  await this.sessions.requireAction(token,"hr.employees.review");
+  if(!body||typeof body!=="object"||Array.isArray(body)||
+   Object.keys(body as Record<string,unknown>).some(k=>k!=="currentPassword")||
+   typeof (body as {currentPassword?:unknown}).currentPassword!=="string")
+   throw new BadRequestException("Enter your current password to configure reviews");
+  await this.sessions.limitFoundationRootProof(actor);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const root=await tx.query(
+    "SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",
+    [actor.realmId]);
+   if(!root.rowCount)throw new ForbiddenException("Foundation review root unavailable");
+   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   await this.identity.assertCurrent(tx,actor,"approvals.process.manage");
+   await this.identity.assertCurrent(tx,actor,"hr.employees.review");
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,
+    (body as {currentPassword:string}).currentPassword);
+   const existing=await tx.query(
+    "SELECT 1 FROM cg03_hr_process_current WHERE realm_id=$1 FOR SHARE",
+    [actor.realmId]);
+   if(existing.rowCount){await tx.query("COMMIT");return {configured:true,replayed:true};}
+   const version=await tx.query<{next:number}>(
+    "SELECT COALESCE(MAX(version),0)+1 AS next FROM cg03_process WHERE realm_id=$1",
+    [actor.realmId]);
+   const added=await tx.query<{id:string}>(
+    "INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,"+
+    "configured_by,process_kind) VALUES($1,$2,NULL,$3,'EMPLOYEE_ENROLLMENT') "+
+    "RETURNING id",
+    [actor.realmId,version.rows[0].next,actor.accountId]);
+   await tx.query(
+    "INSERT INTO cg03_process_step(process_id,ordinal,capability_key,protected_root_required) "+
+    "VALUES($1,1,'approvals.review',true)",[added.rows[0].id]);
+   await tx.query(
+    "INSERT INTO cg03_hr_process_current(realm_id,process_id) VALUES($1,$2)",
+    [actor.realmId,added.rows[0].id]);
+   await tx.query("COMMIT");
+   return {configured:true,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+
  /** Reuse original CG03 process, immutable case, decisions and event master.
   * Called with the caller's original HR draft transaction (not a separate request).
   */
@@ -86,30 +141,14 @@ export class HrEnrollmentApprovalService{
   }
   if(!frozen.files.some(f=>f.classification==="HR_IDENTITY_PROOF"))
    throw new ConflictException("Verify employee identity evidence before submitting");
-  const root=await tx.query(
-   "SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",
+  const current=await tx.query<{id:string}>(
+   "SELECT p.id FROM cg03_hr_process_current c "+
+   "JOIN cg03_process p ON p.id=c.process_id AND p.realm_id=c.realm_id "+
+   "WHERE c.realm_id=$1 AND p.process_kind='EMPLOYEE_ENROLLMENT' FOR SHARE OF p",
    [actor.realmId]);
-  if(!root.rowCount)throw new ForbiddenException("Foundation unavailable");
-  const current=await tx.query<{process_id:string}>(
-   "SELECT process_id FROM cg03_hr_process_current WHERE realm_id=$1 FOR SHARE",
-   [actor.realmId]);
-  let process=current.rows[0]?.process_id;
-  if(!process){
-   const version=await tx.query<{next:number}>(
-    "SELECT COALESCE(MAX(version),0)+1 AS next FROM cg03_process WHERE realm_id=$1",
-    [actor.realmId]);
-   const added=await tx.query<{id:string}>(
-    "INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,configured_by,"+
-    "process_kind) VALUES($1,$2,NULL,$3,'EMPLOYEE_ENROLLMENT') RETURNING id",
-    [actor.realmId,version.rows[0].next,actor.accountId]);
-   process=added.rows[0].id;
-   await tx.query(
-    "INSERT INTO cg03_process_step(process_id,ordinal,capability_key,protected_root_required) "+
-    "VALUES($1,1,'approvals.review',true)",[process]);
-   await tx.query(
-    "INSERT INTO cg03_hr_process_current(realm_id,process_id) VALUES($1,$2)",
-    [actor.realmId,process]);
-  }
+  const process=current.rows[0]?.id;
+  if(!process)throw new ConflictException(
+   "An authorized Foundation officer must configure employee reviews before submission");
   const requestDigest=hash(["CG10_EMPLOYEE_ENROLLMENT",input]);
   const prior=await tx.query<Case>(
    "SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='EMPLOYEE_ENROLLMENT' "+
