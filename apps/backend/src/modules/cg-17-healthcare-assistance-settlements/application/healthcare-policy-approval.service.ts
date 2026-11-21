@@ -170,9 +170,9 @@ export class HealthcarePolicyApprovalService{
    if(!v)throw new NotFoundException({code:"ASSISTANCE_REVIEW_UNAVAILABLE"});
    const policy=await c.query<{center_ref:string;valid_from:Date;
     valid_until:Date;cap_minor:string;percent_basis_points:number|null;
-    service_kind:string;mode:string;approval_state:string}>(
+    fixed_minor:string|null;service_kind:string;mode:string;approval_state:string}>(
     "SELECT center_ref,valid_from,valid_until,cap_minor::text,"+
-    "percent_basis_points,service_kind,mode,approval_state FROM healthcare_policy_revision "+
+    "percent_basis_points,fixed_minor::text,service_kind,mode,approval_state FROM healthcare_policy_revision "+
     "WHERE root_realm_id=$1 AND id=$2 AND revision_no=$3 "+
     "AND source_digest=$4",[actor.realmId,v.cg17_policy_revision_id,
      v.cg17_policy_version,v.cg17_policy_digest]);
@@ -189,6 +189,7 @@ export class HealthcarePolicyApprovalService{
      policyRevisionRef:v.cg17_policy_revision_id,
      validFrom:original.valid_from,validUntil:original.valid_until,
      capMinor:original.cap_minor,percentBasisPoints:original.percent_basis_points,
+     fixedMinor:original.fixed_minor,
      service:original.service_kind,mode:original.mode,
      state:original.approval_state},independentReviewerRequired:true};
   }catch(e){if(open)try{await c.query("ROLLBACK")}catch{};throw e;}
