@@ -3,6 +3,7 @@ import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {RolesService} from "../../cg-01-identity-access/application/roles.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HrEnrollmentSourceFacade,sourceHash} from "./hr-enrollment-source.facade";
 import {HrEmployeeEvidenceService} from "../../cg-19-documents-notifications/application/hr-employee-evidence.service";
@@ -12,11 +13,11 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
 type Fields={name:string;designation:string;employmentType:string;branchRef:string;
- departmentRef:string|null;managerRef:string|null;hireDate:string;accountRef:string|null};
+ departmentRef:string|null;managerRef:string|null;roleRef:string|null;hireDate:string;accountRef:string|null};
 type Command=Fields&{requestKey:string;expectedRevision?:number};
 type Row={id:string;application_no:string;legal_name:string;designation:string;
  employment_type:string;proposed_branch_ref:string;department_ref:string|null;
- applicant_account_ref:string|null;proposed_manager_employee_ref:string|null;hire_date:Date|string;state:string;revision_no:number;
+ applicant_account_ref:string|null;proposed_manager_employee_ref:string|null;proposed_role_ref:string|null;hire_date:Date|string;state:string;revision_no:number;
  request_digest:string;created_at:Date};
 const hash=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const uuid=(v:unknown,label:string):string=>{
@@ -35,7 +36,7 @@ export function parseHrDraft(value:unknown,update=false):Command{
   throw new BadRequestException("Check the employee application");
  const x=value as Record<string,unknown>;
  if(Object.keys(x).some(k=>!["requestKey","expectedRevision","name","designation",
-  "employmentType","branchRef","departmentRef","managerRef","hireDate","accountRef"].includes(k)))
+  "employmentType","branchRef","departmentRef","managerRef","roleRef","hireDate","accountRef"].includes(k)))
   throw new BadRequestException("The employee application contains unsupported fields");
  const employmentType=x.employmentType;
  if(typeof employmentType!=="string"||!TYPES.some(t=>t===employmentType))
@@ -54,6 +55,7 @@ export function parseHrDraft(value:unknown,update=false):Command{
   employmentType,branchRef:uuid(x.branchRef,"active branch"),
   departmentRef:optional(x.departmentRef,"department"),
   managerRef:optional(x.managerRef,"reporting manager"),
+  roleRef:optional(x.roleRef,"role proposal"),
   accountRef:optional(x.accountRef,"existing account"),hireDate:x.hireDate,
   ...(update?{expectedRevision:Number(x.expectedRevision)}:{})};
 }
@@ -61,13 +63,15 @@ const iso=(v:Date|string)=>typeof v==="string"?v.slice(0,10):v.toISOString().sli
 const view=(x:Row)=>({applicationRef:x.id,reference:x.application_no,name:x.legal_name,
  designation:x.designation,employmentType:x.employment_type,
  branchRef:x.proposed_branch_ref,departmentRef:x.department_ref,
- managerRef:x.proposed_manager_employee_ref,accountRef:x.applicant_account_ref,hireDate:iso(x.hire_date),
+ managerRef:x.proposed_manager_employee_ref,roleRef:x.proposed_role_ref,
+ accountRef:x.applicant_account_ref,hireDate:iso(x.hire_date),
  status:x.state,revision:Number(x.revision_no)});
 
 @Injectable()
 export class HrEnrollmentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
+  private readonly roles:RolesService,
   private readonly source:HrEnrollmentSourceFacade,
   private readonly files:HrEmployeeEvidenceService,
   private readonly approvals:HrEnrollmentApprovalService,
@@ -92,6 +96,10 @@ export class HrEnrollmentService{
  }
  private async validSource(tx:PoolClient,a:VerifiedFoundationActor,x:Fields){
   await this.branch(tx,a,x.branchRef);
+  if(x.roleRef){
+   await this.identity.assertCurrent(tx,a,"roles.select");
+   await this.roles.requireHrSelectableRole(tx,a,x.roleRef);
+  }
   if(x.departmentRef){
    const department=await tx.query(
     "SELECT 1 FROM department WHERE id=$1 AND root_realm_id=$2 AND active "+
@@ -222,6 +230,12 @@ export class HrEnrollmentService{
   }finally{tx.release();}
  }
 
+ async roleOptions(token:string,search:string){
+  await this.actor(token,"hr.applications.view");
+  await this.sessions.requireAction(token,"roles.select");
+  return this.roles.options(token,search);
+ }
+
  async create(token:string,input:unknown){
   const a=await this.actor(token,"hr.applications.manage"),x=parseHrDraft(input);
   const digest=hash(["CREATE",a.accountId,x]),tx=await this.db.connect();
@@ -242,12 +256,12 @@ export class HrEnrollmentService{
     const result=await tx.query<Row>(
      "INSERT INTO hr_employee_application(root_realm_id,request_key,request_digest,application_no,"+
      "legal_name,designation,employment_type,proposed_branch_ref,department_ref,hire_date,"+
-     "applicant_account_ref,proposed_manager_employee_ref,created_by,updated_by) VALUES($1,$2,$3,"+
+     "applicant_account_ref,proposed_manager_employee_ref,proposed_role_ref,created_by,updated_by) VALUES($1,$2,$3,"+
      "'CG-HR-APP-'||lpad(nextval('hr_application_public_sequence')::text,6,'0'),"+
-     "$4,$5,$6,$7,$8,$9,$10,$11,$12,$12) "+
+     "$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13) "+
      "ON CONFLICT (root_realm_id,request_key) DO NOTHING RETURNING *",
      [a.realmId,x.requestKey,digest,x.name,x.designation,x.employmentType,x.branchRef,
-      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,a.accountId]);
+      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,x.roleRef,a.accountId]);
     // Racing identical requests can both initially see no row. The unique
     // root+request key is authoritative; reconcile only the exact same digest.
     if(!result.rows[0]){
@@ -312,12 +326,12 @@ export class HrEnrollmentService{
     const updated=await tx.query<Row>(
      "UPDATE hr_employee_application SET legal_name=$3,designation=$4,employment_type=$5,"+
      "proposed_branch_ref=$6,department_ref=$7,hire_date=$8,applicant_account_ref=$9,"+
-     "proposed_manager_employee_ref=$10,"+
-     "updated_by=$11,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
+     "proposed_manager_employee_ref=$10,proposed_role_ref=$11,"+
+     "updated_by=$12,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
      "cg03_case_ref=NULL,submitted_digest=NULL "+
      "WHERE id=$1 AND root_realm_id=$2 RETURNING *",
      [ref,a.realmId,x.name,x.designation,x.employmentType,x.branchRef,
-      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,a.accountId]);
+      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,x.roleRef,a.accountId]);
     await tx.query(
      "INSERT INTO hr_application_command(root_realm_id,actor_ref,request_key,request_digest,"+
      "application_ref,action,resulting_revision) VALUES($1,$2,$3,$4,$5,'UPDATE',$6)",
@@ -472,7 +486,7 @@ export class HrEnrollmentService{
    await this.validSource(tx,actor,{name:app.legal_name,
     designation:app.designation,employmentType:app.employment_type,
     branchRef:app.proposed_branch_ref,departmentRef:app.department_ref,
-    managerRef:app.proposed_manager_employee_ref,
+    managerRef:app.proposed_manager_employee_ref,roleRef:app.proposed_role_ref,
     accountRef:app.applicant_account_ref,hireDate:iso(app.hire_date)});
    for(const item of files)
     await this.files.prove(tx,actor.realmId,app.id,app.revision_no,
@@ -483,6 +497,7 @@ export class HrEnrollmentService{
     employment_type:app.employment_type,proposed_branch_ref:app.proposed_branch_ref,
     department_ref:app.department_ref,applicant_account_ref:app.applicant_account_ref,
     proposed_manager_employee_ref:app.proposed_manager_employee_ref,
+    proposed_role_ref:app.proposed_role_ref,
     hire_date:iso(app.hire_date),created_by:app.created_by,state:app.state
    };
    const sourceDigest=sourceHash(frozen);
