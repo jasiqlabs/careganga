@@ -7,7 +7,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
-import {reportMime,type ReportFormat} from "./mis-report-renderer";
+import {reportMime,renderMisReport,type ReportFormat,type ReportData} from "./mis-report-renderer";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const valid=(v:string)=>{if(!UUID.test(v))
  throw new BadRequestException({code:"MIS_ARTIFACT_UNAVAILABLE"});
@@ -22,6 +22,14 @@ export class MisProtectedArtifactService{
   private readonly sessions:SessionService,
   private readonly storage:PrivateObjectStorage){}
  private digest(bytes:Buffer){return createHash("sha256").update(bytes).digest("hex");}
+ /** Only CG19 generates and persists protected bytes; CG20 supplies a
+  * validated, source-scoped bounded report projection, never an object key.
+  */
+ async issueFromReport(token:string,runRef:string,format:ReportFormat,data:ReportData){
+  const bytes=await renderMisReport(format,data);
+  return this.issue(token,runRef,format,bytes);
+ }
+
  /** CG-19 original file authority. Only CG-20 RUNNING original owner
   * metadata may request one create-only private object. CG20 must already
   * have revalidated the original owner source/filters before invoking.
