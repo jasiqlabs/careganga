@@ -146,7 +146,8 @@ const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
 contains(mis+"infrastructure/mis-report-schedule.worker.ts",[
  "OnModuleInit","SKIP LOCKED","previewScheduledFinance",
  "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
- "run.root_realm_id=stale.root_realm_id","state='SENT_PENDING'"
+ "run.root_realm_id=stale.root_realm_id","state='SENT_PENDING'",
+ "retry_count=retry_count+1","retry_count<3","UNKNOWN"
 ]);
 contains(cg19+"application/mis-report-notice.service.ts",[
  "publishReady","CG20_MIS_REPORT","cg20_report_delivery_attempt",
@@ -169,7 +170,8 @@ const sql=contains("apps/backend/db/migrations/2001_cg20_saved_reports_runs_and_
  "CREATE TABLE cg20_saved_report","CREATE TABLE cg20_saved_request",
  "CREATE TABLE cg20_report_run","CREATE TABLE cg20_report_schedule",
  "CREATE TABLE cg20_report_delivery_attempt",
- "saved_revision integer NOT NULL","DIAGNOSTICS_CATALOG_SUMMARY"
+ "saved_revision integer NOT NULL","DIAGNOSTICS_CATALOG_SUMMARY",
+ "retry_count smallint NOT NULL DEFAULT 0"
 ]);
 for(const name of ["cg20_report_definition","cg20_saved_report","cg20_saved_request",
  "cg20_report_run","cg20_report_schedule","cg20_report_delivery_attempt"]){
