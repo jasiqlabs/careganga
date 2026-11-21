@@ -91,6 +91,36 @@ export class HealthcareFoundationPostingFacade{
   * Caller owns verified CG17 source, protected reviewer and idempotency.
   * Neither the original source nor the posted journal is edited.
   */
+
+ /** The real credited payable account of one original CG09 expense/payable
+  * healthcare accrual. CG17 may only match refunds to this original account.
+  */
+ async payableAccountForAccrual(c:PoolClient,actor:VerifiedFoundationActor,
+  originalJournalRef:string,amountMinor:string){
+  if(!safe(originalJournalRef)||!amount(amountMinor))
+   throw new BadRequestException({code:"CG17_ORIGINAL_PAYABLE_INVALID"});
+  const q=await c.query<{account_id:string}>(
+   "SELECT credit.account_id FROM journal j "+
+   "JOIN journal_line credit ON credit.journal_id=j.id "+
+   "AND credit.root_realm_id=j.root_realm_id "+
+   "JOIN finance_account account ON account.id=credit.account_id "+
+   "AND account.root_realm_id=j.root_realm_id "+
+   "JOIN account_group grp ON grp.id=account.group_id "+
+   "AND grp.root_realm_id=account.root_realm_id "+
+   "WHERE j.id=$1 AND j.root_realm_id=$2 AND j.source_owner='CG-09' "+
+   "AND j.posting_kind='GENERAL' AND j.status='POSTED' "+
+   "AND j.reversal_of_id IS NULL "+
+   "AND credit.branch_id IS NULL AND credit.debit_minor=0 "+
+   "AND credit.credit_minor=$3::bigint "+
+   "AND account.scope_kind='FOUNDATION' "+
+   "AND account.account_kind='GENERAL' AND grp.category='LIABILITY' "+
+   "AND (SELECT count(*) FROM journal_line line "+
+   "WHERE line.root_realm_id=j.root_realm_id AND line.journal_id=j.id)=2",
+   [originalJournalRef,actor.realmId,amountMinor]);
+  if(q.rows.length!==1)throw new ConflictException({
+   code:"CG17_ORIGINAL_PAYABLE_UNVERIFIED"});
+  return q.rows[0].account_id;
+ }
  async reverseAccrual(c:PoolClient,actor:VerifiedFoundationActor,
   original:HealthcareAccrualCorrection){
   if(![original.originalJournalRef,original.originalEffectRef,
