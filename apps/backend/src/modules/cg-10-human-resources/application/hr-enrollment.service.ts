@@ -657,9 +657,10 @@ export class HrEnrollmentService{
    await tx.query("BEGIN");
    await this.identity.assertPatientSessionCurrent(tx,actor);
    const q=await tx.query<{id:string;root_realm_id:string;state:string;
-     applicant_account_ref:string|null;cg03_case_ref:string|null;submitted_digest:string|null}>(
-    "SELECT id,root_realm_id,state,applicant_account_ref,cg03_case_ref,"+
-    "submitted_digest FROM hr_employee_application "+
+     applicant_account_ref:string|null;proposed_role_ref:string|null;
+     cg03_case_ref:string|null;submitted_digest:string|null}>(
+    "SELECT id,root_realm_id,state,applicant_account_ref,proposed_role_ref,"+
+    "cg03_case_ref,submitted_digest FROM hr_employee_application "+
     "WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",[ref,actor.realmId]);
    const app=q.rows[0];
    if(!app||app.applicant_account_ref!==actor.accountId)
@@ -681,6 +682,19 @@ export class HrEnrollmentService{
     "SELECT 1 FROM hr_employee WHERE root_realm_id=$1 AND account_ref=$2",
     [actor.realmId,actor.accountId]);
    if(linked.rowCount)throw new ConflictException("Your account is linked to another employee");
+   if(app.proposed_role_ref){
+    // The real CG01 grant must have been completed separately. An HR role
+    // proposal or applicant consent is never an access grant.
+    const granted=await tx.query(
+     "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
+     "AND role_now.realm_id=ar.realm_id AND role_now.active=true "+
+     "WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.role_id=$3 "+
+     "AND ar.revoked_at IS NULL FOR SHARE OF ar,role_now",
+     [actor.accountId,actor.realmId,app.proposed_role_ref]);
+    if(!granted.rowCount)throw new ConflictException(
+     "Your proposed staff role has not been approved in current account access. "+
+     "Ask a Foundation administrator to complete that separate approval.");
+   }
    await tx.query("UPDATE hr_employee SET account_ref=$3,status='ACTIVE',"+
     "status_version=status_version+1 WHERE id=$1 AND root_realm_id=$2",
     [emp.id,actor.realmId,actor.accountId]);
