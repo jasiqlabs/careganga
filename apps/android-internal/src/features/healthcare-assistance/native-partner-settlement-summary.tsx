@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View}
  from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -30,6 +30,7 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
  const [summary,setSummary]=useState<Summary|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState("");
+ const requestVersion=useRef(0);
  const request=useCallback(async(path:string)=>{
   const response=await identityRequest(
    "/api/v1/healthcare-assistance/provider-settlements/"+path,{
@@ -66,16 +67,22 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
    data.month!==month||!("patientCollectionNotFoundationIncome" in data)||
    data.patientCollectionNotFoundationIncome!==true)
    throw Error("Original monthly balance cannot be verified.");
-  setSummary(data as Summary);
+  return data as Summary;
  },[request,center,month]);
  useEffect(()=>{
-  let live=true;setSummary(null);setError("");
+  const version=++requestVersion.current;
+  setSummary(null);setError("");
   if(!ID.test(center))return;
   setBusy(true);
-  void refresh().catch(e=>{if(live)setError(e instanceof Error?e.message:
-   "Monthly settlement status unavailable.");})
-   .finally(()=>{if(live)setBusy(false)});
-  return()=>{live=false};
+  void refresh().then(data=>{
+   if(version===requestVersion.current)setSummary(data);
+  }).catch(e=>{
+   if(version===requestVersion.current)
+    setError(e instanceof Error?e.message:"Monthly settlement status unavailable.");
+  }).finally(()=>{
+   if(version===requestVersion.current)setBusy(false);
+  });
+  return()=>{if(version===requestVersion.current)requestVersion.current++};
  },[refresh]);
  const button=(label:string,fn:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" disabled={disabled}
@@ -130,9 +137,18 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
      {summary.state==="NOT_PREPARED"&&<Text style={styles.note}>
       No monthly claim has been prepared or approved yet.</Text>}
     </>}
-    {button("Refresh my settlement",()=>{setBusy(true);setError("");
-     void refresh().catch(e=>setError(e instanceof Error?e.message:
-      "Unable to refresh.")).finally(()=>setBusy(false));},busy)}
+    {button("Refresh my settlement",()=>{
+     const version=++requestVersion.current;
+     setBusy(true);setSummary(null);setError("");
+     void refresh().then(data=>{
+      if(version===requestVersion.current)setSummary(data);
+     }).catch(e=>{
+      if(version===requestVersion.current)
+       setError(e instanceof Error?e.message:"Unable to refresh.");
+     }).finally(()=>{
+      if(version===requestVersion.current)setBusy(false);
+     });
+    },busy)}
    </View>}
   </ScrollView>
  </SafeAreaView>;
