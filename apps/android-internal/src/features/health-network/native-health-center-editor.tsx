@@ -62,7 +62,7 @@ export function NativeHealthCenterEditor({token,value,onChange,disabled=false,
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Blocks unavailable.")});
   return()=>{live=false};
  },[token,value.districtRef]);
- const set=<K extends keyof CenterDraft>(field:K,v:CenterDraft[K])=>
+ const set=<K extends keyof CenterDraft,>(field:K,v:CenterDraft[K])=>
   onChange({...value,[field]:v});
  const field=(name:string,content:string,update:(x:string)=>void,maxLength=180,
   locked=false)=><View style={styles.area} key={name}>
