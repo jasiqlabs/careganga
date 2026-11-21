@@ -76,6 +76,20 @@ const ui=read("apps/web/src/features/communications/communications-workspace.tsx
 assert.match(ui,/disabled (?:source )?drafts only/i);
 assert.match(ui,/Email reference templates/);
 assert.match(ui,/saved client email reference differs from this source version/i);
+// Same-actor Web/Internal Android catalog and disabled-draft import parity.
+// Source-presence assertion only; no real provider, DB or device PASS.
+const nativeNotices=read("apps/android-internal/src/features/communications/foundation-notice-admin-screen.tsx");
+assert.match(nativeNotices,/type ClientEmailReference=\{code:string;title:string;owner:string;/);
+assert.match(nativeNotices,/"client-email-templates"\)/);
+assert.match(nativeNotices,/"client-email-templates\/import-drafts","POST"\)/);
+assert.match(nativeNotices,/result\.deliveryEnabled!==false/);
+assert.match(nativeNotices,/result\.total!==52/);
+assert.match(nativeNotices,/setEmailImportUnknown\(true\)/);
+assert.match(nativeNotices,/emailImportUnknown\?"Check uncertain import"/);
+assert.match(nativeNotices,/mail|email/i);
+assert.match(nativeNotices,/mayManage&&<View style=\{s\.card\}>/);
+assert.match(nativeNotices,/x\.attachmentRule/);
+assert.match(nativeNotices,/x\.placeholders\.join/);
 const supportStatesSql=read("apps/backend/db/migrations/1903_cg19_client_support_states.sql");
 assert.match(supportStatesSql,/WAITING_FOR_USER/);
 assert.match(supportStatesSql,/STATUS_UPDATED/);
