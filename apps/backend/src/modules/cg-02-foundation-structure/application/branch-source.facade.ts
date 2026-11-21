@@ -158,7 +158,8 @@ export class BranchSourceFacade{
    if(all){
     if(requested){
      const original=await this.db.query(
-      "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2",
+      "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+      "AND status='ACTIVE'",
       [ensureId(requested),root]);
      if(!original.rowCount)
       throw new ForbiddenException("The report branch is no longer available");
