@@ -6,7 +6,7 @@ import {MisReportExports} from "./mis-report-exports";
 import {MisReportSchedules} from "./mis-report-schedules";
 import {MisFinanceTrend,MisAppointmentDistribution} from "./mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
- "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
+ "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
 type View="TABLE"|"SUMMARY"|"CHART";
 type Option={ref:string;name:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
@@ -19,7 +19,7 @@ type Catalog={
 export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
 export type ReportPreview={
- state:"READY"|"EMPTY"|"SUPPRESSED";kind:Kind;view:View;label:string;
+ state:"READY"|"EMPTY"|"SUPPRESSED"|"PARTIAL";kind:Kind;view:View;label:string;
  columns:{key:string;label:string;unit?:string}[];
  rows:Record<string,string>[];nextOffset:number|null;
  sourceAsOf?:string;sourceReadAt:string;sourceCutoffKind:string;
@@ -92,6 +92,7 @@ export function MisReportsWorkspace(){
  },[load]);
  const selected=catalog?.templates.find(t=>t.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
+ const health=kind==="APPOINTMENT_STATUS";
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  function input(offset=0):ReportRequest|null{
   if(!kind||!selected)return null;
@@ -112,7 +113,8 @@ export function MisReportsWorkspace(){
    if(!v||!Array.isArray(v.columns)||!Array.isArray(v.rows))
     throw Error("The original report response could not be verified.");
    setResult(v);
-   setNotice(v.state==="EMPTY"?"No matching posted business records.":
+   setNotice(v.state==="PARTIAL"?"This audit source is partial or has more events. Narrow your dates before exporting.":
+    v.state==="EMPTY"?"No matching posted business records.":
     v.state==="SUPPRESSED"?"This result cannot be shown without exposing a small private group.":
     "Report loaded from authorized original records.");
   }catch(e){setProblem(e instanceof Error?e.message:"Could not verify the report.");}
@@ -166,7 +168,7 @@ export function MisReportsWorkspace(){
        {catalog.finance.branches.map(o=><option key={o.ref} value={o.ref}>{o.name}</option>)}
       </select></label>}
      </>}
-     {!finance&&catalog.appointments.ready&&<>
+     {health&&catalog.appointments.ready&&<>
       {!!catalog.appointments.centers.length&&<label>Healthcare center
        <select value={center} onChange={e=>setCenter(e.target.value)}>
         <option value="">All permitted centers</option>
@@ -196,7 +198,7 @@ export function MisReportsWorkspace(){
      "Source read completed "+new Date(result.sourceReadAt).toLocaleString("en-IN")}
    </p>
    <p style={{fontSize:".8rem",color:"var(--cg-muted)"}}>{result.explanation}</p>
-   {result.state==="READY"&&<>
+   {(result.state==="READY"||result.state==="PARTIAL")&&<>
     {result.view==="CHART"&&result.kind==="FINANCE_POSTED_TREND"&&
      <MisFinanceTrend trend={{type:"MONTHLY_FINANCE",
       windowLabel:"Last six calendar months",state:"AVAILABLE",
@@ -229,6 +231,7 @@ export function MisReportsWorkspace(){
      disabled={busy} onClick={()=>void preview(result.nextOffset!)}>
      Next page of posted entries</button>}
    </>}
+   {result.state==="PARTIAL"&&<p role="status">Only a bounded portion of the protected audit data is available. Choose a shorter date range before export.</p>}
    {result.state==="EMPTY"&&<p role="status">No original records match the selected filters.</p>}
    {result.state==="SUPPRESSED"&&<p role="status">
     The result contains too few people to display safely.</p>}
