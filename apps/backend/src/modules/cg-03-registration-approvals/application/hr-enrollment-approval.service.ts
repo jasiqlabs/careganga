@@ -186,6 +186,37 @@ export class HrEnrollmentApprovalService{
   }catch(e){await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
+ /** A protected reviewer reads ORIGINAL scanned source bytes via CG19 only,
+  * after checking CG03 identity, different proposer and exact submitted files.
+  */
+ async originalProof(token:string,caseInput:string,kindInput:string){
+  const actor=await this.reviewer(token),ref=id(caseInput);
+  if(!["HR_IDENTITY_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(kindInput))
+   throw new BadRequestException("Choose an original employee proof category");
+  const tx=await this.db.connect();
+  let file:{fileRef:string;fileVersion:number;classification:string}|undefined;
+  let c:Case;
+  try{
+   await tx.query("BEGIN");
+   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   await this.identity.assertCurrent(tx,actor,"hr.employees.review");
+   const q=await tx.query<Case>(
+    "SELECT * FROM cg03_case WHERE id=$1 AND realm_id=$2 "+
+    "AND case_kind='EMPLOYEE_ENROLLMENT' FOR SHARE",[ref,actor.realmId]);
+   if(!q.rows[0])throw new NotFoundException("Original employee review unavailable");
+   c=q.rows[0];
+   if(c.proposer_id===actor.accountId)
+    throw new ForbiddenException("You cannot read your own enrollment review evidence");
+   const frozen=await this.exact(tx,actor.realmId,c);
+   file=frozen.files.find(f=>f.classification===kindInput);
+   if(!file)throw new NotFoundException("This original employee proof was not supplied");
+   await tx.query("COMMIT");
+  }catch(e){await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+  return this.files.protectedReviewRead(actor,c!.hr_application_id,c!.hr_revision_no,
+   file!.fileRef,kindInput as "HR_IDENTITY_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT");
+ }
+
  async decide(token:string,caseRef:string,body:unknown){
   const actor=await this.reviewer(token),ref=id(caseRef),decision=parseDecision(body);
   const requestDigest=hash([decision.action,decision.remarks,decision.expectedRevision]);
