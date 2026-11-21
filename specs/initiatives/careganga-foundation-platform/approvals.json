@@ -1875,8 +1875,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-18-cms-public-content/tasks.md",
-      "sha256": "a0a523d752bc5dcfe39177804e8173e8af9e4f850b37bfaf25c021827125c964",
-      "current_artifact_sha256": "a0a523d752bc5dcfe39177804e8173e8af9e4f850b37bfaf25c021827125c964",
+      "sha256": "9ef5262d9d73829ec2e6dfe05427d2ae23d1162b0b81382784c11ef129b2451a",
+      "current_artifact_sha256": "9ef5262d9d73829ec2e6dfe05427d2ae23d1162b0b81382784c11ef129b2451a",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-18-cms-public-content/tasks.md",
@@ -2020,13 +2020,13 @@
         "date": "2026-11-21",
         "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
         "scope": "Current module artifact and Web/Internal/Public Android parity requirement; CG16/17 preprogress definitions remain original main-line subset plus 1/2 expressly recorded accepted clarifications, same 80/68 QA",
-        "file_sha256": "a0a523d752bc5dcfe39177804e8173e8af9e4f850b37bfaf25c021827125c964",
+        "file_sha256": "9ef5262d9d73829ec2e6dfe05427d2ae23d1162b0b81382784c11ef129b2451a",
         "actual_web_android_qa": "NOT_RUN",
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
         "source_complete": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "CG18_21NOV_EXISTING_QA_SOURCE_NOTE_ROLE_ORDER_MIME_PARITY_REVIEW_NOT_RUNTIME"
     },
     "planning/cg-14-healthcare-network": {
       "status": "DELEGATED_APPROVED",
