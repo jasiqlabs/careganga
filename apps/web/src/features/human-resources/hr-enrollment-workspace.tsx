@@ -61,6 +61,10 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [employeeDetail,setEmployeeDetail]=useState<{reference:string;name:string;designation:string;
+  employmentType:string;branch:string;department:string|null;manager:string|null;
+  status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
+ const [detailBusy,setDetailBusy]=useState(false);
  const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
  const [empBranches,setEmpBranches]=useState<Choice[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Choice[]>([]);
@@ -180,6 +184,19 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   }catch(e){setStatus({error:true,message:e instanceof Error?e.message:
    "Employee activation result is uncertain. Check the original employee directory."});}
   finally{setBusy(false);}
+ };
+ const viewEmployee=async(reference:string)=>{
+  setDetailBusy(true);setStaffError("");setEmployeeDetail(null);
+  try{
+   const value=await request("employees/"+encodeURIComponent(reference));
+   if(!value||typeof value!=="object"||!("reference" in value)||
+     typeof value.reference!=="string"||!("name" in value)||
+     typeof value.name!=="string")
+    throw Error("Original employee details cannot be verified.");
+   setEmployeeDetail(value as NonNullable<typeof employeeDetail>);
+  }catch(e){setStaffError(e instanceof Error?e.message:
+    "Selected employee is outside your current permitted branches.");}
+  finally{setDetailBusy(false);}
  };
  const loadHeadcounts=async()=>{
   if(!canViewEmployees)return;
@@ -460,8 +477,38 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
        <small style={{display:"block",color:"#64748B"}}>
         {row.reference} · {row.status.replaceAll("_"," ")}
        </small>
+       <button type="button" onClick={()=>void viewEmployee(row.reference)}
+         disabled={detailBusy}
+         style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A",
+           padding:".4rem .7rem",marginTop:7}}>View employment</button>
       </li>)}
     </ul>
+    {employeeDetail&&<section aria-label="Current approved employee detail"
+      style={{border:"1px solid #CBD5E1",borderRadius:12,padding:14,
+       display:"grid",gap:9,marginTop:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
+       <h3 style={{margin:0}}>{employeeDetail.name}</h3>
+       <button type="button" onClick={()=>setEmployeeDetail(null)}
+        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>
+        Close</button>
+      </div>
+      <p style={{margin:0}}>{employeeDetail.reference} · {employeeDetail.status.replaceAll("_"," ")}</p>
+      <dl style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",
+        gap:10}}>
+       {([["Designation",employeeDetail.designation],
+         ["Branch",employeeDetail.branch],["Department",employeeDetail.department??"Not assigned"],
+         ["Reporting manager",employeeDetail.manager??"Not assigned"],
+         ["Employment type",employeeDetail.employmentType.replaceAll("_"," ")],
+         ["Effective from",employeeDetail.effectiveFrom],
+         ["Effective to",employeeDetail.effectiveTo??"Current"]] as const).map(([label,value])=>
+         <div key={label}><dt style={{color:"#64748B",fontSize:12}}>{label}</dt>
+          <dd style={{margin:0}}>{value}</dd></div>)}
+      </dl>
+      <p style={{margin:0,color:"#64748B",fontSize:13}}>
+       Employment edits require an authorized personnel change review.
+       Sensitive personal and bank data are never included in this directory.
+      </p>
+     </section>}
     <div style={{display:"flex",gap:8}}>
      {empOffset>0&&<button type="button" onClick={()=>void loadEmployees(Math.max(0,empOffset-25))}
        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Previous employees</button>}
